@@ -34,7 +34,7 @@
 //   window.ItiGuidage.ouvrirFeuilleDeRoute(road)
 //   window.ItiGuidage.onPosition(pos)   — appelé par tracking.js à chaque pas
 //   window.ItiGuidage.rafraichir()      — recalcule l'affichage du bandeau
-//   window.ItiGuidage.etat()            — { visible, mode, icone, principal, sous, fleche, urgence }
+//   window.ItiGuidage.etat()            — { visible, mode, icone, picto, principal, sous, fleche, urgence }
 //   window.ItiGuidage.getPref() / setPref("auto" | "jamais")
 //   window.ItiGuidage.agir("recalculer" | "ici" | "ignorer") — boutons d'un écart
 //
@@ -49,7 +49,11 @@
 
   // ---- Seuils (mètres / degrés) — à caler sur des plans réels (étude §Inconnues)
   const FENETRE_M        = 4;    // angle mesuré sur 4 m avant et après
-  const FUSION_M         = 6;    // événements à moins de 6 m → un seul (zigzag du dessin)
+  // Croisements qui se suivent à ≤ 5 m l'un du précédent = UN carrefour (une
+  // zone). Même valeur que pathfinder.js > ZONE_ECART_M, qui mesure les sorties
+  // de la zone entière. KARMA : « 20 m c'est beaucoup trop, plutôt 5 ».
+  const ZONE_ECART_M     = 5;
+  const PICTO_MIN_SORTIES = 4;   // décision 2:a : schéma du carrefour à partir de 4 galeries
   const TOUT_DROIT_DEG   = 25;
   const LEGER_DEG        = 60;
   const DEMI_TOUR_DEG    = 135;
@@ -169,7 +173,7 @@
     const ch = _preparer(road.points);
     const L = ch.total;
     const W = Math.max(3, FENETRE_M * e);
-    const fusionPx = FUSION_M * e;
+    const ecartPx = ZONE_ECART_M * e;
 
     function capIn(s)  { return _capEntre(ch, s - W, s); }
     function capOut(s) { return _capEntre(ch, s, s + W); }
@@ -189,15 +193,17 @@
     });
     cands.sort(function(a, b) { return a.s - b.s; });
 
-    // 2) Grappes : ce qui tient dans FUSION_M À PARTIR DU PREMIER événement ne
-    // fait qu'un. 🩸 Pas « à moins de FUSION_M du précédent » : en chaîne, une
-    // grappe s'étirait sans limite (11 m mesurés sur un plan réel) et deux
-    // virages à gauche successifs, mesurés de l'entrée à la sortie, devenaient
-    // un « demi-tour ».
+    // 2) Grappes = carrefours. De proche en proche : un croisement rejoint le
+    // carrefour s'il est à ≤ ZONE_ECART_M du PRÉCÉDENT. Un grand carrefour est
+    // une zone de plusieurs croisements (décision 1:a) ; une seule consigne la
+    // couvre, mesurée de son entrée à sa sortie.
+    // 🩸 L'ancien piège du chaînage (deux virages à gauche = « demi-tour ») ne
+    // revient pas : seuls des croisements sont candidats désormais, et
+    // « demi-tour » exige que le trajet se replie (`replie` plus bas).
     const grappes = [];
     cands.forEach(function(c) {
       const g = grappes[grappes.length - 1];
-      if (g && c.s - g[0].s <= fusionPx) g.push(c);
+      if (g && c.s - g[g.length - 1].s <= ecartPx) g.push(c);
       else grappes.push([c]);
     });
 
@@ -211,9 +217,17 @@
       if (ci === null || co === null) return;
       const delta = _norm180(co - ci);
       const abs = Math.abs(delta);
+      // Consigne posée à l'ENTRÉE du carrefour (décision 4) : « maintenant »
+      // tombe avant d'être dans la salle, pas en son milieu.
       const rep = g[0];
       const pt = _pointA(ch, rep.s);
       const c = { s: rep.s, x: pt.x, y: pt.y, angle: Math.round(delta), carrefour: true };
+      // Sorties du carrefour ENTIER si le pathfinder a reconnu une zone
+      // (comparée par position : après un rechargement, les membres portent
+      // des copies, plus la même référence).
+      const zoneMembre = g.map(function(x) { return x.carrefour.zone; }).find(Boolean) || null;
+      const sortiesCarrefour = (zoneMembre && Array.isArray(zoneMembre.sorties)) ? zoneMembre.sorties
+        : (rep.carrefour.sorties || []);
       const cote = delta > 0 ? "droite" : "gauche";
 
       // « Faire demi-tour » seulement si le trajet REVIENT SUR LUI-MÊME (une
@@ -234,7 +248,7 @@
 
       // Ambiguïté : une autre sortie trop proche de celle qu'on prend
       if (c.carrefour && c.type !== "demiTour") {
-        const sorties = (rep.carrefour.sorties || []).filter(function(sx) {
+        const sorties = sortiesCarrefour.filter(function(sx) {
           return Math.abs(_norm180(sx - (ci + 180))) > REVERS_DEG;
         });
         if (sorties.length >= 2) {
@@ -251,7 +265,27 @@
           }
         }
       }
-      c.repere = _repereProche(pois, pt, repPx);
+      // Schéma du carrefour (décision 2:a) : les galeries en rayons, relatives
+      // au sens de marche (0° = devant). Pas de comptage : on les montre.
+      if (sortiesCarrefour.length >= PICTO_MIN_SORTIES && c.type !== "demiTour") {
+        let choisie = sortiesCarrefour[0], arrivee = sortiesCarrefour[0];
+        sortiesCarrefour.forEach(function(sx) {
+          if (Math.abs(_norm180(sx - co)) < Math.abs(_norm180(choisie - co))) choisie = sx;
+          if (Math.abs(_norm180(sx - (ci + 180))) < Math.abs(_norm180(arrivee - (ci + 180)))) arrivee = sx;
+        });
+        c.picto = {
+          rayons:  sortiesCarrefour.map(function(sx) { return Math.round(_norm180(sx - ci)); }),
+          choisie: Math.round(_norm180(choisie - ci)),
+          arrivee: Math.round(_norm180(arrivee - ci))
+        };
+      }
+      // Nom du lieu (décision 3:a) : un point nommé DANS le carrefour ouvre la
+      // consigne (« À « Carrefour Raspail », tourner à gauche »). Le rayon suit
+      // la zone : le point nommé d'un grand carrefour tombait à 8–19 m des
+      // nœuds, hors des 5 m du repère ordinaire.
+      const centre = zoneMembre || pt;
+      c.lieu = _repereProche(pois, centre, (zoneMembre ? zoneMembre.r : 0) + repPx);
+      c.repere = c.lieu ? null : _repereProche(pois, pt, repPx);
       consignes.push(c);
     });
 
@@ -347,6 +381,7 @@
       case "arrivee":   txt = c.nom ? _t("guid.act.arriveeNom", { nom: c.nom }) : _t("guid.act.arrivee"); break;
       default:          txt = "";
     }
+    if (c.lieu && c.carrefour) return _t("guid.lieu", { nom: c.lieu, action: txt });
     if (c.repere && c.type !== "etape" && c.type !== "arrivee") txt += _t("guid.repere", { nom: c.repere });
     return txt;
   }
@@ -396,7 +431,7 @@
       if ((c.type === "arrivee" || c.type === "etape") && c.raccordPx / e >= RACCORD_MIN_M) {
         txt += _t("guid.feuille.puisRaccord", { dist: _fmtM(c.raccordPx / e) });
       }
-      lignes += _ligne(n, c, txt, _icone(c));
+      lignes += _ligne(n, c, txt, c.picto ? _pictoSvg(c.picto, 28) : _icone(c));
     });
 
     const modal = document.createElement("div");
@@ -431,6 +466,34 @@
       if (iti) iti.remove();
       window.map.setView(convertCoord(x, y), Math.max(window.map.getZoom(), 0), { animate: false });
     });
+  }
+
+  // Schéma d'un carrefour (décision 2:a) — « vue d'intersection » des GPS :
+  // chaque galerie est un rayon, celle d'où l'on vient en bas, celle à prendre
+  // en doré. Uniquement des nombres dans le SVG (angles calculés ici) : rien
+  // qui vienne de l'utilisateur, d'où l'innerHTML sans risque côté appelants.
+  function _pictoSvg(p, taille) {
+    if (!p || !Array.isArray(p.rayons)) return "";
+    const t = taille || 40, c = t / 2, L = t * 0.44;
+    function bout(a) {
+      const r = a * Math.PI / 180;
+      return [(c + L * Math.sin(r)).toFixed(1), (c - L * Math.cos(r)).toFixed(1)];
+    }
+    function trait(a, cls) {
+      const q = bout(a);
+      return '<line x1="' + c + '" y1="' + c + '" x2="' + q[0] + '" y2="' + q[1] + '" class="' + cls + '"/>';
+    }
+    let out = '<svg class="kta-guid-picto" viewBox="0 0 ' + t + ' ' + t + '" width="' + t + '" height="' + t +
+              '" aria-hidden="true">';
+    p.rayons.forEach(function(a) {
+      if (a !== p.choisie && a !== p.arrivee) out += trait(a, "kta-guid-picto-autre");
+    });
+    out += trait(p.arrivee, "kta-guid-picto-arrivee");
+    out += trait(p.choisie, "kta-guid-picto-choisie");
+    const q = bout(p.choisie);
+    out += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="' + (t * 0.08).toFixed(1) + '" class="kta-guid-picto-bout"/>';
+    out += '<circle cx="' + c + '" cy="' + c + '" r="' + (t * 0.06).toFixed(1) + '" class="kta-guid-picto-centre"/>';
+    return out + '</svg>';
   }
 
   function _icone(c) {
@@ -668,7 +731,7 @@
 
   function _rendu(r) {
     const el = _creerBandeau();
-    let icone = "", principal = "", sous = "", fleche = null, actions = [];
+    let icone = "", principal = "", sous = "", fleche = null, actions = [], picto = "";
     const urgence = !!(_road && _road.urgence);
 
     if (r.mode === "rejoindre") {
@@ -696,6 +759,7 @@
     } else {
       const c = r.consigne;
       icone = _icone(c);
+      if (c.picto) picto = _pictoSvg(c.picto, 40);
       const action = texteAction(c);
       if (c.type === "arrivee" && r.resteM <= MAINTENANT_M) {
         principal = _majuscule(action);
@@ -715,10 +779,10 @@
 
     _etat = {
       visible: true, mode: r.mode, icone: icone, principal: principal, sous: sous,
-      fleche: fleche, urgence: urgence
+      fleche: fleche, urgence: urgence, picto: picto
     };
 
-    const cle = [r.mode, icone, principal, sous, fleche, urgence,
+    const cle = [r.mode, icone, principal, sous, fleche, urgence, picto,
                  actions.map(function(a) { return a.id; }).join()].join("|");
     el.style.display = "";
     if (cle === _dernierRendu) return;
@@ -727,7 +791,7 @@
     el.classList.toggle("kta-guid-alerte-on", r.mode === "ecart" || r.mode === "demi");
     el.classList.toggle("kta-guid-urgence", urgence);
     const ic = el.querySelector(".kta-guid-icone");
-    ic.textContent = icone;
+    if (picto) ic.innerHTML = picto; else ic.textContent = icone;   // picto : SVG de nombres seuls
     ic.style.transform = (fleche !== null) ? "rotate(" + fleche + "deg)" : "";
     el.querySelector(".kta-guid-principal").textContent = principal;
     const sEl = el.querySelector(".kta-guid-sous");
@@ -795,6 +859,7 @@
   G.texteAction          = texteAction;
   G.icone                = _icone;
   G.majuscule            = _majuscule;
+  G.pictoSvg             = _pictoSvg;
   G.longueurRaccordsPx   = longueurRaccordsPx;
   G.alerteRaccord        = alerteRaccord;
   G.ouvrirFeuilleDeRoute = ouvrirFeuilleDeRoute;

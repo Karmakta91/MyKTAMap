@@ -2092,6 +2092,7 @@
   "guid.toast.on": "🪧 Guidance on: it shows during tracking whenever an itinerary is drawn.",
   "guid.toast.off": "🪧 Guidance off.",
   "guid.aucunTraceSortie": "⚠️ This plan has no traced gallery: no path to follow and no guidance. The distances below are as the crow flies.",
+  "guid.lieu": "at “{nom}”, {action}",
   "emergency.guidage.choix": "See the options on the map",
   "ui.subaction.guidage": "Itinerary guidance",
   "kmz.gen.enCoursToast": "⏳ KMZ generation in progress — on a large map (tile collection) it can take several seconds. The download will start by itself.",

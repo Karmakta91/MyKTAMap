@@ -58,8 +58,13 @@ dessiné : il faut une logique de croisements.
    a qu'un chemin, suivre la galerie suffit : seul un croisement, là où il y a un choix, produit une consigne
    de virage. *(La première version annonçait les virages francs ; c'était une surinterprétation de
    l'argument « chambre à piliers », qui visait « la 3e à gauche ».)*
-5. **Fusion** des événements trop proches (chambre à piliers dessinée en quadrillage) en un seul, dont l'angle
-   se mesure de l'entrée de la grappe à sa sortie.
+5. **Grand carrefour = une zone** (décision KARMA 1:a, 27/09/2026) : sur un plan réel, un grand carrefour
+   n'est pas un nœud à 5 branches mais plusieurs croisements proches. Des croisements qui se suivent à
+   **≤ 5 m l'un du précédent** (KARMA : « 20 m c'est beaucoup trop ») forment une zone : **une** consigne, posée
+   à l'**entrée** de la zone (4), angle mesuré de l'entrée à la sortie, sorties comptées sur un cercle qui
+   englobe la zone. À partir de **4 galeries**, un **schéma** du carrefour (rayons, la galerie à prendre en doré,
+   l'arrivée en bas) s'affiche dans le bandeau, la feuille de route et l'écran XL (2:a). Un point nommé dans la
+   zone ouvre la consigne : « à « … », tourner à gauche » (3:a).
 6. **Vocabulaire** : < 25° tout droit · 25–60° légèrement · 60–135° tourner · > 135° demi-tour. Deux sorties à
    moins de 35° l'une de l'autre → « prendre la branche de gauche / droite ».
 7. **Repère** : un point nommé à quelques mètres du carrefour enrichit la consigne (« au niveau de … »).

@@ -22474,3 +22474,24 @@ body.kta-theme-light .kta-guid-bandeau.kta-guid-alerte-on { background: #fff4e8;
 @media (prefers-reduced-motion: reduce) {
   .kta-emergency-guidage-icone { transition: none; }
 }
+
+/* Schéma d'un grand carrefour (≥ 4 galeries) : rayons = galeries, celle d'où
+   l'on vient en bas, celle à prendre en doré (accent de la charte). */
+.kta-guid-picto { display: block; overflow: visible; }
+.kta-guid-picto line { stroke-linecap: round; }
+.kta-guid-picto-autre   { stroke: #8892a4; stroke-width: 2.5; }
+.kta-guid-picto-arrivee { stroke: #c8d0e0; stroke-width: 3; stroke-dasharray: 3 3; }
+.kta-guid-picto-choisie { stroke: #f4c542; stroke-width: 4.5; }
+.kta-guid-picto-bout    { fill: #f4c542; }
+.kta-guid-picto-centre  { fill: #e8eaf0; }
+.kta-guid-bandeau .kta-guid-icone .kta-guid-picto { width: 40px; height: 40px; }
+.kta-guid-feuille-icone .kta-guid-picto { width: 28px; height: 28px; margin: 0 auto; }
+.kta-emergency-guidage-icone .kta-guid-picto { width: 56px; height: 56px; }
+body.kta-theme-light .kta-guid-picto-arrivee,
+.kta-emergency-light .kta-guid-picto-arrivee { stroke: #3a4254; }
+body.kta-theme-light .kta-guid-picto-choisie,
+.kta-emergency-light .kta-guid-picto-choisie { stroke: #b8740b; }
+body.kta-theme-light .kta-guid-picto-bout,
+.kta-emergency-light .kta-guid-picto-bout { fill: #b8740b; }
+body.kta-theme-light .kta-guid-picto-centre,
+.kta-emergency-light .kta-guid-picto-centre { fill: #1a1f2e; }

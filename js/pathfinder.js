@@ -1013,8 +1013,8 @@
     return g;
   }
 
-  function _capsDeSortie(graph, idx, grille, cell, R) {
-    const c = graph.nodes[idx];
+  // `c` : le centre du cercle — un nœud, ou le centre d'une ZONE de carrefour.
+  function _capsDeSortie(graph, c, grille, cell, R) {
     const caps = [];
     const vus = {};
     const cx0 = Math.floor((c.x - R) / cell), cx1 = Math.floor((c.x + R) / cell);
@@ -1087,23 +1087,65 @@
     const R = _rayonSortiePx();
     const cellA = Math.max(16, 2 * R);
     let grilleA = null;   // grille des arêtes : construite au premier candidat seulement
+    const cum = [0];
+    for (let i = 1; i < path.length; i++) cum.push(cum[i - 1] + _dist(path[i - 1], path[i]));
     const out = [];
     for (let idx = 0; idx < graph.nodes.length; idx++) {
       const n = graph.nodes[idx];
       const segs = grille[_cle(Math.floor(n.x / GRILLE_CHEMIN_PX), Math.floor(n.y / GRILLE_CHEMIN_PX))];
       if (!segs) continue;
       if (_voisinsUniques(graph, idx).length < 3) continue;
-      let proche = false;
-      for (let k = 0; k < segs.length && !proche; k++) {
+      let sN = null;
+      for (let k = 0; k < segs.length; k++) {
         const i = segs[k];
-        if (_projectOnSegment(n, path[i - 1], path[i]).dist <= CARREFOUR_TOL_PX) proche = true;
+        const pr = _projectOnSegment(n, path[i - 1], path[i]);
+        if (pr.dist <= CARREFOUR_TOL_PX && (sN === null || cum[i - 1] + pr.t * (cum[i] - cum[i - 1]) < sN)) {
+          sN = cum[i - 1] + pr.t * (cum[i] - cum[i - 1]);
+        }
       }
-      if (!proche) continue;
+      if (sN === null) continue;
       if (!grilleA) grilleA = _grilleAretes(graph, cellA);
-      const sorties = _capsDeSortie(graph, idx, grilleA, cellA, R);
-      if (sorties.length >= 3) out.push({ x: n.x, y: n.y, sorties: sorties });
+      const sorties = _capsDeSortie(graph, n, grilleA, cellA, R);
+      if (sorties.length >= 3) out.push({ x: n.x, y: n.y, sorties: sorties, _s: sN });
     }
+    _zonesDeCarrefour(graph, out, grilleA, cellA, R);
+    out.forEach(function(c) { delete c._s; });
     return out;
+  }
+
+  // 🪧 GRANDS CARREFOURS (décision KARMA 1:a, 27/09/2026). Sur un plan réel,
+  // un grand carrefour n'est pas UN nœud à 5 branches : c'est une ZONE de
+  // plusieurs croisements proches (7 croisements sur moins de 20 m mesurés
+  // sur l'un d'eux), les galeries n'arrivant pas toutes au même point du
+  // dessin. Des croisements qui se suivent sur le trajet à ≤ ZONE_ECART_M
+  // l'un du précédent forment une zone ; ses sorties se mesurent sur un
+  // cercle qui l'englobe (rayon de la zone + le rayon de sortie habituel).
+  // Chaque membre reçoit la MÊME `zone` : { x, y, r, sorties }.
+  const ZONE_ECART_M = 5;   // KARMA : « 20 m c'est beaucoup trop, plutôt 5 »
+  function _zonesDeCarrefour(graph, carrefours, grilleA, cellA, R) {
+    if (carrefours.length < 2 || !grilleA) return;
+    const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 1;
+    const ecart = ZONE_ECART_M * e;
+    const tries = carrefours.slice().sort(function(a, b) { return a._s - b._s; });
+    const groupes = [];
+    tries.forEach(function(c) {
+      const g = groupes[groupes.length - 1];
+      if (g && c._s - g[g.length - 1]._s <= ecart) g.push(c);
+      else groupes.push([c]);
+    });
+    groupes.forEach(function(g) {
+      if (g.length < 2) return;
+      let cx = 0, cy = 0;
+      g.forEach(function(c) { cx += c.x; cy += c.y; });
+      const centre = { x: cx / g.length, y: cy / g.length };
+      let r = 0;
+      g.forEach(function(c) { r = Math.max(r, _dist(centre, c)); });
+      const zone = {
+        x: centre.x, y: centre.y, r: r,
+        sorties: _capsDeSortie(graph, centre, grilleA, cellA, r + R)
+      };
+      g.forEach(function(c) { c.zone = zone; });
+    });
   }
 
   // =========================

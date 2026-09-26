@@ -1061,6 +1061,11 @@ Filets : `scripts/check-guidage.js` (pré-commit, réseaux fictifs) · `scripts/
   `.kta-itinerary-raccord`) et **compté** (`_distanceItineraireMeters`, ×2 pour une étape).
 - `carrefours[]` — `{ x, y, sorties: [cap°] }` : nœuds **posés sur le trajet** d'où partent ≥ 3 directions.
 
+Grands carrefours : `_zonesDeCarrefour` regroupe les croisements à ≤ `ZONE_ECART_M` (5 m) l'un du précédent
+sur le trajet et pose sur chaque membre la même `zone: { x, y, r, sorties }` (sorties mesurées sur un cercle de
+rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), lit `zone.sorties` et produit
+`picto` (≥ 4 galeries, SVG `_pictoSvg` fait de nombres seuls) et `lieu` (point nommé à ≤ r + 5 m du centre).
+
 `ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
 `niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.
 

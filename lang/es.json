@@ -2092,6 +2092,7 @@
   "guid.toast.on": "🪧 Guiado activado: se muestra durante el seguimiento en cuanto hay un itinerario trazado.",
   "guid.toast.off": "🪧 Guiado desactivado.",
   "guid.aucunTraceSortie": "⚠️ Este plano no tiene ningún trazado: no hay camino que seguir ni guiado. Las distancias de abajo son en línea recta.",
+  "guid.lieu": "en «{nom}», {action}",
   "emergency.guidage.choix": "Ver las opciones en el mapa",
   "ui.subaction.guidage": "Guiado del itinerario",
   "kmz.gen.enCoursToast": "⏳ Generación del KMZ en curso — en un plano grande (recogida de teselas) puede tardar varios segundos. La descarga empezará sola.",

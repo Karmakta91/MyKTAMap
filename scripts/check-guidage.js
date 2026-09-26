@@ -274,6 +274,45 @@ async function bandeau() {
     t("cul-de-sac : aucun virage inventé au fond", !g2.consignes.some(c => c.type === "virage" && c.y < 480));
   }
 
+  // 5 ter) GRAND CARREFOUR (décisions 1:a / 2:a / 3:a / 4) — trois branches
+  //   qui quittent la galerie à 2,5 m d'intervalle (un carrefour réel n'est
+  //   pas un nœud, c'est une zone) : UNE consigne, posée à l'entrée, avec le
+  //   schéma des 5 galeries et le nom du lieu.
+  {
+    const w = bac([
+      R("principal", [[0, 500], [800, 500]]),
+      R("principal", [[390, 500], [290, 400]]),   // nord-ouest
+      R("principal", [[400, 500], [400, 700]]),   // sud
+      R("principal", [[410, 500], [510, 400]])    // nord-est
+    ]);
+    const r = await w.Pathfinder.computeRoute([{ x: 20, y: 500 }, { x: 500, y: 410 }], {});
+    const road = { points: r.path, raccords: r.raccords, carrefours: r.carrefours };
+    const g = w.ItiGuidage.construire(road, { pois: [{ x: 400, y: 488, nom: "Carrefour test" }] });
+    const cs = sansArrivee(g);
+    t("grand carrefour : les croisements proches forment une zone", r.carrefours.some(c => c.zone && c.zone.sorties.length === 5));
+    t("grand carrefour : UNE seule consigne (pas une par croisement)", cs.length === 1);
+    t("grand carrefour : posée à l'entrée de la zone", cs[0] && Math.abs(cs[0].s - 370) <= 4);
+    // En marchant vers l'est, le nord-est est DEVANT À GAUCHE (angle négatif).
+    t("grand carrefour : schéma à 5 galeries, la choisie devant-gauche",
+      cs[0] && cs[0].picto && cs[0].picto.rayons.length === 5 && cs[0].picto.choisie < -10 && cs[0].picto.choisie > -70);
+    t("grand carrefour : la galerie tout droit est à < 35° → « la branche de gauche »",
+      cs[0] && cs[0].type === "branche" && cs[0].cote === "gauche");
+    t("grand carrefour : l'arrivée dessinée derrière (~180°)", cs[0] && cs[0].picto && Math.abs(Math.abs(cs[0].picto.arrivee) - 180) < 10);
+    t("grand carrefour : SVG produit", /<svg[^>]*kta-guid-picto/.test(w.ItiGuidage.pictoSvg(cs[0] && cs[0].picto, 40)));
+    t("grand carrefour : le lieu nommé ouvre la consigne", cs[0] && cs[0].lieu === "Carrefour test" &&
+      /guid\.lieu/.test(w.ItiGuidage.texteAction(cs[0])));
+    // Deux croisements à 8 m l'un de l'autre : deux carrefours, pas une zone
+    const w2 = bac([
+      R("principal", [[0, 500], [800, 500]]),
+      R("principal", [[300, 500], [300, 700]]),
+      R("principal", [[332, 500], [332, 300]])
+    ]);
+    const r2 = await w2.Pathfinder.computeRoute([{ x: 20, y: 500 }, { x: 780, y: 500 }], {});
+    const g2 = w2.ItiGuidage.construire({ points: r2.path, raccords: r2.raccords, carrefours: r2.carrefours });
+    t("croisements à 8 m : deux consignes (au-delà de 5 m, pas une zone)", sansArrivee(g2).length === 2);
+    t("croisements à 8 m : pas de schéma (3 galeries chacun)", sansArrivee(g2).every(c => !c.picto));
+  }
+
   // 6) Quadrillage serré (chambre à piliers, maille 2 m = 8 px) traversé en
   //    ligne droite : la fusion empêche une consigne à chaque maille.
   {

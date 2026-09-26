@@ -586,7 +586,9 @@
     bloc.classList.toggle("kta-emergency-guidage-alerte", alerte);
     const ic = document.getElementById("kta-em-guid-icone");
     if (ic) {
-      ic.textContent = st.icone || "";
+      // Schéma du carrefour (SVG fait de nombres seuls, cf itiGuidage > _pictoSvg)
+      // à la place de la flèche quand il y a 4 galeries ou plus.
+      if (st.picto) ic.innerHTML = st.picto; else ic.textContent = st.icone || "";
       ic.style.transform = (typeof st.fleche === "number") ? "rotate(" + st.fleche + "deg)" : "";
     }
     const pr = document.getElementById("kta-em-guid-principal");
