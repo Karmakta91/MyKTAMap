@@ -50,7 +50,7 @@
 3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
 4. [📦 Modules JS — référentiel (112 modules)](#-modules-js--référentiel-112-modules)
 5. [📚 Documentation d'architecture](#-documentation-darchitecture)
-6. [⚙️ Développement, conventions & release](#%EF%B8%8F-développement-conventions--release)
+6. [⚙️ Développement, conventions & release](#-développement-conventions--release)
 7. [📋 Journal des versions](#-journal-des-versions)
 8. [📄 Licence](#-licence)
 
