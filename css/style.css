@@ -22351,3 +22351,84 @@ html.kta-theme-light .kta-bearing-recentrer {
 body.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
 body.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
 body.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
+
+/* Bandeau en direct (lot 2) : sous l'en-tête, entre les deux colonnes de
+   boutons de la carte (≈ 44 px chacune, collées aux bords). Même z-index que
+   le bouton « Recentrer » du plan orienté : au-dessus de la carte, sous
+   l'en-tête (1200) et sous toutes les modales. Hors du conteneur de la carte :
+   il ne tourne pas avec elle. */
+.kta-guid-bandeau {
+  position: fixed;
+  top: calc(52px + env(safe-area-inset-top, 0px));
+  left: 54px;
+  right: 54px;
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 1100;
+  background: rgba(26, 31, 46, 0.96);
+  border: 1px solid rgba(244, 197, 66, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  color: #e8eaf0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.kta-guid-ligne { display: flex; align-items: stretch; }
+.kta-guid-corps {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 4px 8px 12px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.kta-guid-icone {
+  flex: 0 0 auto;
+  font-size: 26px;
+  line-height: 1;
+  color: #f4c542;
+  width: 30px;
+  text-align: center;
+  display: inline-block;
+  transition: transform 0.25s ease-out;
+}
+.kta-guid-textes { display: flex; flex-direction: column; min-width: 0; }
+.kta-guid-principal { font-size: 16px; font-weight: 700; line-height: 1.25; }
+.kta-guid-sous { font-size: 12.5px; color: #c8d0e0; line-height: 1.3; margin-top: 2px; }
+.kta-guid-fermer {
+  flex: 0 0 auto;
+  width: 40px;
+  background: none;
+  border: 0;
+  color: #8892a4;
+  font-size: 16px;
+  cursor: pointer;
+}
+.kta-guid-fermer:hover { color: #e8eaf0; }
+.kta-guid-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px; }
+.kta-guid-actions:not(:empty) { padding: 0 10px 10px; }
+.kta-guid-btn { flex: 1 1 auto; min-height: 40px; font-size: 13px; }
+
+/* Alerte écart / demi-tour : orange (même famille que les avertissements). */
+.kta-guid-bandeau.kta-guid-alerte-on { border-color: #ff9933; background: rgba(46, 31, 18, 0.97); }
+.kta-guid-bandeau.kta-guid-alerte-on .kta-guid-icone { color: #ff9933; }
+/* Sortie d'urgence : liseré rouge, pas de croix (décision C). */
+.kta-guid-bandeau.kta-guid-urgence { border-color: #ff4d4d; border-width: 2px; }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-guid-bandeau { top: calc(42px + env(safe-area-inset-top, 0px)); }
+  .kta-guid-principal { font-size: 14px; }
+  .kta-guid-icone { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-guid-icone { transition: none; }
+}
+body.kta-theme-light .kta-guid-bandeau { background: rgba(255, 255, 255, 0.97); color: #1a1f2e; }
+body.kta-theme-light .kta-guid-sous { color: #3a4254; }
+body.kta-theme-light .kta-guid-icone { color: #8a6d00; }
+body.kta-theme-light .kta-guid-bandeau.kta-guid-alerte-on { background: #fff4e8; }

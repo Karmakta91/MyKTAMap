@@ -62,6 +62,91 @@ async function itineraire(win, de, vers, opts) {
 
 const sansArrivee = g => g.consignes.filter(c => c.type !== "arrivee");
 
+// Faux DOM : juste ce que le bandeau touche (style, classList, textContent,
+// innerHTML, querySelector par classe, événements).
+function fauxElement() {
+  const enfants = {};
+  const classes = new Set();
+  return {
+    style: {}, textContent: "", innerHTML: "", title: "", isConnected: true,
+    classList: { toggle(c, on) { if (on) classes.add(c); else classes.delete(c); }, contains: c => classes.has(c) },
+    setAttribute() {}, addEventListener() {},
+    querySelector(sel) { return enfants[sel] || (enfants[sel] = fauxElement()); }
+  };
+}
+
+async function bandeau() {
+  const roads = [
+    R("principal", [[0, 500], [800, 500]]),
+    R("principal", [[400, 500], [400, 900]])
+  ];
+  const w = bac(roads, { smartNav: true });
+  const it = await itineraire(w, [20, 500], [400, 880]);
+  const pos = { x: 20, y: 500 };
+  let actif = true, iti = it.road;
+  const ls = {};
+  Object.assign(w, {
+    document: { body: { appendChild() {} }, createElement: fauxElement },
+    localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); } },
+    getTrackingActif: () => actif,
+    getTrackingPosition: () => pos,
+    getPlanRelHeading: () => 90,
+    getRoads: () => (iti ? [iti] : [])
+  });
+  const G = w.ItiGuidage;
+  const aller = (x, y) => { pos.x = x; pos.y = y; G.onPosition(pos); return G.etat(); };
+
+  let e = aller(20, 500);
+  t("bandeau : visible (suivi actif + itinéraire)", e.visible === true && e.mode === "guide");
+  t("bandeau : « dans … tourner à droite »",
+    /guid\.bandeau\.dans/.test(e.principal) && /tournerDroite/.test(e.principal));
+  t("bandeau : mètres nets avec la navigation intelligente", !/~/.test(e.principal));
+  e = aller(396, 500);
+  t("bandeau : à l'approche, « maintenant »", /guid\.bandeau\.maintenant/.test(e.principal));
+
+  // Écart : 3 positions hors du chemin (seuil nav intelligente) avant l'alerte
+  aller(400, 600);                                   // on a tourné : sur le chemin
+  e = aller(600, 500);
+  t("écart : une seule position hors chemin ne suffit pas", e.mode === "guide");
+  aller(610, 500); e = aller(620, 500);
+  t("écart : confirmé → « Hors itinéraire ? »", e.mode === "ecart");
+  e = aller(400, 650);
+  t("écart : retour sur le chemin → l'alerte tombe", e.mode === "guide");
+
+  // Demi-tour : on recule de plus de 10 m sur le trajet, 3 fois de suite
+  aller(400, 800);
+  aller(400, 740); aller(400, 735); e = aller(400, 730);
+  t("demi-tour : recul confirmé → « Demi-tour ? »", e.mode === "demi");
+  e = aller(400, 810);
+  t("demi-tour : on repart dans le bon sens → l'alerte tombe", e.mode === "guide");
+
+  // Réglage « Jamais » et croix
+  G.setPref("jamais");
+  t("réglage Jamais : bandeau masqué", G.etat().visible === false);
+  G.setPref("auto");
+  t("réglage Auto : bandeau de retour", G.etat().visible === true);
+  iti = Object.assign({}, it.road, { urgence: true });
+  G.setPref("jamais");
+  t("urgence : affiché même réglé sur Jamais", G.etat().visible === true && G.etat().urgence === true);
+  G.setPref("auto");
+  actif = false; G.rafraichir();
+  t("suivi arrêté : bandeau masqué", G.etat().visible === false);
+  actif = true;
+
+  // Départ hors tracé : « rejoindre le tracé » + flèche relative au téléphone
+  iti = Object.assign({}, it.road);                  // nouvelle road → état neuf
+  e = aller(100, 460);                               // 10 m au nord du trajet
+  t("hors tracé au départ : « Rejoindre le tracé »", e.mode === "rejoindre");
+  t("hors tracé : flèche relative (tracé au sud, marche vers l'est → +90°)", e.fleche === 90);
+
+  // Sans navigation intelligente : « ~ » et arrondi à 10 m
+  w.APP_CONFIG.smartNav = false;
+  iti = Object.assign({}, it.road);
+  e = aller(20, 500);
+  t("sans nav intelligente : distances précédées de « ~ »", /~/.test(e.principal));
+  t("sans nav intelligente : une suggestion faite, une seule", ls["myktamap_guidage_astuce_smartnav"] === "1");
+}
+
 (async function main() {
   // 1) Croisement en T, on tourne : un seul virage franc, à droite
   //    (cap est → cap sud : sud est à droite de l'est, y croît vers le bas).
@@ -187,6 +272,9 @@ const sansArrivee = g => g.consignes.filter(c => c.type !== "arrivee");
     t("ancien itinéraire : se lit sans planter", !!g && g.consignes.length === 1);
     t("ancien itinéraire : aucune longueur de raccord", w.ItiGuidage.longueurRaccordsPx({ points: [] }) === 0);
   }
+
+  // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal
+  await bandeau();
 
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 guidage : tout passe");
   process.exit(ko ? 1 : 0);

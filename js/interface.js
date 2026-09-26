@@ -2490,6 +2490,29 @@ function initInterface() {
         }
       },
       {
+        // 🪧 27/09/2026 — Guidage de l'itinéraire (décision KARMA 1:c) : le
+        // bandeau s'affiche TOUT SEUL dès que suivi + itinéraire coexistent ;
+        // ce réglage (Auto / Jamais, persisté) est le seul moyen de le couper
+        // pour de bon. La croix du bandeau ne le masque que pour l'itinéraire
+        // en cours. Étude : docs/ETUDE_GUIDAGE.md.
+        icone: "🪧",
+        titre: window.I18n.t("ui.subaction.guidage"),
+        section: "outils",
+        isActive: function() {
+          return !!(window.ItiGuidage && window.ItiGuidage.getPref() === "auto");
+        },
+        onClick: function(btnSub) {
+          if (!window.ItiGuidage) return;
+          const actif = window.ItiGuidage.getPref() !== "auto";
+          window.ItiGuidage.setPref(actif ? "auto" : "jamais");
+          btnSub.classList.toggle("kta-actif", actif);
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(actif ? window.I18n.t("guid.toast.on")
+                                            : window.I18n.t("guid.toast.off"), "info");
+          }
+        }
+      },
+      {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
         section: "suivi",

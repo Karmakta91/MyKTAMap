@@ -904,6 +904,13 @@ window._onTrackerRecale = function(x, y, source) {
   }, 500);
 };
 
+// 🪧 Guidage (lot 2, décision D) — « Recalculer d'ici » du bandeau. Geste
+// explicite de l'utilisateur : pas de confirmation en plus.
+window.itineraireReplanifierDepuis = function(px, py) {
+  if (typeof px !== "number" || typeof py !== "number") return;
+  _replanifierDepuis(px, py);
+};
+
 async function _replanifierDepuis(px, py) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints)) return;

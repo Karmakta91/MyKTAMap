@@ -878,6 +878,12 @@ function updateMap() {
     try { window.MapBearing.onStep(latlng); } catch(e) {}
   }
 
+  // 🪧 27/09/2026 — Guidage de l'itinéraire : chaque pas / recalage fait
+  // avancer le bandeau « dans X m, tourner à gauche » (js/itiGuidage.js).
+  if (window.ItiGuidage && typeof window.ItiGuidage.onPosition === "function") {
+    try { window.ItiGuidage.onPosition(position); } catch(e) {}
+  }
+
   // 🆕 v1.34.27 — Détection proximité waypoint iti (100px) → vibration
   // medium quand l'user atteint un waypoint actif de l'itinéraire. Pas
   // d'effet si pas d'iti ou pref vibration OFF.
