@@ -12,7 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.4` (26/09/2026)
+## 📦 Version courante — `v1.97.5` (26/09/2026)
+
+> 📐 **v1.97.5 — Une valeur impossible ne se charge pas** : KARMA — *« j'ai pu générer des plans avec des valeurs délirantes à l'époque où le générateur laissait régler le tracking, genre sensibilité à 1,2 au lieu de 12 »*. 🩸 *Son cas précis était **déjà couvert** (v1.82.0 réparait ces trois réglages, v1.96.0 a cessé de les lire) — mais la règle s'arrêtait là, et les valeurs voisines du même bloc entraient sans aucun contrôle. Or elles cassent plus fort : `scale: 0` fait valoir **l'infini** à toute distance (on divise par elle), une échelle non numérique les fait valoir NaN, une largeur nulle vide `convertCoord` de son sens.* 🩹 *`_lireNombrePlan` applique à la LECTURE les bornes que l'écran de saisie impose déjà — le critère n'est pas une opinion : ce qu'on ne peut pas saisir ne peut pas être un choix, donc c'est de la donnée corrompue. Un départ hors du plan est recentré.* 🛡️ *`check-plan-config-borne.js` exécute `config.js` en bac à sable sur 9 plans piégés — **et vérifie aussi qu'un plan valide passe intact**, parce qu'un garde-fou qui « répare » ce qui n'est pas cassé serait pire que le défaut.*
+>
 
 > 🤏 **v1.97.4 — « Avec les boutons aucun problème, au doigt ça bugue »** : la phrase de KARMA qui a tout résolu. 🩸 *Deux causes, **toutes deux dans mon code**, et aucune dans iOS. (1) `_verrouiller` imposait `touchZoom: "center"` — une prudence que j'avais prise avant de patcher les gestes, et jamais levée après : le zoom se faisait au centre de l'écran et non entre les doigts, donc pincer ailleurs faisait **glisser toute la carte de 95 px**. (2) Mon pan à un doigt **volait le début du pincement** : entre la pose du premier doigt et celle du second, le premier bouge toujours un peu, et mon seuil était à 6 px — 21 unités de plan déplacées avant même que Leaflet ne voie un geste à deux doigts.* 🩹 *Les trois options de zoom sont rendues à Leaflet, et le pan **rend ce qu'il a pris** dès qu'un second doigt se pose.* 📐 *Mesuré au pincement multi-touch réel : le glissement passe de **95 → 27 px**, et la référence **mode désactivé vaut 27 px** — les 27 px sont l'arrondi du zoom à l'entier, pas la rotation. L'écart imputable au mode : **68 px → 0**.*
 >
@@ -600,6 +603,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.97.5 (26/09/2026) — Une valeur impossible ne se charge pas
+
+- 🎯 **Le signalement (KARMA)** : *« j'ai pu générer des plans avec des valeurs délirantes à l'époque où on pouvait régler dans le générateur les valeurs de tracking, genre sensibilité à 1,2 au lieu de 12. Ces valeurs ne doivent jamais être chargées si elles sont hors limite. »*
+- ✅ **Son cas précis était déjà couvert**, et un garde-fou le prouve : `check-podometre-global.js` vérifie que le chargeur ne lit plus `stepLength`/`stepThreshold`/`stepCooldown` d'un plan-config (réparés en v1.82.0, plus lus du tout depuis v1.96.0).
+- 🩸 **Mais la règle s'arrêtait aux trois réglages de podomètre.** Les valeurs voisines du même bloc entraient sans le moindre contrôle, et elles cassent plus fort : `scale: 0` → on divise par elle, **toute distance vaut l'infini** ; `scale: "x"` → NaN, et tout ce qui en découle ; `imageWidth: 0` → `convertCoord` et les bounds n'ont plus de sens ; départ hors du plan → le tracker commence hors carte.
+- 🩹 **Le critère était déjà écrit dans le dépôt**, il suffisait de l'étendre : *ce que l'écran de saisie refuse ne peut pas être un choix de l'utilisateur* (`setPlanScale` refuse tout ce qui n'est pas > 0, `cfg_scale` est `strict: true`). `_lireNombrePlan` applique ces bornes à la lecture et retombe sur l'usine, **en le disant dans la console** — un plan silencieusement réparé reste un plan à réparer.
+- 🛡️ **`check-plan-config-borne.js`** exécute `config.js` en bac à sable sur 9 plans piégés. ⚠️ Il vérifie **aussi** qu'un plan valide passe intact (échelle 4,073 conservée, dimensions 16332×13820 conservées, et même une échelle de 0,01, petite mais positive) : le vrai risque d'un garde-fou pareil est de « réparer » ce qui va bien. **Falsifié** : rendre à `scale` sa lecture d'avant le fait rougir sur 3 cas.
 
 #### v1.97.4 (26/09/2026) — « Avec les boutons aucun problème, au doigt ça bugue »
 

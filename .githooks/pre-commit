@@ -197,6 +197,13 @@ node scripts/check-map-listeners.js || exit $?
 # fantome sur tout plan issu d'un import. BLOQUANT.
 node scripts/check-tracking-defaults.js || exit $?
 
+# 📐 26/09/2026 (retour KARMA) — des plans générés à l'époque où le
+# générateur laissait régler le tracking portent des valeurs impossibles.
+# La règle « hors bornes → usine » ne couvrait que les trois réglages de
+# podomètre ; `scale`, les dimensions et le départ entraient sans contrôle
+# — une échelle nulle fait valoir l'infini à toute distance. BLOQUANT.
+node scripts/check-plan-config-borne.js || exit $?
+
 # 🏷️ Ajout de plans PAR ETIQUETTE dans la pile multi-plans de la Vue OSM du
 # HOME. Deux regles y regressent en silence : le regroupement INSENSIBLE A LA
 # CASSE (« Gironde » et « GIRONDE » doivent faire UNE etiquette — sinon deux

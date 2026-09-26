@@ -397,9 +397,43 @@ function _normalizeAngleDeg(v) {
   return a;
 }
 
-// Réglage de podomètre lu dans un plan-config : repris tel quel s'il est
-// dans les bornes que l'écran ⚙️ Réglages autorise, remplacé par la valeur
-// d'usine sinon. Voir le pavé dans buildAppConfigFromPlan pour le pourquoi.
+// 🩸 v1.97.5 — AUCUNE VALEUR NUMÉRIQUE D'UN PLAN-CONFIG N'ENTRE HORS BORNES.
+//
+// Retour KARMA : « j'ai pu générer des plans avec des valeurs délirantes à
+// l'époque où le générateur laissait régler le tracking — sensibilité à 1,2
+// au lieu de 12. Ces valeurs ne doivent jamais être chargées si elles sont
+// hors limite. »
+//
+// Les TROIS réglages de podomètre étaient déjà couverts (v1.82.0 les
+// réparait, v1.96.0 a cessé de les lire). Mais la règle s'arrêtait là, et les
+// valeurs voisines du MÊME bloc entraient sans aucun contrôle :
+//   • `scale` à 0 → toutes les distances valent l'infini (on divise par elle) ;
+//   • `scale` non numérique → NaN, et tout ce qui en découle aussi ;
+//   • `imageWidth`/`imageHeight` à 0 ou négatifs → `convertCoord` et les
+//     bounds de la carte n'ont plus de sens ;
+//   • `startX`/`startY` hors du plan → le tracker démarre hors carte.
+// Aucune de ces valeurs n'est saisissable dans l'app : un plan qui les porte
+// est de la donnée corrompue, pas un choix.
+//
+// Le critère n'est pas une opinion, et il existait déjà : ce que l'écran de
+// saisie REFUSE ne peut pas être un choix de l'utilisateur (même raisonnement
+// que la réparation v1.82.0, cf le pavé dans buildAppConfigFromPlan).
+// `setPlanScale` refuse tout ce qui n'est pas > 0 ; `cfg_scale` est déclaré
+// `strict: true` dans interfaceConfig.js. On applique donc ces mêmes bornes
+// à la LECTURE, et on retombe sur l'usine — en le disant dans la console,
+// parce qu'un plan silencieusement réparé reste un plan à réparer.
+function _lireNombrePlan(brut, defaut, bornes, nom) {
+  const v = Number(brut ?? defaut);
+  const b = bornes || {};
+  const ok = Number.isFinite(v)
+             && (b.min === undefined || v >= b.min)
+             && (b.max === undefined || v <= b.max)
+             && (!b.positif || v > 0);
+  if (ok) return v;
+  console.warn("[Config] 🩸 " + nom + " hors bornes dans le plan-config (" +
+               JSON.stringify(brut) + ") → valeur d'usine (" + defaut + ")");
+  return Number(defaut);
+}
 
 // =========================
 // CONSTRUCTION APP_CONFIG depuis un plan
@@ -409,14 +443,17 @@ function buildAppConfigFromPlan(planConfig) {
   const tracking = planConfig?.tracking || {};
 
   const cfg = {
-    imageHeight:   Number(plan.imageHeight       ?? DEFAULT_CONFIG.imageHeight),
-    imageWidth:    Number(plan.imageWidth        ?? DEFAULT_CONFIG.imageWidth),
+    imageHeight:   _lireNombrePlan(plan.imageHeight, DEFAULT_CONFIG.imageHeight, { positif: true }, "imageHeight"),
+    imageWidth:    _lireNombrePlan(plan.imageWidth,  DEFAULT_CONFIG.imageWidth,  { positif: true }, "imageWidth"),
     // 🎯 v1.76.1 — l'override d'échelle per-plan n'est PAS appliqué ici :
     // buildAppConfigFromPlan tourne AVANT que _currentLoadedPlanId soit posé
     // (main.js:1079 vs :1104) — lire la pref ici prendrait celle du plan
     // PRÉCÉDENT (fuite inter-plans). Il est appliqué par
     // appliquerScalePerPlan() dans lancerApplication, une fois l'id connu.
-    scale:         Number(tracking.scale         ?? DEFAULT_CONFIG.scale),
+    // > 0 strictement : c'est la règle de `setPlanScale` et de `cfg_scale`
+    // (`strict: true`). Une échelle nulle ferait valoir l'infini à toute
+    // distance, une échelle non numérique les ferait valoir NaN.
+    scale:         _lireNombrePlan(tracking.scale, DEFAULT_CONFIG.scale, { positif: true }, "scale"),
     // 👣 v1.96.0 — LE PLAN NE DIT PLUS LA FOULÉE. `tracking.stepLength`,
     // `stepThreshold` et `stepCooldown` d'un plan-config sont IGNORÉS, même
     // présents (anciens plans, générateurs d'avant) : ce sont des réglages de
@@ -424,8 +461,8 @@ function buildAppConfigFromPlan(planConfig) {
     // appliqués plus bas). La réparation v1.82.0 des valeurs impossibles n'a
     // plus d'objet : ce qui n'est pas lu ne peut plus nuire.
     stepLength:    TRACKING_USINE.stepLength,
-    startX:        Number(tracking.startX        ?? DEFAULT_CONFIG.startX),
-    startY:        Number(tracking.startY        ?? DEFAULT_CONFIG.startY),
+    startX:        _lireNombrePlan(tracking.startX, DEFAULT_CONFIG.startX, { min: 0 }, "startX"),
+    startY:        _lireNombrePlan(tracking.startY, DEFAULT_CONFIG.startY, { min: 0 }, "startY"),
     // 🩸 v1.82.0 — RÉPARATION D'UN RÉGLAGE STRUCTURELLEMENT IMPOSSIBLE.
     //
     // Trois générateurs (SIG, GPX, KMZ) ont écrit pendant des mois
@@ -466,6 +503,18 @@ function buildAppConfigFromPlan(planConfig) {
     // (rétrocompat stricte : tout plan v1.36.x → 0 → comportement actuel).
     northOffsetDeg:   _normalizeAngleDeg(plan.northOffsetDeg)
   };
+
+  // 🩸 Le départ doit tomber DANS le plan. `startX`/`startY` sont bornés
+  // ci-dessus à « ≥ 0 », mais le plafond dépend des dimensions, connues
+  // seulement maintenant. Hors du plan, on retombe sur le défaut documenté :
+  // le centre (cf README_USER, « position initiale du tracker »).
+  if (cfg.startX > cfg.imageWidth || cfg.startY > cfg.imageHeight) {
+    console.warn("[Config] 🩸 départ du tracker hors du plan (" + cfg.startX + ", " +
+                 cfg.startY + " pour " + cfg.imageWidth + "x" + cfg.imageHeight +
+                 ") → recentré");
+    cfg.startX = Math.round(cfg.imageWidth  / 2);
+    cfg.startY = Math.round(cfg.imageHeight / 2);
+  }
 
   // Restaurer les préférences GLOBALES depuis localStorage
   // (perfPreset est désormais par plan — résolu côté loader/main.js)
