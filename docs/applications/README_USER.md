@@ -910,6 +910,7 @@ Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batteri
 4. Une modale compacte s'affiche avec :
    - La sortie la plus proche + sa distance + son niveau si multi-étages
    - Un bouton **🧭 Tracer l'itinéraire** (réutilise le moteur Mode Itinéraire classique)
+   - 🪧 Une fois tracé, le **bandeau de guidage** te dit quoi faire à chaque croisement — **sans croix** en sortie d'urgence, même si le guidage est coupé. Si tu t'écartes, son bouton devient **« Sortie la plus proche d'ici »** (voir « 🪧 Guidage » dans l'itinéraire)
    - Un dépliable **Voir les N autres sorties** trié par distance
 
 ### Versions fermées volontairement ignorées
@@ -1197,6 +1198,8 @@ Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles**, 
 | **🎯** | **Ma position** — recentre la carte sur toi |
 | **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) |
 | **🗺️** | Calculer un itinéraire |
+| **🗺️** | **Plan orienté** — la carte tourne avec toi pendant le suivi |
+| **🪧** | **Guidage de l'itinéraire** — Auto / Jamais (bandeau « Dans 40 m, tourner à gauche ») |
 | **🎬** | Replay de session tracker |
 | **🔥** | Heatmap — voir section dédiée |
 | **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
@@ -1629,6 +1632,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 - 📍 **Une seule position, en énorme** (lisible à un mètre du téléphone) : les coordonnées **GPS** si ton plan est géoréférencé — ce sont celles qu'on dicte à des secours — sinon la position **X / Y du plan**. Jamais les deux : le titre du bloc dit laquelle tu lis. Sous les chiffres, une ligne précise si c'est ta position suivie, ta dernière position connue, ou la **position de départ du plan jamais confirmée**.
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
+- 🪧 **La consigne du guidage en gros** (depuis v1.98.0) : si un itinéraire est tracé et le suivi actif, la prochaine consigne (« Dans 40 m, tourner à gauche », schéma des grands carrefours) s'affiche en haut de l'écran. En cas d'écart, un bouton **« Voir les choix sur la carte »** te ramène au bandeau et à ses boutons
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
   Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».

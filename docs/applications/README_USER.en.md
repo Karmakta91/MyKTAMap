@@ -914,6 +914,7 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
 4. A compact modal shows:
    - The nearest exit + its distance + its level if the plan is multi-floor
    - A **🧭 Trace route** button (reuses the regular Route Mode engine)
+   - 🪧 Once drawn, the **guidance banner** tells you what to do at each junction — **with no ✕** during an emergency exit, even if guidance is turned off. If you move away, its button becomes **"Nearest exit from here"** (see "🪧 Guidance" in the route section)
    - A foldable **See N other exits** sorted by distance
 
 ### Closed variants intentionally ignored
@@ -1195,6 +1196,8 @@ The **🧭 Tracker** button opens a **full-screen modal of large tiles**, arrang
 | **🎯** | **My position** — recenter the map on you |
 | **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) |
 | **🗺️** | Calculate a route |
+| **🗺️** | **Oriented map** — the map turns with you while tracking |
+| **🪧** | **Itinerary guidance** — Auto / Never ("In 40 m, turn left" banner) |
 | **🎬** | Tracker session replay |
 | **🔥** | Heatmap — see dedicated section |
 | **⛑️** | I'm lost — **SOLID RED button** (danger signal) |
@@ -1619,6 +1622,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 - 📍 **One position only, huge** (readable from a meter away): **GPS** coordinates if your map is georeferenced — those are the ones you read out to rescuers — otherwise the **X / Y position on the map**. Never both: the block title tells you which one you are reading. Below the figures, a line states whether this is your tracked position, your last known position, or the **map's starting position, never confirmed**.
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
+- 🪧 **The guidance instruction in large print** (since v1.98.0): if an itinerary is drawn and tracking is on, the next instruction ("In 40 m, turn left", diagram of big junctions) shows at the top of the screen. On a deviation, a **"See the options on the map"** button takes you back to the banner and its buttons
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
   It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.

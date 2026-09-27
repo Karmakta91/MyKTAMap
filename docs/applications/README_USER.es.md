@@ -855,6 +855,7 @@ El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 
 4. Se muestra una ventana compacta con:
    - La salida más cercana + su distancia + su nivel si hay varias plantas
    - Un botón **🧭 Trazar el itinerario** (reutiliza el motor del Modo Itinerario clásico)
+   - 🪧 Una vez trazado, el **banner de guiado** te dice qué hacer en cada cruce — **sin ✕** en la salida de emergencia, aunque el guiado esté desactivado. Si te alejas, su botón pasa a **«Salida más cercana desde aquí»** (ver «🪧 Guiado» en el itinerario)
    - Un desplegable **Ver las N demás salidas** ordenado por distancia
 
 ### Las versiones cerradas se ignoran deliberadamente
@@ -1142,6 +1143,8 @@ El botón **🧭 Rastreador** abre un **modal a pantalla completa de fichas gran
 | **🎯** | **Mi posición** — vuelve a centrar el mapa en ti |
 | **🔓** | **Suspender el bloqueo sobre trazado** — temporalmente (30 s → 10 min) |
 | **🗺️** | Calcular un itinerario |
+| **🗺️** | **Mapa orientado** — el mapa gira contigo durante el seguimiento |
+| **🪧** | **Guiado del itinerario** — Auto / Nunca (banner «En 40 m, girar a la izquierda») |
 | **🎬** | Repetición de la sesión del rastreador |
 | **🔥** | Mapa de calor — ver la sección dedicada |
 | **⛑️** | Estoy perdido — **botón de fondo ROJO** (señal de peligro) |
@@ -1569,6 +1572,7 @@ El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a
 
 - 📍 **Una sola posición, enorme** (legible a un metro del teléfono): las coordenadas **GPS** si tu plano está georreferenciado — son las que se dictan a los equipos de rescate — y si no, la posición **X / Y del plano**. Nunca las dos: el título del bloque te dice cuál estás leyendo. Bajo las cifras, una línea indica si es tu posición seguida, tu última posición conocida o la **posición de partida del plano, nunca confirmada**.
 - 🧭 **Brújula gigante**: rumbo (sentido de la marcha) con aguja que gira en tiempo real, actualizada en vivo mediante los sensores de orientación del teléfono
+- 🪧 **La indicación del guiado en grande** (desde v1.98.0): si hay un itinerario trazado y el seguimiento está activo, la próxima indicación («En 40 m, girar a la izquierda», esquema de los grandes cruces) aparece arriba de la pantalla. Ante un desvío, un botón **«Ver las opciones en el mapa»** te devuelve al banner y sus botones
 - 🗺️ **Minimapa con enfoque automático**: zoom cerrado (~20-50 m de horizonte) centrado permanentemente en tu posición. Muestra de fondo las **vías / zonas / estructuras del plano** — útil para localizar caminos, salidas y peligros en las inmediaciones
   Usa los **colores de tu leyenda**: si has recoloreado un tipo o creado tus propios tipos, los reconoces aquí igual que en el mapa.
   Tu **itinerario activo** siempre aparece dibujado (cian intenso + halo blanco, para seguir viéndose sobre ese fondo tan ampliado), y el mapa **gira** como el principal si has activado el modo «plano orientado».
