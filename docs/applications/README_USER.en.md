@@ -1379,6 +1379,10 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 | ⬛ **Zone types** | Water / Backfill / Collapse / Inaccessible + customs |
 | 🏛️ **Structure types** | 1st mass Pillar / 2nd mass Pillar / Wall / Face 1 / Face 2 + customs |
 
+> 🔄 **Correcting a data layer** — a layer shipped in the plan's ZIP is **read-only**: you can hide it, not edit it. Each line of the **📊 Data layers** section therefore has a **"🔄 Edit"** button: its content moves into your session, where all your tools apply — in particular **🔄 Convert this object**, to turn a quarry face into a gallery on an imported survey. The original layer **hides itself** (its checkbox shows "being edited — show anyway", which you can tick again to compare both). **"↩️ Restore"** undoes everything; **"💾 Export"** gives you a corrected file to hand back to the plan via 🏗️ Generator → "Edit a plan", by clicking **"Choose" on that layer's line** — it REPLACES the old content, no duplicate is possible.
+>
+> ⚠️ **What the app tells you before acting**: the weight the copy will take in your session (a large survey exceeds a megabyte, and the browser's limit is around 5 MB for all plans together) and the space already used. On export, it also tells you how many objects **you drew yourself** are left out — they don't belong to that layer. And "Clear session" **restores** the layers opened for editing: the copy and the hiding go together.
+
 **How it works:**
 
 - **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map.
@@ -1519,7 +1523,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 |---|---|
 | **📍 Points to avoid** | **3 methods** to choose from: (a) autocomplete search in the text field, (b) entry by exact ID, (c) **📍 Click on the map**: switches to click mode, each click on the map adds a point. Orange chips with ✕ to remove. |
 | **🏷️ Tags to avoid** | Click a chip to toggle it. All points carrying this tag will be avoided (e.g.: you activate `pa` → all ventilation shafts are avoided). |
-| **⬛ Zones to avoid** | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
+| **⬛ Zones to avoid** | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're impassable by default (hard constraint, which the "Respect impassable areas" box of this same window can relax). |
 | **📏 Margin** | Distance around the avoided points (px, default 100). Any road segment closer than this margin is excluded from the graph. |
 
 **Behavior**:
@@ -1528,7 +1532,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 - ❌ If even the fallback fails (= true absence of path) → classic error message
 
 **Difference with ⛔ Inaccessible Zone**:
-- ⛔ Zone = **hard** constraint (never relaxed even in fallback)
+- ⛔ Zone = **hard** constraint **by default** — can be relaxed with the "Respect impassable areas" box of the Itinerary modal. Rescue Mode and "Lost" mode always respect them.
 - 🚫 Avoidance = **soft** constraint (fallback possible with message)
 
 **Persistence**: your preferences are saved per map (on this device). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
@@ -2514,7 +2518,7 @@ Draw a zone of type **⛔ Inaccessible** on a part of the map that you want to *
 
 **Effect**: any calculated route that would have crossed this zone will now go via another path. If no other path exists, the calculation fails with a clear message.
 
-It is a **hard constraint** — never relaxed. If you want a **soft** constraint (avoid if possible, otherwise pass through anyway with a message), use the **🚫 Avoidance preferences** in the route modal instead (see dedicated section below).
+It is a **hard constraint by default**, but you can relax it: the "Respect impassable areas" box of the Itinerary modal is checked out of the box; unchecking it lets the route cross them. ⚠️ **Rescue Mode** and "Lost" mode respect them in all circumstances — a comfort preference does not widen a rescue perimeter. If you want a **soft** constraint (avoid if possible, otherwise pass through anyway with a message), use the **🚫 Avoidance preferences** in the route modal instead (see dedicated section below).
 
 **Multi-level**: the ⛔ zone blocks only the segments of the **same level** (consistent with the level filter). An inaccessible zone at Level 0 does not affect the route at Level -1.
 
@@ -3041,6 +3045,8 @@ For each point (A and B), 3 methods to choose from:
 > 🌐 **GPS format**: the `GPS (lat, lng)` field directly accepts the **native Google Maps format** (`48.680831, 2.158843`). You can copy the coords from Google Maps (right-click → copy coordinates) and paste it all into the field — no need to split into 2 lat / lng fields. If the format is invalid, the field turns red with an explicit message. The same format is accepted **everywhere** in the app (Ctrl+K search · KMZ Settings · georeferenced map creation).
 
 > 💡 **Tip**: choose 2 **far apart** points on the map (ideally at opposite ends) — the larger the AB distance, the better the transformation accuracy. The app refuses if AB is less than 50 px on the map or less than 1 meter IRL.
+
+> 📐 **Point C (optional) — for distorted plans**: if your plan is an **assembly** that projects badly (stretched in one direction, different scales in X and Y), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the overall distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Choose C **far from the A-B line** (an aligned C adds nothing and is refused). Good to know: it corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your plan already projects well: nothing changes.
 
 #### Live preview
 
@@ -3840,3 +3846,10 @@ A good part of the code in this version was co-written with **Claude (Anthropic)
 For taking 10 minutes to read instead of clicking blindly. This is exactly the state of mind these places require — **taking the time, understanding before acting, respecting what we don't yet master**.
 
 > If you want to contribute — a bug report, a suggestion, a hand with the docs — go through the repo issue tracker or the usual community channels.
+
+---
+
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+
+*MyKTAMap — User Guide*
+*These places are fragile. Discretion is a form of respect.*
