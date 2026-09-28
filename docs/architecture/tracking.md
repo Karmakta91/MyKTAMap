@@ -1088,11 +1088,11 @@ rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), l
 | Compter les **voisins** d'un nœud | Arêtes doublées + liens de proximité entre sommets d'un même tracé + tremblement : un tracé tremblé devenait un croisement à chaque sommet | **cercle de ~3 m** : chaque traversée du réseau = une sortie ; une amorce < 3 m ne compte pas |
 | Départ accroché sur un segment portant un nœud de croisement | Le nœud virtuel n'était relié qu'aux extrémités → **aller-retour** au départ (+2× le recul, « demi-tour » annoncé) | `_insertVirtualNode` relie aussi les nœuds posés sur le segment (même niveau). Profite à `computeReachable` |
 | Itinéraire dans des **renderers SVG hors mode orienté** | `mapBearing` n'élargissait que le renderer par défaut ; l'itinéraire (SVG à part, un NEUF par polyline et par rendu) restait cadré sur le rectangle non tourné → coupé dans les coins, il « avançait » au dézoom (retour KARMA) | `road.js > _rendererItineraire` (UN renderer SVG par carte) + `_majPaddingRenderer` élargit TOUS les renderers, y compris ajoutés pendant le mode |
-| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | grappe ≤ `FUSION_M` depuis son **premier** événement ; `demiTour` seulement si le trajet se replie |
+| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | seuls des **croisements** sont candidats (plus de virage sur un coude) ; une grappe = croisements à ≤ `ZONE_ECART_M` (5 m) du **précédent** = UN carrefour ; `demiTour` seulement si le trajet se replie (`replie`) |
 
 ### Seuils (calés sur un plan réel local, 27/09/2026)
 
-`FENETRE_M 4` (angle mesuré sur 4 m) · `FUSION_M 6` · **aucun virage sans croisement** (retour KARMA : sur
+`FENETRE_M 4` (angle mesuré sur 4 m) · `ZONE_ECART_M 5` (zone de carrefour, même valeur que `pathfinder.js` ; KARMA : « 20 m c’est beaucoup trop ») · **aucun virage sans croisement** (retour KARMA : sur
 un réseau de galeries c'est du bruit ; la 1re version en annonçait, 9 consignes sur 15 étaient des coudes) · présence sur le trajet 3 m / 8 m, écart 6 m /
 15 m, demi-tour 10 m ×3 / 20 m ×5 (avec / sans navigation intelligente : sans, 10 m donnaient 3 faux
 demi-tours en 350 m sous 4 m de bruit).

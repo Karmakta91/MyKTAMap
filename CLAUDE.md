@@ -71,7 +71,7 @@
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
 | Multi-langue (i18n), dicos `lang/`, `window.I18n`, migration | `docs/architecture/i18n.md` |
 | Session, photos, undo, recherche, stats, favoris, **Carnet (sorties)** | `docs/architecture/session-data.md` |
-| Import **SIG** (GeoJSON/KML/KMZ), CRS, écran de correspondance | `js/sigImport.js` (en-tête) · `docs/BACKLOG.md` §1 |
+| Import **SIG** (GeoJSON/KML/KMZ), CRS, écran de correspondance | `js/sigImport.js` (en-tête) · `scripts/check-lambert93.js` |
 | Profil : avatar, rangs, hauts faits, **fond d'écran du HOME** | `js/userProfile.js` (en-tête) · `js/homeProfile.js` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
 | Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |
