@@ -91,7 +91,7 @@ function resoudrePerfPreset(preset, fileSize, imageW, imageH) {
       tile:   tile,
       params: tile ? PERF_PRESETS.balanced : null
     };
-  }
+  }
 
   // Presets explicites : tile uniquement si l'image est techniquement trop grande
   // pour un rendu direct (sécurité GPU mobile). Sinon rendu direct (qualité native).
@@ -149,7 +149,7 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
     // tuile temoin par candidat, deux au pire. Cf ktaCandidatsRacineTuiles.
     const _racine = await ktaResoudreRacineTuiles(pc);
     return _chargerImageV2OptionB(url, bounds, map, pc.tiling, _racine);
-  }
+  }
   // ⚠️ v1.86.0 — « Désactivé » sur un plan V1 TROP GRAND : c'est exactement le
   // cas de crash Safari iOS (une seule texture > limite GPU). On ne l'interdit
   // pas — c'est un choix explicite, utile sur PC pour la qualité native — mais
@@ -474,7 +474,14 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   // Helper : choix du niveau z à afficher selon le zoom courant de la map.
   // Clamp aux niveaux générés (min/maxNativeZoom). round() pour un comportement
   // équilibré entre netteté (z élevé) et perf (z bas = moins de tuiles).
+  // 🩸 29/09/2026 — rend `null` tant que la carte n'a pas de vue. Le tuilage
+  // s'initialise AVANT le fitBounds (map.js crée la carte sans centre ni zoom) :
+  // `Math.round(undefined)` donnait NaN, un rendu fantôme « z=NaN » consommait
+  // le drapeau « premier rendu », et le repli v1.86.0 (« toutes les tuiles du
+  // premier rendu ont échoué → image entière ») ne pouvait plus jamais se
+  // déclencher. Signalé dans les logs terrain du 25/09, noté en v1.97.1.
   function _choisirNiveau(mapZoom) {
+    if (!Number.isFinite(mapZoom)) return null;
     const z = Math.max(MIN_NATIVE, Math.min(MAX_NATIVE, Math.round(mapZoom)));
     return z;
   }
@@ -630,12 +637,25 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   // Écoute des changements de zoom : swap de niveau si nécessaire.
   function _onZoom() {
     const z = _choisirNiveau(map.getZoom());
+    if (z === null) return;                    // pas encore de vue
     if (z !== state.currentLevel) _renderNiveau(z);
   }
   map.on("zoomend", _onZoom);
 
-  // Rendu initial (avant tout zoom, on prend le zoom courant de la map)
-  _renderNiveau(_choisirNiveau(map.getZoom()));
+  // Rendu initial. Si la carte n'a pas encore de vue (cas du chargement : le
+  // fitBounds arrive après), on attend qu'elle en ait une — le premier VRAI
+  // rendu garde ainsi son drapeau, et le repli d'erreur reste armé. Le
+  // zoomend du premier setView et `whenReady` peuvent tous deux arriver :
+  // le second voit `currentLevel` posé et ne refait rien.
+  const zInitial = _choisirNiveau(map.getZoom());
+  if (zInitial !== null) {
+    _renderNiveau(zInitial);
+  } else {
+    map.whenReady(function() {
+      const z = _choisirNiveau(map.getZoom());
+      if (z !== null && state.currentLevel === null) _renderNiveau(z);
+    });
+  }
 
   // Retourne les overlays courants pour API compat (main.js > _libererRessourcesPlanPrecedent
   // appelle libererTuiles sur ce retour). Pour V2, on a aussi besoin du cleanup
