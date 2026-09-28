@@ -277,6 +277,10 @@ const ASSETS_TO_CACHE = [
   "./js/crossPlanSearch.js",
   "./js/interPlanRoute.js",
   "./js/planNetwork.js",
+  // 💾 28/09/2026 — ABSENT jusqu'ici alors qu'index.html le charge : le module
+  // qui rend un plan serveur disponible hors-ligne ne l'était pas lui-même.
+  // Garde : scripts/check-html-integrite.js §5.
+  "./js/planOffline.js",
   "./js/homeLoader.js",
   "./js/homeProfile.js",
   "./js/homeConfig.js",

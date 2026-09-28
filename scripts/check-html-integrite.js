@@ -76,6 +76,23 @@ const HTML = BRUT.replace(/<!--[\s\S]*?-->/g, "");
   });
   t("🩸 les " + srcs.length + " scripts locaux existent" + (manquants.length ? " — manquants : " + manquants.join(", ") : ""),
     manquants.length === 0);
+
+  // ---------- 5. …et sont pré-cachés (28/09/2026) ----------
+  // 🩸 `js/planOffline.js` — le module qui rend un plan serveur disponible
+  // hors-ligne — était chargé par index.html mais ABSENT d'ASSETS_TO_CACHE :
+  // l'app ouverte sans réseau ne pouvait pas le servir. Le backlog affirmait
+  // « 112 fichiers = 112 script tags = 112 entrées précache » depuis le 05/09 :
+  // un recomptage à la main, que rien ne tenait à jour.
+  const SW = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
+  const i0 = SW.indexOf("const ASSETS_TO_CACHE = [");
+  const bloc = i0 < 0 ? "" : SW.slice(i0, SW.indexOf("];", i0));
+  const nonCaches = srcs.filter(function (s) {
+    const rel = "./" + s.replace(/^\.\//, "").split("?")[0];
+    return bloc.indexOf('"' + rel + '"') < 0;
+  });
+  t("🩸 les " + srcs.length + " scripts locaux sont dans le pré-cache du service worker" +
+    (nonCaches.length ? " — ABSENTS d'ASSETS_TO_CACHE : " + nonCaches.join(", ") : ""),
+    bloc.length > 0 && nonCaches.length === 0);
 }
 
 console.log("");
