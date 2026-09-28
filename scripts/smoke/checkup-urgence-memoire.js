@@ -166,6 +166,18 @@ function inf(m) { console.log("  •  " + m); }
       for (let i = 0; i < 30; i++) { envoyer(); await new Promise(function (r) { setTimeout(r, 50); }); }
       await new Promise(function (r) { setTimeout(r, 1200); });
 
+      // 🔋 29/09/2026 — immobile, la minimap ne doit PLUS se recentrer à chaque
+      // tick (250 ms) : 40 setView en 10 s relançaient chacun un parcours de
+      // toute la grille de tuiles. On compte ses setView pendant 2 s d'arrêt.
+      const proto = L.Map.prototype, setViewOrig = proto.setView;
+      let setViewsImmobile = 0;
+      proto.setView = function () {
+        try { if (this.getContainer().id === "kta-em-mini-map") setViewsImmobile++; } catch (e) {}
+        return setViewOrig.apply(this, arguments);
+      };
+      await new Promise(function (r) { setTimeout(r, 2000); });
+      proto.setView = setViewOrig;
+
       const mini = document.getElementById("kta-em-mini-map");
       const rotorN = document.querySelector(".kta-em-mini-tracker-rotor");
       const rotorT = document.querySelector(".kta-em-mini-tracker-triangle-rotor");
@@ -181,12 +193,16 @@ function inf(m) { console.log("  •  " + m); }
         btnBas: rBtn ? Math.round(rBtn.bottom) : null,
         fenetre: window.innerHeight,
         etat: etat ? etat.textContent : "",
-        miniTournee: mini ? (mini.style.transform || "") : ""
+        miniTournee: mini ? (mini.style.transform || "") : "",
+        setViewsImmobile: setViewsImmobile
       };
       window.EmergencyMode.desactiver();
       window.fetch = of;
       return res;
     });
+
+    if (u.setViewsImmobile === 0) ok("🔋 immobile : la minimap ne se recentre plus à chaque tick (0 setView en 2 s)");
+    else pb("🔋 immobile : " + u.setViewsImmobile + " recentrage(s) de la minimap en 2 s sans bouger");
 
     inf("minimap : " + u.tuilesDOM + " tuile(s) affichée(s), " + u.requetesTuiles + " requête(s)");
     if (u.tuilesDOM > 0) ok("le fond de la minimap est dessiné (il ne l'était pas sur un plan serveur)");
