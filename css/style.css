@@ -6377,60 +6377,8 @@ html.kta-theme-light .kta-cfg-group-titre {
   word-break: break-word;
 }
 
-/* === Drawer "🎚️ Réglages de performance" (loader) === */
-/* Wrapper qui regroupe le Tiling + les toggles Perf ULTRA dans une seule box
-   collapsible. Ouverte par défaut pour conserver la visibilité du Tiling. */
-.kta-loader-perf-drawer {
-  margin-top: 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.kta-loader-perf-drawer-titre {
-  cursor: pointer;
-  padding: 12px 14px;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #c8d0e0;
-  user-select: none;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  transition: background 0.15s ease;
-}
-.kta-loader-perf-drawer-titre::-webkit-details-marker { display: none; }
-.kta-loader-perf-drawer-titre::marker { display: none; }
-.kta-loader-perf-drawer-titre:hover {
-  background: rgba(140, 180, 255, 0.05);
-}
-.kta-loader-perf-drawer-chevron {
-  font-size: 14px;
-  color: #8892a4;
-  transition: transform 0.18s ease;
-}
-.kta-loader-perf-drawer[open] > .kta-loader-perf-drawer-titre .kta-loader-perf-drawer-chevron {
-  transform: rotate(180deg);
-}
-.kta-loader-perf-drawer-corps {
-  padding: 4px 12px 12px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-/* Séparateur visuel entre Tiling et toggles ULTRA dans le drawer */
-.kta-loader-perf-sep {
-  margin: 14px 0;
-  border: none;
-  border-top: 1px dashed rgba(255, 255, 255, 0.10);
-}
-/* Diviseur entre toggle master ULTRA et toggles individuels */
-.kta-loader-perf-divider {
-  margin: 8px 0 6px 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.06);
-}
-/* Hint italique sous le titre "🚀 Mode Performance ULTRA" du drawer */
+/* Hint italique (ex-drawer « perf » du chargeur, retiré le 29/09/2026 ; ce hint,
+   lui, est VIVANT : index.html ×6 + devMode.js ×2). */
 .kta-loader-perf-hint {
   margin: 0 0 4px 0;
   font-size: 11.5px;
@@ -15413,13 +15361,11 @@ body.kta-theme-light #loadPlanBtn:hover {
   border-color: var(--kta-light-accent) !important;
 }
 
-/* === Drawer perf + sections aide === */
-body.kta-theme-light .kta-loader-perf-drawer,
+/* === Sections aide === */
 body.kta-theme-light .kta-aide-section {
   background: rgba(0,0,0,0.02);
   border: 1px solid var(--kta-light-border);
 }
-body.kta-theme-light .kta-loader-perf-drawer-titre,
 body.kta-theme-light .kta-aide-section-titre {
   color: var(--kta-light-accent-hover);
 }
