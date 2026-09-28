@@ -2415,7 +2415,7 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 
 **🔒 Metadata scrubbed**: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
 
-**🛡️ Anonymized export + photos**: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before this protection existed) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
+**🛡️ Anonymized export + photos**: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before this protection existed) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`📍 POI salle #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
 
 **Remove a photo**: click on the red ✕ at the top right of the thumbnail → it appears greyed out with red hatching (marked for deletion). If you change your mind, click on the green ↺ arrow to undo. The actual deletion only happens when you **💾 Save**.
 

@@ -519,7 +519,7 @@
   "export.extern.descKmz": "🌍 <strong>KMZ</strong> — mapa + anotaciones colocados sobre el globo (Google Earth, OsmAnd, Avenza, Locus). Image overlay + folders KML por nivel.",
   "export.extern.intro": "📡 <strong>Exportar a otra app cartográfica</strong>. Calibra 2 puntos (introduce x/y del mapa + coordenadas GPS reales), luego elige el formato de salida. La calibración se guarda y se comparte entre KMZ y GPX.",
   "export.extern.outputTitle": "📤 Formato de salida",
-  "export.full.anonymizeHint": "Reemplaza los nombres por códigos (<code>💎 POI #1</code>, <code>🛣️ Trazado #1</code>, <code>⬛ Zona #1</code>…),\n          vacía las descripciones/notas, retira el historial GPS y el perfil.\n          Coordenadas, tags y estructura del mapa conservados — explotable para quien conoce la zona.\n          <br>📸 Fotos incluibles: cada foto se recodifica sin metadatos (EXIF/GPS eliminados). La nota libre y el PDF Historia siguen excluidos.",
+  "export.full.anonymizeHint": "Reemplaza los nombres por códigos (<code>📍 POI salle #1</code>, <code>🛣️ Trazado #1</code>, <code>⬛ Zona #1</code>…),\n          vacía las descripciones/notas, retira el historial GPS y el perfil.\n          Coordenadas, tags y estructura del mapa conservados — explotable para quien conoce la zona.\n          <br>📸 Fotos incluibles: cada foto se recodifica sin metadatos (EXIF/GPS eliminados). La nota libre y el PDF Historia siguen excluidos.",
   "export.full.anonymizeLabel": "🛡️ Anonimizar para compartir públicamente",
   "export.full.intro": "Exporta la sesión completa para poder reimportarla y reanudar tu trabajo.",
   "export.full.introDetail": "Incluye puntos, trazados, zonas, estructuras, medición y la cronología del tracker GPS si está presente (útil para el mapa de calor).",

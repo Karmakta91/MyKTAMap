@@ -519,7 +519,7 @@
   "export.extern.descKmz": "🌍 <strong>KMZ</strong> — map + annotations placed on the globe (Google Earth, OsmAnd, Avenza, Locus). Image overlay + KML folders per level.",
   "export.extern.intro": "📡 <strong>Export to another mapping app</strong>. Calibrate 2 points (enter map x/y + real GPS coordinates), then choose the output format. The calibration is saved and shared between KMZ and GPX.",
   "export.extern.outputTitle": "📤 Output format",
-  "export.full.anonymizeHint": "Replaces names with codes (<code>💎 POI #1</code>, <code>🛣️ Path #1</code>, <code>⬛ Zone #1</code>…),\n          clears descriptions/notes, removes GPS history and profile.\n          Coordinates, tags and map structure preserved — usable by anyone who knows the area.\n          <br>📸 Photos can be included: each photo is re-encoded without metadata (EXIF/GPS stripped). The free note and History PDF remain excluded.",
+  "export.full.anonymizeHint": "Replaces names with codes (<code>📍 POI salle #1</code>, <code>🛣️ Path #1</code>, <code>⬛ Zone #1</code>…),\n          clears descriptions/notes, removes GPS history and profile.\n          Coordinates, tags and map structure preserved — usable by anyone who knows the area.\n          <br>📸 Photos can be included: each photo is re-encoded without metadata (EXIF/GPS stripped). The free note and History PDF remain excluded.",
   "export.full.anonymizeLabel": "🛡️ Anonymize for public sharing",
   "export.full.intro": "Export the full session so you can re-import it and resume your work.",
   "export.full.introDetail": "Includes points, paths, zones, structures, measurement and the GPS tracker timeline if present (useful for the heatmap).",
