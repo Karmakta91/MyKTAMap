@@ -12,7 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.12` (27/09/2026)
+## 📦 Version courante — `v1.98.1` (28/09/2026)
+
+> 🔁 **v1.98.1 — Une sortie ne s'arrête plus quand on montre un autre plan** : changer de plan en cours de sortie la **met en pause** au lieu de la terminer (et de la jeter sous les seuils) ; retour sur son plan sous 2 h → elle reprend, et l'app propose de relancer le suivi. Corrigé aussi : le bouton « 🎯 Recentrer » survivait au changement de plan. Et la dette de traduction des guides (EN/ES), dont une règle de sécurité fausse, est rattrapée et désormais gardée par un contrôle de commit.
+
+> 🪧 **v1.98.0 — Le guidage de l'itinéraire** : tracker actif + itinéraire → un bandeau « Dans 40 m, tourner à gauche », uniquement aux croisements, toujours en mètres (« ~ » sans navigation intelligente) ; grands carrefours = une consigne + un schéma ; écart / demi-tour → [Je suis ici] [Recalculer d'ici] [Ignorer] ; feuille de route ; raccord à vol d'oiseau dessiné et compté ; branché sur la sortie d'urgence et l'écran XL. Deux défauts antérieurs corrigés en route : le départ d'un itinéraire qui repartait en arrière, et l'itinéraire coupé dans les coins en vue tournée. Étude : `docs/ETUDE_GUIDAGE.md`.
 
 > 📐 **v1.97.12 — Un bouton ne doit pas coûter un cinquième de la carte** : KARMA — *« le bouton copier ma position du mode xl est trop grand et prend une place inutile, on profite de la place restante dans l'alignement de la position GPS à droite pour inclure ce bouton en mode carré et non toute longueur »*. 🩹 *Le bouton était pleine largeur **sous** les chiffres : 48 px de hauteur pris à la mini-carte pour une action qui tient dans un carré. Il partage maintenant leur ligne et occupe le vide à leur droite — carte **486 → 510 px** en 390×844.* 👆 *48 px de côté (44 en dessous de 360 px de large, 40 en paysage bas) : au-dessus du minimum tactile, parce que cet écran se touche avec des gants. Le bouton ne contient qu'un caractère — 📋 puis ✅ — et la phrase vit dans l'infobulle et `aria-label`, sinon il regrandirait.* 📱 *Trouvé en mesurant : en **320×568** l'écran demandait encore 50 px de défilement, à cause du plancher de la mini-carte et non du bouton — une media query à 360 px ramène ça à **0**.*
 
@@ -475,6 +479,29 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.1 (28/09/2026) — Une sortie ne s'arrête plus quand on montre un autre plan
+
+- 🎯 **Le signalement (KARMA)** : *« durant ma sortie, je vais sur un autre plan pour le montrer ; quand je reviens dans la carrière où je suis réellement, la persistance ne reprend pas »*.
+- 🩸 **Cause** : le changement de plan FINALISAIT la sortie (`closedBy: "auto"`), et la reprise de la v1.85.2 ne recollait que les sorties tuées par le système (`closedBy: "crash"`) — choix délibéré à l'époque, faux pour ce cas. Pire : sous les seuils (< 50 m…), la sortie était **supprimée** au changement de plan.
+- 🔁 **Correctif (décisions 1:a 2:b 3:a)** : `onPlanUnload` → `_suspendre()` (`status: "suspendue"`, sans filtre ni affinage) ; retour sur le même plan sous **2 h** (`SUSPENSION_MS`) → la même sortie reprend ; `_expirerSuspendues` finalise au-delà. Au plus une suspendue **par plan** (une seule « en tout » aurait finalisé A au retour de B).
+- ▶️ **Relance du suivi** : la sortie reprend, pas le suivi (coupé par tout chargement de plan). Sur une sortie terrain, une fenêtre propose « ▶️ Relancer le suivi » → `window.ktaDemarrerSuivi()`, le chemin de la tuile ▶️ extrait en `interface.js > _demarrerSuivi` (avertissement + permission capteurs). Jamais de relance automatique (iOS exige un geste).
+- 🎯 **« Recentrer » qui survivait au changement de plan** : `initTracking()` coupe le suivi sans passer par `stopTracking()` — la carte orientée n'était pas prévenue, et son bouton (posé dans le `body`) restait. Même signal ajouté.
+- 🌍 **Dette de traduction des guides rattrapée** : section ES « hors-ligne » absente, deux sections ES décrivant un réglage supprimé, 7 puces ES, encadrés EN/ES ; la zone ⛔ Inaccessible était dite « jamais relâchée » en EN/ES (faux depuis v1.82.0) ; un encadré coupait un tableau FR. Nouveau contrôle de commit `scripts/check-doc-langues.js` (mêmes sections, aucune sous 70 % du FR).
+- ✅ **Tests** : `check-journal-reprise.js` rejoue A → B → A sur le module entier (faux IndexedDB, horloge pilotée) ; `checkup-plan-oriente.js` T20 avec contre-essai ; relance vérifiée dans l'app réelle ; smoke complet vert. ⚠️ Non testé sur iPhone.
+
+#### v1.98.0 (27/09/2026) — Le guidage de l'itinéraire
+
+- 🎯 **La demande (KARMA)** : en tracker actif avec un itinéraire, des indications en haut de l'écran (« dans X m tourner à droite », « continuer tout droit sur X m »), sans annoncer un virage à chaque segment. Étude et décisions (A→L) : `docs/ETUDE_GUIDAGE.md`.
+- 🪧 **Nouveau module `js/itiGuidage.js`** : consignes calculées depuis l'itinéraire (1-2 ms), **bandeau en direct** alimenté par `tracking.js > updateMap`, **feuille de route** (modale Itinéraire, aussi sans tracker), menu Tracker → « 🪧 Guidage de l'itinéraire » (Auto / Jamais), croix = masqué pour cet itinéraire.
+- 🔀 **Uniquement aux croisements** (retour KARMA sur un plan réel : les coudes d'une galerie sans choix étaient du bruit), **toujours en mètres** (jamais « la 3e à gauche » : les tracés ne montrent pas toutes les ouvertures). Sans navigation intelligente : « ~ » + arrondi 10 m + une suggestion unique.
+- 🏛️ **Grands carrefours** : sur le plan réel, un carrefour est une **zone** de croisements proches, pas un nœud à 5 branches. Croisements à ≤ 5 m l'un du précédent (KARMA : « 20 m c'est beaucoup trop ») = une consigne à l'entrée, sorties mesurées sur un cercle qui englobe la zone, **schéma SVG** dès 4 galeries (choisie en doré), nom du lieu s'il y a un point nommé à ≤ zone + 5 m.
+- ⚠️ **Écart / demi-tour** confirmés sur plusieurs positions (seuils calés par une marche simulée bruitée sur le plan réel : 0 fausse alerte) → [Je suis ici] [Recalculer d'ici] [Ignorer], jamais de recalcul automatique.
+- 🪢 **Raccord à vol d'oiseau** : `pathfinder.js` rend `raccords` (dessinés en pointillé, **comptés** dans la distance, alerte au-delà de 50 m) et `carrefours` (cercle de ~3 m : le tremblement du dessin ne fait plus de faux croisements). `Pathfinder.aDesTraces()` : plan sans tracé signalé au lancement.
+- 🚨 **Urgence** : itinéraire de sortie marqué `urgence` → bandeau sans croix, affiché même réglé sur « Jamais », écart → « Sortie la plus proche d'ici » (`SortieUrgence.relancerDepuis`) ; l'**écran XL** reprend la consigne en gros.
+- 🩸 **Défauts antérieurs corrigés en route** : (1) un départ accroché sur un segment portant un croisement **repartait en arrière** jusqu'à l'extrémité (distance gonflée, aussi dans la zone atteignable du Mode Perdu / Secours, désormais juste) ; (2) en **plan orienté**, l'itinéraire vivait dans un renderer SVG non élargi — coupé dans les coins, il « avançait » au dézoom (emprise mesurée 213×269 → 333×427 px) : un seul renderer SVG par carte, et `mapBearing` élargit tous les renderers.
+- ↩️ **Retiré après essai** : un bouton 🧭 « mode Navigation » dans le bandeau (doublon sans libellé de « Plan orienté » et de l'écran allumé — KARMA 3:a).
+- ✅ **Tests** : `scripts/check-guidage.js` (pré-commit, réseaux fictifs : T, croisement franchi tout droit, tremblement, coudes, fourche, épingle, cul-de-sac, grand carrefour, piliers, raccords, niveaux, marche simulée du bandeau, urgence, câblage) ; `scripts/smoke/checkup-guidage.js` (Chromium 390×844) ; `checkup-plan-oriente.js` et smoke complet verts. ⚠️ Aucun test sous terre avec de vrais capteurs.
 
 #### v1.97.12 (27/09/2026) — Un bouton ne doit pas coûter un cinquième de la carte
 

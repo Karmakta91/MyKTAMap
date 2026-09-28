@@ -496,3 +496,20 @@ node scripts/check-import-masse.js || exit $?
 # bas du scroller, décoratif compressé sur écran bas, et AUCUNE nouvelle
 # largeur en px sur la colonne Actions. 9 sabotages rougissent.
 node scripts/check-home-layout.js || exit $?
+
+# 🪧 27/09/2026 — Guidage de l'itinéraire (js/itiGuidage.js + raccords /
+# carrefours de pathfinder.js). CHARGE les vrais modules sur des réseaux
+# FICTIFS et fige la logique « quand annoncer » de docs/ETUDE_GUIDAGE.md :
+# un croisement se dit même tout droit, le tremblement du dessin ne se dit
+# pas, un quadrillage de piliers ne parle pas tous les trois mètres, le
+# raccord à vol d'oiseau est compté et alerté au-delà de 50 m — et le chemin
+# ne part plus en arrière au départ (défaut du pathfinder révélé ici). BLOQUANT.
+node scripts/check-guidage.js || exit $?
+
+# 🌍 27/09/2026 — Parité des 3 guides utilisateur servis dans l'app
+# (README_USER .md / .en.md / .es.md). check-i18n garde les DICTIONNAIRES,
+# rien ne gardait les GUIDES : un audit y a trouvé une section entière absente
+# en ES, deux sections ES qui décrivaient un réglage supprimé, et une règle de
+# sécurité fausse en EN/ES. Mêmes sections dans le même ordre + aucune section
+# traduite sous 70 % du FR. S'auto-teste sur des guides sabotés. BLOQUANT.
+node scripts/check-doc-langues.js || exit $?

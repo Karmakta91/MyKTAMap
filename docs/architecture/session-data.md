@@ -1513,6 +1513,24 @@ tuée *sous* l'utilisateur. Se fier au délai seul recollerait une sortie qu'il 
 son geste serait annulé sans un mot. La fenêtre de 45 min n'est qu'une borne de bon sens par-dessus — l'écart réel
 est de quelques secondes, le dernier flush datant de moins de 30 s.
 
+**🔀 Changement de plan = SUSPENSION (28/09/2026, KARMA 1:a 2:b 3:a).** « Durant ma sortie je vais sur un autre
+plan pour le montrer ; quand je reviens dans la carrière, la sortie ne reprend pas. » `onPlanUnload` finalisait
+(`closedBy: "auto"`, jamais recollée — et SUPPRIMÉE sous les seuils). Il appelle désormais `_suspendre()` :
+`status: "suspendue"` + `suspendueLe`, écrite telle quelle, **sans** filtre de pertinence ni affinage réseau.
+`_candidateReprise` reprend une suspendue de **son** plan sous **`SUSPENSION_MS` = 2 h** (délai distinct des 45 min
+du crash) ; `_reprendre()` est partagée entre les deux cas. `_expirerSuspendues()` (à chaque ouverture de plan +
+au boot) finalise les suspendues périmées : gardées (`closedBy: "auto"`) si pertinentes, jetées sinon — sans
+affinage, la timeline de leur plan n'étant plus en mémoire (même limite que le balayage des sorties tuées).
+
+🩸 **Une suspendue PAR PLAN, pas une seule en tout.** Chaque plan ouvre sa propre session : « une seule
+suspendue » aurait fait, au retour de B vers A, suspendre B et FINALISER A — l'inverse du but. Carnet décoché :
+`onPlanLoaded` n'ouvre toujours rien, mais reprend une sortie manuelle suspendue. ⚠️ Le **suivi** n'est pas
+repris : `initTracking()` remet `tracking = false` à chaque chargement de plan. À la reprise d'une sortie
+**terrain** suivi arrêté, `_reprendre` propose « ▶️ Relancer le suivi » (`ktaConfirm` → `window.ktaDemarrerSuivi`,
+le chemin de la tuile ▶️ : avertissement + permission capteurs). Jamais de relance automatique : sur iOS la
+permission exige un geste. Filet :
+`check-journal-reprise.js` §3 rejoue A → B → A sur le module entier (faux IndexedDB, horloge pilotée).
+
 **🩸 La baseline est RECONSTRUITE, jamais repartie de zéro.** Les compteurs d'une sortie sont des **différences**
 (`compte − baseline`) recalculées à chaque `_snapshot`, pas des accumulations : une baseline neuve remettrait tout
 à zéro et la reprise n'aurait que l'apparence de fonctionner. Mais la session est restaurée à l'identique au

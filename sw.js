@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.97.12";
+const CACHE_NAME = "myktamap-cache-v1.98.1";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -308,6 +308,8 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.31.0 (P3 Lot 6) : Module extrait de interface.js — modale
   // Itinéraire + POPUP POI + LABEL DISTANCE + Presets + Évitements
   "./js/interfaceItineraire.js",
+  // 🪧 27/09/2026 : Guidage de l'itinéraire (consignes, feuille de route, bandeau)
+  "./js/itiGuidage.js",
   // 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",

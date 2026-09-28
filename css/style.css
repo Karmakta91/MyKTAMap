@@ -22304,3 +22304,194 @@ html.kta-theme-light .kta-bearing-recentrer {
 .leaflet-container.kta-bearing-lock {
   touch-action: none;
 }
+
+/* =====================================================================
+   🪧 GUIDAGE DE L'ITINÉRAIRE (27/09/2026) — js/itiGuidage.js
+   Étude et décisions : docs/ETUDE_GUIDAGE.md
+   ===================================================================== */
+
+/* Raccord à vol d'oiseau : pointillé, sans halo — ce n'est pas une galerie. */
+.kta-itinerary-raccord {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Alerte (raccord de plus de 50 m) : même orange que « Impossible d'éviter ». */
+.kta-guid-alerte {
+  color: #ff9933;
+  background: rgba(255, 153, 51, 0.10);
+  border-left: 3px solid #ff9933;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* Feuille de route : sous-modale (elle s'ouvre par-dessus la modale Itinéraire). */
+.kta-guid-feuille-overlay { z-index: 100001; }
+.kta-guid-feuille-boite { max-width: 520px; }
+.kta-guid-feuille-resume { color: #c8d0e0; margin: 0 0 10px; font-size: 13px; }
+.kta-guid-feuille-note { color: #8892a4; font-size: 12px; margin: 10px 0 0; }
+.kta-guid-feuille-liste { list-style: none; margin: 0; padding: 0; }
+.kta-guid-feuille-ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  color: #e8eaf0;
+  font-size: 14px;
+}
+.kta-guid-feuille-ligne:hover { background: rgba(140, 180, 255, 0.08); }
+.kta-guid-feuille-num { color: #8892a4; min-width: 1.6em; text-align: right; font-size: 12px; padding-top: 2px; }
+.kta-guid-feuille-icone { color: #f4c542; min-width: 1.4em; text-align: center; font-weight: 700; }
+.kta-guid-feuille-txt { flex: 1; }
+
+body.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
+body.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
+body.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
+
+/* Bandeau en direct (lot 2) : sous l'en-tête, entre les deux colonnes de
+   boutons de la carte (≈ 44 px chacune, collées aux bords). Même z-index que
+   le bouton « Recentrer » du plan orienté : au-dessus de la carte, sous
+   l'en-tête (1200) et sous toutes les modales. Hors du conteneur de la carte :
+   il ne tourne pas avec elle. */
+.kta-guid-bandeau {
+  position: fixed;
+  top: calc(52px + env(safe-area-inset-top, 0px));
+  left: 54px;
+  right: 54px;
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 1100;
+  background: rgba(26, 31, 46, 0.96);
+  border: 1px solid rgba(244, 197, 66, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  color: #e8eaf0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.kta-guid-ligne { display: flex; align-items: stretch; }
+.kta-guid-corps {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 4px 8px 10px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.kta-guid-icone {
+  flex: 0 0 auto;
+  font-size: 24px;
+  line-height: 1;
+  color: #f4c542;
+  width: 28px;
+  text-align: center;
+  display: inline-block;
+  transition: transform 0.25s ease-out;
+}
+.kta-guid-textes { display: flex; flex-direction: column; min-width: 0; }
+.kta-guid-principal { font-size: 15px; font-weight: 700; line-height: 1.25; }
+.kta-guid-sous { font-size: 12.5px; color: #c8d0e0; line-height: 1.3; margin-top: 2px; }
+.kta-guid-fermer {
+  flex: 0 0 38px;
+  width: 38px;
+  background: none;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8892a4;
+  font-size: 16px;
+  cursor: pointer;
+}
+.kta-guid-fermer:hover { color: #e8eaf0; }
+.kta-guid-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px; }
+.kta-guid-actions:not(:empty) { padding: 0 10px 10px; }
+.kta-guid-btn { flex: 1 1 auto; min-height: 40px; font-size: 13px; }
+
+/* Alerte écart / demi-tour : orange (même famille que les avertissements). */
+.kta-guid-bandeau.kta-guid-alerte-on { border-color: #ff9933; background: rgba(46, 31, 18, 0.97); }
+.kta-guid-bandeau.kta-guid-alerte-on .kta-guid-icone { color: #ff9933; }
+/* Sortie d'urgence : liseré rouge, pas de croix (décision C). */
+.kta-guid-bandeau.kta-guid-urgence { border-color: #ff4d4d; border-width: 2px; }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-guid-bandeau { top: calc(42px + env(safe-area-inset-top, 0px)); }
+  .kta-guid-principal { font-size: 14px; }
+  .kta-guid-icone { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-guid-icone { transition: none; }
+}
+body.kta-theme-light .kta-guid-bandeau { background: rgba(255, 255, 255, 0.97); color: #1a1f2e; }
+body.kta-theme-light .kta-guid-sous { color: #3a4254; }
+body.kta-theme-light .kta-guid-icone { color: #8a6d00; }
+body.kta-theme-light .kta-guid-bandeau.kta-guid-alerte-on { background: #fff4e8; }
+
+/* Guidage sur l'écran XL (lot 4, décision A) : la consigne du bandeau, en
+   gros — cet écran recouvre la carte. Les couleurs de fond / bordure viennent
+   de `.kta-emergency-dark|light .kta-emergency-bloc` ; seul l'accent change. */
+.kta-emergency-guidage { flex: 0 0 auto; gap: 8px; border-width: 2px; }
+.kta-emergency-dark  .kta-emergency-guidage { border-color: rgba(244, 197, 66, 0.7); }
+.kta-emergency-light .kta-emergency-guidage { border-color: rgba(184, 116, 11, 0.8); }
+.kta-emergency-guidage-ligne { display: flex; align-items: center; gap: 14px; }
+.kta-emergency-guidage-icone {
+  flex: 0 0 auto;
+  font-size: 40px;
+  line-height: 1;
+  width: 48px;
+  text-align: center;
+  display: inline-block;
+  color: #f4c542;
+  transition: transform 0.25s ease-out;
+}
+.kta-emergency-light .kta-emergency-guidage-icone { color: #b8740b; }
+.kta-emergency-guidage-textes { min-width: 0; }
+.kta-emergency-guidage-principal { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.kta-emergency-guidage.kta-emergency-guidage-alerte { border-color: #ff9933; }
+.kta-emergency-guidage.kta-emergency-guidage-alerte .kta-emergency-guidage-icone { color: #ff9933; }
+.kta-emergency-guidage-choix {
+  min-height: 48px;   /* se touche avec des gants, comme le reste de cet écran */
+  border: 1.5px solid #ff9933;
+  border-radius: 10px;
+  background: rgba(255, 153, 51, 0.12);
+  color: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-emergency-guidage-principal { font-size: 17px; }
+  .kta-emergency-guidage-icone { font-size: 28px; width: 34px; }
+  .kta-emergency-guidage-choix { min-height: 40px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-emergency-guidage-icone { transition: none; }
+}
+
+/* Schéma d'un grand carrefour (≥ 4 galeries) : rayons = galeries, celle d'où
+   l'on vient en bas, celle à prendre en doré (accent de la charte). */
+.kta-guid-picto { display: block; overflow: visible; }
+.kta-guid-picto line { stroke-linecap: round; }
+.kta-guid-picto-autre   { stroke: #8892a4; stroke-width: 2.5; }
+.kta-guid-picto-arrivee { stroke: #c8d0e0; stroke-width: 3; stroke-dasharray: 3 3; }
+.kta-guid-picto-choisie { stroke: #f4c542; stroke-width: 4.5; }
+.kta-guid-picto-bout    { fill: #f4c542; }
+.kta-guid-picto-centre  { fill: #e8eaf0; }
+.kta-guid-bandeau .kta-guid-icone .kta-guid-picto { width: 40px; height: 40px; }
+.kta-guid-feuille-icone .kta-guid-picto { width: 28px; height: 28px; margin: 0 auto; }
+.kta-emergency-guidage-icone .kta-guid-picto { width: 56px; height: 56px; }
+body.kta-theme-light .kta-guid-picto-arrivee,
+.kta-emergency-light .kta-guid-picto-arrivee { stroke: #3a4254; }
+body.kta-theme-light .kta-guid-picto-choisie,
+.kta-emergency-light .kta-guid-picto-choisie { stroke: #b8740b; }
+body.kta-theme-light .kta-guid-picto-bout,
+.kta-emergency-light .kta-guid-picto-bout { fill: #b8740b; }
+body.kta-theme-light .kta-guid-picto-centre,
+.kta-emergency-light .kta-guid-picto-centre { fill: #1a1f2e; }

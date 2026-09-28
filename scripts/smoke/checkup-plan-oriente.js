@@ -28,6 +28,7 @@
 //   T4. un mode « clic carte » (mesure) redresse la vue
 //   T5. un mode plein écran (Mode perdu) redresse la vue
 //   T6. arrêt du tracking → vue droite ET interactions rendues
+//   T20. changement de plan SANS couper le suivi → le bouton « Recentrer » disparaît
 //   T7. le culling s'élargit quand la vue tourne
 //
 // Usage : node scripts/smoke/checkup-plan-oriente.js
@@ -832,6 +833,42 @@ function inf(msg) { console.log("  •  " + msg); }
     else pb("pointer-events des overlays resté à « " + t6.pointerEvents + " »");
     if (t6.enabledEncore) ok("le choix de l'utilisateur est conservé (repris au prochain Play)");
     else pb("le toggle a été perdu à l'arrêt du tracking");
+
+    // ── T20 — CHANGER DE PLAN SANS COUPER LE SUIVI (KARMA, 28/09/2026) ──
+    // « Si je quitte le plan sans couper le tracking, le bouton pour recadrer
+    // la position persiste sur l'autre plan. » Le chargement d'un plan coupe
+    // le suivi dans initTracking(), SANS passer par stopTracking() : la carte
+    // orientée n'était pas prévenue, et son bouton (posé dans le body, hors
+    // carte) survivait. On rejoue exactement ce chemin.
+    console.log("— T20 : changement de plan, suivi non coupé —");
+    const t20 = await page.evaluate(function () {
+      function avecBouton() {
+        if (!window.getTrackingActif()) window.startTracking();
+        window.map.fire("dragstart");               // suivi désarmé → le bouton apparaît
+        return !!document.querySelector(".kta-bearing-recentrer");
+      }
+      // Contre-essai : sans le signal ajouté, le défaut doit réapparaître —
+      // sinon ce test ne prouverait rien.
+      const avant1 = avecBouton();
+      const vrai = window.MapBearing.onTrackingChange;
+      window.MapBearing.onTrackingChange = function () {};
+      window.initTracking();
+      const resteSansSignal = !!document.querySelector(".kta-bearing-recentrer");
+      window.MapBearing.onTrackingChange = vrai;
+      window.MapBearing.onTrackingChange(false);    // nettoyage du contre-essai
+      // Le vrai chemin
+      const avant2 = avecBouton();
+      window.initTracking();
+      return {
+        avant1: avant1, resteSansSignal: resteSansSignal, avant2: avant2,
+        apres: !!document.querySelector(".kta-bearing-recentrer"),
+        suivi: window.getTrackingActif()
+      };
+    });
+    if (t20.avant1 && t20.resteSansSignal) ok("🩸 contre-essai : sans le signal, le bouton survit bien (le test voit le défaut)");
+    else pb("contre-essai non concluant : " + JSON.stringify(t20));
+    if (t19.avant2 && !t19.apres && !t19.suivi) ok("🩸 changement de plan : le bouton « Recentrer » disparaît avec le suivi");
+    else pb("le bouton « Recentrer » survit au changement de plan : " + JSON.stringify(t19));
 
     // ── T17 — LE FORMAT PORTRAIT, que le reste du checkup ne voit pas ──
     // 🩸 v1.97.3. Les marges de culling devaient valoir (grand côté / petit

@@ -60,6 +60,13 @@ function initTracking() {
   lastStepTime = 0;
   direction  = 0;
   tracking   = false;
+  // 🩸 28/09/2026 (KARMA : « si je quitte le plan sans couper le tracking, le
+  // bouton pour recadrer la position persiste sur l'autre plan ») — le suivi
+  // est coupé ICI, sans passer par stopTracking() : la carte orientée n'en
+  // était jamais prévenue, et son bouton « 🎯 Recentrer », posé dans le body
+  // (hors carte, pour ne pas tourner avec elle), survivait au plan quitté.
+  // Même signal que stopTracking().
+  if (window.MapBearing) { try { window.MapBearing.onTrackingChange(false); } catch(e) {} }
   window.modeRecalage = false;
   _positionConfirmee   = false;   // 📍 nouveau plan → rien de confirmé
   _positionConfirmeeTs = null;
@@ -876,6 +883,12 @@ function updateMap() {
   // tourner toute seule pendant une pause.
   if (window.MapBearing) {
     try { window.MapBearing.onStep(latlng); } catch(e) {}
+  }
+
+  // 🪧 27/09/2026 — Guidage de l'itinéraire : chaque pas / recalage fait
+  // avancer le bandeau « dans X m, tourner à gauche » (js/itiGuidage.js).
+  if (window.ItiGuidage && typeof window.ItiGuidage.onPosition === "function") {
+    try { window.ItiGuidage.onPosition(position); } catch(e) {}
   }
 
   // 🆕 v1.34.27 — Détection proximité waypoint iti (100px) → vibration

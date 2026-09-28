@@ -914,6 +914,7 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
 4. A compact modal shows:
    - The nearest exit + its distance + its level if the plan is multi-floor
    - A **🧭 Trace route** button (reuses the regular Route Mode engine)
+   - 🪧 Once drawn, the **guidance banner** tells you what to do at each junction — **with no ✕** during an emergency exit, even if guidance is turned off. If you move away, its button becomes **"Nearest exit from here"** (see "🪧 Guidance" in the route section)
    - A foldable **See N other exits** sorted by distance
 
 ### Closed variants intentionally ignored
@@ -1195,6 +1196,8 @@ The **🧭 Tracker** button opens a **full-screen modal of large tiles**, arrang
 | **🎯** | **My position** — recenter the map on you |
 | **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) |
 | **🗺️** | Calculate a route |
+| **🗺️** | **Oriented map** — the map turns with you while tracking |
+| **🪧** | **Itinerary guidance** — Auto / Never ("In 40 m, turn left" banner) |
 | **🎬** | Tracker session replay |
 | **🔥** | Heatmap — see dedicated section |
 | **⛑️** | I'm lost — **SOLID RED button** (danger signal) |
@@ -1376,6 +1379,10 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 | ⬛ **Zone types** | Water / Backfill / Collapse / Inaccessible + customs |
 | 🏛️ **Structure types** | 1st mass Pillar / 2nd mass Pillar / Wall / Face 1 / Face 2 + customs |
 
+> 🔄 **Correcting a data layer** — a layer shipped in the plan's ZIP is **read-only**: you can hide it, not edit it. Each line of the **📊 Data layers** section therefore has a **"🔄 Edit"** button: its content moves into your session, where all your tools apply — in particular **🔄 Convert this object**, to turn a quarry face into a gallery on an imported survey. The original layer **hides itself** (its checkbox shows "being edited — show anyway", which you can tick again to compare both). **"↩️ Restore"** undoes everything; **"💾 Export"** gives you a corrected file to hand back to the plan via 🏗️ Generator → "Edit a plan", by clicking **"Choose" on that layer's line** — it REPLACES the old content, no duplicate is possible.
+>
+> ⚠️ **What the app tells you before acting**: the weight the copy will take in your session (a large survey exceeds a megabyte, and the browser's limit is around 5 MB for all plans together) and the space already used. On export, it also tells you how many objects **you drew yourself** are left out — they don't belong to that layer. And "Clear session" **restores** the layers opened for editing: the copy and the hiding go together.
+
 **How it works:**
 
 - **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map.
@@ -1487,6 +1494,27 @@ During a real outing, the tracker can drift and the phone spends time locked in 
 
 > 💡 In practice: plan your outing (me → curiosity X → curiosity Y → exit), walk, and at each point you reach tap **📍 I am here** on its popup. The app checks it off, recalculates, and always shows the way from where you actually are.
 
+#### 🪧 Guidance — "In 40 m, turn left" (since v1.98.0)
+
+When the **tracker is on** and an **itinerary is drawn** (from the modal, a "🧭 Go there" on a point, or the emergency exit), a **banner** appears on its own at the top of the map and tells you what to do:
+
+- **"In 40 m, turn left"**, **"Continue for 120 m"**, then **"Now: turn left"** as you get close. Underneath, in small print, the next instruction ("Then turn right").
+- **Only at junctions**: as long as there is a single gallery to follow, guidance stays silent, even if it bends. It never says "the 3rd on the left" (traces do not show every real opening): always a **distance**.
+- **Two close galleries** → "take the left / right branch". When crossing a level link → "go up / down to level N".
+- **Big junctions**: several close junctions (5 m or less apart) count as **a single junction**, with **a single instruction** given at its entrance. From **4 galleries** on, a **small diagram** replaces the arrow: each gallery is a line, the one you come from dashed at the bottom, **the one to take in gold**. If a named point lies in the junction, its name opens the instruction.
+- **Off the trace at the start** → "Reach the trace: ~12 m", with an **arrow** pointing to the nearest gallery, relative to your phone.
+- **Distances**: sharp with **🧭 Smart navigation** (⚙️ Settings → Navigation & tracker); without it they are **approximate** ("~40 m", rounded to 10 m), because the position comes from the step counter and drifts.
+
+**Moving away or turning back?** The banner turns orange ("Off the itinerary?" / "Turning back?") and offers **[I am here]** (tap where you are, the itinerary is recomputed from there), **[Recompute from here]** and **[Ignore]** (no more alerts until you are back on the path). Nothing is recomputed without you: step-counter drift looks like a deviation.
+
+**Tapping the banner** opens the **🪧 Route sheet**: every instruction with its distance (tap a line to see the spot). It is also available **without the tracker**, from the Itinerary modal ("🪧 Route sheet" button), to prepare an outing.
+
+**The ✕** hides the banner **for this itinerary**; it comes back with the next one. To turn it off **for good**: 🧭 Tracker menu → **🪧 Itinerary guidance**.
+
+**As the crow flies**: if your start, a stop or your destination lies beside the galleries, the stretch to the nearest one is drawn **dashed** and **counted** in the distance (an off-trace stop counts there and back). Beyond **50 m**, the app warns you: that stretch is not a known gallery, check your position. On a plan **with no trace at all**, no itinerary can be computed: the app says so right away.
+
+> 🚨 **During an emergency exit**, the banner has **no ✕** and shows even if guidance is turned off; on a deviation, the button becomes **"Nearest exit from here"**. The **XL emergency screen** repeats the instruction in large print.
+
 #### 🚫 Avoidance preferences
 
 In the route modal, a collapsible section **🚫 Avoidance preferences (optional)** lets you set **soft** constraints that the pathfinder will try to respect:
@@ -1495,7 +1523,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 |---|---|
 | **📍 Points to avoid** | **3 methods** to choose from: (a) autocomplete search in the text field, (b) entry by exact ID, (c) **📍 Click on the map**: switches to click mode, each click on the map adds a point. Orange chips with ✕ to remove. |
 | **🏷️ Tags to avoid** | Click a chip to toggle it. All points carrying this tag will be avoided (e.g.: you activate `pa` → all ventilation shafts are avoided). |
-| **⬛ Zones to avoid** | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
+| **⬛ Zones to avoid** | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're impassable by default (hard constraint, which the "Respect impassable areas" box of this same window can relax). |
 | **📏 Margin** | Distance around the avoided points (px, default 100). Any road segment closer than this margin is excluded from the graph. |
 
 **Behavior**:
@@ -1504,7 +1532,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 - ❌ If even the fallback fails (= true absence of path) → classic error message
 
 **Difference with ⛔ Inaccessible Zone**:
-- ⛔ Zone = **hard** constraint (never relaxed even in fallback)
+- ⛔ Zone = **hard** constraint **by default** — can be relaxed with the "Respect impassable areas" box of the Itinerary modal. Rescue Mode and "Lost" mode always respect them.
 - 🚫 Avoidance = **soft** constraint (fallback possible with message)
 
 **Persistence**: your preferences are saved per map (on this device). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
@@ -1598,6 +1626,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 - 📍 **One position only, huge** (readable from a meter away): **GPS** coordinates if your map is georeferenced — those are the ones you read out to rescuers — otherwise the **X / Y position on the map**. Never both: the block title tells you which one you are reading. Below the figures, a line states whether this is your tracked position, your last known position, or the **map's starting position, never confirmed**.
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
+- 🪧 **The guidance instruction in large print** (since v1.98.0): if an itinerary is drawn and tracking is on, the next instruction ("In 40 m, turn left", diagram of big junctions) shows at the top of the screen. On a deviation, a **"See the options on the map"** button takes you back to the banner and its buttons
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
   It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
@@ -2489,7 +2518,7 @@ Draw a zone of type **⛔ Inaccessible** on a part of the map that you want to *
 
 **Effect**: any calculated route that would have crossed this zone will now go via another path. If no other path exists, the calculation fails with a clear message.
 
-It is a **hard constraint** — never relaxed. If you want a **soft** constraint (avoid if possible, otherwise pass through anyway with a message), use the **🚫 Avoidance preferences** in the route modal instead (see dedicated section below).
+It is a **hard constraint by default**, but you can relax it: the "Respect impassable areas" box of the Itinerary modal is checked out of the box; unchecking it lets the route cross them. ⚠️ **Rescue Mode** and "Lost" mode respect them in all circumstances — a comfort preference does not widen a rescue perimeter. If you want a **soft** constraint (avoid if possible, otherwise pass through anyway with a message), use the **🚫 Avoidance preferences** in the route modal instead (see dedicated section below).
 
 **Multi-level**: the ⛔ zone blocks only the segments of the **same level** (consistent with the level filter). An inaccessible zone at Level 0 does not affect the route at Level -1.
 
@@ -2665,6 +2694,8 @@ Open the outing's record → **✏️ Fix the end**, and enter the real time. Th
 If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Previously, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
 
 **It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
+
+**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. The time spent on the other plan is not added to your outing. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
 
 > ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
 
@@ -3016,6 +3047,8 @@ For each point (A and B), 3 methods to choose from:
 > 🌐 **GPS format**: the `GPS (lat, lng)` field directly accepts the **native Google Maps format** (`48.680831, 2.158843`). You can copy the coords from Google Maps (right-click → copy coordinates) and paste it all into the field — no need to split into 2 lat / lng fields. If the format is invalid, the field turns red with an explicit message. The same format is accepted **everywhere** in the app (Ctrl+K search · KMZ Settings · georeferenced map creation).
 
 > 💡 **Tip**: choose 2 **far apart** points on the map (ideally at opposite ends) — the larger the AB distance, the better the transformation accuracy. The app refuses if AB is less than 50 px on the map or less than 1 meter IRL.
+
+> 📐 **Point C (optional) — for distorted plans**: if your plan is an **assembly** that projects badly (stretched in one direction, different scales in X and Y), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the overall distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Choose C **far from the A-B line** (an aligned C adds nothing and is refused). Good to know: it corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your plan already projects well: nothing changes.
 
 #### Live preview
 
@@ -3815,3 +3848,10 @@ A good part of the code in this version was co-written with **Claude (Anthropic)
 For taking 10 minutes to read instead of clicking blindly. This is exactly the state of mind these places require — **taking the time, understanding before acting, respecting what we don't yet master**.
 
 > If you want to contribute — a bug report, a suggestion, a hand with the docs — go through the repo issue tracker or the usual community channels.
+
+---
+
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+
+*MyKTAMap — User Guide*
+*These places are fragile. Discretion is a form of respect.*

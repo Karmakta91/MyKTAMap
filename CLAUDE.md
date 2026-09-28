@@ -19,7 +19,7 @@
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
 - **Bump = sync docs sur 4 axes** (sans MAJ = dette immédiate, à vérifier AVANT de considérer la release faite) :
-  - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` + **`README_USER.es.md`** (modale Documentation — les TROIS sont servies, cf `interfaceDocs.js > DOC_AVAILABLE_LANGS` ; ⚠️ **aucun hook ne les vérifie**, la règle est le seul filet) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
+  - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` + **`README_USER.es.md`** (modale Documentation — les TROIS sont servies, cf `interfaceDocs.js > DOC_AVAILABLE_LANGS` ; 🛡️ `scripts/check-doc-langues.js` (pré-commit, bloquant) vérifie qu'elles ont les **mêmes sections** et qu'aucune section traduite ne tombe **sous 70 % du FR** — mais il ne voit pas un contenu faux de bonne longueur : mettre à jour les 3 **dans le même commit** reste la règle) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
   - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
   - 📖 **Dev** : `README.md` (journal des versions)
   - 🤖 **Archi IA** : `CLAUDE.md` (si archi/règle changée) + `docs/architecture/<sujet>.md` (selon sujets impactés)
@@ -65,6 +65,7 @@
 | **Tuilage** : V1 vs V2, 2 modes, déploiement + **hors-ligne** d'un plan serveur | **`docs/TILING.md`** |
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | **Mode « plan orienté »** (la carte tourne pendant le suivi) | `docs/architecture/tracking.md` §plan orienté · `js/mapBearing.js` |
+| **Guidage de l'itinéraire** (« dans X m, tourner à gauche », feuille de route, urgence) | `docs/ETUDE_GUIDAGE.md` (décisions) · `docs/architecture/tracking.md` §Guidage · `js/itiGuidage.js` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |

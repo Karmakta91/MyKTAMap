@@ -1004,6 +1004,14 @@ Le zoom reste **entièrement celui de Leaflet** : on ne touche plus à ses optio
 
 ⚠️ **Le bon critère de test n'est pas « le point pincé ne bouge pas »** : Leaflet arrondit le zoom à l'entier, donc il bouge toujours un peu — 27 px, **mode désactivé compris**. On mesure l'écart au comportement de référence (T19), sinon on court après un zéro impossible.
 
+#### 🩸 Le suivi coupé par un changement de plan (28/09/2026)
+
+`initTracking()` remet `tracking = false` SANS passer par `stopTracking()`. Tout ce qui écoute l'arrêt du suivi
+doit donc aussi être prévenu là : `initTracking` appelle `MapBearing.onTrackingChange(false)` — sans ça, le bouton
+« 🎯 Recentrer » (posé dans le `body`, hors carte) survivait sur le plan suivant (signalé par KARMA). Filet :
+`checkup-plan-oriente.js` T20, avec contre-essai. Le démarrage du suivi, lui, a un seul chemin :
+`interface.js > _demarrerSuivi(btn)`, exposé en `window.ktaDemarrerSuivi()` (tuile ▶️ + relance du carnet).
+
 #### Frontières : on LIT l'état des autres modes
 
 Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Présentation, Secours, Urgence, Replay).
@@ -1043,3 +1051,59 @@ Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**
 #### Non couvert en v1.97.0
 
 Contre-rotation des **tooltips** (⚠️ `tableEditor.js:1245` en pose de **permanents sur la carte principale** — la raison longtemps avancée, « ils ne servent qu'en Secours/OSM », était fausse ; l'impact reste faible, mais la décision doit se reprendre sur ce fait), inertie du pan, **indicateur de Nord à l'écran** (le manque ergonomique le plus visible), **validation iOS/Safari** (le harnais est Chromium), et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).
+
+---
+
+## 🪧 Guidage de l'itinéraire — « dans X m, tourner à gauche » (27/09/2026)
+
+Étude et décisions KARMA : **`docs/ETUDE_GUIDAGE.md`** (fait foi). Module : `js/itiGuidage.js`.
+Filets : `scripts/check-guidage.js` (pré-commit, réseaux fictifs) · `scripts/smoke/checkup-guidage.js`
+(navigateur, taille téléphone, à la main).
+
+### Chaîne
+
+`pathfinder.js > _computeRouteInterne` rend deux champs **en plus** (aucun champ existant ne change) :
+- `raccords[]` — `{ role: depart|etape|arrivee, label, de, vers, distPx }` : le trajet à vol d'oiseau entre
+  chaque waypoint et son point d'accroche. Recopié sur la road `itinerary` (les 3 créations de
+  `interfaceItineraire.js` passent par `_champsGuidage`), **dessiné** en pointillé (`road.js`,
+  `.kta-itinerary-raccord`) et **compté** (`_distanceItineraireMeters`, ×2 pour une étape).
+- `carrefours[]` — `{ x, y, sorties: [cap°] }` : nœuds **posés sur le trajet** d'où partent ≥ 3 directions.
+
+Grands carrefours : `_zonesDeCarrefour` regroupe les croisements à ≤ `ZONE_ECART_M` (5 m) l'un du précédent
+sur le trajet et pose sur chaque membre la même `zone: { x, y, r, sorties }` (sorties mesurées sur un cercle de
+rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), lit `zone.sorties` et produit
+`picto` (≥ 4 galeries, SVG `_pictoSvg` fait de nombres seuls) et `lieu` (point nommé à ≤ r + 5 m du centre).
+
+`ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
+`niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.
+
+`tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
+(apparition / disparition). Les consignes ne sont recalculées que si la road change.
+
+### 🩸 Pièges rencontrés — à ne pas réintroduire
+
+| Piège | Pourquoi | Garde |
+|---|---|---|
+| Détecter un croisement par les **nœuds traversés** | L'enrichissement garde l'arête d'origine A↔B à côté de A↔X↔B : un chemin qui passe **tout droit** peut enjamber le nœud X | recherche géométrique `_carrefoursSurChemin` (nœuds à ≤ 3 px du trajet) |
+| Compter les **voisins** d'un nœud | Arêtes doublées + liens de proximité entre sommets d'un même tracé + tremblement : un tracé tremblé devenait un croisement à chaque sommet | **cercle de ~3 m** : chaque traversée du réseau = une sortie ; une amorce < 3 m ne compte pas |
+| Départ accroché sur un segment portant un nœud de croisement | Le nœud virtuel n'était relié qu'aux extrémités → **aller-retour** au départ (+2× le recul, « demi-tour » annoncé) | `_insertVirtualNode` relie aussi les nœuds posés sur le segment (même niveau). Profite à `computeReachable` |
+| Itinéraire dans des **renderers SVG hors mode orienté** | `mapBearing` n'élargissait que le renderer par défaut ; l'itinéraire (SVG à part, un NEUF par polyline et par rendu) restait cadré sur le rectangle non tourné → coupé dans les coins, il « avançait » au dézoom (retour KARMA) | `road.js > _rendererItineraire` (UN renderer SVG par carte) + `_majPaddingRenderer` élargit TOUS les renderers, y compris ajoutés pendant le mode |
+| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | grappe ≤ `FUSION_M` depuis son **premier** événement ; `demiTour` seulement si le trajet se replie |
+
+### Seuils (calés sur un plan réel local, 27/09/2026)
+
+`FENETRE_M 4` (angle mesuré sur 4 m) · `FUSION_M 6` · **aucun virage sans croisement** (retour KARMA : sur
+un réseau de galeries c'est du bruit ; la 1re version en annonçait, 9 consignes sur 15 étaient des coudes) · présence sur le trajet 3 m / 8 m, écart 6 m /
+15 m, demi-tour 10 m ×3 / 20 m ×5 (avec / sans navigation intelligente : sans, 10 m donnaient 3 faux
+demi-tours en 350 m sous 4 m de bruit).
+
+### Frontières
+
+- **Urgence** : `road.urgence = true` (posé par la sortie d'urgence via `itineraireYAller(…, { urgence })`,
+  gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
+  `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
+- **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
+  `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
+  interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
+- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) —
+  ils créent leurs roads sans `raccords` / `carrefours` (cf `docs/BACKLOG.md`).

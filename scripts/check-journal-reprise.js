@@ -57,7 +57,8 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     console: { log() {}, warn() {} }, Promise, Date, Number, Array, Math, JSON,
     list: () => Promise.resolve(LISTE),
     _now: () => 1000000,
-    REPRISE_MS: REPRISE_MS
+    REPRISE_MS: REPRISE_MS,
+    SUSPENSION_MS: 2 * 60 * 60 * 1000
   };
   vm.createContext(ctx);
   vm.runInContext(fn + "\nglobalThis.__c = _candidateReprise;", ctx, { filename: "extrait" });
@@ -89,11 +90,26 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     .then(() => attend("reprise : une sortie encore `encours` n'est pas reprise",
       [rec({ status: "encours" })], (r) => r === null))
     .then(() => attend("reprise : carnet vide → rien, sans planter", [], (r) => r === null))
+    // 🔀 28/09/2026 — suspension au changement de plan (KARMA 1:a 2:b)
+    .then(() => attend("🔀 suspendue : une sortie suspendue il y a 1 h est reprise",
+      [rec({ status: "suspendue", closedBy: null, endedAt: null,
+             suspendueLe: new Date(1000000 - 3600000).toISOString() })], (r) => !!r && r.id === "s1"))
+    .then(() => attend("🔀 suspendue : au-delà de 2 h, elle ne reprend plus",
+      [rec({ status: "suspendue", closedBy: null, endedAt: null,
+             suspendueLe: new Date(1000000 - 2 * 3600000 - 60000).toISOString() })], (r) => r === null))
+    .then(() => attend("🔀 suspendue : 1 h 30 → reprise (le délai n'est PAS celui des crashs, 45 min)",
+      [rec({ status: "suspendue", closedBy: null, endedAt: null,
+             suspendueLe: new Date(1000000 - 90 * 60000).toISOString() })], (r) => !!r))
+    .then(() => attend("🔀 suspendue : celle d'un AUTRE plan est ignorée",
+      [rec({ planId: "AUTRE", status: "suspendue", closedBy: null,
+             suspendueLe: new Date(1000000 - 60000).toISOString() })], (r) => r === null))
     .then(suite);
 
   function suite() {
-    partie1bis(SRC);
-    partie1ter(SRC).then(partie2);
+    allerRetour(SRC).then(function () {
+      partie1bis(SRC);
+      partie1ter(SRC).then(partie2);
+    });
   }
 }
 
@@ -322,4 +338,120 @@ function partie2() {
 
   console.log(ko === 0 ? "\n🎉 reprise & fusion de sorties : tout passe" : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);
+}
+
+// ───────── 3. 🔀 A → B → A : le MODULE ENTIER sur un faux IndexedDB ─────────
+// Le scénario de KARMA (28/09/2026) : « durant ma sortie je vais sur un autre
+// plan pour le montrer ; quand je reviens dans la carrière, la sortie ne
+// reprend pas ». La règle isolée ne suffit pas à le prouver : ici le vrai
+// journal.js tourne (ouverture, suspension, reprise, expiration) sur un
+// stockage en mémoire, avec une horloge pilotée.
+function allerRetour(SRC) {
+  let NOW = Date.parse("2026-09-28T10:00:00Z");
+  class FDate extends Date {
+    constructor(...a) { if (a.length === 0) super(NOW); else super(...a); }
+    static now() { return NOW; }
+  }
+  const store = new Map();
+  const clone = (o) => (o === undefined ? undefined : JSON.parse(JSON.stringify(o)));
+  const tard = (fn) => setTimeout(fn, 0);
+  function req(val) { const r = {}; tard(() => { r.result = val; if (r.onsuccess) r.onsuccess(); }); return r; }
+  const db = {
+    objectStoreNames: { contains: () => true }, close() {},
+    transaction() {
+      const tx = {};
+      const st = {
+        put(r) { store.set(r.id, clone(r)); return req(undefined); },
+        get(id) { return req(store.has(id) ? clone(store.get(id)) : undefined); },
+        getAll() { return req([...store.values()].map(clone)); },
+        delete(id) { store.delete(id); return req(undefined); }
+      };
+      tx.objectStore = () => st;
+      tard(() => tard(() => { if (tx.oncomplete) tx.oncomplete(); }));
+      return tx;
+    }
+  };
+  const plans = { A: { dist: 0 }, B: { dist: 0 }, C: { dist: 0 } };
+  let courant = "A", toasts = 0, questions = 0, relances = 0, suiviActif = false;
+  const win = {
+    getTrackingDistanceTotaleM: () => plans[courant].dist,
+    getTrackingDistanceEstimeeM: () => 0,
+    getTrackingValidations: () => 0,
+    getTrackingTimeline: () => [],
+    getEditorPoints: () => [], getRoads: () => [],
+    OOMGuard: { showToast() { toasts++; } },
+    getTrackingActif: () => suiviActif,
+    // La fenêtre de relance : on « clique » OK.
+    ktaConfirm: () => { questions++; return Promise.resolve(true); },
+    ktaDemarrerSuivi: () => { relances++; },
+    I18n: { t: (k) => k },
+    addEventListener() {}
+  };
+  win.window = win;
+  const ctx = vm.createContext(Object.assign(win, {
+    console: { log() {}, warn() {} }, Date: FDate, Promise, JSON, Math, Number, Array, String, Object, Map,
+    localStorage: { getItem: () => null, setItem() {} },
+    indexedDB: { open() { const r = {}; tard(() => { r.result = db; if (r.onsuccess) r.onsuccess(); }); return r; } },
+    document: { visibilityState: "visible", hidden: false, addEventListener() {} },
+    setTimeout: (fn, ms) => (ms >= 1000 ? 0 : setTimeout(fn, ms)),   // pas de balayage à 4 s
+    setInterval: () => 0, clearInterval() {}
+  }));
+  vm.runInContext("var window = this;" + SRC, ctx, { filename: "journal.js" });
+  const J = ctx.Journal;
+  const attendre = () => new Promise((r) => setTimeout(r, 40));
+  function charger(p) {
+    courant = p; win._currentLoadedPlanId = p; win.PLAN_CONFIG = { plan: { name: "Plan " + p } };
+    J.onPlanLoaded(p, "Plan " + p);
+  }
+  let idA;
+  return Promise.resolve()
+    .then(() => { charger("A"); return attendre(); })
+    .then(() => {
+      idA = J.getCurrent().id;
+      plans.A.dist = 30;                       // 30 m : SOUS le seuil de 50 m
+      return J.onPlanUnload();
+    })
+    .then(attendre)
+    .then(() => {
+      const r = store.get(idA);
+      t("🔀 A→B : la sortie A est SUSPENDUE (avant : clôturée, et même JETÉE à 30 m)",
+        !!r && r.status === "suspendue" && !!r.suspendueLe);
+      charger("B");
+      return attendre();
+    })
+    .then(() => { NOW += 10 * 60000; return J.onPlanUnload(); })
+    .then(attendre)
+    .then(() => { charger("A"); return attendre(); })
+    .then(attendre)
+    .then(() => {
+      const cur = J.getCurrent();
+      t("🔀 B→A (10 min plus tard) : la MÊME sortie reprend", !!cur && cur.id === idA && cur.reprises === 1);
+      // ▶️ Sortie TERRAIN (30 m) reprise, suivi arrêté par le changement de
+      // plan : on propose de le relancer — la fenêtre remplace le toast.
+      t("▶️ reprise d'une sortie terrain, suivi arrêté : on propose de relancer le suivi", questions === 1 && toasts === 0);
+      t("▶️ « Relancer » démarre le suivi par le chemin de la tuile (ktaDemarrerSuivi)", relances === 1);
+      plans.A.dist = 80;
+      t("🔀 reprise : les 30 m d'avant l'aller-retour comptent toujours (80 m au total)",
+        Math.round(J.getCurrent().distM) === 80);
+      return J.onPlanUnload();
+    })
+    .then(attendre)
+    .then(() => { NOW += 2 * 3600000 + 60000; charger("C"); return attendre(); })
+    .then(attendre)
+    .then(() => {
+      const r = store.get(idA);
+      t("🔀 > 2 h : la sortie A (80 m) est finalisée et GARDÉE", !!r && r.status === "close" && r.closedBy === "auto");
+      t("🔀 > 2 h : la session B, sous les seuils, est jetée", ![...store.values()].some((x) => x.planId === "B"));
+      return J.onPlanUnload();
+    })
+    .then(attendre)
+    .then(() => { charger("A"); return attendre(); })
+    .then(attendre)
+    .then(() => {
+      t("🔀 > 2 h : revenir sur A ouvre une NOUVELLE sortie", !!J.getCurrent() && J.getCurrent().id !== idA);
+      const S2 = SRC.replace(/\r\n/g, "\n");
+      t("🔀 câblage : le changement de plan SUSPEND (plus de _finaliser dans onPlanUnload)",
+        S2.includes("function onPlanUnload() {\n    if (!_cur) return Promise.resolve(null);\n    return _suspendre();"));
+      t("🔀 câblage : l'expiration tourne au démarrage", S2.includes("_balayerEnCours(); _expirerSuspendues();"));
+    });
 }

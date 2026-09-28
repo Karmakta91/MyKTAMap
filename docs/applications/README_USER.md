@@ -910,6 +910,7 @@ Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batteri
 4. Une modale compacte s'affiche avec :
    - La sortie la plus proche + sa distance + son niveau si multi-étages
    - Un bouton **🧭 Tracer l'itinéraire** (réutilise le moteur Mode Itinéraire classique)
+   - 🪧 Une fois tracé, le **bandeau de guidage** te dit quoi faire à chaque croisement — **sans croix** en sortie d'urgence, même si le guidage est coupé. Si tu t'écartes, son bouton devient **« Sortie la plus proche d'ici »** (voir « 🪧 Guidage » dans l'itinéraire)
    - Un dépliable **Voir les N autres sorties** trié par distance
 
 ### Versions fermées volontairement ignorées
@@ -1197,6 +1198,8 @@ Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles**, 
 | **🎯** | **Ma position** — recentre la carte sur toi |
 | **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) |
 | **🗺️** | Calculer un itinéraire |
+| **🗺️** | **Plan orienté** — la carte tourne avec toi pendant le suivi |
+| **🪧** | **Guidage de l'itinéraire** — Auto / Jamais (bandeau « Dans 40 m, tourner à gauche ») |
 | **🎬** | Replay de session tracker |
 | **🔥** | Heatmap — voir section dédiée |
 | **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
@@ -1375,16 +1378,15 @@ Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre 
 |---|---|
 | 🖼️ **Calques d'image** | Image de base + calques additionnels (légende, signalétique, etc.) |
 | 📊 **Calques de données** | Les calques `puits`, `vehicule`, `cataphile`, `editor` (= Mes annotations), etc. |
-
-> 🔄 **Corriger un calque de données** — un calque livré dans le ZIP du plan est en **lecture seule** : tu peux le masquer, pas l’éditer. Chaque ligne de la section **📊 Calques de données** porte donc un bouton **« 🔄 Modifier »** : son contenu passe dans ta session, où tous tes outils s’appliquent — en particulier **🔄 Convertir cet objet**, pour changer un front de taille en galerie sur un relevé importé. Le calque d’origine se **masque tout seul** (sa case affiche « en cours de modification — afficher quand même », que tu peux recocher pour comparer les deux). **« ↩️ Restaurer »** annule tout ; **« 💾 Exporter »** te rend un fichier corrigé à redonner au plan via 🏗️ Générateur → « Modifier un plan », en cliquant **« Choisir » sur la ligne de ce calque** — il REMPLACE l’ancien contenu, aucun doublon n’est possible.
->
-> ⚠️ **Ce que l’app t’annonce avant d’agir** : le poids que la copie prendra dans ta session (un gros relevé dépasse le mégaoctet, la limite du navigateur tourne autour de 5 Mo tous plans confondus) et la place déjà occupée. À l’export, elle te dit aussi combien d’objets **que tu as dessinés toi-même** ne partent pas — ils n’appartiennent pas à ce calque. Et « Effacer la session » **restaure** les calques ouverts à la modification : la copie et le masquage tombent ensemble.
-
 | 🏗️ **Niveaux M-LVL** *(si plan multi-niveau)* | Niveau actif (dessin) + niveaux visibles (multi-sélection) — **synchronisé** avec la modale Niveaux classique |
 | 🏷️ **Tags des points** | Filtre par tag (puits aération, salle, chatière...). Liste auto = tags **réellement présents** dans le plan avec compteur. |
 | 🛣️ **Types de tracés** | Principal / Secondaire / Chemin / Jonction + customs |
 | ⬛ **Types de zones** | Eau / Remblais / Effondrement / Inaccessible + customs |
 | 🏛️ **Types de structures** | Pilier 1ère masse / Pilier 2è masse / Mur / Front 1 / Front 2 + customs |
+
+> 🔄 **Corriger un calque de données** — un calque livré dans le ZIP du plan est en **lecture seule** : tu peux le masquer, pas l’éditer. Chaque ligne de la section **📊 Calques de données** porte donc un bouton **« 🔄 Modifier »** : son contenu passe dans ta session, où tous tes outils s’appliquent — en particulier **🔄 Convertir cet objet**, pour changer un front de taille en galerie sur un relevé importé. Le calque d’origine se **masque tout seul** (sa case affiche « en cours de modification — afficher quand même », que tu peux recocher pour comparer les deux). **« ↩️ Restaurer »** annule tout ; **« 💾 Exporter »** te rend un fichier corrigé à redonner au plan via 🏗️ Générateur → « Modifier un plan », en cliquant **« Choisir » sur la ligne de ce calque** — il REMPLACE l’ancien contenu, aucun doublon n’est possible.
+>
+> ⚠️ **Ce que l’app t’annonce avant d’agir** : le poids que la copie prendra dans ta session (un gros relevé dépasse le mégaoctet, la limite du navigateur tourne autour de 5 Mo tous plans confondus) et la place déjà occupée. À l’export, elle te dit aussi combien d’objets **que tu as dessinés toi-même** ne partent pas — ils n’appartiennent pas à ce calque. Et « Effacer la session » **restaure** les calques ouverts à la modification : la copie et le masquage tombent ensemble.
 
 **Comment ça marche :**
 
@@ -1497,6 +1499,27 @@ Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du 
 
 > 💡 En pratique : planifie ta sortie (moi → curiosité X → curiosité Y → sortie), marche, et à chaque point atteint touche **📍 Je suis ici** sur son popup. L'app coche, recalcule, et t'indique toujours le chemin depuis là où tu es vraiment.
 
+#### 🪧 Guidage — « Dans 40 m, tourner à gauche » (depuis v1.98.0)
+
+Quand le **tracker est actif** et qu'un **itinéraire est tracé** (depuis la modale, un « 🧭 Y aller » sur un point ou la sortie d'urgence), un **bandeau** apparaît tout seul en haut de la carte et te dit quoi faire :
+
+- **« Dans 40 m, tourner à gauche »**, **« Continuer sur 120 m »**, puis **« Maintenant : tourner à gauche »** à l'approche. En petit dessous, la consigne suivante (« Puis tourner à droite »).
+- **Seulement aux croisements** : tant qu'il n'y a qu'une galerie à suivre, le guidage se tait, même si elle tourne. Il ne dit jamais « la 3e à gauche » (les tracés ne montrent pas toutes les ouvertures réelles) : toujours une **distance**.
+- **Deux galeries proches** → « prendre la branche de gauche / de droite ». Au passage d'une jonction de niveau → « monter / descendre vers le niveau N ».
+- **Grands carrefours** : plusieurs croisements rapprochés (à 5 m ou moins l'un de l'autre) comptent comme **un seul carrefour**, avec **une seule consigne** donnée à son entrée. À partir de **4 galeries**, un **petit schéma** remplace la flèche : chaque galerie est un trait, celle d'où tu viens en pointillé en bas, **celle à prendre en doré**. Si un point nommé se trouve dans le carrefour, son nom ouvre la consigne.
+- **Hors tracé au départ** → « Rejoindre le tracé : ~12 m », avec une **flèche** qui pointe vers la galerie la plus proche, par rapport à ton téléphone.
+- **Distances** : nettes avec la **🧭 Navigation intelligente** (⚙️ Réglages → Navigation & tracker) ; sans elle, elles sont **approximatives** (« ~40 m », arrondies à 10 m), parce que la position vient du podomètre et dérive.
+
+**Tu t'écartes ou tu fais demi-tour ?** Le bandeau passe en orange (« Hors itinéraire ? » / « Demi-tour ? ») et propose **[Je suis ici]** (touche l'endroit où tu es, l'itinéraire se recalcule depuis là), **[Recalculer d'ici]** et **[Ignorer]** (plus d'alerte jusqu'à ton retour sur le chemin). Rien n'est recalculé sans toi : une dérive du podomètre ressemble à un écart.
+
+**Toucher le bandeau** ouvre la **🪧 Feuille de route** : toutes les consignes avec leurs distances (touche une ligne pour voir l'endroit). Elle est aussi accessible **sans tracker**, depuis la modale Itinéraire (bouton « 🪧 Feuille de route »), pour préparer une sortie.
+
+**La croix ✕** masque le bandeau **pour cet itinéraire** ; il revient au suivant. Pour le couper **pour de bon** : menu 🧭 Tracker → **🪧 Guidage de l'itinéraire**.
+
+**Trajet à vol d'oiseau** : si ton départ, une étape ou ton arrivée est à côté des galeries, le bout de trajet jusqu'à la plus proche est dessiné **en pointillé** et **compté** dans la distance (une étape hors tracé compte aller et retour). Au-delà de **50 m**, l'app te prévient : ce trajet n'est pas une galerie connue, vérifie ta position. Sur un plan **sans aucun tracé**, l'itinéraire ne peut pas être calculé : l'app le dit dès le lancement.
+
+> 🚨 **En sortie d'urgence**, le bandeau n'a **pas de croix** et s'affiche même si le guidage est coupé ; en cas d'écart, le bouton devient **« Sortie la plus proche d'ici »**. L'**écran d'urgence XL** reprend la consigne en gros.
+
 #### 🚫 Préférences d'évitement
 
 Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitement (optionnel)** permet de définir des contraintes **souples** que le pathfinder essaiera de respecter :
@@ -1608,6 +1631,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 - 📍 **Une seule position, en énorme** (lisible à un mètre du téléphone) : les coordonnées **GPS** si ton plan est géoréférencé — ce sont celles qu'on dicte à des secours — sinon la position **X / Y du plan**. Jamais les deux : le titre du bloc dit laquelle tu lis. Sous les chiffres, une ligne précise si c'est ta position suivie, ta dernière position connue, ou la **position de départ du plan jamais confirmée**.
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
+- 🪧 **La consigne du guidage en gros** (depuis v1.98.0) : si un itinéraire est tracé et le suivi actif, la prochaine consigne (« Dans 40 m, tourner à gauche », schéma des grands carrefours) s'affiche en haut de l'écran. En cas d'écart, un bouton **« Voir les choix sur la carte »** te ramène au bandeau et à ses boutons
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
   Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
@@ -2671,6 +2695,8 @@ Ouvre la fiche de la sortie → **✏️ Corriger la fin**, et saisis l'heure r�
 Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Auparavant, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
 
 **Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
+
+**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Le temps passé sur l'autre plan ne s'ajoute pas à ta sortie. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
 
 > ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
 

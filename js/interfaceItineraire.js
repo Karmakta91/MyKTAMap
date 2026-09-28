@@ -66,6 +66,35 @@ function _escapeHtml(s) {
 }
 
 // =========================
+// 🪧 GUIDAGE (27/09/2026) — ce que l'itinéraire garde du calcul
+// =========================
+// Le pathfinder rend désormais `raccords` (trajet à vol d'oiseau entre chaque
+// étape et son tracé) et `carrefours` (croisements posés sur le trajet). Ils
+// sont recopiés sur la road : les consignes (js/itiGuidage.js) et le
+// pointillé du raccord (road.js) les lisent, y compris après un rechargement.
+// Les TROIS créations d'itinéraire de ce fichier passent par ici.
+function _champsGuidage(result) {
+  return {
+    raccords:   Array.isArray(result && result.raccords)   ? result.raccords   : [],
+    carrefours: Array.isArray(result && result.carrefours) ? result.carrefours : []
+  };
+}
+
+// Décision KARMA : un plan sans aucun tracé → on AVERTIT au lancement ; le
+// calcul échouerait sur un message technique et le guidage n'aurait rien à dire.
+function _itiAucunTrace() {
+  return !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
+            !window.Pathfinder.aDesTraces());
+}
+
+// Décision KARMA : raccord à vol d'oiseau de plus de 50 m → on avertit sans bloquer.
+function _texteAlerteRaccord(road) {
+  if (!window.ItiGuidage) return "";
+  const a = window.ItiGuidage.alerteRaccord(road);
+  return a ? window.I18n.t("guid.alerte.raccordLoin", { dist: window.formatDistance(a.distM, 0) }) : "";
+}
+
+// =========================
 // 🆕 v1.46.4 — OVERLAY DE CALCUL D'ITINÉRAIRE
 // =========================
 // Sur un réseau de tracés DENSE, le Dijkstra prend 1-3 s. On affiche un loader
@@ -216,6 +245,10 @@ window.itineraireYAller = function(x, y, nom, opts) {
     alert(window.I18n.t("iti.err.pathfinder"));
     return;
   }
+  if (_itiAucunTrace()) {
+    alert(window.I18n.t("guid.aucunTrace"));
+    return;
+  }
 
   const labelPoint = nom ? String(nom) : window.I18n.t("iti.point.coords", { x: Math.round(x), y: Math.round(y) });
 
@@ -250,11 +283,15 @@ window.itineraireYAller = function(x, y, nom, opts) {
       });
 
       // Cree la road itineraire (sans flag _preview : on enregistre direct)
-      const newRoad = {
+      const newRoad = Object.assign({
         type:      "itinerary",
         points:    result.path,
         waypoints: waypoints
-      };
+      }, _champsGuidage(result));
+      // 🪧 Guidage lot 4 (décisions A/C/G) : un itinéraire de SORTIE
+      // D'URGENCE est marqué — bandeau sans croix, affiché même réglé sur
+      // « Jamais », et « Recalculer » y vise la sortie la plus proche.
+      if (opts.urgence) newRoad.urgence = true;
 
       // Remove ancien itineraire + add le nouveau
       const currentRoads = window.getRoads ? window.getRoads() : [];
@@ -273,15 +310,20 @@ window.itineraireYAller = function(x, y, nom, opts) {
       // Pan + flash sur le point d'arrivée pour indiquer ce qui vient d'etre calcule
       _panEtFlashSurPoint({ x: x, y: y });
 
+      const alerteRaccord = _texteAlerteRaccord(newRoad);
+      if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
+
     } catch(err) {
       alert(window.I18n.t("iti.err.compute", { err: (err.message || err) }));
     }
   }
 
   // Check si itineraire actif → confirm
+  // 🪧 Sauf en sortie d'urgence : l'utilisateur vient de toucher « Tracer »
+  // vers une sortie — une question de plus à ce moment-là est de trop.
   const existing = (window.getRoads ? window.getRoads() : [])
     .find(function(r) { return r.type === "itinerary"; });
-  if (existing) {
+  if (existing && !opts.urgence) {
     _confirmRemplacerItineraire(_calculer);
   } else {
     _calculer();
@@ -525,6 +567,10 @@ function _distanceItineraireMeters(road) {
     const b = road.points[i];
     totalPx += Math.hypot(b.x - a.x, b.y - a.y);
   }
+  // 🪧 Décision KARMA K (27/09/2026) : le trajet à vol d'oiseau jusqu'au
+  // tracé fait partie du chemin — il était ignoré. Un itinéraire d'avant ce
+  // lot n'a pas de `raccords` : il garde sa distance d'origine.
+  if (window.ItiGuidage) totalPx += window.ItiGuidage.longueurRaccordsPx(road);
   const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
   return totalPx / scale;
 }
@@ -864,6 +910,13 @@ window._onTrackerRecale = function(x, y, source) {
   }, 500);
 };
 
+// 🪧 Guidage (lot 2, décision D) — « Recalculer d'ici » du bandeau. Geste
+// explicite de l'utilisateur : pas de confirmation en plus.
+window.itineraireReplanifierDepuis = function(px, py) {
+  if (typeof px !== "number" || typeof py !== "number") return;
+  _replanifierDepuis(px, py);
+};
+
 async function _replanifierDepuis(px, py) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints)) return;
@@ -904,11 +957,13 @@ async function _replanifierDepuis(px, py) {
     // road.waypoints conserve TOUTES les étapes (validées incluses, avec leur
     // flag done) → progression visible + persistance session gratuite. Seul
     // l'ancien point 0 tracker est remplacé par la position recalée.
-    const newRoad = {
+    const newRoad = Object.assign({
       type:      "itinerary",
       points:    result.path,
       waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); }))
-    };
+    }, _champsGuidage(result));
+    // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
+    if (road.urgence) newRoad.urgence = true;
     const filtered = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; });
     filtered.push(newRoad);
@@ -918,6 +973,8 @@ async function _replanifierDepuis(px, py) {
     _majLabelDistanceItineraire();
     console.log("[Itineraire] Replanifié depuis (" + Math.round(px) + "," + Math.round(py) + ") — " +
                 restantes.length + " étape(s) restante(s)");
+    const alerteRaccord = _texteAlerteRaccord(newRoad);
+    if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
   } catch(err) {
     // Pas de chemin depuis la nouvelle position (réseau non connecté, etc.) :
     // on GARDE l'ancien tracé tel quel, on informe sans bloquer.
@@ -1532,7 +1589,22 @@ window.ouvrirItinerairModal = function() {
         // que `computeRoute` cesse de le jeter. Aucune plomberie en plus.
         '<button id="kta-iti-profil" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
           ' style="width:100%; margin-top:6px;">📉 ' + window.I18n.t("prof.profil.btn") + '</button>' +
+        // 🪧 Feuille de route (guidage, lot 1) — toutes les consignes, sans tracker.
+        (window.ItiGuidage
+          ? '<button id="kta-iti-feuille" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
+              ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
+          : '') +
       '</div>';
+  }
+  if (!window._itiFeuilleBound) {
+    window._itiFeuilleBound = true;
+    document.addEventListener("click", function (e) {
+      const b = e.target && e.target.closest && e.target.closest("#kta-iti-feuille");
+      if (!b || !window.ItiGuidage) return;
+      const iti = ((window.getRoads && window.getRoads()) || [])
+        .find(function (r) { return r && r.type === "itinerary"; });
+      if (iti) window.ItiGuidage.ouvrirFeuilleDeRoute(iti);
+    });
   }
   // Délégation plutôt qu'un listener direct : ce bloc est réécrit à chaque
   // rafraîchissement du panneau, un `addEventListener` posé sur le bouton
@@ -1971,6 +2043,11 @@ window.ouvrirItinerairModal = function() {
       errEl.style.display = "block";
       return;
     }
+    if (_itiAucunTrace()) {
+      errEl.textContent = window.I18n.t("guid.aucunTrace");
+      errEl.style.display = "block";
+      return;
+    }
 
     // 🆕 v1.43.26 (Pattern D) — Disable bouton pendant le pathfinding Dijkstra
     // (peut prendre 1-3 s sur un grand graph). Sans ça, l'user qui double-clique
@@ -2003,7 +2080,9 @@ window.ouvrirItinerairModal = function() {
       if (!resEl.isConnected) return;
       // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
-      const distM = result.totalDistance / scale;
+      // 🪧 raccords à vol d'oiseau compris (décision K) — même total que le libellé.
+      const raccordsPx = window.ItiGuidage ? window.ItiGuidage.longueurRaccordsPx(result) : 0;
+      const distM = (result.totalDistance + raccordsPx) / scale;
 
       // Message fallback si certains evitements n'ont pas pu etre respectes
       let fallbackHtml = "";
@@ -2022,11 +2101,20 @@ window.ouvrirItinerairModal = function() {
       }
 
       const tempsCalcMin = _tempsItineraireMinutes(distM, wpsCalc.length);
+      const alerteRaccord = _texteAlerteRaccord(result);
+      const raccordHtml = alerteRaccord
+        ? '<div class="kta-iti-result-row kta-guid-alerte">⚠️ ' + _escapeHtml(alerteRaccord) + '</div>'
+        : '';
       resEl.innerHTML =
         fallbackHtml +
+        raccordHtml +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distM, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segmentsCrossed") + '</strong> ' + result.segmentCount + '</div>' +
+        (window.ItiGuidage
+          ? '<button id="kta-iti-feuille-preview" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
+              ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
+          : '') +
         '<div class="kta-iti-result-actions">' +
           '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.btn.save") + '</button>' +
           '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.I18n.t("iti.btn.discard") + '</button>' +
@@ -2040,17 +2128,22 @@ window.ouvrirItinerairModal = function() {
       // ⚠️ Les waypoints originaux (avec leurs labels/sources) sont stockés sur
       // le road via la propriété `waypoints` → restauration au re-open de la
       // modale (mode navigation).
-      const previewRoad = {
+      const previewRoad = Object.assign({
         type:      "itinerary",
         points:    result.path,
         waypoints: _itineraryWaypoints.map(function(w) { return Object.assign({}, w); }),
         _preview:  true
-      };
+      }, _champsGuidage(result));
       const currentRoads = window.getRoads ? window.getRoads() : [];
       const filtered = currentRoads.filter(function(r) { return r.type !== "itinerary"; });
       filtered.push(previewRoad);
       if (window.setRoads) window.setRoads(filtered);
       _majLabelDistanceItineraire();
+
+      const btnFeuille = document.getElementById("kta-iti-feuille-preview");
+      if (btnFeuille) btnFeuille.addEventListener("click", function() {
+        window.ItiGuidage.ouvrirFeuilleDeRoute(previewRoad);
+      });
 
       document.getElementById("kta-iti-save").addEventListener("click", function() {
         // Convertit le preview en road persistante (les waypoints sont déjà attachés)

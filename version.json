@@ -1,8 +1,8 @@
 {
-  "version": "v1.97.12",
-  "released": "2026-09-27",
+  "version": "v1.98.1",
+  "released": "2026-09-28",
   "notes": [
-    "🧭 Nouveau dans le menu Tracker : « Plan orienté ». Pendant le suivi, c'est la carte qui tourne pour que ta direction de marche pointe toujours vers le haut de l'écran, au lieu de l'icône qui pivote sur un plan fixe. À activer toi-même : la carte reste fixe par défaut, et un bouton « Recentrer » te ramène sur toi si tu déplaces la carte à la main.",
-    "🚨 L'écran d'urgence XL a été repensé : une seule position, une carte deux fois plus grande, tes couleurs de légende, et un bouton 📋 à côté des chiffres qui **copie tes coordonnées**, prêtes à envoyer par SMS dès que tu captes. 📖 Les PDF livrés avec un plan apparaissent aussi dans « Mon carnet »."
+    "🪧 Nouveau : le guidage de l'itinéraire. Pendant le suivi, un bandeau te dit quoi faire (« Dans 40 m, tourner à gauche »), montre un schéma des grands carrefours et te prévient si tu t'écartes du chemin. Les distances d'itinéraire comptent maintenant le trajet à vol d'oiseau jusqu'à la galerie la plus proche (en pointillé).",
+    "🔁 Ouvrir un autre plan pendant une sortie la met en pause : reviens sur ta carrière dans les 2 heures, elle reprend là où tu l'avais laissée, et l'app te propose de relancer le suivi."
   ]
 }
