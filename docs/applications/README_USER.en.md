@@ -2695,6 +2695,8 @@ If you leave MyKTAMap during an outing — to change music, to take a call — t
 
 **It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
 
+**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. The time spent on the other plan is not added to your outing. ⚠️ **Tracking**, however, stops when you switch plans: remember to press ▶️ again when you come back.
+
 > ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
 
 #### 🔗 Re-joining outings that were already split

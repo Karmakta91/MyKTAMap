@@ -36,7 +36,8 @@
 //       restaurée serait comptée comme « ajoutée aujourd'hui »)
 //   pendant la sortie                      → flush IDB toutes les 30 s + à chaque
 //                                            passage en arrière-plan (mobile tué)
-//   main.js > _libererRessourcesPlanPrecedent() → onPlanUnload()
+//   main.js > _libererRessourcesPlanPrecedent() → onPlanUnload() = SUSPENSION
+//     (depuis le 28/09/2026 : reprise si retour sur le même plan sous 2 h)
 //     ↳ APRÈS SessionPersist.onPlanUnload (état RAM encore intact), AVANT le
 //       teardown qui vide la timeline tracker.
 //
@@ -131,9 +132,24 @@
   // Le signal de reprise n est PAS le delai seul, c est `closedBy: "crash"` —
   // pose par le balayage sur une sortie restee `encours`, donc UNIQUEMENT
   // quand l app a ete tuee sous l utilisateur. Une sortie cloturee a la main
-  // ou par un changement de plan n est jamais recollee : il l a terminee.
+  // n est jamais recollee : il l a terminee. (Le changement de plan, lui, ne
+  // cloture plus : il SUSPEND — cf SUSPENSION_MS, 28/09/2026.)
   // Le delai n est qu une borne de bon sens par-dessus.
   const REPRISE_MS = 45 * 60 * 1000;
+
+  // 🔀 28/09/2026 (KARMA, 1:a 2:b 3:a) — SUSPENSION AU CHANGEMENT DE PLAN.
+  // « Durant ma sortie je vais sur un autre plan pour le montrer ; quand je
+  // reviens dans la carrière où je suis réellement, la sortie ne reprend
+  // pas. » Le changement de plan CLÔTURAIT la sortie (`closedBy: "auto"`,
+  // jamais recollée — et même SUPPRIMÉE sous les seuils) : l'hypothèse « il
+  // l'a terminée » était fausse pour ce cas. Désormais la sortie est
+  // SUSPENDUE (`status: "suspendue"`), sans filtre de pertinence : rien n'est
+  // jeté pendant l'aller-retour. Retour sur son plan dans le délai → elle
+  // reprend. Délai dépassé → finalisée normalement (`_expirerSuspendues`).
+  // Au plus UNE suspendue par plan (on ne suspend que la sortie du plan
+  // quitté), plusieurs plans peuvent en avoir une chacun : sans ça, revenir de
+  // B vers A suspendrait la session de B et FINALISERAIT celle de A.
+  const SUSPENSION_MS = 2 * 60 * 60 * 1000;   // KARMA : « disons 2 h pour le moment »
 
   const MAX_TRACK_PTS = 1500;   // décimation du tracé archivé
   const MAX_SORTIES   = 500;    // garde-fou quota : purge FIFO au-delà
@@ -479,6 +495,11 @@
       for (let i = 0; i < all.length; i++) {          // deja trie du + recent
         const r = all[i];
         if (!r || r.planId !== planId) continue;
+        // 🔀 Suspendue au changement de plan : reprise dans les 2 h.
+        if (r.status === "suspendue") {
+          const suspMs = Date.parse(r.suspendueLe || r.updatedAt || 0) || 0;
+          return (suspMs && (now - suspMs) <= SUSPENSION_MS) ? r : null;
+        }
         if (r.status !== "close" || r.closedBy !== "crash") return null;
         const finMs = Date.parse(r.endedAt || r.updatedAt || 0) || 0;
         if (!finMs || (now - finMs) > REPRISE_MS) return null;
@@ -518,7 +539,18 @@
   }
 
   function onPlanLoaded(planId, planName) {
-    if (!isEnabled()) return null;
+    if (!isEnabled()) {
+      // Carnet désactivé : pas de sortie automatique… mais une sortie démarrée
+      // À LA MAIN puis suspendue par un changement de plan doit reprendre au
+      // retour, comme les autres.
+      if (!_cur) {
+        _candidateReprise(planId).then(function (rec) {
+          if (rec && rec.status === "suspendue" && !_cur) _reprendre(rec, "carnet désactivé");
+        });
+      }
+      _expirerSuspendues();
+      return null;
+    }
     return _ouvrir(planId, planName, "auto");
   }
 
@@ -604,22 +636,57 @@
     const idNeuve = _cur.id;
     _candidateReprise(planId).then(function (rec) {
       if (!rec || !_cur || _cur.id !== idNeuve) return;
-      _cur = rec;
-      _cur.status   = "encours";
-      _cur.endedAt  = null;
-      _cur.closedBy = null;
-      _cur.reprises = (Number(rec.reprises) || 0) + 1;
-      _baseline = _baselineDepuisReprise(rec);
-      _photoIds = Array.isArray(rec.photoIds) ? rec.photoIds.slice() : [];
-      console.log("[Journal] 🔁 Sortie reprise :", rec.id,
-                  "· reprise n°" + _cur.reprises + " · la sortie neuve", idNeuve, "est abandonnee");
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        const msg = (window.I18n && window.I18n.t) ? window.I18n.t("journal.reprise.toast") : "🔁 Sortie reprise";
-        window.OOMGuard.showToast(msg, "info");
-      }
+      _reprendre(rec, "la sortie neuve " + idNeuve + " est abandonnee");
     });
+    _expirerSuspendues();
 
     return { id: _cur.id, startedAt: _cur.startedAt };
+  }
+
+  // Remet `rec` (tuée sous l'utilisateur, ou suspendue par un changement de
+  // plan) en sortie EN COURS, avec sa baseline d'origine reconstruite.
+  function _reprendre(rec, detail) {
+    if (_cur && _cur.id !== rec.id) _stopTimer();
+    _cur = rec;
+    _cur.status   = "encours";
+    _cur.endedAt  = null;
+    _cur.closedBy = null;
+    delete _cur.suspendueLe;
+    _cur.reprises = (Number(rec.reprises) || 0) + 1;
+    _baseline = _baselineDepuisReprise(rec);
+    _photoIds = Array.isArray(rec.photoIds) ? rec.photoIds.slice() : [];
+    _lastTick = (document.visibilityState === "hidden") ? null : _now();
+    _startTimer();
+    console.log("[Journal] 🔁 Sortie reprise :", rec.id, "· reprise n°" + _cur.reprises + (detail ? " · " + detail : ""));
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      const msg = (window.I18n && window.I18n.t) ? window.I18n.t("journal.reprise.toast") : "🔁 Sortie reprise";
+      window.OOMGuard.showToast(msg, "info");
+    }
+  }
+
+  // 🔀 Une sortie suspendue depuis plus de SUSPENSION_MS ne reviendra plus :
+  // elle est finalisée comme l'aurait fait l'ancien changement de plan —
+  // gardée si elle passe les seuils, jetée sinon. Appelé à chaque ouverture de
+  // plan et au démarrage. (Pas d'affinage réseau ici : la timeline de son plan
+  // n'est plus en mémoire — même limite que le balayage des sorties tuées.)
+  function _expirerSuspendues() {
+    return list().then(function (all) {
+      const now = _now();
+      const curId = _cur ? _cur.id : null;
+      const perimees = all.filter(function (r) {
+        if (!r || r.status !== "suspendue" || r.id === curId) return false;
+        const t = Date.parse(r.suspendueLe || r.updatedAt || 0) || 0;
+        return !t || (now - t) > SUSPENSION_MS;
+      });
+      return Promise.all(perimees.map(function (r) {
+        if (!_pertinente(r)) return remove(r.id);
+        r.status   = "close";
+        r.closedBy = "auto";
+        r.endedAt  = r.suspendueLe || r.updatedAt || new Date().toISOString();
+        delete r.suspendueLe;
+        return _put(r);
+      }));
+    }).catch(function () {});
   }
 
   function _planNameCourant() {
@@ -752,9 +819,26 @@
 
   // Appelé par main.js > _libererRessourcesPlanPrecedent (après
   // SessionPersist.onPlanUnload, avant le teardown qui vide la timeline).
+  // 🔀 28/09/2026 — le changement de plan SUSPEND la sortie au lieu de la
+  // finaliser (cf SUSPENSION_MS). Pas de filtre de pertinence ni d'affinage
+  // ici : c'est une pause, pas une fin. La finalisation viendra au retour
+  // (sortie reprise puis clôturée plus tard) ou à l'expiration du délai.
   function onPlanUnload() {
     if (!_cur) return Promise.resolve(null);
-    return _finaliser("auto");
+    return _suspendre();
+  }
+
+  function _suspendre() {
+    const rec = _snapshot();
+    _stopTimer();
+    _cur = null; _baseline = null; _photoIds = [];
+    if (!rec) return Promise.resolve(null);
+    rec.status      = "suspendue";
+    rec.suspendueLe = new Date().toISOString();
+    rec.endedAt     = null;
+    rec.closedBy    = null;
+    console.log("[Journal] ⏸️ Sortie suspendue (changement de plan) :", rec.id);
+    return _put(rec).then(function () { return rec; });
   }
 
   // Clôture manuelle : garde TOUJOURS, puis rouvre immédiatement une nouvelle
@@ -1074,7 +1158,7 @@
   // interrompue par un crash puis le carnet décoché restait « en cours » à
   // jamais, et le démarrage manuel (qui marche carnet décoché) créait le même
   // orphelin.
-  setTimeout(function() { _balayerEnCours(); }, 4000);
+  setTimeout(function() { _balayerEnCours(); _expirerSuspendues(); }, 4000);
 
   console.log("[Journal] Module chargé (DB " + DB_NAME + " v" + DB_VERSION + ")");
 })();

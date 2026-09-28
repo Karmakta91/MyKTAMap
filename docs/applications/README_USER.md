@@ -2696,6 +2696,8 @@ Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un app
 
 **Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
 
+**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Le temps passé sur l'autre plan ne s'ajoute pas à ta sortie. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : pense à relancer ▶️ en revenant.
+
 > ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
 
 #### 🔗 Recoller des sorties déjà coupées

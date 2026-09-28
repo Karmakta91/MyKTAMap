@@ -88,13 +88,24 @@ const RFI = lire("js/refonteInterface.js");
 {
   t("📔 demarrer est exposée dans l'API du module", /^\s*demarrer:\s*demarrer,/m.test(JRN));
   const opl = JRN.slice(JRN.indexOf("function onPlanLoaded("), JRN.indexOf("function demarrer()"));
+  // 🔀 28/09/2026 — la branche « carnet décoché » ne se réduit plus à
+  // `return null;` : elle peut REPRENDRE une sortie démarrée à la main puis
+  // suspendue par un changement de plan. La règle gardée est la même : elle
+  // n'OUVRE jamais de sortie (aucun `_ouvrir`) et rend null.
+  const brancheOff = (function () {
+    const i = opl.indexOf("if (!isEnabled()) {");
+    if (i < 0) return null;
+    const j = opl.indexOf("return null;", i);
+    return j < 0 ? null : opl.slice(i, j + "return null;".length);
+  })();
   t("🩸 l'ouverture AUTOMATIQUE reste conditionnée au carnet actif (décocher doit encore tout arrêter)",
-    /if \(!isEnabled\(\)\) return null;/.test(opl) && /_ouvrir\(planId, planName, "auto"\)/.test(opl));
+    brancheOff !== null && !/_ouvrir\(/.test(brancheOff) && /_ouvrir\(planId, planName, "auto"\)/.test(opl));
   const dem = JRN.slice(JRN.indexOf("  function demarrer() {"), JRN.indexOf("  function _ouvrir("));
   t("🩸 …et le démarrage MANUEL ne le teste pas (sinon le bouton ne sert à rien là où il sert)", !/isEnabled\(\)/.test(dem));
   const bas = JRN.slice(JRN.indexOf("// Balayage différé"));
   t("🩸 le balayage de démarrage régularise TOUJOURS (plus sous condition de carnet actif)",
-    /setTimeout\(function\(\) \{ _balayerEnCours\(\); \}, 4000\);/.test(bas) && !/if \(isEnabled\(\)\) \{\n\s*setTimeout/.test(bas));
+    /setTimeout\(function\(\) \{ _balayerEnCours\(\);( _expirerSuspendues\(\);)? \}, 4000\);/.test(bas) &&
+    !/if \(isEnabled\(\)\) \{\n\s*setTimeout/.test(bas));
   t("clôturer ne rouvre une sortie que par le chemin automatique (carnet décoché : rien ne repart)",
     /function cloturer\(\)[\s\S]{0,900}onPlanLoaded\(planId, planName\);/.test(JRN));
   t("la sortie garde son origine (ouvertePar)", /ouvertePar:\s*\(origine === "manuel"\) \? "manuel" : "auto",/.test(JRN));
