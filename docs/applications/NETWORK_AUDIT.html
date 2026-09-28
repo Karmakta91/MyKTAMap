@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.98.0</strong> (27 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.98.1</strong> (28 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.98.1 (sortie mise en pause au changement de plan)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucune requête, aucun domaine. La mise en pause d'une sortie et sa reprise se font dans le carnet stocké sur ton appareil (IndexedDB) ; la relance du suivi utilise les capteurs du téléphone déjà employés par le tracker, rien ne part sur le réseau.</p>
   <h3>v1.98.0 (guidage de l'itinéraire)</h3>
   <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Le guidage (bandeau « Dans 40 m, tourner à gauche », feuille de route, schéma des carrefours) calcule tout <strong>sur ton appareil</strong>, à partir de l'itinéraire déjà calculé localement et de ta position estimée ; rien n'est envoyé. Le nouveau module <code>js/itiGuidage.js</code> est servi par le même serveur que le reste de l'app et <strong>mis en cache hors-ligne</strong> (précache du service worker). Son seul stockage : ton choix Auto / Jamais et une suggestion déjà faite, dans le localStorage de ton navigateur.</p>
   <h3>v1.97.12 (mise en page du bouton de copie)</h3>

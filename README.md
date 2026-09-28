@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.0` (27/09/2026)
+## 📦 Version courante — `v1.98.1` (28/09/2026)
+
+> 🔁 **v1.98.1 — Une sortie ne s'arrête plus quand on montre un autre plan** : changer de plan en cours de sortie la **met en pause** au lieu de la terminer (et de la jeter sous les seuils) ; retour sur son plan sous 2 h → elle reprend, et l'app propose de relancer le suivi. Corrigé aussi : le bouton « 🎯 Recentrer » survivait au changement de plan. Et la dette de traduction des guides (EN/ES), dont une règle de sécurité fausse, est rattrapée et désormais gardée par un contrôle de commit.
 
 > 🪧 **v1.98.0 — Le guidage de l'itinéraire** : tracker actif + itinéraire → un bandeau « Dans 40 m, tourner à gauche », uniquement aux croisements, toujours en mètres (« ~ » sans navigation intelligente) ; grands carrefours = une consigne + un schéma ; écart / demi-tour → [Je suis ici] [Recalculer d'ici] [Ignorer] ; feuille de route ; raccord à vol d'oiseau dessiné et compté ; branché sur la sortie d'urgence et l'écran XL. Deux défauts antérieurs corrigés en route : le départ d'un itinéraire qui repartait en arrière, et l'itinéraire coupé dans les coins en vue tournée. Étude : `docs/ETUDE_GUIDAGE.md`.
 
@@ -477,6 +479,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.1 (28/09/2026) — Une sortie ne s'arrête plus quand on montre un autre plan
+
+- 🎯 **Le signalement (KARMA)** : *« durant ma sortie, je vais sur un autre plan pour le montrer ; quand je reviens dans la carrière où je suis réellement, la persistance ne reprend pas »*.
+- 🩸 **Cause** : le changement de plan FINALISAIT la sortie (`closedBy: "auto"`), et la reprise de la v1.85.2 ne recollait que les sorties tuées par le système (`closedBy: "crash"`) — choix délibéré à l'époque, faux pour ce cas. Pire : sous les seuils (< 50 m…), la sortie était **supprimée** au changement de plan.
+- 🔁 **Correctif (décisions 1:a 2:b 3:a)** : `onPlanUnload` → `_suspendre()` (`status: "suspendue"`, sans filtre ni affinage) ; retour sur le même plan sous **2 h** (`SUSPENSION_MS`) → la même sortie reprend ; `_expirerSuspendues` finalise au-delà. Au plus une suspendue **par plan** (une seule « en tout » aurait finalisé A au retour de B).
+- ▶️ **Relance du suivi** : la sortie reprend, pas le suivi (coupé par tout chargement de plan). Sur une sortie terrain, une fenêtre propose « ▶️ Relancer le suivi » → `window.ktaDemarrerSuivi()`, le chemin de la tuile ▶️ extrait en `interface.js > _demarrerSuivi` (avertissement + permission capteurs). Jamais de relance automatique (iOS exige un geste).
+- 🎯 **« Recentrer » qui survivait au changement de plan** : `initTracking()` coupe le suivi sans passer par `stopTracking()` — la carte orientée n'était pas prévenue, et son bouton (posé dans le `body`) restait. Même signal ajouté.
+- 🌍 **Dette de traduction des guides rattrapée** : section ES « hors-ligne » absente, deux sections ES décrivant un réglage supprimé, 7 puces ES, encadrés EN/ES ; la zone ⛔ Inaccessible était dite « jamais relâchée » en EN/ES (faux depuis v1.82.0) ; un encadré coupait un tableau FR. Nouveau contrôle de commit `scripts/check-doc-langues.js` (mêmes sections, aucune sous 70 % du FR).
+- ✅ **Tests** : `check-journal-reprise.js` rejoue A → B → A sur le module entier (faux IndexedDB, horloge pilotée) ; `checkup-plan-oriente.js` T20 avec contre-essai ; relance vérifiée dans l'app réelle ; smoke complet vert. ⚠️ Non testé sur iPhone.
 
 #### v1.98.0 (27/09/2026) — Le guidage de l'itinéraire
 

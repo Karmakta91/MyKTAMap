@@ -1,8 +1,8 @@
 {
-  "version": "v1.98.0",
-  "released": "2026-09-27",
+  "version": "v1.98.1",
+  "released": "2026-09-28",
   "notes": [
-    "🪧 Nouveau : le guidage de l'itinéraire. Pendant le suivi, un bandeau te dit quoi faire (« Dans 40 m, tourner à gauche »), montre un schéma des grands carrefours et te prévient si tu t'écartes du chemin ou fais demi-tour. Touche-le pour la feuille de route complète ; il se coupe dans le menu Tracker.",
-    "📏 Les itinéraires comptent maintenant le trajet à vol d'oiseau jusqu'à la galerie la plus proche (dessiné en pointillé) : les distances affichées augmentent un peu. La sortie d'urgence et l'écran XL affichent aussi la prochaine consigne."
+    "🪧 Nouveau : le guidage de l'itinéraire. Pendant le suivi, un bandeau te dit quoi faire (« Dans 40 m, tourner à gauche »), montre un schéma des grands carrefours et te prévient si tu t'écartes du chemin. Les distances d'itinéraire comptent maintenant le trajet à vol d'oiseau jusqu'à la galerie la plus proche (en pointillé).",
+    "🔁 Ouvrir un autre plan pendant une sortie la met en pause : reviens sur ta carrière dans les 2 heures, elle reprend là où tu l'avais laissée, et l'app te propose de relancer le suivi."
   ]
 }
