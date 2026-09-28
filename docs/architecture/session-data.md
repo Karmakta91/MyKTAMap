@@ -1525,7 +1525,10 @@ affinage, la timeline de leur plan n'étant plus en mémoire (même limite que l
 🩸 **Une suspendue PAR PLAN, pas une seule en tout.** Chaque plan ouvre sa propre session : « une seule
 suspendue » aurait fait, au retour de B vers A, suspendre B et FINALISER A — l'inverse du but. Carnet décoché :
 `onPlanLoaded` n'ouvre toujours rien, mais reprend une sortie manuelle suspendue. ⚠️ Le **suivi** n'est pas
-repris : `initTracking()` remet `tracking = false` à chaque chargement de plan (relancer ▶️). Filet :
+repris : `initTracking()` remet `tracking = false` à chaque chargement de plan. À la reprise d'une sortie
+**terrain** suivi arrêté, `_reprendre` propose « ▶️ Relancer le suivi » (`ktaConfirm` → `window.ktaDemarrerSuivi`,
+le chemin de la tuile ▶️ : avertissement + permission capteurs). Jamais de relance automatique : sur iOS la
+permission exige un geste. Filet :
 `check-journal-reprise.js` §3 rejoue A → B → A sur le module entier (faux IndexedDB, horloge pilotée).
 
 **🩸 La baseline est RECONSTRUITE, jamais repartie de zéro.** Les compteurs d'une sortie sont des **différences**

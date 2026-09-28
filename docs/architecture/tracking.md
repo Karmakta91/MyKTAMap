@@ -1004,6 +1004,14 @@ Le zoom reste **entièrement celui de Leaflet** : on ne touche plus à ses optio
 
 ⚠️ **Le bon critère de test n'est pas « le point pincé ne bouge pas »** : Leaflet arrondit le zoom à l'entier, donc il bouge toujours un peu — 27 px, **mode désactivé compris**. On mesure l'écart au comportement de référence (T19), sinon on court après un zéro impossible.
 
+#### 🩸 Le suivi coupé par un changement de plan (28/09/2026)
+
+`initTracking()` remet `tracking = false` SANS passer par `stopTracking()`. Tout ce qui écoute l'arrêt du suivi
+doit donc aussi être prévenu là : `initTracking` appelle `MapBearing.onTrackingChange(false)` — sans ça, le bouton
+« 🎯 Recentrer » (posé dans le `body`, hors carte) survivait sur le plan suivant (signalé par KARMA). Filet :
+`checkup-plan-oriente.js` T20, avec contre-essai. Le démarrage du suivi, lui, a un seul chemin :
+`interface.js > _demarrerSuivi(btn)`, exposé en `window.ktaDemarrerSuivi()` (tuile ▶️ + relance du carnet).
+
 #### Frontières : on LIT l'état des autres modes
 
 Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Présentation, Secours, Urgence, Replay).

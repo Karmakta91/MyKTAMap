@@ -2373,6 +2373,60 @@ function initInterface() {
   // dynamicIcon function (b) plusieurs modes actifs en parallèle
   // (Play + Recalage + Boussole) → isActive function par sub-action.
   let isTracking = false;
+  // Démarrage du suivi — partagé par la tuile ▶️ et par la relance proposée
+  // quand une sortie du carnet reprend (28/09/2026, KARMA : « b »). UN seul
+  // chemin : avertissement de première fois, permission capteurs (iOS),
+  // puis tuile + voyant. `btnSub` est la tuile, absente pour une relance.
+  function _demarrerSuivi(btnSub) {
+    if (isTracking) return;
+    // Démarrage : enchaîne requestPermission + startTracking dans un
+    // callback synchrone (le clic "J'ai compris" est un geste user
+    // valide pour iOS requestPermission). Cf. commentaire d'en-tête de
+    // _afficherAvertissementTracker.
+    // 🚨 B2 (audit ergonomie 13/09/2026) : on ATTEND la réponse de
+    // requestPermission (Promise<boolean> depuis cette date). Avant,
+    // startTracking() partait avant la permission : refuser la demande
+    // iOS laissait la pastille ON, l'icône ⏹️, et zéro pas à jamais.
+    // Sur refus : pas de démarrage, modale chartée avec le chemin de
+    // réactivation. L'appel reste dans le geste utilisateur (le clic
+    // « J'ai compris »), seule la SUITE est différée.
+    const _doStart = function() {
+      let perm;
+      try { perm = requestPermission(); } catch(e) { perm = true; }
+      Promise.resolve(perm).then(function(ok) {
+        if (ok === false) {
+          _alertCharte(window.I18n.t("ui.trackerWarn.refusTitre"),
+                       window.I18n.t("ui.trackerWarn.refusTexte"), "🚫");
+          return;
+        }
+        _doStartSuite();
+      });
+    };
+    const _doStartSuite = function() {
+      startTracking();
+      if (btnSub) btnSub.innerHTML = "⏹️";
+      // 🆕 v1.8.0 (fix KARMA) : on garde l'icône principale 🧭
+      // pendant le Play (au lieu de la remplacer par ⏹️ comme avant).
+      // Le ⏹️ est déjà visible en sous-action (btnSub ci-dessus),
+      // donc le mettre aussi en principal était redondant et
+      // perdait l'identité visuelle du groupe Tracker.
+      // Le mode actif reste signalé par : (a) la sous-action ⏹️
+      // visible, (b) le groupe qui reste ouvert (modeActif=true),
+      // (c) la couleur d'accent CSS sur le groupe via .kta-actif
+      // si applicable.
+      _setGroupeModeActif("tracker", true, null);
+      isTracking = true;
+    };
+    // 🔄 v1.76.4 (2e décision KARMA) — la modale est DE RETOUR mais
+    // allégée : autorisation capteurs + avertissement d'une ligne.
+    // Toujours montrée une fois par session d'app (acknowledged).
+    if (_trackerWarningAcknowledged) {
+      _doStart();
+    } else {
+      _afficherAvertissementTracker(_doStart);
+    }
+  }
+  window.ktaDemarrerSuivi = function() { _demarrerSuivi(null); };
   _creerGroupeAccordeon({
     id: "tracker",
     iconePrincipale: "🧭",
@@ -2397,52 +2451,7 @@ function initInterface() {
             isTracking = false;
             return;
           }
-          // Démarrage : enchaîne requestPermission + startTracking dans un
-          // callback synchrone (le clic "J'ai compris" est un geste user
-          // valide pour iOS requestPermission). Cf. commentaire d'en-tête de
-          // _afficherAvertissementTracker.
-          // 🚨 B2 (audit ergonomie 13/09/2026) : on ATTEND la réponse de
-          // requestPermission (Promise<boolean> depuis cette date). Avant,
-          // startTracking() partait avant la permission : refuser la demande
-          // iOS laissait la pastille ON, l'icône ⏹️, et zéro pas à jamais.
-          // Sur refus : pas de démarrage, modale chartée avec le chemin de
-          // réactivation. L'appel reste dans le geste utilisateur (le clic
-          // « J'ai compris »), seule la SUITE est différée.
-          const _doStart = function() {
-            let perm;
-            try { perm = requestPermission(); } catch(e) { perm = true; }
-            Promise.resolve(perm).then(function(ok) {
-              if (ok === false) {
-                _alertCharte(window.I18n.t("ui.trackerWarn.refusTitre"),
-                             window.I18n.t("ui.trackerWarn.refusTexte"), "🚫");
-                return;
-              }
-              _doStartSuite();
-            });
-          };
-          const _doStartSuite = function() {
-            startTracking();
-            btnSub.innerHTML = "⏹️";
-            // 🆕 v1.8.0 (fix KARMA) : on garde l'icône principale 🧭
-            // pendant le Play (au lieu de la remplacer par ⏹️ comme avant).
-            // Le ⏹️ est déjà visible en sous-action (btnSub ci-dessus),
-            // donc le mettre aussi en principal était redondant et
-            // perdait l'identité visuelle du groupe Tracker.
-            // Le mode actif reste signalé par : (a) la sous-action ⏹️
-            // visible, (b) le groupe qui reste ouvert (modeActif=true),
-            // (c) la couleur d'accent CSS sur le groupe via .kta-actif
-            // si applicable.
-            _setGroupeModeActif("tracker", true, null);
-            isTracking = true;
-          };
-          // 🔄 v1.76.4 (2e décision KARMA) — la modale est DE RETOUR mais
-          // allégée : autorisation capteurs + avertissement d'une ligne.
-          // Toujours montrée une fois par session d'app (acknowledged).
-          if (_trackerWarningAcknowledged) {
-            _doStart();
-          } else {
-            _afficherAvertissementTracker(_doStart);
-          }
+          _demarrerSuivi(btnSub);
         }
       },
       {

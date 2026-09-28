@@ -372,7 +372,7 @@ function allerRetour(SRC) {
     }
   };
   const plans = { A: { dist: 0 }, B: { dist: 0 }, C: { dist: 0 } };
-  let courant = "A", toasts = 0;
+  let courant = "A", toasts = 0, questions = 0, relances = 0, suiviActif = false;
   const win = {
     getTrackingDistanceTotaleM: () => plans[courant].dist,
     getTrackingDistanceEstimeeM: () => 0,
@@ -380,6 +380,10 @@ function allerRetour(SRC) {
     getTrackingTimeline: () => [],
     getEditorPoints: () => [], getRoads: () => [],
     OOMGuard: { showToast() { toasts++; } },
+    getTrackingActif: () => suiviActif,
+    // La fenêtre de relance : on « clique » OK.
+    ktaConfirm: () => { questions++; return Promise.resolve(true); },
+    ktaDemarrerSuivi: () => { relances++; },
     I18n: { t: (k) => k },
     addEventListener() {}
   };
@@ -422,7 +426,10 @@ function allerRetour(SRC) {
     .then(() => {
       const cur = J.getCurrent();
       t("🔀 B→A (10 min plus tard) : la MÊME sortie reprend", !!cur && cur.id === idA && cur.reprises === 1);
-      t("🔀 reprise annoncée (toast)", toasts === 1);
+      // ▶️ Sortie TERRAIN (30 m) reprise, suivi arrêté par le changement de
+      // plan : on propose de le relancer — la fenêtre remplace le toast.
+      t("▶️ reprise d'une sortie terrain, suivi arrêté : on propose de relancer le suivi", questions === 1 && toasts === 0);
+      t("▶️ « Relancer » démarre le suivi par le chemin de la tuile (ktaDemarrerSuivi)", relances === 1);
       plans.A.dist = 80;
       t("🔀 reprise : les 30 m d'avant l'aller-retour comptent toujours (80 m au total)",
         Math.round(J.getCurrent().distM) === 80);

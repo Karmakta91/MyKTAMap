@@ -658,6 +658,23 @@
     _lastTick = (document.visibilityState === "hidden") ? null : _now();
     _startTimer();
     console.log("[Journal] 🔁 Sortie reprise :", rec.id, "· reprise n°" + _cur.reprises + (detail ? " · " + detail : ""));
+    // ▶️ 28/09/2026 (KARMA, « b ») — la SORTIE reprend, mais pas le SUIVI :
+    // tout chargement de plan le coupe (tracking.js > initTracking), et un
+    // redémarrage de l'app aussi. Sur une sortie terrain, on propose de le
+    // relancer d'un geste. Pas de relance automatique : sur iOS l'accès aux
+    // capteurs exige un geste de l'utilisateur, elle échouerait en silence.
+    // Le clic sur « Relancer » EST ce geste (ktaConfirm résout dans le clic).
+    const suiviArrete = !(typeof window.getTrackingActif === "function" && window.getTrackingActif());
+    if (rec.type === TYPE_TERRAIN && suiviArrete &&
+        typeof window.ktaDemarrerSuivi === "function" && typeof window.ktaConfirm === "function") {
+      const t = function (k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
+      window.ktaConfirm(t("journal.reprise.suiviTexte"), {
+        titre:       t("journal.reprise.suiviTitre"),
+        okLabel:     t("journal.reprise.suiviOk"),
+        cancelLabel: t("journal.reprise.suiviPlusTard")
+      }).then(function (ok) { if (ok) window.ktaDemarrerSuivi(); });
+      return;
+    }
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       const msg = (window.I18n && window.I18n.t) ? window.I18n.t("journal.reprise.toast") : "🔁 Sortie reprise";
       window.OOMGuard.showToast(msg, "info");

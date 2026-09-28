@@ -60,6 +60,13 @@ function initTracking() {
   lastStepTime = 0;
   direction  = 0;
   tracking   = false;
+  // 🩸 28/09/2026 (KARMA : « si je quitte le plan sans couper le tracking, le
+  // bouton pour recadrer la position persiste sur l'autre plan ») — le suivi
+  // est coupé ICI, sans passer par stopTracking() : la carte orientée n'en
+  // était jamais prévenue, et son bouton « 🎯 Recentrer », posé dans le body
+  // (hors carte, pour ne pas tourner avec elle), survivait au plan quitté.
+  // Même signal que stopTracking().
+  if (window.MapBearing) { try { window.MapBearing.onTrackingChange(false); } catch(e) {} }
   window.modeRecalage = false;
   _positionConfirmee   = false;   // 📍 nouveau plan → rien de confirmé
   _positionConfirmeeTs = null;
