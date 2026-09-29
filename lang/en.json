@@ -4025,7 +4025,7 @@
   "secours.report.errEquipeInvalide": "Invalid team data (equipe.id missing)",
   "secours.report.errEquipesData": "equipesData must contain exactly 1 team (got {n})",
   "secours.report.errPasExecution": "The active scenario is not running. Launch the plan (🚀) before importing a team report.",
-  "secours.report.errScenarioDifferent": "Different source scenario — this report comes from '{nom}' (id {id}…), not the active scenario '{nomActif}'.",
+  "secours.report.errScenarioDifferent": "Different source scenario — this report comes from '{nom}' (id {id}…), not the active scenario '{nomActif}'. If it is the same plan, the phone imported it with an older version of the app: this report cannot be merged (copy its entries by hand). Next time, re-import the plan from this PC on every phone after the update, before the intervention.",
   "secours.report.errScenarioDisparu": "Active scenario disappeared between parse and apply",
   "secours.report.errScopeInconnu": "Unknown scope: '{scope}' (expected 'equipe')",
   "secours.report.errScopeOperateur": "This file is a GLOBAL OPERATOR REPORT (full snapshot of all teams) — not mergeable. Import only supports TEAM reports (scope=\"equipe\") that bring the observations of a specific field team.",

@@ -4025,7 +4025,7 @@
   "secours.report.errEquipeInvalide": "Données équipe invalides (equipe.id manquant)",
   "secours.report.errEquipesData": "equipesData doit contenir exactement 1 équipe (reçu {n})",
   "secours.report.errPasExecution": "Le scénario actif n'est pas en cours d'exécution. Lance le plan (🚀) avant d'importer un rapport équipier.",
-  "secours.report.errScenarioDifferent": "Scénario d'origine différent — ce rapport vient de '{nom}' (id {id}…), pas du scénario actif '{nomActif}'.",
+  "secours.report.errScenarioDifferent": "Scénario d'origine différent — ce rapport vient de '{nom}' (id {id}…), pas du scénario actif '{nomActif}'. Si c'est bien le même plan, le téléphone l'a importé avec une ancienne version de l'application : ce rapport ne peut pas être fusionné (reporte ses saisies à la main). Pour les prochaines fois, réimporte le plan depuis ce PC sur chaque téléphone après la mise à jour, avant l'intervention.",
   "secours.report.errScenarioDisparu": "Scénario actif disparu entre parse et apply",
   "secours.report.errScopeInconnu": "Scope inconnu : '{scope}' (attendu 'equipe')",
   "secours.report.errScopeOperateur": "Ce fichier est un RAPPORT OPÉRATEUR GLOBAL (snapshot complet de toutes les équipes) — non fusionnable. L'import ne supporte que les rapports ÉQUIPIERS (scope=\"equipe\") qui apportent les obs d'une équipe terrain spécifique.",

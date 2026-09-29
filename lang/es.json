@@ -4025,7 +4025,7 @@
   "secours.report.errEquipeInvalide": "Datos de equipo no válidos (falta equipe.id)",
   "secours.report.errEquipesData": "equipesData debe contener exactamente 1 equipo (recibido {n})",
   "secours.report.errPasExecution": "El escenario activo no está en ejecución. Lanza el plan (🚀) antes de importar un informe de equipo.",
-  "secours.report.errScenarioDifferent": "Escenario de origen diferente — este informe viene de '{nom}' (id {id}…), no del escenario activo '{nomActif}'.",
+  "secours.report.errScenarioDifferent": "Escenario de origen diferente — este informe viene de '{nom}' (id {id}…), no del escenario activo '{nomActif}'. Si es el mismo plan, el teléfono lo importó con una versión anterior de la aplicación: este informe no puede fusionarse (copia sus datos a mano). La próxima vez, vuelve a importar el plan desde este PC en cada teléfono tras la actualización, antes de la intervención.",
   "secours.report.errScenarioDisparu": "Escenario activo desaparecido entre el parseo y la aplicación",
   "secours.report.errScopeInconnu": "Scope desconocido: '{scope}' (se esperaba 'equipe')",
   "secours.report.errScopeOperateur": "Este archivo es un INFORME DE OPERADOR GLOBAL (instantánea completa de todos los equipos) — no fusionable. La importación solo admite los informes DE EQUIPO (scope=\"equipe\") que aportan las obs de un equipo de campo específico.",
