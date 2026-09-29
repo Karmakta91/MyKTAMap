@@ -542,7 +542,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 > 📔 **Tenir un carnet de mes sorties** — chaque plan que tu ouvres devient une **sortie** archivée dans 📔 Mon carnet (durée, distance, ajouts, photos). Décoché, l'app n'ouvre plus rien toute seule et la sortie en cours s'arrête ; ce qui est déjà dans le carnet reste, et tu peux toujours en démarrer une à la demande depuis **📊 Détails de la session**. *(Réglage déplacé ici depuis ⚙️ Réglages du mode carte : il vaut pour tous tes plans, et le carnet s'ouvre depuis l'accueil.)*
 
-> 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. Seule l'**Aide intégrée** (le 📚 de la barre latérale en mode carte) reste en français et en anglais : en espagnol, elle s'affiche en **anglais par défaut**. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
+> 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. L'**Aide intégrée** (le 📚 de la barre latérale en mode carte) aussi. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
 
 > 💡 L'option « Afficher les ronds aux intersections de tracés » n'est **pas dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
@@ -555,7 +555,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
    > 💡 **Cas d'usage** : tu utilises MyKTAMap uniquement avec tes propres plans locaux et tu ne veux pas voir les plans de démo / tests du serveur qui polluent ta liste. Coche cette case → reload → ta liste 📚 Mes plans ne contient plus que TES plans.
 
-7. **🔐 Code d'accès local (PIN / Face ID)** — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+7. **🔐 Code d'accès local (PIN / Face ID)** — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 codes faux = verrou **temporaire** (10 min, puis 1 h, 6 h, 24 h), jamais définitif. Aucune récupération du code en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
 
 8. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
@@ -653,7 +653,7 @@ La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **ca
 **Y accéder :** tuile **📔 Mon carnet** sur l'écran d'accueil, dans la carte « 🧰 Outils » (grille sous « 📦 Ajouter un plan », visible aussi sur mobile). Aucun plan à charger. Depuis un plan : modale **Session** → section **📔 Sortie en cours**.
 
 **Ce que contient une sortie :**
-- la date, la **durée** (temps réellement passé dans l'app, pas le temps écoulé) et la **distance parcourue** au tracker,
+- la date, la **durée** (du départ à la fin pour une sortie de terrain ; temps d'utilisation de l'app pour du travail sur plan) et la **distance parcourue** au tracker,
 - le nombre de **points, tracés, zones et structures ajoutés**,
 - le **tracé de votre déplacement** (mini-carte dans la fiche),
 - les **photos prises pendant la sortie** (le carnet ne les recopie pas : il pointe vers vos photos existantes — si vous en supprimez une, sa vignette devient « 🚫 »),
@@ -682,7 +682,7 @@ Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez
 - Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 
 **Quand une session est-elle archivée ?**
-- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), si **l'une** de ces conditions est remplie :
+- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil) — mais pas tout de suite : la sortie est d'abord **mise en pause 2 heures** (revenez sur le même plan et elle reprend, cf. « Reprise » plus bas). Passé ce délai, elle est archivée si **l'une** de ces conditions est remplie :
   - **50 m parcourus** (mesurés au podomètre ou estimés entre vos « 📍 Je suis ici »),
   - **ou** 10 minutes de travail réel **et** au moins une annotation.
   - En dessous, rien n'est conservé — ouvrir un plan 20 secondes pour vérifier un détail ne pollue pas le carnet.
@@ -2698,7 +2698,7 @@ Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un app
 
 **Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
 
-**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Le temps passé sur l'autre plan ne s'ajoute pas à ta sortie. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
+**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Pour une sortie de terrain, le temps passé sur l'autre plan **compte** dans sa durée (mesurée du départ à la fin) : tu étais toujours sous terre. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
 
 > ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
 

@@ -379,7 +379,7 @@ html.kta-theme-light .kta-mem-section {
 }
 body.kta-theme-light .kta-mem-section-titre,
 html.kta-theme-light .kta-mem-section-titre {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-bottom-color: var(--kta-light-accent) !important;
 }
 body.kta-theme-light .kta-mem-total,
@@ -407,7 +407,7 @@ html.kta-theme-light .kta-mem-num {
 body.kta-theme-light .kta-mem-tag,
 html.kta-theme-light .kta-mem-tag {
   background: var(--kta-light-accent-bg) !important;
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent) !important;
 }
 body.kta-theme-light .kta-mem-tag-dim,
@@ -638,7 +638,7 @@ html.kta-theme-light .kta-profile-intro {
 }
 body.kta-theme-light .kta-profile-intro strong,
 html.kta-theme-light .kta-profile-intro strong {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-profile-fileinfo,
 html.kta-theme-light .kta-profile-fileinfo,
@@ -672,7 +672,7 @@ html.kta-theme-light .kta-profile-row-label strong {
 body.kta-theme-light .kta-profile-row-meta,
 html.kta-theme-light .kta-profile-row-meta {
   background: var(--kta-light-accent-bg) !important;
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent) !important;
 }
 body.kta-theme-light .kta-profile-row-hint,
@@ -691,7 +691,7 @@ body.kta-theme-light .kta-profile-mode strong,
 html.kta-theme-light .kta-profile-mode strong,
 body.kta-theme-light .kta-profile-mode-titre,
 html.kta-theme-light .kta-profile-mode-titre {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-profile-banner-ok,
 html.kta-theme-light .kta-profile-banner-ok {
@@ -879,7 +879,7 @@ html.kta-theme-light .kta-tutorial-header {
 }
 body.kta-theme-light .kta-tutorial-card-titre,
 html.kta-theme-light .kta-tutorial-card-titre {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-tutorial-card-texte,
 html.kta-theme-light .kta-tutorial-card-texte {
@@ -887,7 +887,7 @@ html.kta-theme-light .kta-tutorial-card-texte {
 }
 body.kta-theme-light .kta-tutorial-card-texte strong,
 html.kta-theme-light .kta-tutorial-card-texte strong {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-tutorial-card-texte code,
 html.kta-theme-light .kta-tutorial-card-texte code {
@@ -1075,7 +1075,7 @@ html.kta-theme-light #kta-sw-inspector-body {
 body.kta-theme-light #kta-sw-inspector-body code,
 html.kta-theme-light #kta-sw-inspector-body code {
   background: var(--kta-light-bg-deep, #ebe0c2) !important;
-  color: var(--kta-light-accent-hover, #b8860b) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light #kta-sw-inspector-body .kta-mem-section,
 html.kta-theme-light #kta-sw-inspector-body .kta-mem-section {

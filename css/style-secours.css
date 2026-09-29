@@ -65,7 +65,7 @@ html.kta-theme-light .kta-secours-context-imported-row {
 }
 body.kta-theme-light .kta-secours-context-imported-row strong,
 html.kta-theme-light .kta-secours-context-imported-row strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* 🆕 v1.23.0 Phase 2 / Feature D — Bloc outils d'analyse (heatmap) dans
@@ -175,7 +175,7 @@ html.kta-theme-light .kta-secours-tool-block {
 }
 body.kta-theme-light .kta-secours-tool-block-titre,
 html.kta-theme-light .kta-secours-tool-block-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-tool-block-desc,
 html.kta-theme-light .kta-secours-tool-block-desc {
@@ -236,13 +236,13 @@ html.kta-theme-light .kta-secours-pick-favoris {
 }
 body.kta-theme-light .kta-secours-pick-favoris-titre,
 html.kta-theme-light .kta-secours-pick-favoris-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-pick-favori,
 html.kta-theme-light .kta-secours-pick-favori {
   background: rgba(244, 197, 66, 0.30) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-pick-favori:hover,
 html.kta-theme-light .kta-secours-pick-favori:hover {
@@ -356,7 +356,7 @@ html.kta-theme-light .kta-secours-assign-info {
 }
 body.kta-theme-light .kta-secours-assign-info strong,
 html.kta-theme-light .kta-secours-assign-info strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-assign-role,
 html.kta-theme-light .kta-secours-assign-role {
@@ -506,7 +506,7 @@ html.kta-theme-light .kta-secours-import-preview-card {
 }
 body.kta-theme-light .kta-secours-import-preview-titre,
 html.kta-theme-light .kta-secours-import-preview-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-import-preview-grid,
 html.kta-theme-light .kta-secours-import-preview-grid,
@@ -845,7 +845,7 @@ html.kta-theme-light .kta-secours-list-row {
 }
 body.kta-theme-light .kta-secours-list-nom,
 html.kta-theme-light .kta-secours-list-nom {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-list-meta,
 html.kta-theme-light .kta-secours-list-meta,
@@ -885,7 +885,7 @@ html.kta-theme-light .kta-secours-section {
 body.kta-theme-light .kta-secours-section-titre,
 html.kta-theme-light .kta-secours-section-titre {
   background: rgba(244, 197, 66, 0.20) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-groupe-card,
 html.kta-theme-light .kta-secours-groupe-card {
@@ -900,7 +900,7 @@ body.kta-theme-light .kta-secours-edit-titre,
 html.kta-theme-light .kta-secours-edit-titre,
 body.kta-theme-light .kta-secours-groupe-nom,
 html.kta-theme-light .kta-secours-groupe-nom {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* Floater compact en bas de l'écran pendant les modes interactifs map
@@ -1009,7 +1009,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info {
 }
 body.kta-theme-light .kta-secours-overlay-floater-info strong,
 html.kta-theme-light .kta-secours-overlay-floater-info strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1166,7 +1166,7 @@ html.kta-theme-light .kta-search-gps-hint strong {
 body.kta-theme-light .kta-search-gps-hint code,
 html.kta-theme-light .kta-search-gps-hint code {
   background: rgba(0, 0, 0, 0.05) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-search-gps-card-msg,
 html.kta-theme-light .kta-search-gps-card-msg {
@@ -1255,7 +1255,7 @@ html.kta-theme-light .kta-search-gps-poi-info {
 body.kta-theme-light .kta-secours-groupe-level-chip,
 html.kta-theme-light .kta-secours-groupe-level-chip {
   background: rgba(244, 197, 66, 0.40) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
 }
 
@@ -1442,7 +1442,7 @@ html.kta-theme-light .kta-secours-pick-result {
 }
 body.kta-theme-light .kta-secours-pick-result strong,
 html.kta-theme-light .kta-secours-pick-result strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ============================================================
@@ -1757,7 +1757,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
 body.kta-theme-light .kta-btn-phase-end,
 html.kta-theme-light .kta-btn-phase-end {
   background: rgba(217, 168, 46, 0.16) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
 }
 body.kta-theme-light .kta-btn-phase-end:hover,
@@ -2387,7 +2387,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-cta {
 }
 body.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre,
 html.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-lancer-bandeau-sub,
 html.kta-theme-light .kta-secours-lancer-bandeau-sub {
@@ -2430,14 +2430,14 @@ html.kta-theme-light .kta-secours-live-header-meta {
 }
 body.kta-theme-light .kta-secours-live-header-timer,
 html.kta-theme-light .kta-secours-live-header-timer {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* 🆕 v1.29.0 C2 — Thème clair pour les nouveaux éléments multi-phases */
 body.kta-theme-light .kta-secours-live-phase-badge,
 html.kta-theme-light .kta-secours-live-phase-badge {
   background: rgba(217, 168, 46, 0.16) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.55) !important;
 }
 body.kta-theme-light .kta-secours-phase-row,
@@ -2488,7 +2488,7 @@ html.kta-theme-light .kta-secours-phase-equipe-nom {
 }
 body.kta-theme-light .kta-secours-phase-equipe-level,
 html.kta-theme-light .kta-secours-phase-equipe-level {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   background: rgba(217, 168, 46, 0.18) !important;
 }
 body.kta-theme-light .kta-secours-live-etape,
@@ -2503,7 +2503,7 @@ html.kta-theme-light .kta-secours-op-card {
 }
 body.kta-theme-light .kta-secours-live-etape-titre,
 html.kta-theme-light .kta-secours-live-etape-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-live-etape-textarea,
 html.kta-theme-light .kta-secours-live-etape-textarea {

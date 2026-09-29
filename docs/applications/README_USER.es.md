@@ -509,19 +509,26 @@ Al arrancar, estos planos aparecen en **Mis planos** marcados como «descubierto
 
 ### ⚙️ Ventana «Configuración» (cargador)
 
-En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del cargador (junto a 📖 Documentación y 🚨 Alertas) abre una única ventana que reúne todos los ajustes del cargador (teselado, rendimiento, depuración, actualización, reinicio):
+En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del cargador (junto a 📖 Documentación y 🚨 Alertas) abre una única ventana que reúne los ajustes generales de la app (idioma, sensores, desarrollador, confidencialidad, visualización):
 
 > **Orden de las secciones en la ventana (de arriba abajo, idéntico a la interfaz)**:
 
-1. **🖼️ Teselado de la imagen (por plano)** — control segmentado con 5 preajustes (ver detalle más abajo), que elige cómo se trocea en memoria la imagen principal al cargar. Se memoriza **por plano** (un plano en Rendimiento, otro en Calidad, etc.).
+1. **🌍 Aplicación** — el **selector de idioma** de toda la app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). Es ahora el **único sitio** donde se cambia durante el uso: salió de ⚙️ Ajustes del modo mapa, donde daba a entender que solo afectaba al plano abierto — y donde proponía reiniciar la app en el peor momento, en plena cavidad. Sigue pudiendo elegirse en la pantalla de desbloqueo, antes de entrar.
 
-2. **🚀 Modo Rendimiento ULTRA (trazados / marcadores)** — 7 interruptores de optimización que **NO** afectan a la imagen (ya cubierta por el teselado anterior) sino a todo lo demás (polilíneas, ventanas emergentes, intersecciones, guardado automático, recorte por ventana visible, límite de alejamiento en móvil). **Ajuste POR PLANO**: marcar ULTRA en un plano ya no afecta a los demás — cada plano parte desactivado mientras no lo marques para él. Ver la sección «🚀 Optimizar tu plano» más abajo para el detalle.
+2. **🛰️ Opciones con sensor** — las opciones que se apoyan en un sensor del teléfono: **🔋 Nivel de batería** y **📳 Vibración háptica**. Cada una se desactiva, y una opción desactivada no muestra nada **y deja de escuchar el sensor**. Cuando el sistema rechaza el sensor — la vibración en iPhone, por ejemplo — la opción sigue **visible pero en gris, con el motivo**, en lugar de desaparecer sin explicación.
+
+> 🗺️ **La Vista OSM está activa por defecto**. Si tienes al menos un plano calibrado GPS, el inicio muestra tu mapa sobre un fondo OpenStreetMap — y **por tanto pide ese fondo a `tile.openstreetmap.org` en cuanto se carga**, sin clic. **Ningún dato de tus planos sale**: solo se piden las coordenadas de las teselas que miras, el resto se dibuja encima en tu dispositivo. Un aviso te lo dice la primera vez. Para desactivarla: la casilla de arriba. **Si ya la habías desmarcado, sigue desmarcada** — un rechazo nunca se sobrescribe. Y no sale nada en **modo sin conexión estricto**, en **incógnito**, o si ningún plano está calibrado.
+
+> 🖼️ **El teselado de la imagen no está en esta ventana** — y ya no está tampoco en la pantalla de carga. Pasó por las dos sin encontrar nunca su sitio: en la práctica solo afecta a los planos **no troceados en la generación**, y en los demás no cambiaba nada. Ahora vive en **ℹ️ Información** del plano, solo para los planos afectados, y por fin se **memoriza**.
+>
+> 🚀 **Los interruptores de Rendimiento ULTRA tampoco**. Se mostraban aquí pero **no guardaban nada** — son ajustes **por plano**: se regulan en **⚙️ Ajustes**, una vez abierto el plano. Ver «🚀 Optimizar tu plano» más abajo.
 
 3. **🛠️ Modo Desarrollador** — sustituye a la antigua sección de depuración. Protegido con **contraseña** en la primera activación (con advertencia de responsabilidad). Una vez activo: interruptor **🐛 Registros detallados**, botón **📋 Mostrar los registros** (el búfer, consultable incluso sin plano cargado) y **📚 Documentación técnica** — toda la documentación del proyecto (arquitectura, backlog, matemáticas…) legible dentro de la app (solo en línea). El ajuste de registros de ⚙️ Ajustes en modo mapa se ha retirado: todo se controla aquí.
 
 4. **🔒 Confidencialidad y auditoría** — sección dedicada a la transparencia: registro de red en vivo, documento «¿Qué hace la app en la red?» e interruptor «Modo sin conexión estricto». Ver la sección dedicada más abajo.
 
 5. **🎨 Visualización** — interruptores de interfaz:
+   - **🔎 Iconos que crecen con el zoom**, **📌 Anclar los paneles de herramientas al botón**, **🧲 Magnetismo al dibujar** y su **radio** — estos cuatro valen para **todos tus planos**. Vivían en ⚙️ Ajustes del modo mapa, donde se cambiaban desde un plano sin saber que se cambiaban en todas partes.
    - **🔆 Mantener la pantalla encendida** — impide que tu pantalla se apague automáticamente mientras MyKTAMap esté abierta (Wake Lock API). Útil en salida para no tener que tocar el teléfono cada 30 segundos. Readquisición automática al volver de segundo plano (visibilitychange). El interruptor se oculta automáticamente en los navegadores que no admiten la API (Firefox en particular). El mismo interruptor está también accesible en **⚙️ Ajustes** en modo mapa (ver sección dedicada).
 
 > 📊 **Ver el estado de la memoria** — en esa misma ventana, un botón **«📊 Ver el estado de la memoria»** abre el **inspector**: lo que la app ocupa en tu dispositivo (claves de almacenamiento ordenadas por tamaño, bases de datos, caché de la aplicación, cuota del navegador) y lo que está cargado en ese momento. Un botón **📋 Copiar el informe** genera un texto listo para pegar al informar de un problema.
@@ -532,7 +539,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
 > 📔 **Llevar un cuaderno de mis salidas** — cada plano que abres se convierte en una **salida** archivada en 📔 Mi cuaderno (duración, distancia, añadidos, fotos). Desmarcado, la app ya no abre nada por su cuenta y la salida en curso se detiene; lo que ya está en el cuaderno se conserva, y siempre puedes iniciar una cuando quieras desde **📊 Detalles de la sesión**. *(Ajuste trasladado aquí desde ⚙️ Ajustes del modo mapa: vale para todos tus planos, y el cuaderno se abre desde el inicio.)*
 
-> 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración**, en su propia sección **justo después del bloque Incógnito**. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. Solo la **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) sigue estando en francés e inglés: en español se muestra en **inglés por defecto**. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
+> 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración → 🌍 Aplicación**, arriba del todo de la ventana. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. La **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) también. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
 
 > 💡 La opción «Mostrar los círculos en los cruces de trazados» **no está en la Configuración de la pantalla de inicio** sino en **⚙️ Ajustes en modo mapa** (por plano). Cada plano tiene ahora su propio ajuste — práctico para desactivar los círculos únicamente en tus planos muy densos sin tocar los demás.
 
@@ -545,7 +552,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
    > 💡 **Caso de uso**: usas MyKTAMap únicamente con tus propios planos locales y no quieres ver los planos de demostración / prueba del servidor que ensucian tu lista. Marca esta casilla → recarga → tu lista 📚 Mis planos ya solo contiene TUS planos.
 
-7. **🔐 Código de acceso local (PIN / Face ID)** — bloquea la app en cada arranque con un código de 4 a 6 cifras + Face ID / Touch ID si el dispositivo lo admite. 100 % local (nunca se envía por Internet). 5 intentos fallidos = bloqueo definitivo. Ninguna recuperación en caso de olvido. Ver la sección dedicada **🔐 Código de acceso local (PIN / Face ID)** más abajo para el detalle completo (activación, modificación, desactivación, bloqueo).
+7. **🔐 Código de acceso local (PIN / Face ID)** — bloquea la app en cada arranque con un código de 4 a 6 cifras + Face ID / Touch ID si el dispositivo lo admite. 100 % local (nunca se envía por Internet). 5 códigos erróneos = bloqueo **temporal** (10 min, luego 1 h, 6 h, 24 h), nunca definitivo. Ninguna recuperación del código en caso de olvido. Ver la sección dedicada **🔐 Código de acceso local (PIN / Face ID)** más abajo para el detalle completo (activación, modificación, desactivación, bloqueo).
 
 8. **🔄 Actualización — Forzar la actualización suave** — vuelve a descargar la última versión del código (purga de la caché PWA, conserva tus datos y tus planos). Útil si sospechas que tu app se ha quedado en una versión antigua tras una publicación. **Nunca** toca tus planos, tu sesión activa, tu código comunitario ni tu PIN local. **Confirmación obligatoria antes de lanzarla** (ventana azul que detalla lo que se preserva + necesidad de una conexión a Internet activa).
 
@@ -643,7 +650,7 @@ El guardado automático anterior conserva **el estado actual** de un plano. El *
 **Cómo acceder:** icono **📔 Mi cuaderno** en la pantalla de inicio, dentro de la tarjeta «🧰 Herramientas» (cuadrícula bajo «📦 Añadir un plano», visible también en móvil). No hace falta cargar ningún plano. Desde un plano: ventana **Sesión** → sección **📔 Salida en curso**.
 
 **Qué contiene una salida:**
-- la fecha, la **duración** (tiempo realmente pasado en la app, no el tiempo transcurrido) y la **distancia recorrida** con el rastreador,
+- la fecha, la **duración** (del inicio al final para una salida de campo; tiempo de uso de la app para un trabajo sobre el plano) y la **distancia recorrida** con el rastreador,
 - el número de **puntos, trazados, zonas y estructuras añadidos**,
 - el **recorrido de tu desplazamiento** (minimapa en la ficha),
 - las **fotos tomadas durante la salida** (el cuaderno no las copia: apunta a tus fotos existentes — si eliminas alguna, su miniatura pasa a «🚫»),
@@ -672,7 +679,7 @@ En concreto: sales de **A**, pasas por **C** y luego llegas a **B** → la app c
 - Un **clic en el mapa** para corregir tu posición no cuenta como trayecto, y un **paso de portal** hacia otro plano tampoco.
 
 **¿Cuándo se archiva una sesión?**
-- **Automáticamente** al salir del plano (cambio de plano o vuelta a la pantalla de inicio), si se cumple **una** de estas condiciones:
+- **Automáticamente** al salir del plano (cambio de plano o vuelta a la pantalla de inicio) — pero no enseguida: la salida queda primero **en pausa 2 horas** (vuelve al mismo plano y se reanuda, ver «Reanudación» más abajo). Pasado ese plazo, se archiva si se cumple **una** de estas condiciones:
   - **50 m recorridos** (medidos con el podómetro o estimados entre tus «📍 Estoy aquí»),
   - **o** 10 minutos de trabajo real **y** al menos una anotación.
   - Por debajo de eso no se conserva nada — abrir un plano 20 segundos para comprobar un detalle no ensucia el cuaderno.
@@ -894,7 +901,7 @@ El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 
    - `cao` → **C**avidad **A**bierta *(cavage ouvert)*
    - `peo` → **P**ozo con **E**scalones **A**bierto *(puits à échelon ouvert)*
    - `eso` → **E**scalera de **S**ervicio **A**bierta *(escalier de service ouvert)*
-   - `entrée` → todo POI marcado como entrada conocida
+   - `entrée` → todo POI marcado como entrada conocida, **y** la etiqueta integrada «🚪 Punto de entrada del plano»
 3. Para cada candidata, la app calcula el **camino navegable real** mediante el buscador de rutas (gestiona los muros Y las uniones entre niveles).
 4. Se muestra una ventana compacta con:
    - La salida más cercana + su distancia + su nivel si hay varias plantas
@@ -2686,7 +2693,7 @@ Si sales de MyKTAMap durante una salida —para cambiar de música, para atender
 
 **Ahora se reanuda sola.** Al volver, si la salida anterior del mismo plano se interrumpió así hace menos de **45 minutos**, la app la **continúa** en vez de abrir otra. Un mensaje te lo indica.
 
-**Y si abres otro plano por el camino** —para enseñárselo a alguien, para comprobar un paso— tu salida queda **en pausa**, no terminada. Vuelve al plano de tu salida en menos de **2 horas**: se **reanuda** donde estaba, contadores y trazado incluidos. Pasado ese tiempo, se guarda en el cuaderno como siempre. El tiempo pasado en el otro plano no se suma a tu salida. ⚠️ El **seguimiento**, en cambio, se detiene al cambiar de plano: al reanudarse una salida de campo, la app te propone **«▶️ Reanudar el seguimiento»** — basta con un toque.
+**Y si abres otro plano por el camino** —para enseñárselo a alguien, para comprobar un paso— tu salida queda **en pausa**, no terminada. Vuelve al plano de tu salida en menos de **2 horas**: se **reanuda** donde estaba, contadores y trazado incluidos. Pasado ese tiempo, se guarda en el cuaderno como siempre. En una salida de campo, el tiempo pasado en el otro plano **cuenta** en su duración (medida del inicio al final): seguías bajo tierra. ⚠️ El **seguimiento**, en cambio, se detiene al cambiar de plano: al reanudarse una salida de campo, la app te propone **«▶️ Reanudar el seguimiento»** — basta con un toque.
 
 > ℹ️ Una salida que hayas cerrado **tú mismo** (🏁) nunca se vuelve a unir. La app solo reanuda lo que se cortó *sin que lo quisieras*.
 

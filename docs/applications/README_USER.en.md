@@ -543,7 +543,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 > 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode: it applies to all your maps, and the logbook opens from the home screen.)*
 
-> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
+> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. So does the **built-in Help** (the 📚 in the sidebar in map mode). On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
@@ -556,7 +556,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
    > 💡 **Use case**: you use MyKTAMap only with your own local maps and you don't want to see the server demo/test maps that pollute your list. Check this box → reload → your 📚 My maps list only contains YOUR maps.
 
-7. **🔐 Local access code (PIN / Face ID)** — locks the app at each startup with a 4-6 digit code + Face ID / Touch ID if the device supports it. 100% local (never sent over the Internet). 5 failed attempts = permanent lockout. No recovery if forgotten. See dedicated section **🔐 Local access code (PIN / Face ID)** below for full details (activation, modification, deactivation, lockout).
+7. **🔐 Local access code (PIN / Face ID)** — locks the app at each startup with a 4-6 digit code + Face ID / Touch ID if the device supports it. 100% local (never sent over the Internet). 5 wrong codes = **temporary** lock (10 min, then 1 h, 6 h, 24 h), never permanent. No code recovery if forgotten. See dedicated section **🔐 Local access code (PIN / Face ID)** below for full details (activation, modification, deactivation, lockout).
 
 8. **🔄 Update — Force soft update** — re-downloads the latest version of the code (purges the PWA cache, keeps your data and your maps). Useful if you suspect that your app remains on an old version after a release. **Never** touches your maps, your active session, your community code or your local PIN. **Mandatory confirmation before triggering** (blue modal detailing what is preserved + need for active Internet connection).
 
@@ -655,7 +655,7 @@ The auto-save above keeps the **current state** of a map. The **logbook** keeps 
 **Where to find it:** the **📔 My logbook** tile on the home screen, in the « 🧰 Tools » card (grid under « 📦 Add a map », visible on mobile too). No map to load. From a map: **Session** modal → **📔 Trip in progress** section.
 
 **What a trip contains:**
-- date, **duration** (time actually spent in the app, not elapsed time) and **distance travelled** with the tracker,
+- date, **duration** (from start to finish for a field outing; time using the app for work on the plan) and **distance travelled** with the tracker,
 - how many **points, paths, zones and structures you added**,
 - the **path you walked** (mini-map in the trip sheet),
 - the **photos taken during the trip** (the logbook does not copy them: it points at your existing photos — delete one and its thumbnail becomes « 🚫 »),
@@ -684,7 +684,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - A **map click** to correct your position does not count as travel, and neither does a **portal crossing** to another map.
 
 **When is a session archived?**
-- **Automatically** when you leave the map (map switch or back to home), if **either** condition is met:
+- **Automatically** when you leave the map (map switch or back to home) — but not right away: the outing is first **paused for 2 hours** (come back to the same map and it resumes, see "Resuming" below). After that, it is archived if **either** condition is met:
   - **50 m travelled** (measured by the pedometer or estimated between your "📍 I am here" markers),
   - **or** 10 minutes of actual work **and** at least one annotation.
   - Below that, nothing is kept — opening a map for 20 seconds to check a detail does not clutter the logbook.
@@ -909,7 +909,7 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
    - `cao` → **C**avage **A**utre **O**uvert (Open Cavage)
    - `peo` → **P**uits à **E**chelon **O**uvert (Open Echelon Shaft)
    - `eso` → **E**scalier de **S**ervice **O**uvert (Open Service Stairs)
-   - `entrée` → any POI marked as a known entrance
+   - `entrée` → any POI marked as a known entrance, **and** the built-in "🚪 Plan entry point" tag
 3. For each candidate the app computes the **real navigable path** via the pathfinder (handles walls AND inter-level junctions).
 4. A compact modal shows:
    - The nearest exit + its distance + its level if the plan is multi-floor
@@ -1567,7 +1567,7 @@ The orange **⛑️** button in the **🧭 Tracker** group opens emergency mode.
 
    | Preset | Speed | Radius for 10 min | When to use |
    |---|---|---|---|
-   | 🍺 **Drunk** | 2 km/h | ~333 m | Very slow, confused, disoriented, hesitant walking |
+   | 🤕 **Injured** | 2 km/h | ~333 m | Very slow, hindered progress (injury, fatigue, hesitant walking) |
    | 🐌 **Slow** | 3 km/h | ~500 m | Cautious walking, tight passages, exploration |
    | 🚶 **Normal** *(default)* | 5 km/h | ~833 m | Standard walking pace |
    | 🏃 **Fast** | 7 km/h | ~1167 m | Known route, sustained walking |
@@ -2697,7 +2697,7 @@ If you leave MyKTAMap during an outing — to change music, to take a call — t
 
 **It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
 
-**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. The time spent on the other plan is not added to your outing. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
+**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. For a field outing, the time spent on the other plan **counts** in its duration (measured from start to finish): you were still underground. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
 
 > ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
 

@@ -274,7 +274,7 @@ html.kta-theme-light .kta-stats-glob-header {
 }
 body.kta-theme-light .kta-stats-glob-plan-name,
 html.kta-theme-light .kta-stats-glob-plan-name {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-stats-glob-meta,
 html.kta-theme-light .kta-stats-glob-meta,
@@ -297,7 +297,7 @@ body.kta-theme-light .kta-stats-glob-section-titre,
 html.kta-theme-light .kta-stats-glob-section-titre,
 body.kta-theme-light .kta-stats-glob-row-num,
 html.kta-theme-light .kta-stats-glob-row-num {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-stats-glob-card-label,
 html.kta-theme-light .kta-stats-glob-card-label,

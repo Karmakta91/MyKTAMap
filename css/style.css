@@ -3223,6 +3223,7 @@ html.kta-theme-light .kta-readme-lang-btn:hover {
 }
 body.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active,
 html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
+  color: #0f3d66 !important;   /* (O4) 3,40 → lisible */
   background: rgba(30, 95, 153, 0.26) !important;
   border-color: rgba(30, 95, 153, 0.70) !important;
 }
@@ -5627,7 +5628,7 @@ html.kta-theme-light .kta-cfg-input option {
    jaune (lisible sur fond sombre). Cf docs/audits/2026-06-14_audit-i18n-langue-v1 (C1). */
 body.kta-theme-light .kta-cfg-group-titre,
 html.kta-theme-light .kta-cfg-group-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */
@@ -13806,6 +13807,10 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
  * ============================================================================ */
 
 /* === Palette thème clair === */
+/* Checkup thème 29/09 (O3) : aussi sur <html> — une modale ajoutée à <html> n'héritait
+   d'aucune variable (152 règles sans repli). A : --kta-light-accent-text = ambre lisible
+   (≥ 4,5 sur les fonds clairs) ; le jaune charte reste pour fonds et bordures. */
+html.kta-theme-light,
 body.kta-theme-light {
   /* 🔄 v1.13.0-fix7 (KARMA "RB la dernière modif de fond, je parlais du
      fond du home") : rollback du body uniforme — body re-passe en beige
@@ -13825,6 +13830,7 @@ body.kta-theme-light {
   --kta-light-border-strong:rgba(0,0,0,0.22);
   --kta-light-accent:       #f4c542;  /* jaune charte conservé */
   --kta-light-accent-hover: #d9a82e;  /* version plus contrastée pour hover */
+  --kta-light-accent-text:  #7a5a00;  /* ambre pour du TEXTE sur fond clair */
   --kta-light-accent-bg:    rgba(244,197,66,0.22);
   --kta-light-shadow:       rgba(80,60,30,0.18);
 }
@@ -14941,11 +14947,11 @@ html.kta-theme-light .leaflet-popup-content select {
 
 /* === Modale Aide / Doc (kta-aide-* / kta-readme-*) === */
 body.kta-theme-light .kta-aide-section-titre {
-  color: var(--kta-light-accent-hover);
+  color: var(--kta-light-accent-text, #7a5a00);
   border-bottom: 1px solid var(--kta-light-border);
 }
 body.kta-theme-light .kta-aide-icone {
-  color: var(--kta-light-accent-hover);
+  color: var(--kta-light-accent-text, #7a5a00);
 }
 body.kta-theme-light .kta-aide-grille {
   color: var(--kta-light-text);
@@ -14995,7 +15001,7 @@ body.kta-theme-light .kta-refonte-stats-val {
 
 /* === Stats détaillées (liste éléments) === */
 body.kta-theme-light .kta-refonte-session-section-titre {
-  color: var(--kta-light-accent-hover);
+  color: var(--kta-light-accent-text, #7a5a00);
   border-bottom: 1px solid var(--kta-light-border);
 }
 body.kta-theme-light .kta-refonte-session-list li {
@@ -15244,7 +15250,7 @@ body.kta-theme-light #planLoaderBox h3 {
   color: #1a1612;
 }
 body.kta-theme-light #planLoaderBox a {
-  color: var(--kta-light-accent-hover);
+  color: var(--kta-light-accent-text, #7a5a00);
 }
 body.kta-theme-light #planLoaderBox a:hover {
   color: #8b5a00;
@@ -15288,7 +15294,7 @@ body.kta-theme-light .kta-loader-copyright strong {
   color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-loader-copyright a {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
@@ -15367,7 +15373,7 @@ body.kta-theme-light .kta-aide-section {
   border: 1px solid var(--kta-light-border);
 }
 body.kta-theme-light .kta-aide-section-titre {
-  color: var(--kta-light-accent-hover);
+  color: var(--kta-light-accent-text, #7a5a00);
 }
 body.kta-theme-light .kta-loader-perf-hint {
   color: var(--kta-light-text-muted);
@@ -15409,7 +15415,7 @@ body.kta-theme-light .kta-loader-config-corps * {
   color: var(--kta-light-text);
 }
 body.kta-theme-light .kta-perf-titre {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 /* === Modale Audit réseau (NetDoc + NetLog) === */
 body.kta-theme-light #loaderNetDocModal .kta-readme-modal-boite,
@@ -15524,7 +15530,7 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps * {
   color: #2a2620 !important;
 }
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps a {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps code {
   background: rgba(0,0,0,0.06) !important;
@@ -15638,8 +15644,11 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link.active {
   font-weight: 700 !important;
 }
 /* H3 = sous-items (genre les plans dans "Mes plans") — muted, plus aéré */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-title {
+  color: #16497a !important;   /* checkup thème (R3) : #8cb4ff sur beige = 1,36 */
+}
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h3 {
-  color: #6b6354 !important;
+  color: #544c3e !important;   /* (O4) #6b6354 = 3,87 sur le fond du sommaire */
   font-weight: 400 !important;
   border-radius: 4px !important;
 }
@@ -15752,7 +15761,7 @@ html.kta-theme-light .kta-btn-ghost:hover {
    secondaires / dangereuses ("Forcer un reset complet à la place") */
 html.kta-theme-light .kta-btn-link {
   background: transparent !important;
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border: none !important;
   text-decoration: underline !important;
 }
@@ -15801,7 +15810,7 @@ html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,
 }
 /* La flèche centrale "→" */
 html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,180,255"] > div[style*="font-size:20px"] {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 /* Bloc "Mise à jour douce (recommandée)" — vert kept mais texte clair */
 html.kta-theme-light #kta-update-modal div[style*="rgba(108,226,138"] {
@@ -15929,7 +15938,7 @@ html.kta-theme-light .kta-alert-absent-version-released strong {
   color: #2a2620 !important;
 }
 html.kta-theme-light .kta-alert-absent-version-notes-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-alert-absent-version-notes {
   color: #2a2620 !important;
@@ -16025,7 +16034,7 @@ html.kta-theme-light .kta-plan-switcher-current-sub {
 }
 /* Titres de section "📚 Plans récents" / etc */
 html.kta-theme-light .kta-plan-switcher-section-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
 }
 /* Lignes plans récents */
@@ -16049,7 +16058,7 @@ html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-sub {
   color: #6b6354 !important;
 }
 html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-row-arrow {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-empty {
   color: #6b6354 !important;
@@ -16154,7 +16163,7 @@ html.kta-theme-light .kta-unlock-info {
   color: #4a3f30 !important;
 }
 html.kta-theme-light .kta-unlock-info a {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-unlock-info a:hover {
   color: #8b5a00 !important;
@@ -16662,7 +16671,7 @@ html.kta-theme-light .kta-ses-intro {
   color: var(--kta-light-text) !important;
 }
 html.kta-theme-light .kta-ses-section-title {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-ses-cb-row {
   color: var(--kta-light-text) !important;
@@ -16832,7 +16841,7 @@ html.kta-theme-light .kta-pin-proposal-info {
   color: #2a2620 !important;
 }
 html.kta-theme-light .kta-pin-proposal-info-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-pin-proposal-info p {
   color: #2a2620 !important;
@@ -16856,7 +16865,7 @@ html.kta-theme-light .kta-loader-config-corps * {
   color: #2a2620 !important;
 }
 html.kta-theme-light .kta-perf-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
@@ -16871,7 +16880,7 @@ html.kta-theme-light .kta-aide-section {
   border: 1px solid rgba(0,0,0,0.12) !important;
 }
 html.kta-theme-light .kta-aide-section-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-loader-perf-hint {
   color: #6b6354 !important;
@@ -17009,7 +17018,7 @@ body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps * {
   color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps a {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps code {
   background: rgba(0,0,0,0.06) !important;
@@ -17120,7 +17129,7 @@ body.kta-theme-light .kta-compass-close:focus {
    clair. Si KARMA trouve le contraste insuffisant on bumpera au noir
    charte (--kta-light-text). */
 body.kta-theme-light .kta-compass-info {
-  color: var(--kta-light-accent-hover) !important;       /* ambre plus saturé pour contraste */
+  color: var(--kta-light-accent-text, #7a5a00) !important;       /* ambre plus saturé pour contraste */
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
@@ -17328,7 +17337,7 @@ body.kta-theme-light .kta-group-flyout-btn:hover {
 body.kta-theme-light .kta-group-flyout-btn.kta-actif {
   background: rgba(244, 197, 66, 0.15);
   border-color: var(--kta-light-accent);
-  color: var(--kta-light-accent);
+  color: var(--kta-light-accent-text, #7a5a00);
 }
 body.kta-theme-light .kta-group-flyout-sep {
   background: var(--kta-light-border);
@@ -17643,7 +17652,7 @@ html.kta-theme-light .kta-planner-mode-btn {
 body.kta-theme-light .kta-planner-mode-btn:hover,
 html.kta-theme-light .kta-planner-mode-btn:hover {
   background: var(--kta-light-accent-bg) !important;
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 /* 🐛 v1.37.0 fix3 — KARMA "je parle du remplissage du mode" : le bouton
    actif en theme clair n'a pas de fond visible. fix2 avait passé en orange
@@ -17782,7 +17791,7 @@ html.kta-theme-light .kta-net-cell-url {
 body.kta-theme-light .kta-net-cell-method,
 html.kta-theme-light .kta-net-cell-method {
   /* Jaune charte plus saturé pour rester lisible sur fond clair */
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ============================================================
@@ -18843,7 +18852,7 @@ html.kta-theme-light .kta-loader-profile-greeting {
 }
 body.kta-theme-light .kta-loader-profile-surnom,
 html.kta-theme-light .kta-loader-profile-surnom {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-loader-profile-surnom-empty,
 html.kta-theme-light .kta-loader-profile-surnom-empty {
@@ -18885,7 +18894,7 @@ html.kta-theme-light .kta-profile-stat-cell {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
 }
 html.kta-theme-light .kta-profile-stat-num {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-profile-stat-lbl {
   color: var(--kta-light-text-muted, #6b6354) !important;
@@ -18996,7 +19005,7 @@ html.kta-theme-light .kta-cfg-presentation-section {
 body.kta-theme-light .kta-presentation-exit-btn,
 html.kta-theme-light .kta-presentation-exit-btn {
   background: rgba(253, 248, 235, 0.75) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
   box-shadow: 0 2px 8px rgba(80, 60, 30, 0.20) !important;
 }
@@ -19081,7 +19090,7 @@ html.kta-theme-light .kta-kmz-search-item:hover {
 }
 body.kta-theme-light .kta-kmz-search-item strong,
 html.kta-theme-light .kta-kmz-search-item strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-kmz-search-empty,
 html.kta-theme-light .kta-kmz-search-empty,
@@ -19917,7 +19926,7 @@ html.kta-theme-light .kta-north-picker-card {
 }
 body.kta-theme-light .kta-north-picker-title,
 html.kta-theme-light .kta-north-picker-title {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-north-picker-step,
 html.kta-theme-light .kta-north-picker-step {
@@ -19925,7 +19934,7 @@ html.kta-theme-light .kta-north-picker-step {
 }
 body.kta-theme-light .kta-north-picker-step strong,
 html.kta-theme-light .kta-north-picker-step strong {
-  color: var(--kta-light-accent-hover) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ============================================================================
