@@ -2974,10 +2974,7 @@
     }
     // Zone roads — repère chaque road sélectionnée avec halo couleur équipe
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-      g.zoneRoadIds.forEach(function(rid) {
-        const road = allRoads.find(function(r) { return r.id === rid; });
+      _tracesZone(g).forEach(function(road) {
         if (!road || !Array.isArray(road.points)) return;
         const latlngs = road.points.map(_planToLatLng);
         const halo = L.polyline(latlngs, {
@@ -5303,10 +5300,7 @@
       g.zonePolygon.forEach(_add);
     }
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-      g.zoneRoadIds.forEach(function(rid) {
-        const road = allRoads.find(function(r) { return r.id === rid; });
+      _tracesZone(g).forEach(function(road) {
         if (road && Array.isArray(road.points)) road.points.forEach(_add);
       });
     }
@@ -5385,13 +5379,10 @@
     }
     // 2. Zone roads (halo couleur sur chaque road sélectionnée)
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
       ctx.strokeStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.55)";
       ctx.lineWidth = 8;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
-      g.zoneRoadIds.forEach(function(rid) {
-        const road = allRoads.find(function(r) { return r.id === rid; });
+      _tracesZone(g).forEach(function(road) {
         if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
         ctx.beginPath();
         road.points.forEach(function(p, i) {
@@ -9184,7 +9175,7 @@
     if (_activeMapMode) _cancelMapMode();
     if (!window.map) return;
     _activeMapMode = "roads";
-    _mapModeCtx = { groupeId: groupeId, roadIds: new Set(), highlightLayer: null };
+    _mapModeCtx = { groupeId: groupeId, roadIds: new Set(), surbrillance: null };
     _hideModalForMap();
     _showFloater(
       t("secours.floater.roadsInstr") + '<br>' +
@@ -9194,70 +9185,111 @@
         { label: t("secours.btn.terminer"), action: "finish" }
       ]
     );
-    _bindRoadsClickListeners();
+    // 🩸 29/09/2026 (audit Secours, A2) — LE MODE « TRACÉS » NE SÉLECTIONNAIT RIEN.
+    // Il cherchait `entry.road` / `entry.layer` dans `_ktaDataPolylines` (qui n'a
+    // que `polyline`, `points`…) et écartait les tracés de session, passés sans
+    // calque : zéro clic branché. Et l'id qu'il aurait posé était aléatoire, sur une
+    // COPIE (`getAllEmbeddedRoads` clone) : perdu au rechargement comme d'un
+    // téléphone à l'autre. Désormais :
+    //   • la clé d'un tracé est l'EMPREINTE de sa géométrie (`_cleTrace`) : la même
+    //     sur tous les appareils qui ont le même plan, sans rien écrire dans le plan ;
+    //   • un clic carte prend le tracé le plus proche (tolérance écran), parmi les
+    //     niveaux visibles — comme le mode polygone, sans dépendre du rendu ;
+    //   • rouvrir le mode reprend la sélection existante de l'équipe.
+    _mapModeCtx.surbrillance = L.layerGroup().addTo(window.map);
+    const g = _findGroupeCourant(groupeId);
+    _tracesZone(g).forEach(function(r) { _mapModeCtx.roadIds.add(_cleTrace(r)); });
+    _redessinerSelectionTraces();
+    window.map.on("click", _onMapClickRoads);
   }
 
-  function _bindRoadsClickListeners() {
-    // Hook sur toutes les polylines de roads présentes (session + embedded)
-    // via les registries _ktaSessionRoadLayers / _ktaDataPolylines.
-    // Approche simple : on attache un click handler à chaque polyline.
-    // Au cleanup _finishMapMode, on retire ces handlers.
-    if (!window.map) return;
-    _mapModeCtx.attachedHandlers = [];
-    // Session roads
-    const sessRoads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
-    sessRoads.forEach(function(road) {
-      if (road.type === "itinerary") return;  // pas de pick sur itinéraire
-      _attachRoadPickHandler(road);
+  // FNV-1a 32 bits sur les coordonnées (au 1/10 de px) : stable, sans état.
+  // Mémo par TABLEAU de points : `getAllEmbeddedRoads` rend des copies neuves à
+  // chaque appel, mais elles partagent le `points` d'origine (Object.assign).
+  // Réservé aux tracés du PLAN (copies marquées `layerId`) : ceux de la session
+  // s'éditent en place (points ajoutés / déplacés), un mémo y serait périmé.
+  const _clesTraces = new WeakMap();
+  function _cleTrace(road) {
+    if (!road || !Array.isArray(road.points) || road.points.length < 2) return null;
+    const figee = Object.prototype.hasOwnProperty.call(road, "layerId");
+    const memo = figee ? _clesTraces.get(road.points) : null;
+    if (memo) return memo;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < road.points.length; i++) {
+      const p = road.points[i];
+      const s = Math.round(p.x * 10) + "," + Math.round(p.y * 10) + ";";
+      for (let j = 0; j < s.length; j++) {
+        h ^= s.charCodeAt(j);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+    }
+    const cle = "tr_" + road.points.length + "_" + h.toString(36);
+    if (figee) _clesTraces.set(road.points, cle);
+    return cle;
+  }
+
+  // Tracés sélectionnables : session + plan, hors itinéraire.
+  function _tousLesTraces() {
+    const sess = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+    const emb = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : [];
+    return sess.concat(emb).filter(function(r) {
+      return r && r.type !== "itinerary" && Array.isArray(r.points) && r.points.length >= 2;
     });
-    // Embedded roads (via registry s'il existe)
-    if (Array.isArray(window._ktaDataPolylines)) {
-      window._ktaDataPolylines.forEach(function(entry) {
-        if (!entry || !entry.road || entry.road.type === "itinerary") return;
-        _attachRoadPickHandler(entry.road, entry.layer);
-      });
-    }
   }
 
-  function _attachRoadPickHandler(road, layerHint) {
-    // road.id obligatoire pour identifier (créé par road.js si absent)
-    if (!road.id) road.id = "road_" + Math.random().toString(36).slice(2, 10);
-    // Trouve le L.polyline associé. Pattern : road.js stocke ses polylines
-    // dans _ktaSessionRoadLayers (session) ou via registry. On simplifie en
-    // attachant directement si on a la ref layerHint.
-    const layer = layerHint;
-    if (!layer || typeof layer.on !== "function") return;
-    const handler = function(e) {
-      L.DomEvent.stopPropagation(e);
-      _toggleRoadPick(road.id, layer);
+  // Résout les tracés de la zone d'une équipe. SEUL lecteur de `zoneRoadIds` :
+  // overlay, PDF, avoidances, « POI de la zone » et KMZ passent par ici.
+  // Accepte aussi un ancien `road.id` (tracé de session qui en porte un).
+  function _tracesZone(g) {
+    if (!g || g.zoneType !== "roads" || !Array.isArray(g.zoneRoadIds) || g.zoneRoadIds.length === 0) return [];
+    const voulus = {};
+    g.zoneRoadIds.forEach(function(k) { voulus[k] = true; });
+    return _tousLesTraces().filter(function(r) {
+      return (r.id && voulus[r.id]) || voulus[_cleTrace(r)];
+    });
+  }
+
+  function _findGroupeCourant(groupeId) {
+    const s = get(_currentScenarioId);
+    return s ? (s.groupes || []).find(function(g) { return g.id === groupeId; }) : null;
+  }
+
+  function _onMapClickRoads(e) {
+    if (!_mapModeCtx || _activeMapMode !== "roads") return;
+    const p = {
+      x: e.latlng.lng,
+      y: (window.APP_CONFIG && window.APP_CONFIG.imageHeight) ? window.APP_CONFIG.imageHeight - e.latlng.lat : e.latlng.lat
     };
-    layer.on("click", handler);
-    _mapModeCtx.attachedHandlers.push({ layer: layer, handler: handler });
+    // 14 px écran → unités plan (CRS.Simple : 1 unité = 2^zoom px).
+    const tol = 14 / Math.pow(2, window.map.getZoom());
+    const filtre = (typeof window.passeFiltreNiveau === "function") ? window.passeFiltreNiveau : function() { return true; };
+    let meilleur = null, dMin = Infinity;
+    _tousLesTraces().forEach(function(r) {
+      if (!filtre(r)) return;
+      const d = _distPointPolyline(p, r.points);
+      if (d < dMin) { dMin = d; meilleur = r; }
+    });
+    if (!meilleur || dMin > tol) return;
+    // Un tracé de session ouvre sa popup de note au même clic : on la referme.
+    try { window.map.closePopup(); } catch(err) {}
+    const cle = _cleTrace(meilleur);
+    if (_mapModeCtx.roadIds.has(cle)) _mapModeCtx.roadIds.delete(cle);
+    else _mapModeCtx.roadIds.add(cle);
+    _redessinerSelectionTraces();
   }
 
-  function _toggleRoadPick(roadId, layer) {
-    if (!_mapModeCtx) return;
-    if (_mapModeCtx.roadIds.has(roadId)) {
-      _mapModeCtx.roadIds.delete(roadId);
-      // Restore style
-      if (layer && layer.options && layer._kta_originalStyle) {
-        try { layer.setStyle(layer._kta_originalStyle); } catch(e) {}
-        delete layer._kta_originalStyle;
-      }
-    } else {
-      _mapModeCtx.roadIds.add(roadId);
-      if (layer && typeof layer.setStyle === "function") {
-        if (!layer._kta_originalStyle) {
-          layer._kta_originalStyle = {
-            color:  layer.options.color,
-            weight: layer.options.weight,
-            opacity: layer.options.opacity
-          };
-        }
-        layer.setStyle({ color: "#ff4444", weight: 8, opacity: 0.9 });
-      }
-    }
-    _updateFloaterCount(_mapModeCtx.roadIds.size, "traces");
+  function _redessinerSelectionTraces() {
+    if (!_mapModeCtx || !_mapModeCtx.surbrillance) return;
+    const couche = _mapModeCtx.surbrillance;
+    couche.clearLayers();
+    const voulus = _mapModeCtx.roadIds;
+    _tousLesTraces().forEach(function(r) {
+      if (!voulus.has(_cleTrace(r))) return;
+      L.polyline(r.points.map(_planToLatLng), {
+        color: "#ff4444", weight: 8, opacity: 0.85, interactive: false
+      }).addTo(couche);
+    });
+    _updateFloaterCount(voulus.size, "traces");
   }
 
   function _finishRoads() {
@@ -9376,20 +9408,15 @@
       window.map.off("click", _onMapClickPoint);
       window.map.off("click", _onMapClickPolygon);
       window.map.off("dblclick", _onMapDblClickPolygon);
+      window.map.off("click", _onMapClickRoads);
     }
     // Cleanup preview polygon
     if (_mapModeCtx && _mapModeCtx.previewLayer && window.map) {
       try { window.map.removeLayer(_mapModeCtx.previewLayer); } catch(e) {}
     }
-    // Cleanup roads handlers
-    if (_mapModeCtx && Array.isArray(_mapModeCtx.attachedHandlers)) {
-      _mapModeCtx.attachedHandlers.forEach(function(h) {
-        try { h.layer.off("click", h.handler); } catch(e) {}
-        if (h.layer && h.layer._kta_originalStyle) {
-          try { h.layer.setStyle(h.layer._kta_originalStyle); } catch(e) {}
-          delete h.layer._kta_originalStyle;
-        }
-      });
+    // Cleanup surbrillance du mode tracés
+    if (_mapModeCtx && _mapModeCtx.surbrillance && window.map) {
+      try { window.map.removeLayer(_mapModeCtx.surbrillance); } catch(e) {}
     }
     _activeMapMode = null;
     _mapModeCtx = null;
@@ -9548,10 +9575,7 @@
       }
       // 3. Zone roads — points de chaque road sélectionnée
       if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-        const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                         .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-        g.zoneRoadIds.forEach(function(rid) {
-          const road = allRoads.find(function(r) { return r.id === rid; });
+        _tracesZone(g).forEach(function(road) {
           if (road && Array.isArray(road.points)) {
             road.points.forEach(function(p) {
               if (typeof p.x === "number") {
@@ -9624,6 +9648,7 @@
       };
       // Compteurs debug (visibles dans 🐛 Logs si debugMode ON)
       let cntTotal = 0, cntSkipLevel = 0, cntSkipOutside = 0, cntSkipDup = 0;
+      const tracesZone = _tracesZone(g);  // résolu UNE fois (empreintes), pas par POI
       // Filtre les POI dans la zone
       const candidats = [];
       all.forEach(function(entry) {
@@ -9642,10 +9667,8 @@
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
           inside = _pointInPolygon(p, g.zonePolygon);
         } else if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-          for (let i = 0; i < g.zoneRoadIds.length; i++) {
-            const road = allRoads.find(function(r) { return r.id === g.zoneRoadIds[i]; });
+          for (let i = 0; i < tracesZone.length; i++) {
+            const road = tracesZone[i];
             if (!road || !Array.isArray(road.points)) continue;
             if (_distPointPolyline(p, road.points) <= 30) {  // buffer 30 px
               inside = true;
@@ -9908,6 +9931,9 @@
     isPhasePretAClore:      function(scenarioId) {
       return _phaseEstPretAClore(get(scenarioId));
     },
+    // 🩸 29/09/2026 — tracés de la zone d'une équipe (empreintes stables, cf _cleTrace).
+    // Seule façon correcte de lire `zoneRoadIds` hors du module (kmzExport).
+    tracesZone:             _tracesZone,
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,
     MAX_SCENARIOS:          MAX_SCENARIOS,

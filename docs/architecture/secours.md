@@ -288,9 +288,10 @@ Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instru
 
 **POLYGON** (`_startDefiningZonePolygon`) : multi-clic. Preview L.polyline dashed rouge mise à jour à chaque sommet ajouté. Double-clic = ferme (min 3 sommets). Floater compte les sommets.
 
-**ROADS** (`_startDefiningZoneRoads`) : hook click sur chaque polyline session (`getRoads()`) + embedded (`_ktaDataPolylines` registry). Re-clic toggle. Preserve `_kta_originalStyle` sur chaque layer cliqué pour restore propre. Skip `road.type === "itinerary"`.
-
-⚠️ **Préserver les styles originaux** : `_kta_originalStyle` posé sur chaque layer modifié pour pouvoir restore exactement à l'état d'origine au cleanup. Sans ça, les polylines clignotent en rouge persistant après fermeture du mode.
+**ROADS** (`_startDefiningZoneRoads`) — 🩸 **réécrit le 29/09/2026 (audit Secours, A2)** : l'ancien mode accrochait un clic à chaque polyline via `entry.road` / `entry.layer`, absents du registre `_ktaDataPolylines` ; les tracés de session passaient sans calque → **aucun clic branché, rien de sélectionnable**. Et l'id posé aurait été aléatoire, sur une copie (`getAllEmbeddedRoads` clone). Désormais :
+- **Clé = empreinte de la géométrie** (`_cleTrace` : FNV-1a sur les coordonnées au 1/10 px, préfixe `tr_<n>_`). Identique sur tous les appareils qui ont le même plan, rien n'est écrit dans le plan. Mesuré : 893 clés pour 893 géométries distinctes du plan de test (0 collision). Un tracé du plan modifié change de clé → il sort de la zone (voulu : ce n'est plus la même galerie). Mémo `WeakMap` par tableau de points, **réservé aux tracés du plan** (les tracés de session s'éditent en place).
+- **Sélection** : `map.on("click")` → tracé le plus proche parmi les niveaux visibles (`passeFiltreNiveau`), tolérance 14 px écran convertie en unités plan (`14 / 2^zoom`) ; re-clic = retire. Surbrillance dans un `L.layerGroup` propre au mode (plus de `setStyle` sur les couches du rendu, plus de `_kta_originalStyle`). Rouvrir le mode reprend la sélection de l'équipe. La popup de note d'un tracé de session, ouverte par le même clic, est refermée.
+- **Un seul lecteur** : `_tracesZone(g)` (overlay, bbox et canvas du PDF, avoidances, « POI de la zone », et `kmzExport.js` via `SecoursMode.tracesZone`). Accepte encore un ancien `road.id`. ⚠️ Ne jamais relire `zoneRoadIds` à la main : ce ne sont pas des `road.id`.
 
 #### 65.6 Pathfinder intégration
 
