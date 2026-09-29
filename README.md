@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.8` (29/09/2026)
+## 📦 Version courante — `v1.98.9` (29/09/2026)
+
+> 🆔 **v1.98.9 — Mode Secours, 2e relecture : chaque point de passage a son identité** : la 2.6 refaite reliait encore des étapes par leur nom (un autre « Puits » naissait déjà fait, un homonyme contournait le refus « victime ») ; désormais un identifiant par point. Et une « victime » signalée par l'équipe sur une étape retirée au PC est remise dans le parcours avec une alerte rouge, au lieu d'être ignorée.
 
 > 🔍 **v1.98.8 — Mode Secours, reprise après relecture des vagues 1-3** : un agent relecteur a reproduit 10 défauts dans les correctifs livrés ou autour ; tous corrigés, dont la 2.6 refaite (homonymes, étape « victime » qui disparaissait du rapport), un plan importé effacé aussitôt sur un téléphone plein, et l'itinéraire tracé à travers la surface en Vue OSM (conséquence de 2.2).
 
@@ -493,6 +495,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.9 (29/09/2026) — Mode Secours, vague 3ter : 2e relecture
+
+- 🔍 **Origine** : 2e relecture adversariale de la vague 3bis (`6c9a4fd..d652597`) : 10 défauts reproduits, dont 3 🔴 introduits par la 2.6 v2 et N11 (antérieur). Décisions KARMA : simplification « identité par point » ; N11 option a (point remis + alerte).
+- 🆔 **Identité des points** (`6b33638`) : `wid` par point de passage (création, export, lancement), porté par l'étape ; héritage par rôle + position (archive comprise) ; apparieur : `wid`, puis position (données d'avant), puis libellé (rapports d'avant v1.98.8). Corrige N1, N3, N7 (par l'UI), N8 ; archive vidée au passage de phase (N2) ; garde = conditions de la resync (N4) ; refus re-vérifié après confirmation (N5).
+- 🚨 **N11** (même commit) : « aide »/« victime » sur une étape retirée côté PC → point remis après le point importé précédent + alerte rouge en clair ; autres saisies archivées. Vérifié par l'interface sur **deux appareils** simulés.
+- 📷 **N9 / N10b** (même commit) : photo détenue par aucune étape exclue du rapport ; photos purgées avec leur scénario (suppression, limite de 10) et à la relance.
+- 🧾 **D-b** (`c77297b`) : la liste d'étapes du briefing s'imprime même sans itinéraire calculé.
+- ⚠️ **Limite** : deux passages au même endroit fournis en objets neufs (appel programmatique) sont indiscernables ; par l'interface, non. Un seul commit pour N1-N11 (correctifs entremêlés dans les mêmes fonctions).
+- ✅ **Tests** : cas du relecteur rejoués, `t3ter` 7/7, checkup navigateur à 2 appareils ; non-régression 11 harnais Node + 10 checkups navigateur ; `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Rien sur téléphone réel.
 
 #### v1.98.8 (29/09/2026) — Mode Secours, vague 3bis : reprise après relecture
 

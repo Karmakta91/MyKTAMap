@@ -1,5 +1,5 @@
 {
-  "version": "v1.98.8",
+  "version": "v1.98.9",
   "released": "2026-09-29",
   "notes": [
     "🪧 Nouveau : le guidage de l'itinéraire. Pendant le suivi, un bandeau te dit quoi faire (« Dans 40 m, tourner à gauche »), montre un schéma des grands carrefours et te prévient si tu t'écartes du chemin. Les distances d'itinéraire comptent maintenant le trajet à vol d'oiseau jusqu'à la galerie la plus proche (en pointillé).",
