@@ -3359,7 +3359,7 @@
       }
       if (perdues.length > 0 && !partial._confirmeRetrait) {
         if (typeof window.ktaConfirm === "function") {
-          const noms = perdues.map(function(e) { return "• " + _escHtml(e.label || ""); }).join("\n");
+          const noms = perdues.map(function(e) { return "• " + _escHtml(_lblEtape(e.label) || ""); }).join("\n");
           window.ktaConfirm(t("secours.etape.retraitConfirme", { n: perdues.length, liste: noms })).then(function(ok) {
             if (!ok) return;
             updateGroupe(scenarioId, groupeId, Object.assign({}, partial, { _confirmeRetrait: true }));
@@ -4050,7 +4050,7 @@
             const ts = et.completedAt ? new Date(et.completedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                      : et.startedAt   ? t("secours.txt.tsEnCours", { date: new Date(et.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") })
                      : "—";
-            out += "  " + (i + 1) + ". " + typeLabel + " — " + (et.label || "(?)") + "\n";
+            out += "  " + (i + 1) + ". " + typeLabel + " — " + (_lblEtape(et.label) || "(?)") + "\n";
             out += "     " + info.emoji + " " + _statutLabel(et.statut) + " · ⏱️ " + ts + "\n";
             if (et.observations && et.observations.trim()) {
               out += "     " + t("secours.txt.obs", { obs: et.observations.trim() }) + "\n";
@@ -5354,7 +5354,7 @@
         pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
       }
       pdf.setFont(undefined, "bold");
-      pdf.text("  - " + (e.label || "(?)") + " : " + _statutLabelAscii(e.statut), margin, y); y += 4;
+      pdf.text("  - " + (_lblEtape(e.label) || "(?)") + " : " + _statutLabelAscii(e.statut), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (e.observations && String(e.observations).trim()) {
         y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(e.observations).trim() }), margin, y, pageW - 2 * margin, 4);
@@ -5383,7 +5383,7 @@
           _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
           pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
         }
-        pdf.text("  " + (i + 1) + ". " + (et.label || "(?)") + " : " + _statutLabelAscii(et.statut), margin, y); y += 4;
+        pdf.text("  " + (i + 1) + ". " + (_lblEtape(et.label) || "(?)") + " : " + _statutLabelAscii(et.statut), margin, y); y += 4;
         if (et.observations && String(et.observations).trim()) {
           y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(et.observations).trim() }), margin, y, pageW - 2 * margin, 4);
         }
@@ -5463,7 +5463,7 @@
       pdf.setDrawColor(0);
 
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (et.label || "(?)"), margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (_lblEtape(et.label) || "(?)"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelAscii(et.statut), ts: ts }), margin, y); y += 4;
       if (et.observations && et.observations.trim()) {
@@ -6066,7 +6066,12 @@
         pdf.text(t("secours.pdf.missionAssignee"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
         // Relecture PDF : le NOM du point d'abord (« x=11682 y=9671 » ne dit rien à une équipe).
-        const nomPt = function(w) { return (w && w.label) ? w.label + " (" + _fmtPoint(w) + ")" : _fmtPoint(w); };
+        const nomPt = function(w) {
+          if (!w || typeof w.x !== "number") return _fmtPoint(w);
+          const gps = _gpsTxt(w.x, w.y);
+          const ou = gps ? "GPS " + gps + (typeof w.level === "number" ? " niv=" + w.level : "") : _fmtPoint(w);
+          return w.label ? w.label + " (" + ou + ")" : ou;
+        };
         pdf.text(t("secours.pdf.entreeLigne", { point: nomPt(g.entree) }), margin, y); y += 4;
         pdf.text(t("secours.pdf.sortieLigne", { point: nomPt(g.sortie) }), margin, y); y += 4;
         const zoneTxt = g.zoneType === "polygon" ? t("secours.pdf.zonePolygone", { n: (g.zonePolygon ? g.zonePolygon.length : 0) })
@@ -6090,7 +6095,7 @@
         // calculé (2e relecture, D-b : le papier ne doit pas dépendre du calcul).
         const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
           .filter(function(w) { return w && typeof w.x === "number"; })
-          .map(function(w) { return w.label || _fmtPoint(w); });
+          .map(function(w) { return w.label || _lblEtape(_fmtPoint(w)); });
         if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
@@ -6462,6 +6467,39 @@
     if (!pt || typeof pt.x !== "number") return "(non definie)";
     return "x=" + Math.round(pt.x) + " y=" + Math.round(pt.y) +
            (typeof pt.level === "number" ? " niv=" + pt.level : "");
+  }
+  // 29/09/2026 (KARMA) : « 🚪 SORTIE — x=15347 y=5085 niv=0 » ne dit rien à une
+  // équipe ni aux pompiers. Quand le plan est géoréférencé (plan-config OU calage
+  // saisi dans ⚙️ Réglages — même cascade que la Vue OSM), un point sans nom
+  // s'AFFICHE en GPS. ⚠️ Affichage seulement : le libellé stocké reste _fmtPoint
+  // (« x=… y=… niv=… »), car il sert d'identité aux étapes sans nom entre le PC et
+  // les téléphones (appariement par libellé) — le changer casserait la fusion.
+  function _transformGeoref() {
+    const K = window.KmzExport;
+    if (!K || typeof K.buildTransformCalib !== "function" || typeof K.planToGps !== "function") return null;
+    const valide = function(g) {
+      return !!(g && g.pointA && g.pointB && [g.pointA.x, g.pointA.y, g.pointA.lat, g.pointA.lng,
+        g.pointB.x, g.pointB.y, g.pointB.lat, g.pointB.lng].every(Number.isFinite));
+    };
+    let g = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
+    if (!valide(g) && typeof K.getCalibration === "function") {
+      g = K.getCalibration(window._currentLoadedPlanId || "default");
+    }
+    if (!valide(g)) return null;
+    try { return K.buildTransformCalib(g); } catch(e) { return null; }
+  }
+  function _gpsTxt(x, y) {
+    const tr = _transformGeoref();
+    const ll = tr ? window.KmzExport.planToGps(tr, x, y) : null;
+    return (ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng))
+      ? ll.lat.toFixed(5) + ", " + ll.lng.toFixed(5) : null;
+  }
+  const RE_LBL_BRUT = /^x=(-?\d+(?:\.\d+)?) y=(-?\d+(?:\.\d+)?)(?: niv=(-?\d+))?$/;
+  function _lblEtape(label) {
+    const m = RE_LBL_BRUT.exec(String(label || ""));
+    if (!m) return label;
+    const g = _gpsTxt(Number(m[1]), Number(m[2]));
+    return g ? "GPS " + g + (m[3] != null ? " (" + t("secours.ctxImport.niv", { level: m[3] }) + ")" : "") : label;
   }
   function _slug(s) { return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40); }
   function _shortDate() {
@@ -7856,7 +7894,7 @@
                       : (et.type === "sortie") ? t("secours.live.stepSortie")
                       : ("📍 " + (i));
       html += '<button class="' + cls + '" data-action="live-goto-step" data-step="' + i + '" ' +
-                'title="' + _escAttr(labelType + " — " + et.label) + '" ' +
+                'title="' + _escAttr(labelType + " — " + _lblEtape(et.label)) + '" ' +
                 'style="--kta-step-color:' + stInfo.color + ';">' +
                 '<span class="kta-secours-live-step-emoji">' + stInfo.emoji + '</span>' +
                 '<span class="kta-secours-live-step-idx">' + (i + 1) + '</span>' +
@@ -7871,7 +7909,7 @@
     html += '<div class="kta-secours-live-etape">' +
               '<div class="kta-secours-live-etape-titre">' +
                 typeLabel +
-                ' — ' + _escHtml(etape.label || t("secours.live.sansLabel")) +
+                ' — ' + _escHtml(_lblEtape(etape.label) || t("secours.live.sansLabel")) +
               '</div>' +
               '<div class="kta-secours-live-etape-statut" style="border-color:' + statutInfo.color + ';">' +
                 '<span style="font-size:14px;">' + t("secours.live.statutActuel") + '</span> ' +
@@ -8481,7 +8519,8 @@
     const idxAttr = isInter ? ' data-idx="' + idx + '"' : '';
     let label = "";
     if (w) {
-      label = w.label || ("x=" + Math.round(w.x) + " y=" + Math.round(w.y));
+      label = w.label ? _escHtml(w.label)
+            : (_gpsTxt(w.x, w.y) ? "GPS " + _gpsTxt(w.x, w.y) : ("x=" + Math.round(w.x) + " y=" + Math.round(w.y)));
       if (typeof w.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel) {
         label += " <span class='kta-secours-parcours-lvl'>" + t("secours.ctxImport.niv", { level: w.level }) + "</span>";
       }
@@ -9570,7 +9609,7 @@
         etapesHtml += '<li>' +
                         '<div class="kta-secours-op-details-row">' +
                           '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(_statutLabel(et.statut)) + '</strong></span>' +
-                          ' · ' + _escHtml(et.label || "(?)") +
+                          ' · ' + _escHtml(_lblEtape(et.label) || "(?)") +
                           ' · <span class="kta-secours-op-details-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
                           importedChip +
                         '</div>' +
