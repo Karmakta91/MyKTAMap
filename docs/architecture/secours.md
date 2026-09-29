@@ -597,6 +597,15 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 
 **Fonctions exposées** : `exporterScenario(scenarioId)` + `async importerScenario(input)` (File | Blob | string). Import valide type + version ≤ max + structure scenario (nom + groupes array), re-génère ids (anti-collision si re-import multiple), filtre défensif whitelist champs. Si plan.id ≠ plan courant → `confirm()` natif (sera remplacé par modale charte en v1.23.5).
 
+> 🩸 **Corrigé le 29/09/2026 (audit Secours, A1) — les ids d'origine sont GARDÉS.** La régénération systématique
+> cassait l'import consolidé (§72) : le téléphone d'une équipe travaillait sur d'autres ids que le PC, et son rapport
+> était refusé à 100 % (`errScenarioDifferent` / `errEquipeAbsente`). Désormais `_appliquerPayloadImport(payload, mode)`
+> garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
+> choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
+> réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue, l'aperçu le dit.
+> `importerScenario(input, {mode})` : sans `mode`, un existant part en **copie** (jamais d'écrasement implicite) ;
+> son `confirm()` de plan différent est passé à `ktaConfirm`. Test : harnais 2 appareils, 19 contrôles.
+
 **Fix Heatmap « ⚙️ Régler »** : bouton TOUJOURS visible tant que `window.MyKTAMapHeatmap` chargé (avant : condition fragile `_secoursHeatmapActive && isVisible()` faisait disparaître le bouton après cycles de rendu).
 
 #### 67.4 v1.23.5 — Modale preview AVANT import + mini-légende carte PDF
@@ -1347,8 +1356,8 @@ couverts :
 Appelée par :
 - `_loadScenarios()` au boot (sur tous les scénarios localStorage)
 - `_appliquerPayloadImport(payload)` à chaque import `.mkmsec.json` (couvre v1 re-importés ET
-  v1.29+ avec phases[] explicites — remap `phase.groupeIds[]` avec les nouveaux g.id régénérés
-  via `idMap[oldGid]`)
+  v1.29+ avec phases[] explicites — remap `phase.groupeIds[]` via `idMap[oldGid]` ; depuis le
+  29/09/2026 les g.id ne sont régénérés que pour une **copie**, cf §67.3)
 
 Format `.mkmsec.json` reste à **`version: 1`** (champ `phases` optionnel ignoré par anciens
 parsers — **pas de cassure rétro-compat**).

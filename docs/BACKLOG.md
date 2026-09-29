@@ -60,10 +60,19 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 harnais Node sur le vrai `secoursMode.js` / `pathfinder.js`). Rien de testé en navigateur. Les numéros de ligne datent de
 v1.98.4. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups natives).
 
+**Ordre de traitement (validé KARMA le 29/09)** : les correctifs d'abord, la refonte ensuite. **Un commit par case** ;
+**un bump par vague** (notes + 4 axes de doc en fin de vague). `alert()`/`confirm()` migrés **seulement** dans les
+fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
+
+| Vague | Cases |
+|---|---|
+| 1 — Remontée PC ↔ équipes | [x] 1.1 ids gardés à l'import (A1) · [ ] 1.2 purge ≠ scénario en cours (A5) · [ ] 1.3 fusion : RAS perdu, égalités (reçu ≠ pending gagne, puis le plus récent) · [ ] 1.4 prise de main : étape remise à zéro |
+| 2 — Saisie du plan | [ ] 2.1 mode tracés (A2) · [ ] 2.2 niveaux de l'itinéraire · [ ] 2.3 ordre plus proche voisin · [ ] 2.4 Ctrl+K « Étape » par défaut · [ ] 2.5 Mode Perdu : niveau du point · [ ] 2.6 renfort / équipe modifiée en cours de phase |
+| 3 — Documents papier | [ ] 3.1 « POI critiques » · [ ] 3.2 fond du PDF (~860 Mo) · [ ] 3.3 nombre d'étapes |
+| 4 — Correctifs inter-modules | [ ] 4.1 durées (pause par étape) · [ ] 4.2 calage par niveau (`pathfinder.js`) · [ ] 4.3 version du plan à l'import |
+| 5-8 — Refonte | 5 sécurité terrain (A3, A4, rappel) · 6 guidage (B1, B2) · 7 pilotage (B3, B9, main courante, parcours par phase, rapports secouriste, B10) · 8 lot C |
+
 **Lot A — bloquants** (sans eux, une recherche multi-téléphones ne marche pas) :
-- 🔴 **A1 — Rapport d'équipe refusé au PC** ✅ vérifié : l'import `.mkmsec` régénère scénario + équipes
-  (`secoursMode.js:1625`, `:1635`), l'import du rapport exige les ids d'origine (`:2112`, `:2117`). Conserver l'id
-  d'origine (ou la correspondance), réimport idempotent, corriger `session-data.md` §72.1. **S**
 - 🔴 **A2 — Mode « zone = tracés » inerte** ✅ vérifié : lit `entry.road`/`entry.layer`, absents de
   `_ktaDataPolylines` (`utils.js:2449`) ; tracés de session sans calque → écartés (`:9166`). Brancher sur
   `entry.polyline` + empreinte stable (jamais l'id aléatoire de `:9159`). **S-M**
@@ -227,7 +236,7 @@ fix de la v1.77.0.*
 |---|---|
 | **Podomètre / mode poche** | Enterré le 29/09 : **infaisable en l'état**. Le podomètre du téléphone est inaccessible depuis une page web (aucune plateforme), Web Bluetooth n'existe pas sur iOS, et le vrai obstacle en poche est le **cap**, pas le comptage. Étude : `docs/ETUDE_PODOMETRE.md` |
 | **Plein écran iPhone** | 2 tentatives (v1.9.2, v1.71.0), 2 rollbacks. Un commentaire d'`index.html` **interdit une 3ᵉ tentative** sans diagnostic précis sur appareil |
-| **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 (qui ne fonctionne qu'après **A1**, cf. 🚑 Mode Secours) |
+| **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 (réellement fonctionnel entre deux appareils depuis le correctif A1 du 29/09) |
 | **Traversée de portail en Vue OSM** | Arbitré 01/08 : le mode OSM n'a ni position courante ni plan « où tu es » |
 | **Mode terrain (L1) et point rapide (L2)** | Écartés le 14/09 : l'écran et la pose de point conviennent |
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |

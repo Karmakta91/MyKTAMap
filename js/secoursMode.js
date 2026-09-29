@@ -1620,19 +1620,33 @@
   // user via modale preview.
   // Retourne : { ok: bool, scenario: object } (jamais d'erreur ici car le
   // payload est déjà validé par _parsePayloadMkmsec)
-  function _appliquerPayloadImport(payload) {
+  // 🩸 29/09/2026 — LES IDS D'ORIGINE SONT GARDÉS. Avant, tout import les
+  // régénérait : le téléphone d'une équipe travaillait sur des ids qui n'étaient
+  // plus ceux du PC, et le rapport qu'il rapportait était refusé à 100 %
+  // (`_parsePayloadReport` exige scénario + équipe identiques). L'import consolidé
+  // n'a jamais pu marcher entre deux appareils (audit 2026-09-29, A1).
+  // `mode` ne compte que si le scénario est DÉJÀ sur l'appareil :
+  //   "remplacer" → même place, mêmes ids (plan mis à jour, rapports acceptés) ;
+  //   "copie" (défaut) → nouveaux ids, comme avant — non destructif.
+  function _appliquerPayloadImport(payload, mode) {
     const sc = payload.scenario;
-    sc.id = _genId("secours");
+    const idxExistant = (typeof sc.id === "string" && sc.id)
+      ? _scenarios.findIndex(function(s) { return s.id === sc.id; })
+      : -1;
+    const remplacer = idxExistant >= 0 && mode === "remplacer";
+    const regenerer = !(typeof sc.id === "string" && sc.id) || (idxExistant >= 0 && !remplacer);
+    if (regenerer) sc.id = _genId("secours");
     sc.updatedAt = _nowIso();
-    // 🆕 v1.29.0 C1 — Re-génération des IDs équipes + remapping cross-phases.
-    // Si le payload est multi-phases, ses phase.groupeIds[] pointent vers les
-    // anciens g.id ; on doit les ré-écrire vers les nouveaux pour préserver
-    // l'assignation équipe ↔ phase au re-import.
+    // 🆕 v1.29.0 C1 — Remapping cross-phases : phase.groupeIds[] suivent les g.id.
+    // Un id d'équipe n'est régénéré que pour une copie, ou s'il est absent/en double.
     const idMap = {};   // oldId → newId
+    const vus = {};
     if (Array.isArray(sc.groupes)) {
       sc.groupes.forEach(function(g) {
         const oldId = g.id;
-        g.id = _genId("G");
+        const valide = typeof oldId === "string" && oldId && !vus[oldId];
+        if (regenerer || !valide) g.id = _genId("G");
+        vus[g.id] = true;
         if (typeof oldId === "string") idMap[oldId] = g.id;
       });
     }
@@ -1647,7 +1661,7 @@
             return sc.groupes.some(function(g) { return g.id === id; });
           });
         return {
-          id:        _genId("P"),
+          id:        (!regenerer && typeof p.id === "string" && p.id) ? p.id : _genId("P"),
           idx:       (typeof p.idx === "number" && p.idx >= 0) ? p.idx : i,
           nom:       (typeof p.nom === "string" && p.nom.trim()) ? p.nom.trim() : (PHASE_DEFAULT_NOM + " " + (i + 1)),
           groupeIds: mapped,
@@ -1673,9 +1687,12 @@
     // sans phases[], une phase implicite est créée couvrant toutes les équipes.
     // Si déjà multi-phases, idempotent.
     _migrateScenarioV1ToPhases(cleanScenario);
-    _scenarios.push(cleanScenario);
+    // Remplacer = même place dans la liste ; l'exécution locale éventuelle part
+    // avec l'ancienne version (la modale d'aperçu l'a annoncé).
+    if (remplacer) _scenarios[idxExistant] = cleanScenario;
+    else _scenarios.push(cleanScenario);
     _commitMutation(cleanScenario);
-    return { ok: true, scenario: cleanScenario };
+    return { ok: true, scenario: cleanScenario, remplace: remplacer };
   }
 
   // Import scénario depuis fichier (File ou string JSON) — API publique
@@ -1684,29 +1701,32 @@
   // de preview interactif. La modale preview est gérée séparément par
   // _ouvrirImportMkmsecPicker (déclenchée par bouton UI).
   //
-  // ⚠️ Cette signature préserve la rétro-compat v1.23.4 : si plan différent,
-  // bascule sur confirm() natif (= comportement v1.23.4). Pour le flow UI
-  // moderne (modale charte), utiliser le picker.
+  // ⚠️ Rétro-compat v1.23.4 : si plan différent, demande confirmation (modale
+  // charte `ktaConfirm` depuis le 29/09/2026). Pour le flow UI complet, le picker.
+  // `opts.mode` ("remplacer" | "copie") : cf `_appliquerPayloadImport` — sans lui,
+  // un scénario déjà présent est importé en copie (jamais d'écrasement implicite).
   //
-  // Retourne : { ok: bool, scenario?: object, warning?: string, error?: string }
-  async function importerScenario(input) {
+  // Retourne : { ok: bool, scenario?: object, remplace?: bool, warning?: string, error?: string }
+  async function importerScenario(input, opts) {
     const parsed = await _parsePayloadMkmsec(input);
     if (!parsed.ok) return parsed;
-    // Si plan différent, demande confirm() (preserve comportement v1.23.4 pour
-    // les callers programmatiques sans UI)
     if (parsed.warning) {
       const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
       const importedPlanName = (parsed.payload.plan && parsed.payload.plan.name) || t("secours.import.planInconnu");
+      // ktaConfirm rend du HTML : les noms viennent du fichier → échappés.
       const confirmMsg = t("secours.import.confirmPlanDifferent", {
-        planSource: importedPlanName,
-        planCourant: currentPlanName
+        planSource: _escHtml(importedPlanName),
+        planCourant: _escHtml(currentPlanName)
       });
-      if (!window.confirm(confirmMsg)) {
+      const ok = (typeof window.ktaConfirm === "function")
+        ? await window.ktaConfirm(confirmMsg)
+        : window.confirm(confirmMsg);
+      if (!ok) {
         return { ok: false, error: t("secours.import.errAnnuleUser") };
       }
     }
-    const applied = _appliquerPayloadImport(parsed.payload);
-    return { ok: true, scenario: applied.scenario, warning: parsed.warning };
+    const applied = _appliquerPayloadImport(parsed.payload, opts && opts.mode);
+    return { ok: true, scenario: applied.scenario, remplace: applied.remplace, warning: parsed.warning };
   }
 
   // 🆕 v1.23.4 — File picker pour l'import .mkmsec.json depuis la vue LIST.
@@ -1737,12 +1757,13 @@
         return;
       }
       // Sinon : modale preview avec callback de confirmation.
-      _afficherPreviewImport(parsed.payload, parsed.warning, file.name, function(confirmer) {
+      _afficherPreviewImport(parsed.payload, parsed.warning, file.name, function(confirmer, mode) {
         if (!confirmer) return;  // user a annulé
-        const applied = _appliquerPayloadImport(parsed.payload);
+        const applied = _appliquerPayloadImport(parsed.payload, mode);
         _afficherResultatImport({
           ok:       true,
           scenario: applied.scenario,
+          remplace: applied.remplace,
           warning:  parsed.warning
         }, file.name);
         // Refresh vue liste pour montrer le nouveau scénario
@@ -1831,6 +1852,25 @@
                      '</div>';
     }
 
+    // 🩸 29/09/2026 — Scénario déjà sur l'appareil (même id) : le choix entre
+    // « Remplacer » (garde le lien avec les rapports des équipes) et « Copie ».
+    const existant = (typeof sc.id === "string" && sc.id) ? get(sc.id) : null;
+    let existeBlock = "";
+    if (existant) {
+      const enCours = !!(existant.execution && existant.execution.active);
+      existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
+                      '<strong style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
+                      t("secours.import.existeBody", { nom: _escHtml(existant.nom || t("secours.import.sansNom")) }) +
+                      (enCours ? '<br><span style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") + '</span>' : '') +
+                      '<label style="display:flex; gap:8px; margin-top:8px; cursor:pointer;">' +
+                        '<input type="radio" name="kta-sec-import-mode" value="remplacer" checked> ' +
+                        '<span>' + t("secours.import.modeRemplacer") + '</span></label>' +
+                      '<label style="display:flex; gap:8px; margin-top:4px; cursor:pointer;">' +
+                        '<input type="radio" name="kta-sec-import-mode" value="copie"> ' +
+                        '<span>' + t("secours.import.modeCopie") + '</span></label>' +
+                    '</div>';
+    }
+
     const inner = '<div class="kta-readme-modal-header">' +
                     '<h2 style="margin:0; color:#8cb4ff;">' + t("secours.import.previewTitre") + '</h2>' +
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
@@ -1860,6 +1900,7 @@
                     '</div>' +
 
                     warningBlock +
+                    existeBlock +
 
                     '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
                       '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">' + t("secours.btn.annulerCroix") + '</button>' +
@@ -1871,9 +1912,12 @@
     overlay.appendChild(boite);
 
     function _close(confirmer) {
+      // Mode lu AVANT de retirer la modale ; sans bloc « existant » → copie (sans effet).
+      const radio = overlay.querySelector('input[name="kta-sec-import-mode"]:checked');
+      const mode = radio ? radio.value : "copie";
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       document.removeEventListener("keydown", _onKey);
-      try { onDone(!!confirmer); } catch(e) {}
+      try { onDone(!!confirmer, mode); } catch(e) {}
     }
     function _onKey(e) { if (e.key === "Escape") _close(false); }
     overlay.addEventListener("click", function(e) {
@@ -1947,7 +1991,7 @@
     if (ok) {
       const sc = result.scenario || {};
       const nbGroupes = (sc.groupes || []).length;
-      inner += '<p>' + t("secours.import.resOkBody", { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
+      inner += '<p>' + t(result.remplace ? "secours.import.resOkRemplace" : "secours.import.resOkBody", { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
                '<p style="color:#8892a4; font-size:13px;">' +
                  t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
                  t("secours.import.resOkEquipes", { n: nbGroupes }) +

@@ -1041,7 +1041,10 @@ KARMA quote :
 #### 72.1 Workflow terrain
 
 1. **Opérateur** prépare le scénario + lance le plan AVANT incident (3 rôles disponibles : op surface / équipier / secouriste libre)
-2. **Équipiers** reçoivent le scénario via `.mkmsec.json` classique (Phase 2) OU mêmes IDs équipe (importés à la création du scénario)
+2. **Équipiers** reçoivent le scénario via `.mkmsec.json` classique (Phase 2), qui **garde les ids** du PC.
+   🩸 Faux jusqu'au 29/09/2026 : l'import régénérait scénario + équipes, et l'étape 6 refusait **tous** les rapports
+   venus d'un autre appareil (audit Secours A1, `secours.md` §67.3). Un scénario réimporté « comme copie » a de
+   nouveaux ids : il ne peut plus recevoir de rapport.
 3. Sur le terrain, chaque **équipier renseigne** obs / statuts / photos via vue Live Équipe (Phase 3)
 4. **Au retour surface**, équipier exporte son rapport via « 📤 Rapport » → scope=équipier → format `.mkmsec.report.json` (avec ou sans photos base64 inline)
 5. Équipier **transmet le fichier** à l'opérateur (AirDrop / mail / clé USB / Discord / WhatsApp — peu importe le canal, c'est un fichier statique)
