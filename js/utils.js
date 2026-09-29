@@ -2080,6 +2080,8 @@ window._refreshDataMarkersViewport = function() {
   if (typeof window._refreshEditorMarkersViewport === "function") {
     window._refreshEditorMarkersViewport();
   }
+  // 🚀 29/09/2026 — et les TRACÉS du plan (même crochet moveend/zoomend).
+  window._refreshDataPolylinesUltra();
 
   if (!Array.isArray(window._ktaDataMarkers) || window._ktaDataMarkers.length === 0) return;
   const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
@@ -2109,6 +2111,107 @@ window._refreshDataMarkersViewport = function() {
     }
   });
 };
+
+// 🚀 29/09/2026 (backlog « ULTRA no-op ») — viewportCull et decim N'AGISSAIENT
+// PAS sur les tracés d'un plan : ils sont créés ici, n'entrent jamais dans
+// `roadsData` de road.js, seule liste que ces deux réglages parcouraient.
+// Mesuré sur un relevé de 912 tracés, cull ON à z=0 : 895 polylines sur la
+// carte, 38 dans l'écran. Deux cases sur six ne faisaient rien sur le cas pour
+// lequel elles ont été écrites.
+// Règles, calquées sur road.js :
+//   • viewportCull : bbox (coords plan, calculée une fois) hors de l'écran
+//     élargi de 10 % → retirée de SON calque (jamais de la carte directement :
+//     un calque décoché reste décoché). Réintégrée à l'entrée dans l'écran.
+//     Le filtre niveau/type (opacité) est indépendant et continue de s'appliquer.
+//   • decim : points simplifiés selon le zoom (`ktaDecimerPointsTrace`) ;
+//     `entry.points` reste intact (exports, itinéraire, heatmap le lisent).
+//   • Réglage coupé → tout est réintégré et la géométrie d'origine rendue.
+function _bboxEntreeData(e) {
+  if (e._ktaBb !== undefined) return e._ktaBb;
+  let b = null;
+  if (Array.isArray(e.points) && e.points.length) {
+    b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    e.points.forEach(function(p) {
+      if (p.x < b.minX) b.minX = p.x;
+      if (p.x > b.maxX) b.maxX = p.x;
+      if (p.y < b.minY) b.minY = p.y;
+      if (p.y > b.maxY) b.maxY = p.y;
+    });
+  } else if (e.polyline && typeof e.polyline.getLatLng === "function") {
+    // Rond d'extrémité de jonction : un seul point.
+    const ll = e.polyline.getLatLng();
+    const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+    b = { minX: ll.lng, maxX: ll.lng, minY: H - ll.lat, maxY: H - ll.lat };
+  }
+  e._ktaBb = b;
+  return b;
+}
+
+function _boiteVueData() {
+  if (!window.map) return null;
+  try {
+    const base = (window.MapBearing && window.MapBearing.zoneVisible
+                  ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
+    const sw = base.getSouthWest(), ne = base.getNorthEast();
+    const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+    const padW = (ne.lng - sw.lng) * 0.1, padH = (ne.lat - sw.lat) * 0.1;
+    return { minX: sw.lng - padW, maxX: ne.lng + padW, minY: H - (ne.lat + padH), maxY: H - (sw.lat - padH) };
+  } catch(e) { return null; }
+}
+
+window._refreshDataPolylinesUltra = function() {
+  const liste = window._ktaDataPolylines;
+  if (!Array.isArray(liste) || liste.length === 0) return;
+  const P = window.PerfUltra;
+  const cullOn  = !!(P && P.get("viewportCull") && window.map);
+  const decimOn = !!(P && P.get("decim") && typeof window.ktaDecimerPointsTrace === "function");
+  const vue = cullOn ? _boiteVueData() : null;
+  const eps = (decimOn && typeof window.ktaEpsilonDecimation === "function") ? window.ktaEpsilonDecimation() : 0;
+  liste.forEach(function(e) {
+    if (!e || !e.polyline || !e.groupe) return;
+    // 1) Décimation — seulement quand l'epsilon change (un par palier de zoom).
+    if (Array.isArray(e.points) && e.points.length > 8 && typeof e.polyline.setLatLngs === "function") {
+      const voulu = decimOn ? eps : 0;
+      if ((e._ktaEps || 0) !== voulu) {
+        const d = voulu > 0 ? window.ktaDecimerPointsTrace(e.points) : null;
+        const pts = d ? d.points : e.points;
+        try { e.polyline.setLatLngs(pts.map(function(p) { return convertCoord(p.x, p.y); })); } catch(err) {}
+        e._ktaEps = d ? voulu : 0;
+      }
+    }
+    // 2) Hors écran.
+    let dedans = true;
+    if (cullOn && vue) {
+      const b = _bboxEntreeData(e);
+      if (b) dedans = !(b.maxX < vue.minX || b.minX > vue.maxX || b.maxY < vue.minY || b.minY > vue.maxY);
+    }
+    if (dedans && e._ktaVpHidden) {
+      try { e.groupe.addLayer(e.polyline); } catch(err) {}
+      e._ktaVpHidden = false;
+    } else if (!dedans && !e._ktaVpHidden) {
+      try { e.groupe.removeLayer(e.polyline); } catch(err) {}
+      e._ktaVpHidden = true;
+    }
+  });
+};
+
+// Changer un réglage agit tout de suite, sans attendre un déplacement de carte.
+// Abonnement unique (PerfUltra survit aux changements de plan).
+(function _brancherUltraSurTracesData() {
+  let fait = false;
+  function essayer() {
+    if (fait) return;
+    if (!window.PerfUltra || typeof window.PerfUltra.onChange !== "function") return;
+    fait = true;
+    window.PerfUltra.onChange(function(cles) {
+      if (cles.some(function(k) { return k === "decim" || k === "viewportCull"; })) {
+        window._refreshDataPolylinesUltra();
+      }
+    });
+  }
+  essayer();
+  if (!fait) document.addEventListener("DOMContentLoaded", essayer);
+})();
 
 /**
  * Pose le hook moveend/zoomend sur window.map pour appeler
@@ -2349,6 +2452,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             // donc impossible de respecter les cases « calques » de la modale.
             layerId:      _layerInfo ? _layerInfo.layerId : null,
             polyline:    polyline,
+            groupe:      layer,   // 🚀 29/09/2026 — calque parent (réglages ULTRA)
             type:        road.type,
             points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
@@ -2388,6 +2492,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               // filtrée → incohérence visuelle).
               window._ktaDataPolylines.push({
                 polyline:        cm,
+                groupe:          layer,
                 // 🐛 v1.46.x — sans `type`, le filtre runtime par type (toggle
                 // « jonction » / liaisons inter-niveaux du FilterPanel) sautait
                 // ces ronds (cf _filtreNiveauSurPolylineData : `if (entry.type)`)
@@ -2412,6 +2517,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             typeof window.renderRoads === "function") {
           window.renderRoads();
         }
+        // 🚀 29/09/2026 — réglages ULTRA appliqués dès le chargement du calque.
+        window._refreshDataPolylinesUltra();
       }
 
       // 🆕 v1.9.3-A1.a : Structures embarquées (piliers + murs) en lecture
