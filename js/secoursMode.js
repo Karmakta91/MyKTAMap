@@ -922,7 +922,9 @@
       const r = partial.reglagesDuree;
       s.reglagesDuree = {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(r.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
-        pauseMin:   Math.max(0, Math.min(120, Number(r.pauseMin) || 0))
+        pauseMin:   Math.max(0, Math.min(120, Number(r.pauseMin) || 0)),
+        margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(r.margeRetardMin)) && r.margeRetardMin !== ""
+                          ? Number(r.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
       };
     }
     _commitMutation(s);
@@ -1499,6 +1501,15 @@
     return out;
   }
   // jsPDF (police standard) imprime les accents mais pas les emojis ni les flèches.
+  // A4 : « Départ 14:02 · rentrée 16:12 · rappelée 15:50 » pour les rapports.
+  function _ligneSuiviRapport(ed) {
+    const su = (ed && ed.suivi) || {};
+    const parts = [];
+    if (su.departAt)  parts.push(t("secours.retour.depart", { h: _heureCourte(su.departAt) }));
+    if (su.rappelAt)  parts.push(t("secours.retour.rappeleeA", { h: _heureCourte(su.rappelAt) }));
+    if (su.rentreeAt) parts.push(t("secours.retour.rentreeA", { h: _heureCourte(su.rentreeAt) }));
+    return parts.join(" · ");
+  }
   function _stripPourPdf(txt) {
     return String(txt || "")
       .replace(/[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F]|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
@@ -1506,6 +1517,112 @@
   }
   function _heureCourte(iso) {
     return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  }
+
+  // ─── A4 (vague 5, 29/09/2026) — DÉPART, RETOUR PRÉVU, RETARD ───
+  // Avant : aucune heure de départ ni de retour par équipe, aucune alerte. Chaque
+  // équipe engagée dans la phase en cours a un suivi (s.execution.suivi[phase][gid])
+  // : départ (bouton, sinon début de la phase / lancement), rentrée. Retour prévu =
+  // départ + durée estimée ; orange passé l'heure, rouge après la marge réglable.
+  // ⚠️ Pas de réseau entre appareils : chaque appareil calcule SES alertes ; les
+  // heures voyagent dans le rapport d'équipe et se fusionnent.
+  function _phaseCour(s) {
+    return (s && s.execution && typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0;
+  }
+  function _suiviEquipe(s, gid, creer) {
+    const ex = s && s.execution;
+    if (!ex) return null;
+    const k = String(_phaseCour(s));
+    if (creer) {
+      ex.suivi = ex.suivi || {};
+      ex.suivi[k] = ex.suivi[k] || {};
+      ex.suivi[k][gid] = ex.suivi[k][gid] || {};
+    }
+    return (ex.suivi && ex.suivi[k] && ex.suivi[k][gid]) || null;
+  }
+  function _equipeEngagee(s, g) { return _getEtapesEquipe(s, g.id).length > 0; }
+  function _fmtMinutes(m) {
+    m = Math.max(0, Math.round(m));
+    return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min";
+  }
+  // { etat: "rentree"|"inconnu"|"ok"|"orange"|"rouge", departIso, departExplicite, retourMs, ecartMin }
+  function _etatRetour(s, g) {
+    const su = _suiviEquipe(s, g.id) || {};
+    const phase = Array.isArray(s.phases) ? s.phases[_phaseCour(s)] : null;
+    const departIso = su.departAt || (phase && phase.startedAt) || (s.execution && s.execution.startedAt) || null;
+    const base = { departIso: departIso, departExplicite: !!su.departAt, rentreeAt: su.rentreeAt || null, rappelAt: su.rappelAt || null };
+    if (su.rentreeAt) return Object.assign(base, { etat: "rentree" });
+    const duree = (typeof g.dureeEstimeeMin === "number" && g.dureeEstimeeMin > 0) ? g.dureeEstimeeMin : null;
+    if (!duree || !departIso) return Object.assign(base, { etat: "inconnu" });
+    const retourMs = Date.parse(departIso) + duree * 60000;
+    const now = Date.now();
+    const marge = _reglagesDuree(s).margeRetardMin * 60000;
+    const etat = now > retourMs + marge ? "rouge" : (now > retourMs ? "orange" : "ok");
+    return Object.assign(base, { etat: etat, retourMs: retourMs, ecartMin: (now - retourMs) / 60000 });
+  }
+  function _texteRetour(s, g) {
+    const e = _etatRetour(s, g);
+    if (e.etat === "rentree") return t("secours.retour.rentreeA", { h: _heureCourte(e.rentreeAt) });
+    const dep = e.departIso ? t("secours.retour.depart", { h: _heureCourte(e.departIso) }) +
+                (e.departExplicite ? "" : " " + t("secours.retour.departDefaut")) : "";
+    if (e.etat === "inconnu") return dep + " · " + t("secours.retour.sansDuree");
+    const prevu = t("secours.retour.prevu", { h: _heureCourte(new Date(e.retourMs).toISOString()) });
+    const reste = e.ecartMin > 0 ? t("secours.retour.retard", { duree: _fmtMinutes(e.ecartMin) })
+                                 : t("secours.retour.dans", { duree: _fmtMinutes(-e.ecartMin) });
+    return dep + " · " + prevu + " · " + reste;
+  }
+  // Ligne « départ / retour » + boutons, dans la vue équipier et sur les cartes opérateur.
+  function _renderLigneRetour(s, g) {
+    const e = _etatRetour(s, g);
+    return '<div class="kta-secours-retour kta-secours-retour--' + e.etat + '" data-live-retour="' + _escAttr(g.id) + '">' +
+             '<span class="kta-secours-retour-txt">' + _escHtml(_texteRetour(s, g)) + '</span>' +
+             (e.etat !== "rentree"
+               ? '<span class="kta-secours-retour-btns">' +
+                   (!e.departExplicite ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-depart" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnDepart") + '</button>' : '') +
+                   '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-rentree" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnRentree") + '</button>' +
+                 '</span>'
+               : '') +
+           '</div>';
+  }
+  function marquerSuivi(scenarioId, gid, champ) {
+    const s = get(scenarioId);
+    if (!s || !_estExecutionActive(s) || ["departAt", "rentreeAt", "rappelAt"].indexOf(champ) < 0) return;
+    _suiviEquipe(s, gid, true)[champ] = _nowIso();
+    _commitMutation(s);
+  }
+  // Rang d'affichage : les équipes en retard d'abord.
+  const RANG_RETOUR = { rouge: 0, orange: 1, ok: 2, inconnu: 3, rentree: 4 };
+
+  // Veille des retards, fenêtre fermée comprise : pastille du footer + toast et
+  // vibration au franchissement d'un seuil (une fois par équipe et par seuil).
+  let _veilleRetardsId = null;
+  const _seuilsNotifies = {};
+  function _veilleRetards() {
+    const s = _scenarioEnCours();
+    if (!s) return;
+    const eqId = (s.execution.role === "equipe") ? s.execution.currentEquipeId : null;
+    // Un seul toast pour tous les seuils franchis ensemble (un toast chasse le précédent :
+    // deux équipes en retard au même moment, la première disparaissait — vu au test).
+    const messages = [];
+    let rouge = false;
+    (s.groupes || []).forEach(function(g) {
+      if (eqId && g.id !== eqId) return;
+      if (!_equipeEngagee(s, g)) return;
+      const e = _etatRetour(s, g);
+      const cle = s.id + "|" + _phaseCour(s) + "|" + g.id;
+      const avant = _seuilsNotifies[cle] || "ok";
+      if ((e.etat === "orange" || e.etat === "rouge") && RANG_RETOUR[e.etat] < RANG_RETOUR[avant]) {
+        _seuilsNotifies[cle] = e.etat;
+        if (e.etat === "rouge") rouge = true;
+        messages.push(e.etat === "rouge" ? t("secours.retour.toastRouge", { equipe: g.nom, duree: _fmtMinutes(e.ecartMin) })
+                                         : t("secours.retour.toastOrange", { equipe: g.nom }));
+      }
+    });
+    if (messages.length) {
+      _toast(messages.join(" · "), rouge ? "error" : "warn");
+      try { if (navigator.vibrate) navigator.vibrate(rouge ? [300, 150, 300, 150, 300] : [200]); } catch(err) {}
+    }
+    _majFooterSecours(true);
   }
 
   // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
@@ -1519,10 +1636,16 @@
   // 29/09/2026 (KARMA) : « quand un plan de secours est en cours, on devrait avoir
   // l'info en footer ». Pastille dans la barre d'état du mode carte ; un toucher
   // rouvre le plan. Retirée dès que plus rien ne tourne.
-  function _majFooterSecours() {
+  function _majFooterSecours(depuisVeille) {
     const barre = document.getElementById("kta-refonte-statusbar-content");
     let pastille = document.getElementById("kta-refonte-stat-secours");
     const s = _scenarioEnCours();
+    // A4 : la veille des retards tourne tant qu'une intervention est en cours.
+    if (typeof setInterval === "function") {   // (harnais Node : pas de minuterie)
+      if (s && !_veilleRetardsId) _veilleRetardsId = setInterval(_veilleRetards, 20000);
+      if (!s && _veilleRetardsId) { clearInterval(_veilleRetardsId); _veilleRetardsId = null; }
+      if (s && !depuisVeille) setTimeout(_veilleRetards, 0);
+    }
     if (!s || !barre) {
       if (pastille && pastille.parentNode) pastille.parentNode.removeChild(pastille);
       return;
@@ -1551,6 +1674,15 @@
                       : t("secours.footer.operateur", { n: (s.groupes || []).length })) +
                   (total ? " · " + faites + "/" + total : "");
     pastille.title = t("secours.footer.title", { nom: s.nom || "" });
+    // A4 : la pastille prend la couleur du pire retard (son équipe, ou toutes pour l'opérateur).
+    let pire = "ok";
+    (eq ? [eq] : (s.groupes || [])).forEach(function(g) {
+      if (!_equipeEngagee(s, g)) return;
+      const e = _etatRetour(s, g).etat;
+      if (RANG_RETOUR[e] < RANG_RETOUR[pire]) pire = e;
+    });
+    pastille.classList.toggle("kta-secours-footer-pastille--orange", pire === "orange");
+    pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge");
     pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
                          '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
@@ -2172,7 +2304,9 @@
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
       reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
-        pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0))
+        pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0)),
+        margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(sc.reglagesDuree.margeRetardMin))
+                          ? Number(sc.reglagesDuree.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
       } : undefined   // R4-12 : mêmes bornes que updateScenario
       // phases ajouté juste après si présent (sinon migration le créera)
     };
@@ -3030,6 +3164,18 @@
       };
 
       stats.etapesFusionnees++;
+    }
+
+    // A4 : heures de départ / rentrée venues du téléphone de l'équipe (phase du rapport).
+    if (ed.suivi && typeof ed.suivi === "object") {
+      s.execution.suivi = s.execution.suivi || {};
+      const kPh = String(phaseRap);
+      s.execution.suivi[kPh] = s.execution.suivi[kPh] || {};
+      const su = s.execution.suivi[kPh][equipeId] = s.execution.suivi[kPh][equipeId] || {};
+      const tot = function(a, b) { return !a ? b : !b ? a : (Date.parse(a) <= Date.parse(b) ? a : b); };
+      ["departAt", "rentreeAt", "rappelAt"].forEach(function(k) {
+        if (ed.suivi[k] && !isNaN(Date.parse(ed.suivi[k]))) su[k] = tot(su[k], ed.suivi[k]);
+      });
     }
 
     // Audit log scenario-level
@@ -3960,6 +4106,7 @@
       equipesData.push({
         equipe: equipeClean,
         etapes: etapes.slice(),    // shallow copy (étapes déjà clean)
+        suivi: Object.assign({}, _suiviEquipe(s, g.id) || {}),   // A4 : départ / rentrée / rappel
         photos: photosResolved,
         horsParcours: horsParcours,
         historique: historique
@@ -4175,6 +4322,7 @@
         const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
         out += t("secours.txt.equipeHeader", { n: (idx + 1), total: r.equipesData.length, nom: g.nom, couleur: couleur.nom }) + "\n";
         out += sep + "\n";
+        if (_ligneSuiviRapport(ed)) out += _ligneSuiviRapport(ed) + "\n";   // A4
         if (g.membres && g.membres.length > 0) {
           out += t("secours.txt.membres", { membres: g.membres.join(", ") }) + "\n";
         }
@@ -5575,6 +5723,11 @@
       y = _pdfWrapText(pdf, g.membres.join(", "), margin, y, pageW - 2 * margin, 4);
       y += 3;
     }
+    if (_ligneSuiviRapport(ed)) {   // A4
+      pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      y = _pdfWrapText(pdf, _stripPourPdf(_ligneSuiviRapport(ed)), margin, y, pageW - 2 * margin, 4);
+      y += 2;
+    }
 
     // Étapes
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
@@ -6955,6 +7108,18 @@
     document.querySelectorAll('[data-live-timer="duree"]').forEach(function(el) {
       el.textContent = dureeStr;
     });
+    // A4 : lignes départ / retour, sans re-rendu (garde la saisie en cours).
+    const sCour = get(_currentScenarioId);
+    if (sCour && _estExecutionActive(sCour)) {
+      document.querySelectorAll("[data-live-retour]").forEach(function(el) {
+        const g = (sCour.groupes || []).find(function(x) { return x.id === el.getAttribute("data-live-retour"); });
+        if (!g) return;
+        const e = _etatRetour(sCour, g).etat;
+        el.className = "kta-secours-retour kta-secours-retour--" + e;
+        const txt = el.querySelector(".kta-secours-retour-txt");
+        if (txt) txt.textContent = _texteRetour(sCour, g);
+      });
+    }
   }
 
   // ============================================================
@@ -8050,6 +8215,7 @@
                 (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
               '</div>' +
             '</div>';
+    html += _renderLigneRetour(s, g);   // A4
 
     // ─── Stepper visuel cliquable ───
     html += '<div class="kta-secours-live-stepper">';
@@ -8271,7 +8437,10 @@
                 '<p>' + t("secours.liveOp.aucuneEquipe") + '</p></div>';
     } else {
       html += '<div class="kta-secours-live-op-grid">';
-      groupes.forEach(function(g) {
+      // A4 : les équipes en retard remontent en tête.
+      groupes.slice().sort(function(a, b) {
+        return RANG_RETOUR[_etatRetour(s, a).etat] - RANG_RETOUR[_etatRetour(s, b).etat];
+      }).forEach(function(g) {
         html += _renderOperateurCard(s, g);
       });
       html += '</div>';
@@ -8408,6 +8577,7 @@
                    ? '<div class="kta-secours-op-card-obs">« ' + _escHtml(obsSnippet) + ' »</div>'
                    : '<div class="kta-secours-op-card-obs kta-secours-op-card-obs-empty">' + t("secours.opCard.aucuneObs") + '</div>') +
                  '<div class="kta-secours-op-card-meta">⏱️ ' + lastTsStr + '</div>' +
+                 _renderLigneRetour(s, g) +
                  '<div class="kta-secours-op-card-actions">' +
                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-details" data-equipe-id="' + _escAttr(g.id) + '">' +
                      t("secours.opCard.details") +
@@ -8591,6 +8761,11 @@
                  '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" value="' + Math.round(r.pauseMin) + '">' +
                  '<span class="kta-secours-pause-unit">min</span>' +
                '</div>' +
+               '<div class="kta-secours-pause-input-wrap">' +
+                 '<label for="kta-sec-marge">' + t("secours.duree.margeLabel") + '</label>' +
+                 '<input type="number" id="kta-sec-marge" min="0" max="240" step="5" value="' + Math.round(r.margeRetardMin) + '">' +
+                 '<span class="kta-secours-pause-unit">min</span>' +
+               '</div>' +
              '</div>' +
            '</div>';
   }
@@ -8600,12 +8775,13 @@
   // (15 min) ajoutée à CHAQUE étape : ~971 min affichées dont 795 de pauses pour un
   // secteur réel, contre ~586 réalistes. Le scénario porte désormais ses propres
   // réglages (voyagent dans le .mkmsec) : vitesse de fouille, pause par étape.
-  const DUREE_DEFAUT = { vitesseKmh: 1.5, pauseMin: 0 };
+  const DUREE_DEFAUT = { vitesseKmh: 1.5, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
   function _reglagesDuree(s) {
     const r = (s && s.reglagesDuree) || {};
     return {
       vitesseKmh: (typeof r.vitesseKmh === "number" && r.vitesseKmh > 0) ? r.vitesseKmh : DUREE_DEFAUT.vitesseKmh,
-      pauseMin:   (typeof r.pauseMin === "number" && r.pauseMin >= 0) ? r.pauseMin : DUREE_DEFAUT.pauseMin
+      pauseMin:   (typeof r.pauseMin === "number" && r.pauseMin >= 0) ? r.pauseMin : DUREE_DEFAUT.pauseMin,
+      margeRetardMin: (typeof r.margeRetardMin === "number" && r.margeRetardMin >= 0) ? r.margeRetardMin : DUREE_DEFAUT.margeRetardMin
     };
   }
   function _dureeEquipeMin(s, distM, nbWaypoints) {
@@ -9089,10 +9265,12 @@
       // 4.1 : réglages de durée du scénario → recalcul des durées de toutes les équipes.
       const vitesseInput = document.getElementById("kta-sec-vitesse");
       const pauseMinInput = document.getElementById("kta-sec-pause-min");
+      const margeInput = document.getElementById("kta-sec-marge");
       const majDurees = function() {
         updateScenario(_currentScenarioId, { reglagesDuree: {
           vitesseKmh: parseFloat(vitesseInput && vitesseInput.value),
-          pauseMin:   parseFloat(pauseMinInput && pauseMinInput.value)
+          pauseMin:   parseFloat(pauseMinInput && pauseMinInput.value),
+          margeRetardMin: parseFloat(margeInput && margeInput.value)
         } });
         const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
         _toast(t("secours.toast.dureesMaj", { n: updated }), "info");
@@ -9101,6 +9279,7 @@
       // « change » (blur + Entrée), pas « input » : pas de recalcul à chaque chiffre.
       if (vitesseInput) vitesseInput.addEventListener("change", majDurees);
       if (pauseMinInput) pauseMinInput.addEventListener("change", majDurees);
+      if (margeInput) margeInput.addEventListener("change", majDurees);
       // 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un
       // niveau") : "+ Ajouter une équipe" ouvre désormais un mini-prompt qui
       // demande nom + niveau (dropdown des availableLevels). Si plan
@@ -9374,6 +9553,14 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // A4 : départ / rentrée d'une équipe (vue équipier ou carte opérateur).
+    corps.querySelectorAll('[data-action="retour-depart"], [data-action="retour-rentree"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const champ = btn.getAttribute("data-action") === "retour-depart" ? "departAt" : "rentreeAt";
+        marquerSuivi(s.id, btn.getAttribute("data-gid"), champ);
+        _switchView("live");
+      });
+    });
     // A3 : voir / évacuer / préciser la victime (index dans _victimesDe au rendu).
     const victime = function(btn) { return _victimesDe(get(s.id))[parseInt(btn.getAttribute("data-v"), 10)] || null; };
     corps.querySelectorAll('[data-action="victime-voir"]').forEach(function(btn) {
@@ -11247,6 +11434,7 @@
     },
     // 🩸 29/09/2026 — tracés de la zone d'une équipe (empreintes stables, cf _cleTrace).
     // Seule façon correcte de lire `zoneRoadIds` hors du module (kmzExport).
+    marquerSuivi:           marquerSuivi,   // A4 / rappel (départ, rentrée, rappel)
     tracesZone:             _tracesZone,
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,

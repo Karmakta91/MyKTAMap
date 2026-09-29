@@ -2923,3 +2923,21 @@ body.kta-theme-light .kta-secours-victime-bloc, html.kta-theme-light .kta-secour
 body.kta-theme-light .kta-secours-victime-bandeau, html.kta-theme-light .kta-secours-victime-bandeau {
   background: #fde2e0 !important; color: #7a1010 !important; border-color: #c62828 !important;
 }
+
+/* A4 (vague 5) : départ / retour prévu / retard */
+.kta-secours-retour {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;
+  margin: 6px 0; padding: 5px 8px; border-radius: 6px; font-size: 12px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.10); color: #c8d0e0;
+}
+.kta-secours-retour-btns { display: flex; gap: 6px; }
+.kta-secours-retour--orange { background: rgba(255, 140, 0, 0.16); border-color: #ff8c00; color: #ffc98a; font-weight: 600; }
+.kta-secours-retour--rouge { background: rgba(255, 50, 50, 0.20); border-color: #ff3b3b; color: #ffc0c0; font-weight: 700; }
+.kta-secours-retour--rentree { color: #6ee287; }
+.kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #c46a00; }
+body.kta-theme-light .kta-secours-retour, html.kta-theme-light .kta-secours-retour { background: #f3ecdc !important; color: #2a2620 !important; border-color: rgba(0,0,0,0.15) !important; }
+body.kta-theme-light .kta-secours-retour--orange, html.kta-theme-light .kta-secours-retour--orange { background: #ffe3bf !important; color: #8b3a00 !important; border-color: #c46a00 !important; }
+body.kta-theme-light .kta-secours-retour--rouge, html.kta-theme-light .kta-secours-retour--rouge { background: #fde2e0 !important; color: #a01818 !important; border-color: #c62828 !important; }
+body.kta-theme-light .kta-secours-retour--rentree, html.kta-theme-light .kta-secours-retour--rentree { color: #1e7a3a !important; }
+body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange,
+html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #a85a00 !important; }
