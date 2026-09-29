@@ -1564,6 +1564,14 @@
     if (b) { b.textContent = oui ? "▸" : "▾"; b.setAttribute("aria-expanded", oui ? "false" : "true"); }
   }
 
+  // KARMA 29/09 : dans les listes de niveaux, un niveau qui ne porte rien est
+  // marqué « (vide) » — gardé choisissable (préparer une équipe sur un niveau pas
+  // encore relevé), mais on ne le prend plus pour un niveau réel. 0 = plan principal.
+  function _suffixeNiveauVide(lvl) {
+    if (lvl === 0 || typeof window.ktaNiveauxOccupes !== "function") return "";
+    return window.ktaNiveauxOccupes().indexOf(lvl) >= 0 ? "" : " " + t("secours.level.vide");
+  }
+
   function _niveauxPourEquipesAuto() {
     const dispo = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
                   ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; }) : [];
@@ -1591,7 +1599,7 @@
     const levelsHtml = levels.map(function(lvl) {
       const lbl = _lblNiveau(lvl);
       const sel = (lvl === activeLevel) ? " selected" : "";
-      return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
+      return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + _suffixeNiveauVide(lvl) + '</option>';
     }).join('');
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
@@ -7521,7 +7529,7 @@
                              availLevels.map(function(lvl) {
                                const lbl = _lblNiveau(lvl);
                                const sel = (lvl === g.level) ? ' selected' : '';
-                               return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
+                               return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + _suffixeNiveauVide(lvl) + '</option>';
                              }).join('');
         levelSelectRow = '<div class="kta-secours-groupe-row">' +
                            '<label>' + t("secours.groupe.niveauMlvl") + '</label>' +

@@ -3734,6 +3734,7 @@
   "secours.legende.sortie": "Salida",
   "secours.legende.zonePolygone": "Zona (polígono)",
   "secours.legende.zoneTraces": "Zona (trazados)",
+  "secours.level.vide": "(vacío)",
   "secours.level.niveau": "Nivel {label}",
   "secours.list.btnImporter": "📥 Importar un plan",
   "secours.list.btnImporterTitle": "Importar un plan de rescate exportado desde otro dispositivo (.mkmsec.json)",

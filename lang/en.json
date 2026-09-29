@@ -3734,6 +3734,7 @@
   "secours.legende.sortie": "Exit",
   "secours.legende.zonePolygone": "Zone (polygon)",
   "secours.legende.zoneTraces": "Zone (paths)",
+  "secours.level.vide": "(empty)",
   "secours.level.niveau": "Level {label}",
   "secours.list.btnImporter": "📥 Import a plan",
   "secours.list.btnImporterTitle": "Import a rescue plan exported from another device (.mkmsec.json)",
