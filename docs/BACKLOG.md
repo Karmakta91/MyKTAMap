@@ -2,7 +2,8 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier grand ménage : 29/09/2026** (tour complet + QCM KARMA). Tout ce qui était soldé est sorti ; ce qui a été
+> **Dernier grand ménage : 29/09/2026, 2 fois** (tour complet + QCM KARMA, puis après les vagues Secours et les
+> audits doc / thème du soir). Tout ce qui était soldé est sorti ; ce qui a été
 > abandonné volontairement est passé dans **🚫 Enterré**. Les versions antérieures de ce fichier restent lisibles dans
 > l'historique Git (`git log -p docs/BACKLOG.md`) — c'est là que vivent les mesures détaillées des chantiers clos
 > (atlas Gironde, audit icônes, plan orienté…).
@@ -31,6 +32,9 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
   rebours → retour automatique du pavé. Base de temps = horloge de l'appareil (`security-legal.md` §36.3).
 - **B5 — Stockage saturé** (livré le 13/09) : bandeau persistant + bouton 💾 Exporter tant que la sauvegarde
   échoue. Non reproductible au harnais (quota) : saturer le stockage d'un téléphone de test.
+- **Mode Secours v1.98.14-15 sur iPhone** : phases lisibles, bouton « Éditer » sombre ; intervention lancée en
+  équipier → fenêtre fermée : zone + tracé + pastille « 🚨 Secours · … › » ; toucher un POI pour l'entrée le prend
+  (pas de fiche) ; **GPS en vue équipier** (seule vue que le test n'a pas atteinte).
 - ⚠️ **Toujours tester APRÈS un bump** : le service worker ne change de cache qu'au bump de `CACHE_NAME`. Entre deux
   commits, un téléphone qui a déjà chargé l'app garde l'ancien JS — c'est ce qui a fait voir à KARMA un « tourner à
   gauche » déjà corrigé (27/09/2026).
@@ -51,53 +55,52 @@ ont été **validés par KARMA le 29/09**. Reste :
 - 🟡 **Itinéraires inter-plans non couverts** : `interPlanRoute.js` crée ses roads sans `raccords` / `carrefours`
   → pas de pointillé, raccord non compté, et le bandeau n'y dit que l'arrivée (aucun croisement connu). Brancher
   `_champsGuidage`. ⚠️ doc seule (non re-vérifié le 29/09).
-- **Mode Secours** : le constat d'origine était faux (le module ne crée **aucune** road) → voir **B1** de la section
-  🚑 Mode Secours ci-dessous.
+- **Mode Secours** : le module ne crée **aucune** road → c'est **B1**, vague 6 de la section 🚑 ci-dessous.
 
-## 🚑 Mode Secours — audit fonctionnel du 29/09/2026
+## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
-Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md) (jeu de rôle GRIMP × IGC,
-harnais Node sur le vrai `secoursMode.js` / `pathfinder.js`). Rien de testé en navigateur. Les numéros de ligne datent de
-v1.98.4. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups natives).
+Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Les **correctifs**
+(vagues 1 à 4bis, 4 relectures adversariales) et les **retours terrain iPhone** sont livrés de v1.98.5 à v1.98.15 —
+détail dans le journal du `README.md`. Il ne reste que la **refonte**, dans cet ordre (validé KARMA le 29/09) ;
+un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage**
+(cf. 📋 Popups natives).
 
-**Ordre de traitement (validé KARMA le 29/09)** : les correctifs d'abord, la refonte ensuite. **Un commit par case** ;
-**un bump par vague** (notes + 4 axes de doc en fin de vague). `alert()`/`confirm()` migrés **seulement** dans les
-fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
-
-| Vague | Cases |
+| Vague | Contenu |
 |---|---|
-| 1 — Remontée PC ↔ équipes | [x] 1.1 ids gardés à l'import (A1) · [x] 1.2 purge ≠ scénario en cours (A5) · [x] 1.3 fusion : RAS perdu, égalités (reçu ≠ pending gagne, puis le plus récent) · [x] 1.4 prise de main : étape remise à zéro |
-| 2 — Saisie du plan | [x] 2.1 mode tracés (A2) · [x] 2.2 niveaux de l'itinéraire · [x] 2.3 ordre plus proche voisin · [x] 2.4 Ctrl+K : rôle par défaut selon l'équipe · [x] 2.5 Mode Perdu : niveau du point · [x] 2.6 renfort / équipe modifiée en cours de phase |
-| 3 — Documents papier | [x] 3.1 « POI critiques » · [x] 3.2 fond du PDF (~860 Mo) · [x] 3.2b mini-carte du rapport jamais dessinée (trouvé en test) · [x] 3.3 nombre d'étapes |
-| 3bis — Reprise après relecture (`docs/…/rev` scratchpad, 29/09) | [x] R1 import sur appareil plein · [x] 2.6 refaite (homonymes, étape retirée, phase cochée, renumérotation) · [x] R5 itinéraire en Vue OSM · [x] R8 photos au « Remplacer » · [x] R2 ids en double · [x] H1 « Dupliquer » · [x] R11-12 mini-carte · [x] mineurs + tests |
-| 3ter — 2e relecture (29/09) | [x] identité des points de passage (`wid`) : N1, N2, N3, N4, N5, N7, N8 · [x] N11 victime sur étape retirée → remise + alerte · [x] N9 / N10b photos orphelines · [x] mineurs (D-b liste d'étapes sans itinéraire) |
-| 3quater — 3e relecture (29/09) | [x] wid calculés + apparieur tolérant (R3-1) · [x] N11 encadré : phase, vrai retrait, ordre, type (R3-2, R3-4, R3-5, R3-6) · [x] photos des phases closes (R3-3) · [x] relance confirmée (R3-7) · [x] matrice de compatibilité entre versions (R3-8) |
-| 4 — Correctifs inter-modules | [x] 4.1 durées : réglages propres au scénario (vitesse de fouille 1,5 km/h, pause 0) · [x] 4.2 calage par niveau (`pathfinder.js`) · [x] 4.3 version du plan à l'import |
-| 4bis — Relecture globale (29/09) | [x] R4-1 niveau des étapes transmis au calcul (4.2 n'atteignait pas le Secours) · [x] R4-2 rapport d'une phase close · [x] R4-3 observations dupliquées · [x] R4-4 signalements hors parcours · [x] R4-5 téléphones importés sous la prod (message + consigne de déploiement) · [x] R4-6 durées des scénarios existants · [x] R4-7 historique des phases closes dans le rapport · [x] R4-8/9 rafraîchissement et aperçu · [x] PDF relus page par page (6 défauts : page surface du rapport vide, nom du plan, titres gris, entrée/sortie en coordonnées, boutons de zoom capturés, équipe hors phase) · [x] mineurs (R4-10 à R4-18) |
-| 5-8 — Refonte | 5 sécurité terrain (A3, A4, rappel) · 6 guidage (B1, B2) · 7 pilotage (B3, B9, main courante, parcours par phase, rapports secouriste, B10) · 8 lot C |
+| 5 — Sécurité terrain | A3 · A4 · rappel général |
+| 6 — Guidage | B1 · B2 |
+| 7 — Pilotage | B3 · B9 · main courante · un parcours par phase · rapports secouriste · B10 |
+| 8 — Plus tard | lot C |
 
-**Lot A — bloquants** (sans eux, une recherche multi-téléphones ne marche pas) :
-- 🔴 **A3 — Victime sans position, pas d'évacuation** ⚠️ agents : « 📍 Victime ici » (clic / suivi + niveau) →
-  « 🚑 Évacuer » via `SortieUrgence.declencherDepuis` + options brancard. **M**
-- 🔴 **A4 — Pas d'heure de départ / retour, aucune alerte de retard** ⚠️ agents. **S-M**
-
-**Lot B — planification et exécution** (détail et preuves : §3-5 du rapport) :
-B1 guidage Secours (« Suivre » → vraie road `itinerary`, carrefours/raccords/niveaux gardés, évitements transmis au
-recalcul, tronçons pour l'écran XL ; `_champsGuidage` seul ≈ 10 %) **M** · B2 feuille de route dans le PDF de briefing
-**S** · B3 couverture (POI non affectés / doublons, puis % du linéaire) **M** · B4 niveaux (itinéraire aplati
-`:9416`/`:9712`, calage de clic sans niveau `pathfinder.js:779`) **S-M** · B5 ordre plus proche voisin (~−38 % de
-marche) + « Entrée » cochée par défaut dans Ctrl+K **S** · B6 préréglage « fouille » (aujourd'hui 5 km/h + 15 min par
-étape) **S** · B7 fusion (RAS perdu), prise de main sans remise à zéro, renfort sans étapes, P2 écrase P1, rappel
-général, main courante **S à M** · B8 PDF (« POI critiques » toujours vide, fond ~860 Mo, faux compte de waypoints)
-**S** · B9 chef + effectif + remontés **S-M** · B10 contrôle hors-ligne au lancement, liens Sortie d'urgence / XL,
-`pointsCles` **S à M**.
-
-**Lot C — plus tard** : C1 découpage auto en secteurs + parcours de balayage (après A2 et B3) **L** · C2 gabarit
-brancard (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement
-si des exercices le réclament **M**.
+- 🔴 **A3 — Victime sans position, pas d'évacuation** : « 📍 Victime ici » (clic / suivi + niveau) → « 🚑 Évacuer »
+  via `SortieUrgence.declencherDepuis` + options brancard. **M**
+- 🔴 **A4 — Pas d'heure de départ / retour, aucune alerte de retard.** **S-M**
+- **Rappel général** : rappeler toutes les équipes d'un geste. **S**
+- **B1 — Guidage Secours** : « Suivre » → vraie road `itinerary` (carrefours / raccords / niveaux gardés, évitements
+  transmis au recalcul, tronçons pour l'écran XL) ; `_champsGuidage` seul ≈ 10 %. **M**
+- **B2 — Feuille de route dans le PDF de briefing.** **S**
+- **B3 — Couverture** : POI non affectés / en doublon, puis % du linéaire couvert. **M**
+- **B9 — Chef + effectif + remontés** par équipe. **S-M**
+- **Main courante**, **un parcours par phase**, **rapports secouriste** : à cadrer au début de la vague 7.
+- **B10** — contrôle hors-ligne au lancement, liens Sortie d'urgence / XL, `pointsCles`. **S à M**
+- **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
+  (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
+  exercices le réclament **M**.
 
 ⚠️ **Côté DATA (KARMA seul)** : le plan de test n'a qu'un accès ouvert tagué et aucun `entree_plan` ; 47 tracés et
 44 POI sans niveau. Le moins cher des correctifs, et le seul qu'aucun code ne remplace.
+
+## 🎨 Thème et langues — reliquats des audits du 29/09/2026
+
+Corrections livrées en v1.98.13 (journal `README.md`). Reste :
+
+- **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
+  (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
+- **FR en dur hors des modules audités** : le détecteur `scripts/find-hardcoded-fr.js` sort ~960 candidats (plancher
+  connu de faux positifs ~560) ; seuls Secours, guidage, accueil et Documentation ont été triés. Même politique que
+  les popups : **au fil de l'eau**, quand on touche un module.
+- 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
+  thèmes, cosmétique.
 
 ## 📋 Popups natives et presse-papier — au fil de l'eau (recompté le 29/09/2026)
 
