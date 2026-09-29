@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.15` (29/09/2026)
+## 📦 Version courante — `v1.98.16` (30/09/2026)
+
+> 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
 > 🏗️ **v1.98.15 — Mode Secours : niveaux vides signalés** : dans « Ajouter une équipe » et le choix du niveau d'une équipe, un niveau qui ne porte rien s'affiche « (vide) » (décision KARMA), toujours choisissable.
 
 > 🚨 **v1.98.14 — Mode Secours, retours terrain (iPhone)** : pendant une intervention la carte garde la zone et le tracé de l'équipe, pastille rouge « 🚨 Secours · Alpha · 3/8 › » qui ramène aux étapes ; phases lisibles sur téléphone ; équipes repliables ; zones des autres équipes visibles au dessin ; un POI touché devient le point choisi ; points sans nom en GPS ; plus d'équipes sur des niveaux vides.
-
-> 📚 **v1.98.13 — Doc utilisateur, multi-langue et thème clair (audit du 29/09)** : les guides, l'Aide intégrée, le tutoriel et l'Aide IA ne disent plus de choses fausses (PIN « définitif », carnet archivé au changement de plan, section Configuration ES d'un autre âge…) ; plus de français en dur visible en EN/ES, dates dans la langue de l'app ; en mode clair, le texte ambre, le sommaire de la doc et les alertes du Mode Secours redeviennent lisibles.
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -497,6 +497,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.16 (30/09/2026) — Mode Secours, vague 5 : sécurité terrain (A3, A4, rappel)
+
+- 🔍 **Origine** : refonte du Mode Secours (audit du 29/09), vague 5. Décisions KARMA : 1:a (position = point de l'étape + « Préciser »), 2:a (Évacuer = Sortie d'urgence, options brancard plus tard), 4:a (bouton Départ, sinon lancement), 5:a (orange à l'heure, rouge après une marge réglable), 8:a (rappel = état tenu par l'opérateur).
+- 🚑 **A3 — victime** (`5ffb1c7`) : `etape.victimePos` (fusion : la plus récente), `_victimesDe` source unique ; bloc équipier, bandeau opérateur, marqueur ✚ visible de tous, section VICTIME(S) en tête des rapports texte / PDF ; `SortieUrgence.declencherDepuis(x, y, level)` transmet désormais le niveau. Corrige « ((niv 0)) » des libellés GPS de v1.98.14.
+- ⏰ **A4 — retards** (`e863075`) : `s.execution.suivi[phase][gid]` (départ, rentrée) ; retour prévu = départ + durée estimée ; marge `reglagesDuree.margeRetardMin` (30 min, 0-240) ; tri des cartes, lignes rafraîchies sans re-rendu, veille 20 s fenêtre fermée (pastille, toast regroupé, vibration) ; fusion à l'import (heure la plus ancienne) ; API `SecoursMode.marquerSuivi`.
+- 📢 **Rappel** (`196e0f9`) : général (engagées, ni rentrées ni rappelées) ou par équipe ; badge violet ; confirmation explicite « l'app ne peut PAS les prévenir » ; heure dans les rapports.
+- ✅ **Tests** : un checkup navigateur par case (équipier et opérateur, par l'interface), **test à deux appareils** (téléphone : départ, victime précisée, rentrée → rapport → PC : position et heures fusionnées), matrice de versions, 16 harnais Node, PDF régénéré et relu. ⚠️ Rien encore sur appareil réel ; options brancard (éviter eau / remblais) non faites.
 
 #### v1.98.15 (29/09/2026) — Mode Secours : niveaux vides signalés
 

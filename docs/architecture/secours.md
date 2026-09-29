@@ -1600,3 +1600,10 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Libellé d'une étape sans nom** : TOUJOURS `_fmtPoint` (« x=… y=… niv=… ») à l'écriture — c'est une identité d'appariement entre appareils. L'affichage passe par `_lblEtape()` / `_gpsTxt()` (GPS si géoréférencé). Ne jamais stocker le GPS à la place.
 - **Niveaux** : `window.ktaNiveauxOccupes()` (main.js) = source unique des niveaux qui portent quelque chose ; `availableLevels` peut contenir des niveaux vides (défaut −2..+2).
 - **Équipes repliées** : état par appareil (`myktamap_secours_equipes_repliees_v1`), pas une donnée du scénario.
+
+## 🚑 Vague 5 (v1.98.16, 30/09/2026) — victime, retards, rappel
+
+- **Victime** : pas de structure à part — une étape au statut `victime` EST la victime. Position = `etape.victimePos` (précisée, horodatée, `ETAPE_CHAMPS_SAISIS`, fusion : la plus récente) sinon `etape.cle`. Lecteur unique : `_victimesDe(s)` (phase en cours + archives) ; rapports : `_victimesDuRapport(r)`. Évacuer = `SortieUrgence.declencherDepuis(x, y, level)`.
+- **Suivi d'équipe** : `s.execution.suivi[phaseIdx][gid] = { departAt, rentreeAt, rappelAt }` — par phase (une équipe reconduite repart à zéro), remis à zéro par la relance. État : `_etatRetour` (`rentree` / `inconnu` / `ok` / `orange` / `rouge`), marge `reglagesDuree.margeRetardMin`. Écriture : `marquerSuivi` (API) ; fusion d'un rapport : heure la plus ancienne. Voyage dans `equipesData[].suivi`.
+- **Veille** : `_veilleRetards` (20 s) démarrée / arrêtée par `_majFooterSecours` ; notifie une fois par équipe et par seuil (`_seuilsNotifies`), en UN toast. Minuteries gardées (`typeof setInterval`) pour les harnais Node.
+- **Rappel** : état tenu par l'opérateur, JAMAIS présenté comme un message envoyé (aucun réseau) — ne pas écrire « les équipes sont prévenues » dans l'UI ni la doc.

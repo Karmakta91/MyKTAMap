@@ -60,22 +60,19 @@ ont été **validés par KARMA le 29/09**. Reste :
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
 Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Les **correctifs**
-(vagues 1 à 4bis, 4 relectures adversariales) et les **retours terrain iPhone** sont livrés de v1.98.5 à v1.98.15 —
+(vagues 1 à 4bis, 4 relectures adversariales), les **retours terrain iPhone** et la **vague 5** (victime, retards, rappel) sont livrés de v1.98.5 à v1.98.16 —
 détail dans le journal du `README.md`. Il ne reste que la **refonte**, dans cet ordre (validé KARMA le 29/09) ;
 un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage**
 (cf. 📋 Popups natives).
 
 | Vague | Contenu |
 |---|---|
-| 5 — Sécurité terrain | A3 · A4 · rappel général |
 | 6 — Guidage | B1 · B2 |
 | 7 — Pilotage | B3 · B9 · main courante · un parcours par phase · rapports secouriste · B10 |
 | 8 — Plus tard | lot C |
 
-- 🔴 **A3 — Victime sans position, pas d'évacuation** : « 📍 Victime ici » (clic / suivi + niveau) → « 🚑 Évacuer »
-  via `SortieUrgence.declencherDepuis` + options brancard. **M**
-- 🔴 **A4 — Pas d'heure de départ / retour, aucune alerte de retard.** **S-M**
-- **Rappel général** : rappeler toutes les équipes d'un geste. **S**
+- **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
+  lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
 - **B1 — Guidage Secours** : « Suivre » → vraie road `itinerary` (carrefours / raccords / niveaux gardés, évitements
   transmis au recalcul, tronçons pour l'écran XL) ; `_champsGuidage` seul ≈ 10 %. **M**
 - **B2 — Feuille de route dans le PDF de briefing.** **S**
