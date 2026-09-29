@@ -1799,7 +1799,9 @@
         const valide = typeof oldId === "string" && oldId && !vus[oldId];
         if (regenerer || !valide) g.id = _genId("G");
         vus[g.id] = true;
-        if (typeof oldId === "string") idMap[oldId] = g.id;
+        // Relecture 29/09 (R2) : un id en DOUBLE ne doit pas écraser la 1re entrée —
+        // sinon la phase suivait l'équipe régénérée et la 1re sortait de sa phase.
+        if (typeof oldId === "string" && !(oldId in idMap)) idMap[oldId] = g.id;
       });
     }
     // Remap phase.groupeIds[] avec les nouveaux IDs (sécurise re-import v1.29+)
