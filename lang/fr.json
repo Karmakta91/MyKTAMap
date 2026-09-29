@@ -3705,7 +3705,7 @@
   "secours.import.errVersion": "Version de format incompatible (reçue {version}, max supportée {max})",
   "secours.import.erreurInconnue": "Erreur inconnue",
   "secours.import.existeBody": "« {nom} » est déjà sur cet appareil (même plan de secours, même identifiant).",
-  "secours.import.existeExecution": "Il est en cours d'exécution ici : le remplacer efface les statuts et observations saisis sur cet appareil.",
+  "secours.import.existeExecution": "Des saisies d'intervention existent pour ce plan sur cet appareil : le remplacer efface leurs statuts, observations et photos.",
   "secours.import.existeTitre": "Ce plan de secours existe déjà",
   "secours.import.fichierDefault": "(fichier)",
   "secours.import.labelDateExport": "📅 Date d'export",

@@ -1842,7 +1842,16 @@
     _migrateScenarioV1ToPhases(cleanScenario);
     // Remplacer = même place dans la liste ; l'exécution locale éventuelle part
     // avec l'ancienne version (la modale d'aperçu l'a annoncé).
-    if (remplacer) _scenarios[idxExistant] = cleanScenario;
+    if (remplacer) {
+      // 🩸 Relecture 29/09 (R8, décision KARMA 2:a) — les photos de l'exécution
+      // effacée partent avec elle. Avant, mêmes ids gardés : elles revenaient dans
+      // le rapport suivant et comptaient dans le quota de 5 par étape.
+      const P = window.MyKTAMapSecoursPhotos;
+      if (_scenarios[idxExistant].execution && P && typeof P.deletePhotosForScenario === "function") {
+        P.deletePhotosForScenario(sc.id).catch(function(e) { console.warn("[SecoursMode] photos :", e); });
+      }
+      _scenarios[idxExistant] = cleanScenario;
+    }
     else _scenarios.push(cleanScenario);
     _commitMutation(cleanScenario);
     return { ok: true, scenario: cleanScenario, remplace: remplacer };
@@ -2010,7 +2019,8 @@
     const existant = (typeof sc.id === "string" && sc.id) ? get(sc.id) : null;
     let existeBlock = "";
     if (existant) {
-      const enCours = !!(existant.execution && existant.execution.active);
+      // Des saisies d'intervention (en cours OU terminée) existent ici : « Remplacer » les efface.
+      const enCours = !!existant.execution;
       existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
                       '<strong style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
                       t("secours.import.existeBody", { nom: _escHtml(existant.nom || t("secours.import.sansNom")) }) +

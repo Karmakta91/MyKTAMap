@@ -3705,7 +3705,7 @@
   "secours.import.errVersion": "Incompatible format version (got {version}, max supported {max})",
   "secours.import.erreurInconnue": "Unknown error",
   "secours.import.existeBody": "“{nom}” is already on this device (same rescue plan, same identifier).",
-  "secours.import.existeExecution": "It is running here: replacing it erases the statuses and observations entered on this device.",
+  "secours.import.existeExecution": "Intervention entries exist for this plan on this device: replacing it erases their statuses, observations and photos.",
   "secours.import.existeTitre": "This rescue plan already exists",
   "secours.import.fichierDefault": "(file)",
   "secours.import.labelDateExport": "📅 Export date",
