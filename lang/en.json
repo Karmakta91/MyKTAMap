@@ -3759,7 +3759,7 @@
   "secours.list.emptyHint": "Create your first scenario with the button above.",
   "secours.list.emptyTitre": "No rescue scenario saved for this map.",
   "secours.list.intro": "Define and share <strong>rescue plans</strong> for this map: assign <strong>teams</strong> to precise <strong>search zones</strong>, with entries/exits, suggested routes and estimated durations. On field return, teams can report their observations.",
-  "secours.list.limiteAtteinte": "⚠️ Limit reached ({max} scenarios max per map). The next \"New\" will automatically delete the oldest one.",
+  "secours.list.limiteAtteinte": "⚠️ Limit reached ({max} scenarios max per map). The next \"New\" will automatically delete the oldest one, never a running scenario.",
   "secours.list.metaEquipes": "🚨 {n} team(s)",
   "secours.list.ouvrirTitle": "Open",
   "secours.list.supprimerTitle": "Delete",

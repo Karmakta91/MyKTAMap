@@ -269,7 +269,7 @@ Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) → `window.SecoursMode`.
 #### 65.3 Persistance per-plan multi-scénarios
 
 localStorage `myktamap_secours_v1_<planId>` = array de scénarios.
-Cap FIFO `MAX_SCENARIOS = 10` (au-delà, suppression du plus ancien par createdAt).
+Cap FIFO `MAX_SCENARIOS = 10` (au-delà, suppression du plus ancien par createdAt). 🩸 Depuis le 29/09/2026 (audit A5) : **jamais** un scénario en cours d'exécution, ni celui ouvert, ni le plus récent — si tout l'excédent est protégé, le cap est dépassé plutôt que de perdre une intervention (avant : 12 créations pendant une intervention l'effaçaient).
 Quota toast via OOMGuard si `QuotaExceededError` (pattern sessionPersist).
 KARMA validation : « Oui — N scénarios sauvegardés par plan ».
 

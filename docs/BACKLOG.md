@@ -66,7 +66,7 @@ fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
 
 | Vague | Cases |
 |---|---|
-| 1 — Remontée PC ↔ équipes | [x] 1.1 ids gardés à l'import (A1) · [ ] 1.2 purge ≠ scénario en cours (A5) · [ ] 1.3 fusion : RAS perdu, égalités (reçu ≠ pending gagne, puis le plus récent) · [ ] 1.4 prise de main : étape remise à zéro |
+| 1 — Remontée PC ↔ équipes | [x] 1.1 ids gardés à l'import (A1) · [x] 1.2 purge ≠ scénario en cours (A5) · [ ] 1.3 fusion : RAS perdu, égalités (reçu ≠ pending gagne, puis le plus récent) · [ ] 1.4 prise de main : étape remise à zéro |
 | 2 — Saisie du plan | [ ] 2.1 mode tracés (A2) · [ ] 2.2 niveaux de l'itinéraire · [ ] 2.3 ordre plus proche voisin · [ ] 2.4 Ctrl+K « Étape » par défaut · [ ] 2.5 Mode Perdu : niveau du point · [ ] 2.6 renfort / équipe modifiée en cours de phase |
 | 3 — Documents papier | [ ] 3.1 « POI critiques » · [ ] 3.2 fond du PDF (~860 Mo) · [ ] 3.3 nombre d'étapes |
 | 4 — Correctifs inter-modules | [ ] 4.1 durées (pause par étape) · [ ] 4.2 calage par niveau (`pathfinder.js`) · [ ] 4.3 version du plan à l'import |
@@ -79,7 +79,6 @@ fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
 - 🔴 **A3 — Victime sans position, pas d'évacuation** ⚠️ agents : « 📍 Victime ici » (clic / suivi + niveau) →
   « 🚑 Évacuer » via `SortieUrgence.declencherDepuis` + options brancard. **M**
 - 🔴 **A4 — Pas d'heure de départ / retour, aucune alerte de retard** ⚠️ agents. **S-M**
-- 🔴 **A5 — Le plafond de 10 scénarios purge un scénario en cours** 🔬 mesuré au harnais (`:737-747`). **S**
 
 **Lot B — planification et exécution** (détail et preuves : §3-5 du rapport) :
 B1 guidage Secours (« Suivre » → vraie road `itinerary`, carrefours/raccords/niveaux gardés, évitements transmis au

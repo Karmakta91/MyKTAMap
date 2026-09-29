@@ -3759,7 +3759,7 @@
   "secours.list.emptyHint": "Crea tu primer escenario con el botón de arriba.",
   "secours.list.emptyTitre": "Ningún escenario de rescate guardado para este mapa.",
   "secours.list.intro": "Define y comparte <strong>planes de rescate</strong> para este mapa: asigna <strong>equipos</strong> a <strong>zonas de búsqueda</strong> precisas, con entradas/salidas, rutas sugeridas y duraciones estimadas. Al regresar del terreno, los equipos pueden reportar sus observaciones.",
-  "secours.list.limiteAtteinte": "⚠️ Límite alcanzado ({max} escenarios máx por mapa). El próximo \"Nuevo\" eliminará automáticamente el más antiguo.",
+  "secours.list.limiteAtteinte": "⚠️ Límite alcanzado ({max} escenarios máx por mapa). El próximo \"Nuevo\" eliminará automáticamente el más antiguo, nunca un escenario en curso.",
   "secours.list.metaEquipes": "🚨 {n} equipo(s)",
   "secours.list.ouvrirTitle": "Abrir",
   "secours.list.supprimerTitle": "Eliminar",

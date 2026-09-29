@@ -3759,7 +3759,7 @@
   "secours.list.emptyHint": "Crée ton premier scénario via le bouton ci-dessus.",
   "secours.list.emptyTitre": "Aucun scénario de secours sauvegardé pour ce plan.",
   "secours.list.intro": "Définis et partage des <strong>plans de secours</strong> pour ce plan : assigne des <strong>équipes</strong> à des <strong>zones de recherche</strong> précises, avec entrées/sorties, itinéraires suggérés et durées estimées. Au retour terrain, les équipes peuvent rapporter leurs observations.",
-  "secours.list.limiteAtteinte": "⚠️ Limite atteinte ({max} scénarios max par plan). Le prochain \"Nouveau\" supprimera automatiquement le plus ancien.",
+  "secours.list.limiteAtteinte": "⚠️ Limite atteinte ({max} scénarios max par plan). Le prochain \"Nouveau\" supprimera automatiquement le plus ancien, jamais un scénario en cours.",
   "secours.list.metaEquipes": "🚨 {n} équipe(s)",
   "secours.list.ouvrirTitle": "Ouvrir",
   "secours.list.supprimerTitle": "Supprimer",

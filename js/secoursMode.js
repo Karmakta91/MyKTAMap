@@ -737,14 +737,26 @@
   function _saveScenarios() {
     const key = _storageKey();
     if (!key) return false;
-    // Cap FIFO : si > MAX, on retire les plus anciens par createdAt
+    // Cap FIFO : si > MAX, on retire les plus anciens par createdAt.
+    // 🩸 29/09/2026 (audit Secours, A5) — JAMAIS un scénario en cours d'exécution
+    // ni celui ouvert : avant, créer un 11ᵉ scénario pendant une intervention
+    // pouvait effacer celle-ci. Le plus récent non plus (sinon, 10 en cours → le
+    // scénario qu'on vient de créer disparaît). Tout l'excédent protégé → on dépasse le cap.
     if (_scenarios.length > MAX_SCENARIOS) {
       _scenarios.sort(function(a, b) {
         return (Date.parse(a.createdAt || 0) || 0) - (Date.parse(b.createdAt || 0) || 0);
       });
-      const excess = _scenarios.length - MAX_SCENARIOS;
-      _scenarios.splice(0, excess);
-      console.log("[SecoursMode] FIFO : " + excess + " scénario(s) ancien(s) purgé(s)");
+      let excess = _scenarios.length - MAX_SCENARIOS;
+      const purges = [];
+      for (let i = 0; i < _scenarios.length - 1 && excess > 0; i++) {
+        const s = _scenarios[i];
+        if ((s.execution && s.execution.active) || s.id === _currentScenarioId) continue;
+        purges.push(s.id);
+        excess--;
+      }
+      _scenarios = _scenarios.filter(function(s) { return purges.indexOf(s.id) < 0; });
+      console.log("[SecoursMode] FIFO : " + purges.length + " scénario(s) ancien(s) purgé(s)" +
+                  (excess > 0 ? ", " + excess + " protégé(s) (en cours / ouvert)" : ""));
     }
     try {
       localStorage.setItem(key, JSON.stringify(_scenarios));
