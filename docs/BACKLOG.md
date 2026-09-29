@@ -40,7 +40,6 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
 
-- 🟠 **Le LRU des tuiles ne libère rien**, pour deux raisons indépendantes : sur un plan **serveur** ses buckets restent vides (il ne se remplit que pour les assets porteurs d'un `file`, donc les ZIP) ; sur un plan **ZIP desktop**, `MAX_CACHED_LEVELS = 4` alors que le générateur produit exactement 4 niveaux — la condition d'éviction ne peut jamais être vraie. Ce qui libère réellement, c'est le `remove()` des overlays au swap. Le LRU n'agit que sur mobile (cap 2), où il n'a jamais été mesuré.
 - 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
 
 ## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)

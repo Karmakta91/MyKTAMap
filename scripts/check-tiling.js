@@ -616,8 +616,71 @@ Promise.all([
   t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
 }).catch(function (e) {
   t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
-}).then(_osmServeur).then(function () {
+}).then(_osmServeur).then(_lruZip).then(function () {
   console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);
 });
+// ───────── 17. 🧠 LRU DES TUILES : UN PLAN ZIP LIBÈRE ENFIN DE LA MÉMOIRE ─────────
+// 🩸 Mesuré le 26/09/2026 : sur desktop, MAX_CACHED_LEVELS valait 4 alors que
+// le générateur produit EXACTEMENT 4 niveaux (-3…0) — l'éviction ne pouvait
+// jamais se déclencher, et les fichiers extraits du ZIP restaient en mémoire
+// pour tous les niveaux visités. Ce contrôle CHARGE tiling.js dans un vm, lui
+// donne un faux ZIP paresseux (asset.file + _zipPath, comme main.js) et une
+// fausse carte, puis visite les 4 niveaux : le premier visité doit être libéré
+// (URL révoquée ET fichier rendu), les 3 derniers conservés.
+// Falsification : remettre 4 sur desktop → rien n'est libéré → rouge.
+function _lruZip() {
+  const vm17 = require("vm");
+  const W = 4096, H = 4096, TS = 512;
+  const assets = {};
+  // Tuiles des niveaux -3…0 pour un plan de 4096 px (grille = W·2^z / 512).
+  for (let z = -3; z <= 0; z++) {
+    const n = Math.ceil(W * Math.pow(2, z) / TS);
+    for (let k = 1; k <= n; k++) {
+      for (let c = 0; c < n; c++) {
+        const p = "data/tiles/z" + z + "/x" + c + "_y" + (-k) + ".jpg";
+        assets[p] = { file: { taille: 1 }, _zipPath: p, lazy: true, url: null };
+      }
+    }
+  }
+  let zoom = -3, crees = 0, revoquees = 0;
+  const handlers = {};
+  const map = {
+    getZoom: () => zoom,
+    on: (ev, fn) => ev.split(" ").forEach(e => { (handlers[e] = handlers[e] || []).push(fn); }),
+    off: () => {}, whenReady: fn => fn(), hasLayer: () => false, removeLayer: () => {},
+    getBounds: () => ({ pad: () => ({ intersects: () => true }) })
+  };
+  const L = {
+    imageOverlay: () => ({ on() {}, addTo() { return this; }, remove() {}, getBounds: () => ({}) }),
+    latLngBounds: b => b
+  };
+  const win = {
+    console: { log() {}, warn() {}, error() {} }, L: L, map: map,
+    navigator: { userAgent: "Mozilla/5.0 (Windows NT 10.0) desktop", deviceMemory: 16 },
+    URL: { createObjectURL: () => "blob:" + (++crees), revokeObjectURL: () => { revoquees++; } },
+    requestAnimationFrame: fn => fn(), RUNTIME_ASSETS: assets, _ktaBaseLayers: [],
+    PLAN_CONFIG: { plan: {} },
+    _extractLazyAsset: p => { assets[p].file = { taille: 1 }; return Promise.resolve(assets[p]); }
+  };
+  win.window = win;
+  const ctx = vm17.createContext(win);
+  vm17.runInContext("var window = this; var navigator = this.navigator; var URL = this.URL;" +
+                    "var requestAnimationFrame = this.requestAnimationFrame;" +
+                    fs.readFileSync("js/tiling.js", "utf8"), ctx);
+  const attendre = () => new Promise(r => setTimeout(r, 20));
+  const zoomer = z => { zoom = z; (handlers.zoomend || []).forEach(fn => { try { fn(); } catch (e) {} }); return attendre(); };
+  const duNiveau = z => Object.keys(assets).filter(p => p.indexOf("/z" + z + "/") >= 0).map(p => assets[p]);
+  vm17.runInContext("this.__rendu = _chargerImageV2OptionB('blob:base', [[0,0],[" + H + "," + W + "]], this.map," +
+                    " { tileSize: " + TS + ", minNativeZoom: -3, maxNativeZoom: 0 }, null);", ctx);
+  return attendre().then(() => zoomer(-2)).then(() => zoomer(-1)).then(() => zoomer(0)).then(function () {
+    const z3 = duNiveau(-3), z0 = duNiveau(0);
+    t("🧠 LRU desktop : après les 4 niveaux, le plus ancien (z=-3) est LIBÉRÉ (URL + fichier)",
+      z3.length > 0 && z3.every(a => a.url === null && a.file === null));
+    t("🧠 LRU desktop : le niveau courant (z=0) garde ses tuiles", z0.length > 0 && z0.every(a => a.url && a.file));
+    t("🧠 des URL ont bien été révoquées (" + revoquees + ")", revoquees === z3.length);
+  }).catch(function (e) {
+    t("§17 le bac à sable du LRU s'exécute sans planter — " + (e && e.message), false);
+  });
+}

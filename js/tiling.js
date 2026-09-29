@@ -486,7 +486,13 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   const _lowMem = (typeof navigator !== "undefined"
                    && ((navigator.deviceMemory && navigator.deviceMemory < 6)
                        || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "")));
-  const MAX_CACHED_LEVELS = _lowMem ? 2 : 4;
+  // 🩸 29/09/2026 — desktop était à 4 : le générateur produit EXACTEMENT 4
+  // niveaux (-3…0), la condition d'éviction ne pouvait donc jamais être vraie
+  // et les fichiers extraits de tous les niveaux restaient en mémoire. À 3,
+  // le niveau le moins récent est libéré dès qu'on a visité les quatre.
+  // (Plan SERVEUR : rien à libérer ici par construction — les tuiles sont des
+  // URL HTTP, c'est le cache du navigateur qui gère.)
+  const MAX_CACHED_LEVELS = _lowMem ? 2 : 3;
 
   // Helper : résout l'URL d'une tuile (z, col, k=-row). Lazy → crée la blob URL
   // au premier appel et la réutilise ensuite (asset.url cached). Range l'asset
