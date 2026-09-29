@@ -5662,17 +5662,18 @@
         }
         y += 4;
         // Section Itinéraire (waypoints)
-        if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0) {
+        // 🩸 29/09/2026 (audit Secours) — la ligne disait « N waypoints » avec N =
+        // points du TRACÉ (220 à 480 mesurés), pas les étapes (une quinzaine) : un
+        // chef d'équipe lisant le papier croyait à 400 arrêts. On imprime les ÉTAPES,
+        // dans l'ordre, telles qu'il les verra dans le stepper — même sans itinéraire
+        // calculé (2e relecture, D-b : le papier ne doit pas dépendre du calcul).
+        const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
+          .filter(function(w) { return w && typeof w.x === "number"; })
+          .map(function(w) { return w.label || _fmtPoint(w); });
+        if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           pdf.text(t("secours.pdf.itineraireSuggere"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-          // 🩸 29/09/2026 (audit Secours) — la ligne disait « N waypoints » avec N =
-          // points du TRACÉ (220 à 480 mesurés), pas les étapes (une quinzaine) : un
-          // chef d'équipe lisant le papier croyait à 400 arrêts. On imprime les ÉTAPES,
-          // dans l'ordre, telles qu'il les verra dans le stepper.
-          const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
-            .filter(function(w) { return w && typeof w.x === "number"; })
-            .map(function(w) { return w.label || _fmtPoint(w); });
           // Liste longue (« POI de la zone » : 40-60 étapes) : saut de page ligne à ligne.
           pdf.splitTextToSize(t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
                               pageW - 2 * margin).forEach(function(ligne) {

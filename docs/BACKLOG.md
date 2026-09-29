@@ -70,7 +70,7 @@ fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
 | 2 — Saisie du plan | [x] 2.1 mode tracés (A2) · [x] 2.2 niveaux de l'itinéraire · [x] 2.3 ordre plus proche voisin · [x] 2.4 Ctrl+K : rôle par défaut selon l'équipe · [x] 2.5 Mode Perdu : niveau du point · [x] 2.6 renfort / équipe modifiée en cours de phase |
 | 3 — Documents papier | [x] 3.1 « POI critiques » · [x] 3.2 fond du PDF (~860 Mo) · [x] 3.2b mini-carte du rapport jamais dessinée (trouvé en test) · [x] 3.3 nombre d'étapes |
 | 3bis — Reprise après relecture (`docs/…/rev` scratchpad, 29/09) | [x] R1 import sur appareil plein · [x] 2.6 refaite (homonymes, étape retirée, phase cochée, renumérotation) · [x] R5 itinéraire en Vue OSM · [x] R8 photos au « Remplacer » · [x] R2 ids en double · [x] H1 « Dupliquer » · [x] R11-12 mini-carte · [x] mineurs + tests |
-| 3ter — 2e relecture (29/09) | [x] identité des points de passage (`wid`) : N1, N2, N3, N4, N5, N7, N8 · [x] N11 victime sur étape retirée → remise + alerte · [x] N9 / N10b photos orphelines · [ ] mineurs (D-b liste d'étapes sans itinéraire) |
+| 3ter — 2e relecture (29/09) | [x] identité des points de passage (`wid`) : N1, N2, N3, N4, N5, N7, N8 · [x] N11 victime sur étape retirée → remise + alerte · [x] N9 / N10b photos orphelines · [x] mineurs (D-b liste d'étapes sans itinéraire) |
 | 4 — Correctifs inter-modules | [ ] 4.1 durées (pause par étape) · [ ] 4.2 calage par niveau (`pathfinder.js`) · [ ] 4.3 version du plan à l'import |
 | 5-8 — Refonte | 5 sécurité terrain (A3, A4, rappel) · 6 guidage (B1, B2) · 7 pilotage (B3, B9, main courante, parcours par phase, rapports secouriste, B10) · 8 lot C |
 
