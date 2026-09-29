@@ -510,9 +510,13 @@
   // KARMA sur le bouton Retour.
   // On ne fige donc aucune hauteur : on mesure ce qui est là et on se place
   // au-dessus. Ajouter un flottant à cette liste suffira pour le suivant.
+  // 🐛 30/09/2026 (capture KARMA) : la BARRE D'ÉTAT elle-même manquait — elle grandit
+  // quand un plan de secours tourne (pastille « 🚨 Secours ») et recouvrait le bouton,
+  // resté à sa hauteur CSS fixe. Sa taille change sans ajout de nœud à <html> : elle
+  // est aussi suivie par un ResizeObserver (cf _observerFloaters).
   const FLOATERS_BAS = ["#kta-ipl-back-float", ".kta-ipr-next-float",
                         ".kta-iti-floater", ".kta-north-picker-overlay",
-                        ".kta-supp-trace-floater"];
+                        ".kta-supp-trace-floater", "#kta-refonte-statusbar"];
 
   function _placerBoutonRecentrer() {
     if (!_btnRecentrer) return;
@@ -539,6 +543,7 @@
   // sont posés. childList sans subtree = quasi gratuit, et seulement tant que
   // notre bouton existe.
   let _observateurFloaters = null;
+  let _observateurBarre = null;
   function _observerFloaters(actif) {
     if (actif && !_observateurFloaters && typeof MutationObserver === "function") {
       _observateurFloaters = new MutationObserver(function() { _placerBoutonRecentrer(); });
@@ -546,6 +551,15 @@
     } else if (!actif && _observateurFloaters) {
       try { _observateurFloaters.disconnect(); } catch(e) {}
       _observateurFloaters = null;
+    }
+    // Barre d'état : sa hauteur varie (pastille Secours, barre repliée / dépliée).
+    const barre = document.getElementById("kta-refonte-statusbar");
+    if (actif && !_observateurBarre && barre && typeof ResizeObserver === "function") {
+      _observateurBarre = new ResizeObserver(function() { _placerBoutonRecentrer(); });
+      _observateurBarre.observe(barre);
+    } else if (!actif && _observateurBarre) {
+      try { _observateurBarre.disconnect(); } catch(e) {}
+      _observateurBarre = null;
     }
   }
 
