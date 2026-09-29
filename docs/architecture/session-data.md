@@ -1055,7 +1055,7 @@ KARMA quote :
 | Champ étape | Politique | Détail |
 |---|---|---|
 | `observations` | Concaténation datée | `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` — **aucune perte d'info** |
-| `statut` | Plus sévère | `_severitéMaxStatut(opStatut, impStatut)` via `TABLEAU_STATUTS.severity` (sauf si import=pending qui n'écrase jamais) |
+| `statut` | Plus sévère, puis plus récent | Via `TABLEAU_STATUTS.severity` ; import=pending n'écrase jamais. 🩸 29/09/2026 : un statut reçu bat « en attente » (avant, un RAS reçu était perdu — même sévérité 0) ; à sévérité égale, le plus récent `completedAt` gagne (avant : le PC gagnait toujours). Helper `_severitéMaxStatut` supprimé, logique inline dans `_appliquerImportRapportEquipe` |
 | `photoIds[]` | Push avec dédup | Dédup par `photo.id` (genId aléatoire = collision rare). Idempotent via `MyKTAMapSecoursPhotos.importPhotoFromDataUrl` qui détecte déjà-présent |
 | `startedAt` | Min (plus ancien) | `Math.min(opStartedAt, impStartedAt)` — préserve la première activation |
 | `completedAt` | Max (plus récent) | `Math.max(opCompletedAt, impCompletedAt)` — préserve la dernière update |

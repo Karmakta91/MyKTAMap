@@ -2090,15 +2090,6 @@
 
   const REPORT_FORMAT_VERSION_MAX = 1; // version max supportée à l'import
 
-  // Helper : retourne le statut le plus sévère entre 2 codes via TABLEAU_STATUTS.severity.
-  // Si égalité, conserve s1 (statut côté Op, principe "ne pas écraser l'existant"
-  // sauf si l'équipier remonte une info plus grave).
-  function _severitéMaxStatut(s1, s2) {
-    const i1 = _getStatutInfo(s1);
-    const i2 = _getStatutInfo(s2);
-    return (i2.severity > i1.severity) ? s2 : s1;
-  }
-
   // Parse + validation seule (pas d'injection). Symétrique à _parsePayloadMkmsec.
   // Retourne : { ok, payload?, equipeId?, conflits?, warning?, error? }
   // `conflits` est un array d'étapes côté op déjà renseignées (statut !== pending
@@ -2290,9 +2281,21 @@
           : importedObs;
       }
 
-      // Statut : plus sévère (sauf si import = pending, qui n'écrase jamais)
+      // Statut : plus sévère (sauf si import = pending, qui n'écrase jamais).
+      // 🩸 29/09/2026 (audit Secours) — l'égalité gardait TOUJOURS le statut du PC :
+      // « RAS » (sévérité 0, comme « en attente ») rapporté par l'équipe était perdu,
+      // et entre bloqué / indice / demi-tour (tous 1) le premier arrivé gagnait.
+      // Désormais : un statut reçu bat « en attente » ; à sévérité égale, le plus
+      // récent (completedAt, lu AVANT la fusion des horodatages ci-dessous) gagne.
       if (etImp.statut && etImp.statut !== "pending") {
-        etapeOp.statut = _severitéMaxStatut(etapeOp.statut || "pending", etImp.statut);
+        const statutOp = etapeOp.statut || "pending";
+        const sevOp = _getStatutInfo(statutOp).severity;
+        const sevImp = _getStatutInfo(etImp.statut).severity;
+        const tOp = etapeOp.completedAt ? Date.parse(etapeOp.completedAt) || 0 : 0;
+        const tImp = etImp.completedAt ? Date.parse(etImp.completedAt) || 0 : 0;
+        if (statutOp === "pending" || sevImp > sevOp || (sevImp === sevOp && tImp >= tOp)) {
+          etapeOp.statut = etImp.statut;
+        }
       }
 
       // Timestamps : préserver le plus ancien startedAt + le plus récent completedAt
