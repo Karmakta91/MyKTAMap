@@ -8608,6 +8608,12 @@
         s.execution._previousEquipeId = s.execution.currentEquipeId;  // null normalement
         s.execution.role = "equipe";
         s.execution.currentEquipeId = equipeId;
+        // 🩸 29/09/2026 (audit Secours) — le focus d'étape est un état du MODULE,
+        // pas de l'équipe : l'opérateur qui relayait Alpha (étape 5) puis prenait
+        // Bravo atterrissait sur l'étape 5 de Bravo → statut radio saisi sur la
+        // mauvaise étape. On repart comme à l'ouverture : 1ʳᵉ étape non terminée.
+        _liveEquipeFocusIdx = 0;
+        _liveEquipeFreshSession = true;
         _commitMutation(s);
         _toast(t("secours.toast.modeEquipe", { nom: g.nom }), "info");
         _switchView("live");
