@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.16` (30/09/2026)
+## 📦 Version courante — `v1.98.17` (30/09/2026)
+
+> 🩹 **v1.98.17 — Deux défauts d'affichage sur iPhone** : l'en-tête de la vue live du Mode Secours ne se fait plus recouvrir par les cartes qui défilent (3e récidive, enfin reproduite sur WebKit) ; « 🎯 Recentrer » ne passe plus sous la barre d'état agrandie.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
 > 🏗️ **v1.98.15 — Mode Secours : niveaux vides signalés** : dans « Ajouter une équipe » et le choix du niveau d'une équipe, un niveau qui ne porte rien s'affiche « (vide) » (décision KARMA), toujours choisissable.
-
-> 🚨 **v1.98.14 — Mode Secours, retours terrain (iPhone)** : pendant une intervention la carte garde la zone et le tracé de l'équipe, pastille rouge « 🚨 Secours · Alpha · 3/8 › » qui ramène aux étapes ; phases lisibles sur téléphone ; équipes repliables ; zones des autres équipes visibles au dessin ; un POI touché devient le point choisi ; points sans nom en GPS ; plus d'équipes sur des niveaux vides.
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -497,6 +497,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.17 (30/09/2026) — Deux défauts d'affichage sur iPhone
+
+- 📱 **En-tête live du Mode Secours** (`068f71d`) : en vue opérateur, les cartes défilaient PAR-DESSUS l'en-tête « Opérateur surface ». 3e récidive — v1.24.2 (fond opaque) et v1.25.1 (`z-index: 100` + `isolation`) sans effet sur Safari iOS. **Reproduit sur WebKit** (Playwright, installé le 30/09 pour ça) : les boutons des cartes sont peints au-dessus de l'en-tête `sticky`. Correctif par construction : en vue live, l'en-tête sort de la zone qui défile (`_placerEnteteLive`). Vérifié sur WebKit et Chromium à 390 px.
+- 🎯 **« Recentrer »** (`eeee9ba`, `mapBearing.js`) : la barre d'état manquait à la liste des flottants du bas ; avec un itinéraire actif, le bouton se calait sur lui et passait sous la barre agrandie par la pastille Secours. Barre ajoutée + `ResizeObserver`. `checkup-plan-oriente` vert.
+- 🧰 **Outillage** : WebKit disponible pour les harnais Playwright (`webkit.launch()`) — les bugs propres à Safari se reproduisent désormais ici.
 
 #### v1.98.16 (30/09/2026) — Mode Secours, vague 5 : sécurité terrain (A3, A4, rappel)
 
