@@ -740,6 +740,10 @@
       });
       // Migration silencieuse multi-phases (rétro-compat v1 stricte)
       _scenarios.forEach(_migrateScenarioV1ToPhases);
+      // 4e relecture (R4-6) : durées recalculées avec les réglages Secours propres
+      if (_scenarios.map(_migrerDurees).some(Boolean)) {
+        try { localStorage.setItem(key, JSON.stringify(_scenarios)); } catch(e) {}
+      }
     } catch(e) {
       console.warn("[SecoursMode] Échec parse storage :", e);
       _scenarios = [];
@@ -1985,10 +1989,14 @@
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
-      reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? sc.reglagesDuree : undefined
+      reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
+        vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0))
+      } : undefined   // R4-12 : mêmes bornes que updateScenario
       // phases ajouté juste après si présent (sinon migration le créera)
     };
     if (importedPhases) cleanScenario.phases = importedPhases;
+    _migrerDurees(cleanScenario);   // R4-6 : .mkmsec d'avant 4.1 → durées recalculées
     // 🆕 v1.29.0 C1 — Migration explicite après push : si le payload était v1
     // sans phases[], une phase implicite est créée couvrant toutes les équipes.
     // Si déjà multi-phases, idempotent.
@@ -8249,6 +8257,21 @@
     if (typeof distM !== "number" || distM <= 0) return 0;
     const r = _reglagesDuree(s);
     return distM / (r.vitesseKmh * 1000 / 60) + Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+  }
+
+  // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
+  // durées à 5 km/h + 15 min/étape (cartes, PDF, KMZ) alors que le bloc ⏱️ affichait
+  // 1,5 km/h. Pas encore de réglages → réglages par défaut posés (= migration faite,
+  // idempotente) et durées recalculées. Retourne true si le scénario a changé.
+  function _migrerDurees(s) {
+    if (!s || typeof s !== "object" || s.reglagesDuree) return false;
+    s.reglagesDuree = { vitesseKmh: DUREE_DEFAUT.vitesseKmh, pauseMin: DUREE_DEFAUT.pauseMin };
+    (s.groupes || []).forEach(function(g) {
+      if (typeof g.distanceM !== "number" || g.distanceM <= 0) return;
+      const nbWp = (g.entree ? 1 : 0) + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0) + (g.sortie ? 1 : 0);
+      g.dureeEstimeeMin = _dureeEquipeMin(s, g.distanceM, nbWp);
+    });
+    return true;
   }
 
   // 🆕 v1.23.6 — Recalcule les durées estimées de toutes les équipes du scénario
