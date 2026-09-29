@@ -2482,8 +2482,18 @@
       return { ok: false, error: t("secours.report.errEquipeAbsente", { nom: (ed.equipe.nom || t("secours.import.sansNom")), id: ed.equipe.id.slice(0, 8) }) };
     }
 
-    // Détection des conflits (info pour preview, pas une erreur)
-    const etapesOp = (currentScenario.execution.etapes && currentScenario.execution.etapes[ed.equipe.id]) || [];
+    // Détection des conflits (info pour preview, pas une erreur).
+    // 4e relecture (R4-9) : mêmes préparatifs que la fusion — identités posées et
+    // rattachées, et étapes de la phase visée (phase close → son historique) —
+    // sinon l'aperçu annonçait autre chose que ce qui serait fusionné.
+    const gPrev = currentScenario.groupes.find(function(x) { return x.id === ed.equipe.id; });
+    if (gPrev) { _normaliserParcours(gPrev); _rattacherWidEtapes(currentScenario, gPrev); }
+    const phCour = (typeof currentScenario.execution.currentPhaseIdx === "number") ? currentScenario.execution.currentPhaseIdx : 0;
+    const phRap = _phaseDuRapport(currentScenario, payload);
+    const archPrev = (phRap !== phCour && currentScenario.execution.etapesArchive)
+      ? currentScenario.execution.etapesArchive[String(phRap)] : null;
+    const etapesOp = (archPrev && Array.isArray(archPrev[ed.equipe.id])) ? archPrev[ed.equipe.id]
+      : ((currentScenario.execution.etapes && currentScenario.execution.etapes[ed.equipe.id]) || []);
     const conflits = [];
     const etapesImp = Array.isArray(ed.etapes) ? ed.etapes : [];
     const pairesImp = _apparierEtapes(etapesOp, etapesImp);
@@ -3105,9 +3115,12 @@
           applied = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
         }
         _afficherResultatImportRapport(applied, file.name);
-        // Refresh vue live op pour afficher les chips _importedFrom
+        // Refresh vue live op pour afficher les chips _importedFrom.
+        // 4e relecture (R4-8) : appelait _renderInline, qui n'a jamais existé (le
+        // typeof masquait l'absence) → cartes opérateur figées sur l'état d'avant.
         try {
-          if (typeof _renderInline === "function") _renderInline();
+          if (_modal) _switchView("live");
+          if (_overlayLayer) renderOverlay(_currentScenarioId);
         } catch(e) { console.warn("[SecoursMode] re-render post-import :", e); }
       });
     });
