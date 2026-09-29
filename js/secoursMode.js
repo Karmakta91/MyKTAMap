@@ -2808,9 +2808,26 @@
     copy.createdAt = _nowIso();
     copy.updatedAt = _nowIso();
     // Régénère aussi les IDs internes des groupes (sinon collisions)
+    // 🩸 Relecture 29/09 (H1) — les phases n'étaient pas remappées (la copie
+    // n'avait aucune équipe dans ses phases) et l'exécution EN COURS était recopiée
+    // avec les anciens ids : la « variante et si » d'une intervention naissait
+    // « en cours », protégée de la purge, sans étapes. Une variante est un plan
+    // neuf : phases remappées et remises à zéro, pas d'exécution.
+    const idMap = {};
     if (Array.isArray(copy.groupes)) {
-      copy.groupes.forEach(function(g) { g.id = _genId("G"); });
+      copy.groupes.forEach(function(g) { const ancien = g.id; g.id = _genId("G"); idMap[ancien] = g.id; });
     }
+    if (Array.isArray(copy.phases)) {
+      copy.phases = copy.phases.map(function(p) {
+        return Object.assign({}, p, {
+          id:        _genId("P"),
+          groupeIds: (p.groupeIds || []).map(function(x) { return idMap[x]; }).filter(Boolean),
+          startedAt: null, endedAt: null, debrief: "", debriefAt: null
+        });
+      });
+    }
+    delete copy.execution;
+    delete copy.arriveeAt;
     _scenarios.push(copy);
     _commitMutation(copy);
     return copy;
