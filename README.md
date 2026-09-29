@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.5` (29/09/2026)
+## 📦 Version courante — `v1.98.6` (29/09/2026)
+
+> 🗺️ **v1.98.6 — Mode Secours, vague 2 : la saisie du plan** : le mode « zone = tracés » sélectionne enfin des galeries (il ne prenait aucun clic) ; l'itinéraire garde le vrai niveau de chaque point ; « POI de la zone » ordonne au plus proche voisin (26-45 % plus court) ; Ctrl+K n'écrase plus l'entrée d'une équipe ; le Mode Perdu transmet le niveau du dernier point connu ; un renfort ou un parcours modifié en cours de phase a ses étapes, sans perdre les saisies.
 
 > 🚨 **v1.98.5 — Mode Secours, vague 1 des correctifs : la remontée PC ↔ équipes fonctionne enfin** : le rapport d'une équipe fait sur son propre téléphone était refusé à 100 % par le PC (ids régénérés à l'import) — il est accepté ; la limite de 10 scénarios n'efface plus une intervention en cours ; un « RAS » rapporté n'est plus perdu à la fusion ; « Prendre la main » ouvre la bonne étape. Issu de l'audit `docs/audits/2026-09-29_audit-secours-v1.md`.
 
@@ -487,6 +489,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.6 (29/09/2026) — Mode Secours, vague 2 des correctifs : saisie du plan
+
+- 📝 **Notes de version** : la ligne Secours est réécrite pour couvrir les vagues 1 et 2 (écart avec la prod) ; les deux autres restent.
+- 🗺️ **2.1 — Le mode « zone = tracés » sélectionne des galeries** (`ec4e2ac`) : il cherchait `entry.road` / `entry.layer`, absents de `_ktaDataPolylines` → aucun clic branché. Clé d'un tracé = empreinte de sa géométrie (`_cleTrace`, 0 collision sur 893 géométries réelles), clic au plus proche tracé des niveaux visibles, un seul lecteur `_tracesZone` (overlay, PDF, avoidances, POI de la zone, KMZ via `SecoursMode.tracesZone`).
+- 🏗️ **2.2 — Niveau réel des points de l'itinéraire** (`ccce505`) : il était écrasé par celui de l'entrée (mesuré : 33 points au −1 déclarés « 0 »).
+- 🧭 **2.3 — « POI de la zone » au plus proche voisin** (`dd1e176`) : tri par distance à l'entrée malgré le commentaire ; 26-45 % plus court à vol d'oiseau sur 6 secteurs réels.
+- 📌 **2.4 — Ctrl+K : rôle par défaut selon l'équipe** (`49824dd`) : « Entrée » cochée d'office écrasait l'entrée existante.
+- ⛑️ **2.5 — Mode Perdu → Secours : niveau du point** (`f20a165`) : `lostMode.js` porte `level` ; avant, le niveau affiché au clic.
+- 🔁 **2.6 — Renfort / parcours modifié en cours de phase** (`6b89cf2`) : `_resyncEtapesEquipe` reconstruit et reporte les saisies (type + libellé), archive les étapes retirées ; la fusion apparie désormais par numéro + type + libellé, les photos suivent leur étape.
+- ✅ **Tests** : harnais Node (vrai `secoursMode.js`, vrai `pathfinder.js`, 912 tracés réels) — 2.1 10/10, 2.2 6/6, 2.3 12/12, 2.6 10/10 ; **checkup navigateur** Playwright sur le plan réel servi en local (hors dépôt) : Ctrl+K, mode tracés au clic, aperçu d'import Remplacer / Copie, Mode Perdu → Secours au −1 — tout vert, zéro erreur console. ⚠️ Pas testé sur téléphone réel (clic tactile sur une galerie).
 
 #### v1.98.5 (29/09/2026) — Mode Secours, vague 1 des correctifs : remontée PC ↔ équipes
 

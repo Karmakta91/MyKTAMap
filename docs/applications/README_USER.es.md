@@ -1666,8 +1666,10 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 |---|---|
 | 📍 Entrada | 1 clic en el mapa = captura la posición de entrada del equipo |
 | 🚪 Salida | 1 clic en el mapa = captura la posición de salida |
-| ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic (volver a pulsar = quitar, resaltado en rojo para los seleccionados) |
+| ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic: se toma la galería más cercana, entre los niveles visibles (volver a pulsar = quitar, resaltada en rojo). La selección se recupera idéntica en cualquier teléfono que tenga el mismo plano |
 | 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada (velocidad metódica de 0,5 m/s) |
+> 🔁 **Durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas modificas, recibe sus etapas de inmediato. Lo ya introducido (estado, observaciones, fotos) se queda en la misma etapa. «Todos los POI de la zona» añade las etapas de la más cercana a la más cercana, para evitar idas y vueltas.
+
 #### Visualización en el mapa
 
 Botón **🗺️ Ver en el mapa** en la cabecera de la edición. Muestra, para cada equipo (con su color dedicado):

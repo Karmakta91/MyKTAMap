@@ -1677,8 +1677,10 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 |---|---|
 | 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
 | 🚪 Sortie | 1 clic carte = capture la position de sortie |
-| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic (re-clic = retirer, highlight rouge pour les sélectionnés) |
+| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic : la galerie la plus proche, parmi les niveaux affichés, est prise (re-clic = retirer, surlignée en rouge). La sélection se retrouve à l'identique sur tout téléphone qui a le même plan |
 | 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée (vitesse 0.5 m/s méthodique) |
+
+> 🔁 **Pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu modifies l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a déjà été saisi (statut, observations, photos) reste sur la même étape. « Tous les POI de la zone » ajoute les étapes de proche en proche, pour éviter les allers-retours.
 
 #### Visualisation carte
 
