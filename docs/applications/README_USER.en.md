@@ -2154,7 +2154,7 @@ On field return, each team member can **share their report** with the surface op
    - Transmits the scenario to team members via classic `.mkmsec.json` export (mail / USB stick / AirDrop)
 
 2. **Each Team Member side (field)**:
-   - Imports the operator's `.mkmsec.json`: the import keeps the command post's identifiers, which is what lets the operator accept their report. If the plan is **already** on the phone (plan updated by the operator), the preview offers **"Replace"** (checked: keeps the link with the operator, but erases the statuses already entered on this phone) or **"Import as a copy"** (a new scenario, whose report the operator will refuse)
+   - Imports the operator's `.mkmsec.json`: the import keeps the command post's identifiers, which is what lets the operator accept their report. If the plan is **already** on the phone (plan updated by the operator), the preview offers **"Replace"** (checked: keeps the link with the operator, but erases the statuses, observations and photos already entered on this phone) or **"Import as a copy"** (a new scenario, whose report the operator will refuse)
    - Launches the plan → Team Live view → fills in obs + statuses + photos per step
    - **On surface return**: generates their report via "📤 Report" in the Team Live footer → **`.mkmsec.report.json`** format → exports the file (local download)
 

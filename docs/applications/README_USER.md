@@ -2155,7 +2155,7 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
    - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
 
 2. **Côté chaque Équipier (terrain)** :
-   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
+   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts, observations et photos déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
    - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
    - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
 

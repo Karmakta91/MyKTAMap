@@ -2144,7 +2144,7 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
    - Transmite el escenario a los miembros mediante la exportación `.mkmsec.json` clásica (correo / memoria USB / AirDrop)
 
 2. **Lado de cada Miembro (terreno)**:
-   - Importa el `.mkmsec.json` del operador: la importación conserva los identificadores del puesto de mando, que es lo que permitirá al operador aceptar su informe. Si el plan **ya** está en el teléfono (plan actualizado por el operador), la vista previa ofrece **«Reemplazar»** (marcado: conserva el vínculo con el operador, pero borra los estados ya introducidos en este teléfono) o **«Importar como copia»** (un escenario nuevo, cuyo informe el operador rechazará)
+   - Importa el `.mkmsec.json` del operador: la importación conserva los identificadores del puesto de mando, que es lo que permitirá al operador aceptar su informe. Si el plan **ya** está en el teléfono (plan actualizado por el operador), la vista previa ofrece **«Reemplazar»** (marcado: conserva el vínculo con el operador, pero borra los estados, observaciones y fotos ya introducidos en este teléfono) o **«Importar como copia»** (un escenario nuevo, cuyo informe el operador rechazará)
    - Lanza el plan → vista en directo de Equipo → introduce observaciones + estados + fotos por etapa
    - **Al volver a superficie**: genera su informe mediante «📤 Informe» en el pie de la vista en directo de Equipo → formato **`.mkmsec.report.json`** → exporta el archivo (descarga local)
 

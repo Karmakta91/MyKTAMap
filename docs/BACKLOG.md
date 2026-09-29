@@ -69,7 +69,7 @@ fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
 | 1 — Remontée PC ↔ équipes | [x] 1.1 ids gardés à l'import (A1) · [x] 1.2 purge ≠ scénario en cours (A5) · [x] 1.3 fusion : RAS perdu, égalités (reçu ≠ pending gagne, puis le plus récent) · [x] 1.4 prise de main : étape remise à zéro |
 | 2 — Saisie du plan | [x] 2.1 mode tracés (A2) · [x] 2.2 niveaux de l'itinéraire · [x] 2.3 ordre plus proche voisin · [x] 2.4 Ctrl+K : rôle par défaut selon l'équipe · [x] 2.5 Mode Perdu : niveau du point · [x] 2.6 renfort / équipe modifiée en cours de phase |
 | 3 — Documents papier | [x] 3.1 « POI critiques » · [x] 3.2 fond du PDF (~860 Mo) · [x] 3.2b mini-carte du rapport jamais dessinée (trouvé en test) · [x] 3.3 nombre d'étapes |
-| 3bis — Reprise après relecture (`docs/…/rev` scratchpad, 29/09) | [x] R1 import sur appareil plein · [x] 2.6 refaite (homonymes, étape retirée, phase cochée, renumérotation) · [x] R5 itinéraire en Vue OSM · [ ] R8 photos au « Remplacer » · [ ] R2 ids en double · [ ] H1 « Dupliquer » · [ ] R11-12 mini-carte · [ ] mineurs + tests |
+| 3bis — Reprise après relecture (`docs/…/rev` scratchpad, 29/09) | [x] R1 import sur appareil plein · [x] 2.6 refaite (homonymes, étape retirée, phase cochée, renumérotation) · [x] R5 itinéraire en Vue OSM · [x] R8 photos au « Remplacer » · [ ] R2 ids en double · [ ] H1 « Dupliquer » · [ ] R11-12 mini-carte · [ ] mineurs + tests |
 | 4 — Correctifs inter-modules | [ ] 4.1 durées (pause par étape) · [ ] 4.2 calage par niveau (`pathfinder.js`) · [ ] 4.3 version du plan à l'import |
 | 5-8 — Refonte | 5 sécurité terrain (A3, A4, rappel) · 6 guidage (B1, B2) · 7 pilotage (B3, B9, main courante, parcours par phase, rapports secouriste, B10) · 8 lot C |
 

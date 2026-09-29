@@ -613,7 +613,7 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 > était refusé à 100 % (`errScenarioDifferent` / `errEquipeAbsente`). Désormais `_appliquerPayloadImport(payload, mode)`
 > garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
 > choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
-> réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue, l'aperçu le dit.
+> réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue **avec ses photos** (`deletePhotosForScenario`, relecture R8 : sinon elles revenaient dans le rapport suivant et comptaient dans le quota), l'aperçu le dit dès qu'une exécution existe, en cours ou terminée.
 > `importerScenario(input, {mode})` : sans `mode`, un existant part en **copie** (jamais d'écrasement implicite) ;
 > son `confirm()` de plan différent est passé à `ktaConfirm`. Test : harnais 2 appareils, 19 contrôles.
 
