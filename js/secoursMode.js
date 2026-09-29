@@ -1048,7 +1048,8 @@
   // (`cle`), puis libellé par rang d'occurrence (`_apparierEtapes`) ; une étape
   // qui revient est restaurée depuis l'archive ; les photos suivent leur étape en
   // IndexedDB (`setStepIdx`, -2 = étape retirée) ; le focus live est recalé.
-  const ETAPE_CHAMPS_SAISIS = ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom"];
+  const ETAPE_CHAMPS_SAISIS = ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom",
+    "_obsImport"];   // _obsImport : R4-3, doit suivre l'étape à la resync
   function _etapeADesDonnees(e) {
     return !!e && (e.statut !== "pending" || !!(e.observations || "").trim()
                    || (e.photoIds || []).length > 0 || !!e.startedAt);
@@ -2673,7 +2674,13 @@
         // étapes retirées (photos non importées : l'étape n'existe plus ici).
         if (_etapeADesDonnees(etImp)) {
           s.execution._etapesRetirees = s.execution._etapesRetirees || {};
-          s.execution._etapesRetirees[equipeId] = (s.execution._etapesRetirees[equipeId] || []).concat([
+          // R4-3 : une étape déjà archivée (même point) est MISE À JOUR, pas ré-ajoutée
+          // à chaque import (archive 2 → 4 → 6 mesurée).
+          const arch = (s.execution._etapesRetirees[equipeId] || []).filter(function(x) {
+            return !((etImp.wid && x.wid === etImp.wid) || (!etImp.wid && etImp.cle && x.cle === etImp.cle
+              && x.type === etImp.type) || (!etImp.wid && !etImp.cle && x.label === etImp.label && x.type === etImp.type));
+          });
+          s.execution._etapesRetirees[equipeId] = arch.concat([
             Object.assign({}, etImp, { photoIds: [], retireeAt: importedAt,
               _importedFrom: { sourceScenarioId: sourceScenarioId, importedAt: importedAt } })
           ]);
@@ -2681,15 +2688,28 @@
         continue;
       }
 
-      // Concaténation observations (sauf si import vide)
+      // Concaténation observations (sauf si import vide).
+      // 🩸 4e relecture (R4-3) — chaque ré-import (et le rapport final, qui reprend
+      // l'intermédiaire) DUPLIQUAIT les observations (« trace » ×3 mesuré). L'étape
+      // mémorise le dernier texte reçu de l'équipe (`_obsImport`) : identique → rien ;
+      // prolongé → seule la partie nouvelle ; déjà présent au PC → rien.
       const importedObs = String(etImp.observations || "").trim();
-      if (importedObs.length > 0) {
+      const dejaRecu = String(etapeOp._obsImport || "");
+      let aAjouter = importedObs;
+      if (importedObs === dejaRecu) {
+        aAjouter = "";
+      } else if (dejaRecu && importedObs.indexOf(dejaRecu) === 0) {
+        aAjouter = importedObs.slice(dejaRecu.length).trim();
+      }
+      if (aAjouter && String(etapeOp.observations || "").indexOf(aAjouter) >= 0) aAjouter = "";
+      if (aAjouter.length > 0) {
         const existingObs = String(etapeOp.observations || "").trim();
         const separator = "\n\n" + t("secours.report.separator", { ts: tsLabel }) + "\n";
         etapeOp.observations = existingObs.length > 0
-          ? (existingObs + separator + importedObs)
-          : importedObs;
+          ? (existingObs + separator + aAjouter)
+          : aAjouter;
       }
+      if (importedObs) etapeOp._obsImport = importedObs;
 
       // Statut : plus sévère (sauf si import = pending, qui n'écrase jamais).
       // 🩸 29/09/2026 (audit Secours) — l'égalité gardait TOUJOURS le statut du PC :
