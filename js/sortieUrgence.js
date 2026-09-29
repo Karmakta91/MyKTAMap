@@ -142,6 +142,9 @@
       { x: origine.x, y: origine.y, source: "tracker",     label: "Position" },
       { x: cible.x,   y: cible.y,   source: "search",      label: cible.nom || "Sortie" }
     ];
+    // Niveau connu → calage sur une galerie de CE niveau (pathfinder, 4.2).
+    if (Number.isInteger(origine.level)) waypoints[0].level = origine.level;
+    if (Number.isInteger(cible.level))   waypoints[1].level = cible.level;
     return window.Pathfinder.computeRoute(waypoints, {
       avoidPoints: [],
       avoidTags:   [],
@@ -414,12 +417,16 @@
 
   // Variante : déclenche depuis une position arbitraire (utilisée par la
   // commande vocale qui pourrait passer un POI de référence à l'avenir).
-  function declencherDepuis(x, y) {
+  // Mode Secours (A3, 29/09/2026) : l'évacuation part de la VICTIME, niveau compris —
+  // sans lui, une victime au −1 était calée sur la galerie la plus proche, tous niveaux.
+  function declencherDepuis(x, y, level) {
     if (typeof x !== "number" || typeof y !== "number") {
       declencher();
       return;
     }
-    _lancer({ x: x, y: y }, { mode: "clic" });
+    const o = { x: x, y: y };
+    if (Number.isInteger(level)) o.level = level;
+    _lancer(o, { mode: "clic" });
   }
 
   async function _lancer(origine, meta) {

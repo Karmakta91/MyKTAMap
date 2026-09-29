@@ -2901,3 +2901,25 @@ html.kta-theme-light .kta-secours-sub-modal label strong {
 }
 body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille,
 html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille { background: #a01818 !important; color: #fff !important; }
+
+/* A3 (vague 5) : victime — bloc équipier, bandeau opérateur, marqueur carte */
+.kta-secours-victime-bloc, .kta-secours-victime-bandeau {
+  background: rgba(255, 68, 68, 0.14);
+  border: 1px solid #ff4444;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  color: #ffd0d0;
+}
+.kta-secours-victime-ligne { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; padding: 3px 0; }
+.kta-secours-victime-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.kta-secours-victime-marker span {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #d11f1f; color: #fff; font-size: 20px; font-weight: 700;
+  border: 2px solid #fff; box-shadow: 0 0 0 3px rgba(209, 31, 31, 0.45);
+}
+body.kta-theme-light .kta-secours-victime-bloc, html.kta-theme-light .kta-secours-victime-bloc,
+body.kta-theme-light .kta-secours-victime-bandeau, html.kta-theme-light .kta-secours-victime-bandeau {
+  background: #fde2e0 !important; color: #7a1010 !important; border-color: #c62828 !important;
+}

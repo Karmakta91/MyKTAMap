@@ -1062,7 +1062,7 @@
   // qui revient est restaurée depuis l'archive ; les photos suivent leur étape en
   // IndexedDB (`setStepIdx`, -2 = étape retirée) ; le focus live est recalé.
   const ETAPE_CHAMPS_SAISIS = ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom",
-    "_obsImport"];   // _obsImport : R4-3, doit suivre l'étape à la resync
+    "_obsImport", "victimePos"];   // _obsImport : R4-3 ; victimePos : A3 (position précisée)
   function _etapeADesDonnees(e) {
     return !!e && (e.statut !== "pending" || !!(e.observations || "").trim()
                    || (e.photoIds || []).length > 0 || !!e.startedAt);
@@ -1382,6 +1382,11 @@
     if ("completedAt" in partial) {
       et.completedAt = partial.completedAt;
     }
+    if ("victimePos" in partial) {   // A3 : position précisée de la victime (ou null)
+      const v = partial.victimePos;
+      et.victimePos = (v && typeof v.x === "number" && typeof v.y === "number")
+        ? { x: v.x, y: v.y, level: Number.isInteger(v.level) ? v.level : 0, at: v.at || _nowIso() } : null;
+    }
     _commitMutation(s);
     // 🆕 v1.29.0 C3 — Watcher auto-détection (KARMA C3.2:a + C3.2:c hybride) :
     // si la mutation vient de compléter une étape sortie ET que toutes les
@@ -1441,6 +1446,68 @@
   }
 
   // Raccourcis lecture
+  // ─── A3 (vague 5, 29/09/2026) — LA VICTIME A UNE POSITION ───
+  // Avant : « Victime trouvée » n'était qu'un statut d'étape, sans position ni
+  // suite. Désormais la victime est au point de son étape (niveau compris), ou à
+  // la position précisée sur la carte (`etape.victimePos`, qui voyage dans le
+  // rapport et se fusionne). Source unique : _victimesDe (vues, carte, rapports).
+  function _posDeCle(cle) {
+    const c = String(cle || "").split(",").map(Number);
+    return (c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+      ? { x: c[0], y: c[1], level: Number.isInteger(c[2]) ? c[2] : 0 } : null;
+  }
+  function _posVictime(et) {
+    return (et && et.victimePos && typeof et.victimePos.x === "number") ? et.victimePos : _posDeCle(et && et.cle);
+  }
+  // [{ g, et, idx (phase en cours, sinon null), phaseIdx, pos }] — phases closes comprises.
+  function _victimesDe(s) {
+    const out = [];
+    if (!s || !s.execution) return out;
+    const cour = (typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0;
+    const arch = s.execution.etapesArchive || {};
+    (s.groupes || []).forEach(function(g) {
+      Object.keys(arch).map(Number).sort(function(a, b) { return a - b; }).forEach(function(k) {
+        const arr = arch[String(k)] && arch[String(k)][g.id];
+        (Array.isArray(arr) ? arr : []).forEach(function(et) {
+          if (et && et.statut === "victime") out.push({ g: g, et: et, idx: null, phaseIdx: k, pos: _posVictime(et) });
+        });
+      });
+      _getEtapesEquipe(s, g.id).forEach(function(et, i) {
+        if (et && et.statut === "victime") out.push({ g: g, et: et, idx: i, phaseIdx: cour, pos: _posVictime(et) });
+      });
+    });
+    return out;
+  }
+  function _lblPos(pos) {
+    if (!pos) return "?";
+    const gps = _gpsTxt(pos.x, pos.y);
+    return (gps ? "GPS " + gps : "x=" + Math.round(pos.x) + " y=" + Math.round(pos.y)) +
+           " " + t("secours.ctxImport.niv", { level: pos.level });   // la clé porte ses parenthèses
+  }
+  // Victimes depuis un rapport (texte / PDF) : mêmes règles, sur les données du rapport.
+  function _victimesDuRapport(r) {
+    const out = [];
+    (r && Array.isArray(r.equipesData) ? r.equipesData : []).forEach(function(ed) {
+      const nom = (ed.equipe && ed.equipe.nom) || "?";
+      const lots = [ed.etapes || []].concat((ed.historique || []).map(function(h) { return h.etapes || []; }));
+      lots.forEach(function(arr) {
+        arr.forEach(function(et) {
+          if (et && et.statut === "victime") out.push({ nom: nom, label: _lblEtape(et.label) || "?", pos: _posVictime(et), at: et.completedAt || null });
+        });
+      });
+    });
+    return out;
+  }
+  // jsPDF (police standard) imprime les accents mais pas les emojis ni les flèches.
+  function _stripPourPdf(txt) {
+    return String(txt || "")
+      .replace(/[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F]|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
+      .replace(/\s{2,}/g, " ").trim();
+  }
+  function _heureCourte(iso) {
+    return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  }
+
   // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
   function _scenarioEnCours() {
     for (let i = 0; i < _scenarios.length; i++) {
@@ -2948,6 +3015,13 @@
         }
       }
 
+      // A3 : position précisée de la victime — la plus récente gagne.
+      if (etImp.victimePos && typeof etImp.victimePos.x === "number" && typeof etImp.victimePos.y === "number") {
+        const tImp = Date.parse(etImp.victimePos.at || 0) || 0;
+        const tOp = etapeOp.victimePos ? (Date.parse(etapeOp.victimePos.at || 0) || 0) : -1;
+        if (tImp >= tOp) etapeOp.victimePos = etImp.victimePos;
+      }
+
       // Flag traçabilité (UI chip + audit)
       etapeOp._importedFrom = {
         sourceScenarioId: sourceScenarioId,
@@ -3545,6 +3619,15 @@
       const couleur = PALETTE[g.couleurIdx % PALETTE.length].hex;
       _renderGroupeOverlay(g, couleur, s);
     });
+    // A3 : chaque victime a son marqueur ✚, visible de TOUS (sécurité), équipier compris.
+    _victimesDe(s).forEach(function(v) {
+      if (!v.pos) return;
+      L.marker(_planToLatLng(v.pos), {
+        icon: L.divIcon({ className: "kta-secours-victime-marker", html: "<span>✚</span>", iconSize: [30, 30], iconAnchor: [15, 15] }),
+        zIndexOffset: 2000, keyboard: false
+      }).bindTooltip("🚨 " + _escHtml(t("secours.victime.titre")) + " — " + _escHtml(v.g.nom), { direction: "top" })
+        .addTo(_overlayLayer);
+    });
   }
 
   // 🆕 hotfix3 — Helper pour récupérer l'étape execution correspondant à
@@ -4080,6 +4163,9 @@
     if (r.scenario.context && r.scenario.context.notes) {
       out += t("secours.txt.notes", { notes: r.scenario.context.notes }) + "\n";
     }
+    _victimesDuRapport(r).forEach(function(v) {   // A3
+      out += "🚨 " + t("secours.victime.ligneRapport", { equipe: v.nom, etape: v.label, pos: _lblPos(v.pos), heure: _heureCourte(v.at) }) + "\n";
+    });
     out += sep + "\n\n";
 
     // ─── Équipes (mode opérateur OU équipe) ───
@@ -4560,6 +4646,18 @@
         pdf.setFont(undefined, "bold"); pdf.text(t("secours.pdf.notesTitre"), margin, y); y += 5;
         pdf.setFont(undefined, "normal");
         y = _pdfWrapText(pdf, r.scenario.context.notes, margin, y, pageW - 2 * margin, 4);
+      }
+      const victimesPdf = _victimesDuRapport(r);   // A3
+      if (victimesPdf.length) {
+        y += 3;
+        pdf.setTextColor(180, 20, 20);
+        pdf.setFont(undefined, "bold"); pdf.text(_stripPourPdf(t("secours.victime.titrePdf", { n: victimesPdf.length })), margin, y); y += 5;
+        pdf.setFont(undefined, "normal");
+        victimesPdf.forEach(function(v) {
+          y = _pdfWrapText(pdf, _stripPourPdf("- " + t("secours.victime.ligneRapport",
+            { equipe: v.nom, etape: v.label, pos: _lblPos(v.pos), heure: _heureCourte(v.at) })), margin, y, pageW - 2 * margin, 4);
+        });
+        pdf.setTextColor(0);
       }
 
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
@@ -6555,7 +6653,7 @@
     const m = RE_LBL_BRUT.exec(String(label || ""));
     if (!m) return label;
     const g = _gpsTxt(Number(m[1]), Number(m[2]));
-    return g ? "GPS " + g + (m[3] != null ? " (" + t("secours.ctxImport.niv", { level: m[3] }) + ")" : "") : label;
+    return g ? "GPS " + g + (m[3] != null ? " " + t("secours.ctxImport.niv", { level: m[3] }) : "") : label;
   }
   function _slug(s) { return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40); }
   function _shortDate() {
@@ -7988,6 +8086,7 @@
                   statutInfo.emoji + ' ' + _escHtml(_statutLabel(etape.statut)) +
                 '</strong>' +
               '</div>' +
+              _renderBlocVictimeEquipe(s, equipeId, idx, etape) +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
                 '<label for="kta-live-obs-' + idx + '">' + t("secours.live.obsLabel") + '</label>' +
                 '<textarea id="kta-live-obs-' + idx + '" class="kta-secours-live-etape-textarea" ' +
@@ -8078,6 +8177,38 @@
     return html;
   }
 
+  // A3 : sous une étape « Victime trouvée », où elle est + préciser + évacuer.
+  function _renderBlocVictimeEquipe(s, equipeId, idx, etape) {
+    if (!etape || etape.statut !== "victime") return "";
+    const liste = _victimesDe(s);
+    const v = liste.findIndex(function(x) { return x.g.id === equipeId && x.idx === idx; });
+    if (v < 0) return "";
+    const pos = liste[v].pos;
+    return '<div class="kta-secours-victime-bloc">' +
+             '<div class="kta-secours-victime-pos">🚨 <strong>' + t("secours.victime.titre") + '</strong> : ' +
+               _escHtml(_lblPos(pos)) + (etape.victimePos ? ' <em>' + t("secours.victime.precisee") + '</em>' : '') + '</div>' +
+             '<div class="kta-secours-victime-actions">' +
+               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-preciser" data-v="' + v + '">' + t("secours.victime.preciser") + '</button>' +
+               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + v + '">' + t("secours.victime.evacuer") + '</button>' +
+             '</div>' +
+           '</div>';
+  }
+  // A3 : bandeau en tête de la vue opérateur, une ligne par victime.
+  function _renderBandeauVictimesOp(s) {
+    const liste = _victimesDe(s);
+    if (!liste.length) return "";
+    return '<div class="kta-secours-victime-bandeau">' + liste.map(function(v, i) {
+      return '<div class="kta-secours-victime-ligne">' +
+               '<span>🚨 <strong>' + t("secours.victime.titre") + '</strong> — ' + _escHtml(v.g.nom) + ' · ' +
+                 _escHtml(_lblEtape(v.et.label) || "?") + ' · ' + _heureCourte(v.et.completedAt) + '</span>' +
+               '<span class="kta-secours-victime-actions">' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-voir" data-v="' + i + '">' + t("secours.victime.voir") + '</button>' +
+                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + i + '">' + t("secours.victime.evacuer") + '</button>' +
+               '</span>' +
+             '</div>';
+    }).join('') + '</div>';
+  }
+
   // Init le focus sur la 1ère étape pending (sinon dernière étape).
   // 🐛 hotfix11 : smart-skip vers prochaine pending UNIQUEMENT en fresh session
   // (= 1ère entrée dans la vue Live pour cette exécution). Après navigation
@@ -8132,6 +8263,7 @@
                 (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
               '</div>' +
             '</div>';
+    html += _renderBandeauVictimesOp(s);
 
     // Grille cards équipes
     if (groupes.length === 0) {
@@ -9242,6 +9374,40 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // A3 : voir / évacuer / préciser la victime (index dans _victimesDe au rendu).
+    const victime = function(btn) { return _victimesDe(get(s.id))[parseInt(btn.getAttribute("data-v"), 10)] || null; };
+    corps.querySelectorAll('[data-action="victime-voir"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const v = victime(btn);
+        if (!v || !v.pos || !window.map) return;
+        fermer();
+        window.map.setView(_planToLatLng(v.pos), Math.max(window.map.getZoom(), 0));
+      });
+    });
+    corps.querySelectorAll('[data-action="victime-evacuer"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const v = victime(btn);
+        if (!v || !v.pos) return;
+        if (!window.SortieUrgence || typeof window.SortieUrgence.declencherDepuis !== "function") {
+          _toast(t("secours.victime.sortieIndispo"), "error");
+          return;
+        }
+        fermer();   // la zone et le tracé restent (intervention en cours)
+        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level);
+      });
+    });
+    corps.querySelectorAll('[data-action="victime-preciser"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const v = victime(btn);
+        if (!v || v.idx == null) return;
+        const sid = s.id, gid = v.g.id, idx = v.idx;
+        _startPickPoint(t("secours.victime.preciserInstr"), function(pt) {
+          updateEtape(sid, gid, idx, { victimePos: { x: pt.x, y: pt.y, level: pt.level } });
+          if (_modal) _switchView("live");   // la fenêtre revient avec la position à jour
+          _toast(t("secours.victime.preciseeToast"), "info");
+        });
+      });
+    });
     // Retour à la vue Edit (préserve l'execution active)
     corps.querySelectorAll('[data-action="back-to-edit"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _switchView("edit"); });
@@ -9829,6 +9995,25 @@
     _captureMarqueur = null;
   }
 
+  // Choisir un point sur la carte pour autre chose qu'un waypoint (A3 : position de
+  // la victime). Même mécanique que _startDefiningPoint (snap POI, capture des
+  // marqueurs, fenêtre masquée puis rendue).
+  function _startPickPoint(instrHtml, onPoint) {
+    if (_activeMapMode) _cancelMapMode();
+    if (!window.map) return;
+    _activeMapMode = "point";
+    _mapModeCtx = { onPoint: onPoint, allPoints: [] };
+    _hideModalForMap();
+    _showFloater(instrHtml, [{ label: t("secours.btn.annulerSimple"), action: "cancel" }]);
+    if (window.SearchPoints && typeof window.SearchPoints.getAllPoints === "function") {
+      Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
+        if (_mapModeCtx) _mapModeCtx.allPoints = Array.isArray(all) ? all : [];
+      }).catch(function() {});
+    }
+    window.map.once("click", _onMapClickPoint);
+    _armerCaptureMarqueurs();
+  }
+
   function _onMapClickPoint(e, rayonSnap) {
     if (!_mapModeCtx) return;
     let x = e.latlng.lng;
@@ -9851,6 +10036,12 @@
       // 4e relecture (R4-1) : accroché à un POI → le niveau du POI, pas celui affiché.
       if (Number.isInteger(snap.level)) level = snap.level;
       _toast(t("secours.toast.snap", { point: (label || pointId || t("secours.map.poiDefault")) }), "info");
+    }
+    if (typeof _mapModeCtx.onPoint === "function") {
+      const cb = _mapModeCtx.onPoint;
+      _finishMapMode();
+      cb({ x: x, y: y, level: level, pointId: pointId, label: label });
+      return;
     }
     _appliquerWaypoint(_mapModeCtx.groupeId, _mapModeCtx.role, _mapModeCtx.idx,
                        { x: x, y: y, level: level, pointId: pointId, label: label });
