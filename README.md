@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.14` (29/09/2026)
+## 📦 Version courante — `v1.98.15` (29/09/2026)
+
+> 🏗️ **v1.98.15 — Mode Secours : niveaux vides signalés** : dans « Ajouter une équipe » et le choix du niveau d'une équipe, un niveau qui ne porte rien s'affiche « (vide) » (décision KARMA), toujours choisissable.
 
 > 🚨 **v1.98.14 — Mode Secours, retours terrain (iPhone)** : pendant une intervention la carte garde la zone et le tracé de l'équipe, pastille rouge « 🚨 Secours · Alpha · 3/8 › » qui ramène aux étapes ; phases lisibles sur téléphone ; équipes repliables ; zones des autres équipes visibles au dessin ; un POI touché devient le point choisi ; points sans nom en GPS ; plus d'équipes sur des niveaux vides.
 
 > 📚 **v1.98.13 — Doc utilisateur, multi-langue et thème clair (audit du 29/09)** : les guides, l'Aide intégrée, le tutoriel et l'Aide IA ne disent plus de choses fausses (PIN « définitif », carnet archivé au changement de plan, section Configuration ES d'un autre âge…) ; plus de français en dur visible en EN/ES, dates dans la langue de l'app ; en mode clair, le texte ambre, le sommaire de la doc et les alertes du Mode Secours redeviennent lisibles.
-
-> 🔎 **v1.98.12 — Mode Secours, vague 4bis (4e relecture des vagues 1 à 4)** : un rapport de phase 1 importé après le passage en phase 2 va dans l'historique de la phase 1 (il remplissait la phase 2 en silence) ; les itinéraires d'équipe profitent enfin du calage par niveau ; observations non dupliquées ; rapport final avec les phases closes et les signalements hors parcours ; durées des plans d'avant recalculées ; PDF relus page par page (6 défauts corrigés).
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -497,6 +497,11 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.15 (29/09/2026) — Mode Secours : niveaux vides signalés
+
+- 🏗️ **`5b176e1`** (décision KARMA) : les deux listes de niveaux (« Ajouter une équipe », niveau d'une équipe) suffixent « (vide) » / « (empty) » / « (vacío) » aux niveaux sans contenu, d'après `window.ktaNiveauxOccupes()` (même source que le bouton Auto) ; le 0 n'est jamais marqué ; le niveau reste choisissable.
+- ✅ **Test** : checkup navigateur — sur le plan de test, −2 et +2 marqués, −1 / RDC / +1 non, dans les deux listes ; `check-i18n`.
 
 #### v1.98.14 (29/09/2026) — Mode Secours : retours terrain de KARMA (iPhone)
 
