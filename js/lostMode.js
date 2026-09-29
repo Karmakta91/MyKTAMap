@@ -1056,8 +1056,9 @@
             div.addEventListener("click", function() {
               _selectionnerPosition({
                 x: p.x, y: p.y,
-                // Niveau du POI (convention : sans niveau = 0), pas celui affiché.
-                level: Number.isInteger(p.level) ? p.level : 0,
+                // Niveau du POI, pas celui affiché ; POI sans niveau → null (4e relecture,
+                // R4-14 : « sans niveau » ne doit pas activer le calage au niveau 0).
+                level: Number.isInteger(p.level) ? p.level : null,
                 label: (p.nom || p.id || "?") + " — " + (item.layerLabel || item.layer || "")
               });
               searchInput.value = "";

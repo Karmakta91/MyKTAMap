@@ -9341,8 +9341,8 @@
     let y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
             ? window.APP_CONFIG.imageHeight - e.latlng.lat
             : e.latlng.lat;
-    const level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
-                  ? window.APP_CONFIG.activeLevel : 0;
+    let level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+                ? window.APP_CONFIG.activeLevel : 0;
     // 🆕 v1.22.0-fix2 — snap auto sur POI le plus proche dans un rayon de 30 px
     // (cohérent avec le mode "Cliquer sur la carte" de l'itinéraire existant).
     // Réutilise SearchPoints.getAllPoints si dispo.
@@ -9354,6 +9354,8 @@
       y = snap.y;
       pointId = snap.pointId || null;
       label = snap.nom || snap.label || null;
+      // 4e relecture (R4-1) : accroché à un POI → le niveau du POI, pas celui affiché.
+      if (Number.isInteger(snap.level)) level = snap.level;
       _toast(t("secours.toast.snap", { point: (label || pointId || t("secours.map.poiDefault")) }), "info");
     }
     _appliquerWaypoint(_mapModeCtx.groupeId, _mapModeCtx.role, _mapModeCtx.idx,
@@ -9377,7 +9379,7 @@
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < bestD && d <= radiusPx) {
         bestD = d;
-        best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom };
+        best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom, level: p.level };
       }
     });
     return best;
@@ -10038,11 +10040,11 @@
       // consécutifs déclenche un Dijkstra séparé puis les paths sont
       // concaténés (cf §14 CLAUDE.md). Boucle entree=sortie → Pathfinder
       // calcule le tour complet via les intermédiaires (sinon retour direct).
-      const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
+      const waypoints = [{ x: g.entree.x, y: g.entree.y, level: g.entree.level, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
         .concat(intermediaires.map(function(w, i) {
-          return { x: w.x, y: w.y, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
+          return { x: w.x, y: w.y, level: w.level, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
         }))
-        .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
+        .concat([{ x: g.sortie.x, y: g.sortie.y, level: g.sortie.level, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
       // 🆕 v1.23.0 Phase 2 / Feature B — Pathfinder avoidances cross-équipes :
       // collecte les waypoints + zones des autres équipes du scénario pour
       // que Pathfinder préfère un chemin qui les contourne (pas de chevauchement
@@ -10362,11 +10364,11 @@
       try {
         const intermediaires = (Array.isArray(g.intermediaires) ? g.intermediaires : [])
           .filter(function(w) { return w && typeof w.x === "number" && typeof w.y === "number"; });
-        const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
+        const waypoints = [{ x: g.entree.x, y: g.entree.y, level: g.entree.level, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
           .concat(intermediaires.map(function(w, i) {
-            return { x: w.x, y: w.y, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
+            return { x: w.x, y: w.y, level: w.level, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
           }))
-          .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
+          .concat([{ x: g.sortie.x, y: g.sortie.y, level: g.sortie.level, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
         // 🆕 v1.23.0 Phase 2 / Feature B — Avoidances cross-équipes (idem
         // _recalculerItineraireGroupe sync). Batch auto-calc à l'export prend
         // en compte les zones des autres équipes.
