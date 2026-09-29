@@ -416,6 +416,8 @@ Limitations connues : auto-calc batch parallèle à l'export ne propage pas les 
 
 #### 66.3 Feature C — Lost Mode → Mode Secours pre-fill
 
+> 🩸 **29/09/2026 (audit Secours)** — `context.lastKnownPoint.level` = **niveau du point**, plus le niveau affiché au clic sur « Lancer un plan de secours ». `lostMode.js` porte désormais `level` sur la position : POI choisi par recherche → son niveau (sans niveau = 0) ; clic carte / tracker → niveau affiché à ce moment ; `getState().lastKnownPos.level` (null si inconnu). `creerDepuisLostMode` retombe sur le niveau affiché pour un état sans niveau (appelant ancien). Testé en navigateur sur le plan réel.
+
 `LostMode.getState()` nouveau API expose `{lastKnownPos, elapsedMinutes, speedKmH, radiusMeters, radiusPx, presetKey, clues}` (snapshot défensif).
 
 `SecoursMode.creerDepuisLostMode(lostState)` :

@@ -1499,7 +1499,9 @@
         lastKnownPoint: {
           x:     lostState.lastKnownPos.x,
           y:     lostState.lastKnownPos.y,
-          level: (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+          // Niveau du point lui-même (Mode Perdu ≥ 29/09/2026), à défaut celui affiché.
+          level: Number.isInteger(lostState.lastKnownPos.level) ? lostState.lastKnownPos.level
+               : (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                  ? window.APP_CONFIG.activeLevel : 0,
           label: lostState.lastKnownPos.label || null
         },

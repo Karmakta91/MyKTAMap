@@ -541,6 +541,11 @@
   }
 
   // ===== Mode "clic carte" pour saisir la dernière position =====
+  // Niveau affiché (clic carte, tracker) : c'est là que la personne a été vue.
+  function _niveauAffiche() {
+    return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
+  }
+
   function _activerClicCarte(callback) {
     if (!window.map) return;
     _desactiverClicCarte();
@@ -554,7 +559,7 @@
       const x = Math.round(e.latlng.lng);
       const y = Math.round((window.APP_CONFIG.imageHeight || 0) - e.latlng.lat);
       _desactiverClicCarte();
-      callback({ x: x, y: y, label: _t("lost.pos.clickLabel", { x: x, y: y }) });
+      callback({ x: x, y: y, level: _niveauAffiche(), label: _t("lost.pos.clickLabel", { x: x, y: y }) });
     };
     window.map.on("click", _clickHandler);
   }
@@ -1051,6 +1056,8 @@
             div.addEventListener("click", function() {
               _selectionnerPosition({
                 x: p.x, y: p.y,
+                // Niveau du POI (convention : sans niveau = 0), pas celui affiché.
+                level: Number.isInteger(p.level) ? p.level : 0,
                 label: (p.nom || p.id || "?") + " — " + (item.layerLabel || item.layer || "")
               });
               searchInput.value = "";
@@ -1084,7 +1091,7 @@
         pos = window.getTrackingPosition();
       }
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-        _selectionnerPosition({ x: pos.x, y: pos.y, label: _t("lost.pos.trackerLabel") });
+        _selectionnerPosition({ x: pos.x, y: pos.y, level: _niveauAffiche(), label: _t("lost.pos.trackerLabel") });
       } else {
         alert(_t("lost.err.noTracker"));
       }
@@ -1306,6 +1313,10 @@
       lastKnownPos:   _lastKnownPos ? {
         x:     _lastKnownPos.x,
         y:     _lastKnownPos.y,
+        // 🩸 29/09/2026 (audit Secours) — le niveau voyage avec la position : le
+        // Mode Secours prenait le niveau AFFICHÉ au moment du clic sur « Lancer un
+        // plan de secours », faux dès qu'on avait changé d'étage entre-temps.
+        level: Number.isInteger(_lastKnownPos.level) ? _lastKnownPos.level : null,
         label: _lastKnownPos.label || null
       } : null,
       elapsedMinutes: _elapsedMinutes,
