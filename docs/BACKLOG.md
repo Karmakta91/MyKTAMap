@@ -69,18 +69,6 @@ obligatoires.
   son propre retour visuel (toast, texte in situ, `alert`) : **un par un**, en vérifiant le retour. ⚠️ `memInspector`
   et `debug` servent au diagnostic : les casser rendrait un rapport de crash incopiable.
 
-## 🎨 Vue OSM : les couleurs de la légende personnalisée ne l'atteignent pas — gardé
-
-Soldé pour le mode urgence XL en v1.97.7 ; **`osmView.js` / `osmHomePreview.js` portent le même trou** : ce sont
-les deux exceptions qui gardent délibérément leur propre palette (`inaccessible` en orange uni sur fond OSM, le
-motif hachuré SVG n'y étant pas rendu), et garder sa palette a été implémenté comme « ne rien demander au canon ».
-
-*[Probable — non mesuré sur la Vue OSM]* une couleur choisie via ≡ Légende → ✏️ Modifier et les types `cust-…`
-n'y apparaissent pas comme sur la carte. La parade tient en un appel : `window.ktaAppliquerCouleurChoisie(cat, clé,
-style)` + repli `ktaResolveStyle(…, {flat:true})` pour les customs — exactement le `_styleMini` d'`emergencyMode.js`.
-⚠️ À mesurer d'abord : le widget HOME résout ses overrides **par plan** (slots), ce n'est pas le même état que la
-session courante.
-
 ## 🎨 Harmoniser les icônes par défaut — gardé de côté, non prioritaire
 
 Demande KARMA du 26/09 : unifier les icônes par défaut (« avoir des trucs vecto telles que portail, ou entrée
@@ -228,4 +216,5 @@ Signalées à tort (doc périmée), **elles sont faites** — vérifiées dans l
 - **D-home-mini « footer coupé sans scroll sous 760 px »** — non reproduite sur 6 configurations ; la fausse mesure venait d'un overlay (splash, modale) qui mangeait la molette. Verrouillé par `checkup-home-scroll.js` · *02/09*
 - **D5 « liaisons portails sur OSM »** — soldée en contrôle qualité (`InterPlanLinks.ecartCalage`, badge `📐 Écart de calage`) · *03/09*
 - **Fusion de sessions** — existe (`sessionExporter.js` > `_fusionInputs`, `_fusionMerged`) : **ne pas la reproposer** · *03/09*
+- **« Vue OSM : les couleurs de la légende personnalisée ne l’atteignent pas »** — FAUX : `osmView.js` résout par `ktaResolveStyle` (override + `cust-…`), le widget HOME relit la légende **par plan** depuis v1.77.0 ; confirmé sur appareil par KARMA · *29/09*
 - **Carnet : session ≠ sortie (ex-L3)** — soldé ; changer de plan suspend la sortie (v1.98.1) · *29/09*
