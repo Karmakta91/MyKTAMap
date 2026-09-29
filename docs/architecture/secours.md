@@ -456,6 +456,8 @@ Bouton conditionnel `🏗️ Auto : 1 équipe par niveau (N)` visible si `multiL
 
 #### 66.7 Bonus — Pause configurable cross-feature
 
+> 🩸 **29/09/2026 (audit Secours, 4.1 — décision KARMA)** — **n'est plus partagée.** Le Mode Secours reprenait la vitesse de l'itinéraire (5 km/h) et la pause commune (15 min) à CHAQUE étape : ~971 min affichées pour ~586 réalistes sur un secteur de 55 étapes. Le scénario porte `reglagesDuree` { vitesseKmh (défaut 1,5), pauseMin (défaut 0) }, bornés, transmis par le `.mkmsec`, réglés dans le bloc « ⏱️ Durées estimées » (`_reglagesDuree`, `_dureeEquipeMin`). L'itinéraire classique garde ses propres réglages.
+
 Refactor `TEMPS_PAUSE_PAR_POINT_MIN` (hardcoded 15 min interface.js) en localStorage configurable :
 - `myktamap_iti_pause_enabled` (bool, default true)
 - `myktamap_iti_pause_minutes` (number, cap [0, 120], default 15)

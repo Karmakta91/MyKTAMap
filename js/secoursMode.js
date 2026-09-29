@@ -905,6 +905,13 @@
     if ("pointsCles" in partial && Array.isArray(partial.pointsCles)) {
       s.pointsCles = partial.pointsCles.slice();
     }
+    if ("reglagesDuree" in partial && partial.reglagesDuree && typeof partial.reglagesDuree === "object") {
+      const r = partial.reglagesDuree;
+      s.reglagesDuree = {
+        vitesseKmh: Math.max(0.2, Math.min(8, Number(r.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        pauseMin:   Math.max(0, Math.min(120, Number(r.pauseMin) || 0))
+      };
+    }
     _commitMutation(s);
     return s;
   }
@@ -1945,7 +1952,8 @@
       updatedAt:  sc.updatedAt,
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
-      pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : []
+      pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
+      reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? sc.reglagesDuree : undefined
       // phases ajouté juste après si présent (sinon migration le créera)
     };
     if (importedPhases) cleanScenario.phases = importedPhases;
@@ -7981,55 +7989,57 @@
   // Skip silencieux si les setters globaux ne sont pas exposés (rétro-compat
   // si interface.js est ancien — ne devrait pas arriver après v1.23.6).
   function _renderPauseToolBlock() {
-    if (typeof window.getItiPauseEnabled !== "function"
-        || typeof window.getItiPauseMinutes !== "function"
-        || typeof window.setItiPauseEnabled !== "function"
-        || typeof window.setItiPauseMinutes !== "function") {
-      return "";
-    }
-    const enabled = !!window.getItiPauseEnabled();
-    const minutes = window.getItiPauseMinutes();
+    // 4.1 : réglages du SCÉNARIO (plus ceux de l'itinéraire principal).
+    const r = _reglagesDuree(get(_currentScenarioId));
     return '<div class="kta-secours-tool-block">' +
-             '<div class="kta-secours-tool-block-titre">' + t("secours.pause.titre") + '</div>' +
-             '<div class="kta-secours-tool-block-desc">' +
-               t("secours.pause.desc") +
-             '</div>' +
+             '<div class="kta-secours-tool-block-titre">' + t("secours.duree.titre") + '</div>' +
+             '<div class="kta-secours-tool-block-desc">' + t("secours.duree.desc") + '</div>' +
              '<div class="kta-secours-pause-row">' +
-               '<label class="kta-secours-pause-toggle">' +
-                 '<input type="checkbox" id="kta-sec-pause-enabled" ' +
-                   (enabled ? 'checked' : '') + '>' +
-                 ' <span>' + t("secours.pause.activer") + '</span>' +
-               '</label>' +
-               '<div class="kta-secours-pause-input-wrap" ' +
-                  (enabled ? '' : 'style="opacity:0.5;"') + '>' +
-                 '<label for="kta-sec-pause-min">' + t("secours.pause.dureeLabel") + '</label>' +
-                 '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" ' +
-                   'value="' + Math.round(minutes) + '" ' +
-                   (enabled ? '' : 'disabled') + '>' +
+               '<div class="kta-secours-pause-input-wrap">' +
+                 '<label for="kta-sec-vitesse">' + t("secours.duree.vitesseLabel") + '</label>' +
+                 '<input type="number" id="kta-sec-vitesse" min="0.2" max="8" step="0.1" value="' + r.vitesseKmh + '">' +
+                 '<span class="kta-secours-pause-unit">km/h</span>' +
+               '</div>' +
+               '<div class="kta-secours-pause-input-wrap">' +
+                 '<label for="kta-sec-pause-min">' + t("secours.duree.pauseLabel") + '</label>' +
+                 '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" value="' + Math.round(r.pauseMin) + '">' +
                  '<span class="kta-secours-pause-unit">min</span>' +
                '</div>' +
              '</div>' +
            '</div>';
   }
 
-  // 🆕 v1.23.6 — Recalcule les durées estimées de toutes les équipes du
-  // scénario qui ont un itinéraire déjà calculé (distanceM connue). Utilisé
-  // au changement de pref pause pour éviter les valeurs stale affichées
-  // dans les cards équipes + le PDF/KMZ.
-  // Pas async (juste recalcul arithmétique via getItiTempsMinutes), donc
-  // pas de toast en cascade — un seul toast résumé à la fin.
+  // 🩸 29/09/2026 (audit Secours, 4.1 — décision KARMA : réglages Secours propres).
+  // Les durées reprenaient la vitesse de l'itinéraire (5 km/h) et la pause commune
+  // (15 min) ajoutée à CHAQUE étape : ~971 min affichées dont 795 de pauses pour un
+  // secteur réel, contre ~586 réalistes. Le scénario porte désormais ses propres
+  // réglages (voyagent dans le .mkmsec) : vitesse de fouille, pause par étape.
+  const DUREE_DEFAUT = { vitesseKmh: 1.5, pauseMin: 0 };
+  function _reglagesDuree(s) {
+    const r = (s && s.reglagesDuree) || {};
+    return {
+      vitesseKmh: (typeof r.vitesseKmh === "number" && r.vitesseKmh > 0) ? r.vitesseKmh : DUREE_DEFAUT.vitesseKmh,
+      pauseMin:   (typeof r.pauseMin === "number" && r.pauseMin >= 0) ? r.pauseMin : DUREE_DEFAUT.pauseMin
+    };
+  }
+  function _dureeEquipeMin(s, distM, nbWaypoints) {
+    if (typeof distM !== "number" || distM <= 0) return 0;
+    const r = _reglagesDuree(s);
+    return distM / (r.vitesseKmh * 1000 / 60) + Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+  }
+
+  // 🆕 v1.23.6 — Recalcule les durées estimées de toutes les équipes du scénario
+  // qui ont un itinéraire déjà calculé (distanceM connue) : cards, PDF, KMZ.
   function _recalculerToutesDureesEquipes(scenarioId) {
     const s = get(scenarioId);
     if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) return 0;
-    if (typeof window.getItiTempsMinutes !== "function") return 0;
     let updated = 0;
     s.groupes.forEach(function(g) {
       if (typeof g.distanceM !== "number" || g.distanceM <= 0) return;
-      // Calcul du nb waypoints effectif (entree + intermediaires + sortie)
       const nbWp = (g.entree ? 1 : 0)
                  + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0)
                  + (g.sortie ? 1 : 0);
-      const newDuree = window.getItiTempsMinutes(g.distanceM, nbWp);
+      const newDuree = _dureeEquipeMin(s, g.distanceM, nbWp);
       if (Math.abs((g.dureeEstimeeMin || 0) - newDuree) > 0.01) {
         g.dureeEstimeeMin = newDuree;
         updated++;
@@ -8474,38 +8484,21 @@
       // interface.js) + recalcule durées de toutes les équipes du scénario
       // courant (via _recalculerToutesDureesEquipes) + re-render edit pour
       // update visuel des chips durée dans les cards équipes + toast feedback.
-      const pauseEnabledCb = document.getElementById("kta-sec-pause-enabled");
+      // 4.1 : réglages de durée du scénario → recalcul des durées de toutes les équipes.
+      const vitesseInput = document.getElementById("kta-sec-vitesse");
       const pauseMinInput = document.getElementById("kta-sec-pause-min");
-      if (pauseEnabledCb && typeof window.setItiPauseEnabled === "function") {
-        pauseEnabledCb.addEventListener("change", function() {
-          window.setItiPauseEnabled(pauseEnabledCb.checked);
-          const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
-          const recalcSuffix = updated > 0 ? t("secours.toast.pauseRecalcSuffix", { n: updated }) : "";
-          _toast(
-            (pauseEnabledCb.checked
-              ? t("secours.toast.pauseActivee")
-              : t("secours.toast.pauseDesactivee")) + recalcSuffix,
-            "info"
-          );
-          _switchView("edit");   // re-render pour update opacité input + cards
-        });
-      }
-      if (pauseMinInput && typeof window.setItiPauseMinutes === "function") {
-        // Au "change" (blur + Enter), pas "input" (évite recalc à chaque chiffre tapé)
-        pauseMinInput.addEventListener("change", function() {
-          const raw = parseFloat(pauseMinInput.value);
-          const v = Math.max(0, Math.min(120, isFinite(raw) ? raw : 0));
-          pauseMinInput.value = String(Math.round(v));  // clamp visuel immédiat
-          window.setItiPauseMinutes(v);
-          const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
-          const recalcSuffix = updated > 0 ? t("secours.toast.pauseRecalcSuffix", { n: updated }) : "";
-          _toast(
-            t("secours.toast.pauseMinutes", { n: Math.round(v) }) + recalcSuffix,
-            "info"
-          );
-          _switchView("edit");
-        });
-      }
+      const majDurees = function() {
+        updateScenario(_currentScenarioId, { reglagesDuree: {
+          vitesseKmh: parseFloat(vitesseInput && vitesseInput.value),
+          pauseMin:   parseFloat(pauseMinInput && pauseMinInput.value)
+        } });
+        const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
+        _toast(t("secours.toast.dureesMaj", { n: updated }), "info");
+        _switchView("edit");
+      };
+      // « change » (blur + Entrée), pas « input » : pas de recalcul à chaque chiffre.
+      if (vitesseInput) vitesseInput.addEventListener("change", majDurees);
+      if (pauseMinInput) pauseMinInput.addEventListener("change", majDurees);
       // 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un
       // niveau") : "+ Ajouter une équipe" ouvre désormais un mini-prompt qui
       // demande nom + niveau (dropdown des availableLevels). Si plan
@@ -10048,16 +10041,8 @@
         // window.getItiTempsMinutes (interface.js) qui lit la vitesse + la
         // pause configurables. Fallback sur vitesse cataphile 0.5 m/s si
         // helper indisponible (cas chargement modulaire alternatif).
-        let duree;
-        if (typeof window.getItiTempsMinutes === "function") {
-          // window.getItiTempsMinutes(distM, nbWaypoints) — applique vitesse
-          // + nb pauses intermédiaires selon prefs UI itinéraire.
-          const nbWp = waypoints.length;   // entrée + intermédiaires + sortie
-          duree = Math.round(window.getItiTempsMinutes(distM, nbWp));
-        } else {
-          // Fallback historique : vitesse 0.5 m/s cataphile, pas de pause
-          duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
-        }
+        // 4.1 : réglages du SCÉNARIO (vitesse de fouille, pause par étape).
+        const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
           distanceM:       distM,
@@ -10367,13 +10352,7 @@
           const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                         ? window.APP_CONFIG.scale : 1;
           const distM = r.totalDistance / scale;
-          let duree;
-          if (typeof window.getItiTempsMinutes === "function") {
-            const nbWp = waypoints.length;
-            duree = Math.round(window.getItiTempsMinutes(distM, nbWp));
-          } else {
-            duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
-          }
+          const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
           updateGroupe(scenarioId, groupeId, {
             itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
             distanceM:       distM,
