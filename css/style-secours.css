@@ -1813,7 +1813,10 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-phase-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* minmax(0,…) : sans lui, la colonne texte refusait de rétrécir sous sa largeur
+     minimale (nom + statut) → boutons hors de la carte et fenêtre qui défile en
+     largeur sur iPhone (capture KARMA 29/09). */
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "head    actions"
     "meta    actions";
@@ -1852,6 +1855,22 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.kta-secours-phase-row-head > [class^="kta-secours-phase-status-"] {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Téléphone : les boutons passent sous le nom — le nom de la phase garde toute
+   la largeur au lieu de finir en « Pha… ». */
+@media (max-width: 480px) {
+  .kta-secours-phase-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "meta"
+      "actions";
+  }
+  .kta-secours-phase-row-actions { justify-content: flex-end; }
 }
 .kta-secours-phase-status-active {
   color: #6ee287;
