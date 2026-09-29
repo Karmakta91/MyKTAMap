@@ -2953,3 +2953,6 @@ body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secour
 /* En-tête live HORS de la zone qui défile (30/09/2026, bug iOS sticky) */
 .kta-secours-live-slot { flex: 0 0 auto; padding: 8px 12px 0; }
 .kta-secours-live-slot .kta-secours-live-header { position: static; margin-bottom: 4px; box-shadow: none; }
+
+/* B1 (vague 6) : bouton « Suivre mon parcours » */
+.kta-secours-suivre-btn { display: block; width: 100%; margin: 4px 0 8px; padding: 10px 12px; font-size: 14px; }

@@ -821,6 +821,7 @@
     _saveScenarios();
     _notify();
     _majFooterSecours();
+    try { _majRoadSuivi(scenario); } catch(e) {}   // B1 : étapes faites → itinéraire suivi
     // Auto-refresh overlay si on est en train d'afficher ce scénario sur la carte
     if (_overlayLayer && scenario && scenario.id === _currentScenarioId) {
       renderOverlay(scenario.id);
@@ -1815,6 +1816,107 @@
       raccords:   Array.isArray(r && r.raccords)   ? r.raccords   : [],
       n:          (r && Array.isArray(r.path)) ? r.path.length : 0
     };
+  }
+
+  // ─── B1 (vague 6) — « 🧭 SUIVRE MON PARCOURS » ───
+  // Le parcours de l'équipe devient l'itinéraire de l'app (type "itinerary" +
+  // `secours` : scénario, équipe, évitements) : le bandeau de guidage, la feuille de
+  // route et l'écran XL marchent tels quels. Étapes faites = waypoints `done` (tenus à
+  // jour à chaque mutation) : « Recalculer » repart vers la prochaine étape NON faite,
+  // avec les évitements du Secours (interfaceItineraire > _replanifierDepuis).
+  function _roadSuiviActive(sid) {
+    const roads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+    return roads.find(function(r) { return r && r.type === "itinerary" && r.secours && (!sid || r.secours.scenarioId === sid); }) || null;
+  }
+  function _etapeFaite(e) { return !!(e && e.completedAt && e.statut && e.statut !== "pending"); }
+  function _waypointsSuivi(s, g) {
+    const etapes = _getEtapesEquipe(s, g.id);
+    return [g.entree].concat(g.intermediaires || [], [g.sortie]).filter(function(w) {
+      return w && typeof w.x === "number" && typeof w.y === "number";
+    }).map(function(w) {
+      const e = w.wid ? etapes.find(function(x) { return x.wid === w.wid; }) : null;
+      return { x: w.x, y: w.y, level: w.level, label: w.label || _lblEtape(_fmtPoint(w)),
+               source: "secours", wid: w.wid || null, done: _etapeFaite(e) };
+    });
+  }
+  async function _suivreParcours(sid, gid) {
+    const s = get(sid);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
+    if (!g) return;
+    if (!Array.isArray(g.itineraireSuggere) || g.itineraireSuggere.length < 2) {
+      _toast(t("secours.suivre.aucunIti"), "warn");
+      return;
+    }
+    if (typeof window.itineraireActiverRoad !== "function") return;
+    const waypoints = _waypointsSuivi(s, g);
+    const avoidPoints = _collecterAvoidPointsAutresEquipes(sid, gid);
+    let points = g.itineraireSuggere, gd = g.guidage;
+    // Données absentes (scénario d'avant la v1.98.18) ou périmées : on recalcule ici.
+    if (!gd || gd.n !== points.length) {
+      try {
+        const r = await window.Pathfinder.computeRoute(waypoints.map(function(w) { return Object.assign({}, w, { done: false }); }),
+          avoidPoints.length ? { avoidPoints: avoidPoints, avoidRadius: 30 } : {});
+        if (r && Array.isArray(r.path) && r.path.length >= 2) { points = r.path; gd = _donneesGuidage(r); }
+      } catch(e) { console.warn("[SecoursMode] Suivre : recalcul du guidage échoué :", e); }
+    }
+    const road = {
+      type: "itinerary", points: points, waypoints: waypoints,
+      raccords: (gd && gd.raccords) || [], carrefours: (gd && gd.carrefours) || [],
+      secours: { scenarioId: sid, equipeId: gid, avoidPoints: avoidPoints, avoidRadius: 30 }
+    };
+    window.itineraireActiverRoad(road, { confirmer: true, onDone: function() {
+      fermer();   // la carte, le bandeau de guidage — la zone reste affichée
+      _toast(t("secours.suivre.lance"), "info");
+      const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif();
+      if (!actif) setTimeout(function() { _toast(t("secours.suivre.trackerOff"), "warn"); }, 2500);
+      // Des étapes déjà faites : on repart d'ici vers la prochaine (3:a).
+      if (actif && waypoints.some(function(w) { return w.done; }) && typeof window.itineraireReplanifierDepuis === "function") {
+        const pos = window.getTrackingPosition && window.getTrackingPosition();
+        if (pos) window.itineraireReplanifierDepuis(pos.x, pos.y);
+      }
+      _armerVeilleArrivee();
+    } });
+  }
+  // Étapes validées ↔ waypoints `done` de l'itinéraire suivi (appelé à chaque mutation).
+  function _majRoadSuivi(s) {
+    const road = s && _roadSuiviActive(s.id);
+    if (!road || !Array.isArray(road.waypoints)) return;
+    const etapes = _getEtapesEquipe(s, road.secours.equipeId);
+    let change = false;
+    road.waypoints.forEach(function(w) {
+      if (!w.wid) return;
+      const d = _etapeFaite(etapes.find(function(x) { return x.wid === w.wid; }));
+      if (!!w.done !== d) { w.done = d; change = true; }
+    });
+    if (change && typeof window.setRoads === "function") window.setRoads(window.getRoads());
+  }
+  // 4:a — arrivée sur la prochaine étape : un toast, et la vue live s'ouvrira dessus.
+  let _veilleArriveeId = null;
+  const _arriveesNotifiees = {};
+  function _armerVeilleArrivee() {
+    if (_veilleArriveeId || typeof setInterval !== "function") return;
+    _veilleArriveeId = setInterval(_veilleArrivee, 3000);
+  }
+  function _veilleArrivee() {
+    const road = _roadSuiviActive();
+    if (!road) { clearInterval(_veilleArriveeId); _veilleArriveeId = null; return; }
+    if (!(typeof window.getTrackingActif === "function" && window.getTrackingActif())) return;
+    const pos = window.getTrackingPosition && window.getTrackingPosition();
+    const s = get(road.secours.scenarioId);
+    if (!pos || !s || !_estExecutionActive(s)) return;
+    const prochain = (road.waypoints || []).find(function(w) { return w.source === "secours" && !w.done; });
+    if (!prochain || !prochain.wid || _arriveesNotifiees[prochain.wid]) return;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    if (Math.hypot(pos.x - prochain.x, pos.y - prochain.y) > 12 * pxParM) return;
+    _arriveesNotifiees[prochain.wid] = true;
+    const etapes = _getEtapesEquipe(s, road.secours.equipeId);
+    const idx = etapes.findIndex(function(e) { return e.wid === prochain.wid; });
+    if (idx >= 0 && s.execution.currentEquipeId === road.secours.equipeId) {
+      _liveEquipeFocusIdx = idx;
+      _liveEquipeFreshSession = false;
+    }
+    _toast(t("secours.suivre.arrivee", { etape: prochain.label || "?" }), "info");
+    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
   }
 
   function _niveauxPourEquipesAuto() {
@@ -8284,6 +8386,13 @@
               '</div>' +
             '</div>';
     html += _renderLigneRetour(s, g);   // A4
+    // B1 : suivre le parcours (guidage pas à pas) — ou y revenir s'il est déjà suivi.
+    if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+      const suivi = _roadSuiviActive(s.id);
+      html += (suivi && suivi.secours.equipeId === g.id)
+        ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + t("secours.suivre.actif") + '</button>'
+        : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + t("secours.suivre.btn") + '</button>';
+    }
 
     // ─── Stepper visuel cliquable ───
     html += '<div class="kta-secours-live-stepper">';
@@ -9625,6 +9734,13 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // B1 : suivre le parcours de l'équipe / revenir à la carte.
+    corps.querySelectorAll('[data-action="suivre-parcours"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _suivreParcours(s.id, btn.getAttribute("data-gid")); });
+    });
+    corps.querySelectorAll('[data-action="suivre-voir-carte"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { fermer(); });
+    });
     // Rappel : général (équipes engagées, ni rentrées ni déjà rappelées) ou d'une équipe.
     corps.querySelectorAll('[data-action="rappel-general"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -11437,6 +11553,7 @@
         try { renderOverlay(enCours.id); } catch(e) { console.warn("[SecoursMode] overlay au chargement :", e); }
       }
       _majFooterSecours();
+      if (_roadSuiviActive()) _armerVeilleArrivee();   // B1 : parcours suivi avant le rechargement
     }, 0);
   }
 
