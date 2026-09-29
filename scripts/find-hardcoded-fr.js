@@ -31,8 +31,8 @@ const STRING_LIT = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
 
 // Fichiers HORS-SCOPE i18n (systèmes de langue propres / data) → exclus du scan.
 const EXCLUDE = new Set([
-  "js/tutorial.js",        // onboarding bilingue CARDS_FR/CARDS_EN (portée doc)
-  "js/interfaceDocs.js",   // Aide + README bilingues _aideHtmlFr/En (portée doc)
+  // (audit i18n 29/09, O10 : tutorial.js et interfaceDocs.js RÉINTÉGRÉS — leur motif
+  //  « bilingue CARDS_FR/EN, _aideHtmlFr/En » était périmé : tout passe par I18n.t.)
   // 🆕 passe B8 (v1.60.x) — bruit connu exclu :
   "js/voiceCommand.js",    // mots-clés de RECONNAISSANCE vocale FR (données de matching, pas de l'affichage)
   "js/legalGate.js"        // textes de loi + titres du doc légal FR VOLONTAIRE (décision KARMA, cf security-legal.md §87)

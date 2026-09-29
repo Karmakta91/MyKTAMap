@@ -424,7 +424,7 @@ function _chargerReadme(fichier, opts) {
     })
     .catch(function(err) {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-      if (corps) corps.innerHTML = '<p class="kta-readme-erreur">❌ Impossible de charger <code>' + fichier + '</code><br><br><code>' + err.message + '</code></p>';
+      if (corps) corps.innerHTML = '<p class="kta-readme-erreur">❌ ' + (window.I18n ? window.I18n.t("docs.erreurChargement") : "Impossible de charger") + ' <code>' + fichier + '</code><br><br><code>' + err.message + '</code></p>';
       // Pas de sommaire si erreur
       const sidebar = document.getElementById("kta-readme-toc-sidebar");
       if (sidebar) sidebar.style.display = "none";
@@ -550,9 +550,14 @@ function _ouvrirReadmeModal(html, opts) {
   // (cas d'ouverture depuis un lockeur — l'user lockout ne peut pas lancer
   // le tutoriel de toute façon, et KARMA a explicitement demandé "sans
   // l'icone Onboarding").
+  // Audit i18n (O9) : chrome de la modale traduit (était en FR dans les 3 langues).
+  const _docTxt = function(k) {
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k).replace(/"/g, "&quot;") : k;
+  };
   const btnOnboarding = opts.hideOnboarding
     ? ''
-    : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d\'onboarding" title="🎓 (Re)voir le tutoriel d\'onboarding">🎓</button>';
+    : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="' + _docTxt("docs.tutorielBtn") +
+      '" title="🎓 ' + _docTxt("docs.tutorielBtn") + '">🎓</button>';
   // 🆕 v1.45.0 — Onglets de langue de la doc : UN drapeau par langue réellement
   // dispo (DOC_AVAILABLE_LANGS), la langue courante marquée .active. Générique :
   // 2 drapeaux aujourd'hui (FR/EN), 3+ dès qu'un nouveau README_USER.<code>.md
@@ -575,7 +580,7 @@ function _ouvrirReadmeModal(html, opts) {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
-        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="Afficher ou masquer le sommaire" title="Afficher ou masquer le sommaire">📚</button>
+        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
         <span class="kta-readme-modal-titre">📖 Documentation</span>
         ${btnLang}
         ${btnOnboarding}

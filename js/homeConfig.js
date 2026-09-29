@@ -157,11 +157,11 @@
         }
         btn.addEventListener("click", function() {
           if (!window.IncognitoMode) {
-            alert("Module IncognitoMode indisponible. Recharge la page.");
+            alert(_t("home.incognito.indispo", "Module IncognitoMode indisponible. Recharge la page."));
             return;
           }
           if (window.IncognitoMode.active) {
-            if (confirm("Quitter le mode incognito ?\n\nTous les points/notes/tracker accumulés dans cette fenêtre seront perdus.")) {
+            if (confirm(_t("config.incognito.confirmQuit", "Quitter le mode incognito ?"))) {
               window.IncognitoMode.quit();
             }
           } else {
@@ -441,21 +441,25 @@
         // État initial : affiche la version installée. Le check d'update
         // décoré ci-dessous ré-évalue au moment où le résultat du fetch
         // version.json arrive.
+        // Audit i18n (O8) : infobulle traduite (était en FR dans les 3 langues).
+        function _tVer(k, p) {
+          return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : p.v;
+        }
         el.textContent = installed;
-        el.title = "Version installée : " + installed + " — clique pour voir les notes ou vérifier les mises à jour";
+        el.title = _tVer("home.version.titre", { v: installed });
 
         function _evaluerEtAfficher(remoteVersion) {
           if (!remoteVersion || remoteVersion === installed) {
             // Pas d'update dispo → état normal (mais toujours cliquable)
             el.classList.remove("kta-loader-copyright-version-update");
             el.textContent = installed;
-            el.title = "Version installée : " + installed + " — clique pour voir les notes ou vérifier les mises à jour";
+            el.title = _tVer("home.version.titre", { v: installed });
             return;
           }
           // Update disponible → badge bleu clignotant
           el.classList.add("kta-loader-copyright-version-update");
           el.textContent = installed + " → " + remoteVersion;
-          el.title = "Nouvelle version disponible : " + remoteVersion + " — clique pour mettre à jour";
+          el.title = _tVer("home.version.titreMaj", { v: remoteVersion });
         }
 
         // Évaluation initiale via le cache LS si dispo
@@ -490,7 +494,7 @@
           if (typeof window.viderCacheAppli === "function") {
             window.viderCacheAppli();
           } else {
-            setStatus("Fonction de réinitialisation indisponible", true);
+            setStatus(window.I18n ? window.I18n.t("home.reset.indispo") : "Fonction de réinitialisation indisponible", true);
           }
         });
       }
@@ -521,7 +525,7 @@
             if (typeof window.mettreAJourCodeSeul === "function") {
               window.mettreAJourCodeSeul();
             } else {
-              setStatus("Fonction de mise à jour indisponible", true);
+              setStatus(window.I18n ? window.I18n.t("home.maj.indispo") : "Fonction de mise à jour indisponible", true);
             }
           });
         });
@@ -547,8 +551,8 @@
           waitOverlay.innerHTML =
             '<div class="kta-modal" style="max-width:340px;">' +
               '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
-              '<div class="kta-modal-titre">Vérification de la connexion…</div>' +
-              '<div class="kta-modal-texte" style="font-size:13px; color:#8892a4;">Test du serveur MyKTAMap (jusqu\'à 5 s).</div>' +
+              '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
+              '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
             '</div>';
           document.documentElement.appendChild(waitOverlay);
 

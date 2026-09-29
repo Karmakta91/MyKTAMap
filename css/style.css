@@ -22450,3 +22450,66 @@ body.kta-theme-light .kta-guid-picto-bout,
 .kta-emergency-light .kta-guid-picto-bout { fill: #b8740b; }
 body.kta-theme-light .kta-guid-picto-centre,
 .kta-emergency-light .kta-guid-picto-centre { fill: #1a1f2e; }
+
+/* ============================================================================
+ * Couleurs de texte sémantiques (checkup thème 29/09, lot C)
+ * Remplacent les `style="color:#…"` des dicos et des alertes du Mode Secours :
+ * en clair, le filet `.kta-readme-modal-corps * { color:#2a2620 !important }`
+ * effaçait le code couleur des alertes, et hors modale le gris clair restait
+ * illisible sur beige (widget OSM de l'accueil, 1,46). La variante claire bat
+ * le filet (spécificité 0,4,1) et la règle #planLoaderBox * (1,2,1).
+ * ============================================================================ */
+.kta-tx-info { color: #8cb4ff !important; }
+.kta-tx-accent { color: #f4c542 !important; }
+.kta-tx-clair { color: #c8d0e0 !important; }
+.kta-tx-muted { color: #8892a4 !important; }
+.kta-tx-warn { color: #ffb380 !important; }
+.kta-tx-err { color: #ff8c8c !important; }
+.kta-tx-ok { color: #6ee287 !important; }
+.kta-tx-violet { color: #a78bfa !important; }
+.kta-tx-magenta { color: #ff4ecb !important; }
+html.kta-theme-light .kta-tx-info,
+body.kta-theme-light .kta-tx-info,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-info,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-info,
+body.kta-theme-light #planLoaderBox .kta-tx-info { color: #1e5f99 !important; }
+html.kta-theme-light .kta-tx-accent,
+body.kta-theme-light .kta-tx-accent,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-accent,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-accent,
+body.kta-theme-light #planLoaderBox .kta-tx-accent { color: #7a5a00 !important; }
+html.kta-theme-light .kta-tx-clair,
+body.kta-theme-light .kta-tx-clair,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-clair,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-clair,
+body.kta-theme-light #planLoaderBox .kta-tx-clair { color: #2a2620 !important; }
+html.kta-theme-light .kta-tx-muted,
+body.kta-theme-light .kta-tx-muted,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-muted,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-muted,
+body.kta-theme-light #planLoaderBox .kta-tx-muted { color: #6b6354 !important; }
+html.kta-theme-light .kta-tx-warn,
+body.kta-theme-light .kta-tx-warn,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-warn,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-warn,
+body.kta-theme-light #planLoaderBox .kta-tx-warn { color: #8b3a00 !important; }
+html.kta-theme-light .kta-tx-err,
+body.kta-theme-light .kta-tx-err,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-err,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-err,
+body.kta-theme-light #planLoaderBox .kta-tx-err { color: #a01818 !important; }
+html.kta-theme-light .kta-tx-ok,
+body.kta-theme-light .kta-tx-ok,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-ok,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-ok,
+body.kta-theme-light #planLoaderBox .kta-tx-ok { color: #1e7a3a !important; }
+html.kta-theme-light .kta-tx-violet,
+body.kta-theme-light .kta-tx-violet,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-violet,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-violet,
+body.kta-theme-light #planLoaderBox .kta-tx-violet { color: #5b3fb0 !important; }
+html.kta-theme-light .kta-tx-magenta,
+body.kta-theme-light .kta-tx-magenta,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-magenta,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-magenta,
+body.kta-theme-light #planLoaderBox .kta-tx-magenta { color: #a0147a !important; }

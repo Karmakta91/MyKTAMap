@@ -1504,7 +1504,7 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100001";
     const levelsHtml = levels.map(function(lvl) {
-      const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+      const lbl = _lblNiveau(lvl);
       const sel = (lvl === activeLevel) ? " selected" : "";
       return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
     }).join('');
@@ -1879,14 +1879,14 @@
       if (!g || g.zoneType !== "roads" || !Array.isArray(g.zoneRoadIds)) return;
       g.zoneRoadIds.forEach(function(k) { if (!connues[k]) n++; });
     });
-    return n ? '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+    return n ? '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
                ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
                _escHtml(t("secours.import.warnTracesIntrouvables", { n: n })) + '</div>'
              : "";
   }
   function _blocEcartVersion(planFichier) {
     const w = _ecartVersionPlan(planFichier);
-    return w ? '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+    return w ? '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
                ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' + _escHtml(w) + '</div>'
              : "";
   }
@@ -2188,7 +2188,7 @@
     if (warning) {
       const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
       const importedPlanName = planSrc.name || t("secours.import.planInconnu");
-      warningBlock = '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+      warningBlock = '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
                        '⚠️ <strong>' + t("secours.import.warnTitre") + '</strong><br>' +
                        '<span style="font-size:13px; line-height:1.5;">' +
                          t("secours.import.warnBody", { planSource: _escHtml(importedPlanName), planCourant: _escHtml(currentPlanName) }) +
@@ -2205,9 +2205,9 @@
       const enCours = !!existant.execution;
       existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45);' +
                     ' border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
-                      '<strong style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
+                      '<strong class="kta-tx-info" style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
                       t("secours.import.existeBody", { nom: _escHtml(existant.nom || t("secours.import.sansNom")) }) +
-                      (enCours ? '<br><span style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") +
+                      (enCours ? '<br><span class="kta-tx-warn" style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") +
                                  '</span>' : '') +
                       '<label style="display:flex; gap:8px; margin-top:8px; cursor:pointer;">' +
                         '<input type="radio" name="kta-sec-import-mode" value="remplacer" checked> ' +
@@ -2219,7 +2219,7 @@
     }
 
     const inner = '<div class="kta-readme-modal-header">' +
-                    '<h2 style="margin:0; color:#8cb4ff;">' + t("secours.import.previewTitre") + '</h2>' +
+                    '<h2 class="kta-tx-info" style="margin:0; color:#8cb4ff;">' + t("secours.import.previewTitre") + '</h2>' +
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
@@ -2298,8 +2298,12 @@
   //
   // Silencieux si la profondeur n'est pas renseignée : une fiche de secours ne
   // devine pas.
+  // Audit i18n (O7) : « RDC » était écrit en dur (5 endroits) → GF / PB en EN / ES.
+  function _lblNiveau(lvl) {
+    return (lvl === 0) ? t("filter.levels.ground") : ((lvl > 0 ? "+" : "") + lvl);
+  }
   function _formatLevelShort(level) {
-    const base = (level === 0) ? "RDC" : ((level > 0 ? "+" : "") + level);
+    const base = _lblNiveau(level);
     if (!Number.isInteger(level)) return base;
     if (typeof window.getProfondeurNiveau !== "function") return base;
     const z = window.getProfondeurNiveau(level);
@@ -2347,7 +2351,7 @@
                  t("secours.import.resOkEquipes", { n: nbGroupes }) +
                '</p>';
       if (result.warning) {
-        inner += '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb380;">' +
+        inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb380;">' +
                    '⚠️ <strong>' + t("secours.import.avertissement") + '</strong> ' + _escHtml(result.warning) +
                  '</div>';
       }
@@ -2358,7 +2362,7 @@
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:#8892a4; font-size:13px;">' +
@@ -2539,7 +2543,7 @@
     const currentPlanId = window._currentLoadedPlanId;
     const importedPlanId = payload.plan && payload.plan.id;
     if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
-      const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
+      const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
       warning = t("secours.report.warnPlanDifferent", { plan: importedPlanName });
     }
 
@@ -2941,14 +2945,14 @@
     let warningBlock = "";
     if (warning) {
       warningBlock =
-        '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+        '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
           '⚠️ <strong>' + _escHtml(warning) + '</strong>' +
         '</div>';
     }
 
     const inner =
       '<div class="kta-readme-modal-header">' +
-        '<h2 style="margin:0; color:#6ee287;">' + t("secours.rapportPreview.titre") + '</h2>' +
+        '<h2 class="kta-tx-ok" style="margin:0; color:#6ee287;">' + t("secours.rapportPreview.titre") + '</h2>' +
         '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -3051,12 +3055,12 @@
                '</div>';
       // 2e relecture (N11) : alertes « aide / victime » en clair, avant tout le reste
       if (Array.isArray(stats.alertes) && stats.alertes.length > 0) {
-        inner += '<div style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
+        inner += '<div class="kta-tx-err" style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
                  ' padding:10px 12px; margin:10px 0; color:#ffb3b3; font-size:13px; line-height:1.5;">🚨 ' +
                  stats.alertes.map(_escHtml).join('<br>🚨 ') + '</div>';
       }
       if (Array.isArray(stats.avis) && stats.avis.length > 0) {
-        inner += '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+        inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
                  ' padding:10px 12px; margin:10px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
                  stats.avis.map(_escHtml).join('<br>⚠️ ') + '</div>';
       }
@@ -3074,7 +3078,7 @@
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:#8892a4; font-size:13px;">' +
@@ -4273,7 +4277,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid #8cb4ff;">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 style="margin:0; color:#8cb4ff;">📤 ' + _escHtml(apercuTitre) + '</h2>' +
+          '<h2 class="kta-tx-info" style="margin:0; color:#8cb4ff;">📤 ' + _escHtml(apercuTitre) + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -5783,7 +5787,8 @@
     pdf.setFontSize(9);
     pdf.setTextColor(90);
     const lines = [];
-    if (typeof eq.distanceM === "number")       lines.push(t("secours.carte.distance", { distance: Math.round(eq.distanceM) }));
+    if (typeof eq.distanceM === "number")       lines.push(t("secours.carte.distance", { distance: (typeof window.formatDistance === "function")
+      ? window.formatDistance(eq.distanceM, 0) : Math.round(eq.distanceM) + " m" }));
     if (typeof eq.dureeEstimeeMin === "number") lines.push(t("secours.carte.duree", { duree: Math.round(eq.dureeEstimeeMin) }));
     if (eq.zoneType === "polygon")              lines.push(t("secours.carte.zonePolygone", { n: (eq.zonePolygon ? eq.zonePolygon.length : 0) }));
     else if (eq.zoneType === "roads")           lines.push(t("secours.carte.zoneTraces", { n: (eq.zoneRoadIds ? eq.zoneRoadIds.length : 0) }));
@@ -7075,7 +7080,7 @@
                        '</div>';
     if (aSuivante) {
       html += '<div style="margin-top:10px;padding:10px;background:rgba(140,180,255,0.10);border-left:3px solid rgba(140,180,255,0.55);border-radius:4px;">' +
-                '<div style="font-size:13px;color:#8cb4ff;margin-bottom:4px;">' +
+                '<div class="kta-tx-info" style="font-size:13px;color:#8cb4ff;margin-bottom:4px;">' +
                   '➡️ <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
                 '</div>' +
                 '<div style="font-size:12px;color:#a8b3c8;">' +
@@ -7359,7 +7364,7 @@
       // (formatage cohérent : 0 → RDC, +1/-1 → "+1"/"-1", null → "Sans niveau")
       const lvlChip = (typeof g.level === "number")
                       ? '<span class="kta-secours-groupe-level-chip" title="' + _escAttr(t("secours.groupe.levelChipTitle")) + '">' +
-                        '🏗️ ' + (g.level === 0 ? "RDC" : (g.level > 0 ? "+" + g.level : String(g.level))) +
+                        '🏗️ ' + _lblNiveau(g.level) +
                         '</span>'
                       : '';
       // 🆕 v1.23.3 — Select éditable pour changer le niveau de référence
@@ -7373,7 +7378,7 @@
         const levelOptions = '<option value=""' + (g.level == null ? ' selected' : '') +
                              '>' + t("secours.groupe.sansNiveau") + '</option>' +
                              availLevels.map(function(lvl) {
-                               const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+                               const lbl = _lblNiveau(lvl);
                                const sel = (lvl === g.level) ? ' selected' : '';
                                return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
                              }).join('');
@@ -8848,7 +8853,7 @@
           // 🆕 v1.23.3 : passe le level explicitement à addGroupe → g.level
           // est correctement set (pas écrasé par APP_CONFIG.activeLevel défaut).
           levels.forEach(function(lvl) {
-            const nom = t("secours.level.niveau", { label: (lvl === 0 ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl))) });
+            const nom = t("secours.level.niveau", { label: _lblNiveau(lvl) });
             const g = addGroupe(s.id, nom, lvl);
             // Pré-set le level de l'entrée à ce niveau (sera défini via clic carte
             // ensuite, mais le level par défaut est posé pour cohérence Pathfinder).
