@@ -117,6 +117,17 @@ Dérogations :
 - (aucune) | <item> — motif · risque accepté · rattrapage (→ BACKLOG §x) — accordée par KARMA le <date>
 ```
 
+### 🗂️ Dérogations consignées a posteriori
+
+Une dérogation posée sans l'accord préalable de KARMA (écart à la règle 1) est signalée à KARMA,
+puis consignée ici avec sa décision.
+
+- **v1.98.10** (`5b1be64`, 29/09/2026) — `Docs-deroge` posé **par Claude, sans accord préalable** :
+  `AI_CONTEXT.md` avait été mis à jour dans le commit précédent de la même vague (`5108b6f`) et non
+  dans le commit de release, que le hook refusait. · Risque : nul (contenu vérifié présent). ·
+  Rattrapage : aucun ; depuis v1.98.11, `AI_CONTEXT.md` suit toujours dans le commit de release. ·
+  **Validée a posteriori par KARMA le 29/09/2026.**
+
 ---
 
 ## 🤖 Marche 1bis — smoke navigateur automatisé (EN PLACE depuis v1.76.4)
