@@ -1538,6 +1538,8 @@ Sections de la page :
 
 ### 79.5 Étape C (v1.41.0) — `genererBriefingPompiersPDF()` dédié
 
+> 🩸 **29/09/2026 (audit Secours)** — le bloc « POI critiques » était **toujours vide** : il lisait `window.listePoints` (un `let` racine d'`editor.js`, jamais sur `window`), `p.tag` au lieu de `tags[]`, et un tag `sortieurgence` qui n'existe pas. Il lit maintenant session + calques du plan (`getEditorPoints` + `getAllEmbeddedPoints`, comme `sortieUrgence.js`) et liste les accès **ouverts** (`entree_plan` + libellés « entrée », `cao`, `peo`, `eso` — les mêmes que la Sortie d'urgence) puis **fermés** (`caf`, `pef`, `esf`), un POI une seule fois. Clés `critPeo/Eso/Pef/Esf` ajoutées, `critSortie` retirée. Vérifié sur le PDF réel généré en navigateur.
+
 Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async → PDF dédié 1+ pages via `_drawBriefingSurfacePage`. Bouton 🚒 dans :
 
 - Bandeau Mode Secours (vue Edit, plan actif + plan terminé)

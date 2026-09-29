@@ -4422,22 +4422,36 @@
     pdf.text(t("secours.surf.poiCritiques"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
-    const poiList = (window.listePoints && Array.isArray(window.listePoints))
-                    ? window.listePoints : [];
-    const critTags = ["entree_plan", "sortieurgence", "cao", "caf"];
+    // 🩸 29/09/2026 (audit Secours) — CE BLOC ÉTAIT TOUJOURS VIDE. Il lisait
+    // `window.listePoints` (un `let` racine d'editor.js, jamais sur `window`), le
+    // champ `p.tag` (les POI portent `tags[]`) et un tag `sortieurgence` qui n'existe
+    // pas. Désormais : session + calques du plan (comme `sortieUrgence.js`), accès
+    // OUVERTS d'abord (mêmes tags que la Sortie d'urgence), puis FERMÉS — que les
+    // pompiers ou l'IGC peuvent ouvrir. Un POI n'apparaît qu'une fois.
+    const poiList = [].concat(
+      (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [],
+      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || []
+    );
+    const critTags = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
+    const ALIAS_ENTREE = ["entree_plan", "entrée", "entree"];
     const critLabels = {
       entree_plan:    t("secours.surf.critEntree"),
-      sortieurgence:  t("secours.surf.critSortie"),
       cao:            t("secours.surf.critCao"),
-      caf:            t("secours.surf.critCaf")
+      peo:            t("secours.surf.critPeo"),
+      eso:            t("secours.surf.critEso"),
+      caf:            t("secours.surf.critCaf"),
+      pef:            t("secours.surf.critPef"),
+      esf:            t("secours.surf.critEsf")
     };
     const critByTag = {};
     poiList.forEach(function(p) {
-      const tg = p && p.tag;
-      if (tg && critTags.indexOf(tg) >= 0) {
-        if (!critByTag[tg]) critByTag[tg] = [];
-        critByTag[tg].push(p);
-      }
+      if (!p || !Array.isArray(p.tags)) return;
+      const tags = p.tags.map(function(x) { return String(x || "").trim().toLowerCase(); });
+      const tg = tags.some(function(x) { return ALIAS_ENTREE.indexOf(x) >= 0; }) ? "entree_plan"
+               : critTags.find(function(c) { return tags.indexOf(c) >= 0; });
+      if (!tg) return;
+      if (!critByTag[tg]) critByTag[tg] = [];
+      critByTag[tg].push(p);
     });
     let critFound = false;
     critTags.forEach(function(tg) {
