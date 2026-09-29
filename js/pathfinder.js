@@ -776,10 +776,21 @@
   // Trouve le segment le plus proche, projette le point dessus, INSÈRE un
   // nœud virtuel à la projection (split du segment original) pour que
   // Dijkstra puisse partir/arriver exactement à ce point.
+  // 🩸 29/09/2026 (audit Secours, 4.2) — LE CALAGE IGNORAIT LE NIVEAU DU POINT : le
+  // segment le plus proche en 2D gagnait, quel que soit son étage (mesuré : 7,8 %
+  // des clics à ~2 m d'une galerie du −1 accrochés à un autre niveau). Si le point
+  // porte un niveau (plan multi-niveau), le segment le plus proche DE CE NIVEAU est
+  // préféré, à condition de ne pas être à plus de NIVEAU_TOLERANCE_PX au-delà du plus
+  // proche tous niveaux confondus — sinon le niveau du point est sans doute faux, et
+  // l'ancien comportement reste. Point sans niveau : rien ne change.
+  const NIVEAU_TOLERANCE_PX = 40;
   function _insertVirtualNode(graph, p) {
     let bestSegIdx = -1;
     let bestProj   = null;
     let bestDist   = Infinity;
+    const niv = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true && p && Number.isInteger(p.level))
+                ? p.level : null;
+    let nivIdx = -1, nivProj = null, nivDist = Infinity;
 
     for (let i = 0; i < graph.segments.length; i++) {
       const seg = graph.segments[i];
@@ -791,6 +802,12 @@
         bestProj   = proj;
         bestSegIdx = i;
       }
+      if (niv !== null && seg.level === niv && proj.dist < nivDist) {
+        nivDist = proj.dist; nivProj = proj; nivIdx = i;
+      }
+    }
+    if (nivIdx >= 0 && nivIdx !== bestSegIdx && nivDist <= bestDist + NIVEAU_TOLERANCE_PX) {
+      bestSegIdx = nivIdx; bestProj = nivProj; bestDist = nivDist;
     }
 
     if (bestSegIdx < 0) return null;

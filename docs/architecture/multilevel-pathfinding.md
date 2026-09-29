@@ -583,3 +583,7 @@ sélectionnables — et une centaine de points au plus.
 
 **Prouvé** : 11 cas dans `check-api-surface.js`, falsifiés — retirer l'interpolation
 fait tomber le cas du puits, autoriser l'extrapolation fait tomber celui du +1.
+
+## 🩸 Calage d'un point selon son niveau (29/09/2026, audit Secours 4.2)
+
+`_insertVirtualNode` prenait le segment le plus proche en 2D, quel que soit son étage : un point **du −1** cliqué près d'une galerie superposée du 0 s'accrochait au 0 (mesuré sur le plan de test : 39 clics ambigus sur 40). Désormais, si le point porte un niveau (`p.level` entier, plan multi-niveau), le segment le plus proche **de ce niveau** est préféré s'il n'est pas à plus de `NIVEAU_TOLERANCE_PX` (40 px) au-delà du plus proche tous niveaux — au-delà, le niveau du point est probablement faux et l'ancien choix reste. **Point sans niveau : comportement inchangé au bit près** (vérifié sur 40 trajets réels). Appelants concernés : Mode Secours (étapes avec niveau), itinéraire classique vers un POI qui a un niveau, Mode Perdu (`computeReachable` reçoit le niveau du dernier point depuis 2.5).
