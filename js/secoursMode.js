@@ -1491,6 +1491,31 @@
   // des niveaux VIDES (availableLevels = -2..+2 par défaut quand le plan n'en
   // déclare pas). Seuls les niveaux qui portent quelque chose ; le 0 = plan
   // principal, toujours gardé. Sans le scan (module absent) : ancien comportement.
+  // 29/09/2026 (KARMA) : équipes repliables — avec tous les POI d'un parcours, la
+  // vue Édition devenait une longue page à faire défiler. État par appareil
+  // (confort de lecture, pas une donnée du scénario) : localStorage, try/catch.
+  const LS_REPLIEES = "myktamap_secours_equipes_repliees_v1";
+  let _replieesCache = null;
+  function _repliees() {
+    if (_replieesCache) return _replieesCache;
+    try { _replieesCache = JSON.parse(localStorage.getItem(LS_REPLIEES) || "{}") || {}; }
+    catch(e) { _replieesCache = {}; }
+    return _replieesCache;
+  }
+  function _estRepliee(gid) { return !!_repliees()[gid]; }
+  function _setRepliee(gid, oui) {
+    const r = _repliees();
+    if (oui) r[gid] = 1; else delete r[gid];
+    try { localStorage.setItem(LS_REPLIEES, JSON.stringify(r)); } catch(e) {}
+  }
+  // Bascule sans re-rendu (garde la position de défilement).
+  function _appliquerRepli(card, oui) {
+    if (!card) return;
+    card.classList.toggle("kta-secours-groupe-card--repliee", oui);
+    const b = card.querySelector('[data-action="toggle-groupe"]');
+    if (b) { b.textContent = oui ? "▸" : "▾"; b.setAttribute("aria-expanded", oui ? "false" : "true"); }
+  }
+
   function _niveauxPourEquipesAuto() {
     const dispo = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
                   ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; }) : [];
@@ -7322,6 +7347,11 @@
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
                   autoMLVLBtn +
+                  (s.groupes.length > 1
+                    ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-toutes-equipes">' +
+                        (s.groupes.every(function(g) { return _estRepliee(g.id); })
+                          ? t("secours.edit.toutDeplier") : t("secours.edit.toutReplier")) + '</button>'
+                    : '') +
                 '</div>' +
                 '<div class="kta-secours-groupes-list" style="margin-top:10px;">' +
                   _renderGroupesList(s) +
@@ -7399,8 +7429,13 @@
                            '</select>' +
                          '</div>';
       }
-      html += '<div class="kta-secours-groupe-card" data-gid="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
+      const repliee = _estRepliee(g.id);
+      const nbEtapesG = (g.entree ? 1 : 0) + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0) + (g.sortie ? 1 : 0);
+      html += '<div class="kta-secours-groupe-card' + (repliee ? ' kta-secours-groupe-card--repliee' : '') + '" data-gid="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
                 '<div class="kta-secours-groupe-header">' +
+                  '<button type="button" class="kta-secours-groupe-replier" data-action="toggle-groupe" data-gid="' + _escAttr(g.id) + '" ' +
+                    'aria-expanded="' + (repliee ? 'false' : 'true') + '" title="' + _escAttr(t("secours.groupe.replierTitle")) + '">' +
+                    (repliee ? '▸' : '▾') + '</button>' +
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
@@ -7408,6 +7443,7 @@
                      Le partage briefing se fait via "📥 Importer un plan"
                      (vue list) qui consomme le .mkmsec.json complet. */
                   '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
+                  '<span class="kta-secours-groupe-resume kta-tx-muted">' + t("secours.groupe.resumeReplie", { n: nbEtapesG }) + '</span>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
                   '<div class="kta-secours-groupe-row">' +
@@ -8909,6 +8945,23 @@
           }
         });
       });
+      // Replier / déplier une équipe, ou toutes
+      corps.querySelectorAll('[data-action="toggle-groupe"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const gid = btn.getAttribute("data-gid");
+          const oui = !_estRepliee(gid);
+          _setRepliee(gid, oui);
+          _appliquerRepli(btn.closest(".kta-secours-groupe-card"), oui);
+        });
+      });
+      corps.querySelectorAll('[data-action="toggle-toutes-equipes"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const oui = !s.groupes.every(function(g) { return _estRepliee(g.id); });
+          s.groupes.forEach(function(g) { _setRepliee(g.id, oui); });
+          corps.querySelectorAll(".kta-secours-groupe-card").forEach(function(c) { _appliquerRepli(c, oui); });
+          btn.textContent = oui ? t("secours.edit.toutDeplier") : t("secours.edit.toutReplier");
+        });
+      });
       // Rename groupe
       corps.querySelectorAll('[data-action="rename-groupe"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
@@ -9628,9 +9681,40 @@
       });
     }
     window.map.once("click", _onMapClickPoint);
+    _armerCaptureMarqueurs();
   }
 
-  function _onMapClickPoint(e) {
+  // 🐛 29/09/2026 (KARMA) : cliquer sur un POI pour en faire l'entrée ou la sortie
+  // OUVRAIT LE POI. Leaflet ne remonte pas le clic d'un marqueur à la carte : le
+  // `map.once("click")` n'entendait rien et la popup s'ouvrait. Pendant le choix
+  // d'un point, un écouteur en CAPTURE sur le conteneur intercepte le clic sur une
+  // icône de marqueur avant elle (pas de popup) et le traite comme un clic carte,
+  // avec un accrochage élargi à la taille d'une icône à l'écran.
+  let _captureMarqueur = null;
+  function _armerCaptureMarqueurs() {
+    _desarmerCaptureMarqueurs();
+    const c = window.map && window.map.getContainer && window.map.getContainer();
+    if (!c) return;
+    _captureMarqueur = function(ev) {
+      if (_activeMapMode !== "point" || !_mapModeCtx) return;
+      const icone = ev.target && ev.target.closest ? ev.target.closest(".leaflet-marker-icon") : null;
+      if (!icone) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.map.off("click", _onMapClickPoint);
+      const rayon = Math.max(30, 28 / Math.pow(2, window.map.getZoom()));   // 28 px écran → unités plan
+      _onMapClickPoint({ latlng: window.map.mouseEventToLatLng(ev) }, rayon);
+    };
+    c.addEventListener("click", _captureMarqueur, true);
+  }
+  function _desarmerCaptureMarqueurs() {
+    if (_captureMarqueur && window.map && window.map.getContainer) {
+      window.map.getContainer().removeEventListener("click", _captureMarqueur, true);
+    }
+    _captureMarqueur = null;
+  }
+
+  function _onMapClickPoint(e, rayonSnap) {
     if (!_mapModeCtx) return;
     let x = e.latlng.lng;
     let y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
@@ -9643,7 +9727,7 @@
     // Réutilise SearchPoints.getAllPoints si dispo.
     let pointId = null;
     let label = null;
-    const snap = _trouverPoiProche(x, y, 30);
+    const snap = _trouverPoiProche(x, y, rayonSnap || 30);
     if (snap) {
       x = snap.x;
       y = snap.y;
@@ -10261,6 +10345,7 @@
     _finishMapMode();
   }
   function _finishMapMode() {
+    _desarmerCaptureMarqueurs();
     if (window.map) {
       window.map.off("click", _onMapClickPoint);
       window.map.off("click", _onMapClickPolygon);

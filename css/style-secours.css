@@ -760,6 +760,25 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 .kta-secours-groupe-header > button[data-action="del-groupe"] {
   flex-shrink: 0;
 }
+/* Équipes repliables (29/09/2026) */
+.kta-secours-groupe-replier {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #c8d0e0;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  cursor: pointer;
+  padding: 0;
+}
+.kta-secours-groupe-resume { display: none; flex-basis: 100%; font-size: 12px; padding-left: 40px; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-body { display: none; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-header { margin-bottom: 0; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-resume { display: block; }
+body.kta-theme-light .kta-secours-groupe-replier,
+html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, #2a2620) !important; }
 .kta-secours-groupe-nom:focus {
   outline: none;
   border-bottom-color: #f4c542;
