@@ -2023,10 +2023,12 @@
     if (existant) {
       // Des saisies d'intervention (en cours OU terminée) existent ici : « Remplacer » les efface.
       const enCours = !!existant.execution;
-      existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
+      existeBlock = '<div style="background:rgba(140,180,255,0.10); border:1px solid rgba(140,180,255,0.45);' +
+                    ' border-radius:6px; padding:10px 12px; margin:14px 0; color:#c8d0e0; font-size:13px; line-height:1.5;">' +
                       '<strong style="color:#8cb4ff;">' + t("secours.import.existeTitre") + '</strong><br>' +
                       t("secours.import.existeBody", { nom: _escHtml(existant.nom || t("secours.import.sansNom")) }) +
-                      (enCours ? '<br><span style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") + '</span>' : '') +
+                      (enCours ? '<br><span style="color:#ffb380;">⚠️ ' + t("secours.import.existeExecution") +
+                                 '</span>' : '') +
                       '<label style="display:flex; gap:8px; margin-top:8px; cursor:pointer;">' +
                         '<input type="radio" name="kta-sec-import-mode" value="remplacer" checked> ' +
                         '<span>' + t("secours.import.modeRemplacer") + '</span></label>' +
@@ -2156,7 +2158,8 @@
     if (ok) {
       const sc = result.scenario || {};
       const nbGroupes = (sc.groupes || []).length;
-      inner += '<p>' + t(result.remplace ? "secours.import.resOkRemplace" : "secours.import.resOkBody", { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
+      inner += '<p>' + t(result.remplace ? "secours.import.resOkRemplace" : "secours.import.resOkBody",
+                         { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
                '<p style="color:#8892a4; font-size:13px;">' +
                  t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
                  t("secours.import.resOkEquipes", { n: nbGroupes }) +
@@ -5513,8 +5516,12 @@
           const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
             .filter(function(w) { return w && typeof w.x === "number"; })
             .map(function(w) { return w.label || _fmtPoint(w); });
-          y = _pdfWrapText(pdf, t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
-                           margin, y, pageW - 2 * margin, 4);
+          // Liste longue (« POI de la zone » : 40-60 étapes) : saut de page ligne à ligne.
+          pdf.splitTextToSize(t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
+                              pageW - 2 * margin).forEach(function(ligne) {
+            if (y > pdf.internal.pageSize.getHeight() - 15) { pdf.addPage(); y = margin + 8; }
+            pdf.text(ligne, margin, y); y += 4;
+          });
           y += 4;
         }
         // Cadre Observations : page suivante s'il ne tient plus (liste d'étapes longue)
@@ -5579,7 +5586,8 @@
   // RÉELLE : briefing à l'échelle 1 (16 332 × 13 820 = 226 Mpx, ~860 Mo de canvas),
   // mini-carte du rapport à 0,5 (56 Mpx, ~225 Mo). Au-delà de 16,7 Mpx, Safari iOS
   // refuse le canvas et le PDF sortait sans carte. On plafonne SOUS cette limite :
-  // chaque équipe n'en garde qu'un recadrage de ≤ 1 000 px, la perte est minime.
+  // Contrepartie assumée (relecture R10) : une petite zone (< ~3 700 unités plan sur un
+  // plan de 16 332 px) est agrandie jusqu'à ×3,8 dans son recadrage → fond moins net.
   const PX_MAX_CANVAS_PLAN = 16000000;
   function _echelleCanvasPlan(voulue) {
     const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
@@ -9479,7 +9487,15 @@
     //   • rouvrir le mode reprend la sélection existante de l'équipe.
     _mapModeCtx.surbrillance = L.layerGroup().addTo(window.map);
     const g = _findGroupeCourant(groupeId);
-    _tracesZone(g).forEach(function(r) { _mapModeCtx.roadIds.add(_cleTrace(r)); });
+    // Relecture (D2) : une clé que CET appareil ne résout pas (tracé de session d'un
+    // autre appareil, plan différent) est GARDÉE telle quelle — avant, « Terminer »
+    // la supprimait de la zone.
+    const resolus = _tracesZone(g);
+    resolus.forEach(function(r) { _mapModeCtx.roadIds.add(_cleTrace(r)); });
+    ((g && g.zoneType === "roads" && g.zoneRoadIds) || []).forEach(function(k) {
+      const connu = resolus.some(function(r) { return r.id === k || _cleTrace(r) === k; });
+      if (!connu) _mapModeCtx.roadIds.add(k);
+    });
     _redessinerSelectionTraces();
     window.map.on("click", _onMapClickRoads);
   }
@@ -9539,11 +9555,13 @@
     if (!_mapModeCtx || _activeMapMode !== "roads") return;
     const p = {
       x: e.latlng.lng,
-      y: (window.APP_CONFIG && window.APP_CONFIG.imageHeight) ? window.APP_CONFIG.imageHeight - e.latlng.lat : e.latlng.lat
+      y: (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+         ? window.APP_CONFIG.imageHeight - e.latlng.lat : e.latlng.lat
     };
     // 14 px écran → unités plan (CRS.Simple : 1 unité = 2^zoom px).
     const tol = 14 / Math.pow(2, window.map.getZoom());
-    const filtre = (typeof window.passeFiltreNiveau === "function") ? window.passeFiltreNiveau : function() { return true; };
+    const filtre = (typeof window.passeFiltreNiveau === "function")
+                   ? window.passeFiltreNiveau : function() { return true; };
     let meilleur = null, dMin = Infinity;
     _tousLesTraces().forEach(function(r) {
       if (!filtre(r)) return;

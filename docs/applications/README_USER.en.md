@@ -1674,7 +1674,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 |---|---|
 | 📍 Entry | 1 map click = captures the team's entry position |
 | 🚪 Exit | 1 map click = captures the exit position |
-| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click: the nearest gallery, among the displayed levels, is taken (re-click = remove, highlighted in red). The selection is found identically on any phone that has the same map |
+| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click: the nearest gallery, among the displayed levels, is taken (re-click = remove, highlighted in red). The map's galleries are found identically on any phone that has the same map; a path drawn by hand on a single device only exists on that one. Hidden layers remain selectable |
 | 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration (methodical speed 0.5 m/s) |
 
 > 🔁 **During the intervention**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps right away. What has already been entered (status, observations, photos) stays on the same step. "All POIs in the zone" adds the steps from nearest to nearest, to avoid back-and-forth.

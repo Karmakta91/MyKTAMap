@@ -79,7 +79,7 @@
 
   // ===== État interne =====
   let _active           = false;
-  let _lastKnownPos     = null;   // {x, y, label}
+  let _lastKnownPos     = null;   // {x, y, level, label} (level depuis le 29/09/2026)
   let _elapsedMinutes   = DEFAULT_ELAPSED_MIN;
   let _speedKmH         = DEFAULT_SPEED_KMH;
   let _radiusPx         = 0;
@@ -1092,6 +1092,9 @@
       }
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
         _selectionnerPosition({ x: pos.x, y: pos.y, level: _niveauAffiche(), label: _t("lost.pos.trackerLabel") });
+      } else if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        // Relecture (C1) : alert() natif migré — fonction touchée au 29/09/2026.
+        window.OOMGuard.showToast(_t("lost.err.noTracker"), "warn");
       } else {
         alert(_t("lost.err.noTracker"));
       }
