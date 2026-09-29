@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.9` (29/09/2026)
+## 📦 Version courante — `v1.98.10` (29/09/2026)
+
+> 🧮 **v1.98.10 — Mode Secours, 3e relecture : les plans d'avant la mise à jour fusionnent de nouveau** : la v1.98.9 tirait au hasard les identités des points, différentes sur le PC et le téléphone pour tout plan préparé avant — un rapport ne s'appariait plus (régression). Elles sont maintenant calculées à l'identique sur chaque appareil, vérifié par une matrice ancien code ↔ nouveau code. Et « Relancer » demande confirmation.
 
 > 🆔 **v1.98.9 — Mode Secours, 2e relecture : chaque point de passage a son identité** : la 2.6 refaite reliait encore des étapes par leur nom (un autre « Puits » naissait déjà fait, un homonyme contournait le refus « victime ») ; désormais un identifiant par point. Et une « victime » signalée par l'équipe sur une étape retirée au PC est remise dans le parcours avec une alerte rouge, au lieu d'être ignorée.
 
@@ -495,6 +497,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.10 (29/09/2026) — Mode Secours, vague 3quater : 3e relecture
+
+- 🔍 **Origine** : 3e relecture de `6b33638` : **à reprendre** — la fusion cassée pour toute donnée d'avant la version (cas normal au déploiement), régression de v1.98.9 prouvée en rejouant les scénarios sur `6b33638^`. Décisions KARMA : A (corriger en avant + matrice de versions), a (relance confirmée).
+- 🧮 **Correctif** (`5108b6f`) : `wid` calculés (`_widDeterministe`), wid inconnu = absent, libellé symétrique, rattachement prudent ; N11 encadré (phase, vrai retrait, ordre, type, alerte sans remise) ; photos des phases closes ; relance confirmée ; titre « ETAPES ».
+- ✅ **Tests** : matrice à deux versions (ancien `b845ee6` ↔ nouveau, même stockage) 10/10, **9 échecs sur le code précédent** ; cas rev3 verts (S2 : alerte + archive, voulu) ; 12 harnais Node + 12 checkups navigateur. ⚠️ Leçon consignée : tester depuis l'état réel de la prod, pas depuis son propre modèle.
 
 #### v1.98.9 (29/09/2026) — Mode Secours, vague 3ter : 2e relecture
 
