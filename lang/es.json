@@ -4008,6 +4008,7 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> foto(s) importada(s)",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> foto(s) fallida(s)",
   "secours.rapportRes.warningsSummary": "🔍 {n} advertencia(s) detallada(s)",
+  "secours.report.alerteRemise": "«{statut}» señalado en «{label}», una etapa que habías quitado del recorrido: el punto se ha vuelto a poner en el recorrido del equipo.",
   "secours.report.absent": "(ausente)",
   "secours.report.errAucunScenario": "Ningún escenario activo del lado del Operador. Abre el escenario donde quieres importar este informe.",
   "secours.report.errEquipeAbsente": "Equipo '{nom}' (id {id}…) ausente del escenario activo. El miembro de equipo debe estar registrado del lado del Operador ANTES del lanzamiento del plan (sin creación silenciosa en la importación).",

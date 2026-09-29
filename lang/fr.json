@@ -4008,6 +4008,7 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> photo(s) importée(s)",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> photo(s) échec(s)",
   "secours.rapportRes.warningsSummary": "🔍 {n} avertissement(s) détaillé(s)",
+  "secours.report.alerteRemise": "« {statut} » signalé sur « {label} », une étape que tu avais retirée du parcours : le point a été remis dans le parcours de l'équipe.",
   "secours.report.absent": "(absent)",
   "secours.report.errAucunScenario": "Aucun scénario actif côté Opérateur. Ouvre le scénario où tu veux importer ce rapport.",
   "secours.report.errEquipeAbsente": "Équipe '{nom}' (id {id}…) absente du scénario actif. L'équipier doit être enregistré côté Opérateur AVANT le lancement du plan (pas de création silencieuse à l'import).",

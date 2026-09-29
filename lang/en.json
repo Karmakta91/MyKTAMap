@@ -4008,6 +4008,7 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> photo(s) imported",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> photo(s) failed",
   "secours.rapportRes.warningsSummary": "🔍 {n} detailed warning(s)",
+  "secours.report.alerteRemise": "\"{statut}\" reported on \"{label}\", a step you had removed from the route: the point has been put back in the team's route.",
   "secours.report.absent": "(missing)",
   "secours.report.errAucunScenario": "No active scenario on the Operator side. Open the scenario where you want to import this report.",
   "secours.report.errEquipeAbsente": "Team '{nom}' (id {id}…) not found in the active scenario. The team member must be registered on the Operator side BEFORE the plan is launched (no silent creation on import).",

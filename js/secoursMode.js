@@ -663,6 +663,9 @@
     if (s.execution.etapes && s.execution.etapes._notes_libres) {
       newEtapes._notes_libres = s.execution.etapes._notes_libres;
     }
+    // 2e relecture (N2) : l'archive des étapes retirées appartient à la phase close —
+    // une étape remise en phase 2 ne doit pas récupérer les saisies de la phase 1.
+    delete s.execution._etapesRetirees;
     s.execution.etapes = newEtapes;
     // 2. Met à jour l'index de phase active + startedAt nouvelle phase
     s.execution.currentPhaseIdx = nextIdx;
@@ -765,6 +768,7 @@
         excess--;
       }
       _scenarios = _scenarios.filter(function(s) { return purges.indexOf(s.id) < 0; });
+      purges.forEach(_purgerPhotosScenario);
       console.log("[SecoursMode] FIFO : " + purges.length + " scénario(s) ancien(s) purgé(s)" +
                   (excess > 0 ? ", " + excess + " protégé(s) (en cours / ouvert)" : ""));
     }
@@ -906,10 +910,21 @@
   }
 
   // Supprime un scénario par id. Retourne true si trouvé+supprimé.
+  // 2e relecture (N10b) : les photos d'un scénario qui disparaît (supprimé, purgé par
+  // la limite de 10) ou d'une exécution relancée restaient en base sous les mêmes
+  // ids : exclues du rapport depuis, mais elles comptaient encore dans le quota de
+  // 5 par étape. Elles partent avec leur scénario / leur exécution.
+  function _purgerPhotosScenario(id) {
+    const P = window.MyKTAMapSecoursPhotos;
+    if (!id || !P || typeof P.deletePhotosForScenario !== "function") return;
+    P.deletePhotosForScenario(id).catch(function(e) { console.warn("[SecoursMode] photos :", e); });
+  }
+
   function deleteScenario(id) {
     const idx = _scenarios.findIndex(function(s) { return s.id === id; });
     if (idx < 0) return false;
     _scenarios.splice(idx, 1);
+    _purgerPhotosScenario(id);
     // Si on supprime le scénario courant, on désactive le focus
     if (_currentScenarioId === id) {
       _currentScenarioId = null;
@@ -970,6 +985,7 @@
         idx:          idx++,
         label:        g.entree.label || _fmtPoint(g.entree),
         cle:          _cleWaypoint(g.entree),
+        wid:          g.entree.wid || null,
         observations: "",
         statut:       "pending",
         photoIds:     [],
@@ -984,6 +1000,7 @@
           idx:          idx++,
           label:        wp.label || _fmtPoint(wp),
           cle:          _cleWaypoint(wp),
+          wid:          wp.wid || null,
           observations: "",
           statut:       "pending",
           photoIds:     [],
@@ -998,6 +1015,7 @@
         idx:          idx++,
         label:        g.sortie.label || _fmtPoint(g.sortie),
         cle:          _cleWaypoint(g.sortie),
+        wid:          g.sortie.wid || null,
         observations: "",
         statut:       "pending",
         photoIds:     [],
@@ -1032,10 +1050,53 @@
     if (!wp || typeof wp.x !== "number" || typeof wp.y !== "number") return null;
     return Math.round(wp.x) + "," + Math.round(wp.y) + "," + (Number.isInteger(wp.level) ? wp.level : 0);
   }
+  // 🩸 2e relecture 29/09 (N1, N3, N7, N8) — le repli par LIBELLÉ reliait des étapes
+  // sans rapport (« Puits » ailleurs, homonyme de remplacement, aller-retour par le
+  // même carrefour). Chaque point de passage a désormais une IDENTITÉ `wid`, posée à
+  // sa création (updateGroupe, export, lancement) ; chaque étape porte celle de son
+  // point. C'est la seule clé ; la position ne sert qu'aux données d'avant (sans
+  // wid), le libellé qu'aux rapports d'avant la v1.98.8 (ni wid ni position).
+  function _widNormaliser(wp) {
+    if (wp && typeof wp === "object" && !wp.wid) { wp.wid = _genId("W"); return true; }
+    return false;
+  }
+  function _normaliserParcours(g) {
+    if (!g) return false;
+    let chg = _widNormaliser(g.entree);
+    chg = _widNormaliser(g.sortie) || chg;
+    (g.intermediaires || []).forEach(function(w) { chg = _widNormaliser(w) || chg; });
+    return chg;
+  }
+  // Étapes construites avant les wid : elles correspondent une à une au parcours
+  // ACTUEL (toute modification en exécution resynchronise) → on leur rattache le wid.
+  function _rattacherWidEtapes(s, g) {
+    const ex = s && s.execution;
+    const et = ex && ex.etapes && g && ex.etapes[g.id];
+    if (!Array.isArray(et) || et.every(function(e) { return e && e.wid; })) return;
+    const liste = [];
+    if (g.entree) liste.push(g.entree);
+    (g.intermediaires || []).forEach(function(w) { liste.push(w); });
+    if (g.sortie) liste.push(g.sortie);
+    if (liste.length !== et.length) return;
+    et.forEach(function(e, i) {
+      if (!e.wid && liste[i] && liste[i].wid) e.wid = liste[i].wid;
+      if (!e.cle) e.cle = _cleWaypoint(liste[i]);
+    });
+  }
+  // Mêmes conditions pour la resync ET la garde de retrait (2e relecture, N4).
+  function _resyncApplicable(s, g) {
+    const ex = s && s.execution;
+    if (!ex || !ex.active || !ex.etapes || !g) return false;
+    if (ex.role === "secouriste" && !Array.isArray(ex.etapes[g.id])
+        && !Object.keys(ex.etapes).some(function(k) { return k !== "_notes_libres"; })) return false;
+    const phaseIdx = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
+    if (Array.isArray(s.phases) && s.phases.length > 0 && !_groupeParticipeAPhase(s, g.id, phaseIdx)) return false;
+    return true;
+  }
   // Pour chaque cible, la source appariée (ou null). Chaque source ne sert qu'une
-  // fois. Passe 1 : même type + même position. Passe 2 : même type + même libellé,
-  // dans l'ordre (le 2e « Carrefour » va au 2e). Passe 3 : cible sans libellé
-  // (ancien rapport) → même numéro.
+  // fois. Passe 1 : même wid. Passe 2 (l'un des deux sans wid) : même type + même
+  // position. Passe 3 (cible sans wid ni position : rapport d'avant v1.98.8) : même
+  // type + même libellé, dans l'ordre. Passe 4 : cible sans libellé → même numéro.
   function _apparierEtapes(sources, cibles) {
     const pris = new Set();
     const res = cibles.map(function() { return null; });
@@ -1046,8 +1107,9 @@
         if (j >= 0) { pris.add(j); res[i] = sources[j]; }
       });
     };
-    passe(function(a, c) { return a.type === c.type && !!a.cle && a.cle === c.cle; });
-    passe(function(a, c) { return a.type === c.type && !!c.label && a.label === c.label; });
+    passe(function(a, c) { return !!a.wid && a.wid === c.wid; });
+    passe(function(a, c) { return (!a.wid || !c.wid) && a.type === c.type && !!a.cle && a.cle === c.cle; });
+    passe(function(a, c) { return !c.wid && !c.cle && a.type === c.type && !!c.label && a.label === c.label; });
     passe(function(a, c) { return !c.label && a.idx === c.idx; });
     return res;
   }
@@ -1057,7 +1119,7 @@
   // Étapes qui PERDRAIENT leurs saisies si l'on appliquait `partial` au parcours.
   function _etapesPerduesSi(s, g, partial) {
     const ex = s && s.execution;
-    if (!ex || !ex.active || !ex.etapes || !Array.isArray(ex.etapes[g.id])) return [];
+    if (!_resyncApplicable(s, g) || !Array.isArray(ex.etapes[g.id])) return [];
     const futur = Object.assign({}, g);
     ["entree", "sortie", "intermediaires"].forEach(function(k) { if (k in partial) futur[k] = partial[k]; });
     const anciennes = ex.etapes[g.id];
@@ -1073,11 +1135,8 @@
   }
   function _resyncEtapesEquipe(s, g) {
     const ex = s && s.execution;
-    if (!ex || !ex.active || !ex.etapes || !g) return false;
-    if (ex.role === "secouriste" && !Array.isArray(ex.etapes[g.id])
-        && !Object.keys(ex.etapes).some(function(k) { return k !== "_notes_libres"; })) return false;
-    const phaseIdx = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
-    if (Array.isArray(s.phases) && s.phases.length > 0 && !_groupeParticipeAPhase(s, g.id, phaseIdx)) return false;
+    if (!_resyncApplicable(s, g)) return false;
+    _normaliserParcours(g);
     const anciennes = Array.isArray(ex.etapes[g.id]) ? ex.etapes[g.id] : [];
     const nouvelles = _buildEtapesPourEquipe(g);
     const archive = (ex._etapesRetirees && ex._etapesRetirees[g.id]) || [];
@@ -1143,6 +1202,8 @@
     }
 
     // Construction initiale ou réinitialisation
+    if (s.execution) _purgerPhotosScenario(s.id);     // exécution relancée : photos de l'ancienne
+    (s.groupes || []).forEach(_normaliserParcours);   // identités des points (wid)
     const etapes = {};
     if (role !== "secouriste") {
       // Mode équipe/opérateur : 1 array d'étapes par équipe
@@ -1670,6 +1731,13 @@
       _toast(t("secours.toast.scenarioIntrouvable"), "error");
       return null;
     }
+    // Identités des points posées AVANT le départ vers les équipes : sinon PC et
+    // téléphones en tireraient chacun de différentes (2e relecture).
+    let widPoses = false;
+    (s.groupes || []).forEach(function(g) {
+      if (_normaliserParcours(g)) { widPoses = true; _rattacherWidEtapes(s, g); }
+    });
+    if (widPoses) _commitMutation(s);
     const pc = window.PLAN_CONFIG;
     const planInfo = pc && pc.plan ? {
       id:                window._currentLoadedPlanId || null,
@@ -1791,7 +1859,7 @@
     sc.updatedAt = _nowIso();
     // 🆕 v1.29.0 C1 — Remapping cross-phases : phase.groupeIds[] suivent les g.id.
     // Un id d'équipe n'est régénéré que pour une copie, ou s'il est absent/en double.
-    const idMap = {};   // oldId → newId
+    const idMap = Object.create(null);   // oldId → newId (sans prototype : 2e relecture)
     const vus = {};
     if (Array.isArray(sc.groupes)) {
       sc.groupes.forEach(function(g) {
@@ -2390,7 +2458,7 @@
     // Init etapes côté op si absent (défensif)
     s.execution.etapes = s.execution.etapes || {};
     s.execution.etapes[equipeId] = s.execution.etapes[equipeId] || [];
-    const etapesOp = s.execution.etapes[equipeId];
+    let etapesOp = s.execution.etapes[equipeId];
 
     const etapesImportees = Array.isArray(ed.etapes) ? ed.etapes : [];
     const photosImportees = Array.isArray(ed.photos) ? ed.photos : [];
@@ -2401,7 +2469,8 @@
       photosImportees: 0,
       photosSkipped: 0,
       photosDejaPresentes: 0,
-      warnings: []
+      warnings: [],
+      alertes: []   // 2e relecture (N11) : affichées en clair, jamais repliées
     };
 
     // Index photos importées par stepIdx pour rattachement
@@ -2418,6 +2487,42 @@
       hour: "2-digit", minute: "2-digit"
     });
 
+    // 🩸 2e relecture (N11, décision KARMA a) — « aide » ou « victime » signalée par
+    // l'équipe sur une étape que le PC a retirée entre-temps : le point est REMIS
+    // dans le parcours de l'équipe, à sa place (après le point importé précédent),
+    // puis fusionné normalement ; une alerte rouge le dit. Jamais une ligne repliée.
+    const gEq = s.groupes.find(function(x) { return x.id === equipeId; });
+    const preApp = _apparierEtapes(etapesOp, etapesImportees);
+    const aRemettre = etapesImportees.filter(function(e, i) {
+      return !preApp[i] && typeof e.cle === "string" && _getStatutInfo(e.statut).severity >= 2;
+    });
+    if (gEq && aRemettre.length > 0) {
+      _normaliserParcours(gEq);
+      _rattacherWidEtapes(s, gEq);
+      aRemettre.forEach(function(e) {
+        const c = e.cle.split(",").map(Number);
+        const wp = { x: c[0], y: c[1], level: c[2] || 0, label: e.label || "", wid: e.wid || _genId("W") };
+        const iImp = etapesImportees.indexOf(e);
+        let avant = null;
+        for (let k = iImp - 1; k >= 0 && !avant; k--) avant = preApp[k];
+        const arr = (gEq.intermediaires || []).slice();
+        let pos = 0;
+        if (avant && avant.type === "interm") {
+          const j = arr.findIndex(function(w) { return w && w.wid === avant.wid; });
+          pos = (j >= 0) ? j + 1 : arr.length;
+        } else if (avant && avant.type === "sortie") {
+          pos = arr.length;
+        }
+        arr.splice(pos, 0, wp);
+        gEq.intermediaires = arr;
+        stats.alertes.push(t("secours.report.alerteRemise", {
+          statut: t("secours.statut." + e.statut), label: e.label || "?"
+        }));
+      });
+      _resyncEtapesEquipe(s, gEq);
+      etapesOp = s.execution.etapes[equipeId];
+    }
+
     // Fusion étape par étape (sequential car écritures IDB photos)
     // Appariement global (position, puis libellé par rang, puis numéro) : cf _apparierEtapes.
     const pairesFusion = _apparierEtapes(etapesOp, etapesImportees);
@@ -2427,6 +2532,15 @@
       if (!etapeOp) {
         stats.etapesSkipped++;
         stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
+        // 2e relecture (N11) : ses saisies ne sont pas jetées — archivées avec les
+        // étapes retirées (photos non importées : l'étape n'existe plus ici).
+        if (_etapeADesDonnees(etImp)) {
+          s.execution._etapesRetirees = s.execution._etapesRetirees || {};
+          s.execution._etapesRetirees[equipeId] = (s.execution._etapesRetirees[equipeId] || []).concat([
+            Object.assign({}, etImp, { photoIds: [], retireeAt: importedAt,
+              _importedFrom: { sourceScenarioId: sourceScenarioId, importedAt: importedAt } })
+          ]);
+        }
         continue;
       }
 
@@ -2711,6 +2825,12 @@
                  ((stats.etapesSkipped || 0) > 0 ? '⏭️ ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
                  ((stats.photosSkipped || 0) > 0 ? '⚠️ ' + t("secours.rapportRes.photosSkipped", { n: stats.photosSkipped }) + '<br>' : '') +
                '</div>';
+      // 2e relecture (N11) : alertes « aide / victime » en clair, avant tout le reste
+      if (Array.isArray(stats.alertes) && stats.alertes.length > 0) {
+        inner += '<div style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
+                 ' padding:10px 12px; margin:10px 0; color:#ffb3b3; font-size:13px; line-height:1.5;">🚨 ' +
+                 stats.alertes.map(_escHtml).join('<br>🚨 ') + '</div>';
+      }
       // Warnings détaillés en dépliable
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
         const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
@@ -2924,13 +3044,46 @@
     // l'intervention, une étape qui porte des saisies : confirmation ; REFUS si elle
     // porte « aide demandée » ou « victime » (l'info ne doit pas quitter le stepper).
     const touchePar = ("entree" in partial || "sortie" in partial || "intermediaires" in partial);
-    if (touchePar && !partial._confirmeRetrait) {
+    if (touchePar) {
+      // Identité des points : un point NOUVEAU (ou remplacé) reçoit un nouveau wid ;
+      // les étapes d'avant les wid sont rattachées au parcours actuel.
+      _normaliserParcours(g);
+      _rattacherWidEtapes(s, g);
+      // Un point fourni SANS wid (objet neuf d'un appelant) mais au même endroit et
+      // dans le même rôle qu'un point existant EST ce point : il hérite de son wid.
+      // Seul un point nouveau ou déplacé reçoit une identité neuve (un homonyme
+      // placé ailleurs reste un autre point : N3).
+      const heriter = function(liste, anciens) {
+        const pris = new Set(liste.map(function(w) { return w && w.wid; }).filter(Boolean));
+        liste.forEach(function(w) {
+          if (!w || w.wid) return;
+          const cle = _cleWaypoint(w);
+          const src = anciens.find(function(o) {
+            return o && o.wid && !pris.has(o.wid) && (o.cle || _cleWaypoint(o)) === cle;
+          });
+          if (src) { w.wid = src.wid; pris.add(src.wid); }
+        });
+      };
+      // … y compris un point RETIRÉ puis remis au même endroit : il reprend l'identité
+      // de son étape archivée, donc ses saisies (et reste reconnu à la fusion).
+      const arch = (s.execution && s.execution._etapesRetirees && s.execution._etapesRetirees[g.id]) || [];
+      const archDe = function(type) { return arch.filter(function(e) { return e.type === type; }); };
+      if ("entree" in partial) heriter([partial.entree], [g.entree].concat(archDe("entree")));
+      if ("sortie" in partial) heriter([partial.sortie], [g.sortie].concat(archDe("sortie")));
+      if (Array.isArray(partial.intermediaires)) {
+        heriter(partial.intermediaires, (g.intermediaires || []).concat(archDe("interm")));
+      }
+      if ("entree" in partial) _widNormaliser(partial.entree);
+      if ("sortie" in partial) _widNormaliser(partial.sortie);
+      if (Array.isArray(partial.intermediaires)) partial.intermediaires.forEach(_widNormaliser);
+      // Le refus aide/victime est RE-VÉRIFIÉ au ré-appel après confirmation (N5) :
+      // seule la question est sautée, pas le contrôle.
       const perdues = _etapesPerduesSi(s, g, partial);
       if (perdues.some(function(e) { return _getStatutInfo(e.statut).severity >= 2; })) {
         _toast(t("secours.etape.retraitRefuse"), "error");
         return null;
       }
-      if (perdues.length > 0) {
+      if (perdues.length > 0 && !partial._confirmeRetrait) {
         if (typeof window.ktaConfirm === "function") {
           const noms = perdues.map(function(e) { return "• " + _escHtml(e.label || ""); }).join("\n");
           window.ktaConfirm(t("secours.etape.retraitConfirme", { n: perdues.length, liste: noms })).then(function(ok) {
@@ -3429,6 +3582,10 @@
     if (rec.stepIdx === -2 || (Array.isArray(arch) && arch.some(function(x) {
       return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0;
     }))) return null;
+    // 2e relecture (N9, N10b) : une photo qu'AUCUNE étape ne détient vient d'une
+    // exécution précédente (scénario supprimé puis réimporté, exécution relancée —
+    // mêmes ids) → hors rapport. Les notes libres (-1) ne sont pas des étapes.
+    if (Array.isArray(etapes) && rec.stepIdx !== -1) return null;
     return rec.stepIdx;
   }
 
