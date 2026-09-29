@@ -25,7 +25,7 @@
 - **Licence** : **CC BY-NC-SA 4.0** — Attribution, NonCommercial, ShareAlike
   - Usage non commercial autorisé avec attribution + partage à l'identique
   - **Usage commercial strictement interdit** sans accord écrit préalable de l'auteur
-- **Code source** : **non distribué publiquement** (pas de dépôt ouvert). Toute personne consultant ce document n'a accès qu'à la documentation utilisateur — pas au code, pas à l'app live, pas aux données.
+- **Code source** : **public sur GitHub** (`Karmakta91/MyKTAMap`, licence CC BY-NC-SA 4.0 — usage commercial interdit sans accord). Les **données des plans** (relevés de terrain) n'y sont pas : elles restent chez leurs auteurs.
 - **Collaboration** : **ouverte sur demande** (contributions, ports, intégrations, retours terrain). Contact via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial).
 
 > ⚠️ Toute reproduction, modification, redistribution ou utilisation commerciale de cette documentation ou de l'application sans accord écrit préalable de l'auteur expose à des poursuites pour contrefaçon (art. L.335-2 du Code de la propriété intellectuelle).
@@ -1176,7 +1176,7 @@ Bascule via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édit
    ├─ Bouton « 📤 Rapport » dans chaque vue Live (scope adapté au rôle)
    ├─ 3 formats au choix :
    │   📄 PDF imprimable A4 → impression / archivage / passation papier
-   │   📦 .mkmsec.report.json → consolidation cross-device (v1.26.0 future)
+   │   📦 .mkmsec.report.json → consolidation cross-device (depuis v1.26.0, fiabilisée en v1.98.5-12)
    │   📋 Texte presse-papier → Discord/SMS/mail rapide
    └─ Rapport reflète l'état COURANT, réutilisable autant de fois
 
@@ -1208,7 +1208,7 @@ Severity 0-3 utilisée pour tri/escalade dans la vue Opérateur (card prend la c
 |---|---|---|
 | Scénarios | `localStorage["myktamap_secours_v1_<planId>"]` | Multi-scénarios par plan, cap 10 FIFO |
 | Photos étapes | IDB `myktamap_secours_photos` v1 | Store dédié séparé du POI, 3 indexes scenarioId+equipeId+stepIdx |
-| Pause cross-feature | `localStorage["myktamap_iti_pause_enabled"]` + `_minutes` | Partagé avec itinéraire principal |
+| Pause cross-feature | `localStorage["myktamap_iti_pause_enabled"]` + `_minutes` | Itinéraire principal uniquement — depuis v1.98.11 le Mode Secours a ses propres réglages (`reglagesDuree` du scénario : vitesse de fouille, pause par étape) |
 | Calibration KMZ géoref | `localStorage["myktamap_calib_<planId>"]` | Format FLAT `{pointA: {x,y,lat,lng}, pointB: {x,y,lat,lng}}` (cf §32.7 corrigé en §68) |
 
 #### Quand recommander chacun des 3 rôles
@@ -1219,7 +1219,7 @@ Severity 0-3 utilisée pour tri/escalade dans la vue Opérateur (card prend la c
 
 #### Limitations (pour anticiper questions user)
 
-- **Single-device pour l'instant** : chaque rôle tient son propre suivi en local. La consolidation cross-device (= opérateur surface importe les rapports des équipes au retour pour fusionner) viendra en v1.26.0.
+- **Consolidation cross-device** (depuis v1.26.0, fiabilisée en v1.98.5-12) : chaque rôle tient son suivi en local, puis l'opérateur surface importe les rapports `.mkmsec.report.json` des équipes et les fusionne (rapport d'une phase close → historique de cette phase).
 - **QR code share — ABANDONNÉ** (v1.25.3-hotfix17, Phase 4 rollback) : la voie QR Code testée en hotfix8→16 a été abandonnée. Le scan post-compression WhatsApp / Telegram s'avérait trop fragile sur les payloads denses (briefing 2-3 KB en QR v25+, MIN_CELL_PX 8 demandé par jsQR). Le partage entre devices passe par le rapport `.mkmsec.report.json` (export sur device émetteur → import sur device récepteur par mail/clé USB/AirDrop au retour surface).
 - **Pas de transmission automatique vers les secours externes** : c'est un outil de coordination INTERNE à ton équipe. Pour appeler les pompiers/GRIMP, tu utilises ton téléphone normal.
 - **Photos compressées localement** : max 1920px côté long + JPEG q85 → ~200-400 KB par photo (au lieu de 3-5 MB raw smartphone). Pas de fallback "qualité originale" — choix volontaire pour limiter l'IDB.
@@ -1338,7 +1338,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 **Politique de fusion** :
 - Observations : concaténation datée `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` (aucune perte d'info)
 - Statut : plus grave via `TABLEAU_STATUTS.severity` ; à gravité égale, le plus récent (depuis v1.98.5 — avant, un « RAS » rapporté par l'équipe restait « en attente » côté PC). Une victime n'est jamais rétrogradée.
-- Étapes appariées par numéro **et** type + libellé (depuis v1.98.6 : le PC peut reconstruire les étapes d'une équipe modifiée ou ajoutée en cours de phase, les numéros ne sont plus stables)
+- Étapes appariées par **identité de point** (`wid`, depuis v1.98.9), puis par position, puis par libellé pour les rapports d'avant — les numéros ne sont plus stables depuis v1.98.6 (le PC reconstruit les étapes d'une équipe modifiée en cours de phase)
 - Photos : push avec dédup par id (idempotent)
 - Flag `_importedFrom` sur chaque étape mutée (chip UI + traçabilité)
 - Audit log dans `s.execution._importLog: []`

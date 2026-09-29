@@ -1637,7 +1637,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
 - 📋 **« Copier ma position »** : un bouton carré **à droite des chiffres** (les chiffres eux-mêmes marchent aussi — c'est là que le doigt va d'abord). Il devient ✅ le temps de te confirmer la copie. Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.823328, 2.322915` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
 - 🔋 **Une ligne d'état en haut à droite** : ton **niveau de batterie** (seulement si ton navigateur l'expose et si tu n'as pas décoché le réglage — sinon rien du tout, pas de « ? » ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨. *L'échelle du plan n'y est plus (v1.97.11) : c'est un chiffre de calibrage, il se lit dans ⚙️ Réglages, pas quand on cherche où l'on est.*
-- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Réglages.
+- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Configuration de l'accueil.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
 - 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone, et la mise en page change — position à gauche, carte à droite sur toute la hauteur.
 - 🗺️ **Tout tient dans un écran** : plus rien à faire défiler, et **la carte prend toute la place gagnée** (mesuré : elle a doublé de hauteur sur un téléphone en portrait).
@@ -1664,7 +1664,7 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 
 #### Workflow
 
-1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours ni celui que tu as ouvert).
+1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours, celui que tu as ouvert, ni une intervention terminée dont aucun rapport n'est encore sorti de l'appareil).
 2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
 3. **Édition free-form** — 3 sections accordéon :
    - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
@@ -1694,11 +1694,11 @@ Auto-refresh à chaque modif. Re-cliquer le bouton pour masquer.
 
 #### Multi-scénarios par plan
 
-Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan (au-delà, le plus ancien est purgé automatiquement).
+Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan : au-delà, le plus ancien est purgé automatiquement — sauf un scénario en cours, celui que tu as ouvert, le plus récent, ou une intervention terminée dont aucun rapport (PDF ou fichier) n'est encore sorti de l'appareil.
 
 #### Exports
 
-**📄 PDF imprimable** : 1 page A4 portrait par équipe avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
+**📄 PDF imprimable** : 1 page A4 portrait par équipe (une 2e si la liste des étapes est longue) avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
 
 **🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
 
@@ -1805,7 +1805,7 @@ Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent en
 
 Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
 
-#### 🛑 Pause configurable cross-feature
+#### 🛑 Pause entre les arrêts (itinéraire)
 
 Nouvelle section dans la modale 🗺️ Itinéraire :
 
@@ -2169,6 +2169,10 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
      - Photos **importées avec déduplication**
    - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
    - Répète pour les 2 autres équipes
+   - ⚠️ **Rapport arrivé après un changement de phase** : s'il porte sur une phase déjà close, il est rangé dans **l'historique de cette phase** — jamais dans la phase en cours — et l'app le signale en orange (en rouge s'il contient « Aide demandée » ou « Victime trouvée »)
+   - 🧭 **Signalement sur une étape que tu as retirée** : il n'est pas perdu — il s'affiche en orange à l'import et figure dans la section **« Signalements hors parcours »** du rapport final
+   - 🗺️ **Plan modifié depuis l'envoi** : si le plan a changé de version (ou a été retracé) depuis l'export du scénario, l'aperçu d'import te prévient et compte les tracés de zone qu'il ne retrouve plus
+   - 📚 Le **rapport final** reprend aussi les étapes des **phases closes**, phase par phase
 
 4. **Visualisation post-fusion** :
    - Sur la card de chaque équipe Op : chip bleu « 📥 importé » apparaît si au moins une étape a reçu de la consolidation

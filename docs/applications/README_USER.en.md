@@ -1632,7 +1632,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
 - 📋 **“Copy my position”**: a square button **to the right of the figures** (tapping the figures works too — that is where your finger goes first). It turns into ✅ while it confirms the copy. If your map is georeferenced it copies **the coordinates alone** — `48.823328, 2.322915` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
 - 🔋 **One status line at the top right**: your **battery level** (only if your browser exposes it and you have not unticked the setting — otherwise nothing at all, no “?”; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title. *The map scale is gone (v1.97.11): it is a calibration figure, it belongs in ⚙️ Settings, not on the screen where you are looking for yourself.*
-- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in ⚙️ Settings.
+- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in the home screen's ⚙️ Configuration.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
 - 📱 **Landscape**: the minimap reframes correctly when you turn the phone, and the layout changes — position on the left, map on the right over the full height.
 - 🗺️ **Everything fits on one screen**: nothing to scroll any more, and **the map takes all the room freed up** (measured: its height doubled on a phone in portrait).
@@ -1661,7 +1661,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Workflow
 
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped — never a running scenario nor the one you have open).
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped — never a running scenario, the one you have open, nor a finished intervention whose report has not yet left the device).
 2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
 3. **Free-form editing** — 3 accordion sections:
    - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
@@ -1691,11 +1691,11 @@ Auto-refresh on each modification. Re-click the button to hide.
 
 #### Multi-scenarios per map
 
-You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map (beyond that, the oldest is automatically purged).
+You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map: beyond that, the oldest is automatically purged — except a running scenario, the one you have open, the most recent one, or a finished intervention whose report (PDF or file) has not yet left the device.
 
 #### Exports
 
-**📄 Printable PDF**: 1 A4 portrait page per team with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
+**📄 Printable PDF**: 1 A4 portrait page per team (a 2nd one if the step list is long) with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
 
 **🌍 Geolocated KMZ**: embeds the complete scenario in a KMZ annex file (`myktamap-extras.json > secoursPlan`). Prerequisite: map already KMZ-calibrated (see Export sessions modal 🌍 KMZ tab). MyKTAMap can re-import the KMZ and reload the scenario as-is. Filename `Rescue_<scenario_name>_<date>.kmz`.
 
@@ -1804,7 +1804,7 @@ In the mini-modal "📍 Choose a point", your map favorites appear as clickable 
 
 Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
 
-#### 🛑 Configurable cross-feature pause
+#### 🛑 Pause between stops (route)
 
 New section in the 🗺️ Route modal:
 
@@ -2168,6 +2168,10 @@ On field return, each team member can **share their report** with the surface op
      - Photos **imported with deduplication**
    - Result modal with detailed stats (X steps merged, Y photos imported, Z possible warnings)
    - Repeat for the 2 other teams
+   - ⚠️ **Report arriving after a phase change**: if it concerns a phase already closed, it is filed in **that phase's history** — never in the current phase — and the app flags it in orange (in red if it contains "Help requested" or "Victim found")
+   - 🧭 **Report on a step you removed**: it is not lost — it shows in orange on import and appears in the **"Reports outside the route"** section of the final report
+   - 🗺️ **Plan changed since sending**: if the plan changed version (or was redrawn) since the scenario was exported, the import preview warns you and counts the zone traces it can no longer find
+   - 📚 The **final report** also includes the steps of **closed phases**, phase by phase
 
 4. **Post-merge visualization**:
    - On each Op team card: blue "📥 imported" chip appears if at least one step received consolidation

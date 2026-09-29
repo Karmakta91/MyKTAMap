@@ -1660,7 +1660,7 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 #### Flujo de trabajo
 
-1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan — nunca un escenario en curso ni el que tienes abierto).
+1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan — nunca un escenario en curso, el que tienes abierto, ni una intervención terminada cuyo informe aún no ha salido del dispositivo).
 2. **➕ Nuevo escenario** — Asistente ligero: Nombre + Notas de contexto + Hora del incidente.
 3. **Edición libre** — 3 secciones plegables:
    - **📝 Contexto**: nombre, hora del incidente, notas (p. ej. «Marc salió sobre las 14 h para comprobar la galería Este…»)
@@ -1689,11 +1689,11 @@ Actualización automática en cada modificación. Vuelve a pulsar el botón para
 
 #### Varios escenarios por plano
 
-Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este» frente a «si salió por el Sur»). Botón 🗐 Duplicar para clonar un escenario y probar una variante sin perder el original. Tope de 10 escenarios por plano (por encima, el más antiguo se purga automáticamente).
+Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este» frente a «si salió por el Sur»). Botón 🗐 Duplicar para clonar un escenario y probar una variante sin perder el original. Tope de 10 escenarios por plano: por encima, el más antiguo se purga automáticamente — salvo un escenario en curso, el que tienes abierto, el más reciente, o una intervención terminada cuyo informe (PDF o archivo) aún no ha salido del dispositivo.
 
 #### Exportaciones
 
-**📄 PDF imprimible**: 1 página A4 vertical por equipo, con banda de color + secciones Contexto/Miembros/Misión/Itinerario + un recuadro de Observaciones vacío de 60 mm (para rellenar a bolígrafo al volver del terreno). Nombre de archivo `Secours_<nombre_escenario>_<fecha>.pdf`.
+**📄 PDF imprimible**: 1 página A4 vertical por equipo (una 2.ª si la lista de etapas es larga), con banda de color + secciones Contexto/Miembros/Misión/Itinerario + un recuadro de Observaciones vacío de 60 mm (para rellenar a bolígrafo al volver del terreno). Nombre de archivo `Secours_<nombre_escenario>_<fecha>.pdf`.
 
 **🌍 KMZ geolocalizado**: incluye el escenario completo en un archivo anexo del KMZ (`myktamap-extras.json > secoursPlan`). Requisito previo: plano ya calibrado para KMZ (ver la ventana de Exportación de sesiones, pestaña 🌍 KMZ). MyKTAMap puede reimportar el KMZ y recargar el escenario tal cual. Nombre de archivo `Secours_<nombre_escenario>_<fecha>.kmz`.
 
@@ -1800,7 +1800,7 @@ En la miniventana «📍 Elegir un punto», tus favoritos del plano aparecen aho
 
 Especialmente útil en los escenarios de emergencia en los que quieres crear rápidamente varios equipos con los mismos 3 o 4 pozos de acceso conocidos.
 
-#### 🛑 Pausa configurable entre funciones
+#### 🛑 Pausa entre paradas (itinerario)
 
 Nueva sección en la ventana 🗺️ Itinerario:
 
@@ -2165,6 +2165,10 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
      - Fotos **importadas con deduplicación**
    - Ventana de resultado con estadísticas detalladas (X etapas fusionadas, Y fotos importadas, Z advertencias eventuales)
    - Repite con los otros 2 equipos
+   - ⚠️ **Informe que llega tras un cambio de fase**: si trata de una fase ya cerrada, se guarda en **el historial de esa fase** — nunca en la fase en curso — y la app lo señala en naranja (en rojo si contiene «Ayuda solicitada» o «Víctima encontrada»)
+   - 🧭 **Aviso sobre una etapa que quitaste**: no se pierde — aparece en naranja al importar y en la sección **«Avisos fuera del recorrido»** del informe final
+   - 🗺️ **Plano modificado desde el envío**: si el plano cambió de versión (o se redibujó) desde la exportación del escenario, la vista previa de importación te avisa y cuenta los trazados de zona que ya no encuentra
+   - 📚 El **informe final** incluye también las etapas de las **fases cerradas**, fase por fase
 
 4. **Visualización tras la fusión**:
    - En la tarjeta de cada equipo del Operador: aparece una ficha azul «📥 importado» si al menos una etapa ha recibido consolidación
