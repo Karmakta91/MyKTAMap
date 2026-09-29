@@ -1472,10 +1472,20 @@
     }
     const eq = (s.execution.role === "equipe" && s.execution.currentEquipeId)
       ? (s.groupes || []).find(function(g) { return g.id === s.execution.currentEquipeId; }) : null;
-    const texte = eq ? t("secours.footer.equipe", { equipe: eq.nom })
-                     : t("secours.footer.operateur", { n: (s.groupes || []).length });
+    // Progression : étapes faites / total (son équipe, ou toutes pour l'opérateur).
+    let faites = 0, total = 0;
+    (eq ? [eq] : (s.groupes || [])).forEach(function(g) {
+      _getEtapesEquipe(s, g.id).forEach(function(e) {
+        total++;
+        if (e && e.completedAt && e.statut && e.statut !== "pending") faites++;
+      });
+    });
+    const texte = (eq ? t("secours.footer.equipe", { equipe: eq.nom })
+                      : t("secours.footer.operateur", { n: (s.groupes || []).length })) +
+                  (total ? " · " + faites + "/" + total : "");
     pastille.title = t("secours.footer.title", { nom: s.nom || "" });
-    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>';
+    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
+                         '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
 
   function _estExecutionActive(s) {
@@ -6721,7 +6731,13 @@
     document.documentElement.appendChild(_modal);
     _bindModalHandlers();
     // Si scenarioId fourni, render direct l'éditeur. Sinon liste.
-    if (_currentScenarioId) {
+    // 29/09/2026 (KARMA « retour rapide au module pour valider des étapes ») :
+    // intervention en cours sur ce scénario → directement la vue LIVE, où l'on
+    // valide les étapes (avant : l'éditeur, puis un toucher sur « reprendre »).
+    const sOuvert = _currentScenarioId ? get(_currentScenarioId) : null;
+    if (sOuvert && _estExecutionActive(sOuvert)) {
+      _switchView("live");
+    } else if (_currentScenarioId) {
       _switchView("edit");
     } else {
       _switchView("list");

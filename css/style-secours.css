@@ -2878,6 +2878,26 @@ html.kta-theme-light .kta-secours-sub-modal label strong {
 .leaflet-tooltip.kta-secours-zone-autre-label::before { display: none; }
 
 /* Pastille « intervention en cours » dans la barre d'état (29/09/2026) */
-.kta-refonte-stat.kta-secours-footer-pastille { color: #ff8c8c; font-weight: 700; }
+/* Pastille pleine, impossible à rater sur la carte : l'intervention tourne, un
+   toucher ramène à la vue live pour valider les étapes. */
+.kta-refonte-stat.kta-secours-footer-pastille {
+  background: #b3261e;
+  color: #fff !important;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+  box-shadow: 0 0 0 2px rgba(255, 90, 80, 0.35);
+  animation: kta-secours-pastille-pulse 2.4s ease-in-out infinite;
+  white-space: nowrap;
+}
+.kta-refonte-stat.kta-secours-footer-pastille .kta-refonte-stat-val { color: #fff !important; }
+.kta-secours-footer-go { margin-left: 6px; font-size: 15px; line-height: 1; }
+@keyframes kta-secours-pastille-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 90, 80, 0.35); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 90, 80, 0.10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-refonte-stat.kta-secours-footer-pastille { animation: none; }
+}
 body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille,
-html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille { color: #a01818 !important; }
+html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille { background: #a01818 !important; color: #fff !important; }
