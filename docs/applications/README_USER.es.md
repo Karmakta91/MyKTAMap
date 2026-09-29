@@ -3481,7 +3481,7 @@ El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**:
 
 ### 🔎 Buscar en la documentación
 
-Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
+Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «busqueda» encuentra «Búsqueda». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
 
 ## 🤖 Ayuda con IA
 

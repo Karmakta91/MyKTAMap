@@ -876,7 +876,7 @@
   function createScenario(nom) {
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim()
-                     : t("secours.scenario.defaultNom", { date: new Date().toLocaleDateString("fr-FR") });
+                     : t("secours.scenario.defaultNom", { date: new Date().toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR") });
     const scenario = {
       id:        _genId("secours"),
       nom:       safeName,
@@ -1715,8 +1715,8 @@
     // Nom auto : "Recherche - 26/05/2026 14:32"
     const now = new Date();
     const nomAuto = t("secours.lost.nomAuto", {
-      date: now.toLocaleDateString("fr-FR"),
-      heure: now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      date: now.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR"),
+      heure: now.toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" })
     });
     // Timestamp d'incident = maintenant - elapsedMinutes
     const elapsed = (typeof lostState.elapsedMinutes === "number") ? lostState.elapsedMinutes : 0;
@@ -2147,7 +2147,7 @@
     const sc = payload.scenario || {};
     const planSrc = payload.plan || {};
     const dateExport = payload.exportedAt
-                       ? new Date(payload.exportedAt).toLocaleString("fr-FR")
+                       ? new Date(payload.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                        : t("secours.import.dateInconnue");
     const appVer = payload.appVersion || t("secours.import.versionInconnue");
 
@@ -2643,7 +2643,7 @@
     });
 
     // Timestamp formaté pour le séparateur de concat
-    const tsLabel = new Date(payload.exportedAt || importedAt).toLocaleString("fr-FR", {
+    const tsLabel = new Date(payload.exportedAt || importedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR", {
       day: "2-digit", month: "2-digit", year: "numeric",
       hour: "2-digit", minute: "2-digit"
     });
@@ -2908,7 +2908,7 @@
     boite.style.borderLeft = "6px solid #6ee287"; // vert = action de fusion
 
     const dateExport = payload.exportedAt
-                       ? new Date(payload.exportedAt).toLocaleString("fr-FR")
+                       ? new Date(payload.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                        : t("secours.import.dateInconnue");
     const appVer = payload.appVersion || t("secours.import.versionInconnue");
     const planSrc = payload.plan || {};
@@ -3971,18 +3971,18 @@
     out += t("secours.txt.scenario", { nom: (r.scenario.nom || t("secours.import.sansNom")) }) + "\n";
     out += t("secours.txt.plan", { plan: (r.plan ? r.plan.name : "(?)") }) + "\n";
     out += t("secours.txt.role", { role: _formatRoleLabel(r.scope) }) + "\n";
-    out += t("secours.txt.exporte", { date: new Date(r.exportedAt).toLocaleString("fr-FR") }) + "\n";
+    out += t("secours.txt.exporte", { date: new Date(r.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }) + "\n";
     out += t("secours.txt.lance", { date: (r.execution.startedAt
-                            ? new Date(r.execution.startedAt).toLocaleString("fr-FR")
+                            ? new Date(r.execution.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                             : "(?)") }) + "\n";
     if (r.execution.endedAt) {
-      out += t("secours.txt.termine", { date: new Date(r.execution.endedAt).toLocaleString("fr-FR") }) + "\n";
+      out += t("secours.txt.termine", { date: new Date(r.execution.endedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }) + "\n";
     } else if (r.execution.active) {
       out += t("secours.txt.statutEnCours", { duree: _formatDureeMs(r.execution.dureeMs) }) + "\n";
     }
 
     if (r.scenario.context && r.scenario.context.incidentAt) {
-      out += t("secours.txt.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") }) + "\n";
+      out += t("secours.txt.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }) + "\n";
     }
     if (r.scenario.context && r.scenario.context.notes) {
       out += t("secours.txt.notes", { notes: r.scenario.context.notes }) + "\n";
@@ -4010,8 +4010,8 @@
             const typeLabel = (et.type === "entree") ? t("secours.txt.typeEntree")
                             : (et.type === "sortie") ? t("secours.txt.typeSortie")
                             : t("secours.txt.typeEtape", { idx: i });
-            const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
-                     : et.startedAt   ? t("secours.txt.tsEnCours", { date: new Date(et.startedAt).toLocaleString("fr-FR") })
+            const ts = et.completedAt ? new Date(et.completedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
+                     : et.startedAt   ? t("secours.txt.tsEnCours", { date: new Date(et.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") })
                      : "—";
             out += "  " + (i + 1) + ". " + typeLabel + " — " + (et.label || "(?)") + "\n";
             out += "     " + info.emoji + " " + _statutLabel(et.statut) + " · ⏱️ " + ts + "\n";
@@ -4038,7 +4038,7 @@
       });
       sorted.forEach(function(note, i) {
         const info = _getStatutInfo(note.statut);
-        const ts = new Date(note.ts).toLocaleString("fr-FR");
+        const ts = new Date(note.ts).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
         out += "  " + (i + 1) + ". " + info.emoji + " " + _statutLabel(note.statut) + " · ⏱️ " + ts + "\n";
         if (note.texte) {
           out += "     " + t("secours.txt.obs", { obs: note.texte }) + "\n";
@@ -4452,15 +4452,15 @@
       pdf.text(t("secours.pdf.plan", { plan: (r.plan ? r.plan.name : "(?)") }), margin, y); y += 4;
       pdf.text(t("secours.pdf.role", { role: _formatRoleLabelAscii(r.scope) }), margin, y); y += 4;
       if (r.execution.startedAt) {
-        pdf.text(t("secours.pdf.lance", { date: new Date(r.execution.startedAt).toLocaleString("fr-FR") }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.lance", { date: new Date(r.execution.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
       }
       if (r.execution.endedAt) {
-        pdf.text(t("secours.pdf.termine", { date: new Date(r.execution.endedAt).toLocaleString("fr-FR") }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.termine", { date: new Date(r.execution.endedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
       } else if (r.execution.active) {
         pdf.text(t("secours.pdf.statutEnCours", { duree: _formatDureeMs(r.execution.dureeMs) }), margin, y); y += 4;
       }
       if (r.scenario.context && r.scenario.context.incidentAt) {
-        pdf.text(t("secours.pdf.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
       }
       if (r.scenario.context && r.scenario.context.notes) {
         y += 2;
@@ -4953,7 +4953,7 @@
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     pdf.text(t("secours.surf.scenario", { nom: ((scenario && scenario.nom) || t("secours.pdf.sansNom")) }), margin, y); y += 4;
     pdf.text(t("secours.surf.plan", { plan: ((plan && plan.name) || t("secours.surf.planNonRenseigne")) }), margin, y); y += 4;
-    pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString("fr-FR") }), margin, y); y += 6;
+    pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 6;
 
     // Bloc LOCALISATION (lien OSM + Google Maps)
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
@@ -5280,7 +5280,7 @@
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.pdf.headerTitre"), margin, margin + 6);
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
-    pdf.text(t("secours.pdf.headerSub", { version: (r.appVersion || ""), date: new Date(r.exportedAt).toLocaleString("fr-FR") }),
+    pdf.text(t("secours.pdf.headerSub", { version: (r.appVersion || ""), date: new Date(r.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }),
              margin, margin + 11);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal");
     // Bandeau jaune décoratif sous l'en-tête
@@ -5292,7 +5292,7 @@
     pdf.setFontSize(7); pdf.setTextColor(120);
     const txt = "MyKTAMap " + (r.appVersion || "") +
                 " - " + (r.scenario.nom || "") +
-                " - " + new Date().toLocaleString("fr-FR");
+                " - " + new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
     pdf.text(txt, margin, pageH - 6);
     pdf.setTextColor(0);
   }
@@ -5414,8 +5414,8 @@
       const typeLabel = (et.type === "entree") ? t("secours.pdf.typeEntree")
                       : (et.type === "sortie") ? t("secours.pdf.typeSortie")
                       : t("secours.pdf.typeEtape", { idx: i });
-      const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
-               : et.startedAt   ? t("secours.pdf.tsEnCours", { date: new Date(et.startedAt).toLocaleString("fr-FR") })
+      const ts = et.completedAt ? new Date(et.completedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
+               : et.startedAt   ? t("secours.pdf.tsEnCours", { date: new Date(et.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") })
                : "—";
       // Encadré statut couleur
       const statutRgb = _hexToRgb(info.color);
@@ -5877,7 +5877,7 @@
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
       const info = _getStatutInfo(note.statut);
-      const ts = new Date(note.ts).toLocaleString("fr-FR");
+      const ts = new Date(note.ts).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       pdf.setFont(undefined, "bold");
       pdf.text("  " + (i + 1) + ". " + _statutLabelAscii(note.statut) + "  |  " + ts, margin, y); y += 4;
       pdf.setFont(undefined, "normal");
@@ -6012,7 +6012,7 @@
         pdf.text(t("secours.pdf.planLigne", { plan: planName }), margin, y); y += 4;
         if (s.context && s.context.incidentAt) {
           const dt = new Date(s.context.incidentAt);
-          pdf.text(t("secours.pdf.heureIncident", { date: dt.toLocaleString("fr-FR") }), margin, y); y += 4;
+          pdf.text(t("secours.pdf.heureIncident", { date: dt.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
         }
         if (s.context && s.context.notes) {
           y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: s.context.notes }), margin, y, pageW - 2 * margin, 4);
@@ -6077,7 +6077,7 @@
         y += 65;
         // Footer
         pdf.setFontSize(7); pdf.setTextColor(120);
-        pdf.text(t("secours.pdf.genereLigne", { version: ((window.__MKM__ && window.__MKM__.build) || ""), date: new Date().toLocaleString("fr-FR") }),
+        pdf.text(t("secours.pdf.genereLigne", { version: ((window.__MKM__ && window.__MKM__.build) || ""), date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }),
                  margin, pdf.internal.pageSize.getHeight() - 6);
       });
       const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".pdf";
@@ -6747,7 +6747,7 @@
       });
       sorted.forEach(function(s) {
         const nbGroupes = (s.groupes || []).length;
-        const date = s.createdAt ? new Date(s.createdAt).toLocaleDateString("fr-FR") : "?";
+        const date = s.createdAt ? new Date(s.createdAt).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR") : "?";
         html += '<div class="kta-secours-list-row" data-id="' + _escAttr(s.id) + '">' +
                   '<div class="kta-secours-list-info">' +
                     '<div class="kta-secours-list-nom">' + _escHtml(s.nom) + '</div>' +
@@ -7532,7 +7532,7 @@
     // bandeau gris avec bouton "📤 Voir le rapport historique" + relance possible.
     if (s.execution && !s.execution.active && s.execution.endedAt) {
       const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
-      const finStr = new Date(s.execution.endedAt).toLocaleString("fr-FR");
+      const finStr = new Date(s.execution.endedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       const roleLabel = (s.execution.role === "operateur") ? t("secours.roleBandeau.operateur")
                       : (s.execution.role === "secouriste") ? t("secours.roleBandeau.secouriste")
                       : t("secours.roleBandeau.equipe");
@@ -8096,7 +8096,7 @@
       if (et.completedAt && (!lastTs || Date.parse(et.completedAt) > Date.parse(lastTs))) lastTs = et.completedAt;
       else if (et.startedAt && (!lastTs || Date.parse(et.startedAt) > Date.parse(lastTs))) lastTs = et.startedAt;
     });
-    const lastTsStr = lastTs ? new Date(lastTs).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+    const lastTsStr = lastTs ? new Date(lastTs).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
     // 🆕 v1.26.0 — détection import : au moins une étape avec _importedFrom
     const hasImported = etapes.some(function(et) { return et && et._importedFrom; });
@@ -8189,7 +8189,7 @@
       });
       sorted.forEach(function(note) {
         const info = _getStatutInfo(note.statut);
-        const tsStr = new Date(note.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        const tsStr = new Date(note.ts).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         html += '<div class="kta-secours-live-note" style="border-left:4px solid ' + info.color + ';">' +
                   '<div class="kta-secours-live-note-header">' +
                     '<span style="color:' + info.color + ';"><strong>' + info.emoji + ' ' + _escHtml(_statutLabel(note.statut)) + '</strong></span>' +
@@ -9489,8 +9489,8 @@
       etapesHtml = '<ol class="kta-secours-op-details-etapes">';
       etapes.forEach(function(et) {
         const info = _getStatutInfo(et.statut);
-        const tsStr = et.completedAt ? new Date(et.completedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                    : et.startedAt   ? t("secours.live.tsEnCours", { time: new Date(et.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })
+        const tsStr = et.completedAt ? new Date(et.completedAt).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" })
+                    : et.startedAt   ? t("secours.live.tsEnCours", { time: new Date(et.startedAt).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) })
                     : "—";
         const obsHtml = et.observations
                         ? '<div class="kta-secours-op-details-obs">« ' + _escHtml(et.observations) + ' »</div>'
@@ -9501,7 +9501,7 @@
         let importedChip = '';
         if (et._importedFrom) {
           const impDate = et._importedFrom.importedAt
-                          ? new Date(et._importedFrom.importedAt).toLocaleString("fr-FR")
+                          ? new Date(et._importedFrom.importedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                           : t("secours.import.dateInconnue");
           const impVer = et._importedFrom.sourceAppVersion || t("secours.import.versionInconnue");
           importedChip = ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opDetails.importeChipTitle", { date: impDate, version: impVer })) + '">' + t("secours.opCard.importeChip") + '</span>';

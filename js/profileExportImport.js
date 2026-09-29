@@ -1694,7 +1694,7 @@ photos: false, histoirePdfs: false, crashes: false
     html += '<div class="kta-profile-fileinfo">';
     html += '<div><strong>' + T("profileio.fileinfo_file") + '</strong> : <code>' + _escHtml(fileName) + '</code></div>';
     if (stats.exportedAt) {
-      html += '<div><strong>' + T("profileio.fileinfo_exported_at") + '</strong> : ' + _escHtml(new Date(stats.exportedAt).toLocaleString("fr-FR")) + '</div>';
+      html += '<div><strong>' + T("profileio.fileinfo_exported_at") + '</strong> : ' + _escHtml(new Date(stats.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")) + '</div>';
     }
     if (stats.appVersion) {
       html += '<div><strong>' + T("profileio.fileinfo_source_version") + '</strong> : ' + _escHtml(stats.appVersion) + '</div>';

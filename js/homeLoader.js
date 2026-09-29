@@ -894,8 +894,8 @@
         if (!iso) return "";
         try {
           const d = new Date(iso);
-          return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }) +
-                 " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+          return d.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }) +
+                 " " + d.toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" });
         } catch(e) { return ""; }
       }
 

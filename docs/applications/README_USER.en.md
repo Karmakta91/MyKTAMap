@@ -3485,7 +3485,7 @@ The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Doc
 
 ### 🔎 Searching the documentation
 
-This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “reglages” finds “Réglages”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
+This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “cafe” finds “café”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
 
 ## 🤖 AI Help
 

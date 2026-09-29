@@ -577,7 +577,7 @@ window.ktaConfirm = function(message, opts) {
     ov.style.zIndex = "100002";
     ov.innerHTML = '' +
       '<div class="kta-readme-modal-boite" style="max-width:430px; height:auto; max-height:80vh;">' +
-        '<div class="kta-readme-modal-entete">' +
+        '<div class="kta-readme-modal-header">' +   // checkup thème (C1) : « -entete » n'existait dans aucun CSS
           '<span class="kta-readme-modal-titre">' + (opts.titre || t("ui.confirm.title", "Confirmation")) + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:13px;">' +

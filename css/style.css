@@ -4426,7 +4426,7 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   top: calc(20px + env(safe-area-inset-top, 0px));
   right: 22px;
   font-size: 11px;
-  color: #6c7689;
+  color: #8892a4;  /* checkup thème (C4) */
   letter-spacing: 0.06em;
   font-family: 'Courier New', monospace;
   z-index: 2;
@@ -4469,7 +4469,7 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   padding: 0 28px;
   box-sizing: border-box;
   font-size: 11px;
-  color: #6c7689;
+  color: #8892a4;  /* checkup thème (C4) */
   line-height: 1.6;
   letter-spacing: 0.02em;
   text-align: center;
@@ -4483,7 +4483,7 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
 
 .splash-license-detail {
   font-size: 10px;
-  color: #555c6e;
+  color: #8892a4;  /* checkup thème (C4) */
   font-style: italic;
 }
 
@@ -4621,7 +4621,7 @@ body.kta-theme-light .splash-license-detail-pro {
   bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   left: calc(28px + env(safe-area-inset-left, 0px));
   font-size: 11px;
-  color: #6c7689;
+  color: #8892a4;  /* checkup thème (C4) */
   letter-spacing: 0.02em;
   /* 🆕 v1.43.19 — Layout 2 lignes de 3 libs (KARMA "3 et en dessous 3").
      Le `<br>` HTML force le split. Hauteur 20px → 40px pour accueillir
@@ -22303,9 +22303,13 @@ html.kta-theme-light .kta-bearing-recentrer {
 .kta-guid-feuille-icone { color: #f4c542; min-width: 1.4em; text-align: center; font-weight: 700; }
 .kta-guid-feuille-txt { flex: 1; }
 
-body.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
-body.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
-body.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
+/* checkup thème (C2) : la feuille de route est ajoutée à <html> → règles « body » seules inertes */
+body.kta-theme-light .kta-guid-feuille-ligne,
+html.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
+body.kta-theme-light .kta-guid-feuille-resume,
+html.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
+body.kta-theme-light .kta-guid-feuille-icone,
+html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
 
 /* Bandeau en direct (lot 2) : sous l'en-tête, entre les deux colonnes de
    boutons de la carte (≈ 44 px chacune, collées aux bords). Même z-index que

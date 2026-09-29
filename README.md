@@ -12,15 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.12` (29/09/2026)
+## 📦 Version courante — `v1.98.13` (29/09/2026)
+
+> 📚 **v1.98.13 — Doc utilisateur, multi-langue et thème clair (audit du 29/09)** : les guides, l'Aide intégrée, le tutoriel et l'Aide IA ne disent plus de choses fausses (PIN « définitif », carnet archivé au changement de plan, section Configuration ES d'un autre âge…) ; plus de français en dur visible en EN/ES, dates dans la langue de l'app ; en mode clair, le texte ambre, le sommaire de la doc et les alertes du Mode Secours redeviennent lisibles.
 
 > 🔎 **v1.98.12 — Mode Secours, vague 4bis (4e relecture des vagues 1 à 4)** : un rapport de phase 1 importé après le passage en phase 2 va dans l'historique de la phase 1 (il remplissait la phase 2 en silence) ; les itinéraires d'équipe profitent enfin du calage par niveau ; observations non dupliquées ; rapport final avec les phases closes et les signalements hors parcours ; durées des plans d'avant recalculées ; PDF relus page par page (6 défauts corrigés).
 
 > ⏱️ **v1.98.11 — Mode Secours, vague 4 (correctifs inter-modules)** : durées d'équipe réalistes (vitesse de fouille et pause propres au plan de secours : 588 min au lieu de ~971 sur un secteur réel) ; un point du −1 s'accroche au −1 et plus à la galerie du dessus (calcul d'itinéraire partagé) ; l'import prévient si le plan a changé de version depuis l'export.
-
-> 🧮 **v1.98.10 — Mode Secours, 3e relecture : les plans d'avant la mise à jour fusionnent de nouveau** : la v1.98.9 tirait au hasard les identités des points, différentes sur le PC et le téléphone pour tout plan préparé avant — un rapport ne s'appariait plus (régression). Elles sont maintenant calculées à l'identique sur chaque appareil, vérifié par une matrice ancien code ↔ nouveau code. Et « Relancer » demande confirmation.
-
-> 🔍 **v1.98.8 — Mode Secours, reprise après relecture des vagues 1-3** : un agent relecteur a reproduit 10 défauts dans les correctifs livrés ou autour ; tous corrigés, dont la 2.6 refaite (homonymes, étape « victime » qui disparaissait du rapport), un plan importé effacé aussitôt sur un téléphone plein, et l'itinéraire tracé à travers la surface en Vue OSM (conséquence de 2.2).
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -499,6 +497,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.13 (29/09/2026) — Doc utilisateur, i18n et thème clair : audit du 29/09
+
+- 🔍 **Origine** : deux audits en lecture seule (demande KARMA) — doc/onboarding/aide/i18n (🔴 9 · 🟠 13 · 🟡 12) et thème clair/sombre (🔴 5 · 🟠 4 · 🟡 6, contrastes mesurés sur captures). Décisions KARMA : R4 = corriger la phrase (le temps passé sur un autre plan compte dans une sortie terrain), code source public.
+- 📄 **Étape 1** (`8239b20`) : le faux en service — PIN « lockout définitif » (y compris le message de la proposition d'activation), carnet archivé au changement de plan / durée « temps dans l'app », PDF du ZIP dans Récits, Aide intégrée « anglaise » en ES, « Drunk » en EN, section Configuration ES retraduite, tag « Point d'entrée » EN/ES. Thème : `--kta-light-accent-text` (#7a5a00) pour 60 règles de texte ambre, palette claire aussi sur `<html>`, sommaire de la doc.
+- 🎨 **Étape 2** (`5729d8d`) : classes `.kta-tx-*` (variante claire qui bat les filets) — 46 couleurs inline des dicos ×3 et 15 alertes du Secours ; « RDC » en dur → `_lblNiveau` ; accueil (`homeConfig`) et modale Documentation traduits ; `find-hardcoded-fr.js` rescanne `tutorial.js` / `interfaceDocs.js`.
+- 🎓 **Étape 3** (`4d21ed8`) : tutoriel (réglages retirés, « single-device », Guidage et Plan orienté, texte cassé par un remplacement automatique, renvois de cartes) ; Secours dans les guides et l'Aide intégrée (phases closes, hors parcours, plan modifié, limite des 10) ; Aide IA purgée (dépôt public, 4 sections périmées).
+- 🧹 **Étape 4** (ce commit) : `window.ktaLocale()` (fr-FR / en-GB / es-ES) pour 45 dates affichées et imprimées ; 45 clés orphelines purgées ×3 ; `ktaConfirm` (titre collé au coin : classe inexistante) ; feuille de route du guidage en clair ; crédits du splash lisibles ; `docs/architecture/i18n.md` à jour.
+- ⏸️ **Non fait, volontairement** : gris `#8892a4` des cartes Secours en sombre (3,8–4,1) — c'est une couleur de la charte, à trancher par KARMA ; étiquette sombre de la carte OSM du Secours (lisible sur les deux thèmes). Hors audit : le reste de l'app n'a pas été trié pour le FR en dur (960 candidats du détecteur).
+- ✅ **Tests** : contrastes mesurés avant/après (Playwright, 2 thèmes : sombre identique, 0 régression en clair), 16 harnais Node, checkups navigateur Secours, 3 PDF régénérés ; `check-i18n`, `check-doc-langues`, `node -c`.
 
 #### v1.98.12 (29/09/2026) — Mode Secours, vague 4bis : 4e relecture (vagues 1 à 4)
 

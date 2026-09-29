@@ -683,7 +683,7 @@
     if (meta.scale && meta.scale !== 1) lines.push("📏 " + window.I18n.t("stats.report.echelle") + "      : " + meta.scale.toFixed(1) + " px/m");
     if (meta.multiLevel) lines.push("🏗️  " + window.I18n.t("stats.report.multiNiveau") + " : ON");
     if (meta.tiledV2)    lines.push("🧱 " + window.I18n.t("stats.report.v2Tuile") + "     : ON");
-    lines.push("📅 " + window.I18n.t("stats.report.captureLe") + "   : " + new Date(rep.timestamp).toLocaleString("fr-FR"));
+    lines.push("📅 " + window.I18n.t("stats.report.captureLe") + "   : " + new Date(rep.timestamp).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"));
     lines.push("");
 
     lines.push("📊 " + window.I18n.t("stats.report.totaux"));
@@ -948,7 +948,7 @@
       pdf.setTextColor(140, 140, 140);
       const credit = window.I18n.t("stats.pdf.creditPrefix") + " MyKTAMap " + (rep.runtime ? rep.runtime.appVersion : ((window.__MKM__ && window.__MKM__.build) || "?")) +
                      " - myktamap.fr - " +
-                     new Date(rep.timestamp).toLocaleString("fr-FR");
+                     new Date(rep.timestamp).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       pdf.text(credit, pageW / 2, pageH - 8, { align: "center" });
     }
 
@@ -1055,7 +1055,7 @@
     if (meta.multiLevel) flags.push(window.I18n.t("stats.pdf.flag.multiNiveau"));
     if (meta.tiledV2)    flags.push(window.I18n.t("stats.pdf.flag.v2Tuile"));
     if (flags.length) _drawKV(window.I18n.t("stats.pdf.kv.flags"), flags.join(", "));
-    _drawKV(window.I18n.t("stats.pdf.kv.rapportGenere"), new Date(rep.timestamp).toLocaleString("fr-FR"));
+    _drawKV(window.I18n.t("stats.pdf.kv.rapportGenere"), new Date(rep.timestamp).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"));
     y += sectionGap;
 
     // ─── TOTAUX ───

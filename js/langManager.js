@@ -269,6 +269,15 @@
     return avail[0];
   }
 
+  // Audit i18n (O11) : locale des dates affichées ET imprimées (rapports, PDF,
+  // stats). 51 appels codaient "fr-FR" : un utilisateur EN/ES recevait ses
+  // dates au format français. en-GB (jj/mm/aaaa, 24 h) plutôt qu'en-US : pas
+  // d'AM/PM ni d'espace insécable fine, que jsPDF imprime mal.
+  window.ktaLocale = function() {
+    const l = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : FALLBACK_LANG;
+    return ({ fr: "fr-FR", en: "en-GB", es: "es-ES" })[l] || "fr-FR";
+  };
+
   window.I18n = {
     init:       init,
     t:          t,

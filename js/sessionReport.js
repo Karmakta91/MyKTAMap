@@ -226,8 +226,8 @@
     // En-tête
     lines.push("📋 " + t("report.txt.header") + data.plan.name);
     lines.push(sep);
-    const dStart = new Date(o.startTs).toLocaleDateString("fr-FR");
-    const dEnd   = new Date(o.endTs).toLocaleDateString("fr-FR");
+    const dStart = new Date(o.startTs).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
+    const dEnd   = new Date(o.endTs).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
     if (dStart === dEnd) {
       lines.push("📅 " + t("report.txt.date") + dStart);
     } else {
@@ -308,7 +308,7 @@
     }
 
     lines.push(sep);
-    lines.push(t("report.txt.generatedBy") + " " + data.app.version + " — " + new Date().toLocaleString("fr-FR"));
+    lines.push(t("report.txt.generatedBy") + " " + data.app.version + " — " + new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"));
     lines.push("https://myktamap.fr");
 
     return lines.join("\n");
@@ -609,15 +609,15 @@
     pdf.setFontSize(11);
     pdf.text(_stripPourPdf(data.plan.name) + (data.plan.version ? " " + data.plan.version : ""), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-    const dStart = new Date(opts.startTs).toLocaleDateString("fr-FR");
-    const dEnd   = new Date(opts.endTs).toLocaleDateString("fr-FR");
+    const dStart = new Date(opts.startTs).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
+    const dEnd   = new Date(opts.endTs).toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
     pdf.text(dStart === dEnd
       ? _stripPourPdf(t("report.pdf.date")) + dStart
       : _stripPourPdf(t("report.pdf.period")) + dStart + " - " + dEnd, margin, y); y += 4;
     if (data.plan.author) {
       pdf.text(_stripPourPdf(t("report.pdf.author")) + _stripPourPdf(data.plan.author), margin, y); y += 4;
     }
-    pdf.text(_stripPourPdf(t("report.pdf.generatedBy")) + " " + data.app.version + " - " + new Date().toLocaleString("fr-FR"), margin, y);
+    pdf.text(_stripPourPdf(t("report.pdf.generatedBy")) + " " + data.app.version + " - " + new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"), margin, y);
     y += 8;
 
     // ─── CARTE MINIATURE ───────────────────────────────────
