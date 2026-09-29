@@ -1704,6 +1704,12 @@
   "imgexport.format.jpeg": "JPEG (calidad 90%)",
   "imgexport.format.png": "PNG",
   "imgexport.format.resol.originale": "Original",
+
+  "imgexport.format.resol.info": "{w}×{h} px · ~{mo} MB de memoria durante la exportación.",
+
+  "imgexport.format.resol.lourd": "⚠️ Imagen muy pesada: exportación lenta, puede fallar por falta de memoria. ½ o ¼ basta para la pantalla y la impresión habitual.",
+
+  "imgexport.format.resol.iosMax": "Las resoluciones en gris superan lo que un iPhone/iPad puede crear (16,7 millones de píxeles).",
   "imgexport.format.resolution": "Resolución",
   "imgexport.format.titre": "⚙️ Formato y calidad",
   "imgexport.legGroupe.acces": "🪜 Acceso",

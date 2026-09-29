@@ -2960,7 +2960,7 @@ For precise control over everything you export:
   - **Size**: Compact / Standard / Large
   - **Content**: Icons / Paths / Zones / Tracker tag / Map metadata (name, version, author, date)
 - **Format**: PNG or JPEG (90% quality, lighter file)
-- **Resolution**: Original, ½ or ¼ (useful for very large maps)
+- **Resolution**: Original, ½ or ¼. The app pre-selects the largest one that stays reasonable (½ or ¼ on a very large map) and shows, below the choice, the image size and the memory it will need; beyond that, a warning appears. On iPhone/iPad, the resolutions Safari cannot create are greyed out
 - **Preview**: a mini-canvas updates in real time to visualize the result
 
 > ⚠️ Before sharing this image, check that it does not reveal sensitive information.

@@ -1704,6 +1704,12 @@
   "imgexport.format.jpeg": "JPEG (90% quality)",
   "imgexport.format.png": "PNG",
   "imgexport.format.resol.originale": "Original",
+
+  "imgexport.format.resol.info": "{w}×{h} px · ~{mo} MB of memory during the export.",
+
+  "imgexport.format.resol.lourd": "⚠️ Very heavy image: slow export, may fail for lack of memory. ½ or ¼ is enough for screens and everyday printing.",
+
+  "imgexport.format.resol.iosMax": "Greyed-out resolutions exceed what an iPhone/iPad can create (16.7 million pixels).",
   "imgexport.format.resolution": "Resolution",
   "imgexport.format.titre": "⚙️ Format & quality",
   "imgexport.legGroupe.acces": "🪜 Access",

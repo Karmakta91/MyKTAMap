@@ -2948,7 +2948,7 @@ Para un control preciso sobre todo lo que exportas:
   - **Tamaño**: Compacto / Estándar / Grande
   - **Contenido**: Iconos / Trazados / Zonas / Etiqueta del rastreador / Metadatos del plano (nombre, versión, autor, fecha)
 - **Formato**: PNG o JPEG (calidad 90 %, archivo más ligero)
-- **Resolución**: Original, ½ o ¼ (útil para planos muy grandes)
+- **Resolución**: Original, ½ o ¼. La app preselecciona la mayor que sigue siendo razonable (½ o ¼ en un plano muy grande) y muestra, bajo la opción, el tamaño de la imagen y la memoria que necesitará; más allá, aparece un aviso. En iPhone/iPad, las resoluciones que Safari no puede crear aparecen en gris
 - **Vista previa**: un minilienzo se actualiza en tiempo real para visualizar el resultado
 
 > ⚠️ Antes de compartir esta imagen, comprueba que no revele información sensible.

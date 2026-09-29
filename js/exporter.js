@@ -400,6 +400,7 @@
                   <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.25"><span>¼</span></label>
                 </div>
               </div>
+              <p id="kta-export-resol-info" style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45;"></p>
             </div>
 
             <!-- Aperçu -->
@@ -435,6 +436,9 @@
     _peuplerNiveaux();
     // 🆕 v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
     _peuplerLegendCustom();
+    // 🖼️ 29/09/2026 — la résolution pré-cochée n'est plus « Originale » d'office
+    // (AVANT la restauration : un choix déjà fait par l'utilisateur gagne).
+    _preparerResolutions(config);
 
     // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
     if (etatPrecedent) _restaurerEtat(etatPrecedent);
@@ -1336,6 +1340,11 @@
     });
     _majBgState();  // état initial (en cas de restauration d'état)
 
+    modal.querySelectorAll('input[name="resol"]').forEach(function(r) {
+      r.addEventListener("change", _majInfoResolution);
+    });
+    _majInfoResolution();   // état initial (pré-sélection ou restauration)
+
     // Tous les autres inputs déclenchent l'aperçu
     modal.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(function(el) {
       el.addEventListener("change", _planifierApercu);
@@ -1433,6 +1442,58 @@
       };
     }
     return etat;
+  }
+
+  // =========================
+  // 🖼️ RÉSOLUTION — garde-fou mémoire (29/09/2026, backlog « export 861 Mo »)
+  // =========================
+  // Mesuré sur un relevé de 16332×13820 : « Originale » pré-cochée allouait
+  // 861 Mo de canvas pour un PNG de 182 Mo, sans rien dire. Le canvas coûte
+  // 4 octets par pixel, quel que soit le format de sortie.
+  //   • Pré-sélection : la plus grande résolution sous SEUIL_PX_EXPORT.
+  //   • Au-delà : l'option reste possible, mais annoncée (mémoire estimée).
+  //   • iPhone/iPad : Safari refuse tout canvas au-delà de IOS_MAX_PX_CANVAS
+  //     (toBlob rend alors null) — ces options sont désactivées, pas avertie.
+  const SEUIL_PX_EXPORT   = 64 * 1024 * 1024;   // ≈ 256 Mo de canvas
+  const IOS_MAX_PX_CANVAS = 16777216;           // 4096², limite WebKit iOS
+  const RESOLS_EXPORT     = [1, 0.5, 0.25];
+
+  function _pixelsExport(config, r) {
+    return Math.round(config.plan.imageWidth * r) * Math.round(config.plan.imageHeight * r);
+  }
+
+  function _preparerResolutions(config) {
+    if (!config || !config.plan || !config.plan.imageWidth) return;
+    const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
+    const plafond = ios ? IOS_MAX_PX_CANVAS : SEUIL_PX_EXPORT;
+    let choix = RESOLS_EXPORT[RESOLS_EXPORT.length - 1];
+    RESOLS_EXPORT.forEach(function(r) {
+      const px = _pixelsExport(config, r);
+      if (ios && px > IOS_MAX_PX_CANVAS) {
+        const el = document.querySelector('input[name="resol"][value="' + r + '"]');
+        if (el) { el.disabled = true; el.parentElement?.classList.add("kta-disabled"); }
+      }
+      if (px <= plafond && r > choix) choix = r;
+    });
+    _setRadio("resol", String(choix));
+  }
+
+  function _majInfoResolution() {
+    const el = document.getElementById("kta-export-resol-info");
+    if (!window.I18n || !window.I18n.t) return;
+    const config = window.PLAN_CONFIG;
+    if (!el || !config || !config.plan || !config.plan.imageWidth) return;
+    const r  = parseFloat(_radioVal("resol") || "1");
+    const w  = Math.round(config.plan.imageWidth * r), h = Math.round(config.plan.imageHeight * r);
+    const mo = Math.round(w * h * 4 / 1048576);
+    let txt = window.I18n.t("imgexport.format.resol.info", { w: w, h: h, mo: mo.toLocaleString() });
+    if (w * h > SEUIL_PX_EXPORT) txt += " " + window.I18n.t("imgexport.format.resol.lourd");
+    const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
+    if (ios && document.querySelector('input[name="resol"]:disabled')) {
+      txt += " " + window.I18n.t("imgexport.format.resol.iosMax");
+    }
+    el.textContent = txt;
+    el.style.color = (w * h > SEUIL_PX_EXPORT) ? "#f4c542" : "#8892a4";
   }
 
   function _restaurerEtat(etat) {
