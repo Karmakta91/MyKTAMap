@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.13` (29/09/2026)
+## 📦 Version courante — `v1.98.14` (29/09/2026)
+
+> 🚨 **v1.98.14 — Mode Secours, retours terrain (iPhone)** : pendant une intervention la carte garde la zone et le tracé de l'équipe, pastille rouge « 🚨 Secours · Alpha · 3/8 › » qui ramène aux étapes ; phases lisibles sur téléphone ; équipes repliables ; zones des autres équipes visibles au dessin ; un POI touché devient le point choisi ; points sans nom en GPS ; plus d'équipes sur des niveaux vides.
 
 > 📚 **v1.98.13 — Doc utilisateur, multi-langue et thème clair (audit du 29/09)** : les guides, l'Aide intégrée, le tutoriel et l'Aide IA ne disent plus de choses fausses (PIN « définitif », carnet archivé au changement de plan, section Configuration ES d'un autre âge…) ; plus de français en dur visible en EN/ES, dates dans la langue de l'app ; en mode clair, le texte ambre, le sommaire de la doc et les alertes du Mode Secours redeviennent lisibles.
 
 > 🔎 **v1.98.12 — Mode Secours, vague 4bis (4e relecture des vagues 1 à 4)** : un rapport de phase 1 importé après le passage en phase 2 va dans l'historique de la phase 1 (il remplissait la phase 2 en silence) ; les itinéraires d'équipe profitent enfin du calage par niveau ; observations non dupliquées ; rapport final avec les phases closes et les signalements hors parcours ; durées des plans d'avant recalculées ; PDF relus page par page (6 défauts corrigés).
-
-> ⏱️ **v1.98.11 — Mode Secours, vague 4 (correctifs inter-modules)** : durées d'équipe réalistes (vitesse de fouille et pause propres au plan de secours : 588 min au lieu de ~971 sur un secteur réel) ; un point du −1 s'accroche au −1 et plus à la galerie du dessus (calcul d'itinéraire partagé) ; l'import prévient si le plan a changé de version depuis l'export.
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -497,6 +497,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.14 (29/09/2026) — Mode Secours : retours terrain de KARMA (iPhone)
+
+- 📱 **Phases sur téléphone** (`a60a8bc`) : `.kta-btn-secondary` n'avait aucun style sombre (bouton natif blanc sur iOS, défaut depuis v1.13.0, 32 boutons) ; grille de la carte de phase `minmax(0,1fr)` (boutons hors cadre, fenêtre qui défilait en largeur) ; boutons sous le nom à ≤ 480 px.
+- 🏗️ **Niveaux vides** (`83cefda`) : `availableLevels` vaut −2..+2 par défaut → « 1 équipe par niveau » en créait sur des niveaux vides. Scan factorisé en `window.ktaNiveauxOccupes()` (main.js) ; plan de test 5 → 3 équipes.
+- 👆 **Clic sur un POI** (`ba28ad5`, `e71dc36`) : Leaflet ne remonte pas le clic d'un marqueur à la carte → choisir un point (ou poser un sommet de zone) sur un POI ouvrait sa fiche. Écouteur en capture pendant les modes carte. **Équipes repliables** (▾/▸, « Tout replier », `localStorage`).
+- 🗺️ **Zones des autres équipes** au dessin (`e71dc36`) : pointillé, couleur, nom, non interactives.
+- 📍 **GPS** (`5b15fc0`) : point sans nom affiché en GPS si plan géoréférencé (même cascade que la Vue OSM) ; libellé STOCKÉ inchangé (identité des étapes sans nom entre appareils).
+- 🚨 **Intervention en cours** (`abad82b`, `f5b427c`) : `fermer()` effaçait la zone et le tracé même en pleine intervention → ils restent (et reviennent au rechargement) ; pastille pleine « 🚨 Secours · Alpha · 3/8 › » dans la barre d'état, tenue à jour à chaque mutation ; ouvrir un scénario en cours = vue live directe.
+- ✅ **Tests** : un checkup navigateur par correctif, par l'interface (390 px, clic sur icône, rechargement…), 16 harnais Node + checkups Secours. ⚠️ Vue équipier du GPS non atteinte par le test ; rien encore sur l'iPhone lui-même.
 
 #### v1.98.13 (29/09/2026) — Doc utilisateur, i18n et thème clair : audit du 29/09
 

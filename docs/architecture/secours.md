@@ -1592,3 +1592,11 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 🩸 **Branché sur `_formatLevelShort`, source UNIQUE des trois sorties.** L'écrire trois fois aurait garanti qu'une des trois dérive — c'est le défaut que ce dépôt a déjà payé sur les tables de styles et sur le catalogue d'icônes.
 
 ⚠️ Un plan **sans profondeurs** affiche le niveau seul, exactement comme avant : rien n'est inventé.
+
+## 🗺️ Retours terrain v1.98.14 (29/09/2026) — règles à connaître
+
+- **Intervention en cours = affichage persistant** : `fermer()` re-rend l'overlay si `_scenarioEnCours()` (execution.active) ; `init()` le remonte au chargement du plan ; seul `reset()` (changement de plan) nettoie. La pastille `#kta-refonte-stat-secours` (barre d'état) est tenue par `_majFooterSecours()`, appelée par `_commitMutation` — ne pas la mettre à jour ailleurs. `ouvrir()` d'un scénario actif → vue `live`.
+- **Clic sur un marqueur en mode carte** : Leaflet ne remonte pas le clic d'un marqueur à la carte. `_armerCaptureMarqueurs()` (capture sur le conteneur, `.leaflet-marker-icon`) redirige vers le mode actif (point / polygone / tracés) ; désarmé par `_finishMapMode()`.
+- **Libellé d'une étape sans nom** : TOUJOURS `_fmtPoint` (« x=… y=… niv=… ») à l'écriture — c'est une identité d'appariement entre appareils. L'affichage passe par `_lblEtape()` / `_gpsTxt()` (GPS si géoréférencé). Ne jamais stocker le GPS à la place.
+- **Niveaux** : `window.ktaNiveauxOccupes()` (main.js) = source unique des niveaux qui portent quelque chose ; `availableLevels` peut contenir des niveaux vides (défaut −2..+2).
+- **Équipes repliées** : état par appareil (`myktamap_secours_equipes_repliees_v1`), pas une donnée du scénario.
