@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.3` (29/09/2026)
+## 📦 Version courante — `v1.98.4` (29/09/2026)
+
+> 🧱 **v1.98.4 — Le fond d'un gros plan ne télécharge plus que ce qui est à l'écran** : 864 → 12 tuiles posées et demandées au zoom le plus fin, sans trou à l'écran ; et le cache des tuiles d'un plan ZIP libère enfin de la mémoire sur ordinateur. Notes de version inchangées (décision KARMA).
 
 > ⚡ **v1.98.3 — Itinéraire ~150× plus rapide, réglages ULTRA enfin actifs sur les tracés d'un plan** : un itinéraire sur un relevé de ~9 000 sommets passait de ~45 s à ~0,3 s (mêmes trajets au bit près) ; « Ne rendre que le visible » et « Décimer au dézoom » agissent désormais sur les tracés du plan (893 → 8 sur la carte). Notes de version inchangées (décision KARMA).
 
@@ -483,6 +485,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.4 (29/09/2026) — Vague 3 (optimisations) : tuiles hors écran, cache des tuiles
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées**.
+- 🧱 **Seules les tuiles proches de l'écran sont posées et demandées** (`2edcd15`) : le tuilage V2 posait tout le niveau (mesuré : 864 overlays au niveau 0 pour 6 visibles, 880 requêtes, ~30 Mo). `_renderNiveau` ne pose que ce qui croise l'écran élargi de 15 % (rotation comprise) ; `ktaCullerTuilesV2` pose/retire à chaque déplacement. **864 → 12 posées, 12 requêtes, aucun point de l'écran sans tuile.** Le retrait propre au mode « plan orienté » (parade iOS v1.97.1) est absorbé : une implémentation au lieu de deux. Filtre multi-niveau et repli d'erreur préservés. `checkup-tuiles-hors-ecran.js` (falsifié : 864/864).
+- 🧠 **Le cache des tuiles libère enfin de la mémoire sur desktop** (`2cd4747`) : plafond 4 = nombre de niveaux générés → éviction impossible. Plafond 3 ; le plus ancien niveau d'un plan ZIP est libéré (URL + fichier extrait). Plan serveur : rien à libérer par construction (cache HTTP du navigateur). `check-tiling.js` §17 (falsifié).
+- 🩹 **Checkup plan orienté** : il plantait à sa dernière étape depuis v1.98.1 (deux `t19` oubliés au renommage en T20 — erreur de Claude). Corrigé ; T15 suit la nouvelle règle des tuiles.
+- ✅ **Tests** : pre-commit vert ; smoke, `checkup-plan-oriente` (entier) et `checkup-tuiles-hors-ecran` verts. ⚠️ Non testé sur iPhone : le mode « plan orienté » touche au même mécanisme que les tuiles noires de v1.97.0 — **à voir sur appareil avant merge** (porte de release).
 
 #### v1.98.3 (29/09/2026) — Vague 2 du plan backlog : itinéraire rapide, ULTRA sur les tracés du plan
 
