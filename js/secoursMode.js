@@ -169,12 +169,11 @@
   // (l'user peut nettoyer manuellement via delete).
   const MAX_SCENARIOS = 10;
 
-  // Vitesse moyenne cataphile pour estimation durée = mètres / sec.
-  // Valeur conservatrice basée sur retours terrain (cataphile en groupe avec
-  // équipement, progression méthodique en cartographie = ~1 m/s en moyenne,
-  // mais arrêts, vérifs, obstacles, on retombe vers 0.5 m/s).
-  // Pas configurable en Phase 1 — pourra le devenir en Phase 2.
-  const VITESSE_MPS_DEFAUT = 0.5;
+  // Vitesse de fouille par défaut, en m/s — conservée pour l'API publique
+  // (SecoursMode.VITESSE_MPS_DEFAUT). Le calcul, lui, lit les réglages du scénario
+  // (`reglagesDuree`, défaut DUREE_DEFAUT = 1,5 km/h). 4e relecture (R4-10) : valait
+  // 0,5 m/s (1,8 km/h) sans plus rien piloter — un piège pour un intégrateur.
+  const VITESSE_MPS_DEFAUT = 1.5 / 3.6;   // = DUREE_DEFAUT.vitesseKmh (déclaré plus bas)
 
   // 🆕 v1.24.0 Phase 3 — TABLEAU_STATUTS pour la vue EXÉCUTION terrain.
   // Statuts rapides cliquables à chaque étape d'un parcours équipe.
@@ -774,13 +773,16 @@
       for (let i = 0; i < _scenarios.length - 1 && excess > 0; i++) {
         const s = _scenarios[i];
         if ((s.execution && s.execution.active) || s.id === _currentScenarioId) continue;
+        // 4e relecture (R4-16) : intervention TERMINÉE dont aucun rapport n'est encore
+        // sorti de l'appareil — la purger effaçait ses saisies et ses photos.
+        if (s.execution && s.execution.endedAt && !s.execution.rapportExporteAt) continue;
         purges.push(s.id);
         excess--;
       }
       _scenarios = _scenarios.filter(function(s) { return purges.indexOf(s.id) < 0; });
       purges.forEach(_purgerPhotosScenario);
       console.log("[SecoursMode] FIFO : " + purges.length + " scénario(s) ancien(s) purgé(s)" +
-                  (excess > 0 ? ", " + excess + " protégé(s) (en cours / ouvert)" : ""));
+                  (excess > 0 ? ", " + excess + " protégé(s) (en cours / ouvert / non rapporté)" : ""));
     }
     try {
       localStorage.setItem(key, JSON.stringify(_scenarios));
@@ -1863,6 +1865,25 @@
       maintenant: verC || (pl.imageWidth + "×" + pl.imageHeight)
     });
   }
+  // 4e relecture (R4-13) : un plan regénéré SANS changer sa version fait perdre les
+  // tracés de zone (empreintes de géométrie) sans un mot. Compte les clés de zone que
+  // le plan chargé ne résout plus. Autre plan → rien (déjà signalé ailleurs).
+  function _blocTracesIntrouvables(planFichier, groupes) {
+    const f = planFichier || {};
+    const idCourant = window._currentLoadedPlanId;
+    if (f.id && idCourant && f.id !== idCourant) return "";
+    const connues = {};
+    _tousLesTraces().forEach(function(r) { if (r.id) connues[r.id] = true; connues[_cleTrace(r)] = true; });
+    let n = 0;
+    (groupes || []).forEach(function(g) {
+      if (!g || g.zoneType !== "roads" || !Array.isArray(g.zoneRoadIds)) return;
+      g.zoneRoadIds.forEach(function(k) { if (!connues[k]) n++; });
+    });
+    return n ? '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+               ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
+               _escHtml(t("secours.import.warnTracesIntrouvables", { n: n })) + '</div>'
+             : "";
+  }
   function _blocEcartVersion(planFichier) {
     const w = _ecartVersionPlan(planFichier);
     return w ? '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
@@ -2227,6 +2248,7 @@
 
                     warningBlock +
                     _blocEcartVersion(payload.plan) +
+                    _blocTracesIntrouvables(payload.plan, groupes) +
                     existeBlock +
 
                     '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
@@ -2587,10 +2609,11 @@
     if (phaseClose) {
       etapesOp = archPhase[equipeId];
     } else {
-      // Init etapes côté op si absent (défensif)
+      // 4e relecture (R4-18) : ne plus CRÉER d'entrée vide pour une équipe hors de la
+      // phase en cours (la fusion n'ajoute jamais d'étape : elle ne ferait que traîner
+      // dans la structure de la phase).
       s.execution.etapes = s.execution.etapes || {};
-      s.execution.etapes[equipeId] = s.execution.etapes[equipeId] || [];
-      etapesOp = s.execution.etapes[equipeId];
+      etapesOp = s.execution.etapes[equipeId] || [];
     }
 
     const etapesImportees = Array.isArray(ed.etapes) ? ed.etapes : [];
@@ -3439,6 +3462,15 @@
     }
     const etapes = _getEtapesEquipe(s, equipeId);
     if (!Array.isArray(etapes) || etapes.length === 0) return null;
+    // 4e relecture (R4-15) : appariement par IDENTITÉ d'étape (wid) d'abord. Par
+    // rang seul, le ✓ glissait sur le mauvais point dès que les étapes n'étaient plus
+    // resynchronisées (équipe sortie de la phase, puis parcours modifié).
+    const g = (s.groupes || []).find(function(x) { return x.id === equipeId; });
+    const wp = !g ? null : waypointType === "entree" ? g.entree : waypointType === "sortie" ? g.sortie
+             : (waypointType === "interm" && Array.isArray(g.intermediaires)) ? g.intermediaires[intermIdx] : null;
+    if (wp && wp.wid && etapes.some(function(e) { return !!e.wid; })) {
+      return etapes.find(function(e) { return e.wid === wp.wid; }) || null;
+    }
     if (waypointType === "entree") {
       return etapes.find(function(e) { return e.type === "entree"; }) || null;
     }
@@ -4030,6 +4062,15 @@
     return "(?)";
   }
 
+  // R4-16 : un rapport (JSON ou PDF) est sorti de l'appareil → l'intervention
+  // terminée perd sa protection FIFO. Rien à marquer si elle est encore en cours.
+  function _marquerRapportExporte(r) {
+    const s = r && r.scenario ? get(r.scenario.id) : null;
+    if (!s || !s.execution || !s.execution.endedAt) return;
+    s.execution.rapportExporteAt = _nowIso();
+    _saveScenarios();
+  }
+
   // Génère le fichier JSON .mkmsec.report.json + télécharge.
   // Si includePhotos était true dans genererRapportData, les photos sont
   // incluses en base64 dans le JSON → autonome mais volumineux.
@@ -4046,6 +4087,7 @@
       a.href = url; a.download = filename; a.style.display = "none";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      _marquerRapportExporte(reportData);
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] exporterRapportJSON échec :", e);
@@ -4477,6 +4519,7 @@
       const slug = _slug(r.scenario.nom || "rapport");
       const filename = "Rapport_" + slug + "_" + r.scope + "_" + _shortDate() + ".pdf";
       pdf.save(filename);
+      _marquerRapportExporte(r);
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] genererRapportPDF échec :", e);
@@ -8236,13 +8279,9 @@
            '</div>';
   }
 
-  // 🆕 v1.23.6 — Bloc UI pour régler la pause par point depuis Mode Secours.
-  // Lit/écrit les MÊMES prefs que la modale Itinéraire (helpers globaux
-  // window.getItiPauseEnabled/Minutes + window.setItiPauseEnabled/Minutes).
-  // Au changement → recalcul auto des durées estimées de toutes les équipes
-  // du scénario courant (sinon les `dureeEstimeeMin` cached restent stale).
-  // Skip silencieux si les setters globaux ne sont pas exposés (rétro-compat
-  // si interface.js est ancien — ne devrait pas arriver après v1.23.6).
+  // Bloc UI « durée estimée » : vitesse de fouille + pause par étape, propres au
+  // SCÉNARIO (`reglagesDuree`, 4.1) — indépendants de la modale Itinéraire.
+  // Au changement → recalcul des durées estimées de toutes les équipes.
   function _renderPauseToolBlock() {
     // 4.1 : réglages du SCÉNARIO (plus ceux de l'itinéraire principal).
     const r = _reglagesDuree(get(_currentScenarioId));
@@ -10308,11 +10347,6 @@
         const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
-        // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable...
-        // s'applique aussi au mode secours") : on utilise le helper unifié
-        // window.getItiTempsMinutes (interface.js) qui lit la vitesse + la
-        // pause configurables. Fallback sur vitesse cataphile 0.5 m/s si
-        // helper indisponible (cas chargement modulaire alternatif).
         // 4.1 : réglages du SCÉNARIO (vitesse de fouille, pause par étape).
         const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
         updateGroupe(scenarioId, groupeId, {

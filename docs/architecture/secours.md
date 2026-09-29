@@ -232,7 +232,7 @@ Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) → `window.SecoursMode`.
 
 #### 65.1 Architecture & API
 
-`window.SecoursMode = { init, reset, ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update, delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF, exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, MAX_SCENARIOS, VITESSE_MPS_DEFAUT }`.
+`window.SecoursMode = { init, reset, ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update, delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF, exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, MAX_SCENARIOS, VITESSE_MPS_DEFAUT }` (`VITESSE_MPS_DEFAUT` = 1,5 km/h en m/s, informatif : le calcul lit `reglagesDuree` du scénario).
 
 **State module-level** :
 - `_scenarios: Array` — cache chargé via _loadScenarios depuis localStorage
@@ -303,7 +303,7 @@ Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instru
 1. Vérifie entree + sortie définies (toast warn sinon)
 2. Appel async `Pathfinder.computeRoute([entree, sortie], {})` (async depuis v1.21.x pour expansion avoid tags)
 3. Convertit `result.totalDistance` (px) → distM via `APP_CONFIG.scale`
-4. Calcule `dureeEstimeeMin = distM / VITESSE_MPS_DEFAUT (0.5 m/s) / 60`
+4. Calcule `dureeEstimeeMin` via `_dureeEquipeMin` (réglages du scénario : vitesse de fouille, défaut 1,5 km/h, + pause par étape)
 5. Update groupe avec `itineraireSuggere`, `distanceM`, `dureeEstimeeMin`
 6. Toast feedback + re-render edit view
 

@@ -3736,6 +3736,7 @@
   "secours.import.warnBody": "Ce scénario a été créé sur le plan <strong>{planSource}</strong> (différent du plan courant <strong>{planCourant}</strong>). Les coordonnées des waypoints et zones n'auront pas le même sens visuel sur ce plan. Importer quand même est utile si tu veux récupérer les noms d'équipes / membres / notes mais tu devras probablement redéfinir les zones et entrées/sorties.",
   "secours.import.warnPlanDifferent": "Plan d'origine différent : {plan}",
   "secours.import.warnTitre": "Attention — plan d'origine différent",
+  "secours.import.warnTracesIntrouvables": "{n} tracé(s) de zone de recherche introuvable(s) sur le plan chargé : il a sans doute été retracé. Ces zones seront incomplètes — vérifie-les après l'import.",
   "secours.import.warnVersionPlan": "Ce fichier a été préparé sur une autre version de ce plan ({avant} → {maintenant}). Le plan a pu être retracé : vérifie les zones, entrées et étapes après l'import.",
   "secours.lancer.relanceConfirme": "Relancer le plan efface l'intervention précédente : ses statuts, observations et photos, y compris celles reçues des équipes. Pense à exporter son rapport avant.",
   "secours.lancer.equipeDesc": "Tu fais partie d'une équipe assignée. Tu suis ton parcours étape par étape et tu commentes en live.",
