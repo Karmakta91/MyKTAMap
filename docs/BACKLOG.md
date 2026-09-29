@@ -48,9 +48,47 @@ Livré en v1.98.0 (`docs/ETUDE_GUIDAGE.md`, archi : `docs/architecture/tracking.
 par Claude en sortie d'urgence (bandeau affiché même réglé sur « Jamais », « Y aller » sans demande de remplacement)
 ont été **validés par KARMA le 29/09**. Reste :
 
-- 🟡 **Itinéraires non couverts** : Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) créent
-  leurs roads sans `raccords` / `carrefours` → pas de pointillé, raccord non compté, et le bandeau n'y dit que
-  l'arrivée (aucun croisement connu). Brancher `_champsGuidage`.
+- 🟡 **Itinéraires inter-plans non couverts** : `interPlanRoute.js` crée ses roads sans `raccords` / `carrefours`
+  → pas de pointillé, raccord non compté, et le bandeau n'y dit que l'arrivée (aucun croisement connu). Brancher
+  `_champsGuidage`. ⚠️ doc seule (non re-vérifié le 29/09).
+- **Mode Secours** : le constat d'origine était faux (le module ne crée **aucune** road) → voir **B1** de la section
+  🚑 Mode Secours ci-dessous.
+
+## 🚑 Mode Secours — audit fonctionnel du 29/09/2026
+
+Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md) (jeu de rôle GRIMP × IGC,
+harnais Node sur le vrai `secoursMode.js` / `pathfinder.js`). Rien de testé en navigateur. Les numéros de ligne datent de
+v1.98.4. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups natives).
+
+**Lot A — bloquants** (sans eux, une recherche multi-téléphones ne marche pas) :
+- 🔴 **A1 — Rapport d'équipe refusé au PC** ✅ vérifié : l'import `.mkmsec` régénère scénario + équipes
+  (`secoursMode.js:1625`, `:1635`), l'import du rapport exige les ids d'origine (`:2112`, `:2117`). Conserver l'id
+  d'origine (ou la correspondance), réimport idempotent, corriger `session-data.md` §72.1. **S**
+- 🔴 **A2 — Mode « zone = tracés » inerte** ✅ vérifié : lit `entry.road`/`entry.layer`, absents de
+  `_ktaDataPolylines` (`utils.js:2449`) ; tracés de session sans calque → écartés (`:9166`). Brancher sur
+  `entry.polyline` + empreinte stable (jamais l'id aléatoire de `:9159`). **S-M**
+- 🔴 **A3 — Victime sans position, pas d'évacuation** ⚠️ agents : « 📍 Victime ici » (clic / suivi + niveau) →
+  « 🚑 Évacuer » via `SortieUrgence.declencherDepuis` + options brancard. **M**
+- 🔴 **A4 — Pas d'heure de départ / retour, aucune alerte de retard** ⚠️ agents. **S-M**
+- 🔴 **A5 — Le plafond de 10 scénarios purge un scénario en cours** 🔬 mesuré au harnais (`:737-747`). **S**
+
+**Lot B — planification et exécution** (détail et preuves : §3-5 du rapport) :
+B1 guidage Secours (« Suivre » → vraie road `itinerary`, carrefours/raccords/niveaux gardés, évitements transmis au
+recalcul, tronçons pour l'écran XL ; `_champsGuidage` seul ≈ 10 %) **M** · B2 feuille de route dans le PDF de briefing
+**S** · B3 couverture (POI non affectés / doublons, puis % du linéaire) **M** · B4 niveaux (itinéraire aplati
+`:9416`/`:9712`, calage de clic sans niveau `pathfinder.js:779`) **S-M** · B5 ordre plus proche voisin (~−38 % de
+marche) + « Entrée » cochée par défaut dans Ctrl+K **S** · B6 préréglage « fouille » (aujourd'hui 5 km/h + 15 min par
+étape) **S** · B7 fusion (RAS perdu), prise de main sans remise à zéro, renfort sans étapes, P2 écrase P1, rappel
+général, main courante **S à M** · B8 PDF (« POI critiques » toujours vide, fond ~860 Mo, faux compte de waypoints)
+**S** · B9 chef + effectif + remontés **S-M** · B10 contrôle hors-ligne au lancement, liens Sortie d'urgence / XL,
+`pointsCles` **S à M**.
+
+**Lot C — plus tard** : C1 découpage auto en secteurs + parcours de balayage (après A2 et B3) **L** · C2 gabarit
+brancard (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement
+si des exercices le réclament **M**.
+
+⚠️ **Côté DATA (KARMA seul)** : le plan de test n'a qu'un accès ouvert tagué et aucun `entree_plan` ; 47 tracés et
+44 POI sans niveau. Le moins cher des correctifs, et le seul qu'aucun code ne remplace.
 
 ## 📋 Popups natives et presse-papier — au fil de l'eau (recompté le 29/09/2026)
 
@@ -189,8 +227,7 @@ fix de la v1.77.0.*
 |---|---|
 | **Podomètre / mode poche** | Enterré le 29/09 : **infaisable en l'état**. Le podomètre du téléphone est inaccessible depuis une page web (aucune plateforme), Web Bluetooth n'existe pas sur iOS, et le vrai obstacle en poche est le **cap**, pas le comptage. Étude : `docs/ETUDE_PODOMETRE.md` |
 | **Plein écran iPhone** | 2 tentatives (v1.9.2, v1.71.0), 2 rollbacks. Un commentaire d'`index.html` **interdit une 3ᵉ tentative** sans diagnostic précis sur appareil |
-| **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 |
-| **Import/Export Live** | Pause indéfinie, couvert par l'import consolidé |
+| **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 (qui ne fonctionne qu'après **A1**, cf. 🚑 Mode Secours) |
 | **Traversée de portail en Vue OSM** | Arbitré 01/08 : le mode OSM n'a ni position courante ni plan « où tu es » |
 | **Mode terrain (L1) et point rapide (L2)** | Écartés le 14/09 : l'écran et la pose de point conviennent |
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |
