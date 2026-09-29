@@ -3484,8 +3484,10 @@
 
     // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
     if (typeof window.attacherBoutonCopierEchelleGps === "function") {
-      const modal = document.getElementById("kta-ses-modal") || document;
-      window.attacherBoutonCopierEchelleGps(modal);
+      // 29/09/2026 : visait « kta-ses-modal », id qui n’a jamais existé → repli
+      // silencieux sur tout le document. La bannière vit dans le contenu de l’onglet.
+      const zone = document.getElementById("kta-ses-content") || document;
+      window.attacherBoutonCopierEchelleGps(zone);
     }
 
     // Boutons "🔍 Chercher un point" → autocomplete
