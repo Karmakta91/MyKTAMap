@@ -1513,11 +1513,21 @@
 
       // Itinéraire suggéré par équipe (polyline dashed, couleur équipe)
       if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
-        const latlngs = g.itineraireSuggere
-          .filter(function(p) { return p && _isLevelAllowed(p); })
-          .map(function(p) { return _proj.planToLatLng(p.x, p.y); })
-          .filter(Boolean);
-        if (latlngs.length >= 2) {
+        // 🩸 29/09/2026 (relecture Secours, R5) — l'itinéraire porte désormais le VRAI
+        // niveau de chaque point. Filtrer puis relier les points restants tirait un
+        // trait droit à travers la surface entre la descente au −1 et la remontée.
+        // On découpe en TRONÇONS continus sur les niveaux visibles (multi-polyligne).
+        const troncons = [];
+        let courant = [];
+        g.itineraireSuggere.forEach(function(p) {
+          const ll = (p && _isLevelAllowed(p)) ? _proj.planToLatLng(p.x, p.y) : null;
+          if (ll) { courant.push(ll); return; }
+          if (courant.length >= 2) troncons.push(courant);
+          courant = [];
+        });
+        if (courant.length >= 2) troncons.push(courant);
+        const latlngs = troncons.length === 1 ? troncons[0] : troncons;
+        if (troncons.length > 0) {
           try {
             const distFmt = (typeof g.distanceM === "number" && window.formatDistance)
               ? window.formatDistance(g.distanceM, 1)
