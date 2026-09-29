@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.17` (30/09/2026)
+## 📦 Version courante — `v1.98.18` (30/09/2026)
+
+> 🧭 **v1.98.18 — Mode Secours, vague 6 (guidage)** : « Suivre mon parcours » fait du parcours d'une équipe l'itinéraire de l'app (bandeau de guidage, feuille de route, XL), étapes validées cochées, recalcul vers la prochaine étape non faite avec les évitements du Secours ; feuille de route carrefour par carrefour dans le PDF de briefing.
 
 > 🩹 **v1.98.17 — Deux défauts d'affichage sur iPhone** : l'en-tête de la vue live du Mode Secours ne se fait plus recouvrir par les cartes qui défilent (3e récidive, enfin reproduite sur WebKit) ; « 🎯 Recentrer » ne passe plus sous la barre d'état agrandie.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
-
-> 🏗️ **v1.98.15 — Mode Secours : niveaux vides signalés** : dans « Ajouter une équipe » et le choix du niveau d'une équipe, un niveau qui ne porte rien s'affiche « (vide) » (décision KARMA), toujours choisissable.
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -497,6 +497,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.18 (30/09/2026) — Mode Secours, vague 6 : guidage (B1, B2)
+
+- 🔍 **Origine** : refonte du Mode Secours, vague 6. Constat : le parcours d'une équipe n'était qu'un dessin ; le guidage ne lit qu'un itinéraire de l'app, que le Secours ne créait jamais, et le calcul jetait carrefours et raccords. Décisions KARMA 1:a 2:a 3:a 4:a 5:a.
+- 🗂️ **Données de guidage** (`8f5fe5b`) : `g.guidage = { carrefours, raccords, n }` gardé aux deux calculs, voyage dans le `.mkmsec`.
+- 🧭 **Suivre mon parcours** (`832f01f`) : `window.itineraireActiverRoad` (interfaceItineraire) active le parcours comme itinéraire (`secours` : scénario, équipe, évitements) avec confirmation si un itinéraire perso existe ; étapes validées → waypoints `done` ; `_replanifierDepuis` garde `secours` et ses évitements ; arrivée à ~12 m → toast + focus live.
+- 📄 **Feuille de route PDF** (`e858868`) : `ItiGuidage.construire` → consignes numérotées sous « Itinéraire suggéré » ; rien d'inventé si les données manquent.
+- 🐛 **Au passage** (`3bc081d`) : l'infobulle de version de l'accueil appelait `I18n.t` au chargement, avant les dicos (« Clé manquante », introduit en v1.98.13) — trouvé par `checkup-guidage`.
+- ✅ **Tests** : checkups navigateur par case (position simulée comme `checkup-guidage` : bandeau, étape faite, replanification Secours, arrivée), `checkup-guidage` vert, PDF régénérés et relus (10 et 28 consignes), 16 harnais Node, checkups vague 5.
 
 #### v1.98.17 (30/09/2026) — Deux défauts d'affichage sur iPhone
 

@@ -1607,3 +1607,10 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Suivi d'équipe** : `s.execution.suivi[phaseIdx][gid] = { departAt, rentreeAt, rappelAt }` — par phase (une équipe reconduite repart à zéro), remis à zéro par la relance. État : `_etatRetour` (`rentree` / `inconnu` / `ok` / `orange` / `rouge`), marge `reglagesDuree.margeRetardMin`. Écriture : `marquerSuivi` (API) ; fusion d'un rapport : heure la plus ancienne. Voyage dans `equipesData[].suivi`.
 - **Veille** : `_veilleRetards` (20 s) démarrée / arrêtée par `_majFooterSecours` ; notifie une fois par équipe et par seuil (`_seuilsNotifies`), en UN toast. Minuteries gardées (`typeof setInterval`) pour les harnais Node.
 - **Rappel** : état tenu par l'opérateur, JAMAIS présenté comme un message envoyé (aucun réseau) — ne pas écrire « les équipes sont prévenues » dans l'UI ni la doc.
+
+## 🧭 Vague 6 (v1.98.18, 30/09/2026) — guidage du parcours
+
+- **Données** : `g.guidage = { carrefours, raccords, n }` (n = points du tracé ; différent de `itineraireSuggere.length` = périmé → « Suivre » recalcule sur place, le PDF n'imprime pas de feuille).
+- **Itinéraire suivi** : une road `type: "itinerary"` avec `secours: { scenarioId, equipeId, avoidPoints, avoidRadius }`, activée par `window.itineraireActiverRoad` (interfaceItineraire). Waypoints `source: "secours"`, `wid`, `done` = étape faite (`_majRoadSuivi` à chaque mutation). `_replanifierDepuis` (interfaceItineraire) garde `secours` et ses évitements — ne pas le perdre dans une future réécriture de la replanification.
+- **Arrivée** : `_veilleArrivee` (3 s, tant qu'un itinéraire Secours existe) — prochain waypoint non fait à ≤ 12 m → toast, vibration, `_liveEquipeFocusIdx`.
+- **Feuille de route PDF** : `_feuilleDeRouteLignes` → `ItiGuidage.construire` / `texteAction` / `majuscule` (même moteur que la feuille de l'app).
