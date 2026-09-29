@@ -5849,7 +5849,7 @@
         if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
-          pdf.text(t(aIti ? "secours.pdf.itineraireSuggere" : "secours.pdf.etapesTitre"), margin, y); y += 5;
+          pdf.text(t(aIti ? "secours.pdf.itineraireSuggere" : "secours.pdf.etapesTitreSansIti"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
           // Liste longue (« POI de la zone » : 40-60 étapes) : saut de page ligne à ligne.
           pdf.splitTextToSize(t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),

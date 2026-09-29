@@ -3879,7 +3879,7 @@
   "secours.parcours.retirerEtape": "Quitar esta etapa",
   "secours.parcours.sortie": "Salida",
   "secours.parcours.titre": "🗺️ Recorrido:",
-  "secours.pdf.etapesTitre": "ETAPAS",
+  "secours.pdf.etapesTitreSansIti": "ETAPAS",
   "secours.pdf.aucuneEtape": "(ninguna etapa definida)",
   "secours.pdf.carteMiniature": "Mapa en miniatura — zona de busqueda asignada",
   "secours.pdf.carteTitre": "PLANO - {nom}",

@@ -3879,7 +3879,7 @@
   "secours.parcours.retirerEtape": "Remove this step",
   "secours.parcours.sortie": "Exit",
   "secours.parcours.titre": "🗺️ Route:",
-  "secours.pdf.etapesTitre": "STEPS",
+  "secours.pdf.etapesTitreSansIti": "STEPS",
   "secours.pdf.aucuneEtape": "(no step defined)",
   "secours.pdf.carteMiniature": "Mini map — assigned search zone",
   "secours.pdf.carteTitre": "MAP - {nom}",
