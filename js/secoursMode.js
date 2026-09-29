@@ -4974,7 +4974,7 @@
     let planCanvas;
     try {
       planCanvas = await window.MyKTAMapExporterGenererCanvas({
-        scale: 0.5,
+        scale: _echelleCanvasPlan(0.5),   // plafonné sous la limite iOS
         bg:    "image",
         // Annotations session désactivées (mini-carte = juste plan + data
         // layers + icones permanentes ; les overlays équipe sont dessinés
@@ -5002,8 +5002,8 @@
     finalCanvas.height = TARGET_H;
     const ctx = finalCanvas.getContext("2d");
 
-    // Mapping bounds plan → coords canvas plan (scale 0.5)
-    const SCALE_PLAN = 0.5;
+    // Mapping bounds plan → coords canvas plan (échelle MESURÉE, cf _echelleCanvasPlan)
+    const SCALE_PLAN = _echelleDuCanvas(planCanvas);
     let sx = bounds.x * SCALE_PLAN;
     let sy = bounds.y * SCALE_PLAN;
     let sw = bounds.w * SCALE_PLAN;
@@ -5247,7 +5247,7 @@
     if (window.MyKTAMapExporterGenererCanvas && typeof window.MyKTAMapExporterGenererCanvas === "function") {
       try {
         fullCanvas = await window.MyKTAMapExporterGenererCanvas({
-          scale:             1,
+          scale:             _echelleCanvasPlan(1),
           bg:                "image",
           includeImgLayers:  true,
           includeDataLayers: true,
@@ -5411,6 +5411,25 @@
   // 🆕 v1.22.0-fix5 — Crop le canvas plan pour la zone de l'équipe + dessine
   // l'overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire).
   // Retourne un nouveau canvas ou null si bbox invalide.
+  // 🩸 29/09/2026 (audit Secours) — LE FOND DES PDF SECOURS SE RENDAIT EN TAILLE
+  // RÉELLE : briefing à l'échelle 1 (16 332 × 13 820 = 226 Mpx, ~860 Mo de canvas),
+  // mini-carte du rapport à 0,5 (56 Mpx, ~225 Mo). Au-delà de 16,7 Mpx, Safari iOS
+  // refuse le canvas et le PDF sortait sans carte. On plafonne SOUS cette limite :
+  // chaque équipe n'en garde qu'un recadrage de ≤ 1 000 px, la perte est minime.
+  const PX_MAX_CANVAS_PLAN = 16000000;
+  function _echelleCanvasPlan(voulue) {
+    const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const w = Number(pl.imageWidth) || 0, h = Number(pl.imageHeight) || 0;
+    if (!w || !h) return voulue;
+    return Math.min(voulue, Math.sqrt(PX_MAX_CANVAS_PLAN / (w * h)));
+  }
+  // Échelle RÉELLE d'un canvas plan (mesurée, pas supposée).
+  function _echelleDuCanvas(canvas) {
+    const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const w = Number(pl.imageWidth) || 0;
+    return (w && canvas && canvas.width) ? canvas.width / w : 1;
+  }
+
   function _cropCanvasForTeam(fullCanvas, g, hexColor) {
     const bbox = _computeTeamBbox(g);
     if (!bbox || bbox.w < 1 || bbox.h < 1) {
@@ -5424,10 +5443,12 @@
     //
     // Padding 15 % autour de la bbox pour respirer
     const pad = Math.max(bbox.w, bbox.h, 100) * 0.15;
+    // sx/sy/sw/sh en UNITÉS PLAN ; `r` les convertit en pixels du canvas réduit.
+    const r = _echelleDuCanvas(fullCanvas);
     let sx = Math.max(0, bbox.x - pad);
     let sy = Math.max(0, bbox.y - pad);
-    let sw = Math.min(fullCanvas.width  - sx, bbox.w + 2 * pad);
-    let sh = Math.min(fullCanvas.height - sy, bbox.h + 2 * pad);
+    let sw = Math.min(fullCanvas.width / r  - sx, bbox.w + 2 * pad);
+    let sh = Math.min(fullCanvas.height / r - sy, bbox.h + 2 * pad);
     if (sw < 50 || sh < 50) return _resizeCanvasFit(fullCanvas, 800, 600);
 
     // Canvas de sortie : ratio préservé, max 1000 px de côté
@@ -5447,7 +5468,7 @@
     // Background blanc (au cas où l'image source a un alpha)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    ctx.drawImage(fullCanvas, sx * r, sy * r, sw * r, sh * r, 0, 0, out.width, out.height);
 
     // Helpers pour mapper plan → canvas de sortie
     const sX = out.width  / sw;

@@ -324,6 +324,8 @@ Toutes les couches taggées d'un tooltip "🚨 nom équipe" (ou role : Entrée/S
 
 #### 65.8 Export PDF (1 page A4 par équipe)
 
+> 🩸 **29/09/2026 (audit Secours)** — le fond du PDF de briefing se rendait à l'**échelle 1** (plan 16 332 × 13 820 : 225,7 Mpx, ~860 Mo de canvas ; Safari iOS refuse au-delà de 16,7 Mpx → PDF sans carte). `_echelleCanvasPlan(voulue)` plafonne à **16 Mpx** (`PX_MAX_CANVAS_PLAN`), pour le briefing et la mini-carte du rapport (qui était à 0,5 = 56 Mpx). Le recadrage par équipe travaille en unités plan et convertit par l'échelle **mesurée** du canvas (`_echelleDuCanvas`). Mesuré en navigateur : 4 348 × 3 680 = 16,0 Mpx, carte présente dans le PDF.
+
 Via jsPDF déjà chargé pour pdfExport.js. Layout texte :
 - Header bold "PLAN DE SECOURS — Nom équipe"
 - Bandeau couleur équipe (fillRect + text blanc)
