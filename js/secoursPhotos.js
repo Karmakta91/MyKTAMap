@@ -394,6 +394,27 @@
       return false;
     });
   }
+  // 🩸 29/09/2026 (relecture Secours, R7) — une étape renumérotée par
+  // secoursMode._resyncEtapesEquipe emporte ses photos : sans ça, le quota de
+  // MAX_PHOTOS_PER_ETAPE (compté par stepIdx) comptait celles d'une autre étape.
+  // -2 = étape retirée (photo gardée, hors rapport). Lecture + écriture dans la
+  // MÊME transaction : le put part du handler de la lecture (tx encore active).
+  function setStepIdx(photoId, stepIdx) {
+    if (!photoId || typeof stepIdx !== "number") return Promise.resolve(false);
+    return _tx("readwrite", function(store) {
+      return new Promise(function(resolve) {
+        const req = store.get(photoId);
+        req.onsuccess = function() {
+          const rec = req.result;
+          if (!rec) { resolve(false); return; }
+          rec.stepIdx = stepIdx;
+          store.put(rec);
+          resolve(true);
+        };
+        req.onerror = function() { resolve(false); };
+      });
+    });
+  }
   function deletePhotosForEtape(scenarioId, equipeId, stepIdx) {
     return getPhotosForEtape(scenarioId, equipeId, stepIdx).then(function(arr) {
       if (!arr.length) return 0;
@@ -489,6 +510,7 @@
     countPhotosForEtape:        countPhotosForEtape,
     countPhotosForScenario:     countPhotosForScenario,
     deletePhoto:                deletePhoto,
+    setStepIdx:                 setStepIdx,              // 🆕 29/09/2026
     deletePhotosForEtape:       deletePhotosForEtape,
     deletePhotosForScenario:    deletePhotosForScenario,
     clearAll:                   clearAll,

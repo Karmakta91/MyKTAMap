@@ -3653,6 +3653,8 @@
   "secours.edit.voirCarte": "🗺️ Show on map",
   "secours.equipe.defaultNom": "Team {nom}",
   "secours.etape.fallback": "step {idx}",
+  "secours.etape.retraitConfirme": "Removing this point from the route erases what was entered on {n} step(s) during the intervention:\n{liste}\n\nThe photos stay on the device but will no longer appear in the report.",
+  "secours.etape.retraitRefuse": "A step marked \"Help requested\" or \"Victim found\" cannot be removed during the intervention. Change its status first.",
   "secours.floater.polygonInstr": "⬛ Click to add vertices — <strong>double-click to CLOSE the polygon</strong>",
   "secours.floater.retourModale": "↩️ Back to modal",
   "secours.floater.roadsInstr": "🛣️ Click each <strong>PATH</strong> to include (click again = remove)",

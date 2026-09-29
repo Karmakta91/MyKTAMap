@@ -700,6 +700,11 @@
       phase.groupeIds.splice(pos, 1);
       changed = true;
     }
+    // 🩸 Relecture 29/09 (R6) — équipe cochée dans la phase EN COURS : ses étapes.
+    if (changed && participe && s.execution && s.execution.currentPhaseIdx === phaseIdx) {
+      const g = s.groupes.find(function(x) { return x.id === equipeId; });
+      _resyncEtapesEquipe(s, g);
+    }
     if (changed) _commitMutation(s);
     return changed;
   }
@@ -964,6 +969,7 @@
         type:         "entree",
         idx:          idx++,
         label:        g.entree.label || _fmtPoint(g.entree),
+        cle:          _cleWaypoint(g.entree),
         observations: "",
         statut:       "pending",
         photoIds:     [],
@@ -977,6 +983,7 @@
           type:         "interm",
           idx:          idx++,
           label:        wp.label || _fmtPoint(wp),
+          cle:          _cleWaypoint(wp),
           observations: "",
           statut:       "pending",
           photoIds:     [],
@@ -990,6 +997,7 @@
         type:         "sortie",
         idx:          idx++,
         label:        g.sortie.label || _fmtPoint(g.sortie),
+        cle:          _cleWaypoint(g.sortie),
         observations: "",
         statut:       "pending",
         photoIds:     [],
@@ -1007,6 +1015,62 @@
   // on reporte ce qui est déjà saisi sur l'étape de même type + même libellé (dans
   // l'ordre, pour les homonymes). Une étape retirée qui portait des données n'est
   // pas jetée : elle part dans `execution._etapesRetirees[gid]` (traçabilité).
+  //
+  // 🩸 Relecture 29/09 (R3, R4, R6, R7) — la 1re version appariait par libellé seul :
+  // deux « Carrefour » échangeaient leurs saisies, une étape remise ne retrouvait
+  // pas ses données, la photo d'une étape retirée passait à sa voisine, l'étape
+  // affichée n'était pas recalée. Désormais : appariement par POSITION du point
+  // (`cle`), puis libellé par rang d'occurrence (`_apparierEtapes`) ; une étape
+  // qui revient est restaurée depuis l'archive ; les photos suivent leur étape en
+  // IndexedDB (`setStepIdx`, -2 = étape retirée) ; le focus live est recalé.
+  const ETAPE_CHAMPS_SAISIS = ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom"];
+  function _etapeADesDonnees(e) {
+    return !!e && (e.statut !== "pending" || !!(e.observations || "").trim()
+                   || (e.photoIds || []).length > 0 || !!e.startedAt);
+  }
+  function _cleWaypoint(wp) {
+    if (!wp || typeof wp.x !== "number" || typeof wp.y !== "number") return null;
+    return Math.round(wp.x) + "," + Math.round(wp.y) + "," + (Number.isInteger(wp.level) ? wp.level : 0);
+  }
+  // Pour chaque cible, la source appariée (ou null). Chaque source ne sert qu'une
+  // fois. Passe 1 : même type + même position. Passe 2 : même type + même libellé,
+  // dans l'ordre (le 2e « Carrefour » va au 2e). Passe 3 : cible sans libellé
+  // (ancien rapport) → même numéro.
+  function _apparierEtapes(sources, cibles) {
+    const pris = new Set();
+    const res = cibles.map(function() { return null; });
+    const passe = function(test) {
+      cibles.forEach(function(c, i) {
+        if (res[i] || !c) return;
+        const j = sources.findIndex(function(src, k) { return src && !pris.has(k) && test(src, c); });
+        if (j >= 0) { pris.add(j); res[i] = sources[j]; }
+      });
+    };
+    passe(function(a, c) { return a.type === c.type && !!a.cle && a.cle === c.cle; });
+    passe(function(a, c) { return a.type === c.type && !!c.label && a.label === c.label; });
+    passe(function(a, c) { return !c.label && a.idx === c.idx; });
+    return res;
+  }
+  function _reporterSaisies(de, vers) {
+    ETAPE_CHAMPS_SAISIS.forEach(function(k) { if (k in de) vers[k] = de[k]; });
+  }
+  // Étapes qui PERDRAIENT leurs saisies si l'on appliquait `partial` au parcours.
+  function _etapesPerduesSi(s, g, partial) {
+    const ex = s && s.execution;
+    if (!ex || !ex.active || !ex.etapes || !Array.isArray(ex.etapes[g.id])) return [];
+    const futur = Object.assign({}, g);
+    ["entree", "sortie", "intermediaires"].forEach(function(k) { if (k in partial) futur[k] = partial[k]; });
+    const anciennes = ex.etapes[g.id];
+    const paires = _apparierEtapes(anciennes, _buildEtapesPourEquipe(futur));
+    return anciennes.filter(function(o) { return paires.indexOf(o) < 0 && _etapeADesDonnees(o); });
+  }
+  function _photosVersEtape(photoIds, idx) {
+    const P = window.MyKTAMapSecoursPhotos;
+    if (!P || typeof P.setStepIdx !== "function" || !Array.isArray(photoIds)) return;
+    photoIds.forEach(function(id) {
+      P.setStepIdx(id, idx).catch(function(e) { console.warn("[SecoursMode] photo " + id + " :", e); });
+    });
+  }
   function _resyncEtapesEquipe(s, g) {
     const ex = s && s.execution;
     if (!ex || !ex.active || !ex.etapes || !g) return false;
@@ -1014,25 +1078,42 @@
         && !Object.keys(ex.etapes).some(function(k) { return k !== "_notes_libres"; })) return false;
     const phaseIdx = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
     if (Array.isArray(s.phases) && s.phases.length > 0 && !_groupeParticipeAPhase(s, g.id, phaseIdx)) return false;
-    const anciennes = Array.isArray(ex.etapes[g.id]) ? ex.etapes[g.id].slice() : [];
+    const anciennes = Array.isArray(ex.etapes[g.id]) ? ex.etapes[g.id] : [];
     const nouvelles = _buildEtapesPourEquipe(g);
-    const aDesDonnees = function(e) {
-      return e.statut !== "pending" || (e.observations || "").trim() || (e.photoIds || []).length || e.startedAt;
-    };
-    nouvelles.forEach(function(n) {
-      const i = anciennes.findIndex(function(o) { return o.type === n.type && o.label === n.label; });
-      if (i < 0) return;
-      const o = anciennes.splice(i, 1)[0];
-      ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom"].forEach(function(k) {
-        if (k in o) n[k] = o[k];
-      });
+    const archive = (ex._etapesRetirees && ex._etapesRetirees[g.id]) || [];
+    // 1. saisies des étapes conservées
+    const paires = _apparierEtapes(anciennes, nouvelles);
+    nouvelles.forEach(function(n, i) {
+      const o = paires[i];
+      if (!o) return;
+      _reporterSaisies(o, n);
+      if (o.idx !== n.idx) _photosVersEtape(n.photoIds, n.idx);
     });
-    const perdues = anciennes.filter(aDesDonnees);
-    if (perdues.length > 0) {
-      ex._etapesRetirees = ex._etapesRetirees || {};
-      ex._etapesRetirees[g.id] = (ex._etapesRetirees[g.id] || []).concat(perdues.map(function(e) {
-        return Object.assign({}, e, { retireeAt: _nowIso() });
-      }));
+    // 2. étape qui revient : restaurée depuis l'archive
+    const orphelines = nouvelles.filter(function(n, i) { return !paires[i]; });
+    const restaurees = _apparierEtapes(archive, orphelines);
+    orphelines.forEach(function(n, i) {
+      const a = restaurees[i];
+      if (!a) return;
+      _reporterSaisies(a, n);
+      delete n.retireeAt;
+      _photosVersEtape(n.photoIds, n.idx);
+    });
+    // 3. étapes retirées porteuses de données → archive (photos hors rapport : -2)
+    const gardeArchive = archive.filter(function(a) { return restaurees.indexOf(a) < 0; });
+    anciennes.forEach(function(o) {
+      if (paires.indexOf(o) >= 0 || !_etapeADesDonnees(o)) return;
+      gardeArchive.push(Object.assign({}, o, { retireeAt: _nowIso() }));
+      _photosVersEtape(o.photoIds, -2);
+    });
+    ex._etapesRetirees = ex._etapesRetirees || {};
+    if (gardeArchive.length > 0) ex._etapesRetirees[g.id] = gardeArchive;
+    else delete ex._etapesRetirees[g.id];
+    // 4. étape affichée recalée (équipe en cours sur cet appareil)
+    if (ex.currentEquipeId === g.id) {
+      const vue = anciennes[_liveEquipeFocusIdx];
+      const k = vue ? paires.indexOf(vue) : -1;
+      _liveEquipeFocusIdx = (k >= 0) ? k : Math.min(_liveEquipeFocusIdx, Math.max(0, nouvelles.length - 1));
     }
     ex.etapes[g.id] = nouvelles;
     return true;
@@ -2230,8 +2311,9 @@
     const etapesOp = (currentScenario.execution.etapes && currentScenario.execution.etapes[ed.equipe.id]) || [];
     const conflits = [];
     const etapesImp = Array.isArray(ed.etapes) ? ed.etapes : [];
-    etapesImp.forEach(function(etImp) {
-      const etOp = _etapeCorrespondante(etapesOp, etImp);
+    const pairesImp = _apparierEtapes(etapesOp, etapesImp);
+    etapesImp.forEach(function(etImp, iImp) {
+      const etOp = pairesImp[iImp];
       if (!etOp) return; // sera signalé comme skipped, pas conflit
       const opHasObs = etOp.observations && String(etOp.observations).trim().length > 0;
       const opHasStatus = etOp.statut && etOp.statut !== "pending";
@@ -2322,9 +2404,11 @@
     });
 
     // Fusion étape par étape (sequential car écritures IDB photos)
+    // Appariement global (position, puis libellé par rang, puis numéro) : cf _apparierEtapes.
+    const pairesFusion = _apparierEtapes(etapesOp, etapesImportees);
     for (let i = 0; i < etapesImportees.length; i++) {
       const etImp = etapesImportees[i];
-      const etapeOp = _etapeCorrespondante(etapesOp, etImp);
+      const etapeOp = pairesFusion[i];
       if (!etapeOp) {
         stats.etapesSkipped++;
         stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
@@ -2394,7 +2478,7 @@
               id:               photo.id,
               scenarioId:       s.id,
               equipeId:         equipeId,
-              stepIdx:          etapeOp.idx,   // numéro LOCAL (cf _etapeCorrespondante)
+              stepIdx:          etapeOp.idx,   // numéro LOCAL (cf _apparierEtapes)
               mime:             photo.mime || "image/jpeg",
               dataUrl:          photo.dataUrl,
               sourceScenarioId: sourceScenarioId
@@ -2804,6 +2888,29 @@
     if (!s) return null;
     const g = s.groupes.find(function(x) { return x.id === groupeId; });
     if (!g || !partial || typeof partial !== "object") return null;
+    // 🩸 Relecture 29/09 (R4, décision KARMA 1:a) — retirer du parcours, pendant
+    // l'intervention, une étape qui porte des saisies : confirmation ; REFUS si elle
+    // porte « aide demandée » ou « victime » (l'info ne doit pas quitter le stepper).
+    const touchePar = ("entree" in partial || "sortie" in partial || "intermediaires" in partial);
+    if (touchePar && !partial._confirmeRetrait) {
+      const perdues = _etapesPerduesSi(s, g, partial);
+      if (perdues.some(function(e) { return _getStatutInfo(e.statut).severity >= 2; })) {
+        _toast(t("secours.etape.retraitRefuse"), "error");
+        return null;
+      }
+      if (perdues.length > 0) {
+        if (typeof window.ktaConfirm === "function") {
+          const noms = perdues.map(function(e) { return "• " + _escHtml(e.label || ""); }).join("\n");
+          window.ktaConfirm(t("secours.etape.retraitConfirme", { n: perdues.length, liste: noms })).then(function(ok) {
+            if (!ok) return;
+            updateGroupe(scenarioId, groupeId, Object.assign({}, partial, { _confirmeRetrait: true }));
+            _scheduleAutoRecalc(scenarioId, groupeId);
+            if (_modal) _switchView("edit");
+          });
+        }
+        return null;
+      }
+    }
     // Whitelist
     if ("nom" in partial && typeof partial.nom === "string") g.nom = partial.nom;
     if ("couleurIdx" in partial && Number.isInteger(partial.couleurIdx)) {
@@ -3285,18 +3392,12 @@
       const e = etapes.find(function(x) { return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0; });
       if (e) return e.idx;
     }
+    // Photo d'une étape retirée (confirmée par l'utilisateur) : hors rapport.
+    const arch = s && s.execution && s.execution._etapesRetirees && s.execution._etapesRetirees[equipeId];
+    if (rec.stepIdx === -2 || (Array.isArray(arch) && arch.some(function(x) {
+      return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0;
+    }))) return null;
     return rec.stepIdx;
-  }
-
-  // Étape locale correspondant à une étape importée. Le numéro seul ne suffit plus
-  // (le PC a pu reconstruire les étapes d'une équipe en cours de phase) : même
-  // numéro ET même type + libellé d'abord, sinon même type + libellé, sinon le
-  // numéro seul si l'étape importée n'a pas de libellé (ancien rapport).
-  function _etapeCorrespondante(etapesOp, etImp) {
-    const memeEtape = function(e) { return e.type === etImp.type && e.label === etImp.label; };
-    const parIdx = etapesOp.find(function(e) { return e.idx === etImp.idx; });
-    if (parIdx && (!etImp.label || memeEtape(parIdx))) return parIdx;
-    return etapesOp.find(memeEtape) || null;
   }
 
   // Helper interne — résout toutes les photos d'une équipe en data:base64.
@@ -3310,6 +3411,7 @@
       // Convertir chaque blob en data URL (séquentiel pour économiser RAM mobile)
       const out = [];
       for (const rec of records) {
+        if (_stepIdxPhoto(scenarioId, equipeId, rec) === null) continue;   // étape retirée
         try {
           const dataUrl = await _blobToDataUrl(rec.blob);
           out.push({
@@ -3337,7 +3439,9 @@
     try {
       const records = await window.MyKTAMapSecoursPhotos.getPhotosForEquipe(scenarioId, equipeId);
       if (!Array.isArray(records)) return [];
-      return records.map(function(rec) {
+      return records.filter(function(rec) {
+        return _stepIdxPhoto(scenarioId, equipeId, rec) !== null;   // étape retirée
+      }).map(function(rec) {
         return {
           id:        rec.id,
           mime:      rec.mime,

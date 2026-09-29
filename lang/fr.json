@@ -3653,6 +3653,8 @@
   "secours.edit.voirCarte": "🗺️ Voir sur carte",
   "secours.equipe.defaultNom": "Équipe {nom}",
   "secours.etape.fallback": "étape {idx}",
+  "secours.etape.retraitConfirme": "Retirer ce point du parcours efface ce qui a été saisi sur {n} étape(s) pendant l'intervention :\n{liste}\n\nLes photos restent sur l'appareil mais ne figureront plus dans le rapport.",
+  "secours.etape.retraitRefuse": "Impossible de retirer une étape signalée « Aide demandée » ou « Victime trouvée » pendant l'intervention. Change d'abord son statut.",
   "secours.floater.polygonInstr": "⬛ Clique pour ajouter des sommets — <strong>double-clic pour FERMER le polygone</strong>",
   "secours.floater.retourModale": "↩️ Retour modale",
   "secours.floater.roadsInstr": "🛣️ Clique chaque <strong>TRACÉ</strong> à inclure (re-clic = retirer)",

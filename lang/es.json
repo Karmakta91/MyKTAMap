@@ -3653,6 +3653,8 @@
   "secours.edit.voirCarte": "🗺️ Ver en el mapa",
   "secours.equipe.defaultNom": "Equipo {nom}",
   "secours.etape.fallback": "etapa {idx}",
+  "secours.etape.retraitConfirme": "Quitar este punto del recorrido borra lo introducido en {n} etapa(s) durante la intervención:\n{liste}\n\nLas fotos se quedan en el dispositivo pero ya no aparecerán en el informe.",
+  "secours.etape.retraitRefuse": "No se puede quitar una etapa marcada «Ayuda solicitada» o «Víctima encontrada» durante la intervención. Cambia primero su estado.",
   "secours.floater.polygonInstr": "⬛ Haz clic para añadir vértices — <strong>doble clic para CERRAR el polígono</strong>",
   "secours.floater.retourModale": "↩️ Volver a la modal",
   "secours.floater.roadsInstr": "🛣️ Haz clic en cada <strong>TRAZADO</strong> a incluir (volver a hacer clic = quitar)",
