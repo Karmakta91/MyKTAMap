@@ -1675,7 +1675,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 | 📍 Entry | 1 map click = captures the team's entry position |
 | 🚪 Exit | 1 map click = captures the exit position |
 | ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click: the nearest gallery, among the displayed levels, is taken (re-click = remove, highlighted in red). The map's galleries are found identically on any phone that has the same map; a path drawn by hand on a single device only exists on that one. Hidden layers remain selectable |
-| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration (methodical speed 0.5 m/s) |
+| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration according to the rescue plan's **⏱️ Estimated durations** settings (search speed 1.5 km/h and pause 0 by default, adjustable) |
 
 > 🔁 **During the intervention**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps right away. What has already been entered (status, observations, photos) stays on the same step, even when two steps share the same name. Removing a step that already has entries asks for confirmation, and is **refused** if it reports "Help requested" or "Victim found": change its status first. Put back later, the step recovers what had been entered. If a team reports "Help requested" or "Victim found" on a step you removed in the meantime, importing its report **puts the point back in its route**, in its place, and tells you in red; if the point cannot be put back (team no longer in the current phase, phone still on an older version), the red alert is shown anyway. **Relaunching** a finished plan erases the previous intervention, photos included: a confirmation reminds you, export its report first. "All POIs in the zone" adds the steps from nearest to nearest, to avoid back-and-forth.
 
@@ -1814,7 +1814,7 @@ New section in the 🗺️ Route modal:
    Duration per pause: [15] min
 ```
 
-Default checked + 15 min (= preserved behavior). Modifiable → also applies to Rescue Mode duration calculations (cross-feature).
+Default checked + 15 min (= preserved behavior). ⚠️ Since v1.98.11 this pause **no longer** applies to Rescue Mode: each rescue plan has its own settings (**⏱️ Estimated durations** block: search speed and pause per step), sent to the teams with the plan.
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
 

@@ -1667,7 +1667,7 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 | 📍 Entrada | 1 clic en el mapa = captura la posición de entrada del equipo |
 | 🚪 Salida | 1 clic en el mapa = captura la posición de salida |
 | ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic: se toma la galería más cercana, entre los niveles visibles (volver a pulsar = quitar, resaltada en rojo). Las galerías del plano se recuperan idénticas en cualquier teléfono que tenga el mismo plano; un trazado dibujado a mano en un solo dispositivo solo existe en ese. Las capas ocultas siguen siendo seleccionables |
-| 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada (velocidad metódica de 0,5 m/s) |
+| 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada según los ajustes **⏱️ Duraciones estimadas** del plan de rescate (velocidad de búsqueda 1,5 km/h y pausa 0 por defecto, modificables) |
 > 🔁 **Durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas modificas, recibe sus etapas de inmediato. Lo ya introducido (estado, observaciones, fotos) se queda en la misma etapa, aunque dos etapas tengan el mismo nombre. Quitar una etapa que ya tiene datos pide confirmación, y se **rechaza** si indica «Ayuda solicitada» o «Víctima encontrada»: cambia primero su estado. Si se vuelve a poner, la etapa recupera lo que se había introducido. Si un equipo señala «Ayuda solicitada» o «Víctima encontrada» en una etapa que habías quitado mientras tanto, importar su informe **vuelve a poner el punto en su recorrido**, en su sitio, y te lo avisa en rojo; si el punto no puede volver a ponerse (equipo que ya no está en la fase actual, teléfono con una versión anterior), la alerta roja se muestra igualmente. **Relanzar** un plan terminado borra la intervención anterior, fotos incluidas: una confirmación lo recuerda, exporta su informe antes. «Todos los POI de la zona» añade las etapas de la más cercana a la más cercana, para evitar idas y vueltas.
 
 #### Visualización en el mapa
@@ -1803,7 +1803,7 @@ Nueva sección en la ventana 🗺️ Itinerario:
    Duración por pausa: [15] min
 ```
 
-Marcada por defecto + 15 min (= comportamiento preservado). Modificable → se aplica también al cálculo de duraciones del Modo Rescate (entre funciones).
+Marcada por defecto + 15 min (= comportamiento preservado). ⚠️ Desde la v1.98.11 esta pausa **ya no** se aplica al Modo Rescate: cada plan de rescate tiene sus propios ajustes (bloque **⏱️ Duraciones estimadas**: velocidad de búsqueda y pausa por etapa), enviados a los equipos con el plan.
 
 > ⚠️ Como con todas las herramientas digitales bajo tierra: **lleva una brújula física** y un mapa de papel en el bolsillo. El teléfono puede averiarse, el magnetómetro puede falsearse por el metal cercano, el rastreador puede derivar. El 🚨 es una ayuda para leer información rápidamente, no un sustituto de la preparación.
 

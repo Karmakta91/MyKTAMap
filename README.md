@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.10` (29/09/2026)
+## 📦 Version courante — `v1.98.11` (29/09/2026)
+
+> ⏱️ **v1.98.11 — Mode Secours, vague 4 (correctifs inter-modules)** : durées d'équipe réalistes (vitesse de fouille et pause propres au plan de secours : 588 min au lieu de ~971 sur un secteur réel) ; un point du −1 s'accroche au −1 et plus à la galerie du dessus (calcul d'itinéraire partagé) ; l'import prévient si le plan a changé de version depuis l'export.
 
 > 🧮 **v1.98.10 — Mode Secours, 3e relecture : les plans d'avant la mise à jour fusionnent de nouveau** : la v1.98.9 tirait au hasard les identités des points, différentes sur le PC et le téléphone pour tout plan préparé avant — un rapport ne s'appariait plus (régression). Elles sont maintenant calculées à l'identique sur chaque appareil, vérifié par une matrice ancien code ↔ nouveau code. Et « Relancer » demande confirmation.
 
@@ -497,6 +499,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.11 (29/09/2026) — Mode Secours, vague 4 : correctifs inter-modules
+
+- ⏱️ **4.1** (`2eab443`, décision KARMA : réglages Secours propres) : `reglagesDuree` du scénario (vitesse de fouille 1,5 km/h, pause 0 par défaut, transmis par le `.mkmsec`) ; la pause de l'itinéraire classique ne s'applique plus au Secours. Secteur de l'audit : 588 min au lieu de ~971. ⚠️ Le 1er patch avait supprimé `_recalculerToutesDureesEquipes` (invisible à `node -c`) : attrapé par le test, et par un nouveau contrôle « toute fonction interne appelée est définie » (hors dépôt).
+- 🏗️ **4.2** (`1d56b6f`, `pathfinder.js`, module partagé) : un point avec niveau s'accroche au segment de son niveau (tolérance 40 px) ; 40 clics ambigus au −1 : ancien 1/40, nouveau 40/40 ; point sans niveau identique au bit près.
+- 🗺️ **4.3** (`61a2948`) : avertissement à l'import (plan et rapport) si le plan a changé de version ou de dimensions depuis l'export.
+- ✅ **Tests** : 13 harnais Node (dont la matrice de versions) + 14 checkups navigateur ; `check-guidage`, `check-repositionner`, `check-position-confirmee`, `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Toujours rien sur appareil réel.
 
 #### v1.98.10 (29/09/2026) — Mode Secours, vague 3quater : 3e relecture
 

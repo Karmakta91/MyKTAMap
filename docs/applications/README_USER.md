@@ -1678,7 +1678,7 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 | 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
 | 🚪 Sortie | 1 clic carte = capture la position de sortie |
 | ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic : la galerie la plus proche, parmi les niveaux affichés, est prise (re-clic = retirer, surlignée en rouge). Les galeries du plan sont retrouvées à l'identique sur tout téléphone qui a le même plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur celui-ci. Les calques masqués restent sélectionnables |
-| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée (vitesse 0.5 m/s méthodique) |
+| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée selon les réglages **⏱️ Durées estimées** du plan de secours (vitesse de fouille 1,5 km/h et pause 0 par défaut, modifiables) |
 
 > 🔁 **Pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu modifies l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a déjà été saisi (statut, observations, photos) reste sur la même étape, même si deux étapes portent le même nom. Retirer une étape déjà renseignée demande une confirmation, et c'est **refusé** si elle signale « Aide demandée » ou « Victime trouvée » : change d'abord son statut. Remise plus tard, l'étape retrouve ce qui y avait été saisi. Si une équipe signale « Aide demandée » ou « Victime trouvée » sur une étape que tu avais retirée entre-temps, l'import de son rapport **remet le point dans son parcours**, à sa place, et te l'annonce en rouge ; si le point ne peut pas être remis (équipe qui n'est plus dans la phase en cours, téléphone resté sur une ancienne version), l'alerte rouge s'affiche quand même. **Relancer** un plan terminé efface l'intervention précédente, photos comprises : une confirmation le rappelle, exporte son rapport avant. « Tous les POI de la zone » ajoute les étapes de proche en proche, pour éviter les allers-retours.
 
@@ -1815,7 +1815,7 @@ Nouvelle section dans la modale 🗺️ Itinéraire :
    Durée par pause : [15] min
 ```
 
-Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
+Default checked + 15 min (= comportement préservé). ⚠️ Depuis la v1.98.11, cette pause ne concerne **plus** le Mode Secours : chaque plan de secours a ses propres réglages (bloc **⏱️ Durées estimées** : vitesse de fouille et pause par étape), transmis aux équipes avec le plan.
 
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
