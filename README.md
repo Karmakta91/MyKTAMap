@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.2` (29/09/2026)
+## 📦 Version courante — `v1.98.3` (29/09/2026)
+
+> ⚡ **v1.98.3 — Itinéraire ~150× plus rapide, réglages ULTRA enfin actifs sur les tracés d'un plan** : un itinéraire sur un relevé de ~9 000 sommets passait de ~45 s à ~0,3 s (mêmes trajets au bit près) ; « Ne rendre que le visible » et « Décimer au dézoom » agissent désormais sur les tracés du plan (893 → 8 sur la carte). Notes de version inchangées (décision KARMA).
 
 > 🧹 **v1.98.2 — Correctifs sans nouveauté visible** : supprimer un plan peut emporter ses documents d'histoire (case décochée) ; l'export image ne pré-coche plus 861 Mo de mémoire ; codes uniques dans l'export anonymisé ; module hors-ligne enfin pré-caché ; premier rendu du tuilage et écran d'urgence immobile assainis. Notes de version inchangées (décision KARMA : rien que l'utilisateur doive apprendre).
 
@@ -481,6 +483,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.3 (29/09/2026) — Vague 2 du plan backlog : itinéraire rapide, ULTRA sur les tracés du plan
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées**.
+- ⚡ **Calcul d'itinéraire ~150× plus rapide** (`bc4ba8b`) : l'enrichissement du graphe comparait chaque segment à tous les autres (3 passes O(S²)) et Dijkstra balayait tous les nœuds à chaque pas (O(V²)). Mesuré sur un relevé réel (912 tracés, ~9 000 sommets) : **~45 s → ~0,3 s** par itinéraire, **~44 s → ~0,23 s** pour la zone atteignable (Mode Perdu), **~48 s → ~0,28 s** pour le graphe de la navigation intelligente. Grille spatiale de 64 px + tas binaire. 🩸 **Résultats identiques au bit près** : candidats triés par indice (mêmes nœuds virtuels, mêmes indices) et tas ordonné sur (distance, indice), le départage exact de l'ancien balayage. Vérifié hors dépôt : graphe enrichi de même empreinte SHA-256 (multi-niveau on/off), 8 trajets + 2 zones identiques. Tenu par `check-guidage.js` §12 (quadrillage fictif ~16 000 segments). Profite à « Recalculer d'ici », la sortie d'urgence, le Mode Perdu, le Secours et la navigation intelligente.
+- 🚀 **Réglages ULTRA sur les tracés d'un plan** (`627d792`) : « Ne rendre que les éléments visibles » et « Décimer les tracés au dézoom » ne parcouraient que les annotations. Désormais `utils.js > _refreshDataPolylinesUltra` : 893 → 8 tracés sur la carte (cull, z=0), 8 968 → 5 313 sommets dessinés (decim, z=−3), calque décoché respecté, géométrie source intacte. `checkup-ultra-traces-plan.js` (falsifié sur l'ancien code).
+- ✅ **Tests** : pre-commit vert ; smoke complet, `checkup-guidage` et le nouveau checkup ULTRA verts en navigateur. ⚠️ Non testé sur iPhone.
 
 #### v1.98.2 (29/09/2026) — Tour du backlog : correctifs, sans note de version
 
