@@ -4959,7 +4959,14 @@
    */
   async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
     if (!ed || !ed.equipe) return false;
-    const eq = ed.equipe;
+    // 🩸 29/09/2026 (audit Secours) — LA MINI-CARTE NE S'EST JAMAIS DESSINÉE.
+    // `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) :
+    // ni entrée, ni étapes, ni zone, ni itinéraire → `_calculerBoundsEquipe` rendait
+    // null et la page était sautée sans un mot. Le PDF se génère sur l'appareil
+    // qui détient le scénario : on y reprend l'équipe complète.
+    const sLoc = (r && r.scenario && r.scenario.id) ? get(r.scenario.id) : null;
+    const gLoc = sLoc ? (sLoc.groupes || []).find(function(g) { return g.id === ed.equipe.id; }) : null;
+    const eq = gLoc ? Object.assign({}, ed.equipe, gLoc) : ed.equipe;
 
     // 1) Bounds englobants
     const bounds = _calculerBoundsEquipe(eq);
