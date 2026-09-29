@@ -3879,6 +3879,8 @@
   "secours.parcours.retirerEtape": "Quitar esta etapa",
   "secours.parcours.sortie": "Salida",
   "secours.parcours.titre": "🗺️ Recorrido:",
+  "secours.pdf.phaseCourte": "Fase {n}",
+  "secours.pdf.historiquePhaseTitre": "FASE CERRADA: {phase} ({n} etapas)",
   "secours.pdf.horsParcoursTitre": "AVISOS FUERA DEL RECORRIDO ({n})",
   "secours.pdf.etapesTitreSansIti": "ETAPAS",
   "secours.pdf.aucuneEtape": "(ninguna etapa definida)",

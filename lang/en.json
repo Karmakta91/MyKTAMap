@@ -3879,6 +3879,8 @@
   "secours.parcours.retirerEtape": "Remove this step",
   "secours.parcours.sortie": "Exit",
   "secours.parcours.titre": "🗺️ Route:",
+  "secours.pdf.phaseCourte": "Phase {n}",
+  "secours.pdf.historiquePhaseTitre": "CLOSED PHASE: {phase} ({n} steps)",
   "secours.pdf.horsParcoursTitre": "REPORTS OUTSIDE THE ROUTE ({n})",
   "secours.pdf.etapesTitreSansIti": "STEPS",
   "secours.pdf.aucuneEtape": "(no step defined)",

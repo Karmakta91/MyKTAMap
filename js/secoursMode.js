@@ -3715,11 +3715,21 @@
           if (!horsParcours.some(function(x) { return x.wid && x.wid === e.wid && x.retireeAt === e.retireeAt; })) horsParcours.push(e);
         });
       });
+      // 4e relecture (R4-7) : étapes des phases CLOSES (avant, le rapport final
+      // n'avait que la phase en cours, mais gardait les photos des phases closes).
+      const historique = Object.keys(s.execution.etapesArchive || {}).map(Number).sort(function(a, b) { return a - b; })
+        .map(function(k) {
+          const arr = s.execution.etapesArchive[String(k)] && s.execution.etapesArchive[String(k)][g.id];
+          return Array.isArray(arr) && arr.length > 0
+            ? { phaseIdx: k, nom: (s.phases && s.phases[k] && s.phases[k].nom) || String(k + 1), etapes: arr.slice() }
+            : null;
+        }).filter(Boolean);
       equipesData.push({
         equipe: equipeClean,
         etapes: etapes.slice(),    // shallow copy (étapes déjà clean)
         photos: photosResolved,
-        horsParcours: horsParcours
+        horsParcours: horsParcours,
+        historique: historique
       });
     }
 
@@ -3770,6 +3780,26 @@
   // 🩸 29/09/2026 — Numéro d'étape d'une photo = celui de l'étape qui la DÉTIENT
   // (`photoIds`), à défaut celui stocké en base. Une étape renumérotée par
   // `_resyncEtapesEquipe` garde ses photos sans réécrire IndexedDB.
+  // 4e relecture (R4-7) : phase de l'étape qui détient la photo (null = phase en
+  // cours ou inconnue) — pour libeller « Phase k · Étape N » dans le PDF.
+  function _phasePhoto(scenarioId, equipeId, rec) {
+    const s = get(scenarioId);
+    const ex = s && s.execution;
+    if (!ex) return null;
+    const cour = Array.isArray(ex.etapes && ex.etapes[equipeId]) && ex.etapes[equipeId].some(function(x) {
+      return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0;
+    });
+    if (cour) return null;
+    const arch = ex.etapesArchive || {};
+    for (const k in arch) {
+      const arr = arch[k] && arch[k][equipeId];
+      if (Array.isArray(arr) && arr.some(function(x) { return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0; })) {
+        return Number(k);
+      }
+    }
+    return null;
+  }
+
   function _stepIdxPhoto(scenarioId, equipeId, rec) {
     const s = get(scenarioId);
     const etapes = s && s.execution && s.execution.etapes && s.execution.etapes[equipeId];
@@ -3818,6 +3848,7 @@
             mime:      rec.mime,
             sizeBytes: rec.size,
             stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec),
+            phaseIdx:  _phasePhoto(scenarioId, equipeId, rec),
             dataUrl:   dataUrl
           });
         } catch(e) {
@@ -3845,7 +3876,8 @@
           id:        rec.id,
           mime:      rec.mime,
           sizeBytes: rec.size,
-          stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec)
+          stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec),
+          phaseIdx:  _phasePhoto(scenarioId, equipeId, rec)
           // pas de dataUrl → non autonome (référence seule)
         };
       });
@@ -5222,6 +5254,31 @@
     return y;
   }
 
+  // 4e relecture (R4-7) — étapes des phases closes, en version compacte.
+  function _pdfSectionHistorique(pdf, ed, r, y, pageW, pageH, margin) {
+    (ed && Array.isArray(ed.historique) ? ed.historique : []).forEach(function(h) {
+      if (y > pageH - 40) {
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+        pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
+      }
+      y += 3;
+      pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+      pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: h.nom, n: h.etapes.length }), margin, y); y += 6;
+      pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      h.etapes.forEach(function(et, i) {
+        if (y > pageH - 25) {
+          _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+          pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
+        }
+        pdf.text("  " + (i + 1) + ". " + (et.label || "(?)") + " : " + _statutLabelAscii(et.statut), margin, y); y += 4;
+        if (et.observations && String(et.observations).trim()) {
+          y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(et.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+        }
+      });
+    });
+    return y;
+  }
+
   function _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin) {
     _drawRapportPDFHeader(pdf, r, pageW, margin);
     const g = ed.equipe;
@@ -5261,7 +5318,7 @@
       pdf.setFont(undefined, "italic");
       pdf.text(t("secours.pdf.aucuneEtape"), margin, y);
       pdf.setFont(undefined, "normal");
-      _pdfSectionHorsParcours(pdf, ed, r, y + 6, pageW, pageH, margin);
+      _pdfSectionHistorique(pdf, ed, r, _pdfSectionHorsParcours(pdf, ed, r, y + 6, pageW, pageH, margin), pageW, pageH, margin);
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
       return;
     }
@@ -5308,6 +5365,7 @@
       y += 3;
     });
     y = _pdfSectionHorsParcours(pdf, ed, r, y, pageW, pageH, margin);
+    y = _pdfSectionHistorique(pdf, ed, r, y, pageW, pageH, margin);
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
   }
 
@@ -5699,7 +5757,8 @@
         pdf.rect(x, y, cellW, cellH);
         // Label sous photo
         pdf.setFontSize(7); pdf.setTextColor(80);
-        const stepLabel = (p.stepIdx === -1) ? t("secours.pdf.noteLibre") : t("secours.pdf.typeEtape", { idx: (p.stepIdx + 1) });
+        let stepLabel = (p.stepIdx === -1) ? t("secours.pdf.noteLibre") : t("secours.pdf.typeEtape", { idx: (p.stepIdx + 1) });
+        if (typeof p.phaseIdx === "number") stepLabel = t("secours.pdf.phaseCourte", { n: p.phaseIdx + 1 }) + " - " + stepLabel;
         pdf.text(stepLabel + " - " + _formatKB(p.sizeBytes), x, y + cellH + 4);
         pdf.setTextColor(0);
       } catch(e) {
