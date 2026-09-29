@@ -295,6 +295,8 @@ Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instru
 
 #### 65.6 Pathfinder intégration
 
+> 🩸 **29/09/2026 (audit Secours)** — « Tous les POI de la zone » (`_ajouterPoisDansZone`) ordonne les étapes en **chaîne du plus proche voisin** (`_ordrePlusProcheVoisin`, O(n²), pénalité de changement de niveau), à partir de la dernière étape déjà saisie, à défaut de l'entrée. Avant : tri par distance à l'entrée, malgré un commentaire qui annonçait l'inverse — +8 à +84 % de marche mesurés par l'audit sur 6 secteurs réels. Gain à vol d'oiseau mesuré après correctif : 26 à 45 %.
+
 > 🩸 **29/09/2026 (audit Secours)** — `itineraireSuggere[].level` porte le **niveau réel** de chaque point (`_niveauxItineraire`) : les deux calculs (sync / async) l'écrasaient par `g.entree.level`. Point ambigu du pathfinder (`null` : milieu de jonction, nœud fusionné) → dernier niveau connu, à défaut l'entrée. Mesuré sur un trajet 0 → −1 réel : 33 points au −1, tous déclarés « 0 » avant. Aucun lecteur n'exploitait encore ce champ : c'est la donnée juste dont le guidage Secours (B1) aura besoin.
 
 `_recalculerItineraireGroupe(scenarioId, groupeId)` :

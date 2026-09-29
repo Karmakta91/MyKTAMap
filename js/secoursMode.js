@@ -9615,8 +9615,28 @@
   // dans la zone de recherche") : ajoute en intermédiaires TOUS les POI
   // qui tombent dans la zone définie de l'équipe (polygon ou roads buffer
   // 30 px). Skip les POI déjà présents en entrée/sortie/intermédiaires.
-  // Tri par distance croissante à l'entrée → l'itinéraire suggéré est plus
-  // efficace (greedy nearest neighbor approximation).
+  // Ordre : chaîne du plus proche voisin (cf `_ordrePlusProcheVoisin`).
+  // Chaîne du plus proche voisin, à vol d'oiseau (plan px) : O(n²), n = POI d'une
+  // zone (quelques dizaines). Le niveau compte : changer d'étage coûte une jonction,
+  // donc à distance égale on reste au même niveau (pénalité 1e6 px, ordre total).
+  function _ordrePlusProcheVoisin(depart, pts) {
+    const reste = pts.slice();
+    const out = [];
+    let cur = depart;
+    const niv = function(p) { return (p && typeof p.level === "number") ? p.level : 0; };
+    while (reste.length > 0) {
+      let iBest = 0, dBest = Infinity;
+      for (let i = 0; i < reste.length; i++) {
+        const dx = reste[i].x - cur.x, dy = reste[i].y - cur.y;
+        const d = Math.sqrt(dx * dx + dy * dy) + (niv(reste[i]) !== niv(cur) ? 1e6 : 0);
+        if (d < dBest) { dBest = d; iBest = i; }
+      }
+      cur = reste.splice(iBest, 1)[0];
+      out.push(cur);
+    }
+    return out;
+  }
+
   function _ajouterPoisDansZone(scenarioId, groupeId) {
     const s = get(scenarioId);
     if (!s) return;
@@ -9663,7 +9683,7 @@
       let cntTotal = 0, cntSkipLevel = 0, cntSkipOutside = 0, cntSkipDup = 0;
       const tracesZone = _tracesZone(g);  // résolu UNE fois (empreintes), pas par POI
       // Filtre les POI dans la zone
-      const candidats = [];
+      let candidats = [];
       all.forEach(function(entry) {
         cntTotal++;
         const p = entry.point || entry;
@@ -9714,8 +9734,14 @@
         _toast(t("secours.toast.aucunPoiZone"), "info");
         return;
       }
-      // Tri par distance croissante à l'entrée (greedy nearest neighbor)
-      candidats.sort(function(a, b) { return a._d - b._d; });
+      // 🩸 29/09/2026 (audit Secours) — le commentaire promettait « greedy nearest
+      // neighbor », le code triait par distance à l'ENTRÉE : l'équipe faisait des
+      // allers-retours (mesuré sur 6 secteurs réels : +8 à +84 % de marche, ~+38 %
+      // en médiane). Chaîne du plus proche voisin, partant de la dernière étape
+      // déjà saisie (on AJOUTE à la suite), à défaut de l'entrée.
+      const inter = g.intermediaires || [];
+      const depart = inter.length > 0 ? inter[inter.length - 1] : g.entree;
+      candidats = _ordrePlusProcheVoisin(depart, candidats);
       // Strip le _d helper avant save
       const newIntermediaires = (g.intermediaires || []).slice().concat(
         candidats.map(function(c) {
