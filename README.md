@@ -12,13 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.11` (29/09/2026)
+## 📦 Version courante — `v1.98.12` (29/09/2026)
+
+> 🔎 **v1.98.12 — Mode Secours, vague 4bis (4e relecture des vagues 1 à 4)** : un rapport de phase 1 importé après le passage en phase 2 va dans l'historique de la phase 1 (il remplissait la phase 2 en silence) ; les itinéraires d'équipe profitent enfin du calage par niveau ; observations non dupliquées ; rapport final avec les phases closes et les signalements hors parcours ; durées des plans d'avant recalculées ; PDF relus page par page (6 défauts corrigés).
 
 > ⏱️ **v1.98.11 — Mode Secours, vague 4 (correctifs inter-modules)** : durées d'équipe réalistes (vitesse de fouille et pause propres au plan de secours : 588 min au lieu de ~971 sur un secteur réel) ; un point du −1 s'accroche au −1 et plus à la galerie du dessus (calcul d'itinéraire partagé) ; l'import prévient si le plan a changé de version depuis l'export.
 
 > 🧮 **v1.98.10 — Mode Secours, 3e relecture : les plans d'avant la mise à jour fusionnent de nouveau** : la v1.98.9 tirait au hasard les identités des points, différentes sur le PC et le téléphone pour tout plan préparé avant — un rapport ne s'appariait plus (régression). Elles sont maintenant calculées à l'identique sur chaque appareil, vérifié par une matrice ancien code ↔ nouveau code. Et « Relancer » demande confirmation.
-
-> 🆔 **v1.98.9 — Mode Secours, 2e relecture : chaque point de passage a son identité** : la 2.6 refaite reliait encore des étapes par leur nom (un autre « Puits » naissait déjà fait, un homonyme contournait le refus « victime ») ; désormais un identifiant par point. Et une « victime » signalée par l'équipe sur une étape retirée au PC est remise dans le parcours avec une alerte rouge, au lieu d'être ignorée.
 
 > 🔍 **v1.98.8 — Mode Secours, reprise après relecture des vagues 1-3** : un agent relecteur a reproduit 10 défauts dans les correctifs livrés ou autour ; tous corrigés, dont la 2.6 refaite (homonymes, étape « victime » qui disparaissait du rapport), un plan importé effacé aussitôt sur un téléphone plein, et l'itinéraire tracé à travers la surface en Vue OSM (conséquence de 2.2).
 
@@ -499,6 +499,21 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.12 (29/09/2026) — Mode Secours, vague 4bis : 4e relecture (vagues 1 à 4)
+
+- 🔍 **Origine** : relecture globale des commits des vagues 1 à 4 (demande KARMA) : 9 défauts (R4-1 à R4-9) + 9 mineurs. Décisions KARMA : 1a (rapport d'une phase close → historique de cette phase, avis orange, alerte rouge si aide/victime), 2a (durées des scénarios existants recalculées automatiquement).
+- 🏗️ **R4-1** (`e24a4a1`) : le niveau des étapes n'était pas transmis au calcul d'itinéraire → **correction de la v1.98.11** : son calage par niveau (4.2) n'atteignait PAS les itinéraires d'équipe du Secours ; c'est le cas maintenant (niveau porté aussi par le POI accroché).
+- 🗂️ **R4-2** (`812b0d6`) : un rapport de phase 1 importé après le passage en phase 2 remplissait les étapes de la phase 2 (équipe reconduite) → fusion dans l'historique de la phase 1 (`_phaseDuRapport`, `etapesArchive`).
+- 🔁 **R4-3** (`889af67`) : réimporter un rapport ne duplique plus les observations (`_obsImport`, delta). `032341d` : clé i18n en double (`secours.pdf.etapesTitre`) qui imprimait « ({n}) ».
+- 🧭 **R4-4** (`e67eb5a`) : un signalement (indice…) sur une étape retirée côté PC n'est plus invisible : avis orange, photos rangées à part, section « Signalements hors parcours » du rapport.
+- 📜 **R4-7** (`4f1266a`) : le rapport final garde les étapes des phases closes (section par phase ; photos libellées « Phase k - Étape N »).
+- ⏱️ **R4-6** (`a075631`, décision 2a) : scénarios d'avant 4.1 (stockés ou importés) → réglages par défaut posés et durées recalculées ; bornes à l'import (R4-12).
+- 📨 **R4-5** (`038e68c`) : le refus « scénario d'origine différent » dit quoi faire ; guides : réimporter le plan sur chaque téléphone après une mise à jour.
+- 🔄 **R4-8/9** (`8dbd2c1`) : la vue opérateur se rafraîchit après un import (`_renderInline` n'avait jamais existé) ; l'aperçu annonce ce qui sera vraiment fusionné.
+- 📄 **PDF relus page par page** (`99785b7`) : page « Briefing surface » du rapport qui disait « aucune équipe définie » ; « Plan : (plan) » ; titres gris ; entrée/sortie en coordonnées → nom ; boutons de zoom capturés ; équipe hors phase.
+- 🧹 **Mineurs** (`af8019d`) : `VITESSE_MPS_DEFAUT` = 1,5 km/h ; commentaires périmés ; tracés de zone introuvables annoncés à l'import ; badges ✓ par identité ; la limite des 10 scénarios épargne une intervention terminée non rapportée ; guide (étape remise = même phase) ; plus d'entrée vide à l'import.
+- ✅ **Tests** : 16 harnais Node + checkups navigateur (fusion 2 appareils, phase close, mineurs), 3 PDF générés et relus visuellement ; `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Toujours rien sur appareil réel ; cadre jaune de la vue OSM non vérifié (test hors connexion).
 
 #### v1.98.11 (29/09/2026) — Mode Secours, vague 4 : correctifs inter-modules
 
