@@ -9427,6 +9427,21 @@
   // ============================================================
   // PATHFINDER intégration (depuis v1.22.0 commit 4/9)
   // ============================================================
+  // 🩸 29/09/2026 (audit Secours) — LE NIVEAU DE CHAQUE POINT, PAS CELUI DE L'ENTRÉE.
+  // Les deux calculs écrasaient `level` par `g.entree.level` : une équipe qui descend
+  // au −1 voyait tout son tracé déclaré au niveau de l'entrée. Le pathfinder rend le
+  // niveau réel par point, ou `null` quand il est ambigu (milieu d'une jonction,
+  // nœud fusionné) : on reprend alors le dernier niveau connu, à défaut l'entrée.
+  function _niveauxItineraire(path, niveauEntree) {
+    let courant = Number.isInteger(niveauEntree) ? niveauEntree : 0;
+    const premier = (path || []).find(function(p) { return p && Number.isInteger(p.level); });
+    if (premier) courant = premier.level;
+    return (path || []).map(function(p) {
+      if (Number.isInteger(p.level)) courant = p.level;
+      return { x: p.x, y: p.y, level: courant };
+    });
+  }
+
   function _recalculerItineraireGroupe(scenarioId, groupeId) {
     const s = get(scenarioId);
     if (!s) return null;
@@ -9504,9 +9519,7 @@
           duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
         }
         updateGroupe(scenarioId, groupeId, {
-          itineraireSuggere: r.path.map(function(p) {
-            return { x: p.x, y: p.y, level: g.entree.level || 0 };
-          }),
+          itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
           distanceM:       distM,
           dureeEstimeeMin: duree
         });
@@ -9796,9 +9809,7 @@
             duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
           }
           updateGroupe(scenarioId, groupeId, {
-            itineraireSuggere: r.path.map(function(p) {
-              return { x: p.x, y: p.y, level: g.entree.level || 0 };
-            }),
+            itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
             distanceM:       distM,
             dureeEstimeeMin: duree
           });

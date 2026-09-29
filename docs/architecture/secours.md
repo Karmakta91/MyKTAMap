@@ -295,6 +295,8 @@ Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instru
 
 #### 65.6 Pathfinder intégration
 
+> 🩸 **29/09/2026 (audit Secours)** — `itineraireSuggere[].level` porte le **niveau réel** de chaque point (`_niveauxItineraire`) : les deux calculs (sync / async) l'écrasaient par `g.entree.level`. Point ambigu du pathfinder (`null` : milieu de jonction, nœud fusionné) → dernier niveau connu, à défaut l'entrée. Mesuré sur un trajet 0 → −1 réel : 33 points au −1, tous déclarés « 0 » avant. Aucun lecteur n'exploitait encore ce champ : c'est la donnée juste dont le guidage Secours (B1) aura besoin.
+
 `_recalculerItineraireGroupe(scenarioId, groupeId)` :
 1. Vérifie entree + sortie définies (toast warn sinon)
 2. Appel async `Pathfinder.computeRoute([entree, sortie], {})` (async depuis v1.21.x pour expansion avoid tags)
