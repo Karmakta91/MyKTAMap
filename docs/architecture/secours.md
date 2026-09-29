@@ -701,6 +701,8 @@ scenario.execution = {
 
 ##### 67.7.2 Helpers CRUD execution (API publique `window.SecoursMode`)
 
+> 🩸 **29/09/2026 (audit Secours)** — les étapes ne se construisaient qu'au lancement et au passage de phase : un **renfort ajouté en cours** n'avait aucune étape, un **parcours modifié** gardait les anciennes. `addGroupe` / `updateGroupe` (entrée, sortie, intermédiaires) appellent `_resyncEtapesEquipe` quand l'exécution est active et l'équipe dans la phase courante : reconstruction + **report des saisies** sur l'étape de même type + même libellé (dans l'ordre pour les homonymes) ; une étape retirée qui portait des données va dans `execution._etapesRetirees[gid]`. Conséquence : un numéro d'étape n'est plus stable → la fusion d'un rapport apparie par `_etapeCorrespondante` (numéro + type + libellé, puis type + libellé), une photo importée prend le numéro **local**, et le numéro d'une photo dans un rapport vient de l'étape qui la détient (`_stepIdxPhoto`, repli sur `stepIdx` stocké).
+
 - `lancerExecution(scenarioId, opts)` : initialise s.execution (etapes via `_buildEtapesPourEquipe(g)` pour chaque équipe OU `_notes_libres: []` si role=secouriste). Si execution déjà active → update role/equipeId sans casser étapes.
 - `arreterExecution(scenarioId)` : active=false + endedAt = now. Si en pause, comptabilise dernier segment avant arrêt. Garde execution comme historique consultable.
 - `pauseExecution(scenarioId, paused)` : set/clear pausedAt + cumul pausedTotalMs.

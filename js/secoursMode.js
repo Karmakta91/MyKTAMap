@@ -995,6 +995,44 @@
     return etapes;
   }
 
+  // 🩸 29/09/2026 (audit Secours) — UNE ÉQUIPE AJOUTÉE OU MODIFIÉE PENDANT UNE PHASE
+  // N'AVAIT PAS SES ÉTAPES. Les étapes ne se construisaient qu'au lancement et au
+  // passage de phase : un renfort ajouté en cours n'avait aucun stepper, et un
+  // parcours modifié gardait l'ancien. On reconstruit depuis le parcours actuel et
+  // on reporte ce qui est déjà saisi sur l'étape de même type + même libellé (dans
+  // l'ordre, pour les homonymes). Une étape retirée qui portait des données n'est
+  // pas jetée : elle part dans `execution._etapesRetirees[gid]` (traçabilité).
+  function _resyncEtapesEquipe(s, g) {
+    const ex = s && s.execution;
+    if (!ex || !ex.active || !ex.etapes || !g) return false;
+    if (ex.role === "secouriste" && !Array.isArray(ex.etapes[g.id])
+        && !Object.keys(ex.etapes).some(function(k) { return k !== "_notes_libres"; })) return false;
+    const phaseIdx = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
+    if (Array.isArray(s.phases) && s.phases.length > 0 && !_groupeParticipeAPhase(s, g.id, phaseIdx)) return false;
+    const anciennes = Array.isArray(ex.etapes[g.id]) ? ex.etapes[g.id].slice() : [];
+    const nouvelles = _buildEtapesPourEquipe(g);
+    const aDesDonnees = function(e) {
+      return e.statut !== "pending" || (e.observations || "").trim() || (e.photoIds || []).length || e.startedAt;
+    };
+    nouvelles.forEach(function(n) {
+      const i = anciennes.findIndex(function(o) { return o.type === n.type && o.label === n.label; });
+      if (i < 0) return;
+      const o = anciennes.splice(i, 1)[0];
+      ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom"].forEach(function(k) {
+        if (k in o) n[k] = o[k];
+      });
+    });
+    const perdues = anciennes.filter(aDesDonnees);
+    if (perdues.length > 0) {
+      ex._etapesRetirees = ex._etapesRetirees || {};
+      ex._etapesRetirees[g.id] = (ex._etapesRetirees[g.id] || []).concat(perdues.map(function(e) {
+        return Object.assign({}, e, { retireeAt: _nowIso() });
+      }));
+    }
+    ex.etapes[g.id] = nouvelles;
+    return true;
+  }
+
   // Lance l'exécution d'un scénario. Initialise s.execution avec étapes
   // par équipe construites depuis les parcours. Marque active=true +
   // startedAt = now. Cas particulier role="secouriste" : pas d'équipes
@@ -2187,7 +2225,7 @@
     const conflits = [];
     const etapesImp = Array.isArray(ed.etapes) ? ed.etapes : [];
     etapesImp.forEach(function(etImp) {
-      const etOp = etapesOp.find(function(e) { return e.idx === etImp.idx; });
+      const etOp = _etapeCorrespondante(etapesOp, etImp);
       if (!etOp) return; // sera signalé comme skipped, pas conflit
       const opHasObs = etOp.observations && String(etOp.observations).trim().length > 0;
       const opHasStatus = etOp.statut && etOp.statut !== "pending";
@@ -2280,7 +2318,7 @@
     // Fusion étape par étape (sequential car écritures IDB photos)
     for (let i = 0; i < etapesImportees.length; i++) {
       const etImp = etapesImportees[i];
-      const etapeOp = etapesOp.find(function(e) { return e.idx === etImp.idx; });
+      const etapeOp = _etapeCorrespondante(etapesOp, etImp);
       if (!etapeOp) {
         stats.etapesSkipped++;
         stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
@@ -2350,7 +2388,7 @@
               id:               photo.id,
               scenarioId:       s.id,
               equipeId:         equipeId,
-              stepIdx:          etImp.idx,
+              stepIdx:          etapeOp.idx,   // numéro LOCAL (cf _etapeCorrespondante)
               mime:             photo.mime || "image/jpeg",
               dataUrl:          photo.dataUrl,
               sourceScenarioId: sourceScenarioId
@@ -2749,6 +2787,7 @@
         }
       }
     }
+    _resyncEtapesEquipe(s, groupe);   // renfort ajouté en cours de phase
     _commitMutation(s);
     return groupe;
   }
@@ -2799,6 +2838,9 @@
         g.surfaceGps = { lat: p.lat, lng: p.lng };
       }
       // sinon : valeur invalide ignorée (pas d'écrasement)
+    }
+    if ("entree" in partial || "sortie" in partial || "intermediaires" in partial) {
+      _resyncEtapesEquipe(s, g);   // parcours modifié en cours de phase
     }
     _commitMutation(s);
     return g;
@@ -3227,6 +3269,30 @@
     };
   }
 
+  // 🩸 29/09/2026 — Numéro d'étape d'une photo = celui de l'étape qui la DÉTIENT
+  // (`photoIds`), à défaut celui stocké en base. Une étape renumérotée par
+  // `_resyncEtapesEquipe` garde ses photos sans réécrire IndexedDB.
+  function _stepIdxPhoto(scenarioId, equipeId, rec) {
+    const s = get(scenarioId);
+    const etapes = s && s.execution && s.execution.etapes && s.execution.etapes[equipeId];
+    if (Array.isArray(etapes)) {
+      const e = etapes.find(function(x) { return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0; });
+      if (e) return e.idx;
+    }
+    return rec.stepIdx;
+  }
+
+  // Étape locale correspondant à une étape importée. Le numéro seul ne suffit plus
+  // (le PC a pu reconstruire les étapes d'une équipe en cours de phase) : même
+  // numéro ET même type + libellé d'abord, sinon même type + libellé, sinon le
+  // numéro seul si l'étape importée n'a pas de libellé (ancien rapport).
+  function _etapeCorrespondante(etapesOp, etImp) {
+    const memeEtape = function(e) { return e.type === etImp.type && e.label === etImp.label; };
+    const parIdx = etapesOp.find(function(e) { return e.idx === etImp.idx; });
+    if (parIdx && (!etImp.label || memeEtape(parIdx))) return parIdx;
+    return etapesOp.find(memeEtape) || null;
+  }
+
   // Helper interne — résout toutes les photos d'une équipe en data:base64.
   // Retourne [{id, mime, sizeBytes, dataUrl, stepIdx}, ...].
   async function _resolverPhotosEquipe(scenarioId, equipeId) {
@@ -3244,7 +3310,7 @@
             id:        rec.id,
             mime:      rec.mime,
             sizeBytes: rec.size,
-            stepIdx:   rec.stepIdx,
+            stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec),
             dataUrl:   dataUrl
           });
         } catch(e) {
@@ -3270,7 +3336,7 @@
           id:        rec.id,
           mime:      rec.mime,
           sizeBytes: rec.size,
-          stepIdx:   rec.stepIdx
+          stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec)
           // pas de dataUrl → non autonome (référence seule)
         };
       });
