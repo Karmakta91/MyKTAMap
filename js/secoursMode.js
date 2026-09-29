@@ -1574,16 +1574,48 @@
   // Ligne « départ / retour » + boutons, dans la vue équipier et sur les cartes opérateur.
   function _renderLigneRetour(s, g) {
     const e = _etatRetour(s, g);
+    const estOp = s.execution && s.execution.role === "operateur";
     return '<div class="kta-secours-retour kta-secours-retour--' + e.etat + '" data-live-retour="' + _escAttr(g.id) + '">' +
+             (e.rappelAt ? '<span class="kta-secours-rappel-badge">' + _escHtml(t("secours.retour.rappeleeA", { h: _heureCourte(e.rappelAt) })) + '</span>' : '') +
              '<span class="kta-secours-retour-txt">' + _escHtml(_texteRetour(s, g)) + '</span>' +
              (e.etat !== "rentree"
                ? '<span class="kta-secours-retour-btns">' +
                    (!e.departExplicite ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-depart" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnDepart") + '</button>' : '') +
+                   (estOp && !e.rappelAt ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="rappel-equipe" data-gid="' + _escAttr(g.id) + '">' + t("secours.rappel.btnEquipe") + '</button>' : '') +
                    '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-rentree" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnRentree") + '</button>' +
                  '</span>'
                : '') +
            '</div>';
   }
+  // ─── Rappel (vague 5, 29/09/2026 — décision KARMA 8:a) ───
+  // ⚠️ Aucun réseau entre appareils : l'app NE PRÉVIENT PAS les équipes. Le rappel
+  // est un ÉTAT tenu par l'opérateur (qui, à quelle heure), transmis par radio ou à
+  // la voix, affiché en violet et consigné dans le rapport. La confirmation le dit.
+  function _equipesARappeler(s) {
+    return (s.groupes || []).filter(function(g) {
+      const su = _suiviEquipe(s, g.id) || {};
+      return _equipeEngagee(s, g) && !su.rentreeAt && !su.rappelAt;
+    });
+  }
+  async function _rappeler(sid, gids) {
+    const s = get(sid);
+    if (!s || !gids.length) { _toast(t("secours.rappel.aucune"), "info"); return false; }
+    const noms = (s.groupes || []).filter(function(g) { return gids.indexOf(g.id) >= 0; })
+                                  .map(function(g) { return _escHtml(g.nom); }).join(", ");
+    const msg = t("secours.rappel.confirm", { n: gids.length, equipes: noms, h: _heureCourte(_nowIso()) });
+    const ok = (typeof window.ktaConfirm === "function")
+      ? await window.ktaConfirm(msg, { titre: t("secours.rappel.confirmTitre"), okLabel: t("secours.rappel.confirmOk") })
+      : window.confirm(msg);
+    if (!ok) return false;
+    const s2 = get(sid);
+    if (!s2 || !_estExecutionActive(s2)) return false;
+    const h = _nowIso();
+    gids.forEach(function(gid) { _suiviEquipe(s2, gid, true).rappelAt = h; });
+    _commitMutation(s2);
+    _toast(t("secours.rappel.fait", { n: gids.length }), "info");
+    return true;
+  }
+
   function marquerSuivi(scenarioId, gid, champ) {
     const s = get(scenarioId);
     if (!s || !_estExecutionActive(s) || ["departAt", "rentreeAt", "rappelAt"].indexOf(champ) < 0) return;
@@ -8454,6 +8486,10 @@
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
                 t("secours.liveOp.carteGlobale") +
               '</button>' +
+              // Rappel général (vague 5) : un état tenu par l'opérateur, pas un message envoyé.
+              '<button class="kta-btn kta-btn-rappel kta-btn-sm" data-action="rappel-general" title="' + _escAttr(t("secours.rappel.generalTitle")) + '">' +
+                t("secours.rappel.btnGeneral") +
+              '</button>' +
               // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Opérateur.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.liveOp.vueOsmTitle")) + '">' +
                 t("secours.bandeau.vueOsm") +
@@ -9553,6 +9589,21 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // Rappel : général (équipes engagées, ni rentrées ni déjà rappelées) ou d'une équipe.
+    corps.querySelectorAll('[data-action="rappel-general"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _rappeler(s.id, _equipesARappeler(get(s.id)).map(function(g) { return g.id; })).then(function(fait) {
+          if (fait && _modal) _switchView("live");
+        });
+      });
+    });
+    corps.querySelectorAll('[data-action="rappel-equipe"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _rappeler(s.id, [btn.getAttribute("data-gid")]).then(function(fait) {
+          if (fait && _modal) _switchView("live");
+        });
+      });
+    });
     // A4 : départ / rentrée d'une équipe (vue équipier ou carte opérateur).
     corps.querySelectorAll('[data-action="retour-depart"], [data-action="retour-rentree"]').forEach(function(btn) {
       btn.addEventListener("click", function() {

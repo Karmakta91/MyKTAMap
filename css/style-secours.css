@@ -2941,3 +2941,11 @@ body.kta-theme-light .kta-secours-retour--rouge, html.kta-theme-light .kta-secou
 body.kta-theme-light .kta-secours-retour--rentree, html.kta-theme-light .kta-secours-retour--rentree { color: #1e7a3a !important; }
 body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange,
 html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #a85a00 !important; }
+
+/* Rappel (vague 5) : violet — un ordre donné par l'opérateur */
+.kta-secours-rappel-badge {
+  background: rgba(167, 139, 250, 0.22); color: #d4c6ff; border: 1px solid #a78bfa;
+  border-radius: 999px; padding: 1px 8px; font-weight: 700; white-space: nowrap;
+}
+.kta-btn.kta-btn-rappel { background: #5b3fb0; color: #fff; border: 1px solid #a78bfa; }
+body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secours-rappel-badge { background: #ece6ff !important; color: #4a2f9a !important; border-color: #6d4fd0 !important; }
