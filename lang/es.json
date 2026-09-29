@@ -3930,7 +3930,7 @@
   "secours.pdf.typeEntree": "ENTRADA",
   "secours.pdf.typeEtape": "Etapa {idx}",
   "secours.pdf.typeSortie": "SALIDA",
-  "secours.pdf.waypointsLigne": "{n} puntos de paso sobre la red de galerias existente.",
+  "secours.pdf.etapesLigne": "{n} etapas: {liste}",
   "secours.pdf.zoneNonDefinie": "(sin definir)",
   "secours.pdf.zonePolygone": "Poligono ({n} vertices)",
   "secours.pdf.zoneRatisser": "Zona a registrar: {zone}",

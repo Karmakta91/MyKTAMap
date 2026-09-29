@@ -5359,9 +5359,19 @@
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           pdf.text(t("secours.pdf.itineraireSuggere"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-          pdf.text(t("secours.pdf.waypointsLigne", { n: g.itineraireSuggere.length }), margin, y); y += 4;
+          // 🩸 29/09/2026 (audit Secours) — la ligne disait « N waypoints » avec N =
+          // points du TRACÉ (220 à 480 mesurés), pas les étapes (une quinzaine) : un
+          // chef d'équipe lisant le papier croyait à 400 arrêts. On imprime les ÉTAPES,
+          // dans l'ordre, telles qu'il les verra dans le stepper.
+          const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
+            .filter(function(w) { return w && typeof w.x === "number"; })
+            .map(function(w) { return w.label || _fmtPoint(w); });
+          y = _pdfWrapText(pdf, t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
+                           margin, y, pageW - 2 * margin, 4);
           y += 4;
         }
+        // Cadre Observations : page suivante s'il ne tient plus (liste d'étapes longue)
+        if (y + 70 > pdf.internal.pageSize.getHeight() - 10) { pdf.addPage(); y = margin + 8; }
         // Cadre Observations (rempli papier au retour terrain)
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.obsRetourTerrain"), margin, y); y += 5;

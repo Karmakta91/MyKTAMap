@@ -3930,7 +3930,7 @@
   "secours.pdf.typeEntree": "ENTREE",
   "secours.pdf.typeEtape": "Etape {idx}",
   "secours.pdf.typeSortie": "SORTIE",
-  "secours.pdf.waypointsLigne": "{n} waypoints sur le reseau de galeries existant.",
+  "secours.pdf.etapesLigne": "{n} etapes : {liste}",
   "secours.pdf.zoneNonDefinie": "(non definie)",
   "secours.pdf.zonePolygone": "Polygone ({n} sommets)",
   "secours.pdf.zoneRatisser": "Zone a ratisser : {zone}",

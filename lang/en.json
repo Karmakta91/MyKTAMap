@@ -3930,7 +3930,7 @@
   "secours.pdf.typeEntree": "ENTRY",
   "secours.pdf.typeEtape": "Step {idx}",
   "secours.pdf.typeSortie": "EXIT",
-  "secours.pdf.waypointsLigne": "{n} waypoints on the existing tunnel network.",
+  "secours.pdf.etapesLigne": "{n} steps: {liste}",
   "secours.pdf.zoneNonDefinie": "(not defined)",
   "secours.pdf.zonePolygone": "Polygon ({n} vertices)",
   "secours.pdf.zoneRatisser": "Zone to sweep: {zone}",
