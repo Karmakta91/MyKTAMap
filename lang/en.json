@@ -3736,6 +3736,7 @@
   "secours.import.warnBody": "This scenario was created on map <strong>{planSource}</strong> (different from the current map <strong>{planCourant}</strong>). The waypoint and zone coordinates won't make the same visual sense on this map. Importing anyway is useful if you want to recover team names / members / notes, but you will likely have to redefine the zones and entries/exits.",
   "secours.import.warnPlanDifferent": "Different source map: {plan}",
   "secours.import.warnTitre": "Warning — different source map",
+  "secours.import.warnVersionPlan": "This file was prepared on another version of this map ({avant} → {maintenant}). The map may have been redrawn: check zones, entries and steps after importing.",
   "secours.lancer.relanceConfirme": "Relaunching the plan erases the previous intervention: its statuses, observations and photos, including those received from the teams. Remember to export its report first.",
   "secours.lancer.equipeDesc": "You are part of an assigned team. You follow your route step by step and comment live.",
   "secours.lancer.equipeTitre": "🚨 Field team",

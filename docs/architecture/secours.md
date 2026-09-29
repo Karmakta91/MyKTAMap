@@ -623,6 +623,8 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 
 #### 67.4 v1.23.5 — Modale preview AVANT import + mini-légende carte PDF
 
+> 🩸 **29/09/2026 (audit Secours, 4.3)** — seul l'**id** du plan était comparé à l'import. Un plan **regénéré** depuis l'export (autre `version`, autres dimensions) passait sans un mot, alors que positions d'étapes, zones et empreintes de tracés peuvent ne plus tomber juste. `_ecartVersionPlan` → avertissement orange dans l'aperçu d'import du `.mkmsec` **et** du rapport d'équipe (`secours.import.warnVersionPlan`). Un plan différent (autre id) garde son avertissement d'origine.
+
 **Refactor `importerScenario` split en 2 fonctions internes** (pattern §35 charte Promise-based, plus de `confirm()` natif) :
 
 ```js

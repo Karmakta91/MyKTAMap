@@ -72,7 +72,7 @@ fonctions touchées. Tableau à supprimer quand la dernière vague est livrée.
 | 3bis — Reprise après relecture (`docs/…/rev` scratchpad, 29/09) | [x] R1 import sur appareil plein · [x] 2.6 refaite (homonymes, étape retirée, phase cochée, renumérotation) · [x] R5 itinéraire en Vue OSM · [x] R8 photos au « Remplacer » · [x] R2 ids en double · [x] H1 « Dupliquer » · [x] R11-12 mini-carte · [x] mineurs + tests |
 | 3ter — 2e relecture (29/09) | [x] identité des points de passage (`wid`) : N1, N2, N3, N4, N5, N7, N8 · [x] N11 victime sur étape retirée → remise + alerte · [x] N9 / N10b photos orphelines · [x] mineurs (D-b liste d'étapes sans itinéraire) |
 | 3quater — 3e relecture (29/09) | [x] wid calculés + apparieur tolérant (R3-1) · [x] N11 encadré : phase, vrai retrait, ordre, type (R3-2, R3-4, R3-5, R3-6) · [x] photos des phases closes (R3-3) · [x] relance confirmée (R3-7) · [x] matrice de compatibilité entre versions (R3-8) |
-| 4 — Correctifs inter-modules | [x] 4.1 durées : réglages propres au scénario (vitesse de fouille 1,5 km/h, pause 0) · [x] 4.2 calage par niveau (`pathfinder.js`) · [ ] 4.3 version du plan à l'import |
+| 4 — Correctifs inter-modules | [x] 4.1 durées : réglages propres au scénario (vitesse de fouille 1,5 km/h, pause 0) · [x] 4.2 calage par niveau (`pathfinder.js`) · [x] 4.3 version du plan à l'import |
 | 5-8 — Refonte | 5 sécurité terrain (A3, A4, rappel) · 6 guidage (B1, B2) · 7 pilotage (B3, B9, main courante, parcours par phase, rapports secouriste, B10) · 8 lot C |
 
 **Lot A — bloquants** (sans eux, une recherche multi-téléphones ne marche pas) :

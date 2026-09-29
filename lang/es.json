@@ -3736,6 +3736,7 @@
   "secours.import.warnBody": "Este escenario se creó en el mapa <strong>{planSource}</strong> (diferente del mapa actual <strong>{planCourant}</strong>). Las coordenadas de los puntos de paso y zonas no tendrán el mismo sentido visual en este mapa. Importar de todos modos es útil si quieres recuperar los nombres de equipos / miembros / notas, pero probablemente tendrás que redefinir las zonas y las entradas/salidas.",
   "secours.import.warnPlanDifferent": "Mapa de origen diferente: {plan}",
   "secours.import.warnTitre": "Atención — mapa de origen diferente",
+  "secours.import.warnVersionPlan": "Este archivo se preparó con otra versión de este plano ({avant} → {maintenant}). El plano pudo redibujarse: revisa zonas, entradas y etapas tras importar.",
   "secours.lancer.relanceConfirme": "Relanzar el plan borra la intervención anterior: sus estados, observaciones y fotos, incluidas las recibidas de los equipos. Recuerda exportar su informe antes.",
   "secours.lancer.equipeDesc": "Formas parte de un equipo asignado. Sigues tu recorrido etapa por etapa y comentas en vivo.",
   "secours.lancer.equipeTitre": "🚨 Equipo sobre el terreno",

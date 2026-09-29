@@ -1834,6 +1834,31 @@
   // modale preview AVANT injection définitive (cf §35 — confirm() natif
   // banni, modale Promise-based charte requise).
   // Retourne : { ok: bool, payload?: object, warning?: string, error?: string }
+  // 🩸 29/09/2026 (audit Secours, 4.3) — MÊME plan, mais REGÉNÉRÉ depuis l'export :
+  // seul l'id du plan était comparé. Un plan retracé (nouvelle version, autres
+  // dimensions) passait sans un mot, alors que positions d'étapes, zones et empreintes
+  // de tracés peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
+  function _ecartVersionPlan(planFichier) {
+    const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const f = planFichier || {};
+    const idCourant = window._currentLoadedPlanId;
+    if (f.id && idCourant && f.id !== idCourant) return null;   // autre plan : déjà signalé ailleurs
+    const verF = String(f.version || ""), verC = String(pl.version || "");
+    const dimsDiff = (Number(f.imageWidth) > 0 && Number(pl.imageWidth) > 0 && Number(f.imageWidth) !== Number(pl.imageWidth))
+                  || (Number(f.imageHeight) > 0 && Number(pl.imageHeight) > 0 && Number(f.imageHeight) !== Number(pl.imageHeight));
+    if (!(verF && verC && verF !== verC) && !dimsDiff) return null;
+    return t("secours.import.warnVersionPlan", {
+      avant: verF || (f.imageWidth + "×" + f.imageHeight),
+      maintenant: verC || (pl.imageWidth + "×" + pl.imageHeight)
+    });
+  }
+  function _blocEcartVersion(planFichier) {
+    const w = _ecartVersionPlan(planFichier);
+    return w ? '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+               ' padding:10px 12px; margin:14px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' + _escHtml(w) + '</div>'
+             : "";
+  }
+
   async function _parsePayloadMkmsec(input) {
     let text;
     try {
@@ -2186,6 +2211,7 @@
                     '</div>' +
 
                     warningBlock +
+                    _blocEcartVersion(payload.plan) +
                     existeBlock +
 
                     '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
@@ -2826,6 +2852,7 @@
 
         conflitsBlock +
         warningBlock +
+        _blocEcartVersion(payload.plan) +
 
         '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:#c8d0e0;">' +
           t("secours.rapportPreview.snapshotHint") +
