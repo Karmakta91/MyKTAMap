@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.6` (29/09/2026)
+## 📦 Version courante — `v1.98.7` (29/09/2026)
+
+> 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
 > 🗺️ **v1.98.6 — Mode Secours, vague 2 : la saisie du plan** : le mode « zone = tracés » sélectionne enfin des galeries (il ne prenait aucun clic) ; l'itinéraire garde le vrai niveau de chaque point ; « POI de la zone » ordonne au plus proche voisin (26-45 % plus court) ; Ctrl+K n'écrase plus l'entrée d'une équipe ; le Mode Perdu transmet le niveau du dernier point connu ; un renfort ou un parcours modifié en cours de phase a ses étapes, sans perdre les saisies.
 
@@ -489,6 +491,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.7 (29/09/2026) — Mode Secours, vague 3 des correctifs : documents papier
+
+- 📝 **Notes de version** : la ligne Secours couvre les vagues 1 à 3 (écart avec la prod) ; les deux autres restent.
+- 🚒 **3.1 — Briefing pompiers : « POI critiques » rempli** (`8350772`) : il lisait `window.listePoints` (jamais sur `window`), `p.tag` au lieu de `tags[]` et un tag `sortieurgence` inexistant. Lecture session + calques ; accès ouverts (`entree_plan`, `cao`, `peo`, `eso`, alignés sur la Sortie d'urgence) puis fermés (`caf`, `pef`, `esf`).
+- 🖼️ **3.2 — Fond des PDF sous la limite iOS** (`f9d4742`) : briefing à l'échelle 1 (225,7 Mpx, ~860 Mo) et mini-carte du rapport à 0,5 (56 Mpx) → `_echelleCanvasPlan` plafonne à 16 Mpx, recadrage par l'échelle mesurée.
+- 🗺️ **3.2b — La mini-carte du rapport PDF se dessine** (`e8d4b24`, trouvé en test, hors audit) : elle recevait la copie allégée de l'équipe (sans parcours) → cadrage nul → page toujours sautée sans message.
+- 🧾 **3.3 — Le briefing liste les étapes** (`9c90394`) : « N waypoints » comptait les points du tracé (46 à 480) ; liste ordonnée des étapes, cadre Observations reporté à la page suivante s'il ne tient plus.
+- ✅ **Tests** : navigateur (Playwright, plan réel servi en local, hors dépôt), PDF réellement générés et lus — accès listés (1 puits ouvert, 2 fermés, 1 escalier fermé) ; canvas 16,0 Mpx pour le briefing et la mini-carte ; « 4 etapes : » avec les noms ; zéro erreur console. ⚠️ Pas testé sur iPhone réel (limite canvas de Safari).
 
 #### v1.98.6 (29/09/2026) — Mode Secours, vague 2 des correctifs : saisie du plan
 

@@ -1,9 +1,9 @@
 {
-  "version": "v1.98.6",
+  "version": "v1.98.7",
   "released": "2026-09-29",
   "notes": [
     "🪧 Nouveau : le guidage de l'itinéraire. Pendant le suivi, un bandeau te dit quoi faire (« Dans 40 m, tourner à gauche »), montre un schéma des grands carrefours et te prévient si tu t'écartes du chemin. Les distances d'itinéraire comptent maintenant le trajet à vol d'oiseau jusqu'à la galerie la plus proche (en pointillé).",
     "🔁 Ouvrir un autre plan pendant une sortie la met en pause : reviens sur ta carrière dans les 2 heures, elle reprend là où tu l'avais laissée, et l'app te propose de relancer le suivi.",
-    "🚨 Mode Secours : le poste de commandement accepte enfin les rapports faits sur le téléphone des équipes, on peut confier des galeries à une équipe en cliquant dessus, et une équipe ajoutée en renfort pendant l'intervention reçoit aussitôt son parcours."
+    "🚨 Mode Secours : le poste de commandement accepte enfin les rapports faits sur le téléphone des équipes, on peut confier des galeries à une équipe en cliquant dessus, et les PDF de briefing listent les accès du plan et les étapes de chaque équipe, carte comprise sur iPhone."
   ]
 }

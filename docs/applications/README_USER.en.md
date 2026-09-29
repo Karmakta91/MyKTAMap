@@ -1862,7 +1862,7 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 | **INFO** | Scenario name · plan name · generation date |
 | **LOCATION** | GPS center coordinates + bbox + **clickable OpenStreetMap link** + **clickable Google Maps link** |
 | **TEAMS ON SITE** | For each team: name + members + surface GPS (if set) + individual OSM link per team |
-| **CRITICAL POIs** | 🚪 Plan entry points · 🚨 Emergency exits · 🪜 Cavages (open/closed) with M-LVL level |
+| **CRITICAL POIs** | The map's accesses, with their level: first the **open** ones (🚪 entry points, cavages, rung shafts, service staircases — the same as the Emergency exit), then the **closed** ones (which firefighters and the IGC can open). List taken from the map's tagged points (up to v1.98.6 this block stayed empty) |
 
 > 💡 **How to use**: Print the PDF or send it by email/Signal to the firefighter group leader BEFORE arrival. On site, they click the links from their phone/PC to open OSM or Google Maps centered on your site. No MyKTAMap installation needed on their side.
 

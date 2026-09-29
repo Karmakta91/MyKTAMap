@@ -1851,7 +1851,7 @@ Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescat
 | **INFORMACIÓN** | Nombre del escenario · nombre del plano · fecha de generación |
 | **LOCALIZACIÓN** | Coordenadas GPS del centro + rectángulo delimitador + **enlace pulsable a OpenStreetMap** + **enlace pulsable a Google Maps** |
 | **EQUIPOS SOBRE EL TERRENO** | Para cada equipo: nombre + miembros + GPS de superficie (si se ha indicado) + enlace OSM individual por equipo |
-| **POI CRÍTICOS** | 🚪 Puntos de entrada del plano · 🚨 Salidas de emergencia · 🪜 Cavidades (abiertas/cerradas) con su nivel multinivel |
+| **POI CRÍTICOS** | Los accesos del plano, con su nivel: primero los **abiertos** (🚪 puntos de entrada, cavidades, pozos de peldaños, escaleras de servicio — los mismos que la Salida de emergencia), luego los **cerrados** (que bomberos e IGC pueden abrir). Lista sacada de los puntos etiquetados del plano (hasta la v1.98.6 este bloque quedaba vacío) |
 
 > 💡 **Cómo usarlo**: el PDF se imprime o se envía por correo/Signal al jefe del grupo de bomberos ANTES de su llegada. Sobre el terreno, pulsa los enlaces desde su teléfono o PC para abrir OSM o Google Maps centrados en tu sitio. No necesita instalar MyKTAMap.
 

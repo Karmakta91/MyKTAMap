@@ -1863,7 +1863,7 @@ Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. G
 | **INFOS** | Nom scénario · nom plan · date génération |
 | **LOCALISATION** | Coordonnées GPS centre + bbox + **lien OpenStreetMap cliquable** + **lien Google Maps cliquable** |
 | **EQUIPES SUR PLACE** | Pour chaque équipe : nom + membres + GPS surface (si renseigné) + lien OSM individuel par équipe |
-| **POI CRITIQUES** | 🚪 Points d'entrée du plan · 🚨 Sorties urgence · 🪜 Cavages (ouverts/fermés) avec niveau M-LVL |
+| **POI CRITIQUES** | Les accès du plan, avec leur niveau : d'abord les **ouverts** (🚪 points d'entrée, cavages, puits à échelons, escaliers de service — les mêmes que la Sortie d'urgence), puis les **fermés** (que pompiers et IGC peuvent ouvrir). Liste tirée des points tagués du plan (jusqu'en v1.98.6, ce bloc restait vide) |
 
 > 💡 **Comment utiliser** : Le PDF s'imprime ou s'envoie par mail/Signal au chef de groupe pompiers AVANT son arrivée. Sur place, il clique les liens depuis son tél/PC pour ouvrir OSM ou Google Maps centrés sur ton site. Aucune installation MyKTAMap nécessaire chez lui.
 
