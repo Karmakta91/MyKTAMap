@@ -575,6 +575,12 @@
     try {
       s.execution.etapesArchive[String(phaseIdx)] =
         JSON.parse(JSON.stringify(s.execution.etapes || {}));
+      // 4e relecture (R4-4) : les signalements hors parcours de la phase sont gardés
+      // avec son historique (avant : effacés au passage de phase, sans trace).
+      if (s.execution._etapesRetirees) {
+        s.execution.etapesArchive[String(phaseIdx)]._retirees =
+          JSON.parse(JSON.stringify(s.execution._etapesRetirees));
+      }
     } catch(e) {
       console.warn("[SecoursMode] _archivePhaseEtapes échec :", e);
     }
@@ -2673,6 +2679,25 @@
         // 2e relecture (N11) : ses saisies ne sont pas jetées — archivées avec les
         // étapes retirées (photos non importées : l'étape n'existe plus ici).
         if (_etapeADesDonnees(etImp)) {
+          // 4e relecture (R4-4) : un indice / une observation / une photo sur une étape
+          // que le PC n'a plus n'est plus invisible : avis orange en clair, photos
+          // importées (hors rapport, stepIdx -2) et comptées dans l'archive.
+          const photosHp = [];
+          const P = window.MyKTAMapSecoursPhotos;
+          for (const ph of (photosByStep[etImp.idx] || [])) {
+            if (!ph.dataUrl || !P || typeof P.importPhotoFromDataUrl !== "function") continue;
+            try {
+              await P.importPhotoFromDataUrl({ id: ph.id, scenarioId: s.id, equipeId: equipeId, stepIdx: -2,
+                mime: ph.mime || "image/jpeg", dataUrl: ph.dataUrl, sourceScenarioId: sourceScenarioId });
+              photosHp.push(ph.id);
+              stats.photosImportees++;
+            } catch(e) {
+              stats.warnings.push(t("secours.report.warnPhotoErreur", { id: (ph.id || "?"), message: (e && e.message) || String(e) }));
+            }
+          }
+          if (_getStatutInfo(etImp.statut).severity < 2) {
+            stats.avis.push(t("secours.report.avisHorsParcours", { statut: _statutLabel(etImp.statut), label: etImp.label || "?" }));
+          }
           s.execution._etapesRetirees = s.execution._etapesRetirees || {};
           // R4-3 : une étape déjà archivée (même point) est MISE À JOUR, pas ré-ajoutée
           // à chaque import (archive 2 → 4 → 6 mesurée).
@@ -2681,7 +2706,7 @@
               && x.type === etImp.type) || (!etImp.wid && !etImp.cle && x.label === etImp.label && x.type === etImp.type));
           });
           s.execution._etapesRetirees[equipeId] = arch.concat([
-            Object.assign({}, etImp, { photoIds: [], retireeAt: importedAt,
+            Object.assign({}, etImp, { photoIds: photosHp, retireeAt: importedAt,
               _importedFrom: { sourceScenarioId: sourceScenarioId, importedAt: importedAt } })
           ]);
         }
@@ -3682,10 +3707,19 @@
         // Juste les IDs (compact, pas autonome)
         photosResolved = await _listerPhotoIdsEquipe(scenarioId, g.id);
       }
+      // 4e relecture (R4-4) : signalements hors parcours (phase en cours + phases closes).
+      const horsParcours = [].concat((s.execution._etapesRetirees && s.execution._etapesRetirees[g.id]) || []);
+      Object.keys(s.execution.etapesArchive || {}).forEach(function(k) {
+        const r = s.execution.etapesArchive[k] && s.execution.etapesArchive[k]._retirees;
+        (r && r[g.id] || []).forEach(function(e) {
+          if (!horsParcours.some(function(x) { return x.wid && x.wid === e.wid && x.retireeAt === e.retireeAt; })) horsParcours.push(e);
+        });
+      });
       equipesData.push({
         equipe: equipeClean,
         etapes: etapes.slice(),    // shallow copy (étapes déjà clean)
-        photos: photosResolved
+        photos: photosResolved,
+        horsParcours: horsParcours
       });
     }
 
@@ -5156,6 +5190,38 @@
   }
 
   // Page texte étapes d'une équipe
+  // 4e relecture (R4-4) — section « Signalements hors parcours » (étapes retirées du
+  // parcours alors que l'équipe y avait saisi quelque chose). Retourne le nouveau y.
+  function _pdfSectionHorsParcours(pdf, ed, r, y, pageW, pageH, margin) {
+    const liste = (ed && Array.isArray(ed.horsParcours)) ? ed.horsParcours : [];
+    if (liste.length === 0) return y;
+    if (y > pageH - 40) {
+      _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+      pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
+    }
+    y += 3;
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text(t("secours.pdf.horsParcoursTitre", { n: liste.length }), margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+    liste.forEach(function(e) {
+      if (y > pageH - 25) {
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+        pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
+      }
+      pdf.setFont(undefined, "bold");
+      pdf.text("  - " + (e.label || "(?)") + " : " + _statutLabelAscii(e.statut), margin, y); y += 4;
+      pdf.setFont(undefined, "normal");
+      if (e.observations && String(e.observations).trim()) {
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(e.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+      }
+      if (Array.isArray(e.photoIds) && e.photoIds.length > 0) {
+        pdf.text("     " + t("secours.pdf.photosAttachees", { n: e.photoIds.length }), margin, y); y += 4;
+      }
+      y += 2;
+    });
+    return y;
+  }
+
   function _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin) {
     _drawRapportPDFHeader(pdf, r, pageW, margin);
     const g = ed.equipe;
@@ -5194,6 +5260,8 @@
     if (!Array.isArray(ed.etapes) || ed.etapes.length === 0) {
       pdf.setFont(undefined, "italic");
       pdf.text(t("secours.pdf.aucuneEtape"), margin, y);
+      pdf.setFont(undefined, "normal");
+      _pdfSectionHorsParcours(pdf, ed, r, y + 6, pageW, pageH, margin);
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
       return;
     }
@@ -5239,6 +5307,7 @@
       }
       y += 3;
     });
+    y = _pdfSectionHorsParcours(pdf, ed, r, y, pageW, pageH, margin);
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
   }
 
