@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.98.1</strong> (28 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.98.2</strong> (29 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.98.2 (correctifs du tour du backlog)</h3>
+  <p><strong>aucun domaine nouveau, aucune requête nouvelle vers l'extérieur.</strong> Un seul changement de ce que l'app télécharge, et il est sur <strong>son propre serveur</strong> : le fichier <code>js/planOffline.js</code> (le module qui rend un plan serveur disponible hors connexion) rejoint la liste des fichiers mis de côté à l'installation — il était déjà téléchargé à l'ouverture, il l'est maintenant aussi pour marcher sans réseau. Le reste est local : suppression des documents d'un plan sur ton appareil, calcul de la mémoire de l'export image, codes de l'export anonymisé.</p>
   <h3>v1.98.1 (sortie mise en pause au changement de plan)</h3>
   <p><strong>Aucun changement réseau</strong>, aucune requête, aucun domaine. La mise en pause d'une sortie et sa reprise se font dans le carnet stocké sur ton appareil (IndexedDB) ; la relance du suivi utilise les capteurs du téléphone déjà employés par le tracker, rien ne part sur le réseau.</p>
   <h3>v1.98.0 (guidage de l'itinéraire)</h3>

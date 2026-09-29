@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.1` (28/09/2026)
+## 📦 Version courante — `v1.98.2` (29/09/2026)
+
+> 🧹 **v1.98.2 — Correctifs sans nouveauté visible** : supprimer un plan peut emporter ses documents d'histoire (case décochée) ; l'export image ne pré-coche plus 861 Mo de mémoire ; codes uniques dans l'export anonymisé ; module hors-ligne enfin pré-caché ; premier rendu du tuilage et écran d'urgence immobile assainis. Notes de version inchangées (décision KARMA : rien que l'utilisateur doive apprendre).
 
 > 🔁 **v1.98.1 — Une sortie ne s'arrête plus quand on montre un autre plan** : changer de plan en cours de sortie la **met en pause** au lieu de la terminer (et de la jeter sous les seuils) ; retour sur son plan sous 2 h → elle reprend, et l'app propose de relancer le suivi. Corrigé aussi : le bouton « 🎯 Recentrer » survivait au changement de plan. Et la dette de traduction des guides (EN/ES), dont une règle de sécurité fausse, est rattrapée et désormais gardée par un contrôle de commit.
 
@@ -479,6 +481,18 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.2 (29/09/2026) — Tour du backlog : correctifs, sans note de version
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées** — ces correctifs ne changent rien que l'utilisateur doive apprendre (le hors-ligne ne concerne que les plans serveur, sans cas réel côté client).
+- 🗑️ **Supprimer un plan peut emporter ses documents d'histoire** (`a3e580a`) : ses PDF restaient orphelins dans 📔 Mon carnet → 📖 Récits. La confirmation propose une case **décochée** « supprimer aussi ses N document(s) (X Mo) », poids mesuré au moment de supprimer, absente sans document. `ktaConfirm` accepte `opts.caseACocher` (la Promise rend toujours un booléen) ; `JournalUi.histoire.supprimerPourPlan`. Tenu par `checkup-suppression-plan-docs.js` (falsifié : case décochée → rien ne part ; le document d'un autre plan reste).
+- 🖼️ **Export image : fin des 861 Mo pré-cochés** (`0e13ea0`) : pré-sélection de la plus grande résolution sous 64 Mpx, taille et mémoire estimée affichées, avertissement au-delà ; sur iPhone/iPad, les résolutions au-delà de 16,7 Mpx (limite WebKit, `toBlob → null`) sont grisées. Test navigateur 8/8. Reste au backlog : le fond retéléchargé au lieu des tuiles.
+- 🎭 **Export anonymisé : codes uniques** (`2759f3c`) : la table d'emojis ne connaissait qu'un tag sur 22 → « 🎯 POI #1 » pour la 1re salle ET le 1er puits : ids en double, photos rattachées par ces ids. Le tag entre dans le code (« 📍 POI salle #1 »). Contre-essai sur l'ancien code : doublons reproduits.
+- 💾 **`js/planOffline.js` absent du pré-cache** (`31615ec`) : le module hors-ligne ne l'était pas lui-même. `check-html-integrite.js` §5 bloque désormais tout script local d'`index.html` absent de `ASSETS_TO_CACHE`.
+- 🧩 **Tuilage : plus de rendu fantôme « z=NaN »** (`543fc28`) : le premier rendu partait avant que la carte ait une vue et désarmait le repli « toutes les tuiles ont échoué → image entière ». Rendu initial différé (`whenReady`), `smoke.js` vérifie `attendusPremier > 0`.
+- 🚨 **Écran d'urgence XL immobile** (`a26e1b9`) : la mini-carte n'est plus recentrée 4×/s quand rien ne bouge (8 → 0 `setView` en 2 s, `checkup-urgence-memoire.js`).
+- 🔧 **Divers** : bannière d'échelle de l'export KMZ/GPX qui visait un id inexistant (`3dbf3a1`, contre-essai fait) · −57 lignes de CSS mort du chargeur (`c40f77b`) · `docs/BACKLOG.md` réécrit (551 → ~220 lignes, enterrés regroupés, `bd65674`).
+- ✅ **Tests** : pre-commit vert à chaque commit ; 3 harnais navigateur (suppression, résolution, bannière) dont 1 versionné. ⚠️ Non testé sur iPhone (la désactivation iOS de l'export est simulée).
 
 #### v1.98.1 (28/09/2026) — Une sortie ne s'arrête plus quand on montre un autre plan
 
