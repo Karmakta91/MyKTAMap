@@ -442,9 +442,22 @@
         // décoré ci-dessous ré-évalue au moment où le résultat du fetch
         // version.json arrive.
         // Audit i18n (O8) : infobulle traduite (était en FR dans les 3 langues).
+        // 🐛 30/09/2026 (checkup-guidage : « Clé manquante home.version.titre ») : ce code
+        // tourne AU CHARGEMENT, avant que les dicos soient là. L'infobulle est donc
+        // calculée au SURVOL (dicos prêts, langue courante) ; l'état est mémorisé ici.
+        let _titreVer = { cle: "home.version.titre", v: installed };
+        const _TITRE_FR = {
+          "home.version.titre":    "Version installée : {v} — clique pour voir les notes ou vérifier les mises à jour",
+          "home.version.titreMaj": "Nouvelle version disponible : {v} — clique pour mettre à jour"
+        };
         function _tVer(k, p) {
-          return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : p.v;
+          _titreVer = { cle: k, v: p.v };
+          const I = window.I18n;
+          if (I && typeof I.has === "function" && I.has(k)) return I.t(k, p);
+          return _TITRE_FR[k].replace("{v}", p.v);
         }
+        el.addEventListener("mouseenter", function() { el.title = _tVer(_titreVer.cle, { v: _titreVer.v }); });
+        el.addEventListener("focus", function() { el.title = _tVer(_titreVer.cle, { v: _titreVer.v }); });
         el.textContent = installed;
         el.title = _tVer("home.version.titre", { v: installed });
 
