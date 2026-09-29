@@ -2512,6 +2512,25 @@
   // avec fusion + flag _importedFrom + audit log. Async (écriture photos IDB).
   // Retourne : { ok, stats: { etapesFusionnees, etapesSkipped, photosImportees,
   //                           photosSkipped, warnings: [string] } }
+  // 🩸 4e relecture (R4-2, décision KARMA a) — UN RAPPORT DE PHASE 1 IMPORTÉ APRÈS LE
+  // PASSAGE EN PHASE 2 remplissait en silence les étapes de la phase 2 (équipe
+  // reconduite) : des galeries paraissaient fouillées alors que personne n'y était
+  // allé. Phase du rapport = celle qu'il déclare ; rapport d'avant (sans phase) :
+  // déduite des horodatages (tout terminé avant le début de la phase en cours →
+  // phase précédente). Retourne l'index de phase du rapport.
+  function _phaseDuRapport(s, payload) {
+    const ex = s.execution || {};
+    const cour = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
+    const dec = payload && payload.execution && payload.execution.currentPhaseIdx;
+    if (typeof dec === "number") return dec;
+    const debut = cour > 0 && Array.isArray(s.phases) && s.phases[cour] && Date.parse(s.phases[cour].startedAt || "");
+    if (!debut) return cour;
+    const ed = payload.equipesData && payload.equipesData[0];
+    const dates = ((ed && ed.etapes) || []).map(function(e) { return Date.parse(e.completedAt || e.startedAt || ""); })
+      .filter(function(d) { return d > 0; });
+    return (dates.length > 0 && dates.every(function(d) { return d < debut; })) ? cour - 1 : cour;
+  }
+
   async function _appliquerImportRapportEquipe(payload) {
     const s = get(_currentScenarioId);
     if (!s) return { ok: false, error: t("secours.report.errScenarioDisparu") };
@@ -2532,10 +2551,22 @@
       console.warn("[SecoursMode] snapshot avant import :", e);
     }
 
-    // Init etapes côté op si absent (défensif)
-    s.execution.etapes = s.execution.etapes || {};
-    s.execution.etapes[equipeId] = s.execution.etapes[equipeId] || [];
-    let etapesOp = s.execution.etapes[equipeId];
+    const phaseCour = (typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0;
+    const phaseRap = _phaseDuRapport(s, payload);
+    const archPhase = (phaseRap !== phaseCour && s.execution.etapesArchive)
+      ? s.execution.etapesArchive[String(phaseRap)] : null;
+    // Rapport d'une phase CLOSE : fusion dans l'historique de CETTE phase, jamais dans
+    // la phase en cours ; pas de remise de point (le parcours actuel n'est pas le sien).
+    const phaseClose = !!(archPhase && Array.isArray(archPhase[equipeId]));
+    let etapesOp;
+    if (phaseClose) {
+      etapesOp = archPhase[equipeId];
+    } else {
+      // Init etapes côté op si absent (défensif)
+      s.execution.etapes = s.execution.etapes || {};
+      s.execution.etapes[equipeId] = s.execution.etapes[equipeId] || [];
+      etapesOp = s.execution.etapes[equipeId];
+    }
 
     const etapesImportees = Array.isArray(ed.etapes) ? ed.etapes : [];
     const photosImportees = Array.isArray(ed.photos) ? ed.photos : [];
@@ -2547,7 +2578,8 @@
       photosSkipped: 0,
       photosDejaPresentes: 0,
       warnings: [],
-      alertes: []   // 2e relecture (N11) : affichées en clair, jamais repliées
+      alertes: [],  // 2e relecture (N11) : affichées en clair, jamais repliées
+      avis: []      // 4e relecture : avertissements orange en clair (rapport de phase close…)
     };
 
     // Index photos importées par stepIdx pour rattachement
@@ -2568,7 +2600,16 @@
     // l'équipe sur une étape que le PC a retirée entre-temps : le point est REMIS
     // dans le parcours de l'équipe, à sa place (après le point importé précédent),
     // puis fusionné normalement ; une alerte rouge le dit. Jamais une ligne repliée.
-    const gEq = s.groupes.find(function(x) { return x.id === equipeId; });
+    const gEq = phaseClose ? null : s.groupes.find(function(x) { return x.id === equipeId; });
+    if (phaseClose) {
+      const nomPh = (s.phases && s.phases[phaseRap] && s.phases[phaseRap].nom) || String(phaseRap + 1);
+      stats.avis.push(t("secours.report.avisPhaseClose", { phase: nomPh }));
+      etapesImportees.forEach(function(e) {
+        if (_getStatutInfo(e.statut).severity >= 2) {
+          stats.alertes.push(t("secours.report.alertePhaseClose", { statut: _statutLabel(e.statut), label: e.label || "?", phase: nomPh }));
+        }
+      });
+    }
     // 3e relecture (R3-1) : identités posées et rattachées AVANT d'apparier.
     if (gEq) { _normaliserParcours(gEq); _rattacherWidEtapes(s, gEq); }
     const preApp = _apparierEtapes(etapesOp, etapesImportees);
@@ -2580,7 +2621,7 @@
         return (e.wid && it.wp.wid === e.wid) || (e.cle && _cleWaypoint(it.wp) === e.cle);
       });
     };
-    const graves = etapesImportees.filter(function(e, i) {
+    const graves = phaseClose ? [] : etapesImportees.filter(function(e, i) {
       return !preApp[i] && _getStatutInfo(e.statut).severity >= 2;
     });
     const remettable = function(e) {
@@ -2927,6 +2968,11 @@
         inner += '<div style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
                  ' padding:10px 12px; margin:10px 0; color:#ffb3b3; font-size:13px; line-height:1.5;">🚨 ' +
                  stats.alertes.map(_escHtml).join('<br>🚨 ') + '</div>';
+      }
+      if (Array.isArray(stats.avis) && stats.avis.length > 0) {
+        inner += '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px;' +
+                 ' padding:10px 12px; margin:10px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
+                 stats.avis.map(_escHtml).join('<br>⚠️ ') + '</div>';
       }
       // Warnings détaillés en dépliable
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
@@ -3578,6 +3624,8 @@
       pausedTotalMs: s.execution.pausedTotalMs || 0,
       role:          s.execution.role,
       currentEquipeId: s.execution.currentEquipeId,
+      // 4e relecture (R4-2) : la phase du rapport, pour ne pas le verser dans une autre.
+      currentPhaseIdx: (typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0,
       dureeMs:       getExecutionDureeMs(scenarioId)
     };
 

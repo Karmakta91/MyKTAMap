@@ -4011,6 +4011,8 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> photo(s) imported",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> photo(s) failed",
   "secours.rapportRes.warningsSummary": "🔍 {n} detailed warning(s)",
+  "secours.report.alertePhaseClose": "\"{statut}\" reported on \"{label}\" in the report of the closed \"{phase}\" phase: check it in the field.",
+  "secours.report.avisPhaseClose": "This report comes from the \"{phase}\" phase, already closed: it was added to that phase's history, not to the current phase.",
   "secours.report.alerteNonRemise": "\"{statut}\" reported on \"{label}\", a step not found in the team's current route: the report is recorded, check with the team.",
   "secours.report.alerteRemise": "\"{statut}\" reported on \"{label}\", a step you had removed from the route: the point has been put back in the team's route.",
   "secours.report.absent": "(missing)",

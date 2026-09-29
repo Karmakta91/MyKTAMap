@@ -4011,6 +4011,8 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> foto(s) importada(s)",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> foto(s) fallida(s)",
   "secours.rapportRes.warningsSummary": "🔍 {n} advertencia(s) detallada(s)",
+  "secours.report.alertePhaseClose": "«{statut}» señalado en «{label}» en el informe de la fase cerrada «{phase}»: compruébalo sobre el terreno.",
+  "secours.report.avisPhaseClose": "Este informe viene de la fase «{phase}», ya cerrada: se ha añadido al historial de esa fase, no a la fase en curso.",
   "secours.report.alerteNonRemise": "«{statut}» señalado en «{label}», una etapa que no está en el recorrido actual del equipo: el aviso queda registrado, compruébalo con el equipo.",
   "secours.report.alerteRemise": "«{statut}» señalado en «{label}», una etapa que habías quitado del recorrido: el punto se ha vuelto a poner en el recorrido del equipo.",
   "secours.report.absent": "(ausente)",

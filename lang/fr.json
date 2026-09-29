@@ -4011,6 +4011,8 @@
   "secours.rapportRes.photosImportees": "<strong>{n}</strong> photo(s) importée(s)",
   "secours.rapportRes.photosSkipped": "<strong>{n}</strong> photo(s) échec(s)",
   "secours.rapportRes.warningsSummary": "🔍 {n} avertissement(s) détaillé(s)",
+  "secours.report.alertePhaseClose": "« {statut} » signalé sur « {label} » dans le rapport de la phase close « {phase} » : à vérifier sur le terrain.",
+  "secours.report.avisPhaseClose": "Ce rapport vient de la phase « {phase} », déjà close : il a été versé dans l'historique de cette phase, pas dans la phase en cours.",
   "secours.report.alerteNonRemise": "« {statut} » signalé sur « {label} », une étape introuvable dans le parcours actuel de l'équipe : le signalement est consigné, vérifie avec l'équipe.",
   "secours.report.alerteRemise": "« {statut} » signalé sur « {label} », une étape que tu avais retirée du parcours : le point a été remis dans le parcours de l'équipe.",
   "secours.report.absent": "(absent)",
