@@ -742,10 +742,15 @@
     // ni celui ouvert : avant, créer un 11ᵉ scénario pendant une intervention
     // pouvait effacer celle-ci. Le plus récent non plus (sinon, 10 en cours → le
     // scénario qu'on vient de créer disparaît). Tout l'excédent protégé → on dépasse le cap.
+    // 🩸 Relecture 29/09 (R1) — un scénario IMPORTÉ garde le `createdAt` du PC : trié
+    // parmi les plus anciens, il était purgé dans le commit même de l'import, sur un
+    // téléphone qui avait déjà 10 scénarios (« importé » annoncé, liste vide). L'âge
+    // FIFO est donc la plus récente de la création et de l'arrivée sur CET appareil.
     if (_scenarios.length > MAX_SCENARIOS) {
-      _scenarios.sort(function(a, b) {
-        return (Date.parse(a.createdAt || 0) || 0) - (Date.parse(b.createdAt || 0) || 0);
-      });
+      const age = function(x) {
+        return Math.max(Date.parse(x.createdAt || 0) || 0, Date.parse(x.arriveeAt || 0) || 0);
+      };
+      _scenarios.sort(function(a, b) { return age(a) - age(b); });
       let excess = _scenarios.length - MAX_SCENARIOS;
       const purges = [];
       for (let i = 0; i < _scenarios.length - 1 && excess > 0; i++) {
@@ -1742,6 +1747,7 @@
       id:         sc.id,
       nom:        String(sc.nom || "").slice(0, 200),
       createdAt:  sc.createdAt || _nowIso(),
+      arriveeAt:  _nowIso(),   // arrivée sur CET appareil (âge FIFO, cf _saveScenarios)
       updatedAt:  sc.updatedAt,
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
