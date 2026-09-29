@@ -448,7 +448,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 - **▶️** — loads the map
 - **⭐/☆** — pins/unpins the map to the top of the list
 - **✏️ Rename display** — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
-- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
+- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app. If the plan has **story documents** (Story Mode PDFs), the confirmation offers an **« Also delete its documents (X MB) »** box, unchecked: left as is, they remain readable in 📔 My logbook → 📖 Stories.
 
 **Buttons at the top of the list:**
 

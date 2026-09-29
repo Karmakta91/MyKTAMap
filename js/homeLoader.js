@@ -1597,15 +1597,37 @@ function planRowHTML(plan) {
 
         const btnRemove = document.getElementById("kta-plan-infos-remove");
         if (btnRemove) {
-          btnRemove.addEventListener("click", function() {
+          btnRemove.addEventListener("click", async function() {
             const msg = _t("home.plans.confirmRemove") + "\n\n" + _t("home.plans.confirmRemovePurge");
+            // 🗑️ 29/09/2026 (décision KARMA) — les documents d'histoire survivent
+            // au plan par défaut (design v1.69 : l'histoire survit aux plans),
+            // mais restaient ensuite orphelins dans le Carnet. Une case, décochée,
+            // propose de les emporter, avec leur poids réel mesuré ICI.
+            const H = window.JournalUi && window.JournalUi.histoire;
+            let docs = [];
+            if (H && typeof H.supprimerPourPlan === "function") {
+              try {
+                docs = (await H.lister()).filter(function(d) { return d.planId === String(plan.id); });
+              } catch(e) { docs = []; }
+            }
+            let caseDocs = null;
+            if (docs.length) {
+              const octets = docs.reduce(function(s, d) { return s + (d.size || 0); }, 0);
+              const mo = (octets / 1048576).toLocaleString(undefined, { maximumFractionDigits: 1 });
+              caseDocs = { coche: false, label: _t("home.plans.removeDocs", { n: docs.length, mo: mo }) };
+            }
             const confirmer = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(msg, { okLabel: _t("home.plans.removeBtnTitle") })
+              ? window.ktaConfirm(msg, { okLabel: _t("home.plans.removeBtnTitle"), caseACocher: caseDocs })
               : Promise.resolve(confirm(msg));
             confirmer.then(async function(ok) {
               if (!ok) return;
               try { await window.PlanRegistry.purgeAssociatedData(plan.id); } catch(e) {
                 console.warn("[Loader] purge données associées :", e);
+              }
+              if (caseDocs && caseDocs.coche) {
+                try { await H.supprimerPourPlan(plan.id); } catch(e) {
+                  console.warn("[Loader] suppression des documents d'histoire :", e);
+                }
               }
               window.PlanRegistry.remove(plan.id);
               modal.remove();

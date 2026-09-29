@@ -1383,7 +1383,9 @@
   "home.plans.badge.stored": "Mapa memorizado en la app",
   "home.plans.confirmRemove": "¿Quitar este mapa de tu lista?",
   "home.plans.emptyLocal": "Ningún mapa local — selecciona <em>Mostrar mapas del servidor</em> para ver los mapas descubiertos.",
-  "home.plans.confirmRemovePurge": "También se suprimirán: su guardado de sesión, su georreferenciación, sus fotos y sus copias. Se conservan: el cuaderno, los relatos (PDF/notas) y los enlaces.",
+  "home.plans.confirmRemovePurge": "También se suprimirán: su guardado de sesión, su georreferenciación, sus fotos y sus copias. Se conservan: el cuaderno, las notas de los relatos y los enlaces.",
+
+  "home.plans.removeDocs": "Suprimir también sus {n} documento(s) de historia (PDF, {mo} MB) — si no, siguen en 📔 Mi cuaderno → 📖 Relatos",
   "home.plans.filterName": "🔎 Filtrar por nombre…",
   "home.plans.pinTitle": "Fijar este plano al principio de la lista",
   "home.plans.unpinTitle": "Desfijar este plano",

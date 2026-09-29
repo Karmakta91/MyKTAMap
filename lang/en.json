@@ -1383,7 +1383,9 @@
   "home.plans.badge.stored": "Map remembered in the app",
   "home.plans.confirmRemove": "Remove this plan from your list?",
   "home.plans.emptyLocal": "No local plan — check <em>Show server plans</em> to see discovered plans.",
-  "home.plans.confirmRemovePurge": "Also deleted: its session save, its georeferencing, its photos and its backups. Kept: the logbook, the stories (PDF/notes) and the links.",
+  "home.plans.confirmRemovePurge": "Also deleted: its session save, its georeferencing, its photos and its backups. Kept: the logbook, the story notes and the links.",
+
+  "home.plans.removeDocs": "Also delete its {n} story document(s) (PDF, {mo} MB) — otherwise they stay in 📔 My logbook → 📖 Stories",
   "home.plans.filterName": "🔎 Filter by name…",
   "home.plans.pinTitle": "Pin this map to the top of the list",
   "home.plans.unpinTitle": "Unpin this map",

@@ -582,6 +582,11 @@ window.ktaConfirm = function(message, opts) {
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
           '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:#c8d0e0;">' + message + '</p>' +
+          (opts.caseACocher
+            ? '<label style="display:flex; gap:8px; align-items:flex-start; margin:0 0 14px; color:#e8eaf0;' +
+                ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
+                (opts.caseACocher.coche ? ' checked' : '') + ' style="margin-top:2px;"> <span></span></label>'
+            : '') +
           '<div class="kta-conv-actions">' +
             '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
             '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
@@ -589,10 +594,17 @@ window.ktaConfirm = function(message, opts) {
         '</div>' +
       '</div>';
     document.documentElement.appendChild(ov);
+    // ☑️ 29/09/2026 — case optionnelle (`opts.caseACocher = {label, coche}`).
+    // La Promise rend TOUJOURS un booléen (contrat des appelants existants) :
+    // l'état de la case est relu dans `opts.caseACocher.coche` après coup.
+    // Libellé posé en textContent : il peut porter un nom de fichier.
+    const caseEl = ov.querySelector("#kta-confirm-case");
+    if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
     let resolu = false;
     const finir = function(val) {
       if (resolu) return;
       resolu = true;
+      if (caseEl) opts.caseACocher.coche = !!(val && caseEl.checked);
       document.removeEventListener("keydown", surTouche);
       ov.remove();
       resolve(val);

@@ -74,16 +74,6 @@ obligatoires.
   son propre retour visuel (toast, texte in situ, `alert`) : **un par un**, en vérifiant le retour. ⚠️ `memInspector`
   et `debug` servent au diagnostic : les casser rendrait un rapport de crash incopiable.
 
-## 🗑️ Supprimer un plan ne supprime pas ses documents d'histoire — décision prise, à coder
-
-`PlanRegistry.purgeAssociatedData(planId)` nettoie session, géoréf, photos et sauvegardes — **mais pas la
-base `myktamap_histoire_pdfs`**. Les PDF d'un plan supprimé survivent, et l'onglet 📖 Récits du Carnet les liste
-toujours sous le nom du plan disparu. Depuis le 26/09 ça vaut aussi pour les **copies des documents livrés avec
-le plan**, donc le volume augmente.
-
-✅ **Décision KARMA (29/09)** : demander à la suppression — une case « supprimer aussi ses documents (X Mo) » dans
-la confirmation, avec le poids réel mesuré au moment de supprimer.
-
 ## 🎨 Vue OSM : les couleurs de la légende personnalisée ne l'atteignent pas — gardé
 
 Soldé pour le mode urgence XL en v1.97.7 ; **`osmView.js` / `osmHomePreview.js` portent le même trou** : ce sont

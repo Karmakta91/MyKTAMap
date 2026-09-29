@@ -1160,7 +1160,17 @@
     histoire: {
       lister:    _histTousDocs,    // → [{id, planId, name, size, addedAt}] (sans blob)
       getDoc:    _histGet,         // → l'enregistrement COMPLET, blob inclus
-      restaurer: _histRestaurer    // ← repose un doc exporté (idempotent)
+      restaurer: _histRestaurer,   // ← repose un doc exporté (idempotent)
+      // 🗑️ 29/09/2026 — la suppression d'un plan PEUT emporter ses documents
+      // (case à cocher, décision KARMA). Base v1 : l'id listé EST le planId,
+      // donc la même suppression par id convient aux deux schémas.
+      supprimerPourPlan: function(planId) {
+        return _histTousDocs().then(function(docs) {
+          const siens = docs.filter(function(d) { return d.planId === String(planId); });
+          return Promise.all(siens.map(function(d) { return _histSupprimer(d.id); }))
+            .then(function(r) { return r.filter(Boolean).length; });
+        });
+      }
     }
   };
 

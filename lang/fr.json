@@ -1383,7 +1383,9 @@
   "home.plans.badge.stored": "Plan mémorisé dans l'app",
   "home.plans.confirmRemove": "Retirer ce plan de votre liste ?",
   "home.plans.emptyLocal": "Aucun plan local — coche <em>Afficher les plans serveur</em> pour voir les plans découverts.",
-  "home.plans.confirmRemovePurge": "Seront aussi supprimés : sa sauvegarde de session, son géoréférencement, ses photos et ses backups. Conservés : le carnet, les récits (PDF/notes) et les liaisons.",
+  "home.plans.confirmRemovePurge": "Seront aussi supprimés : sa sauvegarde de session, son géoréférencement, ses photos et ses backups. Conservés : le carnet, les notes des récits et les liaisons.",
+
+  "home.plans.removeDocs": "Supprimer aussi ses {n} document(s) d'histoire (PDF, {mo} Mo) — sinon ils restent dans 📔 Mon carnet → 📖 Récits",
   "home.plans.filterName": "🔎 Filtrer par nom…",
   "home.plans.pinTitle": "Épingler ce plan en tête de liste",
   "home.plans.unpinTitle": "Désépingler ce plan",
