@@ -7073,6 +7073,26 @@
   }
 
   // Squelette HTML — header + corps (rempli dynamiquement par _switchView)
+  // 🐛 30/09/2026 (capture KARMA, iPhone) — 3e récidive de « le contenu défile PAR-DESSUS
+  // l'en-tête Opérateur » (v1.24.2 fond opaque, v1.25.1 z-index 100 + isolation : sans
+  // effet sur Safari iOS, qui peint un en-tête `sticky` sous le contenu qui défile).
+  // Plutôt qu'un 3e correctif CSS : en vue live, l'en-tête SORT de la zone qui défile
+  // et se pose entre le titre de la fenêtre et le contenu — plus rien ne passe dessous,
+  // par construction. Il ne porte aucun bouton (les handlers restent sur `corps`) ;
+  // le chrono est mis à jour par sélecteur global (data-live-timer).
+  function _placerEnteteLive(corps, view) {
+    const ancien = document.getElementById("kta-secours-live-slot");
+    if (ancien && ancien.parentNode) ancien.parentNode.removeChild(ancien);
+    if (view !== "live" || !corps || !corps.parentNode) return;
+    const entete = corps.querySelector(".kta-secours-live-header");
+    if (!entete) return;
+    const slot = document.createElement("div");
+    slot.id = "kta-secours-live-slot";
+    slot.className = "kta-secours-live-slot";
+    corps.parentNode.insertBefore(slot, corps);
+    slot.appendChild(entete);
+  }
+
   function _renderModalHTML() {
     return '<div class="kta-readme-modal-boite kta-secours-modal-boite">' +
              '<div class="kta-readme-modal-header">' +
@@ -7105,6 +7125,7 @@
     if (view === "edit")   corps.innerHTML = _renderEditView();
     if (view === "live")   corps.innerHTML = _renderLiveView();   // 🆕 v1.24.0 Phase 3
     _bindViewHandlers(view);
+    _placerEnteteLive(corps, view);
     // 🆕 v1.24.0 Phase 3 — Timer global pour rafraîchir l'affichage des durées
     // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit continuer à
     // tourner même si modal secour fermer") : démarre le timer dès qu'une

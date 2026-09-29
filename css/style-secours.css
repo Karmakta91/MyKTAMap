@@ -2949,3 +2949,7 @@ html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-f
 }
 .kta-btn.kta-btn-rappel { background: #5b3fb0; color: #fff; border: 1px solid #a78bfa; }
 body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secours-rappel-badge { background: #ece6ff !important; color: #4a2f9a !important; border-color: #6d4fd0 !important; }
+
+/* En-tête live HORS de la zone qui défile (30/09/2026, bug iOS sticky) */
+.kta-secours-live-slot { flex: 0 0 auto; padding: 8px 12px 0; }
+.kta-secours-live-slot .kta-secours-live-header { position: static; margin-bottom: 4px; box-shadow: none; }
