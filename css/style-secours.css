@@ -2876,3 +2876,8 @@ html.kta-theme-light .kta-secours-sub-modal label strong {
   padding: 2px 6px;
 }
 .leaflet-tooltip.kta-secours-zone-autre-label::before { display: none; }
+
+/* Pastille « intervention en cours » dans la barre d'état (29/09/2026) */
+.kta-refonte-stat.kta-secours-footer-pastille { color: #ff8c8c; font-weight: 700; }
+body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille,
+html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille { color: #a01818 !important; }

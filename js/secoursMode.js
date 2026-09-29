@@ -820,6 +820,7 @@
     }
     _saveScenarios();
     _notify();
+    _majFooterSecours();
     // Auto-refresh overlay si on est en train d'afficher ce scénario sur la carte
     if (_overlayLayer && scenario && scenario.id === _currentScenarioId) {
       renderOverlay(scenario.id);
@@ -1440,6 +1441,43 @@
   }
 
   // Raccourcis lecture
+  // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
+  function _scenarioEnCours() {
+    for (let i = 0; i < _scenarios.length; i++) {
+      if (_estExecutionActive(_scenarios[i])) return _scenarios[i];
+    }
+    return null;
+  }
+
+  // 29/09/2026 (KARMA) : « quand un plan de secours est en cours, on devrait avoir
+  // l'info en footer ». Pastille dans la barre d'état du mode carte ; un toucher
+  // rouvre le plan. Retirée dès que plus rien ne tourne.
+  function _majFooterSecours() {
+    const barre = document.getElementById("kta-refonte-statusbar-content");
+    let pastille = document.getElementById("kta-refonte-stat-secours");
+    const s = _scenarioEnCours();
+    if (!s || !barre) {
+      if (pastille && pastille.parentNode) pastille.parentNode.removeChild(pastille);
+      return;
+    }
+    if (!pastille) {
+      pastille = document.createElement("span");
+      pastille.id = "kta-refonte-stat-secours";
+      pastille.className = "kta-refonte-stat kta-refonte-stat-clickable kta-secours-footer-pastille";
+      pastille.addEventListener("click", function() {
+        const cur = _scenarioEnCours();
+        if (cur) ouvrir(cur.id);
+      });
+      barre.insertBefore(pastille, barre.firstChild);
+    }
+    const eq = (s.execution.role === "equipe" && s.execution.currentEquipeId)
+      ? (s.groupes || []).find(function(g) { return g.id === s.execution.currentEquipeId; }) : null;
+    const texte = eq ? t("secours.footer.equipe", { equipe: eq.nom })
+                     : t("secours.footer.operateur", { n: (s.groupes || []).length });
+    pastille.title = t("secours.footer.title", { nom: s.nom || "" });
+    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>';
+  }
+
   function _estExecutionActive(s) {
     return !!(s && s.execution && s.execution.active === true);
   }
@@ -6696,6 +6734,15 @@
     _modal = null;
     clearOverlay();
     _currentScenarioId = null;
+    // 29/09/2026 (KARMA) : « j'ai lancé un plan, affecté à une équipe, je devrais
+    // voir ma zone en mode carte avec mon tracé ». Fermer la fenêtre effaçait tout.
+    // Intervention active → l'affichage reste (équipier : son équipe seule, filtre
+    // de renderOverlay ; opérateur : toutes). reset() (changement de plan) nettoie.
+    const enCours = _scenarioEnCours();
+    if (enCours && window.map) {
+      try { renderOverlay(enCours.id); } catch(e) { console.warn("[SecoursMode] overlay en cours :", e); }
+    }
+    _majFooterSecours();
     // 🐛 hotfix1 — Cleanup du setInterval timer (sinon fuite mémoire :
     // le timer continuait à tourner après fermeture modale sans plus
     // rien à update — _currentScenarioId=null + DOM modale retirée).
@@ -10891,6 +10938,15 @@
   function init() {
     _loadScenarios();
     console.log("[SecoursMode] Init — " + _scenarios.length + " scénario(s) chargé(s) pour ce plan");
+    // Intervention en cours sur ce plan → zone, tracé et pastille dès l'ouverture
+    // (après la main : la carte et ses tracés finissent de se monter).
+    setTimeout(function() {
+      const enCours = _scenarioEnCours();
+      if (enCours && window.map && !_modal) {
+        try { renderOverlay(enCours.id); } catch(e) { console.warn("[SecoursMode] overlay au chargement :", e); }
+      }
+      _majFooterSecours();
+    }, 0);
   }
 
   // Reset au plan switch — appelé par main.js > _libererRessourcesPlanPrecedent.
@@ -10898,9 +10954,11 @@
   // scénarios du nouveau plan seront re-chargés via init au boot du nouveau).
   function reset() {
     fermer();
+    clearOverlay();
     _scenarios = [];
     _currentScenarioId = null;
     _focusedGroupeId = null;
+    _majFooterSecours();
   }
 
   // ============================================================
