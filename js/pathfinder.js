@@ -523,10 +523,59 @@
     return !!(nodeSet && nodeSet.has(segLevel));
   }
 
+  // ⚡ 29/09/2026 — GRILLE SPATIALE pour l'enrichissement. Les trois passes
+  // ci-dessous comparaient chaque segment à TOUS les autres (O(S²)) : ~40 s
+  // par itinéraire mesurés sur un relevé de 912 tracés / ~9 000 sommets.
+  // Or chaque test n'aboutit que si les deux objets sont PROCHES (bbox qui se
+  // touchent, ou à moins de PROXIMITY_TOLERANCE). La grille ne sert qu'à
+  // écarter d'avance les paires lointaines, qui ne produisaient rien.
+  // 🩸 RÉSULTAT IDENTIQUE AU BIT PRÈS, pas « équivalent » : les candidats sont
+  // TRIÉS par indice croissant avant d'être traités, donc les nœuds virtuels
+  // sont créés dans le même ordre, avec les mêmes indices, qu'avant.
+  const GRILLE_ENRICH_PX = 64;
+
+  function _cellulesDe(x0, y0, x1, y1, cell, rappel) {
+    const cx0 = Math.floor(x0 / cell), cx1 = Math.floor(x1 / cell);
+    const cy0 = Math.floor(y0 / cell), cy1 = Math.floor(y1 / cell);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) rappel(cx + "," + cy);
+    }
+  }
+
+  // Indexe chaque segment dans toutes les cellules que couvre sa bbox
+  // élargie de `marge`.
+  function _grilleSegments(graph, segs, marge) {
+    const g = new Map();
+    for (let i = 0; i < segs.length; i++) {
+      const a = graph.nodes[segs[i].a], b = graph.nodes[segs[i].b];
+      _cellulesDe(Math.min(a.x, b.x) - marge, Math.min(a.y, b.y) - marge,
+                  Math.max(a.x, b.x) + marge, Math.max(a.y, b.y) + marge, GRILLE_ENRICH_PX, function(k) {
+        let l = g.get(k);
+        if (!l) g.set(k, l = []);
+        l.push(i);
+      });
+    }
+    return g;
+  }
+
+  // Candidats (indices triés, sans doublon) des cellules couvrant une bbox.
+  function _candidatsGrille(g, x0, y0, x1, y1) {
+    const vus = new Set();
+    _cellulesDe(x0, y0, x1, y1, GRILLE_ENRICH_PX, function(k) {
+      const l = g.get(k);
+      if (l) for (let n = 0; n < l.length; n++) vus.add(l[n]);
+    });
+    return Array.from(vus).sort(function(p, q) { return p - q; });
+  }
+
   function _enrichirGrapheAvecCroisements(graph) {
     // Snapshot des segments AVANT l'enrichissement (sinon boucle infinie sur
     // les segments virtuels qu'on ajoute).
     const segs = graph.segments.slice();
+    // ⚡ Deux index : bbox brute (+1 px de sûreté) pour les croisements,
+    // bbox élargie de la tolérance pour les T-junctions.
+    const grilleCroise = _grilleSegments(graph, segs, 1);
+    const grilleProxi  = _grilleSegments(graph, segs, PROXIMITY_TOLERANCE + 1);
     let nbCroisements = 0;
     let nbProximites  = 0;
     // 🏗️ Multi-niveau : flag lu une fois pour eviter de relire APP_CONFIG
@@ -539,8 +588,13 @@
       const segA = segs[i];
       const a1 = graph.nodes[segA.a];
       const a2 = graph.nodes[segA.b];
+      // ⚡ Seuls les segments dont la bbox touche celle de A peuvent le croiser.
+      const candA = _candidatsGrille(grilleCroise, Math.min(a1.x, a2.x), Math.min(a1.y, a2.y),
+                                     Math.max(a1.x, a2.x), Math.max(a1.y, a2.y));
 
-      for (let j = i + 1; j < segs.length; j++) {
+      for (let c = 0; c < candA.length; c++) {
+        const j = candA[c];
+        if (j <= i) continue;
         const segB = segs[j];
         // Skip si les segments partagent un nœud (déjà connectés)
         if (segA.a === segB.a || segA.a === segB.b ||
@@ -590,8 +644,14 @@
         { nodeIdx: segA.a, point: graph.nodes[segA.a] },
         { nodeIdx: segA.b, point: graph.nodes[segA.b] }
       ];
+      // ⚡ Seuls les segments à moins de la tolérance d'une des deux extrémités
+      // (index construit sur les bbox élargies) peuvent donner une T-junction.
+      const pa = endpoints[0].point, pb = endpoints[1].point;
+      const candB = _candidatsGrille(grilleProxi, Math.min(pa.x, pb.x), Math.min(pa.y, pb.y),
+                                     Math.max(pa.x, pb.x), Math.max(pa.y, pb.y));
 
-      for (let j = 0; j < segs.length; j++) {
+      for (let c = 0; c < candB.length; c++) {
+        const j = candB[c];
         if (j === i) continue;
         const segB = segs[j];
 
@@ -650,11 +710,32 @@
     }
     const endpoints = Array.from(endpointSet);
     let nbEndpoints = 0;
+    // ⚡ Grille de pas ≥ tolérance : deux extrémités à moins de
+    // PROXIMITY_TOLERANCE sont forcément dans des cellules voisines (3×3).
+    const pasExt = Math.max(GRILLE_ENRICH_PX, PROXIMITY_TOLERANCE);
+    const grilleExt = new Map();
+    for (let i = 0; i < endpoints.length; i++) {
+      const p = graph.nodes[endpoints[i]];
+      const k = Math.floor(p.x / pasExt) + "," + Math.floor(p.y / pasExt);
+      let l = grilleExt.get(k);
+      if (!l) grilleExt.set(k, l = []);
+      l.push(i);
+    }
 
     for (let i = 0; i < endpoints.length; i++) {
       const idxA = endpoints[i];
       const pA = graph.nodes[idxA];
-      for (let j = i + 1; j < endpoints.length; j++) {
+      const candE = [];
+      const gx = Math.floor(pA.x / pasExt), gy = Math.floor(pA.y / pasExt);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const l = grilleExt.get((gx + dx) + "," + (gy + dy));
+          if (l) for (let n = 0; n < l.length; n++) if (l[n] > i) candE.push(l[n]);
+        }
+      }
+      candE.sort(function(p, q) { return p - q; });
+      for (let c = 0; c < candE.length; c++) {
+        const j = candE[c];
         const idxB = endpoints[j];
 
         // 🏗️ Multi-niveau : skip si les niveaux des 2 nodes n'ont aucun
@@ -786,39 +867,73 @@
   // =========================
   // DIJKSTRA
   // =========================
-  // Implémentation simple à priorité-queue tableau (O(V²) mais OK pour
-  // graphes typiques < 10k nœuds, ce qui est largement suffisant pour
-  // un plan terrain).
+  // ⚡ 29/09/2026 — TAS BINAIRE au lieu d'un balayage de tous les nœuds à
+  // chaque extraction (O(V²) → O(E log V)). « OK pour < 10k nœuds » était
+  // faux en pratique : ~40 s sur un relevé réel, dont une large part ici.
+  // 🩸 Même ordre d'extraction qu'avant, donc mêmes chemins : l'ancien
+  // balayage prenait la plus petite distance et, à égalité, le plus petit
+  // indice (parcours croissant, comparaison stricte). Le tas est ordonné sur
+  // exactement ce couple (distance, indice). Entrées périmées ignorées.
+  function _tasPousser(tas, d, i) {
+    tas.push(d, i);
+    let k = (tas.length >> 1) - 1;
+    while (k > 0) {
+      const p = ((k - 1) >> 1);
+      if (tas[2 * p] < tas[2 * k] || (tas[2 * p] === tas[2 * k] && tas[2 * p + 1] <= tas[2 * k + 1])) break;
+      const d0 = tas[2 * p], i0 = tas[2 * p + 1];
+      tas[2 * p] = tas[2 * k]; tas[2 * p + 1] = tas[2 * k + 1];
+      tas[2 * k] = d0; tas[2 * k + 1] = i0;
+      k = p;
+    }
+  }
+  function _tasExtraire(tas) {   // → [d, i] du minimum ; tas non vide
+    const d = tas[0], i = tas[1];
+    const iDernier = tas.pop(), dDernier = tas.pop();   // paires [d, i] à plat : l'indice sort en premier
+    const n = tas.length >> 1;
+    if (n > 0) {
+      tas[0] = dDernier; tas[1] = iDernier;
+      let k = 0;
+      for (;;) {
+        const g = 2 * k + 1, dr = g + 1;
+        let m = k;
+        if (g < n && (tas[2 * g] < tas[2 * m] || (tas[2 * g] === tas[2 * m] && tas[2 * g + 1] < tas[2 * m + 1]))) m = g;
+        if (dr < n && (tas[2 * dr] < tas[2 * m] || (tas[2 * dr] === tas[2 * m] && tas[2 * dr + 1] < tas[2 * m + 1]))) m = dr;
+        if (m === k) break;
+        const d0 = tas[2 * m], i0 = tas[2 * m + 1];
+        tas[2 * m] = tas[2 * k]; tas[2 * m + 1] = tas[2 * k + 1];
+        tas[2 * k] = d0; tas[2 * k + 1] = i0;
+        k = m;
+      }
+    }
+    return [d, i];
+  }
+
   function _dijkstra(graph, start, end) {
     const N    = graph.nodes.length;
     const dist = new Array(N).fill(Infinity);
     const prev = new Array(N).fill(-1);
+    const fait = new Uint8Array(N);
     dist[start] = 0;
+    const tas = [];
+    _tasPousser(tas, 0, start);
 
-    // Set des nœuds non encore traités
-    const remaining = new Set();
-    for (let i = 0; i < N; i++) remaining.add(i);
-
-    while (remaining.size > 0) {
-      // Extraire le nœud avec la plus petite distance
-      let u = -1;
-      let minD = Infinity;
-      remaining.forEach(function(i) {
-        if (dist[i] < minD) { minD = dist[i]; u = i; }
-      });
-      if (u < 0 || u === end) break;
-      if (minD === Infinity) break;  // graphe disconnecté
-      remaining.delete(u);
+    while (tas.length) {
+      const e = _tasExtraire(tas);
+      const u = e[1];
+      if (fait[u] || e[0] !== dist[u]) continue;   // entrée périmée
+      if (u === end) break;
+      fait[u] = 1;
 
       // Relaxer les voisins
       const neigh = graph.edges[u];
       for (let i = 0; i < neigh.length; i++) {
         const v = neigh[i].to;
-        if (!remaining.has(v)) continue;
+        if (fait[v]) continue;
         const alt = dist[u] + neigh[i].weight;
         if (alt < dist[v]) {
           dist[v] = alt;
           prev[v] = u;
+          _tasPousser(tas, alt, v);
         }
       }
     }
@@ -1551,33 +1666,33 @@
   function _dijkstraReachable(graph, start, budget) {
     const N = graph.nodes.length;
     const dist = new Array(N).fill(Infinity);
+    const fait = new Uint8Array(N);
     dist[start] = 0;
+    // ⚡ 29/09/2026 — même tas (distance, indice) que `_dijkstra` : même ordre
+    // d'extraction que l'ancien balayage O(V²), donc mêmes distances rendues.
+    const tas = [];
+    _tasPousser(tas, 0, start);
 
-    const remaining = new Set();
-    for (let i = 0; i < N; i++) remaining.add(i);
-
-    while (remaining.size > 0) {
-      let u = -1;
-      let minD = Infinity;
-      remaining.forEach(function(i) {
-        if (dist[i] < minD) { minD = dist[i]; u = i; }
-      });
-      if (u < 0 || minD === Infinity) break;
+    while (tas.length) {
+      const e = _tasExtraire(tas);
+      const u = e[1], minD = e[0];
+      if (fait[u] || minD !== dist[u]) continue;   // entrée périmée
       // Optimisation : si le nœud minimum dépasse déjà le budget, tous les
       // suivants aussi (Dijkstra extraction par ordre croissant) → on peut sortir.
       if (minD > budget) break;
-      remaining.delete(u);
+      fait[u] = 1;
 
       const neigh = graph.edges[u];
       for (let i = 0; i < neigh.length; i++) {
         const v = neigh[i].to;
-        if (!remaining.has(v)) continue;
+        if (fait[v]) continue;
         const alt = dist[u] + neigh[i].weight;
         // On garde dist[v] même si > budget : utile pour le calcul des
         // partial segments (cas 2/3 ci-dessus où on a besoin de savoir
         // que B a été "vu" avec une certaine distance même si > budget).
         if (alt < dist[v]) {
           dist[v] = alt;
+          _tasPousser(tas, alt, v);
         }
       }
     }

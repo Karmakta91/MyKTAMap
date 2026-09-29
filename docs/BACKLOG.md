@@ -43,9 +43,6 @@ Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 trac�
 - 🟠 **Le tuilage pose 864 tuiles pour 6 visibles.** À l'ouverture : 864 overlays sur la carte, **6** réellement à l'écran (99,3 % hors champ), 880 requêtes, ~30 Mo, 2 940 abonnements Leaflet dont ~2 875 dus aux tuiles. Un aller-retour de zoom redemande **1 160 tuiles**. Latence d'un `panBy` : 2,00 ms avec, 0,70 ms sans les hors-écran (×2,9) — **pas un goulot sur desktop**, mais c'est le coût réseau, DOM et compositeur iOS. 🩸 *La parade existe déjà (`mapBearing > _cullerTuiles`) mais n'est active qu'en mode tourné — or la mesure dit que **c'est le mode de base qui paie**.* → porter le culling dans `tiling.js > _renderNiveau` rendrait celui de `mapBearing` inutile : une implémentation au lieu de deux.
 - 🟠 **Le LRU des tuiles ne libère rien**, pour deux raisons indépendantes : sur un plan **serveur** ses buckets restent vides (il ne se remplit que pour les assets porteurs d'un `file`, donc les ZIP) ; sur un plan **ZIP desktop**, `MAX_CACHED_LEVELS = 4` alors que le générateur produit exactement 4 niveaux — la condition d'éviction ne peut jamais être vraie. Ce qui libère réellement, c'est le `remove()` des overlays au swap. Le LRU n'agit que sur mobile (cap 2), où il n'a jamais été mesuré.
 - 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
-- ⚪ **Calcul d'itinéraire lent sur gros réseau** (gardé 29/09) — ~38 s en Node sur ~9 000 points (enrichissement
-  O(N²) + Dijkstra O(V²) du pathfinder, antérieurs au guidage ; le guidage lui-même : 1–2 ms). Pèse sur
-  « Recalculer d'ici » et la sortie d'urgence sur les gros plans.
 
 ## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
 
@@ -56,7 +53,6 @@ ont été **validés par KARMA le 29/09**. Reste :
 - 🟡 **Itinéraires non couverts** : Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) créent
   leurs roads sans `raccords` / `carrefours` → pas de pointillé, raccord non compté, et le bandeau n'y dit que
   l'arrivée (aucun croisement connu). Brancher `_champsGuidage`.
-- La lenteur du calcul est rangée avec la performance, ci-dessus.
 
 ## 📋 Popups natives et presse-papier — au fil de l'eau (recompté le 29/09/2026)
 
