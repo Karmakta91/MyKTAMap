@@ -1056,16 +1056,47 @@
   // sa création (updateGroupe, export, lancement) ; chaque étape porte celle de son
   // point. C'est la seule clé ; la position ne sert qu'aux données d'avant (sans
   // wid), le libellé qu'aux rapports d'avant la v1.98.8 (ni wid ni position).
-  function _widNormaliser(wp) {
-    if (wp && typeof wp === "object" && !wp.wid) { wp.wid = _genId("W"); return true; }
-    return false;
+  //
+  // 🩸 3e relecture (R3-1) — les wid étaient TIRÉS AU HASARD sur chaque appareil :
+  // un téléphone qui lançait un .mkmsec d'avant la version s'en fabriquait d'autres
+  // que le PC → au rapport, 1 étape fusionnée sur 5, victime dupliquée. Un wid manquant
+  // est désormais CALCULÉ (équipe + rôle + position + rang d'occurrence) : deux
+  // appareils qui ont le même parcours trouvent le même, sans échanger quoi que ce soit.
+  function _widDeterministe(gid, role, wp, rang) {
+    const src = String(gid || "") + "|" + role + "|" + (_cleWaypoint(wp) || "") + "|" + rang;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return "W" + h.toString(36) + "r" + rang;
+  }
+  // Pose les wid manquants d'un parcours [{role, wp}] (ordre du parcours). Le rang
+  // compte TOUS les points de même rôle et même position, avec ou sans wid.
+  function _poserWids(gid, parcours) {
+    const pris = new Set();
+    parcours.forEach(function(it) { if (it.wp && it.wp.wid) pris.add(it.wp.wid); });
+    const rangs = {};
+    let chg = false;
+    parcours.forEach(function(it) {
+      const wp = it.wp;
+      if (!wp || typeof wp !== "object") return;
+      const k = it.role + "|" + (_cleWaypoint(wp) || "");
+      rangs[k] = (rangs[k] === undefined) ? 0 : rangs[k] + 1;
+      if (wp.wid) return;
+      let r = rangs[k], w = _widDeterministe(gid, it.role, wp, r);
+      while (pris.has(w)) { r += 1000; w = _widDeterministe(gid, it.role, wp, r); }
+      wp.wid = w; pris.add(w); chg = true;
+    });
+    return chg;
+  }
+  function _parcoursRoles(entree, intermediaires, sortie) {
+    const out = [];
+    if (entree) out.push({ role: "entree", wp: entree });
+    (intermediaires || []).forEach(function(w) { out.push({ role: "interm", wp: w }); });
+    if (sortie) out.push({ role: "sortie", wp: sortie });
+    return out;
   }
   function _normaliserParcours(g) {
     if (!g) return false;
-    let chg = _widNormaliser(g.entree);
-    chg = _widNormaliser(g.sortie) || chg;
-    (g.intermediaires || []).forEach(function(w) { chg = _widNormaliser(w) || chg; });
-    return chg;
+    return _poserWids(g.id, _parcoursRoles(g.entree, g.intermediaires, g.sortie));
   }
   // Étapes construites avant les wid : elles correspondent une à une au parcours
   // ACTUEL (toute modification en exécution resynchronise) → on leur rattache le wid.
@@ -1078,9 +1109,14 @@
     (g.intermediaires || []).forEach(function(w) { liste.push(w); });
     if (g.sortie) liste.push(g.sortie);
     if (liste.length !== et.length) return;
+    // 3e relecture (R3-9) : une exécution démarrée avant les resync peut avoir des
+    // étapes décalées du parcours → on ne rattache que si type ET libellé concordent.
+    const roles = _parcoursRoles(g.entree, g.intermediaires, g.sortie);
     et.forEach(function(e, i) {
-      if (!e.wid && liste[i] && liste[i].wid) e.wid = liste[i].wid;
-      if (!e.cle) e.cle = _cleWaypoint(liste[i]);
+      const w = liste[i];
+      if (!w || e.type !== roles[i].role || e.label !== (w.label || _fmtPoint(w))) return;
+      if (!e.wid && w.wid) e.wid = w.wid;
+      if (!e.cle) e.cle = _cleWaypoint(w);
     });
   }
   // Mêmes conditions pour la resync ET la garde de retrait (2e relecture, N4).
@@ -1098,6 +1134,11 @@
   // position. Passe 3 (cible sans wid ni position : rapport d'avant v1.98.8) : même
   // type + même libellé, dans l'ordre. Passe 4 : cible sans libellé → même numéro.
   function _apparierEtapes(sources, cibles) {
+    // 3e relecture (R3-1) : un wid INCONNU de l'autre côté (tiré ailleurs, ou d'avant
+    // les wid calculés) ne vaut rien : on retombe sur la position, puis le libellé.
+    const widsS = new Set(sources.map(function(x) { return x && x.wid; }).filter(Boolean));
+    const widsC = new Set(cibles.map(function(x) { return x && x.wid; }).filter(Boolean));
+    const widConnu = function(a, c) { return !!a.wid && !!c.wid && widsC.has(a.wid) && widsS.has(c.wid); };
     const pris = new Set();
     const res = cibles.map(function() { return null; });
     const passe = function(test) {
@@ -1108,8 +1149,10 @@
       });
     };
     passe(function(a, c) { return !!a.wid && a.wid === c.wid; });
-    passe(function(a, c) { return (!a.wid || !c.wid) && a.type === c.type && !!a.cle && a.cle === c.cle; });
-    passe(function(a, c) { return !c.wid && !c.cle && a.type === c.type && !!c.label && a.label === c.label; });
+    passe(function(a, c) { return !widConnu(a, c) && a.type === c.type && !!a.cle && a.cle === c.cle; });
+    passe(function(a, c) {
+      return ((!c.wid && !c.cle) || (!a.wid && !a.cle)) && a.type === c.type && !!c.label && a.label === c.label;
+    });
     passe(function(a, c) { return !c.label && a.idx === c.idx; });
     return res;
   }
@@ -2492,16 +2535,32 @@
     // dans le parcours de l'équipe, à sa place (après le point importé précédent),
     // puis fusionné normalement ; une alerte rouge le dit. Jamais une ligne repliée.
     const gEq = s.groupes.find(function(x) { return x.id === equipeId; });
+    // 3e relecture (R3-1) : identités posées et rattachées AVANT d'apparier.
+    if (gEq) { _normaliserParcours(gEq); _rattacherWidEtapes(s, gEq); }
     const preApp = _apparierEtapes(etapesOp, etapesImportees);
-    const aRemettre = etapesImportees.filter(function(e, i) {
-      return !preApp[i] && typeof e.cle === "string" && _getStatutInfo(e.statut).severity >= 2;
+    // Remise SEULEMENT si le point a vraiment quitté le parcours (ni son wid ni sa
+    // position n'y sont) et si l'équipe est dans la phase en cours (R3-2) ; sinon
+    // alerte rouge sans remise (R3-2, R3-6 : rapport sans position).
+    const dansParcours = function(e) {
+      return _parcoursRoles(gEq.entree, gEq.intermediaires, gEq.sortie).some(function(it) {
+        return (e.wid && it.wp.wid === e.wid) || (e.cle && _cleWaypoint(it.wp) === e.cle);
+      });
+    };
+    const graves = etapesImportees.filter(function(e, i) {
+      return !preApp[i] && _getStatutInfo(e.statut).severity >= 2;
     });
+    const remettable = function(e) {
+      return !!gEq && typeof e.cle === "string" && _resyncApplicable(s, gEq) && !dansParcours(e);
+    };
+    graves.filter(function(e) { return !remettable(e); }).forEach(function(e) {
+      stats.alertes.push(t("secours.report.alerteNonRemise", { statut: _statutLabel(e.statut), label: e.label || "?" }));
+    });
+    const aRemettre = graves.filter(remettable);
+    const remis = new Map();   // étape importée → wid du point remis (R3-5)
     if (gEq && aRemettre.length > 0) {
-      _normaliserParcours(gEq);
-      _rattacherWidEtapes(s, gEq);
       aRemettre.forEach(function(e) {
         const c = e.cle.split(",").map(Number);
-        const wp = { x: c[0], y: c[1], level: c[2] || 0, label: e.label || "", wid: e.wid || _genId("W") };
+        const wp = { x: c[0], y: c[1], level: c[2] || 0, label: e.label || "", wid: e.wid || null };
         const iImp = etapesImportees.indexOf(e);
         let avant = null;
         for (let k = iImp - 1; k >= 0 && !avant; k--) avant = preApp[k];
@@ -2515,9 +2574,10 @@
         }
         arr.splice(pos, 0, wp);
         gEq.intermediaires = arr;
-        stats.alertes.push(t("secours.report.alerteRemise", {
-          statut: t("secours.statut." + e.statut), label: e.label || "?"
-        }));
+        _poserWids(gEq.id, _parcoursRoles(gEq.entree, gEq.intermediaires, gEq.sortie));
+        remis.set(e, wp.wid);
+        preApp[iImp] = { type: "interm", wid: wp.wid };   // R3-4 : « avant » des remises suivantes
+        stats.alertes.push(t("secours.report.alerteRemise", { statut: _statutLabel(e.statut), label: e.label || "?" }));
       });
       _resyncEtapesEquipe(s, gEq);
       etapesOp = s.execution.etapes[equipeId];
@@ -2528,7 +2588,9 @@
     const pairesFusion = _apparierEtapes(etapesOp, etapesImportees);
     for (let i = 0; i < etapesImportees.length; i++) {
       const etImp = etapesImportees[i];
-      const etapeOp = pairesFusion[i];
+      // Point remis (R3-5) : retrouvé par son wid, quel que soit son ancien type.
+      const etapeOp = pairesFusion[i] || (remis.has(etImp)
+        ? etapesOp.find(function(x) { return x.wid === remis.get(etImp); }) || null : null);
       if (!etapeOp) {
         stats.etapesSkipped++;
         stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
@@ -3073,9 +3135,10 @@
       if (Array.isArray(partial.intermediaires)) {
         heriter(partial.intermediaires, (g.intermediaires || []).concat(archDe("interm")));
       }
-      if ("entree" in partial) _widNormaliser(partial.entree);
-      if ("sortie" in partial) _widNormaliser(partial.sortie);
-      if (Array.isArray(partial.intermediaires)) partial.intermediaires.forEach(_widNormaliser);
+      _poserWids(g.id, _parcoursRoles(
+        ("entree" in partial) ? partial.entree : g.entree,
+        Array.isArray(partial.intermediaires) ? partial.intermediaires : g.intermediaires,
+        ("sortie" in partial) ? partial.sortie : g.sortie));
       // Le refus aide/victime est RE-VÉRIFIÉ au ré-appel après confirmation (N5) :
       // seule la question est sautée, pas le contrôle.
       const perdues = _etapesPerduesSi(s, g, partial);
@@ -3575,6 +3638,16 @@
     const etapes = s && s.execution && s.execution.etapes && s.execution.etapes[equipeId];
     if (Array.isArray(etapes)) {
       const e = etapes.find(function(x) { return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0; });
+      if (e) return e.idx;
+    }
+    // 3e relecture (R3-3) : une étape d'une phase CLOSE détient aussi ses photos
+    // (l'équipe reconduite en phase 2 repart d'étapes vierges).
+    const phases = (s && s.execution && s.execution.etapesArchive) || {};
+    for (const k in phases) {
+      const arrPh = phases[k] && phases[k][equipeId];
+      const e = Array.isArray(arrPh) && arrPh.find(function(x) {
+        return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0;
+      });
       if (e) return e.idx;
     }
     // Photo d'une étape retirée (confirmée par l'utilisateur) : hors rapport.
@@ -5672,7 +5745,8 @@
           .map(function(w) { return w.label || _fmtPoint(w); });
         if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-          pdf.text(t("secours.pdf.itineraireSuggere"), margin, y); y += 5;
+          const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
+          pdf.text(t(aIti ? "secours.pdf.itineraireSuggere" : "secours.pdf.etapesTitre"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
           // Liste longue (« POI de la zone » : 40-60 étapes) : saut de page ligne à ligne.
           pdf.splitTextToSize(t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
@@ -8206,9 +8280,18 @@
       corps.querySelectorAll('[data-action="ouvrir-lancer-modale"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _afficherModaleLancer(s.id, function(opts) {
-            lancerExecution(s.id, opts);
-            _toast(t("secours.toast.planLance"), "info");
-            _switchView("live");
+            const lancer = function() {
+              lancerExecution(s.id, opts);
+              _toast(t("secours.toast.planLance"), "info");
+              _switchView("live");
+            };
+            // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
+            // photos (reçues des équipes comprises) — on le dit avant.
+            if (s.execution && typeof window.ktaConfirm === "function") {
+              window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
+            } else {
+              lancer();
+            }
           });
         });
       });
