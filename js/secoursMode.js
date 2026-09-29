@@ -4020,6 +4020,9 @@
       if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
         // 🆕 v1.26.0 Phase 4 C5 — Boucle async pour permettre l'await
         // sur la mini-carte par équipe (génération canvas exporter).
+        // Relecture 29/09 (R12) : le fond du plan (16 Mpx) est rendu UNE fois
+        // pour tout le rapport, pas une fois par équipe.
+        const cacheFond = { canvas: null };
         for (let i = 0; i < r.equipesData.length; i++) {
           const ed = r.equipesData[i];
           // 1. Page texte étapes (synchrone, inchangé)
@@ -4029,7 +4032,7 @@
           //    waypoints/zone/iti à afficher). Async = peut échouer
           //    silencieusement et passer à la suite (PDF reste valide).
           try {
-            await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r);
+            await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r, cacheFond);
           } catch (e) {
             console.warn("[Rapport] Mini-carte équipe " + (ed.equipe && ed.equipe.nom) + " échouée : " + (e && e.message));
           }
@@ -5096,7 +5099,7 @@
    * @param {object} ed - reportData.equipesData[i] = {equipe, etapes, photos}
    * @param {object} r  - reportData complet (pour metadata)
    */
-  async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
+  async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r, cacheFond) {
     if (!ed || !ed.equipe) return false;
     // 🩸 29/09/2026 (audit Secours) — LA MINI-CARTE NE S'EST JAMAIS DESSINÉE.
     // `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) :
@@ -5117,9 +5120,9 @@
     }
 
     // 2) Canvas plan complet (scale 0.5 pour limiter la RAM mobile)
-    let planCanvas;
+    let planCanvas = cacheFond && cacheFond.canvas;
     try {
-      planCanvas = await window.MyKTAMapExporterGenererCanvas({
+      if (!planCanvas) planCanvas = await window.MyKTAMapExporterGenererCanvas({
         scale: _echelleCanvasPlan(0.5),   // plafonné sous la limite iOS
         bg:    "image",
         // Annotations session désactivées (mini-carte = juste plan + data
@@ -5138,6 +5141,7 @@
       return false;
     }
     if (!planCanvas || !planCanvas.width) return false;
+    if (cacheFond) cacheFond.canvas = planCanvas;
 
     // 3) Nouveau canvas final paysage A4 ratio (297/210 = 1.414)
     // Cible 1800×1273 px (= ~150 dpi A4 paysage utile, bon compromis qualité/RAM)
@@ -5189,9 +5193,13 @@
     ctx.drawImage(planCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
 
     // 4) Overlay équipe : helper coord plan → coord canvas final
+    // Relecture 29/09 (R11) : projeter avec la source RÉELLEMENT dessinée (rognée au
+    // bord du plan), pas avec les bounds bruts — sinon l'équipe dessinée par-dessus
+    // se décalait du fond dès que la zone touchait un bord du plan.
+    const srcX = sx / SCALE_PLAN, srcY = sy / SCALE_PLAN, srcW = sw / SCALE_PLAN, srcH = sh / SCALE_PLAN;
     function _planToFinal(x, y) {
-      const ratioX = (x - bounds.x) / bounds.w;
-      const ratioY = (y - bounds.y) / bounds.h;
+      const ratioX = (x - srcX) / srcW;
+      const ratioY = (y - srcY) / srcH;
       return {
         x: dx + ratioX * dw,
         y: dy + ratioY * dh

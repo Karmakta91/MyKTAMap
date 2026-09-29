@@ -981,7 +981,7 @@ realSize = 3 × 165 = 495 px
 
 #### 69.2 Mini-carte PDF page A4 paysage (C5 — CONSERVÉ)
 
-> 🩸 **29/09/2026 (audit Secours, trouvé en test)** — cette mini-carte **ne s'était jamais dessinée** : `_drawRapportPDFEquipeMiniaturePage` recevait `ed.equipe`, la copie allégée du rapport (sans entrée, étapes, zone ni itinéraire) → `_calculerBoundsEquipe` = null → page sautée sans message. Elle reprend maintenant l'équipe complète dans le scénario local (le PDF se génère sur l'appareil qui le détient), avec la copie en repli. Mesuré en navigateur : 0 → 1 canvas plan généré (16,0 Mpx).
+> 🩸 **29/09/2026 (audit Secours, trouvé en test)** — cette mini-carte **ne s'était jamais dessinée** : `_drawRapportPDFEquipeMiniaturePage` recevait `ed.equipe`, la copie allégée du rapport (sans entrée, étapes, zone ni itinéraire) → `_calculerBoundsEquipe` = null → page sautée sans message. Elle reprend maintenant l'équipe complète dans le scénario local (le PDF se génère sur l'appareil qui le détient), avec la copie en repli. Mesuré en navigateur : 0 → 1 canvas plan généré (16,0 Mpx). Relecture (R11, R12) : le fond est rendu **une fois** pour tout le rapport (`cacheFond`), et l'équipe est projetée sur la source **rognée** au bord du plan (avant : jusqu'à 124 px de décalage mesuré pour une zone collée au coin).
 
 `genererRapportPDF` reste async pour permettre await sur la mini-carte. Pour chaque équipe (scope=operateur ou equipe), le PDF intercale 3 pages :
 1. Page texte étapes (synchrone)
