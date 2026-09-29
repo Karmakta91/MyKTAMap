@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.7` (29/09/2026)
+## 📦 Version courante — `v1.98.8` (29/09/2026)
+
+> 🔍 **v1.98.8 — Mode Secours, reprise après relecture des vagues 1-3** : un agent relecteur a reproduit 10 défauts dans les correctifs livrés ou autour ; tous corrigés, dont la 2.6 refaite (homonymes, étape « victime » qui disparaissait du rapport), un plan importé effacé aussitôt sur un téléphone plein, et l'itinéraire tracé à travers la surface en Vue OSM (conséquence de 2.2).
 
 > 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
 
@@ -491,6 +493,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.8 (29/09/2026) — Mode Secours, vague 3bis : reprise après relecture
+
+- 🔍 **Origine** : relecture adversariale en lecture seule des 16 commits `b41de8d..6c9a4fd` (demande KARMA). 14 correctifs jugés conformes, **2.6 à reprendre**, 10 défauts reproduits par scripts. Décisions KARMA : 1:a (retrait d'étape renseignée = confirmation, refus si aide/victime), 2:a (photos effacées au « Remplacer »), 3 (note de version sans « sur iPhone », non testé).
+- 📥 **R1** (`bcbe5ae`) : un `.mkmsec` importé sur un téléphone qui avait 10 scénarios était purgé dans le commit de l'import (`createdAt` du PC) → âge FIFO = max(`createdAt`, `arriveeAt`).
+- 🔁 **2.6 refaite** (`d9235bf`) : étapes identifiées par la position de leur point (`cle`), un seul apparieur `_apparierEtapes` (resync + fusion : position, puis libellé par rang, puis numéro) ; archive restaurée si l'étape revient ; photos suivies en IndexedDB (`setStepIdx`, −2 = retirée, hors rapport) ; focus recalé ; `affecterEquipeAPhase` resynchronise ; retrait confirmé / refusé.
+- 🗺️ **R5** (`815fa4b`) : la Vue OSM filtrait l'itinéraire par niveau puis reliait les points → trait à travers la surface depuis 2.2 (j'avais écrit à tort qu'aucun lecteur n'utilisait le niveau). Tronçons par niveau visible.
+- 📷 **R8** (`399e91d` + doc `11ad8bc`) : « Remplacer » efface aussi les photos de l'exécution remplacée ; ⚠️ le commit `399e91d` annonçait des docs qui n'y étaient pas (script échoué) — rattrapé par `11ad8bc`.
+- 🧩 **R2** (`ab77825`) ids d'équipe en double · **H1** (`0664a6d`) « Dupliquer » remappe les phases et ne recopie plus l'exécution · **R11-12** (`744df35`) mini-carte alignée au bord (124 px → 0) et fond rendu une fois · **mineurs** (`93e29cb`) clés de tracés gardées, saut de page de la liste d'étapes, doc (R10, D2, D5), `alert()` migré.
+- ✅ **Tests** : 10 harnais Node + 9 checkups navigateur (Playwright, plan réel servi en local, hors dépôt), plusieurs rejoués contre l'ancien code pour prouver le défaut ; `check-i18n`, `check-doc-langues`, `node -c` verts. ⚠️ Toujours rien sur téléphone réel.
 
 #### v1.98.7 (29/09/2026) — Mode Secours, vague 3 des correctifs : documents papier
 
