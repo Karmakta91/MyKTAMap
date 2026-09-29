@@ -1371,7 +1371,7 @@
           '<div class="kta-secours-form-row">' +
             '<label>' + t("secours.assign.roleLabel") + '</label>' +
             '<div class="kta-secours-assign-roles">' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree" checked> ' + t("secours.role.entree") + '</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree"> ' + t("secours.role.entree") + '</label>' +
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ' + t("secours.role.intermediaire") + '</label>' +
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + t("secours.role.sortie") + '</label>' +
             '</div>' +
@@ -1387,6 +1387,20 @@
       '</div>';
     document.documentElement.appendChild(overlay);
 
+    // 🩸 29/09/2026 (audit Secours) — « Entrée » était cochée d'office : oublier de
+    // changer le choix ÉCRASAIT l'entrée de l'équipe, sans rien dire. Le rôle par
+    // défaut suit l'équipe choisie : « Entrée » seulement si elle n'en a pas encore.
+    function _roleParDefaut() {
+      const sel = document.getElementById("kta-sec-assign-equipe");
+      const eq = sel ? s.groupes.find(function(g) { return g.id === sel.value; }) : null;
+      const role = (eq && !eq.entree) ? "entree" : "intermediaire";
+      const radio = overlay.querySelector('input[name="kta-sec-assign-role"][value="' + role + '"]');
+      if (radio) radio.checked = true;
+    }
+    _roleParDefaut();
+    const _selEquipe = document.getElementById("kta-sec-assign-equipe");
+    if (_selEquipe) _selEquipe.addEventListener("change", _roleParDefaut);
+
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     }
@@ -1398,7 +1412,7 @@
       b.addEventListener("click", function() {
         const equipeId = (document.getElementById("kta-sec-assign-equipe") || {}).value;
         const roleEl = overlay.querySelector('input[name="kta-sec-assign-role"]:checked');
-        const role = roleEl ? roleEl.value : "entree";
+        const role = roleEl ? roleEl.value : "intermediaire";
         if (!equipeId) { _toast(t("secours.toast.selectEquipe"), "warn"); return; }
         const level = (typeof point.level === "number") ? point.level
                     : (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
