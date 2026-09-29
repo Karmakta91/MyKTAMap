@@ -698,7 +698,11 @@ function inf(msg) { console.log("  •  " + msg); }
     // du niveau, même hors écran ; sous notre pane transformé, iOS doit
     // composer tout ça en une couche et renonce à en peindre une partie.
     // Ce test fige la parade : pendant le mode, les tuiles hors viewport
-    // quittent la carte — et reviennent à l'arrêt.
+    // quittent la carte.
+    // 🧱 29/09/2026 — le retrait est devenu PERMANENT (tiling.js >
+    // ktaCullerTuilesV2 : 864 tuiles posées pour 6 visibles, même sans
+    // rotation). À l'arrêt, ne reviennent donc que les tuiles proches de
+    // l'écran droit — plus « toutes ».
     console.log("— T15 : tuiles hors écran pendant la rotation —");
     const t15 = await page.evaluate(async function () {
       const map = window.map;
@@ -738,15 +742,21 @@ function inf(msg) { console.log("  •  " + msg); }
       const bearingPendant = Math.round(window.MapBearing.getBearing());
       const masqueeReintegree = map.hasLayer(masquee);
 
-      window.MapBearing.reset();                // vue droite → tout revient
+      window.MapBearing.reset();                // vue droite → les proches reviennent
       await new Promise(function (r) { setTimeout(r, 500); });
       const apres = surCarte();
       const masqueeApres = map.hasLayer(masquee);
+      // Attendu à plat : exactement les tuiles (hors « masquee ») qui croisent
+      // l'écran élargi de 15 % — la règle de ktaCullerTuilesV2.
+      const zonePlate = map.getBounds().pad(0.15);
+      const attenduesApres = faux.filter(function (o) {
+        return o !== masquee && zonePlate.intersects(o.getBounds());
+      }).length;
 
       faux.forEach(function (o) { try { map.removeLayer(o); } catch (e) {} });
       window._tilingV2State = window.__ancienState;
       return { total: faux.length, avant: avant, pendant: pendant, apres: apres,
-               bearingPendant: bearingPendant,
+               bearingPendant: bearingPendant, attenduesApres: attenduesApres,
                masqueeReintegree: masqueeReintegree, masqueeApres: masqueeApres };
     });
     inf("tuiles sur la carte : " + t15.avant + " avant · " + t15.pendant + " pendant la rotation (vue à " +
@@ -756,9 +766,9 @@ function inf(msg) { console.log("  •  " + msg); }
       ok("les tuiles hors écran quittent la carte pendant la rotation (" +
          (t15.avant - t15.pendant) + " retirées sur " + t15.total + ")");
     else pb("aucune tuile retirée : la couche à composer reste entière");
-    if (t15.apres === t15.avant)
-      ok("toutes reviennent quand la vue se redresse");
-    else pb("des tuiles manquent après le retour à plat (" + t15.apres + " vs " + t15.avant + ")");
+    if (t15.apres === t15.attenduesApres && t15.apres > 0)
+      ok("vue redressée : reviennent exactement les tuiles proches de l'écran droit (" + t15.apres + ")");
+    else pb("après le retour à plat : " + t15.apres + " tuiles, attendu " + t15.attenduesApres);
     if (!t15.masqueeReintegree && !t15.masqueeApres)
       ok("une tuile masquée par ailleurs (filtre multi-niveau) n'est jamais réintégrée");
     else pb("le culling a réintégré une tuile qui devait rester masquée");
@@ -867,8 +877,8 @@ function inf(msg) { console.log("  •  " + msg); }
     });
     if (t20.avant1 && t20.resteSansSignal) ok("🩸 contre-essai : sans le signal, le bouton survit bien (le test voit le défaut)");
     else pb("contre-essai non concluant : " + JSON.stringify(t20));
-    if (t19.avant2 && !t19.apres && !t19.suivi) ok("🩸 changement de plan : le bouton « Recentrer » disparaît avec le suivi");
-    else pb("le bouton « Recentrer » survit au changement de plan : " + JSON.stringify(t19));
+    if (t20.avant2 && !t20.apres && !t20.suivi) ok("🩸 changement de plan : le bouton « Recentrer » disparaît avec le suivi");
+    else pb("le bouton « Recentrer » survit au changement de plan : " + JSON.stringify(t20));
 
     // ── T17 — LE FORMAT PORTRAIT, que le reste du checkup ne voit pas ──
     // 🩸 v1.97.3. Les marges de culling devaient valoir (grand côté / petit

@@ -138,8 +138,11 @@ t("🩸 un repli baseImage existe quand aucune tuile n'est exploitable",
   /function _repliBaseImage\(/.test(CODE));
 t("il ne se déclenche qu'une seule fois par chargement",
   /if \(state\.repliFait\) return;[\s\S]{0,80}state\.repliFait = true;/.test(CODE));
-t("déclencheur 1 : aucune tuile résolue",
-  /added === 0 && missing > 0[\s\S]{0,60}_repliBaseImage/.test(CODE));
+// 🧱 29/09/2026 — une tuile hors écran n'est plus POSÉE mais reste RÉSOLUE
+// (différée) : « aucune résolue » compte les deux, sinon un plan zoomé loin de
+// tout déclencherait le repli à tort. L'assertion exige les deux termes.
+t("déclencheur 1 : aucune tuile résolue (ni posée ni différée)",
+  /const resolues = added \+ differees;[\s\S]{0,40}if \(resolues === 0 && missing > 0\)[\s\S]{0,60}_repliBaseImage/.test(CODE));
 // 🩸 En mode serveur une URL HTTP « résout » toujours, même en 404 : `added`
 // ne dit plus rien. Sans ce second déclencheur, un déploiement raté redonne
 // une carte blanche muette — le bug qu'on vient de corriger.

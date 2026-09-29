@@ -205,8 +205,81 @@ window._applyLevelFilterToBasePlan = function() {
   }
   (window._ktaBaseLayers || []).forEach(_tog);
   (window._baseTiles || []).forEach(function(t) { _tog(t && t.overlay); });
+  // 🧱 V2 (29/09/2026) — les tuiles hors écran ne sont plus posées : masquer
+  // retire tout en le marquant « à reprendre », ré-afficher ne remet QUE ce
+  // qui est proche de l'écran (sinon on redemanderait tout le niveau).
   const st = window._tilingV2State;
-  if (st && Array.isArray(st.activeOverlays)) st.activeOverlays.forEach(_tog);
+  if (st && Array.isArray(st.activeOverlays)) {
+    st.activeOverlays.forEach(function(ov) {
+      if (!ov) return;
+      if (!visible && window.map.hasLayer(ov)) { try { window.map.removeLayer(ov); } catch(e) {} }
+      if (!window.map.hasLayer(ov)) ov._ktaCulled = true;
+    });
+    if (visible) window.ktaCullerTuilesV2();
+  }
+};
+
+// =========================
+// 🧱 V2 — TUILES HORS ÉCRAN (29/09/2026, backlog « 864 tuiles pour 6 visibles »)
+// =========================
+// Mesuré sur un relevé de 16332×13820 : 864 overlays posés au niveau 0 pour 6
+// réellement à l'écran, 880 requêtes, ~30 Mo, ~2 875 abonnements Leaflet ; un
+// aller-retour de zoom redemandait 1 160 tuiles. Une image d'overlay n'est
+// demandée qu'au moment où l'overlay est posé sur la carte : ne poser que ce
+// qui est proche de l'écran supprime le coût à la source.
+// Avant, ce retrait n'existait QUE pendant la rotation (mapBearing, parade des
+// tuiles noires iOS de v1.97.0) : deux implémentations pour une règle. Il n'y
+// en a plus qu'une, ici, appelée par le tuilage (déplacement, zoom, nouveau
+// niveau) et par mapBearing (pendant la rotation).
+// Règles :
+//   • zone = écran réel (`MapBearing.zoneVisible`, qui dé-tourne les coins
+//     sous rotation) élargi de 15 % contre le pop-in ;
+//   • on ne remet QUE les tuiles que nous avons retirées ou jamais posées
+//     (`_ktaCulled`) : une tuile absente pour une autre raison le reste ;
+//   • plan de base masqué par le filtre multi-niveau → on ne pose RIEN.
+const MARGE_TUILES_V2 = 0.15;
+window.ktaCullerTuilesV2 = function() {
+  const map = window.map;
+  const st = window._tilingV2State;
+  if (!map || !st || !Array.isArray(st.activeOverlays) || !st.activeOverlays.length) return;
+  const zone = _zoneTuilesV2(map);
+  if (!zone) return;
+  let retirees = 0, posees = 0;
+  st.activeOverlays.forEach(function(ov) {
+    if (!ov || typeof ov.getBounds !== "function") return;
+    let dedans = true;
+    try { dedans = zone.intersects(ov.getBounds()); } catch(e) { dedans = true; }
+    const surCarte = map.hasLayer(ov);
+    if (!dedans && surCarte) {
+      try { map.removeLayer(ov); ov._ktaCulled = true; retirees++; } catch(e) {}
+    } else if (dedans && !surCarte && ov._ktaCulled && !window._ktaBaseHidden) {
+      try { ov.addTo(map); ov._ktaCulled = false; posees++; } catch(e) {}
+    }
+  });
+  if (retirees || posees) {
+    console.log("[Tiling V2] Hors écran : " + retirees + " retirée(s), " + posees + " posée(s) — " +
+                st.activeOverlays.length + " au niveau");
+  }
+};
+
+function _zoneTuilesV2(map) {
+  try {
+    const z = (window.MapBearing && typeof window.MapBearing.zoneVisible === "function")
+      ? window.MapBearing.zoneVisible(MARGE_TUILES_V2) : null;
+    return z || map.getBounds().pad(MARGE_TUILES_V2);
+  } catch(e) { return null; }
+}
+
+// Au plus un passage par frame : moveend, zoomend et la rotation peuvent
+// tomber ensemble.
+let _cullV2Planifie = false;
+window.ktaCullerTuilesV2Throttle = function() {
+  if (_cullV2Planifie) return;
+  _cullV2Planifie = true;
+  requestAnimationFrame(function() {
+    _cullV2Planifie = false;
+    try { window.ktaCullerTuilesV2(); } catch(e) {}
+  });
 };
 
 // =========================
@@ -546,9 +619,12 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
     state.activeOverlays = [];
 
-    let added = 0, missing = 0;
+    let added = 0, missing = 0, differees = 0;
     // Capturé AVANT la boucle : state.currentLevel sera réaffecté juste après.
     const premierRendu = (state.currentLevel === null);
+    // 🧱 29/09/2026 — seules les tuiles proches de l'écran sont posées (et donc
+    // demandées) ; les autres attendent, marquées, que la vue vienne à elles.
+    const zoneVue = _zoneTuilesV2(map);
     for (let k = 1; k <= rows; k++) {
       for (let col = 0; col < cols; col++) {
         const url = _resoudreUrlTuile(z, col, k);
@@ -588,17 +664,28 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
             _repliBaseImage("les " + state.attendusPremier + " tuiles du premier rendu ont échoué au chargement");
           }
         });
-        if (!window._ktaBaseHidden) overlay.addTo(map);
+        let proche = true;
+        if (zoneVue) {
+          try { proche = zoneVue.intersects(L.latLngBounds(tileBounds)); } catch(e) { proche = true; }
+        }
+        if (!window._ktaBaseHidden && proche) {
+          overlay.addTo(map);
+          added++;
+        } else {
+          overlay._ktaCulled = true;   // reprise par ktaCullerTuilesV2 / le filtre niveau
+          differees++;
+        }
         state.activeOverlays.push(overlay);
-        added++;
       }
     }
+    // Le repli d'erreur compte les tuiles réellement DEMANDÉES au premier rendu.
     if (premierRendu) state.attendusPremier = added;
     state.currentLevel = z;
     // 🆕 v1.26.4 (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
     // niveaux les moins récents au-delà du cap (libère la RAM décodée).
     _trimLevelsLRU(z);
     console.log("[Tiling V2] Niveau z=" + z + " — " + added + " tuiles affichées" +
+                (differees > 0 ? ", " + differees + " hors écran en attente" : "") +
                 (missing > 0 ? " (" + missing + " manquantes)" : ""));
 
     // 🩸 v1.86.0 — REPLI D'ERREUR (pas un mode : une récupération).
@@ -631,7 +718,12 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
       }
     }
 
-    if (added === 0 && missing > 0) _repliBaseImage("AUCUNE tuile résolue (" + missing + " manquantes)");
+    // Résolue = posée OU différée (hors écran, posée plus tard) : seule une
+    // tuile ni posée ni différée est vraiment introuvable.
+    const resolues = added + differees;
+    if (resolues === 0 && missing > 0) {
+      _repliBaseImage("AUCUNE tuile résolue (" + missing + " manquantes)");
+    }
   }
 
   // Écoute des changements de zoom : swap de niveau si nécessaire.
@@ -641,6 +733,9 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     if (z !== state.currentLevel) _renderNiveau(z);
   }
   map.on("zoomend", _onZoom);
+  // 🧱 29/09/2026 — à chaque déplacement / zoom sans changement de niveau, les
+  // tuiles qui entrent dans l'écran sont posées, celles qui en sortent retirées.
+  map.on("moveend zoomend", window.ktaCullerTuilesV2Throttle);
 
   // Rendu initial. Si la carte n'a pas encore de vue (cas du chargement : le
   // fitBounds arrive après), on attend qu'elle en ait une — le premier VRAI
@@ -672,6 +767,9 @@ window._libererTuilesV2 = function() {
   // Remove le listener zoomend
   if (window.map && state.zoomHandler) {
     try { window.map.off("zoomend", state.zoomHandler); } catch(e) {}
+  }
+  if (window.map) {
+    try { window.map.off("moveend zoomend", window.ktaCullerTuilesV2Throttle); } catch(e) {}
   }
   // Remove tous les overlays actifs
   state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
