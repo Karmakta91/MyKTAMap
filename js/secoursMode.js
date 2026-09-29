@@ -1803,6 +1803,20 @@
     return window.ktaNiveauxOccupes().indexOf(lvl) >= 0 ? "" : " " + t("secours.level.vide");
   }
 
+  // ─── B1 (vague 6, 30/09/2026) — CE QUE LE GUIDAGE ATTEND DU CALCUL ───
+  // Le pathfinder rend `carrefours` (croisements posés sur le trajet) et `raccords`
+  // (trajets à vol d'oiseau étape → tracé) ; le Secours les jetait et ne gardait que
+  // le tracé. Ils sont gardés sur l'équipe (`g.guidage`) et partent avec le .mkmsec :
+  // le téléphone peut guider sans recalculer. `n` = nombre de points du tracé, pour
+  // reconnaître des données qui ne correspondent plus au tracé (recalcul au besoin).
+  function _donneesGuidage(r) {
+    return {
+      carrefours: Array.isArray(r && r.carrefours) ? r.carrefours : [],
+      raccords:   Array.isArray(r && r.raccords)   ? r.raccords   : [],
+      n:          (r && Array.isArray(r.path)) ? r.path.length : 0
+    };
+  }
+
   function _niveauxPourEquipesAuto() {
     const dispo = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
                   ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; }) : [];
@@ -3700,6 +3714,7 @@
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
     if ("itineraireSuggere" in partial) g.itineraireSuggere = partial.itineraireSuggere;
+    if ("guidage" in partial) g.guidage = partial.guidage;   // B1 : carrefours / raccords du calcul
     if ("distanceM" in partial) g.distanceM = partial.distanceM;
     if ("dureeEstimeeMin" in partial) g.dureeEstimeeMin = partial.dureeEstimeeMin;
     if ("statut" in partial && typeof partial.statut === "string") g.statut = partial.statut;
@@ -11052,7 +11067,8 @@
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
           distanceM:       distM,
-          dureeEstimeeMin: duree
+          dureeEstimeeMin: duree,
+          guidage:         _donneesGuidage(r)
         });
         const fmtD = (typeof window.formatDistance === "function")
                      ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
@@ -11362,7 +11378,8 @@
           updateGroupe(scenarioId, groupeId, {
             itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
             distanceM:       distM,
-            dureeEstimeeMin: duree
+            dureeEstimeeMin: duree,
+            guidage:         _donneesGuidage(r)
           });
           resolve(true);
         }).catch(function(err) {
