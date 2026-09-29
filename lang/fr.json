@@ -3892,6 +3892,8 @@
   "secours.parcours.retirerEtape": "Retirer cette étape",
   "secours.parcours.sortie": "Sortie",
   "secours.parcours.titre": "🗺️ Parcours :",
+  "secours.pdf.feuilleSansIti": "(feuille de route : calcule l'itinéraire de l'équipe pour l'obtenir)",
+  "secours.pdf.feuilleTitre": "FEUILLE DE ROUTE ({n} consignes)",
   "secours.pdf.horsPhaseCourante": "(pas engagee dans la phase en cours)",
   "secours.pdf.phaseCourte": "Phase {n}",
   "secours.pdf.historiquePhaseTitre": "PHASE CLOSE : {phase} ({n} etapes)",

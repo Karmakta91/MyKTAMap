@@ -3892,6 +3892,8 @@
   "secours.parcours.retirerEtape": "Remove this step",
   "secours.parcours.sortie": "Exit",
   "secours.parcours.titre": "🗺️ Route:",
+  "secours.pdf.feuilleSansIti": "(road book: compute the team's route to get it)",
+  "secours.pdf.feuilleTitre": "ROAD BOOK ({n} instructions)",
   "secours.pdf.horsPhaseCourante": "(not engaged in the current phase)",
   "secours.pdf.phaseCourte": "Phase {n}",
   "secours.pdf.historiquePhaseTitre": "CLOSED PHASE: {phase} ({n} steps)",

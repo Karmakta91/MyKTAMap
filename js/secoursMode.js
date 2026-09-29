@@ -1919,6 +1919,34 @@
     try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
   }
 
+  // B2 (vague 6, 30/09/2026) — feuille de route d'une équipe, en texte, pour le PDF.
+  // Rend null s'il n'y a pas d'itinéraire calculé (le PDF le dit), [] si le moteur de
+  // guidage manque. Données de guidage périmées ou absentes → consignes sans
+  // carrefours : on préfère alors l'absence (null) à une feuille fausse.
+  function _feuilleDeRouteLignes(s, g) {
+    if (!g || !Array.isArray(g.itineraireSuggere) || g.itineraireSuggere.length < 2) return null;
+    if (!g.guidage || g.guidage.n !== g.itineraireSuggere.length) return null;
+    const G = window.ItiGuidage;
+    if (!G || typeof G.construire !== "function") return [];
+    const road = { type: "itinerary", points: g.itineraireSuggere, waypoints: _waypointsSuivi(s, g),
+                   raccords: g.guidage.raccords || [], carrefours: g.guidage.carrefours || [] };
+    let guide = null;
+    try { guide = G.construire(road); } catch(e) { console.warn("[SecoursMode] feuille de route :", e); }
+    if (!guide) return [];
+    const e = guide.echelle || 1;
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : Math.round(m) + " m"; };
+    const lignes = [];
+    if (guide.depart) lignes.push(t("guid.feuille.rejoindre", { dist: fmt(guide.depart.distPx / e) }));
+    let sPrec = 0;
+    (guide.consignes || []).forEach(function(c) {
+      const apres = (c.s - sPrec) / e;
+      sPrec = c.s;
+      const txt = G.texteAction(c);
+      lignes.push(apres >= 1 ? t("guid.feuille.apres", { dist: fmt(apres), action: txt }) : G.majuscule(txt));
+    });
+    return lignes;
+  }
+
   function _niveauxPourEquipesAuto() {
     const dispo = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
                   ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; }) : [];
@@ -6562,6 +6590,26 @@
                               pageW - 2 * margin).forEach(function(ligne) {
             if (y > pdf.internal.pageSize.getHeight() - 15) { pdf.addPage(); y = margin + 8; }
             pdf.text(ligne, margin, y); y += 4;
+          });
+          y += 4;
+        }
+        // B2 (vague 6) : feuille de route — les consignes que le chef d'équipe lira sur
+        // papier, carrefour par carrefour (même moteur que la feuille de route de l'app).
+        const feuille = _feuilleDeRouteLignes(s, g);
+        if (feuille === null) {
+          pdf.setFontSize(9); pdf.setFont(undefined, "italic");
+          pdf.text(_stripPourPdf(t("secours.pdf.feuilleSansIti")), margin, y); y += 6;
+          pdf.setFont(undefined, "normal");
+        } else if (feuille.length) {
+          if (y > pdf.internal.pageSize.getHeight() - 30) { pdf.addPage(); y = margin + 8; }
+          pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+          pdf.text(_stripPourPdf(t("secours.pdf.feuilleTitre", { n: feuille.length })), margin, y); y += 5;
+          pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+          feuille.forEach(function(l, i) {
+            pdf.splitTextToSize(_stripPourPdf((i + 1) + ". " + l), pageW - 2 * margin - 4).forEach(function(ligne, k) {
+              if (y > pdf.internal.pageSize.getHeight() - 15) { pdf.addPage(); y = margin + 8; }
+              pdf.text(ligne, margin + (k ? 4 : 0), y); y += 4;
+            });
           });
           y += 4;
         }
