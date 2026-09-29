@@ -9696,14 +9696,19 @@
     const c = window.map && window.map.getContainer && window.map.getContainer();
     if (!c) return;
     _captureMarqueur = function(ev) {
-      if (_activeMapMode !== "point" || !_mapModeCtx) return;
+      if (!_activeMapMode || !_mapModeCtx) return;
       const icone = ev.target && ev.target.closest ? ev.target.closest(".leaflet-marker-icon") : null;
       if (!icone) return;
       ev.preventDefault();
       ev.stopPropagation();
+      const e = { latlng: window.map.mouseEventToLatLng(ev) };
+      // Même défaut en dessin de zone (constaté au test) : un sommet posé sur un POI
+      // ouvrait le POI. Le clic va au mode actif.
+      if (_activeMapMode === "polygon") { _onMapClickPolygon(e); return; }
+      if (_activeMapMode === "roads") { _onMapClickRoads(e); return; }
       window.map.off("click", _onMapClickPoint);
       const rayon = Math.max(30, 28 / Math.pow(2, window.map.getZoom()));   // 28 px écran → unités plan
-      _onMapClickPoint({ latlng: window.map.mouseEventToLatLng(ev) }, rayon);
+      _onMapClickPoint(e, rayon);
     };
     c.addEventListener("click", _captureMarqueur, true);
   }
@@ -10051,8 +10056,40 @@
         { label: t("secours.btn.terminer"), action: "finish" }
       ]
     );
+    _afficherZonesAutresEquipes(groupeId);
+    _armerCaptureMarqueurs();
     window.map.on("click", _onMapClickPolygon);
     window.map.on("dblclick", _onMapDblClickPolygon);
+  }
+
+  // 🐛 29/09/2026 (KARMA) : en dessinant la zone de l'équipe 2, on ne voyait pas
+  // celle de l'équipe 1 — impossible de caler les zones bord à bord. Pendant le
+  // dessin, les zones des AUTRES équipes du scénario sont affichées en pointillé,
+  // à leur couleur, avec leur nom. Non interactives : un clic dessus reste un clic
+  // de dessin. Retirées par _finishMapMode.
+  function _afficherZonesAutresEquipes(groupeId) {
+    const s = get(_currentScenarioId);
+    if (!s || !window.map || !_mapModeCtx) return;
+    const couche = L.layerGroup().addTo(window.map);
+    _mapModeCtx.autresZones = couche;
+    s.groupes.forEach(function(g) {
+      if (!g || g.id === groupeId) return;
+      const coul = PALETTE[g.couleurIdx % PALETTE.length].hex;
+      if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+        L.polygon(g.zonePolygon.map(_planToLatLng), {
+          color: coul, weight: 2, opacity: 0.9, dashArray: "6 5",
+          fillColor: coul, fillOpacity: 0.15, interactive: false
+        }).bindTooltip(_escHtml(g.nom), { permanent: true, direction: "center", className: "kta-secours-zone-autre-label" })
+          .addTo(couche);
+      } else if (g.zoneType === "roads") {
+        _tracesZone(g).forEach(function(road) {
+          if (!road || !Array.isArray(road.points)) return;
+          L.polyline(road.points.map(_planToLatLng), {
+            color: coul, weight: 8, opacity: 0.35, dashArray: "8 6", lineCap: "round", interactive: false
+          }).addTo(couche);
+        });
+      }
+    });
   }
 
   function _onMapClickPolygon(e) {
@@ -10139,6 +10176,8 @@
       if (!connu) _mapModeCtx.roadIds.add(k);
     });
     _redessinerSelectionTraces();
+    _afficherZonesAutresEquipes(groupeId);
+    _armerCaptureMarqueurs();
     window.map.on("click", _onMapClickRoads);
   }
 
@@ -10355,6 +10394,9 @@
     // Cleanup preview polygon
     if (_mapModeCtx && _mapModeCtx.previewLayer && window.map) {
       try { window.map.removeLayer(_mapModeCtx.previewLayer); } catch(e) {}
+    }
+    if (_mapModeCtx && _mapModeCtx.autresZones && window.map) {
+      try { window.map.removeLayer(_mapModeCtx.autresZones); } catch(e) {}
     }
     // Cleanup surbrillance du mode tracés
     if (_mapModeCtx && _mapModeCtx.surbrillance && window.map) {
