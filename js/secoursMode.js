@@ -4433,7 +4433,10 @@
       // 🆕 v1.42.13 — passe overlayContext="rapport" pour textes adaptés
       try {
         pdf.addPage();
-        await _drawBriefingSurfacePage(pdf, r.scenario, r.plan, pageW, pageH, margin, null, "rapport");
+        // Relecture PDF (29/09) : r.scenario n'est qu'un en-tête (sans équipes) → la page
+        // annonçait « aucune équipe définie ». Le PDF se génère là où vit le scénario.
+        await _drawBriefingSurfacePage(pdf, (r.scenario && get(r.scenario.id)) || r.scenario, r.plan,
+                                       pageW, pageH, margin, null, "rapport");
         _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
       } catch (e) {
         console.warn("[Rapport] Page Briefing surface échouée : " + (e && e.message));
@@ -4590,7 +4593,8 @@
         console.log("[Briefing] Vue OSM déjà ouverte → capture DOM direct");
         const canvas = await window.html2canvas(mapDivExisting, {
           useCORS: true, allowTaint: false, backgroundColor: "#ffffff",
-          logging: false, scale: 1
+          logging: false, scale: 1,
+          ignoreElements: function(el) { return !!(el.classList && el.classList.contains("leaflet-control-container")); }
         });
         return canvas.toDataURL("image/jpeg", 0.85);
       } catch(e) {
@@ -4685,7 +4689,8 @@
         if (map) {
           const canvas = await window.html2canvas(map, {
             useCORS: true, allowTaint: false, backgroundColor: "#ffffff",
-            logging: false, scale: 1
+            logging: false, scale: 1,
+          ignoreElements: function(el) { return !!(el.classList && el.classList.contains("leaflet-control-container")); }
           });
           captured = canvas.toDataURL("image/jpeg", 0.85);
           console.log("[Briefing] Capture Vue OSM via open/close masqué : OK");
@@ -5196,8 +5201,10 @@
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const margin = 14;
+      // Relecture PDF (29/09) : APP_CONFIG.name n'existe pas → « Plan : (plan) ».
       const planMeta = {
-        name: (window.APP_CONFIG && window.APP_CONFIG.name) || "(plan)"
+        name: (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name)
+              || (window.APP_CONFIG && window.APP_CONFIG.name) || "(plan)"
       };
       // 🆕 v1.42.5 — await pour la capture OSM via html2canvas
       // 🆕 v1.42.11 — passe les options de layers à la capture
@@ -5222,6 +5229,7 @@
 
   // Helpers PDF rapport — header commun à toutes les pages
   function _drawRapportPDFHeader(pdf, r, pageW, margin) {
+    pdf.setTextColor(0);   // relecture PDF : le pied de page précédent laissait du gris
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.pdf.headerTitre"), margin, margin + 6);
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
@@ -5337,7 +5345,7 @@
 
     if (!Array.isArray(ed.etapes) || ed.etapes.length === 0) {
       pdf.setFont(undefined, "italic");
-      pdf.text(t("secours.pdf.aucuneEtape"), margin, y);
+      pdf.text(t((ed.historique && ed.historique.length) ? "secours.pdf.horsPhaseCourante" : "secours.pdf.aucuneEtape"), margin, y);
       pdf.setFont(undefined, "normal");
       _pdfSectionHistorique(pdf, ed, r, _pdfSectionHorsParcours(pdf, ed, r, y + 6, pageW, pageH, margin), pageW, pageH, margin);
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
@@ -5906,6 +5914,7 @@
       const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.pdf.planDefault");
       s.groupes.forEach(function(g, idx) {
         if (idx > 0) pdf.addPage();
+        pdf.setTextColor(0);   // relecture PDF : titre gris hérité du pied de page précédent
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
         // En-tête
         pdf.setFontSize(18); pdf.setFont(undefined, "bold");
@@ -5971,8 +5980,10 @@
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.missionAssignee"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text(t("secours.pdf.entreeLigne", { point: _fmtPoint(g.entree) }), margin, y); y += 4;
-        pdf.text(t("secours.pdf.sortieLigne", { point: _fmtPoint(g.sortie) }), margin, y); y += 4;
+        // Relecture PDF : le NOM du point d'abord (« x=11682 y=9671 » ne dit rien à une équipe).
+        const nomPt = function(w) { return (w && w.label) ? w.label + " (" + _fmtPoint(w) + ")" : _fmtPoint(w); };
+        pdf.text(t("secours.pdf.entreeLigne", { point: nomPt(g.entree) }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.sortieLigne", { point: nomPt(g.sortie) }), margin, y); y += 4;
         const zoneTxt = g.zoneType === "polygon" ? t("secours.pdf.zonePolygone", { n: (g.zonePolygon ? g.zonePolygon.length : 0) })
                       : g.zoneType === "roads"   ? t("secours.pdf.zoneRoads", { n: (g.zoneRoadIds ? g.zoneRoadIds.length : 0) })
                       : t("secours.pdf.zoneNonDefinie");
