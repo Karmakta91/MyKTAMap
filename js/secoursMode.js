@@ -1487,6 +1487,18 @@
   // une équipe. Ouvert depuis "+ Ajouter une équipe" sur les plans
   // multi-niveau (M-LVL actif). Sur plan mono-niveau, on bypass et on
   // ajoute direct avec nom auto (cohérent v1.22.x).
+  // 🐛 29/09/2026 (KARMA) : « Auto : 1 équipe par niveau » créait une équipe sur
+  // des niveaux VIDES (availableLevels = -2..+2 par défaut quand le plan n'en
+  // déclare pas). Seuls les niveaux qui portent quelque chose ; le 0 = plan
+  // principal, toujours gardé. Sans le scan (module absent) : ancien comportement.
+  function _niveauxPourEquipesAuto() {
+    const dispo = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
+                  ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; }) : [];
+    if (typeof window.ktaNiveauxOccupes !== "function") return dispo;
+    const occ = window.ktaNiveauxOccupes();
+    return dispo.filter(function(l) { return l === 0 || occ.indexOf(l) >= 0; });
+  }
+
   function _ouvrirCreerEquipeMlvlPrompt(scenarioId) {
     if (!window.APP_CONFIG || !Array.isArray(window.APP_CONFIG.availableLevels)) {
       addGroupe(scenarioId, null);
@@ -7298,9 +7310,7 @@
     // Section 2 — Équipes (liste + add)
     // 🆕 v1.23.0 Phase 2 / Feature E — Bouton auto-creation par niveau si M-LVL
     const mlvlActive = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-    const availableLevels = (mlvlActive && Array.isArray(window.APP_CONFIG.availableLevels))
-                            ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
-                            : [];
+    const availableLevels = mlvlActive ? _niveauxPourEquipesAuto() : [];
     const autoMLVLBtn = (mlvlActive && availableLevels.length > 1)
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="auto-equipes-mlvl" ' +
         'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
@@ -8838,9 +8848,7 @@
             _toast(t("secours.toast.mlvlNonActif"), "warn");
             return;
           }
-          const levels = Array.isArray(window.APP_CONFIG.availableLevels)
-                         ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
-                         : [];
+          const levels = _niveauxPourEquipesAuto();
           if (levels.length < 2) {
             _toast(t("secours.toast.auMoins2Niveaux"), "warn");
             return;
