@@ -1653,7 +1653,7 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 #### Flujo de trabajo
 
-1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan).
+1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan — nunca un escenario en curso ni el que tienes abierto).
 2. **➕ Nuevo escenario** — Asistente ligero: Nombre + Notas de contexto + Hora del incidente.
 3. **Edición libre** — 3 secciones plegables:
    - **📝 Contexto**: nombre, hora del incidente, notas (p. ej. «Marc salió sobre las 14 h para comprobar la galería Este…»)
@@ -2034,7 +2034,7 @@ Para el puesto de mando que coordina varios equipos en paralelo:
 
 **Botón «👁️ Detalles»** → miniventana de solo lectura con la lista cronológica de las etapas del equipo (marca de tiempo + emoji de estado + observaciones).
 
-**Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones).
+**Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones). La vista se abre en el **primer paso sin terminar de ese equipo**, aunque estuvieras más adelante con otro equipo.
 
 **Vuelta fácil**: una vez en modo Miembro de equipo tras «Tomar el mando», aparece un botón **«👤 Volver a Operador»** en el pie. Al pulsarlo → vuelta a la visión de conjunto del Operador intacta (la vuelta sigue siendo posible tras una recarga o un cambio de plano).
 
@@ -2142,7 +2142,7 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
    - Transmite el escenario a los miembros mediante la exportación `.mkmsec.json` clásica (correo / memoria USB / AirDrop)
 
 2. **Lado de cada Miembro (terreno)**:
-   - Importa el `.mkmsec.json` del operador (coherencia de los identificadores de equipo)
+   - Importa el `.mkmsec.json` del operador: la importación conserva los identificadores del puesto de mando, que es lo que permitirá al operador aceptar su informe. Si el plan **ya** está en el teléfono (plan actualizado por el operador), la vista previa ofrece **«Reemplazar»** (marcado: conserva el vínculo con el operador, pero borra los estados ya introducidos en este teléfono) o **«Importar como copia»** (un escenario nuevo, cuyo informe el operador rechazará)
    - Lanza el plan → vista en directo de Equipo → introduce observaciones + estados + fotos por etapa
    - **Al volver a superficie**: genera su informe mediante «📤 Informe» en el pie de la vista en directo de Equipo → formato **`.mkmsec.report.json`** → exporta el archivo (descarga local)
 
@@ -2152,7 +2152,7 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
    - Selector de archivos → selecciona el archivo → ventana de vista previa que muestra: nombre del equipo afectado, número de etapas a fusionar, fotos y **conflictos detectados** (etapas ya rellenadas del lado del operador que van a fusionarse)
    - Confirma la importación → la app hace una **instantánea PREVIA** (copia de seguridad de emergencia) y después fusiona:
      - Observaciones **concatenadas con un separador fechado** (sin ninguna pérdida)
-     - Se conserva el estado **más severo**
+     - Se conserva el estado **más grave**; a igual gravedad, **el más reciente** — un «Sin novedad» informado por el equipo sustituye a «En espera», una víctima nunca se rebaja
      - Fotos **importadas con deduplicación**
    - Ventana de resultado con estadísticas detalladas (X etapas fusionadas, Y fotos importadas, Z advertencias eventuales)
    - Repite con los otros 2 equipos

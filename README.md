@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.4` (29/09/2026)
+## 📦 Version courante — `v1.98.5` (29/09/2026)
+
+> 🚨 **v1.98.5 — Mode Secours, vague 1 des correctifs : la remontée PC ↔ équipes fonctionne enfin** : le rapport d'une équipe fait sur son propre téléphone était refusé à 100 % par le PC (ids régénérés à l'import) — il est accepté ; la limite de 10 scénarios n'efface plus une intervention en cours ; un « RAS » rapporté n'est plus perdu à la fusion ; « Prendre la main » ouvre la bonne étape. Issu de l'audit `docs/audits/2026-09-29_audit-secours-v1.md`.
 
 > 🧱 **v1.98.4 — Le fond d'un gros plan ne télécharge plus que ce qui est à l'écran** : 864 → 12 tuiles posées et demandées au zoom le plus fin, sans trou à l'écran ; et le cache des tuiles d'un plan ZIP libère enfin de la mémoire sur ordinateur. Notes de version inchangées (décision KARMA).
 
@@ -485,6 +487,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.5 (29/09/2026) — Mode Secours, vague 1 des correctifs : remontée PC ↔ équipes
+
+- 📝 **Notes de version** : une ligne ajoutée (décision KARMA) — la prod n'a pas encore reçu v1.98.0-v1.98.4, les deux lignes précédentes restent.
+- 🔍 **Origine** : audit fonctionnel GRIMP × IGC (`docs/audits/2026-09-29_audit-secours-v1.md`, `b41de8d`). Plan en vagues validé par KARMA : correctifs d'abord, un commit par case, un bump par vague (`docs/BACKLOG.md` §🚑).
+- 🩸 **1.1 — Le rapport d'équipe est enfin accepté par le PC** (`3aeea32`) : `_appliquerPayloadImport` régénérait l'id du scénario et de chaque équipe ; `_parsePayloadReport` exige les ids d'origine → **100 % des rapports venus d'un autre appareil refusés** (`errScenarioDifferent` / `errEquipeAbsente`). L'import consolidé v1.26 n'avait jamais fonctionné entre deux appareils. Les ids (scénario, équipes, phases) sont gardés ; scénario déjà présent → aperçu « Remplacer » (coché, mêmes ids, exécution locale perdue — affiché) / « Importer comme copie » (nouveaux ids). Fin des doublons au réimport. `importerScenario(input, {mode})` : sans mode, copie ; son `confirm()` natif passe à `ktaConfirm`. 6 clés i18n × 3.
+- 🛡️ **1.2 — La limite de 10 scénarios n'efface plus une intervention** (`75b6dc8`) : la purge FIFO saute les scénarios en cours, celui ouvert et le plus récent ; excédent tout protégé → cap dépassé. Le test a trouvé un 2ᵉ cas : 10 scénarios en cours → le scénario qu'on venait de créer disparaissait.
+- ⚖️ **1.3 — Fusion : un « RAS » reçu n'est plus perdu** (`1baee72`) : à sévérité égale le PC gagnait toujours (RAS = en attente = 0). Désormais : reçu bat « en attente », plus grave gagne, égalité → plus récent `completedAt`. Victime jamais rétrogradée. `_severitéMaxStatut` supprimé (plus d'appelant).
+- 🎯 **1.4 — « Prendre la main » ouvre la bonne étape** (`a5c9223`) : le focus d'étape est un état du module ; relayer Alpha (étape 5) puis prendre Bravo ouvrait l'étape 5 de Bravo. Reset + session fraîche → 1ʳᵉ étape non terminée.
+- ✅ **Tests** : harnais Node 2 appareils sur le vrai `secoursMode.js` — 1.1 19/19, 1.2 6/6, 1.3 7/7, 1.4 4/4 (logique ; câblage du bouton lu, non simulé). `node -c`, `check-i18n`, pré-commit verts. ⚠️ **Rien de testé en navigateur** : modale d'aperçu (Remplacer / Copie) et prise de main **à voir sur appareil** (porte de release).
 
 #### v1.98.4 (29/09/2026) — Vague 3 (optimisations) : tuiles hors écran, cache des tuiles
 

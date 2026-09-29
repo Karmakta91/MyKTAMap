@@ -1661,7 +1661,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Workflow
 
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped).
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped — never a running scenario nor the one you have open).
 2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
 3. **Free-form editing** — 3 accordion sections:
    - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
@@ -2045,7 +2045,7 @@ For the command center coordinating several teams in parallel:
 
 **"👁️ Details" button** → read-only mini-modal with chronological list of the team's steps (ts + emoji status + obs).
 
-**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you).
+**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you). The view opens on **this team's first unfinished step**, even if you were further along with another team.
 
 **Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (going back stays possible after a reload or a map switch).
 
@@ -2152,7 +2152,7 @@ On field return, each team member can **share their report** with the surface op
    - Transmits the scenario to team members via classic `.mkmsec.json` export (mail / USB stick / AirDrop)
 
 2. **Each Team Member side (field)**:
-   - Imports the operator's `.mkmsec.json` (team ID consistency)
+   - Imports the operator's `.mkmsec.json`: the import keeps the command post's identifiers, which is what lets the operator accept their report. If the plan is **already** on the phone (plan updated by the operator), the preview offers **"Replace"** (checked: keeps the link with the operator, but erases the statuses already entered on this phone) or **"Import as a copy"** (a new scenario, whose report the operator will refuse)
    - Launches the plan → Team Live view → fills in obs + statuses + photos per step
    - **On surface return**: generates their report via "📤 Report" in the Team Live footer → **`.mkmsec.report.json`** format → exports the file (local download)
 
@@ -2162,7 +2162,7 @@ On field return, each team member can **share their report** with the surface op
    - File picker → selects the file → preview modal showing: targeted team name, number of steps to merge, photos, and **detected conflicts** (steps on the op side already filled that will be merged)
    - Confirms the import → the app does a **snapshot BEFORE** (emergency backup) then merges:
      - Observations **concatenated with dated separator** (no loss)
-     - **Most severe status retained**
+     - **Most serious status retained**; at equal seriousness, **the most recent** — an "All clear" reported by the team replaces "Pending", a victim is never downgraded
      - Photos **imported with deduplication**
    - Result modal with detailed stats (X steps merged, Y photos imported, Z possible warnings)
    - Repeat for the 2 other teams

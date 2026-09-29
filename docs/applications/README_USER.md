@@ -1664,7 +1664,7 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 
 #### Workflow
 
-1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés).
+1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours ni celui que tu as ouvert).
 2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
 3. **Édition free-form** — 3 sections accordéon :
    - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
@@ -2046,7 +2046,7 @@ Pour le PC chef qui coordonne plusieurs équipes en parallèle :
 
 **Bouton « 👁️ Détails »** → mini-modale read-only avec liste chronologique des étapes de l'équipe (ts + statut emoji + obs).
 
-**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs).
+**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs). La vue s'ouvre sur la **première étape non terminée de cette équipe**, même si tu étais plus loin chez une autre.
 
 **Retour facile** : une fois en mode Équipier après « Prendre la main », un bouton **« 👤 Retour Opérateur »** apparaît dans le footer. Au clic → retour à la vue d'ensemble Opérateur intacte (le retour reste possible après un rechargement ou un changement de plan).
 
@@ -2153,7 +2153,7 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
    - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
 
 2. **Côté chaque Équipier (terrain)** :
-   - Importe le `.mkmsec.json` de l'opérateur (cohérence IDs équipe)
+   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
    - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
    - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
 
@@ -2163,7 +2163,7 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
    - File picker → sélectionne le fichier → modale preview qui montre : nom équipe ciblée, nombre d'étapes à fusionner, photos, et **conflits détectés** (étapes côté op déjà renseignées qui vont être fusionnées)
    - Confirme l'import → l'app fait un **snapshot AVANT** (backup d'urgence) puis fusionne :
      - Observations **concaténées avec séparateur daté** (aucune perte)
-     - Statut **le plus sévère retenu**
+     - Statut **le plus grave retenu** ; à gravité égale, **le plus récent** — un « RAS » rapporté par l'équipe remplace « en attente », une victime n'est jamais rétrogradée
      - Photos **importées avec déduplication**
    - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
    - Répète pour les 2 autres équipes
