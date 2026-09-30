@@ -2970,3 +2970,8 @@ body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h {
 .kta-secours-b9-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .kta-secours-retour--manquant { background: rgba(255, 30, 30, 0.28); border: 2px solid #ff3b3b; color: #fff; font-weight: 800; }
 body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-secours-retour--manquant { background: #fdd4d0 !important; color: #8a0f0f !important; border-color: #b71c1c !important; }
+
+/* B3 (vague 7b) : couverture */
+.kta-secours-couv-titre { margin: 10px 0 4px; font-weight: 700; font-size: 13px; }
+.kta-secours-couv-liste { margin: 0 0 6px; padding-left: 18px; font-size: 12.5px; }
+.kta-secours-couv-note { font-size: 11.5px; margin-top: 8px; }

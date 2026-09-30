@@ -1763,6 +1763,96 @@
     return n;
   }
 
+  // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
+  // Une aide à la lecture, sans affectation automatique : (1) POI situés DANS la zone
+  // d'une équipe mais absents de son parcours, (2) POI visités par plusieurs équipes,
+  // (3) part des galeries du plan couverte par les zones (tracés sélectionnés ou
+  // segments dont le milieu tombe dans un polygone). Niveaux ignorés (approximation
+  // assumée : c'est un ordre de grandeur pour l'opérateur).
+  function _calculerCouverture(s) {
+    const groupes = (s && s.groupes) || [];
+    const cle = function(w) { return w && (w.pointId || (Math.round(w.x) + "," + Math.round(w.y))); };
+    const parcoursDe = function(g) {
+      return [g.entree].concat(g.intermediaires || [], [g.sortie]).filter(function(w) { return w && typeof w.x === "number"; });
+    };
+    // POI visités par plusieurs équipes
+    const visites = {};
+    groupes.forEach(function(g) {
+      const vus = {};
+      parcoursDe(g).forEach(function(w) {
+        const k = cle(w);
+        if (vus[k]) return;          // boucle entrée = sortie : une seule fois
+        vus[k] = true;
+        (visites[k] = visites[k] || { nom: w.label || _lblEtape(_fmtPoint(w)), equipes: [] }).equipes.push(g.nom);
+      });
+    });
+    const doublons = Object.keys(visites).map(function(k) { return visites[k]; })
+                           .filter(function(v) { return v.equipes.length > 1; });
+    // POI dans une zone mais hors parcours
+    const pois = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
+    const horsParcours = [];
+    groupes.forEach(function(g) {
+      if (!g.zoneType) return;
+      const dans = {};
+      parcoursDe(g).forEach(function(w) { dans[cle(w)] = true; });
+      const traces = g.zoneType === "roads" ? _tracesZone(g) : [];
+      const noms = [];
+      pois.forEach(function(p) {
+        if (!p || typeof p.x !== "number" || !p.nom) return;
+        if (dans[p.id] || dans[Math.round(p.x) + "," + Math.round(p.y)]) return;
+        let inside = false;
+        if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+          inside = _pointInPolygon(p, g.zonePolygon);
+        } else if (g.zoneType === "roads") {
+          inside = traces.some(function(r) { return r && Array.isArray(r.points) && _distPointPolyline(p, r.points) <= 30; });
+        }
+        if (inside) noms.push(p.nom);
+      });
+      if (noms.length) horsParcours.push({ equipe: g.nom, noms: noms });
+    });
+    // Galeries couvertes par les zones
+    const tous = _tousLesTraces();
+    const clesZones = {};
+    groupes.forEach(function(g) { if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { clesZones[_cleTrace(r)] = true; }); });
+    const polys = groupes.filter(function(g) { return g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3; })
+                         .map(function(g) { return g.zonePolygon; });
+    let total = 0, couvert = 0;
+    tous.forEach(function(r) {
+      const pts = r.points;
+      const entier = !!clesZones[_cleTrace(r)];
+      for (let i = 1; i < pts.length; i++) {
+        const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        total += d;
+        if (entier) { couvert += d; continue; }
+        const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
+        if (polys.some(function(poly) { return _pointInPolygon(m, poly); })) couvert += d;
+      }
+    });
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    return { doublons: doublons, horsParcours: horsParcours, totalM: total / pxParM, couvertM: couvert / pxParM };
+  }
+  function _renderCouverture(s) {
+    const c = _calculerCouverture(s);
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
+    const pct = c.totalM > 0 ? Math.round(100 * c.couvertM / c.totalM) : 0;
+    let html = '<p><strong>' + t("secours.couv.galeries", { pct: pct, couvert: fmt(c.couvertM), total: fmt(c.totalM) }) + '</strong></p>';
+    html += '<p class="kta-secours-couv-titre">' + t("secours.couv.horsParcoursTitre") + '</p>';
+    html += c.horsParcours.length
+      ? '<ul class="kta-secours-couv-liste">' + c.horsParcours.map(function(h) {
+          return '<li><strong>' + _escHtml(h.equipe) + '</strong> (' + h.noms.length + ') : ' +
+                 _escHtml(h.noms.slice(0, 12).join(", ")) + (h.noms.length > 12 ? " …" : "") + '</li>';
+        }).join('') + '</ul>'
+      : '<p class="kta-tx-muted">' + t("secours.couv.aucun") + '</p>';
+    html += '<p class="kta-secours-couv-titre">' + t("secours.couv.doublonsTitre") + '</p>';
+    html += c.doublons.length
+      ? '<ul class="kta-secours-couv-liste">' + c.doublons.map(function(d) {
+          return '<li>' + _escHtml(d.nom) + ' — ' + _escHtml(d.equipes.join(", ")) + '</li>';
+        }).join('') + '</ul>'
+      : '<p class="kta-tx-muted">' + t("secours.couv.aucun") + '</p>';
+    html += '<p class="kta-tx-muted kta-secours-couv-note">' + t("secours.couv.note") + '</p>';
+    return html;
+  }
+
   // ─── Vague 7b (6:a) — un parcours par phase ───
   // s.execution.parcoursArchive[phase][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }
   // (copie légère : ce qu'un chef d'intervention relit dans le rapport).
@@ -8213,6 +8303,12 @@
               '</div>' +
             '</details>';
 
+    // B3 (vague 7b) — couverture : calculée à l'ouverture du bloc (plan de centaines de tracés).
+    html += '<details class="kta-secours-section" id="kta-secours-couverture">' +
+              '<summary class="kta-secours-section-titre">' + t("secours.couv.titre") + '</summary>' +
+              '<div class="kta-secours-section-body" id="kta-secours-couverture-corps"></div>' +
+            '</details>';
+
     // 🆕 v1.29.0 C2 — Section Phases. Toujours présente, mais le contenu
     // s'adapte : 1 seule phase = juste le bouton "➕ Ajouter une phase" en hint
     // (pas de liste à afficher). 2+ phases = liste avec ✏️ / 🗑️.
@@ -9898,6 +9994,13 @@
         });
       });
       // Edit membres
+      // B3 : couverture, calculée à l'ouverture.
+      const couv = document.getElementById("kta-secours-couverture");
+      if (couv) couv.addEventListener("toggle", function() {
+        if (!couv.open) return;
+        const corpsCouv = document.getElementById("kta-secours-couverture-corps");
+        if (corpsCouv) corpsCouv.innerHTML = _renderCouverture(get(s.id));
+      });
       // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
         sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
