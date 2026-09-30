@@ -5972,6 +5972,12 @@
     pdf.text(t("secours.surf.equipesSurPlace"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const groupes = (scenario && Array.isArray(scenario.groupes)) ? scenario.groupes : [];
+    // Contre-audit GRIMP (30/09) : « GPS surface : non renseigné » juste sous le
+    // tableau qui donne le GPS de l'accès de l'équipe. On renvoie au numéro d'accès.
+    const numAcces = {};
+    _accesSurface(scenario).forEach(function(a, i) {
+      a.equipes.forEach(function(g) { (numAcces[g.id] = numAcces[g.id] || []).push(i + 1); });
+    });
     if (groupes.length === 0) {
       pdf.setTextColor(120); pdf.setFont(undefined, "italic");
       pdf.text(t("secours.surf.aucuneEquipe"), margin, y);
@@ -5996,6 +6002,8 @@
           pdf.textWithLink(t("secours.surf.voirPositionEquipe"), margin + 4, y,
                            { url: eqOsm }); y += 4;
           pdf.setTextColor(0);
+        } else if (numAcces[g.id]) {
+          pdf.text(t("secours.surf.voirAcces", { n: numAcces[g.id].join(", ") }), margin + 2, y); y += 4;
         } else {
           pdf.setTextColor(150); pdf.setFont(undefined, "italic");
           pdf.text(t("secours.surf.gpsNonRenseigne"), margin + 2, y); y += 4;
@@ -6018,30 +6026,12 @@
     // pas. Désormais : session + calques du plan (comme `sortieUrgence.js`), accès
     // OUVERTS d'abord (mêmes tags que la Sortie d'urgence), puis FERMÉS — que les
     // pompiers ou l'IGC peuvent ouvrir. Un POI n'apparaît qu'une fois.
-    const poiList = [].concat(
-      (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [],
-      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || []
-    );
-    const critTags = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
-    const ALIAS_ENTREE = ["entree_plan", "entrée", "entree"];
-    const critLabels = {
-      entree_plan:    t("secours.surf.critEntree"),
-      cao:            t("secours.surf.critCao"),
-      peo:            t("secours.surf.critPeo"),
-      eso:            t("secours.surf.critEso"),
-      caf:            t("secours.surf.critCaf"),
-      pef:            t("secours.surf.critPef"),
-      esf:            t("secours.surf.critEsf")
-    };
+    const critTags = CRIT_TAGS;
+    const critLabels = _critLabels();
     const critByTag = {};
-    poiList.forEach(function(p) {
-      if (!p || !Array.isArray(p.tags)) return;
-      const tags = p.tags.map(function(x) { return String(x || "").trim().toLowerCase(); });
-      const tg = tags.some(function(x) { return ALIAS_ENTREE.indexOf(x) >= 0; }) ? "entree_plan"
-               : critTags.find(function(c) { return tags.indexOf(c) >= 0; });
-      if (!tg) return;
-      if (!critByTag[tg]) critByTag[tg] = [];
-      critByTag[tg].push(p);
+    _poisAcces().forEach(function(a) {
+      if (!critByTag[a.tag]) critByTag[a.tag] = [];
+      critByTag[a.tag].push(a.p);
     });
     let critFound = false;
     critTags.forEach(function(tg) {
@@ -6247,6 +6237,36 @@
     }
   }
 
+  // POI d'accès du plan (session + calques), classés par tag — mêmes tags que la
+  // Sortie d'urgence. Partagé par « POI critiques » et « Accès surface ».
+  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
+  const CRIT_FERMES = ["caf", "pef", "esf"];
+  function _critLabels() {
+    return {
+      entree_plan: t("secours.surf.critEntree"), cao: t("secours.surf.critCao"), peo: t("secours.surf.critPeo"),
+      eso: t("secours.surf.critEso"), caf: t("secours.surf.critCaf"), pef: t("secours.surf.critPef"),
+      esf: t("secours.surf.critEsf")
+    };
+  }
+  function _poisAcces() {
+    const ALIAS_ENTREE = ["entree_plan", "entrée", "entree"];
+    const vus = {};
+    return [].concat(
+      (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [],
+      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || []
+    ).map(function(p) {
+      if (!p || !Array.isArray(p.tags) || typeof p.x !== "number") return null;
+      const tags = p.tags.map(function(x) { return String(x || "").trim().toLowerCase(); });
+      const tg = tags.some(function(x) { return ALIAS_ENTREE.indexOf(x) >= 0; }) ? "entree_plan"
+               : CRIT_TAGS.find(function(c) { return tags.indexOf(c) >= 0; });
+      if (!tg) return null;
+      const k = p.id || (Math.round(p.x) + "," + Math.round(p.y));
+      if (vus[k]) return null;
+      vus[k] = true;
+      return { p: p, tag: tg };
+    }).filter(Boolean);
+  }
+
   // ─── ACCÈS SURFACE (test terrain 30/09) ───
   // Les entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
   // [{ pt, nom, equipes: [g], entree: bool, sortie: bool }].
@@ -6262,6 +6282,20 @@
         if (a.equipes.indexOf(g) < 0) a.equipes.push(g);
         a[p[0]] = true;
       });
+    });
+    // Contre-audit IGC (30/09) : un accès posé à la main (« Accès sans nom ») est
+    // souvent un accès du plan. Le POI d'accès à moins de 15 m (même niveau) donne
+    // son nom, son type et son état — « escalier fermé » = à ouvrir par la surface.
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const pois = _poisAcces();
+    acces.forEach(function(a) {
+      let best = null, bestD = 15 * pxParM;
+      pois.forEach(function(c) {
+        if (Number.isInteger(a.pt.level) && Number.isInteger(c.p.level) && a.pt.level !== c.p.level) return;
+        const d = Math.hypot(c.p.x - a.pt.x, c.p.y - a.pt.y);
+        if (d <= bestD) { bestD = d; best = c; }
+      });
+      a.poi = best;
     });
     return acces;
   }
@@ -6307,7 +6341,10 @@
     acces.forEach(function(a, i) {
       const role = a.entree && a.sortie ? t("secours.acces.entreeSortie")
                  : a.entree ? t("secours.acces.entree") : t("secours.acces.sortie");
-      const nom = _stripPourPdf((a.nom || t("secours.acces.sansNom")) + " — " + role);
+      const lbl = _critLabels();
+      const nomPoi = a.poi ? (a.poi.p.nom || "") : "";
+      const typePoi = a.poi ? lbl[a.poi.tag] + (CRIT_FERMES.indexOf(a.poi.tag) >= 0 ? " — " + t("secours.acces.aOuvrir") : "") : "";
+      const nom = _stripPourPdf((a.nom || nomPoi || t("secours.acces.sansNom")) + " — " + role + (typePoi ? " · " + typePoi : ""));
       const eq = _stripPourPdf(a.equipes.map(function(g) { return g.nom; }).join(", "));
       const lNom = pdf.splitTextToSize(nom, cols[2] - cols[1] - 2);
       const lEq = pdf.splitTextToSize(eq, cols[3] - cols[2] - 2);

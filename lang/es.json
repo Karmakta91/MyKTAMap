@@ -3473,6 +3473,8 @@
   "search.zoneType.effondrement": "Derrumbe",
   "search.zoneType.inaccessible": "Inaccesible",
   "search.zoneType.remblais": "Escombros",
+  "secours.surf.voirAcces": "  Acceso: n.º {n} (tabla «Accesos en superficie»)",
+  "secours.acces.aOuvrir": "a abrir desde la superficie",
   "secours.loin.liste": "{n} etapa(s) a más de 25 m de una galería, en línea recta: {liste}. Comprueba dónde están colocadas.",
   "secours.statut.non-renseigne": "Pasada, sin informar",
   "secours.num.etape": "Etapa {n}",
