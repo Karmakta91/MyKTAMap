@@ -2956,3 +2956,12 @@ body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secour
 
 /* B1 (vague 6) : bouton « Suivre mon parcours » */
 .kta-secours-suivre-btn { display: block; width: 100%; margin: 4px 0 8px; padding: 10px 12px; font-size: 14px; }
+
+/* Main courante (vague 7) */
+.kta-secours-mc-saisie { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 8px; }
+.kta-secours-mc-saisie textarea { flex: 1; min-width: 0; font-size: 13px; }
+.kta-secours-mc-liste { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 12.5px; }
+.kta-secours-mc-liste li { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.kta-secours-mc-h { font-variant-numeric: tabular-nums; color: #8cb4ff; margin-right: 4px; }
+.kta-secours-mc-note { font-style: italic; }
+body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h { color: #1e5f99 !important; }

@@ -618,6 +618,7 @@
     _archivePhaseEtapes(s, phaseIdx);
     // 2. Marque la phase comme terminée
     phase.endedAt = _nowIso();
+    _journaliser(s, "secours.mc.phaseClose", { phase: phase.nom || String(phaseIdx + 1) });
     if (opts && typeof opts.debrief === "string") {
       phase.debrief = opts.debrief.slice(0, 5000);
       phase.debriefAt = _nowIso();
@@ -675,6 +676,7 @@
     // 2. Met à jour l'index de phase active + startedAt nouvelle phase
     s.execution.currentPhaseIdx = nextIdx;
     nextPhase.startedAt = _nowIso();
+    _journaliser(s, "secours.mc.phaseLancee", { phase: nextPhase.nom || String(nextIdx + 1) });
     // 3. Reset flag d'auto-détection pour permettre un nouveau toast quand
     //    la nouvelle phase sera prête à clore
     if (s.execution._phaseReadyToastShownForIdx === currentIdx) {
@@ -1296,6 +1298,7 @@
       // automatique avec confirmation Op (modèle hybride 2:c).
       currentPhaseIdx: 0
     };
+    _journaliser(s, "secours.mc.lancement", {});   // main courante
     // 🆕 v1.29.0 C1 — Set startedAt de la phase 0 au lancement initial.
     // Si re-lancement ultérieur (cas marginal Phase 3 hotfix11), on ne touche
     // PAS startedAt si déjà set (= préserver l'historique de la mission).
@@ -1325,6 +1328,7 @@
     }
     s.execution.active = false;
     s.execution.endedAt = _nowIso();
+    _journaliser(s, "secours.mc.fin", {});   // main courante
     // 🆕 v1.29.0 C1 — Set endedAt sur la phase active (filet pour le cas où
     // l'utilisateur arrête sans passer par "Terminer phase" de C3). Idempotent :
     // si déjà set par C3, on ne touche pas.
@@ -1374,6 +1378,9 @@
     if ("statut" in partial && typeof partial.statut === "string") {
       // Valide contre TABLEAU_STATUTS
       const info = TABLEAU_STATUTS.find(function(st) { return st.id === partial.statut; });
+      if (info && info.id !== et.statut && info.id !== "pending") {
+        _journaliser(s, "secours.mc.statut", { equipe: _nomEquipe(s, equipeId), etape: _lblEtape(et.label) || "?", statut: info.id });
+      }
       if (info) et.statut = info.id;
     }
     if ("photoIds" in partial && Array.isArray(partial.photoIds)) {
@@ -1389,6 +1396,7 @@
       const v = partial.victimePos;
       et.victimePos = (v && typeof v.x === "number" && typeof v.y === "number")
         ? { x: v.x, y: v.y, level: Number.isInteger(v.level) ? v.level : 0, at: v.at || _nowIso() } : null;
+      if (et.victimePos) _journaliser(s, "secours.mc.victimePos", { equipe: _nomEquipe(s, equipeId), pos: _lblPos(et.victimePos) });
     }
     _commitMutation(s);
     // 🆕 v1.29.0 C3 — Watcher auto-détection (KARMA C3.2:a + C3.2:c hybride) :
@@ -1611,7 +1619,10 @@
     const s2 = get(sid);
     if (!s2 || !_estExecutionActive(s2)) return false;
     const h = _nowIso();
-    gids.forEach(function(gid) { _suiviEquipe(s2, gid, true).rappelAt = h; });
+    gids.forEach(function(gid) {
+      _suiviEquipe(s2, gid, true).rappelAt = h;
+      _journaliser(s2, "secours.mc.rappel", { equipe: _nomEquipe(s2, gid) });
+    });
     _commitMutation(s2);
     _toast(t("secours.rappel.fait", { n: gids.length }), "info");
     return true;
@@ -1621,6 +1632,8 @@
     const s = get(scenarioId);
     if (!s || !_estExecutionActive(s) || ["departAt", "rentreeAt", "rappelAt"].indexOf(champ) < 0) return;
     _suiviEquipe(s, gid, true)[champ] = _nowIso();
+    _journaliser(s, { departAt: "secours.mc.depart", rentreeAt: "secours.mc.rentree", rappelAt: "secours.mc.rappel" }[champ],
+                 { equipe: _nomEquipe(s, gid) });
     _commitMutation(s);
   }
   // Rang d'affichage : les équipes en retard d'abord.
@@ -1656,6 +1669,53 @@
       try { if (navigator.vibrate) navigator.vibrate(rouge ? [300, 150, 300, 150, 300] : [200]); } catch(err) {}
     }
     _majFooterSecours(true);
+  }
+
+  // ─── Main courante (vague 7, 30/09/2026 — décision KARMA 4:a) ───
+  // Avant : aucun journal — chaque statut écrasait le précédent, et les décisions de
+  // l'opérateur ne laissaient aucune trace pour le RETEX. Journal horodaté, AUTOMATIQUE
+  // (lancement, statuts, victime, départ / rentrée / rappel, remontés, imports, phases,
+  // fin) + notes libres. Stocké en { at, cle, p, source? } et traduit À L'AFFICHAGE
+  // (langue courante). Voyage dans le rapport d'équipe ; fusion sans doublon.
+  const MC_MAX = 2000;
+  function _journaliser(s, cle, p, extra) {
+    if (!s || !s.execution) return;
+    const ex = s.execution;
+    ex.mainCourante = Array.isArray(ex.mainCourante) ? ex.mainCourante : [];
+    ex.mainCourante.push(Object.assign({ at: _nowIso(), cle: cle, p: p || {} }, extra || {}));
+    if (ex.mainCourante.length > MC_MAX) ex.mainCourante.splice(0, ex.mainCourante.length - MC_MAX);
+  }
+  function _texteMc(e) {
+    const p = Object.assign({}, (e && e.p) || {});
+    if (p.statut) p.statut = _statutLabel(p.statut);
+    const txt = t(e.cle, p);
+    return (e.source ? "[" + e.source + "] " : "") + txt;
+  }
+  function _mcTriee(s) {
+    const arr = (s && s.execution && Array.isArray(s.execution.mainCourante)) ? s.execution.mainCourante.slice() : [];
+    return arr.sort(function(a, b) { return Date.parse(a.at) - Date.parse(b.at); });
+  }
+  function _nomEquipe(s, gid) {
+    const g = (s && s.groupes || []).find(function(x) { return x.id === gid; });
+    return g ? g.nom : "?";
+  }
+  function _renderMainCourante(s) {
+    const liste = _mcTriee(s).reverse();
+    return '<details class="kta-secours-section kta-secours-mc"' + (liste.length ? '' : ' open') + '>' +
+             '<summary class="kta-secours-section-titre">' + t("secours.mc.titre", { n: liste.length }) + '</summary>' +
+             '<div class="kta-secours-section-body">' +
+               '<div class="kta-secours-mc-saisie">' +
+                 '<textarea id="kta-secours-mc-texte" rows="2" maxlength="1000" placeholder="' + _escAttr(t("secours.mc.placeholder")) + '"></textarea>' +
+                 '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="mc-ajouter">' + t("secours.mc.ajouter") + '</button>' +
+               '</div>' +
+               (liste.length
+                 ? '<ol class="kta-secours-mc-liste">' + liste.slice(0, 300).map(function(e) {
+                     return '<li class="kta-secours-mc-' + _escAttr(String(e.cle).split(".").pop()) + '"><span class="kta-secours-mc-h">' +
+                              _heureCourte(e.at) + '</span> ' + _escHtml(_texteMc(e)) + '</li>';
+                   }).join('') + '</ol>'
+                 : '<p class="kta-tx-muted">' + t("secours.mc.vide") + '</p>') +
+             '</div>' +
+           '</details>';
   }
 
   // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
@@ -3354,6 +3414,22 @@
       });
     }
 
+    // Main courante : les entrées du téléphone (vraies heures) rejoignent celle du PC,
+    // sans doublon, signées de l'équipe ; puis la trace de l'import lui-même.
+    if (Array.isArray(payload.mainCourante)) {
+      const vu = {};
+      (s.execution.mainCourante || []).forEach(function(e) { vu[e.at + "|" + e.cle + "|" + JSON.stringify(e.p || {})] = true; });
+      payload.mainCourante.forEach(function(e) {
+        if (!e || typeof e.cle !== "string" || e.cle.indexOf("secours.mc.") !== 0 || isNaN(Date.parse(e.at))) return;
+        const k = e.at + "|" + e.cle + "|" + JSON.stringify(e.p || {});
+        if (vu[k]) return;
+        vu[k] = true;
+        s.execution.mainCourante = s.execution.mainCourante || [];
+        s.execution.mainCourante.push({ at: e.at, cle: e.cle, p: e.p || {}, source: e.source || (ed.equipe.nom || "?") });
+      });
+    }
+    _journaliser(s, "secours.mc.import", { equipe: ed.equipe.nom || "?", n: stats.etapesFusionnees });
+
     // Audit log scenario-level
     s.execution._importLog = s.execution._importLog || [];
     s.execution._importLog.push({
@@ -4330,7 +4406,8 @@
       },
       execution:    executionClean,
       equipesData:  equipesData,
-      notesLibres:  notesLibres
+      notesLibres:  notesLibres,
+      mainCourante: _mcTriee(s)   // vague 7
     };
   }
 
@@ -4459,6 +4536,11 @@
 
   // Helper interne — format texte plain markdown-like d'un rapport.
   // Utilisé pour le bouton "📋 Copier texte" + comme base du PDF.
+  function _lignesMcRapport(r) {
+    return (r && Array.isArray(r.mainCourante) ? r.mainCourante : []).map(function(e) {
+      return _heureCourte(e.at) + " — " + _texteMc(e);
+    });
+  }
   function genererRapportTexte(reportData) {
     if (!reportData) return "";
     const r = reportData;
@@ -4554,6 +4636,12 @@
       out += "\n";
     } else if (r.scope === "secouriste") {
       out += t("secours.txt.aucuneNote") + "\n\n";
+    }
+    const mcLignes = _lignesMcRapport(reportData);   // vague 7 : main courante en annexe
+    if (mcLignes.length) {
+      out += t("secours.mc.titreRapport", { n: mcLignes.length }) + "\n";
+      mcLignes.forEach(function(l) { out += "  " + l + "\n"; });
+      out += "\n";
     }
 
     out += sep + "\n";
@@ -5034,6 +5122,24 @@
       if (r.scope === "secouriste" && Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
         pdf.addPage();
         _drawRapportPDFNotesLibresPage(pdf, r, pageW, pageH, margin);
+      }
+
+      // Vague 7 : main courante en annexe (ordre chronologique).
+      const mcPdf = _lignesMcRapport(r);
+      if (mcPdf.length) {
+        pdf.addPage();
+        _drawRapportPDFHeader(pdf, r, pageW, margin);
+        let ym = margin + 22;
+        pdf.setFontSize(12); pdf.setFont(undefined, "bold");
+        pdf.text(_stripPourPdf(t("secours.mc.titreRapport", { n: mcPdf.length })), margin, ym); ym += 6;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+        mcPdf.forEach(function(l) {
+          pdf.splitTextToSize(_stripPourPdf(l), pageW - 2 * margin).forEach(function(ligne) {
+            if (ym > pageH - 18) { _drawRapportPDFFooter(pdf, r, pageW, pageH, margin); pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); ym = margin + 22; pdf.setFontSize(9); pdf.setFont(undefined, "normal"); }
+            pdf.text(ligne, margin, ym); ym += 4;
+          });
+        });
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
       }
 
       const slug = _slug(r.scenario.nom || "rapport");
@@ -8671,6 +8777,8 @@
       html += '</div>';
     }
 
+    html += _renderMainCourante(s);   // vague 7
+
     // Actions footer
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
@@ -9782,6 +9890,19 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // Main courante : note libre de l'opérateur.
+    corps.querySelectorAll('[data-action="mc-ajouter"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const ta = document.getElementById("kta-secours-mc-texte");
+        const txt = ta ? ta.value.trim() : "";
+        if (!txt) return;
+        const s2 = get(s.id);
+        if (!s2 || !s2.execution) return;
+        _journaliser(s2, "secours.mc.note", { texte: txt.slice(0, 1000) });
+        _commitMutation(s2);
+        _switchView("live");
+      });
+    });
     // B1 : suivre le parcours de l'équipe / revenir à la carte.
     corps.querySelectorAll('[data-action="suivre-parcours"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _suivreParcours(s.id, btn.getAttribute("data-gid")); });
