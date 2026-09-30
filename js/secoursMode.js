@@ -616,6 +616,10 @@
     }
     // 1. Archive les étapes courantes (deep clone)
     _archivePhaseEtapes(s, phaseIdx);
+    // 1bis. Vague 7b (décision KARMA 6:a) — le PARCOURS PRÉVU de chaque équipe de la
+    // phase est copié : replanifier la phase suivante ne l'efface plus (le rapport
+    // montre le parcours de chaque phase, pas seulement celui du moment).
+    _archivePhaseParcours(s, phaseIdx);
     // 2. Marque la phase comme terminée
     phase.endedAt = _nowIso();
     _journaliser(s, "secours.mc.phaseClose", { phase: phase.nom || String(phaseIdx + 1) });
@@ -1757,6 +1761,31 @@
     _journaliser(s, "secours.mc.importSecouriste", { n: n });
     _commitMutation(s);
     return n;
+  }
+
+  // ─── Vague 7b (6:a) — un parcours par phase ───
+  // s.execution.parcoursArchive[phase][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }
+  // (copie légère : ce qu'un chef d'intervention relit dans le rapport).
+  function _archivePhaseParcours(s, phaseIdx) {
+    if (!s || !s.execution) return;
+    const ex = s.execution;
+    ex.parcoursArchive = ex.parcoursArchive || {};
+    const copie = {};
+    (s.groupes || []).forEach(function(g) {
+      if (!_getEtapesEquipe(s, g.id).length) return;   // pas engagée dans la phase
+      copie[g.id] = {
+        etapes: [g.entree].concat(g.intermediaires || [], [g.sortie])
+                  .filter(function(w) { return w && typeof w.x === "number"; })
+                  .map(function(w) { return w.label || _lblEtape(_fmtPoint(w)); }),
+        distanceM: (typeof g.distanceM === "number") ? g.distanceM : null,
+        dureeEstimeeMin: (typeof g.dureeEstimeeMin === "number") ? g.dureeEstimeeMin : null
+      };
+    });
+    ex.parcoursArchive[String(phaseIdx)] = copie;
+  }
+  function _parcoursPhase(s, phaseIdx, gid) {
+    const a = s && s.execution && s.execution.parcoursArchive && s.execution.parcoursArchive[String(phaseIdx)];
+    return (a && a[gid]) || null;
   }
 
   // ─── Main courante (vague 7, 30/09/2026 — décision KARMA 4:a) ───
@@ -4472,7 +4501,8 @@
         .map(function(k) {
           const arr = s.execution.etapesArchive[String(k)] && s.execution.etapesArchive[String(k)][g.id];
           return Array.isArray(arr) && arr.length > 0
-            ? { phaseIdx: k, nom: (s.phases && s.phases[k] && s.phases[k].nom) || String(k + 1), etapes: arr.slice() }
+            ? { phaseIdx: k, nom: (s.phases && s.phases[k] && s.phases[k].nom) || String(k + 1), etapes: arr.slice(),
+                parcours: _parcoursPhase(s, k, g.id) }   // vague 7b : parcours prévu de la phase
             : null;
         }).filter(Boolean);
       equipesData.push({
@@ -6082,6 +6112,15 @@
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: h.nom, n: h.etapes.length }), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      if (h.parcours && Array.isArray(h.parcours.etapes) && h.parcours.etapes.length) {   // vague 7b
+        const dist = (typeof h.parcours.distanceM === "number" && typeof window.formatDistance === "function")
+          ? " (" + window.formatDistance(h.parcours.distanceM, 0) + ")" : "";
+        pdf.setFont(undefined, "italic");
+        y = _pdfWrapText(pdf, _stripPourPdf(t("secours.pdf.parcoursPrevu", { liste: h.parcours.etapes.join(" > ") }) + dist),
+                         margin, y, pageW - 2 * margin, 4);
+        pdf.setFont(undefined, "normal");
+        y += 1;
+      }
       h.etapes.forEach(function(et, i) {
         if (y > pageH - 25) {
           _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);

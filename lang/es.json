@@ -3928,6 +3928,7 @@
   "secours.parcours.retirerEtape": "Quitar esta etapa",
   "secours.parcours.sortie": "Salida",
   "secours.parcours.titre": "🗺️ Recorrido:",
+  "secours.pdf.parcoursPrevu": "Recorrido previsto: {liste}",
   "secours.pdf.feuilleSansIti": "(hoja de ruta: calcula el itinerario del equipo para obtenerla)",
   "secours.pdf.feuilleTitre": "HOJA DE RUTA ({n} indicaciones)",
   "secours.pdf.horsPhaseCourante": "(no participa en la fase en curso)",
