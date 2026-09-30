@@ -3089,7 +3089,7 @@
     boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
 
     let inner = '<div class="kta-readme-modal-header">' +
-                  '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
                     (ok ? t("secours.import.resOkTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
@@ -3838,7 +3838,7 @@
     boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
 
     let inner = '<div class="kta-readme-modal-header">' +
-                  '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                  '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
                     (ok ? t("secours.rapportRes.okTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
@@ -8636,7 +8636,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid #f4c542;">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 style="margin:0; color:#f4c542;">' + t("secours.lancer.titre") + '</h2>' +
+          '<h2 class="kta-tx-accent" style="margin:0; color:#f4c542;">' + t("secours.lancer.titre") + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -10747,7 +10747,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh; border-left:6px solid ' + couleur.hex + ';">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 style="margin:0;">' + t("secours.opDetails.titre", { nom: _escHtml(g.nom), couleur: _escHtml(couleur.nom) }) + '</h2>' +
+          '<h2 class="kta-readme-modal-titre" style="margin:0;">' + t("secours.opDetails.titre", { nom: _escHtml(g.nom), couleur: _escHtml(couleur.nom) }) + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
