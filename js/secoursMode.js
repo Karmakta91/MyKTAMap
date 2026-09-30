@@ -1852,6 +1852,54 @@
     } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); return null; }
   }
 
+  // ─── Vague 8b (30/09, contre-audit IGC) — NIVEAU DES ZONES ───
+  // Une zone polygone vaut au niveau où elle a été DESSINÉE (niveau de ses sommets,
+  // sinon celui de l'équipe) — ou sur tous les niveaux si l'équipe le demande
+  // (`zoneTousNiveaux`). Avant, la zone valait pour tous les niveaux sans le dire :
+  // le −1 était annoncé « couvert à 80 % » alors que 4,9 % en étaient parcourus.
+  function _mlvlActif() { return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true); }
+  function _niveauZone(g) {   // null = tous niveaux
+    if (!_mlvlActif() || !g || g.zoneTousNiveaux) return null;
+    const v = (g.zonePolygon || []).find(function(p) { return p && Number.isInteger(p.level); });
+    return v ? v.level : (Number.isInteger(g.level) ? g.level : 0);
+  }
+  function _dansZonePolygone(g, pt, niveau) {
+    if (!g || g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return false;
+    const nz = _niveauZone(g);
+    if (nz !== null && (Number.isInteger(niveau) ? niveau : 0) !== nz) return false;
+    return _pointInPolygon(pt, g.zonePolygon);
+  }
+  // Galeries SOUS le polygone d'une équipe, à un niveau où ni sa zone ni son parcours
+  // ne vont : [{ niveau, m, horsZone }] (≥ 50 m). `horsZone` : niveau exclu de la zone
+  // (dessinée ailleurs) ; sinon niveau de la zone que l'itinéraire ne visite pas.
+  function _niveauxNonParcourus(g) {
+    if (!_mlvlActif() || !g || g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const visites = {};
+    (g.itineraireSuggere || []).forEach(function(p) { if (p && Number.isInteger(p.level)) visites[p.level] = true; });
+    const nz = _niveauZone(g);
+    const parNiveau = {};
+    _tousLesTraces().forEach(function(r) {
+      const lvl = Number.isInteger(r.level) ? r.level : 0;
+      if (visites[lvl]) return;
+      const pts = r.points;
+      for (let i = 1; i < pts.length; i++) {
+        const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
+        if (_pointInPolygon(m, g.zonePolygon)) parNiveau[lvl] = (parNiveau[lvl] || 0) + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      }
+    });
+    return Object.keys(parNiveau).map(Number).sort(function(a, b) { return a - b; })
+      .map(function(l) { return { niveau: l, m: parNiveau[l] / pxParM, horsZone: nz !== null && l !== nz }; })
+      .filter(function(x) { return x.m >= 50; });
+  }
+  function _texteNiveauxNonParcourus(g, liste) {
+    if (!liste.length) return "";
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
+    return t("secours.niv.sousZone", { equipe: g.nom, liste: liste.map(function(x) {
+      return t(x.horsZone ? "secours.niv.itemHorsZone" : "secours.niv.itemSansParcours", { niveau: x.niveau, long: fmt(x.m) });
+    }).join(" · ") });
+  }
+
   // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
   // Une aide à la lecture, sans affectation automatique : (1) POI situés DANS la zone
   // d'une équipe mais absents de son parcours, (2) POI visités par plusieurs équipes,
@@ -1891,7 +1939,7 @@
         if (dans[p.id] || dans[Math.round(p.x) + "," + Math.round(p.y)]) return;
         let inside = false;
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
-          inside = _pointInPolygon(p, g.zonePolygon);
+          inside = _dansZonePolygone(g, p, p.level);   // 8b : au niveau de la zone
         } else if (g.zoneType === "roads") {
           inside = traces.some(function(r) { return r && Array.isArray(r.points) && _distPointPolyline(p, r.points) <= 30; });
         }
@@ -1903,8 +1951,7 @@
     const tous = _tousLesTraces();
     const clesZones = {};
     groupes.forEach(function(g) { if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { clesZones[_cleTrace(r)] = true; }); });
-    const polys = groupes.filter(function(g) { return g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3; })
-                         .map(function(g) { return g.zonePolygon; });
+    const zonesPoly = groupes.filter(function(g) { return g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3; });
     let total = 0, couvert = 0;
     tous.forEach(function(r) {
       const pts = r.points;
@@ -1914,7 +1961,7 @@
         total += d;
         if (entier) { couvert += d; continue; }
         const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
-        if (polys.some(function(poly) { return _pointInPolygon(m, poly); })) couvert += d;
+        if (zonesPoly.some(function(g) { return _dansZonePolygone(g, m, r.level); })) couvert += d;   // 8b : niveau
       }
     });
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
@@ -4313,6 +4360,7 @@
     // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
     // Contre-audit GRIMP (30/09) : l'heure de retour IMPÉRATIVE (autonomie des éclairages,
     // relève) est une consigne du chef, pas une estimation. « HH:MM » ou null.
+    if ("zoneTousNiveaux" in partial) g.zoneTousNiveaux = partial.zoneTousNiveaux === true;
     if ("heureRetour" in partial) g.heureRetour = (typeof partial.heureRetour === "string" && /^\d{2}:\d{2}$/.test(partial.heureRetour)) ? partial.heureRetour : null;
     if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef.trim()) ? partial.chef.trim().slice(0, 60) : null;
     if ("effectif" in partial) {
@@ -8838,6 +8886,14 @@
                     '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
                     '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
+                  // 8b : niveau de la zone (multiniveau, zone polygone).
+                  ((_mlvlActif() && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3)
+                    ? '<div class="kta-secours-groupe-row kta-secours-zone-niv">' +
+                        '<span>' + _escHtml(g.zoneTousNiveaux ? t("secours.niv.zoneTous") : t("secours.niv.zoneAuNiveau", { niveau: _niveauZone(g) })) + '</span>' +
+                        '<label><input type="checkbox" data-action="zone-tous-niveaux" data-gid="' + _escAttr(g.id) + '"' + (g.zoneTousNiveaux ? ' checked' : '') + '> ' +
+                          t("secours.niv.caseTous") + '</label>' +
+                      '</div>'
+                    : '') +
                   // Étapes loin des galeries, gardées en vue après le calcul (30/09).
                   ((Array.isArray(g.itineraireSuggere) && g.guidage)
                     ? (function() { const txt = _texteEtapesLoin(_etapesLoin(g.guidage.raccords));
@@ -9830,7 +9886,7 @@
       for (let i = 1; i < path.length; i++) {
         const d = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
         total += d;
-        if (_pointInPolygon({ x: (path[i].x + path[i - 1].x) / 2, y: (path[i].y + path[i - 1].y) / 2 }, g.zonePolygon)) dedans += d;
+        if (_dansZonePolygone(g, { x: (path[i].x + path[i - 1].x) / 2, y: (path[i].y + path[i - 1].y) / 2 }, path[i].level)) dedans += d;
       }
       if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
     }
@@ -10483,6 +10539,13 @@
       // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
         sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
+      });
+      corps.querySelectorAll('[data-action="zone-tous-niveaux"]').forEach(function(cb) {
+        cb.addEventListener("change", function() {
+          updateGroupe(s.id, cb.getAttribute("data-gid"), { zoneTousNiveaux: cb.checked });
+          _recalculerToutesDureesEquipes(s.id);   // la part « fouille » dépend du niveau de la zone
+          _switchView("edit");
+        });
       });
       corps.querySelectorAll('[data-action="edit-heure-retour"]').forEach(function(inp) {
         inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { heureRetour: inp.value || null }); });
@@ -12164,6 +12227,9 @@
         }
         const loin = _texteEtapesLoin(_etapesLoin(r.raccords));   // toutes, plus seulement la pire
         if (loin) lignesCalc.push("⚠️ " + loin);
+        const gMaj = (get(scenarioId).groupes || []).find(function(x) { return x.id === groupeId; });
+        const niv = _texteNiveauxNonParcourus(gMaj, _niveauxNonParcourus(gMaj));   // 8b
+        if (niv) lignesCalc.push("⚠️ " + niv);
         _toast(lignesCalc.join("\n"), lignesCalc.length > 1 ? "warn" : "info");
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
