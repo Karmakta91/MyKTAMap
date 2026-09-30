@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.23` (30/09/2026)
+## 📦 Version courante — `v1.98.24` (30/09/2026)
+
+> 🚑 **v1.98.24 — Mode Secours, vague 8a (contre-audits GRIMP/IGC)** : Évacuer vers les accès des équipes ; bilan des engagés ; retour impératif ; durées approche/fouille ; recalage à l'étape validée ; numéro d'étape unique ; écran XL ; accès surface renseignés.
 
 > 🎛️ **v1.98.23 — Mode Secours, retours KARMA** : l'opérateur qui relaie une équipe n'a plus les raccourcis du terrain ; aide et tutoriel sans « État N — ».
-
-> 🚒 **v1.98.22 — Mode Secours, test terrain sur Pandemonium** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,19 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.24 (30/09/2026) — Mode Secours, vague 8a : contre-audits GRIMP et IGC
+
+- 🔍 **Origine** : contre-audits du 30/09 (scénario réel de KARMA, 8 équipes, Pandemonium) — `audit2-secours-GRIMP.md` / `-IGC.md` (scratchpad). Décision KARMA : 8a = 1, 3b, 4, 5b, 6, 7, 8, 9 ; 8b (couverture en deux chiffres par niveau, zones liées à un niveau) au backlog.
+- 🚑 **Évacuer** (`986ad43`) : ne visait que les accès tagués ouverts (un puits sur tout le plan) — Delta 3,19 km au lieu de 492 m. `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp, origine })` ; `_sortiesScenario` = accès du scénario, « à ouvrir » si fermés ; « depuis la position de la victime ».
+- 📍 **Recalage** (`4fea9ed`) : étape validée « sur place » → `recalerTrackerSurPoint(…, { sansReplan: true })`, silencieux < 30 m, question au-delà ; `_onTrackerRecale` coche l'étape sans proposer de recalcul. « Suivre » démarre le suivi dans le geste (`ktaDemarrerSuivi`).
+- ⏱️ **Durées** (`44d4f79`) : vitesse d'approche (hors polygone, 3 km/h) / fouille (dans la zone) + raccords ; `g.heureRetour` (« HH:MM ») prime sur l'estimation (`_heureRetourMs`), sur le briefing.
+- 👥 **Engagés** (`773bf29`) : `_bilanEngages` en tête de la vue opérateur ; alerte « N équipes sans effectif » au lancement ; « remontés » jamais prérempli (refus explicite) ; chef libre sans membres ; chef + effectif sur les PDF.
+- 🚪 **Accès surface** (`fc61e71`) : accès reliés au POI d'accès < 15 m (nom, type, « à ouvrir par la surface ») ; plus de « GPS non renseigné » sous le tableau (renvoi n°). `_poisAcces` / `CRIT_TAGS` partagés avec « POI critiques ».
+- 🧭 **Étapes loin** (`d34faca`) : toutes les étapes à plus de 25 m (et non 15 : faux positifs sur les salles) listées au calcul et gardées sur la fiche.
+- 🆘 **Écran XL** (`2133028`) : itinéraire > 500 points sauté sans message → décimé à 600 points (Golf 767 → 384).
+- 🔢 **Numérotation** (`27e4a3b`) : E, 1…N, S partout (en-tête, pastilles, message, carte opérateur) ; « Étape suivante » sans statut → « Passée, non renseignée » (statut `auto`, jamais en bouton).
+- ✅ **Tests** : `navV8.js` (8 cas sur le scénario réel), régressions `navFix` (5 cas), nav52 / navV5sync, 16 harnais Node, check-guidage, check-i18n. nav72 échoue sur l'ancien préremplissage de « remontés », retiré exprès.
 
 #### v1.98.23 (30/09/2026) — Mode Secours : retours KARMA
 

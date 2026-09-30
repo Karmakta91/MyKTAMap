@@ -1636,3 +1636,14 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Même accès** : `_memeAcces(a, b)` — `_samePoint` ou même niveau à < 10 m. Sert aux cartes PDF (repère « ENTRÉE / SORTIE » / « E/S ») et à `_accesSurface` (dédoublonnage des accès).
 - **Accès surface** : `_dessinerAccesSurface` (carte + tableau) en tête de `_drawBriefingSurfacePage` ; `_canvasAcces` recadre le canvas plan (`MyKTAMapExporterGenererCanvas`, sans annotations) sur les accès + marge (12 %, ≥ 150 m). La capture Vue OSM n'est plus faite pour `overlayContext === "rapport"`.
 - **Limite connue** : le canvas plan est plafonné à 16 Mpx (Safari iOS) — sur Pandemonium, 20 % de la résolution. Rendre chaque zone depuis les tuiles : backlog.
+
+## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
+
+- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés.
+- **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf → « à ouvrir par la surface ».
+- **Engagés** : `_bilanEngages(s)` (équipes de la phase courante) → `{ engages, sousTerre, manquants, inconnus[] }`. `_demanderRemontes` : valeur jamais préremplie. `_chef(g)` : chef libre si pas de membres.
+- **Durées** : `reglagesDuree.vitesseApprocheKmh` (défaut 3). `_dureeEquipeMin(s, distM, nbWp, { g, path, raccords })` : part du trajet hors polygone à la vitesse d'approche, le reste + raccords (étape × 2) à la vitesse de fouille. `g.heureRetour` « HH:MM » → `_heureRetourMs` (prochaine occurrence après le départ) prime dans `_etatRetour` (`imperatif: true`).
+- **Recalage** : `_recalerSurEtape` — rôle `equipe` sans `_previousRole`, statuts `STATUTS_SUR_PLACE` ; `RECALAGE_SILENCE_M = 30`. `recalerTrackerSurPoint(…, { sansReplan: true })` → `_notifierRecalage(x, y, "point", opts)` → `_onTrackerRecale` coche l'étape et n'ouvre pas la question de recalcul.
+- **Numérotation** : `_numEtape` / `_nomEtape` (E, 1…N, S). Statut `non-renseigne` (`auto: true`, filtré des boutons).
+- **Étapes loin** : `_etapesLoin(raccords)` (≥ `SEUIL_ETAPE_LOIN_M` = 25 m) / `_texteEtapesLoin`.
+- **Écran XL** (`emergencyMode.js`) : `MAX_POINTS_ITI = 600`, plus de saut au-delà de 500 points.
