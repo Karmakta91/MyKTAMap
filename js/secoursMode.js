@@ -6375,6 +6375,16 @@
     });
     return acces;
   }
+  // Accès du scénario comme candidats d'évacuation (SortieUrgence, `sortiesSupp`).
+  function _sortiesScenario(s) {
+    return _accesSurface(s).map(function(a, i) {
+      const ferme = !!(a.poi && CRIT_FERMES.indexOf(a.poi.tag) >= 0);
+      const nom = (a.nom || (a.poi && a.poi.p.nom) || t("secours.acces.accesN", { n: i + 1 })) +
+                  " (" + a.equipes.map(function(g) { return g.nom; }).join(", ") + ")" +
+                  (ferme ? " — " + t("secours.acces.aOuvrir") : "");
+      return { x: a.pt.x, y: a.pt.y, level: Number.isInteger(a.pt.level) ? a.pt.level : undefined, nom: nom, tags: [] };
+    });
+  }
   // Carte des accès (recadrée sur eux, sans POI) + tableau. Rend le nouveau y.
   async function _dessinerAccesSurface(pdf, s, y, pageW, pageH, margin) {
     const acces = _accesSurface(s);
@@ -10733,7 +10743,11 @@
           return;
         }
         fermer();   // la zone et le tracé restent (intervention en cours)
-        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level);
+        // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
+        // du plan (un seul sur Pandemonium) — jusqu'à 6,5 fois la distance d'un retour
+        // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
+        // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
+        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level, { sortiesSupp: _sortiesScenario(s), origine: "victime" });
       });
     });
     corps.querySelectorAll('[data-action="victime-preciser"]').forEach(function(btn) {
