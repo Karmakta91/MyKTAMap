@@ -1688,6 +1688,8 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 
 > 🧭 **Guidage pas à pas du parcours** : dans la vue de ton équipe, **🧭 Suivre mon parcours** transforme le parcours en itinéraire de l'app — le bandeau de guidage (« Dans 40 m, tourner à gauche »), la feuille de route et l'écran XL te mènent d'étape en étape (active le suivi 🧭). Les étapes que tu valides sont cochées sur l'itinéraire ; si tu t'écartes, **Recalculer** repart d'ici vers la **prochaine étape non faite**, en contournant toujours les zones des autres équipes. En arrivant sur une étape, un message et une vibration te préviennent, et la pastille 🚨 t'ouvre directement cette étape. Le **PDF de briefing** imprime aussi, pour chaque équipe, sa **feuille de route** carrefour par carrefour (changements de niveau compris) — calcule l'itinéraire de l'équipe pour l'obtenir.
 
+> 👥 **Chef, effectif, remontés et main courante** : chaque équipe a un **👤 chef** (choisi parmi ses membres) et un **effectif**. À **✅ Rentrée**, l'app demande **combien sont remontés** : en dessous de l'effectif, une **alerte rouge « N personne(s) manquante(s) »** reste affichée (et la pastille du bas passe au rouge) tant que le compte n'est pas corrigé. La **📜 main courante** (vue opérateur) note tout, heure par heure : lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes propres notes (appel radio, décision). Elle voyage dans les rapports d'équipe et s'imprime en annexe du rapport. Le **rapport du secouriste libre** s'importe désormais comme celui d'une équipe : ses notes rejoignent la main courante, à leur heure.
+
 #### Visualisation carte
 
 Bouton **🗺️ Voir sur carte** dans le header de l'édit. Affiche pour chaque équipe (couleur dédiée) :

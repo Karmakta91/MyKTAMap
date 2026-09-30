@@ -1683,6 +1683,8 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 > 🧭 **Guiado paso a paso del recorrido**: en la vista de tu equipo, **🧭 Seguir mi recorrido** convierte el recorrido en el itinerario de la app — el aviso de guiado («En 40 m, gira a la izquierda»), la hoja de ruta y la pantalla XL te llevan de etapa en etapa (activa el seguimiento 🧭). Las etapas que validas quedan marcadas en el itinerario; si te desvías, **Recalcular** vuelve a salir desde aquí hacia la **siguiente etapa no hecha**, evitando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 te abre directamente esa etapa. El **PDF de briefing** imprime también, para cada equipo, su **hoja de ruta** cruce a cruce (cambios de nivel incluidos) — calcula el itinerario del equipo para obtenerla.
 
+> 👥 **Jefe, efectivo, subidos y diario de operaciones**: cada equipo tiene un **👤 jefe** (elegido entre sus miembros) y un **efectivo**. En **✅ De vuelta**, la app pregunta **cuántos han subido**: por debajo del efectivo, una **alerta roja «N persona(s) desaparecida(s)»** sigue visible (y la pastilla de abajo pasa a rojo) hasta corregir el recuento. El **📜 diario de operaciones** (vista del operador) lo anota todo, hora a hora: lanzamiento, estados, víctima, salidas, vueltas, llamadas, importaciones, fases — más tus propias notas (llamada de radio, decisión). Viaja en los informes de equipo y se imprime como anexo del informe. El **informe del socorrista libre** se importa ahora como el de un equipo: sus notas se suman al diario, a su hora.
+
 #### Visualización en el mapa
 
 Botón **🗺️ Ver en el mapa** en la cabecera de la edición. Muestra, para cada equipo (con su color dedicado):

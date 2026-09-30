@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.18` (30/09/2026)
+## 📦 Version courante — `v1.98.19` (30/09/2026)
+
+> 👥 **v1.98.19 — Mode Secours, vague 7a (sécurité et traçabilité)** : chef + effectif par équipe et compte des remontés à la rentrée (alerte rouge « personne manquante ») ; main courante horodatée (vue opérateur, rapports, fusion) ; le rapport du secouriste libre est accepté.
 
 > 🧭 **v1.98.18 — Mode Secours, vague 6 (guidage)** : « Suivre mon parcours » fait du parcours d'une équipe l'itinéraire de l'app (bandeau de guidage, feuille de route, XL), étapes validées cochées, recalcul vers la prochaine étape non faite avec les évitements du Secours ; feuille de route carrefour par carrefour dans le PDF de briefing.
-
-> 🩹 **v1.98.17 — Deux défauts d'affichage sur iPhone** : l'en-tête de la vue live du Mode Secours ne se fait plus recouvrir par les cartes qui défilent (3e récidive, enfin reproduite sur WebKit) ; « 🎯 Recentrer » ne passe plus sous la barre d'état agrandie.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.19 (30/09/2026) — Mode Secours, vague 7a : sécurité et traçabilité
+
+- 🔍 **Origine** : refonte du Mode Secours, vague 7 coupée en deux (7a sécurité / traçabilité, 7b planification). Décisions KARMA 1:a 2:a 3:a 4:a 5:a.
+- 📜 **Main courante** (`f099c3e`) : `s.execution.mainCourante` = `{ at, cle, p, source? }` traduit à l'affichage ; événements automatiques (lancement, statuts, victime, départ / rentrée / rappel, imports, phases, fin) + notes libres ; panneau opérateur ; fusion depuis les rapports (sans doublon, signée de l'équipe) ; annexe des rapports texte / PDF.
+- 👥 **B9** (`c5d40d5`) : `g.chef`, `g.effectif` ; « ✅ Rentrée » → compte des remontés (`suivi.remontes`) ; sous l'effectif : état `manquant` (le pire, en tête), pastille rouge, toast + vibration, « Corriger le compte » ; `ktaConfirm` gagne `opts.nombre` (utils.js). Trouvé en relisant : effectif inconnu → on peut valider sans compte.
+- 📥 **Secouriste** (`e125351`) : son rapport n'est plus refusé ; notes → main courante à leur heure, signées « Secouriste », sans doublon.
+- ✅ **Tests** : checkups navigateur (événements par l'interface, 4/5 → alerte puis correction), deux tests à deux appareils (équipe : main courante du téléphone signée ; secouriste : notes, ré-import sans doublon), PDF (annexe), 16 harnais Node, checkups vagues 5-6.
 
 #### v1.98.18 (30/09/2026) — Mode Secours, vague 6 : guidage (B1, B2)
 

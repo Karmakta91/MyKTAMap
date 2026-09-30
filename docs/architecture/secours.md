@@ -1614,3 +1614,10 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Itinéraire suivi** : une road `type: "itinerary"` avec `secours: { scenarioId, equipeId, avoidPoints, avoidRadius }`, activée par `window.itineraireActiverRoad` (interfaceItineraire). Waypoints `source: "secours"`, `wid`, `done` = étape faite (`_majRoadSuivi` à chaque mutation). `_replanifierDepuis` (interfaceItineraire) garde `secours` et ses évitements — ne pas le perdre dans une future réécriture de la replanification.
 - **Arrivée** : `_veilleArrivee` (3 s, tant qu'un itinéraire Secours existe) — prochain waypoint non fait à ≤ 12 m → toast, vibration, `_liveEquipeFocusIdx`.
 - **Feuille de route PDF** : `_feuilleDeRouteLignes` → `ItiGuidage.construire` / `texteAction` / `majuscule` (même moteur que la feuille de l'app).
+
+## 👥 Vague 7a (v1.98.19, 30/09/2026) — main courante, chef / effectif / remontés, secouriste
+
+- **Main courante** : `s.execution.mainCourante[] = { at, cle, p, source? }` — clé i18n `secours.mc.*` + paramètres, traduits À L'AFFICHAGE (`_texteMc`) ; jamais de texte figé. Écriture : `_journaliser(s, cle, p, extra)` (sans commit, l'appelant commite). Plafond 2000 entrées. Fusion des rapports : clé `at|cle|p` pour dédoublonner ; notes du secouriste : `p.noteId`.
+- **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon nombre de membres). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
+- **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`.
+- **Secouriste** : `_parsePayloadReport` rend `{ ok, payload, secouriste: true }` → `_importerNotesSecouriste` (pas d'aperçu, pas de fusion d'étapes).
