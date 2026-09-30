@@ -1465,6 +1465,7 @@
     //    le cap boussole et les zones/structures.
     const MAX_POINTS_PER_POLY = 100;   // au-delà : décimation
     const MAX_TOTAL_POINTS    = 5000;  // cap global sécurité
+    const MAX_POINTS_ITI      = 600;   // itinéraire : décimé, jamais sauté (30/09)
     let totalPointsRendered   = 0;
     let skippedItinerary      = 0;
     let decimatedCount        = 0;
@@ -1482,16 +1483,13 @@
       // blanc reste pour visibilité.
       let pts = road.points;
       if (road.type === "itinerary") {
-        if (pts.length > 500) {
-          // Skip silencieux des itinéraires très longs (gros plan avec
-          // beaucoup de waypoints). L'user voit déjà la position XL +
-          // boussole — l'itinéraire détaillé est sur la map principale.
-          skippedItinerary++;
-          return;
-        }
-        // Décimation forte : 1 point sur 4 pour l'itinéraire
-        if (pts.length > MAX_POINTS_PER_POLY) {
-          const step = Math.ceil(pts.length / MAX_POINTS_PER_POLY);
+        // Contre-audit IGC (30/09) : au-delà de 500 points, l'itinéraire était SAUTÉ
+        // sans un mot — sur le plan réel, 3 équipes sur 8 n'avaient aucun tracé à
+        // l'écran XL, celui qu'on regarde quand ça va mal. On ne saute plus : on
+        // décime à MAX_POINTS_ITI (une polyline de 600 points ne pèse rien ; 100
+        // donnait des segments de ~90 m sur 8 km, faux à ce zoom serré).
+        if (pts.length > MAX_POINTS_ITI) {
+          const step = Math.ceil(pts.length / MAX_POINTS_ITI);
           const decim = [];
           for (let i = 0; i < pts.length; i += step) decim.push(pts[i]);
           // Garder le dernier point pour ne pas couper la ligne
