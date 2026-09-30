@@ -2636,11 +2636,25 @@
   // seul l'id du plan était comparé. Un plan retracé (nouvelle version, autres
   // dimensions) passait sans un mot, alors que positions d'étapes, zones et empreintes
   // de tracés peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
+  // Test terrain (30/09) : le même plan n'a pas le même identifiant selon qu'il est
+  // importé (« local_… ») ou servi (« server_… »). Comparer les seuls ids affichait
+  // « plan différent — source : Pandemonium, courant : Pandemonium ». Autre plan =
+  // ids différents ET (nom ou dimensions différents).
+  function _autrePlan(planFichier) {
+    const f = planFichier || {};
+    const idCourant = window._currentLoadedPlanId;
+    if (!f.id || !idCourant || f.id === idCourant) return false;
+    const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const nom = function(x) { return String(x || "").trim().toLowerCase(); };
+    const memeNom = !!nom(f.name) && nom(f.name) === nom(pl.name);
+    const memesDims = Number(f.imageWidth) > 0 && Number(f.imageWidth) === Number(pl.imageWidth) &&
+                      Number(f.imageHeight) === Number(pl.imageHeight);
+    return !(memeNom && memesDims);
+  }
   function _ecartVersionPlan(planFichier) {
     const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
     const f = planFichier || {};
-    const idCourant = window._currentLoadedPlanId;
-    if (f.id && idCourant && f.id !== idCourant) return null;   // autre plan : déjà signalé ailleurs
+    if (_autrePlan(f)) return null;   // autre plan : déjà signalé ailleurs
     const verF = String(f.version || ""), verC = String(pl.version || "");
     const dimsDiff = (Number(f.imageWidth) > 0 && Number(pl.imageWidth) > 0 && Number(f.imageWidth) !== Number(pl.imageWidth))
                   || (Number(f.imageHeight) > 0 && Number(pl.imageHeight) > 0 && Number(f.imageHeight) !== Number(pl.imageHeight));
@@ -2655,8 +2669,7 @@
   // le plan chargé ne résout plus. Autre plan → rien (déjà signalé ailleurs).
   function _blocTracesIntrouvables(planFichier, groupes) {
     const f = planFichier || {};
-    const idCourant = window._currentLoadedPlanId;
-    if (f.id && idCourant && f.id !== idCourant) return "";
+    if (_autrePlan(f)) return "";
     const connues = {};
     _tousLesTraces().forEach(function(r) { if (r.id) connues[r.id] = true; connues[_cleTrace(r)] = true; });
     let n = 0;
@@ -2716,9 +2729,7 @@
     // Détection plan différent → renvoyé comme warning, pas comme erreur.
     // La décision finale (importer ou annuler) est prise dans la modale preview.
     let warning = null;
-    const currentPlanId = window._currentLoadedPlanId;
-    const importedPlanId = payload.plan && payload.plan.id;
-    if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
+    if (_autrePlan(payload.plan)) {
       const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
       warning = t("secours.import.warnPlanDifferent", { plan: importedPlanName });
     }
@@ -3337,9 +3348,7 @@
 
     // Plan différent → warning (pas erreur)
     let warning = null;
-    const currentPlanId = window._currentLoadedPlanId;
-    const importedPlanId = payload.plan && payload.plan.id;
-    if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
+    if (_autrePlan(payload.plan)) {
       const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
       warning = t("secours.report.warnPlanDifferent", { plan: importedPlanName });
     }
