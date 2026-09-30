@@ -1943,6 +1943,27 @@
            '</details>';
   }
 
+  // Au lancement en mode équipe (demande KARMA, 30/09/2026) : le suivi est placé à
+  // l'ENTRÉE de l'équipe. Position pas encore confirmée (suivi éteint, jamais recalé) →
+  // automatique ; déjà confirmée → on demande (téléporter sans prévenir effacerait une
+  // position juste). `teleport` : le saut ne compte pas comme un trajet parcouru.
+  function _placerAEntree(sid, gid) {
+    const s = get(sid);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
+    const e = g && g.entree;
+    if (!e || typeof e.x !== "number" || typeof window.recalerTrackerSurPoint !== "function") return;
+    const nom = e.label || _lblEtape(_fmtPoint(e));
+    const placer = function() {
+      window.recalerTrackerSurPoint(e.x, e.y, Number.isInteger(e.level) ? e.level : undefined, { teleport: true });
+      _toast(t("secours.entree.place", { entree: nom }), "info");
+    };
+    const etat = (typeof window.getTrackingPositionEtat === "function") ? window.getTrackingPositionEtat() : null;
+    if (!etat || (!etat.confirmee && !etat.suiviActif) || typeof window.ktaConfirm !== "function") { placer(); return; }
+    window.ktaConfirm(t("secours.entree.proposer", { entree: _escHtml(nom) }),
+                      { titre: t("secours.entree.titre"), okLabel: t("secours.entree.ok"), cancelLabel: t("secours.entree.non") })
+      .then(function(ok) { if (ok) placer(); });
+  }
+
   // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
   function _scenarioEnCours() {
     for (let i = 0; i < _scenarios.length; i++) {
@@ -9701,6 +9722,8 @@
               lancerExecution(s.id, opts);
               _toast(t("secours.toast.planLance"), "info");
               _switchView("live");
+              // Demande KARMA (30/09) : en mode équipe, se retrouver à l'entrée de son équipe.
+              if (opts && opts.role === "equipe" && opts.currentEquipeId) _placerAEntree(s.id, opts.currentEquipeId);
             };
             // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
             // photos (reçues des équipes comprises) — on le dit avant.
