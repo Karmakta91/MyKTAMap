@@ -3643,6 +3643,7 @@
   "secours.carte.distance": "Distance: {distance}",
   "secours.carte.duree": "Duration: {duree} min",
   "secours.carte.entree": "ENTRY",
+  "secours.carte.entreeSortie": "ENTRY / EXIT",
   "secours.carte.sortie": "EXIT",
   "secours.carte.waypoints": "Steps: {n}",
   "secours.carte.zonePolygone": "Zone: polygon ({n} vertices)",

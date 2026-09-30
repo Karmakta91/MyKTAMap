@@ -6511,8 +6511,9 @@
       });
     }
 
-    // 4) Entrée : cercle border vert + "E"
-    if (eq.entree && typeof eq.entree.x === "number") {
+    const accesUnique = _memeAcces(eq.entree, eq.sortie);
+    // 4) Entrée : cercle border vert + "E" (un seul repère « E/S » si même accès)
+    if (eq.entree && typeof eq.entree.x === "number" && !accesUnique) {
       const c = planToCanvas(eq.entree.x, eq.entree.y);
       ctx.beginPath();
       ctx.arc(c.x, c.y, 18, 0, 2 * Math.PI);
@@ -6530,12 +6531,11 @@
 
     // 5) Sortie : cercle border rouge + "S" (orange si boucle entrée=sortie)
     if (eq.sortie && typeof eq.sortie.x === "number") {
-      // Détection boucle : sortie = entrée (même pointId ou coords ~)
-      const isLoop = eq.entree && eq.sortie.pointId && eq.entree.pointId &&
-                     eq.sortie.pointId === eq.entree.pointId;
+      // Même accès (même point, ou < 10 m) : un seul repère « E/S ». Avant, seul un
+      // pointId commun comptait : deux clics au même endroit cachaient l'entrée.
+      const isLoop = accesUnique;
       const c = planToCanvas(eq.sortie.x, eq.sortie.y);
-      // Si boucle, on décale visuellement de 6px pour ne pas écraser l'entrée
-      const cx = isLoop ? c.x + 22 : c.x;
+      const cx = c.x;
       const cy = c.y;
       ctx.beginPath();
       ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
@@ -6545,10 +6545,10 @@
       ctx.lineWidth   = 5;
       ctx.stroke();
       ctx.fillStyle   = "#ffffff";
-      ctx.font        = "bold 16px Arial, sans-serif";
+      ctx.font        = isLoop ? "bold 12px Arial, sans-serif" : "bold 16px Arial, sans-serif";
       ctx.textAlign   = "center";
       ctx.textBaseline= "middle";
-      ctx.fillText("S", cx, cy);
+      ctx.fillText(isLoop ? "E/S" : "S", cx, cy);
     }
   }
 
@@ -6918,7 +6918,7 @@
             if (cropped) {
               const imgWmm = pageW - 2 * margin;        // pleine largeur
               const imgHmm = imgWmm * cropped.height / cropped.width;
-              const capped = Math.min(90, imgHmm);     // cap hauteur 90 mm
+              const capped = Math.min(125, imgHmm);    // cap hauteur 125 mm (90 : illisible, test terrain 30/09)
               const finalHmm = capped;
               const finalWmm = capped * cropped.width / cropped.height;
               const xCentered = (pageW - finalWmm) / 2;
@@ -7125,8 +7125,10 @@
     let sh = Math.min(fullCanvas.height / r - sy, bbox.h + 2 * pad);
     if (sw < 50 || sh < 50) return _resizeCanvasFit(fullCanvas, 800, 600);
 
-    // Canvas de sortie : ratio préservé, max 1000 px de côté
-    const maxOut = 1000;
+    // Canvas de sortie : ratio préservé. Au moins 1000 px de côté ; au-delà, jusqu'à
+    // la résolution RÉELLEMENT disponible dans le canvas du plan (plafond 2400) —
+    // avant, une grande zone (Golf, Pandemonium) était réduite sous sa source.
+    const maxOut = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
     let outW, outH;
     if (sw >= sh) {
       outW = Math.min(maxOut, sw);
@@ -7144,6 +7146,9 @@
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(fullCanvas, sx * r, sy * r, sw * r, sh * r, 0, 0, out.width, out.height);
 
+    // Repères, traits et textes suivent la taille de l'image (base 1000 px) : sinon,
+    // plus la carte est nette, plus les numéros d'étape rapetissent sur la page.
+    const k = Math.max(1, Math.max(out.width, out.height) / 1000);
     // Helpers pour mapper plan → canvas de sortie
     const sX = out.width  / sw;
     const sY = out.height / sh;
@@ -7157,7 +7162,7 @@
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
       ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.30)";
       ctx.strokeStyle = hexColor;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3 * k;
       ctx.beginPath();
       g.zonePolygon.forEach(function(p, i) {
         const c = _toCanvas(p);
@@ -7171,7 +7176,7 @@
     // 2. Zone roads (halo couleur sur chaque road sélectionnée)
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
       ctx.strokeStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.55)";
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 8 * k;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       _tracesZone(g).forEach(function(road) {
         if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
@@ -7187,8 +7192,8 @@
     // 3. Itinéraire suggéré (dashed couleur équipe, weight 4)
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       ctx.strokeStyle = hexColor;
-      ctx.lineWidth = 4;
-      ctx.setLineDash([10, 6]);
+      ctx.lineWidth = 4 * k;
+      ctx.setLineDash([10 * k, 6 * k]);
       ctx.lineCap = "round"; ctx.lineJoin = "round";
       ctx.beginPath();
       g.itineraireSuggere.forEach(function(p, i) {
@@ -7204,39 +7209,41 @@
       g.intermediaires.forEach(function(w, i) {
         if (!w || typeof w.x !== "number") return;
         const c = _toCanvas(w);
-        _drawTeamMarker(ctx, c.x, c.y, 7, "#ffffff", hexColor);
+        _drawTeamMarker(ctx, c.x, c.y, 7 * k, "#ffffff", hexColor);
         ctx.fillStyle = "#000";
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold " + Math.round(12 * k) + "px sans-serif";
         ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        ctx.fillText(String(i + 1), c.x + 9, c.y);
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k; ctx.lineJoin = "round";   // lisible sur plan sombre
+        ctx.strokeText(String(i + 1), c.x + 9 * k, c.y);
+        ctx.fillText(String(i + 1), c.x + 9 * k, c.y);
       });
     }
-    // 5. Entrée (cercle border vert + fill couleur équipe)
-    if (g.entree && typeof g.entree.x === "number") {
+    const accesUnique = _memeAcces(g.entree, g.sortie);
+    // 5. Entrée (cercle border vert + fill couleur équipe) — un seul repère si même accès
+    if (g.entree && typeof g.entree.x === "number" && !accesUnique) {
       const c = _toCanvas(g.entree);
-      _drawTeamMarker(ctx, c.x, c.y, 9, "#00cc44", hexColor);
+      _drawTeamMarker(ctx, c.x, c.y, 9 * k, "#00cc44", hexColor);
       ctx.fillStyle = "#00cc44";
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
       const lblEntree = t("secours.carte.entree");
-      ctx.strokeText(lblEntree, c.x + 12, c.y);
-      ctx.fillText(lblEntree, c.x + 12, c.y);
+      ctx.strokeText(lblEntree, c.x + 12 * k, c.y);
+      ctx.fillText(lblEntree, c.x + 12 * k, c.y);
     }
     // 6. Sortie (cercle border rouge OU orange si boucle)
     if (g.sortie && typeof g.sortie.x === "number") {
       const c = _toCanvas(g.sortie);
-      const isBoucle = _samePoint(g.entree, g.sortie);
-      _drawTeamMarker(ctx, c.x, c.y, isBoucle ? 11 : 9,
+      const isBoucle = accesUnique;
+      _drawTeamMarker(ctx, c.x, c.y, (isBoucle ? 11 : 9) * k,
                       isBoucle ? "#ffaa00" : "#cc0000", hexColor);
       ctx.fillStyle = isBoucle ? "#ffaa00" : "#cc0000";
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
-      const lbl = isBoucle ? t("secours.carte.boucle") : t("secours.carte.sortie");
-      // Décale l'étiquette pour ne pas chevaucher celle de l'entrée si même point
-      const dx = isBoucle ? 14 : 12;
-      const dy = isBoucle ? 14 : 0;
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
+      const lbl = isBoucle ? t("secours.carte.entreeSortie") : t("secours.carte.sortie");
+      const dx = (isBoucle ? 14 : 12) * k;
+      const dy = 0;
       ctx.strokeText(lbl, c.x + dx, c.y + dy);
       ctx.fillText(lbl, c.x + dx, c.y + dy);
     }
@@ -7259,11 +7266,12 @@
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds) && g.zoneRoadIds.length > 0) {
       items.push({ type: "zone-roads", label: t("secours.legende.zoneTraces") });
     }
-    if (g.entree && typeof g.entree.x === "number") {
+    const accesUnique = _memeAcces(g.entree, g.sortie);
+    if (g.entree && typeof g.entree.x === "number" && !accesUnique) {
       items.push({ type: "entree", label: t("secours.legende.entree") });
     }
     if (g.sortie && typeof g.sortie.x === "number") {
-      const isBoucle = _samePoint(g.entree, g.sortie);
+      const isBoucle = accesUnique;
       items.push({
         type:  isBoucle ? "boucle" : "sortie",
         label: isBoucle ? t("secours.legende.boucle") : t("secours.legende.sortie")
@@ -7353,7 +7361,7 @@
     ctx.fillStyle = fillColor;
     ctx.fill();
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(3, r * 0.35);   // suit la taille du repère
     ctx.stroke();
   }
 
@@ -9603,6 +9611,17 @@
     return html;
   }
 
+  // Cartes PDF (test terrain 30/09) : entrée et sortie posées à 1 m l'une de l'autre
+  // (même accès, deux clics) n'étaient pas « le même point » → la sortie se dessinait
+  // PAR-DESSUS l'entrée, qui disparaissait de toutes les cartes. Même accès = même
+  // point, ou même niveau à moins de 10 m.
+  function _memeAcces(a, b) {
+    if (_samePoint(a, b)) return true;
+    if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") return false;
+    if ((a.level == null ? null : a.level) !== (b.level == null ? null : b.level)) return false;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    return Math.hypot(a.x - b.x, a.y - b.y) / pxParM < 10;
+  }
   function _samePoint(a, b) {
     if (!a || !b) return false;
     // Match par pointId si présent, sinon par coords avec tolérance 0.5 px
