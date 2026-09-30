@@ -1967,11 +1967,124 @@
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     return { doublons: doublons, horsParcours: horsParcours, totalM: total / pxParM, couvertM: couvert / pxParM };
   }
+  // ─── Vague 8b (30/09, contre-audits GRIMP + IGC) — COUVERTURE HONNÊTE ───
+  // « 93 % couvert » mesurait les galeries SOUS une zone, pas celles qu'une équipe va
+  // parcourir (21-24 % sur le scénario réel). Par niveau : longueur, part dans une
+  // zone, part SUR UN PARCOURS (tronçon dont le milieu est à < 3 m de l'itinéraire
+  // calculé d'une équipe, même niveau), longueur affectée à 2 équipes ou plus.
+  // Les itinéraires sont indexés dans une grille (87 km de galeries × 8 parcours).
+  function _couvertureParNiveau(s) {
+    const groupes = (s && s.groupes) || [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const tol = 3 * pxParM, cell = 20 * pxParM;
+    const grille = {};
+    groupes.forEach(function(g) {
+      const it = g.itineraireSuggere;
+      if (!Array.isArray(it)) return;
+      for (let i = 1; i < it.length; i++) {
+        const a = it[i - 1], b = it[i];
+        const lvl = Number.isInteger(b.level) ? b.level : 0;
+        const x0 = Math.floor(Math.min(a.x, b.x) / cell), x1 = Math.floor(Math.max(a.x, b.x) / cell);
+        const y0 = Math.floor(Math.min(a.y, b.y) / cell), y1 = Math.floor(Math.max(a.y, b.y) / cell);
+        for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+          (grille[lvl + ":" + cx + ":" + cy] = grille[lvl + ":" + cx + ":" + cy] || []).push([a, b]);
+        }
+      }
+    });
+    const surParcours = function(m, lvl) {
+      const cx = Math.floor(m.x / cell), cy = Math.floor(m.y / cell);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const segs = grille[lvl + ":" + (cx + dx) + ":" + (cy + dy)];
+        if (segs && segs.some(function(sg) { return _distPointPolyline(m, sg) <= tol; })) return true;
+      }
+      return false;
+    };
+    const clesParEquipe = groupes.map(function(g) {
+      const k = {};
+      if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { k[_cleTrace(r)] = true; });
+      return k;
+    });
+    const niveaux = {}, horsParcours = [];
+    _tousLesTraces().forEach(function(r) {
+      const lvl = Number.isInteger(r.level) ? r.level : 0;
+      const cleR = _cleTrace(r);
+      const n = niveaux[lvl] = niveaux[lvl] || { total: 0, zone: 0, parcours: 0, double: 0 };
+      const pts = r.points;
+      for (let i = 1; i < pts.length; i++) {
+        const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
+        n.total += d;
+        let nbZones = 0;
+        groupes.forEach(function(g, gi) { if (clesParEquipe[gi][cleR] || _dansZonePolygone(g, m, lvl)) nbZones++; });
+        if (nbZones > 0) n.zone += d;
+        if (nbZones > 1) n.double += d;
+        if (surParcours(m, lvl)) n.parcours += d;
+        else horsParcours.push({ level: lvl, a: pts[i - 1], b: pts[i] });
+      }
+    });
+    Object.keys(niveaux).forEach(function(k) {
+      const n = niveaux[k];
+      n.total /= pxParM; n.zone /= pxParM; n.parcours /= pxParM; n.double /= pxParM;
+    });
+    const alertes = groupes.map(function(g) { return _texteNiveauxNonParcourus(g, _niveauxNonParcourus(g)); }).filter(Boolean);
+    const sansIti = groupes.filter(function(g) { return !(Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2); })
+                           .map(function(g) { return g.nom; });
+    return { niveaux: niveaux, horsParcours: horsParcours, alertes: alertes, sansIti: sansIti };
+  }
+  let _couvDerniere = null, _couvCalque = null;
+  // Surligne sur la carte les galeries hors parcours du niveau affiché (préparer la
+  // phase suivante). Second appel = on retire.
+  function _basculerSurlignageCouverture(s) {
+    if (_couvCalque) {
+      try { window.map.removeLayer(_couvCalque); } catch(e) {}
+      _couvCalque = null;
+      _toast(t("secours.couv.surlignageRetire"), "info");
+      return false;
+    }
+    if (!window.map || !_couvDerniere) return false;
+    const niveau = _mlvlActif() ? (Number.isInteger(window.APP_CONFIG.activeLevel) ? window.APP_CONFIG.activeLevel : 0) : null;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    let m = 0;
+    const segs = [];
+    _couvDerniere.horsParcours.forEach(function(sg) {
+      if (niveau !== null && sg.level !== niveau) return;
+      m += Math.hypot(sg.b.x - sg.a.x, sg.b.y - sg.a.y) / pxParM;
+      segs.push([_planToLatLng(sg.a), _planToLatLng(sg.b)]);
+    });
+    // UNE polyligne multiple (des milliers de tronçons : un calque chacun pèserait sur mobile)
+    _couvCalque = L.polyline(segs, { color: "#ff6b6b", weight: 5, opacity: 0.85, interactive: false });
+    _couvCalque.addTo(window.map);
+    fermer();
+    const fmt = (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m";
+    _toast(t("secours.couv.surlignageOk", { long: fmt, niveau: niveau === null ? "—" : niveau }), "warn");
+    return true;
+  }
   function _renderCouverture(s) {
     const c = _calculerCouverture(s);
     const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
-    const pct = c.totalM > 0 ? Math.round(100 * c.couvertM / c.totalM) : 0;
-    let html = '<p><strong>' + t("secours.couv.galeries", { pct: pct, couvert: fmt(c.couvertM), total: fmt(c.totalM) }) + '</strong></p>';
+    const cp = _couvDerniere = _couvertureParNiveau(s);
+    const pctDe = function(a, b) { return b > 0 ? Math.round(100 * a / b) + " %" : "—"; };
+    const tot = { total: 0, zone: 0, parcours: 0, double: 0 };
+    const ligne = function(lbl, n, cls) {
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + lbl + '</td><td>' + fmt(n.total) + '</td>' +
+             '<td>' + pctDe(n.zone, n.total) + '</td><td><strong>' + pctDe(n.parcours, n.total) + '</strong></td>' +
+             '<td>' + (n.double > 0 ? fmt(n.double) : "—") + '</td></tr>';
+    };
+    let lignes = '';
+    Object.keys(cp.niveaux).map(Number).sort(function(a, b) { return b - a; }).forEach(function(l) {
+      const n = cp.niveaux[l];
+      ["total", "zone", "parcours", "double"].forEach(function(k) { tot[k] += n[k]; });
+      lignes += ligne(_mlvlActif() ? t("secours.couv.niveauN", { n: l }) : t("secours.couv.plan"), n, n.parcours < 0.5 * n.total ? "kta-tx-warn" : "");
+    });
+    if (Object.keys(cp.niveaux).length > 1) lignes += ligne('<strong>' + t("secours.couv.total") + '</strong>', tot, "kta-secours-couv-total");
+    let html = '<table class="kta-secours-couv-table"><thead><tr>' +
+                 '<th>' + t("secours.couv.colNiveau") + '</th><th>' + t("secours.couv.colGaleries") + '</th>' +
+                 '<th>' + t("secours.couv.colZone") + '</th><th>' + t("secours.couv.colParcours") + '</th>' +
+                 '<th>' + t("secours.couv.colDouble") + '</th></tr></thead><tbody>' + lignes + '</tbody></table>';
+    if (cp.sansIti.length) html += '<p class="kta-tx-warn kta-secours-couv-note">' + _escHtml(t("secours.couv.sansIti", { noms: cp.sansIti.join(", ") })) + '</p>';
+    cp.alertes.forEach(function(a) { html += '<p class="kta-tx-warn kta-secours-couv-note">⚠️ ' + _escHtml(a) + '</p>'; });
+    html += '<p><button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="couv-surligner">' +
+              (_couvCalque ? t("secours.couv.btnMasquer") : t("secours.couv.btnSurligner")) + '</button></p>';
     html += '<p class="kta-secours-couv-titre">' + t("secours.couv.horsParcoursTitre") + '</p>';
     html += c.horsParcours.length
       ? '<ul class="kta-secours-couv-liste">' + c.horsParcours.map(function(h) {
@@ -10534,7 +10647,10 @@
       if (couv) couv.addEventListener("toggle", function() {
         if (!couv.open) return;
         const corpsCouv = document.getElementById("kta-secours-couverture-corps");
-        if (corpsCouv) corpsCouv.innerHTML = _renderCouverture(get(s.id));
+        if (!corpsCouv) return;
+        corpsCouv.innerHTML = _renderCouverture(get(s.id));
+        const btnS = corpsCouv.querySelector('[data-action="couv-surligner"]');
+        if (btnS) btnS.addEventListener("click", function() { _basculerSurlignageCouverture(get(s.id)); if (_modal) _switchView("edit"); });
       });
       // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
