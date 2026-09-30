@@ -5829,11 +5829,20 @@
     pdf.text(t("secours.surf.sousTitre"), margin, y);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 8;
 
+    // Test terrain KARMA (30/09) : cette page montrait le plan ENTIER sur un A4, avec
+    // tous les POI — illisible, donc inutile. Ce qu'un pompier cherche en surface :
+    // OÙ engager chaque équipe. Carte des accès (tirée du plan, hors-ligne) + tableau
+    // GPS/liens, en tête de page.
+    y = await _dessinerAccesSurface(pdf, scenario, y, pageW, pageH, margin);
+
     // 🆕 v1.42.5 — Tentative capture rendu OSM (offscreen Leaflet + html2canvas)
     // injection en haut de page. Fail-safe : si KO, on garde la mise en page
     // texte/lien standard (= comportement v1.41.x).
     // 🆕 v1.42.11 — options { showPlan, showPoi, … } propagées à la capture
-    try {
+    // 30/09 : plus dans le rapport (la carte des accès la remplace) ; dans le
+    // briefing, elle suit les accès, sur sa propre page si la place manque.
+    if (overlayContext !== "rapport") try {
+      if (y > pageH * 0.45) { pdf.addPage(); y = margin + 8; }
       const imgData = await _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext);
       if (imgData) {
         // 🆕 v1.42.12 — Récupère les vraies dims de l'image capturée pour
@@ -6087,7 +6096,7 @@
         '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">' + t("secours.briefing.couchesTitre") + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;">' +
           _renderToggleOpt("opt-plan",    t("secours.briefing.optPlan"),    true) +
-          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     true) +
+          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     false) +   // 30/09 : tous les POI = illisible
           _renderToggleOpt("opt-tracker", t("secours.briefing.optTracker"), true) +
           _renderToggleOpt("opt-road",    t("secours.briefing.optRoad"),    true) +
           _renderToggleOpt("opt-iti",     t("secours.briefing.optIti"),     true) +
@@ -6192,6 +6201,147 @@
       _toast(t("secours.toast.erreurPdfBriefing", { message: e.message }), "error");
       return null;
     }
+  }
+
+  // ─── ACCÈS SURFACE (test terrain 30/09) ───
+  // Les entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
+  // [{ pt, nom, equipes: [g], entree: bool, sortie: bool }].
+  function _accesSurface(s) {
+    const acces = [];
+    ((s && s.groupes) || []).forEach(function(g) {
+      [["entree", g.entree], ["sortie", g.sortie]].forEach(function(p) {
+        const w = p[1];
+        if (!w || typeof w.x !== "number" || typeof w.y !== "number") return;
+        let a = acces.find(function(x) { return _memeAcces(x.pt, w); });
+        if (!a) { a = { pt: w, nom: null, equipes: [], entree: false, sortie: false }; acces.push(a); }
+        if (!a.nom && w.label) a.nom = w.label;
+        if (a.equipes.indexOf(g) < 0) a.equipes.push(g);
+        a[p[0]] = true;
+      });
+    });
+    return acces;
+  }
+  // Carte des accès (recadrée sur eux, sans POI) + tableau. Rend le nouveau y.
+  async function _dessinerAccesSurface(pdf, s, y, pageW, pageH, margin) {
+    const acces = _accesSurface(s);
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text(t("secours.acces.titre"), margin, y); y += 5;
+    pdf.setFontSize(8.5); pdf.setFont(undefined, "italic"); pdf.setTextColor(110);
+    pdf.text(t("secours.acces.sousTitre"), margin, y); y += 5;
+    pdf.setTextColor(0); pdf.setFont(undefined, "normal");
+    if (!acces.length) {
+      pdf.setFontSize(9); pdf.text(t("secours.acces.aucun"), margin, y);
+      return y + 8;
+    }
+    // Carte
+    try {
+      const img = await _canvasAcces(s, acces);
+      if (img) {
+        const availW = pageW - 2 * margin, maxH = Math.min(120, pageH - y - 70);
+        let w = availW, h = w * img.height / img.width;
+        if (h > maxH) { h = maxH; w = h * img.width / img.height; }
+        const x = margin + (availW - w) / 2;
+        pdf.addImage(img.toDataURL("image/jpeg", 0.85), "JPEG", x, y, w, h);
+        pdf.setDrawColor(150); pdf.rect(x, y, w, h);
+        y += h + 5;
+      }
+    } catch (e) { console.warn("[Briefing] carte des accès :", e && e.message); }
+    // Tableau
+    const cols = [margin, margin + 9, margin + 70, margin + 130];
+    const ligneEntete = function() {
+      pdf.setFontSize(8.5); pdf.setFont(undefined, "bold");
+      pdf.text(t("secours.acces.colN"), cols[0], y);
+      pdf.text(t("secours.acces.colAcces"), cols[1], y);
+      pdf.text(t("secours.acces.colEquipes"), cols[2], y);
+      pdf.text(t("secours.acces.colGps"), cols[3], y);
+      pdf.setFont(undefined, "normal");
+      pdf.setDrawColor(180); pdf.line(margin, y + 1.5, pageW - margin, y + 1.5);
+      y += 5;
+    };
+    ligneEntete();
+    let sansGps = false;
+    acces.forEach(function(a, i) {
+      const role = a.entree && a.sortie ? t("secours.acces.entreeSortie")
+                 : a.entree ? t("secours.acces.entree") : t("secours.acces.sortie");
+      const nom = _stripPourPdf((a.nom || t("secours.acces.sansNom")) + " — " + role);
+      const eq = _stripPourPdf(a.equipes.map(function(g) { return g.nom; }).join(", "));
+      const lNom = pdf.splitTextToSize(nom, cols[2] - cols[1] - 2);
+      const lEq = pdf.splitTextToSize(eq, cols[3] - cols[2] - 2);
+      const hLigne = Math.max(lNom.length, lEq.length, 1) * 3.6 + 1.5;
+      if (y + hLigne > pageH - 12) { pdf.addPage(); y = margin + 8; ligneEntete(); }
+      pdf.setFont(undefined, "bold"); pdf.text(String(i + 1), cols[0], y); pdf.setFont(undefined, "normal");
+      pdf.text(lNom, cols[1], y);
+      pdf.text(lEq, cols[2], y);
+      const ll = _gpsDe(a.pt.x, a.pt.y);
+      if (ll) {
+        const lat = ll.lat.toFixed(6), lng = ll.lng.toFixed(6);
+        pdf.text(ll.lat.toFixed(5) + ", " + ll.lng.toFixed(5), cols[3], y);
+        pdf.setTextColor(60, 110, 220);
+        pdf.textWithLink(t("secours.acces.lien"), cols[3], y + 3.6,
+          { url: "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng + "#map=19/" + lat + "/" + lng });
+        pdf.setTextColor(0);
+      } else { pdf.text("—", cols[3], y); sansGps = true; }
+      y += Math.max(hLigne, ll ? 8.2 : 0);
+    });
+    if (sansGps) {
+      pdf.setFontSize(8); pdf.setTextColor(140); pdf.text(t("secours.acces.sansGeoref"), margin, y); pdf.setTextColor(0);
+      y += 4;
+    }
+    return y + 4;
+  }
+  // Rendu : le plan recadré sur les accès (+ marge), zones des équipes en filigrane,
+  // un repère numéroté par accès (numéros = lignes du tableau).
+  async function _canvasAcces(s, acces) {
+    if (typeof window.MyKTAMapExporterGenererCanvas !== "function") return null;
+    const full = await window.MyKTAMapExporterGenererCanvas({
+      scale: _echelleCanvasPlan(1), bg: "image", includeImgLayers: true, includeDataLayers: true,
+      ann: { points: false, roads: false, zones: false, structures: false, jonctions: false, itineraire: false }
+    });
+    if (!full) return null;
+    const r = _echelleDuCanvas(full);
+    const xs = acces.map(function(a) { return a.pt.x; }), ys = acces.map(function(a) { return a.pt.y; });
+    let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    // Marge : 12 % de la plus grande dimension, au moins ~150 m autour d'un accès seul.
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const pad = Math.max((Math.max(x1 - x0, y1 - y0)) * 0.12, 150 * pxParM);
+    const W = full.width / r, H = full.height / r;
+    x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+    x1 = Math.min(W, x1 + pad); y1 = Math.min(H, y1 + pad);
+    const sw = x1 - x0, sh = y1 - y0;
+    if (sw < 10 || sh < 10) return null;
+    const cote = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
+    const out = document.createElement("canvas");
+    out.width = Math.round(sw >= sh ? cote : cote * sw / sh);
+    out.height = Math.round(sw >= sh ? cote * sh / sw : cote);
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(full, x0 * r, y0 * r, sw * r, sh * r, 0, 0, out.width, out.height);
+    const k = Math.max(1, Math.max(out.width, out.height) / 1000);
+    const vers = function(p) { return { x: (p.x - x0) * out.width / sw, y: (p.y - y0) * out.height / sh }; };
+    // Zones en filigrane (repère d'orientation, pas le sujet de la page)
+    (s.groupes || []).forEach(function(g) {
+      if (g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return;
+      const hex = PALETTE[g.couleurIdx % PALETTE.length].hex, c = _hexToRgb(hex);
+      ctx.beginPath();
+      g.zonePolygon.forEach(function(p, i) { const q = vers(p); if (i === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y); });
+      ctx.closePath();
+      ctx.fillStyle = "rgba(" + c.r + "," + c.g + "," + c.b + ",0.12)"; ctx.fill();
+      ctx.strokeStyle = hex; ctx.lineWidth = 2 * k; ctx.stroke();
+    });
+    // Accès numérotés, couleur de la 1re équipe
+    acces.forEach(function(a, i) {
+      const q = vers(a.pt);
+      const hex = PALETTE[a.equipes[0].couleurIdx % PALETTE.length].hex;
+      ctx.beginPath(); ctx.arc(q.x, q.y, 15 * k, 0, 2 * Math.PI);
+      ctx.fillStyle = hex; ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3.5 * k; ctx.stroke();
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold " + Math.round(16 * k) + "px Arial, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 3 * k;
+      ctx.strokeText(String(i + 1), q.x, q.y); ctx.fillText(String(i + 1), q.x, q.y);
+    });
+    return out;
   }
 
   // Helpers PDF rapport — header commun à toutes les pages
@@ -7413,11 +7563,14 @@
     if (!valide(g)) return null;
     try { return K.buildTransformCalib(g); } catch(e) { return null; }
   }
-  function _gpsTxt(x, y) {
+  function _gpsDe(x, y) {
     const tr = _transformGeoref();
     const ll = tr ? window.KmzExport.planToGps(tr, x, y) : null;
-    return (ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng))
-      ? ll.lat.toFixed(5) + ", " + ll.lng.toFixed(5) : null;
+    return (ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng)) ? ll : null;
+  }
+  function _gpsTxt(x, y) {
+    const ll = _gpsDe(x, y);
+    return ll ? ll.lat.toFixed(5) + ", " + ll.lng.toFixed(5) : null;
   }
   const RE_LBL_BRUT = /^x=(-?\d+(?:\.\d+)?) y=(-?\d+(?:\.\d+)?)(?: niv=(-?\d+))?$/;
   function _lblEtape(label) {
