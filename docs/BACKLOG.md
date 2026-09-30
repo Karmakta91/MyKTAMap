@@ -127,6 +127,7 @@ déjà les trois langues du guide ; il ne relie pas le guide à l'Aide intégré
 | Piste | Valeur | État |
 |---|---|---|
 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n'a aucun format topo lisible | gardé — à lancer |
+| **Puits inter-étage** (KARMA, 30/09) | un puits qui relie deux niveaux n'existe que comme **tracé** « jonction » 🪜 (`{type:"jonction", fromLevel, toLevel}`, `multilevel-pathfinding.md` §26.5) — invisible en tant que point. POI spéciale, **icône dédiée**, visible sur ses **deux** niveaux, qui porte (ou crée) la jonction pour l'itinéraire — même logique qu'un **portail** (lié à deux plans). Ajout du tag : skill `.claude/skills/add-icon-tag` | gardé — à cadrer |
 | **Export de profil en flux** | `showSaveFilePicker` + `generateInternalStream` (Chrome/Edge desktop) pour réduire le pic RAM de `generateAsync` sur les très gros exports | gardé — si un cas réel le demande |
 
 **VisualTopo** — l'app ne lit **aucun** format de topographie (ni VisualTopo, ni Therion, ni Compass, ni Survex ;
