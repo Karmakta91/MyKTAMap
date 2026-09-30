@@ -1773,18 +1773,20 @@
   // Au lancement : un plan SERVEUR qui n'est pas entièrement disponible hors-ligne
   // sur cet appareil = risque de carte incomplète sous terre. On prévient, sans
   // bloquer (un plan importé depuis un ZIP est déjà sur l'appareil : rien à dire).
+  // Rend le texte de l'avertissement (ou null) : il est affiché dans le message unique
+  // du lancement (test terrain 30/09 : 4 messages successifs masquaient les boutons).
   async function _verifierHorsLigne() {
     try {
       const id = window._currentLoadedPlanId;
       const R = window.PlanRegistry, PO = window.PlanOffline;
       const e = (id && R && typeof R.findById === "function") ? R.findById(id) : null;
-      if (!e || e.type !== "server" || !PO || !PO.supporte()) return;
+      if (!e || e.type !== "server" || !PO || !PO.supporte()) return null;
       const st = await PO.statut(id);
-      if (st && st.etat === "complet") return;
-      _toast(t("secours.b10.pasHorsLigne"), "warn");
+      if (st && st.etat === "complet") return null;
       const s = _scenarioEnCours();
       if (s) { _journaliser(s, "secours.mc.pasHorsLigne", {}); _commitMutation(s); }
-    } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); }
+      return t("secours.b10.pasHorsLigne");
+    } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); return null; }
   }
 
   // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
@@ -1953,21 +1955,24 @@
   // l'ENTRÉE de l'équipe. Position pas encore confirmée (suivi éteint, jamais recalé) →
   // automatique ; déjà confirmée → on demande (téléporter sans prévenir effacerait une
   // position juste). `teleport` : le saut ne compte pas comme un trajet parcouru.
+  // Placement automatique → rend le texte à glisser dans le message du lancement.
+  // Question (position déjà confirmée) → rend null, et le message suit la réponse.
   function _placerAEntree(sid, gid) {
     const s = get(sid);
     const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
     const e = g && g.entree;
-    if (!e || typeof e.x !== "number" || typeof window.recalerTrackerSurPoint !== "function") return;
+    if (!e || typeof e.x !== "number" || typeof window.recalerTrackerSurPoint !== "function") return null;
     const nom = e.label || _lblEtape(_fmtPoint(e));
     const placer = function() {
       window.recalerTrackerSurPoint(e.x, e.y, Number.isInteger(e.level) ? e.level : undefined, { teleport: true });
-      _toast(t("secours.entree.place", { entree: nom }), "info");
+      return t("secours.entree.place", { entree: nom });
     };
     const etat = (typeof window.getTrackingPositionEtat === "function") ? window.getTrackingPositionEtat() : null;
-    if (!etat || (!etat.confirmee && !etat.suiviActif) || typeof window.ktaConfirm !== "function") { placer(); return; }
+    if (!etat || (!etat.confirmee && !etat.suiviActif) || typeof window.ktaConfirm !== "function") return placer();
     window.ktaConfirm(t("secours.entree.proposer", { entree: _escHtml(nom) }),
                       { titre: t("secours.entree.titre"), okLabel: t("secours.entree.ok"), cancelLabel: t("secours.entree.non") })
-      .then(function(ok) { if (ok) placer(); });
+      .then(function(ok) { if (ok) _toast(placer(), "warn"); });   // warn : visible en « Essentielles »
+    return null;
   }
 
   // Le scénario dont l'intervention tourne sur ce plan (au plus un en pratique).
@@ -8740,7 +8745,6 @@
         try { onConfirm({ role: role, currentEquipeId: equipeId }); } catch(e) {
           console.warn("[SecoursMode] onConfirm exception :", e);
         }
-        _verifierHorsLigne();   // B10 : prévenir (sans bloquer) si le plan n'est pas hors-ligne
       });
     });
     document.addEventListener("keydown", _onKey);
@@ -9729,12 +9733,19 @@
       corps.querySelectorAll('[data-action="ouvrir-lancer-modale"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _afficherModaleLancer(s.id, function(opts) {
-            const lancer = function() {
+            // Test terrain (30/09) : UN message au lancement. Quatre messages successifs
+            // (lancé, placé, retard, hors-ligne) masquaient « Suivre mon parcours » ~10 s,
+            // et en réglage « Essentielles » le placement (info) n'était jamais vu.
+            const lancer = async function() {
               lancerExecution(s.id, opts);
-              _toast(t("secours.toast.planLance"), "info");
               _switchView("live");
+              const lignes = [t("secours.toast.planLance")];
               // Demande KARMA (30/09) : en mode équipe, se retrouver à l'entrée de son équipe.
-              if (opts && opts.role === "equipe" && opts.currentEquipeId) _placerAEntree(s.id, opts.currentEquipeId);
+              const place = (opts && opts.role === "equipe" && opts.currentEquipeId) ? _placerAEntree(s.id, opts.currentEquipeId) : null;
+              if (place) lignes.push(place);
+              const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
+              if (horsLigne) lignes.push(horsLigne);
+              _toast(lignes.join("\n"), (place || horsLigne) ? "warn" : "info");
             };
             // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
             // photos (reçues des équipes comprises) — on le dit avant.

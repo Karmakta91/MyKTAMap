@@ -9274,7 +9274,12 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   color: #c8d0e0;
   line-height: 1.45;
   animation: kta-toast-in 0.3s ease-out both;
+  /* Test terrain (30/09) : posé sur une fenêtre, le message captait les touchers
+     pendant 10 s (bouton « Suivre mon parcours » inutilisable). Il laisse passer,
+     sauf sa croix. */
+  pointer-events: none;
 }
+.kta-toast-close { pointer-events: auto; }
 
 .kta-toast-error {
   border-left-color: #ff6b6b;
@@ -9297,6 +9302,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 .kta-toast-msg {
   flex: 1;
   word-wrap: break-word;
+  white-space: pre-line;   /* un message peut regrouper plusieurs lignes (lancement Secours) */
   color: #e8eaf0;
 }
 
