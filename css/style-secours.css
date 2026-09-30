@@ -2979,3 +2979,6 @@ body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-se
 /* B10 (vague 7b) : raccourcis de sécurité de la vue équipe */
 .kta-secours-raccourcis { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .kta-secours-raccourcis .kta-btn { flex: 1 1 30%; }
+
+/* Contre-audit IGC (30/09) : étapes loin des galeries, sur la fiche d'équipe */
+.kta-secours-groupe-loin { font-size: 12px; line-height: 1.4; margin: 4px 0 6px; }

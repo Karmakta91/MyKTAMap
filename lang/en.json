@@ -3473,6 +3473,7 @@
   "search.zoneType.effondrement": "Collapse",
   "search.zoneType.inaccessible": "Inaccessible",
   "search.zoneType.remblais": "Backfill",
+  "secours.loin.liste": "{n} step(s) more than 25 m from a gallery, as the crow flies: {liste}. Check where they are placed.",
   "secours.statut.non-renseigne": "Passed, not reported",
   "secours.num.etape": "Step {n}",
   "secours.num.sortie": "Exit",

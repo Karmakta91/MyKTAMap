@@ -3473,6 +3473,7 @@
   "search.zoneType.effondrement": "Effondrement",
   "search.zoneType.inaccessible": "Inaccessible",
   "search.zoneType.remblais": "Remblais",
+  "secours.loin.liste": "{n} étape(s) à plus de 25 m d'une galerie, à vol d'oiseau : {liste}. Vérifie leur emplacement.",
   "secours.statut.non-renseigne": "Passée, non renseignée",
   "secours.num.etape": "Étape {n}",
   "secours.num.sortie": "Sortie",

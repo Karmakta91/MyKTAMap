@@ -2149,6 +2149,28 @@
   // le tracé. Ils sont gardés sur l'équipe (`g.guidage`) et partent avec le .mkmsec :
   // le téléphone peut guider sans recalculer. `n` = nombre de points du tracé, pour
   // reconnaître des données qui ne correspondent plus au tracé (recalcul au besoin).
+  // Contre-audit IGC (30/09) : seule la PIRE étape au-delà de 50 m était signalée —
+  // une étape à 31 m d'une galerie passait sans un mot. Toutes les étapes à plus de
+  // SEUIL_ETAPE_LOIN_M de la galerie la plus proche (à vol d'oiseau), numérotées
+  // comme sur la carte (E, 1…N, S), d'après les raccords du dernier calcul.
+  const SEUIL_ETAPE_LOIN_M = 25;   // 15 m (proposé par l'audit) signalait les POI posés dans une salle, à 16-19 m de l'axe tracé
+  function _etapesLoin(raccords) {
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const arr = Array.isArray(raccords) ? raccords : [];
+    return arr.map(function(r, i) {
+      const idx = Number.isInteger(r && r.index) ? r.index : i;
+      const num = (r && r.role === "depart") ? "E" : (r && r.role === "arrivee") ? "S" : String(idx);
+      return { num: num, nom: (r && r.label) ? _lblEtape(r.label) : "", distM: ((r && Number(r.distPx)) || 0) / pxParM };
+    }).filter(function(e) { return e.distM >= SEUIL_ETAPE_LOIN_M; });
+  }
+  function _texteEtapesLoin(liste) {
+    if (!liste.length) return "";
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : Math.round(m) + " m"; };
+    const items = liste.slice(0, 6).map(function(e) {
+      return e.num + (e.nom ? " « " + e.nom + " »" : "") + " " + fmt(e.distM);
+    }).join(" · ") + (liste.length > 6 ? " …" : "");
+    return t("secours.loin.liste", { n: liste.length, liste: items });
+  }
   function _donneesGuidage(r) {
     return {
       carrefours: Array.isArray(r && r.carrefours) ? r.carrefours : [],
@@ -8682,6 +8704,11 @@
                     '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
                     '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
+                  // Étapes loin des galeries, gardées en vue après le calcul (30/09).
+                  ((Array.isArray(g.itineraireSuggere) && g.guidage)
+                    ? (function() { const txt = _texteEtapesLoin(_etapesLoin(g.guidage.raccords));
+                        return txt ? '<div class="kta-secours-groupe-loin kta-tx-warn">⚠️ ' + _escHtml(txt) + '</div>' : ''; })()
+                    : '') +
                   // 🆕 v1.22.0-fix2 : section Parcours avec entrée + intermédiaires[] + sortie
                   _renderParcoursSection(g) +
                   '<div class="kta-secours-groupe-actions">' +
@@ -11943,9 +11970,8 @@
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
           lignesCalc.push(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }));
         }
-        const IG = window.ItiGuidage;
-        const loin = (IG && typeof IG.alerteRaccord === "function") ? IG.alerteRaccord({ raccords: r.raccords }) : null;
-        if (loin) lignesCalc.push("⚠️ " + IG.texteAlerteRaccord(loin));
+        const loin = _texteEtapesLoin(_etapesLoin(r.raccords));   // toutes, plus seulement la pire
+        if (loin) lignesCalc.push("⚠️ " + loin);
         _toast(lignesCalc.join("\n"), lignesCalc.length > 1 ? "warn" : "info");
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
