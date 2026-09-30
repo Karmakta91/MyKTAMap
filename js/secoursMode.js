@@ -1595,7 +1595,33 @@
   }
   function _chef(g) {
     const m = (g && Array.isArray(g.membres)) ? g.membres : [];
-    return (g && g.chef && m.indexOf(g.chef) >= 0) ? g.chef : (m[0] || null);
+    // Sans liste de membres, le chef se saisit librement (contre-audit GRIMP 30/09 :
+    // 7 équipes sur 8 du scénario réel n'avaient ni membres ni chef possible).
+    if (g && g.chef && (!m.length || m.indexOf(g.chef) >= 0)) return g.chef;
+    return m[0] || null;
+  }
+  // Contrôle des engagés, pour la vue opérateur (contre-audit GRIMP 30/09 : aucun
+  // total nulle part). Équipes de la phase en cours ; effectif inconnu = compté à part.
+  function _bilanEngages(s) {
+    const r = { engages: 0, sousTerre: 0, manquants: 0, inconnus: [] };
+    const ph = _phaseCour(s);
+    (s.groupes || []).forEach(function(g) {
+      if (!_groupeParticipeAPhase(s, g.id, ph)) return;
+      const eff = _effectif(g), su = _suiviEquipe(s, g.id) || {};
+      if (!eff) { if (!su.rentreeAt) r.inconnus.push(g.nom); return; }
+      r.engages += eff;
+      if (!su.rentreeAt) r.sousTerre += eff;
+      else { const m = _manquants(g, su); r.manquants += m; r.sousTerre += m; }
+    });
+    return r;
+  }
+  function _renderBilanEngages(s) {
+    const b = _bilanEngages(s);
+    const alerte = b.manquants > 0 || b.inconnus.length > 0;
+    return '<div class="kta-secours-bilan ' + (b.manquants > 0 ? 'kta-tx-err' : alerte ? 'kta-tx-warn' : '') + '">' +
+             '👥 ' + _escHtml(t("secours.bilan.ligne", { engages: b.engages, sousTerre: b.sousTerre, manquants: b.manquants })) +
+             (b.inconnus.length ? ' · ' + _escHtml(t("secours.bilan.inconnus", { n: b.inconnus.length, noms: b.inconnus.join(", ") })) : '') +
+           '</div>';
   }
   // Personnes manquantes à la rentrée (0 si tout le monde est remonté ou effectif inconnu).
   function _manquants(g, su) {
@@ -1700,7 +1726,9 @@
     const eff = _effectif(g);
     const su0 = _suiviEquipe(s, gid) || {};
     const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
-                     valeur: Number.isInteger(su0.remontes) ? su0.remontes : (eff || null), min: 0, max: 99 };
+                     // Jamais prérempli avec l'effectif (contre-audit GRIMP 30/09) : un seul
+                     // « Valider » donnait « 3/3 » sans que personne n'ait compté.
+                     valeur: Number.isInteger(su0.remontes) ? su0.remontes : null, min: 0, max: 99 };
     const msg = t("secours.b9.remontesQuestion", { equipe: _escHtml(g.nom) });
     const ok = (typeof window.ktaConfirm === "function")
       ? await window.ktaConfirm(msg, { titre: t("secours.b9.remontesTitre"), okLabel: t("secours.b9.remontesOk2"), nombre: nombre })
@@ -1709,7 +1737,7 @@
     const compte = (Number.isInteger(nombre.valeur) && nombre.valeur >= 0) ? nombre.valeur : null;
     // Effectif connu : le compte est obligatoire. Inconnu : on peut valider sans compte
     // (sinon une équipe aux membres non nommés ne pourrait jamais être déclarée rentrée).
-    if (compte === null && eff) return false;
+    if (compte === null && eff) { _toast(t("secours.b9.compteRequis"), "warn"); return false; }
     const s2 = get(sid);
     if (!s2 || !_estExecutionActive(s2)) return false;
     const su = _suiviEquipe(s2, gid, true);
@@ -4240,7 +4268,7 @@
       g.membres = partial.membres.slice();
     }
     // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
-    if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef) ? partial.chef : null;
+    if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef.trim()) ? partial.chef.trim().slice(0, 60) : null;
     if ("effectif" in partial) {
       const n = parseInt(partial.effectif, 10);
       g.effectif = (Number.isFinite(n) && n > 0 && n < 100) ? n : null;
@@ -5991,6 +6019,8 @@
         const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
                            ? g.membres.join(", ") : t("secours.surf.membresNonRenseignes");
         pdf.text(t("secours.surf.membresLigne", { membres: membresStr }), margin + 2, y); y += 4;
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+                                                 effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin + 2, y); y += 4;
         if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
             && typeof g.surfaceGps.lng === "number") {
           const gLat = g.surfaceGps.lat.toFixed(6);
@@ -7188,6 +7218,9 @@
         pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
         pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : t("secours.pdf.nonRenseignes"), margin, y);
+        y += 4;
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+                                                 effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin, y);
         y += 8;
         // Section Mission
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
@@ -8709,7 +8742,8 @@
                           (g.membres || []).map(function(m) {
                             return '<option value="' + _escAttr(m) + '"' + (m === _chef(g) ? ' selected' : '') + '>' + _escHtml(m) + '</option>';
                           }).join('') + '</select>'
-                      : '<span class="kta-tx-muted">' + t("secours.b9.chefSansMembres") + '</span>') +
+                      : '<input type="text" data-action="edit-chef" data-gid="' + _escAttr(g.id) + '" maxlength="60" style="width:10em;"' +
+                        ' value="' + _escAttr(g.chef || "") + '" placeholder="' + _escAttr(t("secours.b9.chefPlaceholder")) + '">') +
                     '<label>' + t("secours.b9.effectifLabel") + '</label>' +
                     '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1" style="width:5em;"' +
                       ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
@@ -9344,6 +9378,7 @@
               '</div>' +
             '</div>';
     html += _renderBandeauVictimesOp(s);
+    html += _renderBilanEngages(s);   // 👥 engagés · sous terre · manquants
 
     // Grille cards équipes
     if (groupes.length === 0) {
@@ -10016,7 +10051,13 @@
               if (place) lignes.push(place);
               const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
               if (horsLigne) lignes.push(horsLigne);
-              _toast(lignes.join("\n"), (place || horsLigne) ? "warn" : "info");
+              // Contrôle des engagés : sans effectif, la rentrée ne compte personne.
+              let sansEff = null;
+              if (opts && opts.role === "operateur") {
+                const inc = _bilanEngages(get(s.id)).inconnus;
+                if (inc.length) { sansEff = t("secours.bilan.lancementSansEffectif", { n: inc.length, noms: inc.join(", ") }); lignes.push(sansEff); }
+              }
+              _toast(lignes.join("\n"), (place || horsLigne || sansEff) ? "warn" : "info");
             };
             // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
             // photos (reçues des équipes comprises) — on le dit avant.

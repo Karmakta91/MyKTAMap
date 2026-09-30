@@ -2982,3 +2982,7 @@ body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-se
 
 /* Contre-audit IGC (30/09) : étapes loin des galeries, sur la fiche d'équipe */
 .kta-secours-groupe-loin { font-size: 12px; line-height: 1.4; margin: 4px 0 6px; }
+
+/* Contre-audit GRIMP (30/09) : bilan des engagés, en tête de la vue opérateur */
+.kta-secours-bilan { font-size: 13px; font-weight: 600; margin: 0 0 10px; padding: 6px 10px;
+  border-radius: 8px; background: rgba(140, 180, 255, 0.08); }
