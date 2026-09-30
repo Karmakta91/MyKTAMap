@@ -2,11 +2,9 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier grand ménage : 29/09/2026, 2 fois** (tour complet + QCM KARMA, puis après les vagues Secours et les
-> audits doc / thème du soir). Tout ce qui était soldé est sorti ; ce qui a été
-> abandonné volontairement est passé dans **🚫 Enterré**. Les versions antérieures de ce fichier restent lisibles dans
-> l'historique Git (`git log -p docs/BACKLOG.md`) — c'est là que vivent les mesures détaillées des chantiers clos
-> (atlas Gironde, audit icônes, plan orienté…).
+> **Dernier ménage : 30/09/2026.** Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
+> lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
 ## ⚠️ Règle de vérification (à lire avant d'utiliser ce fichier)
 
@@ -32,9 +30,9 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
   rebours → retour automatique du pavé. Base de temps = horloge de l'appareil (`security-legal.md` §36.3).
 - **B5 — Stockage saturé** (livré le 13/09) : bandeau persistant + bouton 💾 Exporter tant que la sauvegarde
   échoue. Non reproductible au harnais (quota) : saturer le stockage d'un téléphone de test.
-- **Mode Secours v1.98.14-15 sur iPhone** : phases lisibles, bouton « Éditer » sombre ; intervention lancée en
-  équipier → fenêtre fermée : zone + tracé + pastille « 🚨 Secours · … › » ; toucher un POI pour l'entrée le prend
-  (pas de fiche) ; **GPS en vue équipier** (seule vue que le test n'a pas atteinte).
+- **Mode Secours v1.98.24 sur iPhone** : « Suivre mon parcours » démarre le suivi (permission des capteurs iOS
+  demandée dans le geste) ; valider une étape recale la position (question au-delà de 30 m) ; écran XL avec un long
+  itinéraire ; champ « Retour impératif » (sélecteur d'heure natif).
 - ⚠️ **Toujours tester APRÈS un bump** : le service worker ne change de cache qu'au bump de `CACHE_NAME`. Entre deux
   commits, un téléphone qui a déjà chargé l'app garde l'ancien JS — c'est ce qui a fait voir à KARMA un « tourner à
   gauche » déjà corrigé (27/09/2026).
@@ -48,40 +46,26 @@ Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 trac�
 
 ## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
 
-Livré en v1.98.0 (`docs/ETUDE_GUIDAGE.md`, archi : `docs/architecture/tracking.md` §Guidage). Les deux choix faits
-par Claude en sortie d'urgence (bandeau affiché même réglé sur « Jamais », « Y aller » sans demande de remplacement)
-ont été **validés par KARMA le 29/09**. Reste :
+Décisions : `docs/ETUDE_GUIDAGE.md` ; archi : `docs/architecture/tracking.md` §Guidage.
 
 - 🟡 **Itinéraires inter-plans non couverts** : `interPlanRoute.js` crée ses roads sans `raccords` / `carrefours`
   → pas de pointillé, raccord non compté, et le bandeau n'y dit que l'arrivée (aucun croisement connu). Brancher
   `_champsGuidage`. ⚠️ doc seule (non re-vérifié le 29/09).
-- **Mode Secours** : le module ne crée **aucune** road → c'est **B1**, vague 6 de la section 🚑 ci-dessous.
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
-Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Les **correctifs**
-(vagues 1 à 4bis, 4 relectures adversariales), les **retours terrain iPhone** et les **vagues 5 à 7** (victime, retards, rappel ; guidage ; main courante, remontés, secouriste ; parcours par phase, couverture, hors-ligne) sont livrés de v1.98.5 à v1.98.20 —
-détail dans le journal du `README.md`. Reste : la vague 8 (lot C) et deux compléments, à ouvrir quand le terrain le demande ;
-un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage**
-(cf. 📋 Popups natives).
-
-| Vague | Contenu |
-|---|---|
-| 8 — Plus tard | lot C |
+Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Un commit par
+case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
+natives).
 
 - **Vague 8b — couverture honnête** (contre-audits du 30/09) : deux chiffres, « dans une zone » ET « sur un parcours »,
   **par niveau**, + linéaire affecté à deux équipes, + galeries hors parcours surlignées sur la carte. Mesuré sur le
   scénario réel : 93 % en zone, 21-24 % sur un parcours, −1 : 80 % contre 4,9 %. **S-M**
 - **Vague 8b — zones liées à un niveau** : polygone rattaché à un niveau (ou « tous »), alerte « galeries au −1, aucun
   parcours n'y descend ». **M**
-- **Donnée (KARMA seul)** : taguer les vrais accès du plan et leur état, donner un niveau aux 18 POI d'accès et aux 47
-  tracés sans niveau, ajouter un 3ᵉ point de calage GPS (l'erreur du calage à 2 points n'est pas mesurable).
 - **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
   recadré — sur Pandemonium, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
   zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
-- **Briefing pompiers — capture OSM sans accord OSM** : **décidé le 30/09 par KARMA — laissé en l'état** (l'accord OSM
-  est activé par défaut et rarement coupé). À savoir : sans accord, la capture charge quand même les tuiles
-  `tile.openstreetmap.org` — `NETWORK_AUDIT` ne le dit pas. Ne pas reproposer sans élément nouveau.
 - **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
   lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
@@ -89,12 +73,12 @@ un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
   exercices le réclament **M**.
 
-⚠️ **Côté DATA (KARMA seul)** : le plan de test n'a qu'un accès ouvert tagué et aucun `entree_plan` ; 47 tracés et
-44 POI sans niveau. Le moins cher des correctifs, et le seul qu'aucun code ne remplace.
+⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
+`entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
+GPS (l'erreur d'un calage à 2 points n'est pas mesurable). Le moins cher des correctifs, et le seul qu'aucun code ne
+remplace.
 
 ## 🎨 Thème et langues — reliquats des audits du 29/09/2026
-
-Corrections livrées en v1.98.13 (journal `README.md`). Reste :
 
 - **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
   (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
@@ -122,8 +106,7 @@ obligatoires.
 ## 🎨 Harmoniser les icônes par défaut — gardé de côté, non prioritaire
 
 Demande KARMA du 26/09 : unifier les icônes par défaut (« avoir des trucs vecto telles que portail, ou entrée
-plan »). L'étage 1 (catalogue, 404, `entree_plan`) est **soldé en v1.97.9**. Mis de côté le 29/09, sans arbitrage.
-Si on le rouvre, trois faits mesurés à ne pas repayer :
+plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits mesurés à ne pas repayer :
 
 - **Le 🌀 vs `portail.png`** : le même objet a deux visages — PNG sur la carte, la légende, les filtres, la Vue OSM
   et les exports ; emoji 🌀 dans les liaisons, la popup de création, « Mes liaisons », l'itinéraire inter-plan et le
@@ -160,9 +143,8 @@ de coder** : que VisualTopo soit bien le format le plus répandu chez les cataph
 
 ## 🧹 Code mort — ce qui reste de l'audit du 09/08/2026
 
-> Les lots ①②③④ sont exécutés (09/08) et le CSS mort du chargeur retiré (29/09). Ne restent ici que ce qui est
-> ouvert (🟡), ce qui ne doit jamais être supprimé (📌) et les deux leçons qui protègent le prochain nettoyage.
-> ⚠️ Les numéros de ligne ont dérivé : les re-vérifier avant d'agir.
+> Ce qui est ouvert (🟡), ce qui ne doit jamais être supprimé (📌) et les deux leçons qui protègent le prochain
+> nettoyage. ⚠️ Les numéros de ligne ont dérivé : les re-vérifier avant d'agir.
 
 **⚠️ Correctif d'inventaire** : sur 76 paires de sélecteurs CSS dupliqués signalées le 09/08, **8 seulement sont
 intégralement mortes** — le reste est du *layering volontaire* (override **partiel**). Toute suppression de
@@ -181,11 +163,6 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 
-### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
-Script local d'`index.html` = entrée du pré-cache : **tenu par `check-html-integrite.js` §5** depuis le 29/09 (un
-module manquait, `planOffline.js`) · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 0 id
-HTML orphelin.
-
 ---
 
 ## 🔴 Dettes ouvertes
@@ -200,9 +177,7 @@ HTML orphelin.
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
 | **D-confirm** | `confirm()` natifs hors charte | 📋 au fil de l'eau — cf. **📋 Popups natives** | personne |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
-| **D4** | `<script>` inline d'`index.html` | ⚪ description périmée, re-mesurée le 31/08 | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
-| **D8** | `secoursPlan.groupes[].statut` | ⚪ faux positif : le champ est exploité | aucune action |
 
 ### 🟠 Bloquées sur KARMA — une mesure à faire, pas de code
 
@@ -223,9 +198,7 @@ fix de la v1.77.0.*
 
 | # | Sujet | Pourquoi on ne fait rien |
 |---|---|---|
-| D4 | `<script>` inline d'`index.html` — « monolithe » **PÉRIMÉ** (31/08 : 305 lignes d'inline sur 1 823, 3 modules extraits en v1.66.0) | Plus une dette prioritaire — **ne pas re-signaler sans re-mesurer** |
 | D7 | Duplication ~2 fonctions pickers géoréf ↔ picker départ tracker (⚠️ doc seule, `tracking.md`) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît** |
-| D8 | `secoursPlan.groupes[].statut` — signalé mort par la doc, **il est exploité** (✅ vérifié) | Rappel que la doc mentait |
 
 #### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
 
@@ -252,18 +225,4 @@ fix de la v1.77.0.*
 | **Transparence des plans issus d'un scan** | Enterré le 29/09 : un JPEG n'a pas d'alpha ; l'opacité compense, c'est accepté |
 | **Plan orienté : indicateur de Nord, contre-rotation des tooltips, inertie du pan** | « Bien comme ça pour le moment » (KARMA, 29/09) |
 | **Guidage : voix / vibration, validation terrain chiffrée des seuils** | Enterré le 29/09 |
-
-## ✅ Corrections d'inventaire — ne pas les re-signaler comme dettes
-
-Signalées à tort (doc périmée), **elles sont faites** — vérifiées dans le code aux dates indiquées :
-- **Heatmap** — active depuis v1.21.2 · *01/08*
-- **KMZ Secours Phase 2** — `_emitSecoursFolder` livré en v1.23.0 · *01/08*
-- **Résolveur de styles (légende, vagues 1 à 4) et override de couleur des built-in** — terminé ; `check-style-canon` confronte **0 déclaration**, `check-kml-styles.js` verrouille la couleur custom en KMZ · *31/08*
-- **ex-D6 « constantes `ITI_*` dupliquées »** — les survivants sont des vitesses / pauses / clés, aucune couleur · *31/08*
-- **D1 « les PDF du Mode Histoire ne voyagent pas »** — soldée en v1.81.0 (case opt-in de l'export de profil, `check-profile-histpdf.js`) · *02/09*
-- **D2 « contenus longs en espagnol »** — soldée en v1.80.0 ; les trois langues du guide sont tenues par `check-doc-langues.js` depuis v1.98.0 · *01/09*
-- **D-home-mini « footer coupé sans scroll sous 760 px »** — non reproduite sur 6 configurations ; la fausse mesure venait d'un overlay (splash, modale) qui mangeait la molette. Verrouillé par `checkup-home-scroll.js` · *02/09*
-- **D5 « liaisons portails sur OSM »** — soldée en contrôle qualité (`InterPlanLinks.ecartCalage`, badge `📐 Écart de calage`) · *03/09*
-- **Fusion de sessions** — existe (`sessionExporter.js` > `_fusionInputs`, `_fusionMerged`) : **ne pas la reproposer** · *03/09*
-- **« Vue OSM : les couleurs de la légende personnalisée ne l’atteignent pas »** — FAUX : `osmView.js` résout par `ktaResolveStyle` (override + `cust-…`), le widget HOME relit la légende **par plan** depuis v1.77.0 ; confirmé sur appareil par KARMA · *29/09*
-- **Carnet : session ≠ sortie (ex-L3)** — soldé ; changer de plan suspend la sortie (v1.98.1) · *29/09*
+| **Briefing pompiers : pas de capture OSM sans accord OSM** | Laissé en l'état le 30/09 (accord OSM activé par défaut, rarement coupé). Sans accord, la capture charge quand même les tuiles `tile.openstreetmap.org` |
