@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.19` (30/09/2026)
+## 📦 Version courante — `v1.98.20` (30/09/2026)
+
+> 🗂️ **v1.98.20 — Mode Secours, vague 7b (planification)** : parcours prévu gardé à chaque clôture de phase ; bloc « 📊 Couverture » (galeries couvertes, POI hors parcours, POI en double) ; avertissement si le plan n'est pas hors-ligne au lancement ; raccourcis Sortie d'urgence / XL / Je suis perdu.
 
 > 👥 **v1.98.19 — Mode Secours, vague 7a (sécurité et traçabilité)** : chef + effectif par équipe et compte des remontés à la rentrée (alerte rouge « personne manquante ») ; main courante horodatée (vue opérateur, rapports, fusion) ; le rapport du secouriste libre est accepté.
-
-> 🧭 **v1.98.18 — Mode Secours, vague 6 (guidage)** : « Suivre mon parcours » fait du parcours d'une équipe l'itinéraire de l'app (bandeau de guidage, feuille de route, XL), étapes validées cochées, recalcul vers la prochaine étape non faite avec les évitements du Secours ; feuille de route carrefour par carrefour dans le PDF de briefing.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.20 (30/09/2026) — Mode Secours, vague 7b : planification
+
+- 🔍 **Origine** : seconde moitié de la vague 7. Décisions KARMA 6:a 7:a 8:a.
+- 🗂️ **Un parcours par phase** (`b094e0d`) : `terminerPhase` → `_archivePhaseParcours` (`s.execution.parcoursArchive[phase][gid]` : libellés, distance, durée) ; « Parcours prévu : … » dans chaque PHASE CLOSE du PDF.
+- 📊 **B3 — Couverture** (`96f473e`) : `_calculerCouverture` (galeries couvertes par tracés de zone ou milieu de segment dans un polygone ; POI dans une zone hors parcours ; POI communs) ; bloc de la vue édition, calculé à l'ouverture ; niveaux non distingués (dit dans le bloc).
+- 📴 **B10** (`5e5a3e5`) : `_verifierHorsLigne` au lancement (plan `type: "server"` et `PlanOffline.statut ≠ complet` → avertissement + main courante, sans bloquer) ; raccourcis Sortie d'urgence / Écran XL / Je suis perdu dans la vue équipe.
+- ✅ **Tests** : checkups navigateur par case (parcours de phase 1 gardé après replanification, couverture sur le plan de test, avertissement hors-ligne, trois raccourcis), PDF régénéré et relu, 16 harnais Node, checkups vagues 5 à 7a.
 
 #### v1.98.19 (30/09/2026) — Mode Secours, vague 7a : sécurité et traçabilité
 

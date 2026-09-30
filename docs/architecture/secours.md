@@ -1621,3 +1621,9 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon nombre de membres). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
 - **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`.
 - **Secouriste** : `_parsePayloadReport` rend `{ ok, payload, secouriste: true }` → `_importerNotesSecouriste` (pas d'aperçu, pas de fusion d'étapes).
+
+## 🗂️ Vague 7b (v1.98.20, 30/09/2026) — parcours par phase, couverture, hors-ligne
+
+- **Parcours par phase** : `s.execution.parcoursArchive[phaseIdx][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }`, écrit par `terminerPhase` (`_archivePhaseParcours`), lu dans `historique[].parcours` du rapport. Copie légère (pas de géométrie) : le parcours EN COURS reste `g.entree/intermediaires/sortie`. Préparer la phase 2 pendant la phase 1 (option 6:b) n'est PAS fait.
+- **Couverture** : `_calculerCouverture(s)` — pur calcul, sans effet ; POI = `getAllEmbeddedPoints` (POI du plan) ; niveaux ignorés.
+- **Hors-ligne** : `_verifierHorsLigne()` après la confirmation de lancement ; ne concerne que `PlanRegistry.findById(id).type === "server"`.

@@ -1687,6 +1687,8 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 > 👥 **Leader, headcount, people back up and log**: each team has a **👤 leader** (chosen among its members) and a **headcount**. At **✅ Back**, the app asks **how many came back up**: below the headcount, a **red alert "N person(s) missing"** stays on screen (and the bottom badge turns red) until the count is corrected. The **📜 log** (operator view) records everything, time by time: launch, statuses, victim, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It travels in team reports and is printed as an annex of the report. The **free rescuer's report** can now be imported like a team's: their notes join the log, at their time.
 
+> 🗂️ **Preparing and relaunching**: when a phase is closed, each team's **planned route** is kept — replanning the next phase no longer erases it, and the report shows each phase's route. In the edit view, the **📊 Coverage** block (computed when opened) gives the **share of galleries covered** by the zones, the **POIs inside a team's zone but off its route**, and the **POIs visited by several teams** — a reading aid, nothing is assigned automatically. At launch, the app **warns you if the map is not fully available offline** on the device (server map not downloaded). In the team view, three shortcuts: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost**.
+
 #### Map visualization
 
 **🗺️ View on map** button in the edit header. Displays for each team (dedicated color):

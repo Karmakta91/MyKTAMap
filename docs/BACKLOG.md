@@ -60,21 +60,18 @@ ont été **validés par KARMA le 29/09**. Reste :
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
 Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Les **correctifs**
-(vagues 1 à 4bis, 4 relectures adversariales), les **retours terrain iPhone** les **vagues 5, 6 et 7a** (victime, retards, rappel ; guidage ; main courante, remontés, secouriste) sont livrés de v1.98.5 à v1.98.19 —
-détail dans le journal du `README.md`. Il ne reste que la **refonte**, dans cet ordre (validé KARMA le 29/09) ;
+(vagues 1 à 4bis, 4 relectures adversariales), les **retours terrain iPhone** et les **vagues 5 à 7** (victime, retards, rappel ; guidage ; main courante, remontés, secouriste ; parcours par phase, couverture, hors-ligne) sont livrés de v1.98.5 à v1.98.20 —
+détail dans le journal du `README.md`. Reste : la vague 8 (lot C) et deux compléments, à ouvrir quand le terrain le demande ;
 un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage**
 (cf. 📋 Popups natives).
 
 | Vague | Contenu |
 |---|---|
-| 7b — Planification | un parcours par phase · B3 · B10 |
 | 8 — Plus tard | lot C |
 
 - **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
   lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
-- **B3 — Couverture** : POI non affectés / en doublon, puis % du linéaire couvert. **M**
-- **Un parcours par phase** (décision 6:a) : copie du parcours à la clôture d'une phase. **S-M**
-- **B10** — contrôle hors-ligne au lancement, liens Sortie d'urgence / XL, `pointsCles`. **S à M**
+- **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
   exercices le réclament **M**.
