@@ -139,6 +139,17 @@
       : info.label;
   }
   // Version ASCII (pour PDF jsPDF latin1) — retire les accents du label i18n.
+  // Contre-audit GRIMP (30/09) : une même étape portait deux numéros à l'écran
+  // (« Étape 6/41 » en tête, « ÉTAPE 5 » dans le bloc). Numéro unique, celui de la
+  // carte et des PDF : entrée « E », étapes 1…N (intermédiaires), sortie « S ».
+  function _numEtape(et, idx) {
+    return (et && et.type === "entree") ? "E" : (et && et.type === "sortie") ? "S" : String(idx);
+  }
+  function _nomEtape(et, idx) {
+    return (et && et.type === "entree") ? t("secours.num.entree")
+         : (et && et.type === "sortie") ? t("secours.num.sortie")
+         : t("secours.num.etape", { n: idx });
+  }
   function _statutLabelAscii(statutId) {
     return _statutLabel(statutId)
       .normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -235,6 +246,17 @@
       label: "Demi-tour forcé",
       color: "#9d44ff",
       severity: 1
+    },
+    // Contre-audit GRIMP (30/09) : « Étape suivante » sans statut posait RAS — une
+    // étape SAUTÉE devenait « fouillée, rien à signaler » dans le rapport. Statut
+    // posé par l'app seulement (`auto` : jamais proposé en bouton).
+    {
+      id: "non-renseigne",
+      emoji: "⚪",
+      label: "Passée, non renseignée",
+      color: "#8892a4",
+      severity: 0,
+      auto: true
     },
     {
       id: "victime",
@@ -9017,7 +9039,7 @@
                 '<strong>' + _escHtml(g.nom) + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
-                  ' · ' + t("secours.live.etapeCompteur", { n: (idx + 1), total: etapes.length }) +
+                  ' · ' + t("secours.live.etapeCompteur", { nom: _nomEtape(etapes[idx], idx), n: (idx + 1), total: etapes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
@@ -9060,7 +9082,7 @@
                 'title="' + _escAttr(labelType + " — " + _lblEtape(et.label)) + '" ' +
                 'style="--kta-step-color:' + stInfo.color + ';">' +
                 '<span class="kta-secours-live-step-emoji">' + stInfo.emoji + '</span>' +
-                '<span class="kta-secours-live-step-idx">' + (i + 1) + '</span>' +
+                '<span class="kta-secours-live-step-idx">' + _numEtape(et, i) + '</span>' +
               '</button>';
     });
     html += '</div>';
@@ -9092,7 +9114,7 @@
               '<div class="kta-secours-live-etape-statuts-rapides">' +
                 '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.live.saisieRapide") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
-                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const isSel = (st.id === etape.statut);
                     const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn' + (isSel ? ' kta-secours-live-statut-btn-sel' : '') + '" ' +
@@ -9406,7 +9428,7 @@
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
                    '<span class="kta-secours-op-card-progress-label">' +
-                     t("secours.opCard.etapeProgress", { n: (currentIdx + 1), total: nbEtapes, pct: pctDone }) +
+                     t("secours.opCard.etapeProgress", { nom: _nomEtape(etapes[currentIdx], currentIdx), n: (currentIdx + 1), total: nbEtapes, pct: pctDone }) +
                    '</span>' +
                  '</div>' +
                  '<div class="kta-secours-op-card-statut" style="color:' + highestStatut.color + ';">' +
@@ -9462,7 +9484,7 @@
               '<div class="kta-secours-live-etape-statuts-rapides">' +
                 '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.liveSec.statutAssocie") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
-                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn" ' +
                            'data-action="sec-add-note" data-statut="' + _escAttr(st.id) + '" ' +
@@ -10600,10 +10622,11 @@
         if (_liveEquipeFocusIdx < etapes.length - 1) {
           // En passant à l'étape suivante, marque l'étape actuelle comme
           // "passée" si elle est encore pending (= l'user n'a pas explicitement
-          // mis un statut). Pose un statut RAS par défaut + completedAt.
+          // mis un statut) : « passée, non renseignée » — plus RAS (30/09), qui
+          // affirmait une fouille que personne n'a déclarée.
           const cur = etapes[_liveEquipeFocusIdx];
           if (cur && (!cur.statut || cur.statut === "pending")) {
-            marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "ras");
+            marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "non-renseigne");
           } else if (cur && !cur.completedAt) {
             updateEtape(s.id, equipeId, _liveEquipeFocusIdx, { completedAt: _nowIso() });
           }
@@ -10651,7 +10674,7 @@
         }
         marquerEtapeStatut(s.id, equipeId, idx, statutId);
         const info = _getStatutInfo(statutId);
-        _toast(info.emoji + " " + t("secours.toast.etapeStatut", { n: (idx + 1), statut: _statutLabel(statutId) }), "info");
+        _toast(info.emoji + " " + t("secours.toast.etapeStatut", { nom: _nomEtape(etapes[idx], idx), statut: _statutLabel(statutId) }), "info");
         _switchView("live");
       });
     });
