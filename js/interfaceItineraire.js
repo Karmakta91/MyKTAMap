@@ -90,8 +90,7 @@ function _itiAucunTrace() {
 // Décision KARMA : raccord à vol d'oiseau de plus de 50 m → on avertit sans bloquer.
 function _texteAlerteRaccord(road) {
   if (!window.ItiGuidage) return "";
-  const a = window.ItiGuidage.alerteRaccord(road);
-  return a ? window.I18n.t("guid.alerte.raccordLoin", { dist: window.formatDistance(a.distM, 0) }) : "";
+  return window.ItiGuidage.texteAlerteRaccord(window.ItiGuidage.alerteRaccord(road));
 }
 
 // =========================

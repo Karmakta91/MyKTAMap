@@ -2025,6 +2025,8 @@
   "iti.pick.ouEsTu": "🧭 Where are you? Tap your position on the map to draw the route",
   "guid.aucunTrace": "This plan has no traced gallery: no itinerary can be computed, and guidance would have nothing to say. Draw the galleries first (Trace tool).",
   "guid.alerte.raccordLoin": "The nearest trace is {dist} away as the crow flies. That stretch is not a known gallery: check your position.",
+  "guid.alerte.raccordLoinPoint": "A route point is {dist} from the nearest trace as the crow flies: that stretch is not a known gallery.",
+  "guid.alerte.raccordLoinEtape": "Step \"{nom}\" is {dist} from the nearest trace as the crow flies: that stretch is not a known gallery. Check where the step is placed.",
   "guid.act.tournerGauche": "turn left",
   "guid.act.tournerDroite": "turn right",
   "guid.act.legerGauche": "bear left",

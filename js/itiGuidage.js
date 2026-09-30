@@ -359,6 +359,16 @@
     });
     return pire;
   }
+  // Le texte dépend du bout qui est loin (test terrain 30/09) : « vérifie ta position »
+  // ne vaut que pour le DÉPART. Une étape posée loin des galeries (POI « PA3 » à 68 m
+  // sur Pandemonium) accusait à tort la position de l'équipe, que l'app venait de poser.
+  function texteAlerteRaccord(a) {
+    if (!a) return "";
+    const dist = _fmtM(a.distM);
+    if (a.role === "depart") return _t("guid.alerte.raccordLoin", { dist: dist });
+    return a.label ? _t("guid.alerte.raccordLoinEtape", { nom: a.label, dist: dist })
+                   : _t("guid.alerte.raccordLoinPoint", { dist: dist });
+  }
 
   // =========================
   // TEXTES (traduits au rendu, jamais au chargement)
@@ -413,8 +423,7 @@
     const totalM = (guide.longueurPx + longueurRaccordsPx(road)) / e;
     let lignes = "";
     if (guide.alerteRaccord) {
-      lignes += '<div class="kta-guid-alerte">⚠️ ' +
-        _esc(_t("guid.alerte.raccordLoin", { dist: _fmtM(guide.alerteRaccord.distM) })) + '</div>';
+      lignes += '<div class="kta-guid-alerte">⚠️ ' + _esc(texteAlerteRaccord(guide.alerteRaccord)) + '</div>';
     }
     let n = 0;
     if (guide.depart) {
@@ -862,6 +871,7 @@
   G.pictoSvg             = _pictoSvg;
   G.longueurRaccordsPx   = longueurRaccordsPx;
   G.alerteRaccord        = alerteRaccord;
+  G.texteAlerteRaccord   = texteAlerteRaccord;
   G.ouvrirFeuilleDeRoute = ouvrirFeuilleDeRoute;
   G.RACCORD_ALERTE_M     = RACCORD_ALERTE_M;
   // Lot 2 — bandeau en direct

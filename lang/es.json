@@ -2025,6 +2025,8 @@
   "iti.pick.ouEsTu": "🧭 ¿Dónde estás? Toca tu posición en el mapa para trazar la ruta",
   "guid.aucunTrace": "Este plano no tiene ningún trazado: no se puede calcular un itinerario y el guiado no tendría nada que indicar. Dibuja primero las galerías (herramienta Trazado).",
   "guid.alerte.raccordLoin": "El trazado más cercano está a {dist} en línea recta. Ese tramo no es una galería conocida: comprueba tu posición.",
+  "guid.alerte.raccordLoinPoint": "Un punto del recorrido está a {dist} del trazado más cercano en línea recta: ese tramo no es una galería conocida.",
+  "guid.alerte.raccordLoinEtape": "La etapa «{nom}» está a {dist} del trazado más cercano en línea recta: ese tramo no es una galería conocida. Comprueba dónde está colocada la etapa.",
   "guid.act.tournerGauche": "girar a la izquierda",
   "guid.act.tournerDroite": "girar a la derecha",
   "guid.act.legerGauche": "girar ligeramente a la izquierda",

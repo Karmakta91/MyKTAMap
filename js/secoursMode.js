@@ -11736,11 +11736,18 @@
         });
         const fmtD = (typeof window.formatDistance === "function")
                      ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
-        _toast(t("secours.toast.itiCalcule", { distance: fmtD, duree: duree }), "info");
+        // Un seul message (test terrain 30/09) : le 2e remplaçait le 1er. L'étape
+        // posée loin de toute galerie est signalée ICI, à la préparation, où l'on
+        // peut encore la corriger — pas seulement sous terre.
+        const lignesCalc = [t("secours.toast.itiCalcule", { distance: fmtD, duree: duree })];
         // 🆕 v1.23.0 Phase 2 / Feature B — Feedback fallback avoidances
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
-          _toast(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }), "warn");
+          lignesCalc.push(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }));
         }
+        const IG = window.ItiGuidage;
+        const loin = (IG && typeof IG.alerteRaccord === "function") ? IG.alerteRaccord({ raccords: r.raccords }) : null;
+        if (loin) lignesCalc.push("⚠️ " + IG.texteAlerteRaccord(loin));
+        _toast(lignesCalc.join("\n"), lignesCalc.length > 1 ? "warn" : "info");
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
         if (_overlayLayer) renderOverlay(scenarioId);

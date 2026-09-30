@@ -2025,6 +2025,8 @@
   "iti.pick.ouEsTu": "🧭 Où es-tu ? Tape ta position sur la carte pour tracer l'itinéraire",
   "guid.aucunTrace": "Ce plan n'a aucun tracé : impossible de calculer un itinéraire, et le guidage n'aurait rien à indiquer. Dessine d'abord les galeries (outil Tracé).",
   "guid.alerte.raccordLoin": "Le tracé le plus proche est à {dist} à vol d'oiseau. Ce trajet n'est pas une galerie connue : vérifie ta position.",
+  "guid.alerte.raccordLoinPoint": "Un point du parcours est à {dist} du tracé le plus proche, à vol d'oiseau : ce bout n'est pas une galerie connue.",
+  "guid.alerte.raccordLoinEtape": "L'étape « {nom} » est à {dist} du tracé le plus proche, à vol d'oiseau : ce bout n'est pas une galerie connue. Vérifie l'emplacement de l'étape.",
   "guid.act.tournerGauche": "tourner à gauche",
   "guid.act.tournerDroite": "tourner à droite",
   "guid.act.legerGauche": "tourner légèrement à gauche",
