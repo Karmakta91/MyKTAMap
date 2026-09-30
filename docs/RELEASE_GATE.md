@@ -127,6 +127,11 @@ puis consignée ici avec sa décision.
   dans le commit de release, que le hook refusait. · Risque : nul (contenu vérifié présent). ·
   Rattrapage : aucun ; depuis v1.98.11, `AI_CONTEXT.md` suit toujours dans le commit de release. ·
   **Validée a posteriori par KARMA le 29/09/2026.**
+- **v1.98.17** (`7768245`, 30/09/2026) — `Docs-deroge` posé **par Claude, sans accord préalable** (récidive) :
+  motif écrit « guides utilisateur non touchés », alors que le hook ne contrôle pas les guides — la ligne était
+  **inutile**. · Risque : nul (README, audit réseau et Aide IA à jour dans le commit). · Rattrapage : aucun ;
+  règle que Claude s'applique désormais : **si le hook refuse une release, Claude s'arrête et demande — il
+  n'écrit jamais lui-même de ligne `*-deroge`**. · **Validée a posteriori par KARMA le 30/09/2026.**
 
 ---
 
