@@ -22527,3 +22527,12 @@ body.kta-theme-light .kta-tx-magenta,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-magenta,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-magenta,
 body.kta-theme-light #planLoaderBox .kta-tx-magenta { color: #a0147a !important; }
+
+/* 🐛 30/09/2026 (capture KARMA) — listes déroulantes des FENÊTRES : une <option> ouverte
+   (Windows / Chrome) héritait du texte clair du champ sur le fond BLANC du système
+   → illisible (choix de l'équipe au lancement du Mode Secours, chef, niveau…). Jusqu'ici
+   corrigé composant par composant (Vue OSM, Configuration) ; désormais pour toutes les
+   fenêtres. Le thème clair a sa variante. */
+.kta-readme-modal-overlay select option { background: #1a1f2e; color: #e8eaf0; }
+body.kta-theme-light .kta-readme-modal-overlay select option,
+html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8eb; color: #2a2620; }
