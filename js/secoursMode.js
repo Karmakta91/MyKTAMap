@@ -2018,6 +2018,35 @@
   // l'ENTRÉE de l'équipe. Position pas encore confirmée (suivi éteint, jamais recalé) →
   // automatique ; déjà confirmée → on demande (téléporter sans prévenir effacerait une
   // position juste). `teleport` : le saut ne compte pas comme un trajet parcouru.
+  // Contre-audit GRIMP (30/09) : valider une étape ne recalait pas le suivi — après 5
+  // étapes, 135 m d'écart, et 136 consignes de guidage bâties sur une position qui
+  // dérive. Une étape validée avec un statut qui SUPPOSE d'y être = « Je suis ici » :
+  // recalage silencieux sous RECALAGE_SILENCE_M, question au-delà (la position peut
+  // être juste et l'étape mal posée). Jamais pour « bloqué » / « demi-tour » (on n'y
+  // est pas arrivé), ni pour l'opérateur qui relaie une équipe depuis la surface.
+  const RECALAGE_SILENCE_M = 30;
+  const STATUTS_SUR_PLACE = ["ras", "suspect", "indice", "aide", "victime"];
+  function _recalerSurEtape(sid, gid, idx, statutId) {
+    const s = get(sid);
+    if (!s || !s.execution || s.execution.role !== "equipe" || s.execution._previousRole) return;
+    if (STATUTS_SUR_PLACE.indexOf(statutId) < 0 || typeof window.recalerTrackerSurPoint !== "function") return;
+    const g = (s.groupes || []).find(function(x) { return x.id === gid; });
+    const et = _getEtapesEquipe(s, gid)[idx];
+    if (!g || !et) return;
+    const wps = [g.entree].concat(g.intermediaires || [], [g.sortie]);
+    const w = (et.wid && wps.find(function(x) { return x && x.wid === et.wid; })) || wps[idx];
+    if (!w || typeof w.x !== "number") return;
+    const recaler = function() { window.recalerTrackerSurPoint(w.x, w.y, Number.isInteger(w.level) ? w.level : undefined, { sansReplan: true }); };
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const ecartM = (pos && typeof pos.x === "number") ? Math.hypot(pos.x - w.x, pos.y - w.y) / pxParM : 0;
+    if (ecartM <= RECALAGE_SILENCE_M || typeof window.ktaConfirm !== "function") { recaler(); return; }
+    const fmt = (typeof window.formatDistance === "function") ? window.formatDistance(ecartM, 0) : Math.round(ecartM) + " m";
+    window.ktaConfirm(t("secours.recalage.question", { dist: _escHtml(fmt), etape: _escHtml(_nomEtape(et, idx)) }),
+      { titre: t("secours.recalage.titre"), okLabel: t("secours.recalage.ok"), cancelLabel: t("secours.recalage.non") })
+      .then(function(ok) { if (ok) recaler(); });
+  }
+
   // Placement automatique → rend le texte à glisser dans le message du lancement.
   // Question (position déjà confirmée) → rend null, et le message suit la réponse.
   function _placerAEntree(sid, gid) {
@@ -10641,7 +10670,16 @@
     });
     // B1 : suivre le parcours de l'équipe / revenir à la carte.
     corps.querySelectorAll('[data-action="suivre-parcours"]').forEach(function(btn) {
-      btn.addEventListener("click", function() { _suivreParcours(s.id, btn.getAttribute("data-gid")); });
+      btn.addEventListener("click", function() {
+        // Contre-audit GRIMP (30/09) : « Suivre » ne lançait pas le suivi → bandeau de
+        // guidage vide. On le démarre ICI, dans le geste (iOS n'accorde la permission
+        // des capteurs que sur un geste), par le chemin commun de la tuile ▶️.
+        const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif();
+        if (!actif && typeof window.ktaDemarrerSuivi === "function") {
+          try { window.ktaDemarrerSuivi(); } catch(e) { console.warn("[SecoursMode] démarrage du suivi :", e); }
+        }
+        _suivreParcours(s.id, btn.getAttribute("data-gid"));
+      });
     });
     corps.querySelectorAll('[data-action="suivre-voir-carte"]').forEach(function(btn) {
       btn.addEventListener("click", function() { fermer(); });
@@ -10839,6 +10877,7 @@
           updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
         }
         marquerEtapeStatut(s.id, equipeId, idx, statutId);
+        _recalerSurEtape(s.id, equipeId, idx, statutId);
         const info = _getStatutInfo(statutId);
         _toast(info.emoji + " " + t("secours.toast.etapeStatut", { nom: _nomEtape(etapes[idx], idx), statut: _statutLabel(statutId) }), "info");
         _switchView("live");

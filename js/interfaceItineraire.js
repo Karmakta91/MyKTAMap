@@ -850,7 +850,7 @@ function _toastIti(msg, type) {
   }
 }
 
-window._onTrackerRecale = function(x, y, source) {
+window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
 
@@ -873,6 +873,10 @@ window._onTrackerRecale = function(x, y, source) {
     }
   }
 
+  // Mode Secours (30/09) : recalage sur une étape du parcours qu'on vient de valider
+  // (`sansReplan`) — on est SUR le parcours prévu : l'étape est cochée ci-dessus, pas
+  // de proposition de recalcul à chaque étape.
+  if (opts && opts.sansReplan) return;
   if (_replanTimer) clearTimeout(_replanTimer);
   _replanTimer = setTimeout(function() {
     _replanTimer = null;
