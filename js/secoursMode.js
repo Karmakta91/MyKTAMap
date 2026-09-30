@@ -9027,15 +9027,19 @@
               '</div>' +
             '</div>';
     html += _renderLigneRetour(s, g);   // A4
+    // Retour KARMA (30/09) : l'opérateur de surface qui « prend la main » sur une équipe
+    // la RELAIE (saisie radio) — il n'est pas sous terre. Guidage et raccourcis de
+    // sécurité agissent sur l'appareil qui les affiche : hors de propos à son poste.
+    const relaisSurface = !!s.execution._previousRole;
     // B1 : suivre le parcours (guidage pas à pas) — ou y revenir s'il est déjà suivi.
-    if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+    if (!relaisSurface && Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       const suivi = _roadSuiviActive(s.id);
       html += (suivi && suivi.secours.equipeId === g.id)
         ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + t("secours.suivre.actif") + '</button>'
         : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + t("secours.suivre.btn") + '</button>';
     }
     // B10 : raccourcis de sécurité, à un toucher depuis la vue de l'équipe.
-    html += '<div class="kta-secours-raccourcis">' +
+    if (!relaisSurface) html += '<div class="kta-secours-raccourcis">' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="raccourci-sortie">' + t("secours.b10.sortie") + '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-xl">' + t("secours.b10.xl") + '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-perdu">' + t("secours.b10.perdu") + '</button>' +
