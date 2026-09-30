@@ -441,7 +441,7 @@ Abre la ficha **ℹ️ Información** de un plano de servidor: una sección **�
 **Acciones disponibles** en cada fila:
 
 - **⭐/☆** — fija o desfija el plano al principio de la lista
-- **ℹ️** — abre una ventana de **Información detallada** sobre este archivo (id interno, nombre, versión, autor, tipo, archivo de origen, tamaño, persistencia, modo V1/V2/multinivel, preajuste de rendimiento, fechas de incorporación y de apertura), el **✏️ cambio de nombre de visualización** *(nombre local, 40 caracteres como máximo, práctico para diferenciar dos planos homónimos; campo vacío = vuelta al nombre original; el nombre real del plano se sigue usando para las comprobaciones de archivo)*, la edición de las **🏷️ etiquetas**, y — al final de la ventana — el botón **🗑️ Retirar de la lista** *(el ✕ de las filas ha desaparecido: la eliminación pide confirmación aquí, se acabaron los borrados accidentales)*. Retirar un plano no elimina el archivo ZIP de tu disco, pero sí borra el archivo eventualmente memorizado en la app.
+- **ℹ️** — abre una ventana de **Información detallada** sobre este archivo (id interno, nombre, versión, autor, tipo, archivo de origen, tamaño, persistencia, modo V1/V2/multinivel, preajuste de rendimiento, fechas de incorporación y de apertura), el **✏️ cambio de nombre de visualización** *(nombre local, 40 caracteres como máximo, práctico para diferenciar dos planos homónimos; campo vacío = vuelta al nombre original; el nombre real del plano se sigue usando para las comprobaciones de archivo)*, la edición de las **🏷️ etiquetas**, y — al final de la ventana — el botón **🗑️ Retirar de la lista** *(el ✕ de las filas ha desaparecido: la eliminación pide confirmación aquí, se acabaron los borrados accidentales)*. Retirar un plano no elimina el archivo ZIP de tu disco, pero sí borra el archivo eventualmente memorizado en la app. Si el plano tiene **documentos de historia** (PDF del Modo Historia), la confirmación ofrece una casilla **« Suprimir también sus documentos (X MB) »**, desmarcada: si la dejas así, siguen legibles en 📔 Mi cuaderno → 📖 Relatos.
 - **Clic en la fila** — carga el plano
 
 **Botones en la parte superior de la lista:**
@@ -509,19 +509,26 @@ Al arrancar, estos planos aparecen en **Mis planos** marcados como «descubierto
 
 ### ⚙️ Ventana «Configuración» (cargador)
 
-En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del cargador (junto a 📖 Documentación y 🚨 Alertas) abre una única ventana que reúne todos los ajustes del cargador (teselado, rendimiento, depuración, actualización, reinicio):
+En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del cargador (junto a 📖 Documentación y 🚨 Alertas) abre una única ventana que reúne los ajustes generales de la app (idioma, sensores, desarrollador, confidencialidad, visualización):
 
 > **Orden de las secciones en la ventana (de arriba abajo, idéntico a la interfaz)**:
 
-1. **🖼️ Teselado de la imagen (por plano)** — control segmentado con 5 preajustes (ver detalle más abajo), que elige cómo se trocea en memoria la imagen principal al cargar. Se memoriza **por plano** (un plano en Rendimiento, otro en Calidad, etc.).
+1. **🌍 Aplicación** — el **selector de idioma** de toda la app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). Es ahora el **único sitio** donde se cambia durante el uso: salió de ⚙️ Ajustes del modo mapa, donde daba a entender que solo afectaba al plano abierto — y donde proponía reiniciar la app en el peor momento, en plena cavidad. Sigue pudiendo elegirse en la pantalla de desbloqueo, antes de entrar.
 
-2. **🚀 Modo Rendimiento ULTRA (trazados / marcadores)** — 7 interruptores de optimización que **NO** afectan a la imagen (ya cubierta por el teselado anterior) sino a todo lo demás (polilíneas, ventanas emergentes, intersecciones, guardado automático, recorte por ventana visible, límite de alejamiento en móvil). **Ajuste POR PLANO**: marcar ULTRA en un plano ya no afecta a los demás — cada plano parte desactivado mientras no lo marques para él. Ver la sección «🚀 Optimizar tu plano» más abajo para el detalle.
+2. **🛰️ Opciones con sensor** — las opciones que se apoyan en un sensor del teléfono: **🔋 Nivel de batería** y **📳 Vibración háptica**. Cada una se desactiva, y una opción desactivada no muestra nada **y deja de escuchar el sensor**. Cuando el sistema rechaza el sensor — la vibración en iPhone, por ejemplo — la opción sigue **visible pero en gris, con el motivo**, en lugar de desaparecer sin explicación.
+
+> 🗺️ **La Vista OSM está activa por defecto**. Si tienes al menos un plano calibrado GPS, el inicio muestra tu mapa sobre un fondo OpenStreetMap — y **por tanto pide ese fondo a `tile.openstreetmap.org` en cuanto se carga**, sin clic. **Ningún dato de tus planos sale**: solo se piden las coordenadas de las teselas que miras, el resto se dibuja encima en tu dispositivo. Un aviso te lo dice la primera vez. Para desactivarla: la casilla de arriba. **Si ya la habías desmarcado, sigue desmarcada** — un rechazo nunca se sobrescribe. Y no sale nada en **modo sin conexión estricto**, en **incógnito**, o si ningún plano está calibrado.
+
+> 🖼️ **El teselado de la imagen no está en esta ventana** — y ya no está tampoco en la pantalla de carga. Pasó por las dos sin encontrar nunca su sitio: en la práctica solo afecta a los planos **no troceados en la generación**, y en los demás no cambiaba nada. Ahora vive en **ℹ️ Información** del plano, solo para los planos afectados, y por fin se **memoriza**.
+>
+> 🚀 **Los interruptores de Rendimiento ULTRA tampoco**. Se mostraban aquí pero **no guardaban nada** — son ajustes **por plano**: se regulan en **⚙️ Ajustes**, una vez abierto el plano. Ver «🚀 Optimizar tu plano» más abajo.
 
 3. **🛠️ Modo Desarrollador** — sustituye a la antigua sección de depuración. Protegido con **contraseña** en la primera activación (con advertencia de responsabilidad). Una vez activo: interruptor **🐛 Registros detallados**, botón **📋 Mostrar los registros** (el búfer, consultable incluso sin plano cargado) y **📚 Documentación técnica** — toda la documentación del proyecto (arquitectura, backlog, matemáticas…) legible dentro de la app (solo en línea). El ajuste de registros de ⚙️ Ajustes en modo mapa se ha retirado: todo se controla aquí.
 
 4. **🔒 Confidencialidad y auditoría** — sección dedicada a la transparencia: registro de red en vivo, documento «¿Qué hace la app en la red?» e interruptor «Modo sin conexión estricto». Ver la sección dedicada más abajo.
 
 5. **🎨 Visualización** — interruptores de interfaz:
+   - **🔎 Iconos que crecen con el zoom**, **📌 Anclar los paneles de herramientas al botón**, **🧲 Magnetismo al dibujar** y su **radio** — estos cuatro valen para **todos tus planos**. Vivían en ⚙️ Ajustes del modo mapa, donde se cambiaban desde un plano sin saber que se cambiaban en todas partes.
    - **🔆 Mantener la pantalla encendida** — impide que tu pantalla se apague automáticamente mientras MyKTAMap esté abierta (Wake Lock API). Útil en salida para no tener que tocar el teléfono cada 30 segundos. Readquisición automática al volver de segundo plano (visibilitychange). El interruptor se oculta automáticamente en los navegadores que no admiten la API (Firefox en particular). El mismo interruptor está también accesible en **⚙️ Ajustes** en modo mapa (ver sección dedicada).
 
 > 📊 **Ver el estado de la memoria** — en esa misma ventana, un botón **«📊 Ver el estado de la memoria»** abre el **inspector**: lo que la app ocupa en tu dispositivo (claves de almacenamiento ordenadas por tamaño, bases de datos, caché de la aplicación, cuota del navegador) y lo que está cargado en ese momento. Un botón **📋 Copiar el informe** genera un texto listo para pegar al informar de un problema.
@@ -532,7 +539,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
 > 📔 **Llevar un cuaderno de mis salidas** — cada plano que abres se convierte en una **salida** archivada en 📔 Mi cuaderno (duración, distancia, añadidos, fotos). Desmarcado, la app ya no abre nada por su cuenta y la salida en curso se detiene; lo que ya está en el cuaderno se conserva, y siempre puedes iniciar una cuando quieras desde **📊 Detalles de la sesión**. *(Ajuste trasladado aquí desde ⚙️ Ajustes del modo mapa: vale para todos tus planos, y el cuaderno se abre desde el inicio.)*
 
-> 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración**, en su propia sección **justo después del bloque Incógnito**. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. Solo la **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) sigue estando en francés e inglés: en español se muestra en **inglés por defecto**. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
+> 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración → 🌍 Aplicación**, arriba del todo de la ventana. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. La **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) también. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
 
 > 💡 La opción «Mostrar los círculos en los cruces de trazados» **no está en la Configuración de la pantalla de inicio** sino en **⚙️ Ajustes en modo mapa** (por plano). Cada plano tiene ahora su propio ajuste — práctico para desactivar los círculos únicamente en tus planos muy densos sin tocar los demás.
 
@@ -545,7 +552,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
    > 💡 **Caso de uso**: usas MyKTAMap únicamente con tus propios planos locales y no quieres ver los planos de demostración / prueba del servidor que ensucian tu lista. Marca esta casilla → recarga → tu lista 📚 Mis planos ya solo contiene TUS planos.
 
-7. **🔐 Código de acceso local (PIN / Face ID)** — bloquea la app en cada arranque con un código de 4 a 6 cifras + Face ID / Touch ID si el dispositivo lo admite. 100 % local (nunca se envía por Internet). 5 intentos fallidos = bloqueo definitivo. Ninguna recuperación en caso de olvido. Ver la sección dedicada **🔐 Código de acceso local (PIN / Face ID)** más abajo para el detalle completo (activación, modificación, desactivación, bloqueo).
+7. **🔐 Código de acceso local (PIN / Face ID)** — bloquea la app en cada arranque con un código de 4 a 6 cifras + Face ID / Touch ID si el dispositivo lo admite. 100 % local (nunca se envía por Internet). 5 códigos erróneos = bloqueo **temporal** (10 min, luego 1 h, 6 h, 24 h), nunca definitivo. Ninguna recuperación del código en caso de olvido. Ver la sección dedicada **🔐 Código de acceso local (PIN / Face ID)** más abajo para el detalle completo (activación, modificación, desactivación, bloqueo).
 
 8. **🔄 Actualización — Forzar la actualización suave** — vuelve a descargar la última versión del código (purga de la caché PWA, conserva tus datos y tus planos). Útil si sospechas que tu app se ha quedado en una versión antigua tras una publicación. **Nunca** toca tus planos, tu sesión activa, tu código comunitario ni tu PIN local. **Confirmación obligatoria antes de lanzarla** (ventana azul que detalla lo que se preserva + necesidad de una conexión a Internet activa).
 
@@ -643,7 +650,7 @@ El guardado automático anterior conserva **el estado actual** de un plano. El *
 **Cómo acceder:** icono **📔 Mi cuaderno** en la pantalla de inicio, dentro de la tarjeta «🧰 Herramientas» (cuadrícula bajo «📦 Añadir un plano», visible también en móvil). No hace falta cargar ningún plano. Desde un plano: ventana **Sesión** → sección **📔 Salida en curso**.
 
 **Qué contiene una salida:**
-- la fecha, la **duración** (tiempo realmente pasado en la app, no el tiempo transcurrido) y la **distancia recorrida** con el rastreador,
+- la fecha, la **duración** (del inicio al final para una salida de campo; tiempo de uso de la app para un trabajo sobre el plano) y la **distancia recorrida** con el rastreador,
 - el número de **puntos, trazados, zonas y estructuras añadidos**,
 - el **recorrido de tu desplazamiento** (minimapa en la ficha),
 - las **fotos tomadas durante la salida** (el cuaderno no las copia: apunta a tus fotos existentes — si eliminas alguna, su miniatura pasa a «🚫»),
@@ -672,7 +679,7 @@ En concreto: sales de **A**, pasas por **C** y luego llegas a **B** → la app c
 - Un **clic en el mapa** para corregir tu posición no cuenta como trayecto, y un **paso de portal** hacia otro plano tampoco.
 
 **¿Cuándo se archiva una sesión?**
-- **Automáticamente** al salir del plano (cambio de plano o vuelta a la pantalla de inicio), si se cumple **una** de estas condiciones:
+- **Automáticamente** al salir del plano (cambio de plano o vuelta a la pantalla de inicio) — pero no enseguida: la salida queda primero **en pausa 2 horas** (vuelve al mismo plano y se reanuda, ver «Reanudación» más abajo). Pasado ese plazo, se archiva si se cumple **una** de estas condiciones:
   - **50 m recorridos** (medidos con el podómetro o estimados entre tus «📍 Estoy aquí»),
   - **o** 10 minutos de trabajo real **y** al menos una anotación.
   - Por debajo de eso no se conserva nada — abrir un plano 20 segundos para comprobar un detalle no ensucia el cuaderno.
@@ -894,7 +901,7 @@ El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 
    - `cao` → **C**avidad **A**bierta *(cavage ouvert)*
    - `peo` → **P**ozo con **E**scalones **A**bierto *(puits à échelon ouvert)*
    - `eso` → **E**scalera de **S**ervicio **A**bierta *(escalier de service ouvert)*
-   - `entrée` → todo POI marcado como entrada conocida
+   - `entrée` → todo POI marcado como entrada conocida, **y** la etiqueta integrada «🚪 Punto de entrada del plano»
 3. Para cada candidata, la app calcula el **camino navegable real** mediante el buscador de rutas (gestiona los muros Y las uniones entre niveles).
 4. Se muestra una ventana compacta con:
    - La salida más cercana + su distancia + su nivel si hay varias plantas
@@ -1653,7 +1660,7 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 #### Flujo de trabajo
 
-1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan).
+1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan — nunca un escenario en curso, el que tienes abierto, ni una intervención terminada cuyo informe aún no ha salido del dispositivo).
 2. **➕ Nuevo escenario** — Asistente ligero: Nombre + Notas de contexto + Hora del incidente.
 3. **Edición libre** — 3 secciones plegables:
    - **📝 Contexto**: nombre, hora del incidente, notas (p. ej. «Marc salió sobre las 14 h para comprobar la galería Este…»)
@@ -1666,8 +1673,20 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 |---|---|
 | 📍 Entrada | 1 clic en el mapa = captura la posición de entrada del equipo |
 | 🚪 Salida | 1 clic en el mapa = captura la posición de salida |
-| ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic (volver a pulsar = quitar, resaltado en rojo para los seleccionados) |
-| 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada (velocidad metódica de 0,5 m/s) |
+| ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic: se toma la galería más cercana, entre los niveles visibles (volver a pulsar = quitar, resaltada en rojo). Las galerías del plano se recuperan idénticas en cualquier teléfono que tenga el mismo plano; un trazado dibujado a mano en un solo dispositivo solo existe en ese. Las capas ocultas siguen siendo seleccionables |
+| 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada según los ajustes **⏱️ Duraciones estimadas** del plan de rescate (velocidad de búsqueda 1,5 km/h y pausa 0 por defecto, modificables) |
+> 🔁 **Durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas modificas, recibe sus etapas de inmediato. Lo ya introducido (estado, observaciones, fotos) se queda en la misma etapa, aunque dos etapas tengan el mismo nombre. Quitar una etapa que ya tiene datos pide confirmación, y se **rechaza** si indica «Ayuda solicitada» o «Víctima encontrada»: cambia primero su estado. Si se vuelve a poner **en la misma fase**, la etapa recupera lo que se había introducido (tras un cambio de fase empieza vacía; sus datos quedan en el historial de la fase cerrada). Si un equipo señala «Ayuda solicitada» o «Víctima encontrada» en una etapa que habías quitado mientras tanto, importar su informe **vuelve a poner el punto en su recorrido**, en su sitio, y te lo avisa en rojo; si el punto no puede volver a ponerse (equipo que ya no está en la fase actual), la alerta roja se muestra igualmente. ⚠️ **Tras una actualización de la aplicación, vuelve a importar el plan en cada teléfono antes de la intervención**: un teléfono que importó el plan con una versión anterior (antes de la v1.98.5) envía informes que el PC no puede fusionar. **Relanzar** un plan terminado borra la intervención anterior, fotos incluidas: una confirmación lo recuerda, exporta su informe antes. «Todos los POI de la zona» añade las etapas de la más cercana a la más cercana, para evitar idas y vueltas.
+
+> 🗺️ **En el mapa, durante la intervención**: al **lanzar el plan en modo equipo**, te **colocas en la entrada de tu equipo** — automáticamente si tu posición aún no estaba confirmada; si no, la app te lo propone («Colocarme en la entrada» / «Mantener mi posición»). Al lanzar, **un solo mensaje** lo resume todo (plan lanzado, colocado en la entrada, plano no disponible sin conexión) y ya no bloquea los botones de debajo; relanzar un escenario ya jugado empieza de cero (se acabaron los falsos retrasos heredados del día anterior). Cerrar la ventana del Modo Rescate ya no quita nada — tu zona y tu trazado siguen visibles (el miembro de equipo ve su equipo, el operador todos), incluso tras recargar. Abajo de la pantalla, una pastilla roja **«🚨 Rescate · Alpha · 3/8 ›»** recuerda que la intervención está en curso y cómo va: un toque te lleva **directamente a las etapas** por validar. Durante la preparación: los equipos se **pliegan** (▾/▸ o «Plegar todo»); al dibujar una zona, las de los demás equipos se muestran en punteado para ajustar los límites; tocar un POI para elegir la entrada, la salida o una etapa **lo toma como punto** (ya no abre su ficha); un punto sin nombre se muestra en **coordenadas GPS** si el plano está georreferenciado; «Auto: 1 equipo por nivel» omite los niveles vacíos, y las listas de niveles marcan «(vacío)» los que no tienen nada (siguen pudiendo elegirse).
+
+> 🚑 **Víctima, retrasos y llamada de vuelta**: una etapa marcada **«Víctima encontrada»** da una **posición** (la de la etapa, nivel incluido) — **📍 Precisar en el mapa** la ajusta, **🚑 Evacuar** abre la Salida de emergencia desde la víctima, y una **✚ roja** la marca en el mapa, para todos. El operador la ve en un aviso arriba de su vista, y el informe la imprime en primer lugar. Cada equipo tiene su **hora de salida** (**▶️ Salida**, si no el lanzamiento) y su **hora de regreso prevista** (salida + duración estimada): **naranja** pasada esa hora, **rojo** tras el margen (30 min por defecto, ajustable en ⏱️ Duraciones estimadas) — los equipos con retraso suben arriba, la pastilla de abajo cambia de color, un mensaje y una vibración avisan. **✅ De vuelta** detiene el cronómetro. **📢 Llamada general** (o 📢 Llamar, por equipo) marca los equipos aún bajo tierra como llamados de vuelta, con la hora. ⚠️ **La app no avisa a nadie** — no hay red bajo tierra: transmite la orden por radio o de viva voz. Salida, vuelta, llamada y posición precisada viajan en el informe de equipo.
+
+> 🧭 **Guiado paso a paso del recorrido**: en la vista de tu equipo, **🧭 Seguir mi recorrido** convierte el recorrido en el itinerario de la app — el aviso de guiado («En 40 m, gira a la izquierda»), la hoja de ruta y la pantalla XL te llevan de etapa en etapa (activa el seguimiento 🧭). Las etapas que validas quedan marcadas en el itinerario; si te desvías, **Recalcular** vuelve a salir desde aquí hacia la **siguiente etapa no hecha**, evitando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 te abre directamente esa etapa. El **PDF de briefing** imprime también, para cada equipo, su **hoja de ruta** cruce a cruce (cambios de nivel incluidos) — calcula el itinerario del equipo para obtenerla.
+
+> 👥 **Jefe, efectivo, subidos y diario de operaciones**: cada equipo tiene un **👤 jefe** (elegido entre sus miembros) y un **efectivo**. En **✅ De vuelta**, la app pregunta **cuántos han subido**: por debajo del efectivo, una **alerta roja «N persona(s) desaparecida(s)»** sigue visible (y la pastilla de abajo pasa a rojo) hasta corregir el recuento. El **📜 diario de operaciones** (vista del operador) lo anota todo, hora a hora: lanzamiento, estados, víctima, salidas, vueltas, llamadas, importaciones, fases — más tus propias notas (llamada de radio, decisión). Viaja en los informes de equipo y se imprime como anexo del informe. El **informe del socorrista libre** se importa ahora como el de un equipo: sus notas se suman al diario, a su hora.
+
+> 🗂️ **Preparar y relanzar**: al cerrar una fase, se guarda el **recorrido previsto** de cada equipo — replanificar la fase siguiente ya no lo borra, y el informe muestra el recorrido de cada fase. En la vista de edición, el bloque **📊 Cobertura** (calculado al abrirlo) da la **parte de galerías cubiertas** por las zonas, los **POI dentro de la zona de un equipo pero fuera de su recorrido** y los **POI visitados por varios equipos** — una ayuda de lectura, no se asigna nada automáticamente. Al lanzar, la app te **avisa si el plano no está totalmente disponible sin conexión** en el dispositivo (plano de servidor no descargado). En la vista del equipo, tres atajos: **🚪 Salida de emergencia**, **🆘 Pantalla XL**, **⛑️ Estoy perdido** — ocultos, como «Seguir mi recorrido», cuando el operador de superficie **toma el control** para relevar a un equipo: actuarían sobre su propio dispositivo.
+
 #### Visualización en el mapa
 
 Botón **🗺️ Ver en el mapa** en la cabecera de la edición. Muestra, para cada equipo (con su color dedicado):
@@ -1680,11 +1699,11 @@ Actualización automática en cada modificación. Vuelve a pulsar el botón para
 
 #### Varios escenarios por plano
 
-Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este» frente a «si salió por el Sur»). Botón 🗐 Duplicar para clonar un escenario y probar una variante sin perder el original. Tope de 10 escenarios por plano (por encima, el más antiguo se purga automáticamente).
+Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este» frente a «si salió por el Sur»). Botón 🗐 Duplicar para clonar un escenario y probar una variante sin perder el original. Tope de 10 escenarios por plano: por encima, el más antiguo se purga automáticamente — salvo un escenario en curso, el que tienes abierto, el más reciente, o una intervención terminada cuyo informe (PDF o archivo) aún no ha salido del dispositivo.
 
 #### Exportaciones
 
-**📄 PDF imprimible**: 1 página A4 vertical por equipo, con banda de color + secciones Contexto/Miembros/Misión/Itinerario + un recuadro de Observaciones vacío de 60 mm (para rellenar a bolígrafo al volver del terreno). Nombre de archivo `Secours_<nombre_escenario>_<fecha>.pdf`.
+**📄 PDF imprimible**: 1 página A4 vertical por equipo (una 2.ª si la lista de etapas es larga), con banda de color + secciones Contexto/Miembros/Misión/Itinerario + un recuadro de Observaciones vacío de 60 mm (para rellenar a bolígrafo al volver del terreno). Nombre de archivo `Secours_<nombre_escenario>_<fecha>.pdf`.
 
 **🌍 KMZ geolocalizado**: incluye el escenario completo en un archivo anexo del KMZ (`myktamap-extras.json > secoursPlan`). Requisito previo: plano ya calibrado para KMZ (ver la ventana de Exportación de sesiones, pestaña 🌍 KMZ). MyKTAMap puede reimportar el KMZ y recargar el escenario tal cual. Nombre de archivo `Secours_<nombre_escenario>_<fecha>.kmz`.
 
@@ -1791,7 +1810,7 @@ En la miniventana «📍 Elegir un punto», tus favoritos del plano aparecen aho
 
 Especialmente útil en los escenarios de emergencia en los que quieres crear rápidamente varios equipos con los mismos 3 o 4 pozos de acceso conocidos.
 
-#### 🛑 Pausa configurable entre funciones
+#### 🛑 Pausa entre paradas (itinerario)
 
 Nueva sección en la ventana 🗺️ Itinerario:
 
@@ -1801,7 +1820,7 @@ Nueva sección en la ventana 🗺️ Itinerario:
    Duración por pausa: [15] min
 ```
 
-Marcada por defecto + 15 min (= comportamiento preservado). Modificable → se aplica también al cálculo de duraciones del Modo Rescate (entre funciones).
+Marcada por defecto + 15 min (= comportamiento preservado). ⚠️ Desde la v1.98.11 esta pausa **ya no** se aplica al Modo Rescate: cada plan de rescate tiene sus propios ajustes (bloque **⏱️ Duraciones estimadas**: velocidad de búsqueda y pausa por etapa), enviados a los equipos con el plan.
 
 > ⚠️ Como con todas las herramientas digitales bajo tierra: **lleva una brújula física** y un mapa de papel en el bolsillo. El teléfono puede averiarse, el magnetómetro puede falsearse por el metal cercano, el rastreador puede derivar. El 🚨 es una ayuda para leer información rápidamente, no un sustituto de la preparación.
 
@@ -1846,16 +1865,17 @@ Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescat
 
 | Sección | Contenido |
 |---------|---------|
+| **ACCESOS EN SUPERFICIE** | Arriba: el plano **recortado sobre los accesos** de los equipos (sin POI), un **marcador numerado** por acceso y una tabla N.º · acceso (entrada, salida o ambas) · equipos · **GPS + enlace de mapa pulsable**. Dos equipos que salen del mismo acceso comparten un número. Acuérdate de **nombrar tus entradas** («Tapa, calle X»): si no, la tabla dice «Acceso sin nombre» |
 | **INFORMACIÓN** | Nombre del escenario · nombre del plano · fecha de generación |
 | **LOCALIZACIÓN** | Coordenadas GPS del centro + rectángulo delimitador + **enlace pulsable a OpenStreetMap** + **enlace pulsable a Google Maps** |
 | **EQUIPOS SOBRE EL TERRENO** | Para cada equipo: nombre + miembros + GPS de superficie (si se ha indicado) + enlace OSM individual por equipo |
-| **POI CRÍTICOS** | 🚪 Puntos de entrada del plano · 🚨 Salidas de emergencia · 🪜 Cavidades (abiertas/cerradas) con su nivel multinivel |
+| **POI CRÍTICOS** | Los accesos del plano, con su nivel: primero los **abiertos** (🚪 puntos de entrada, cavidades, pozos de peldaños, escaleras de servicio — los mismos que la Salida de emergencia), luego los **cerrados** (que bomberos e IGC pueden abrir). Lista sacada de los puntos etiquetados del plano (hasta la v1.98.6 este bloque quedaba vacío) |
 
 > 💡 **Cómo usarlo**: el PDF se imprime o se envía por correo/Signal al jefe del grupo de bomberos ANTES de su llegada. Sobre el terreno, pulsa los enlaces desde su teléfono o PC para abrir OSM o Google Maps centrados en tu sitio. No necesita instalar MyKTAMap.
 
 #### 📤 Página «Briefing de superficie» en el informe posmisión
 
-El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
+El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «PA3» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
 
 #### 🏷️ Filtro de etiquetas de la Vista OSM
 
@@ -2034,7 +2054,7 @@ Para el puesto de mando que coordina varios equipos en paralelo:
 
 **Botón «👁️ Detalles»** → miniventana de solo lectura con la lista cronológica de las etapas del equipo (marca de tiempo + emoji de estado + observaciones).
 
-**Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones).
+**Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones). La vista se abre en el **primer paso sin terminar de ese equipo**, aunque estuvieras más adelante con otro equipo.
 
 **Vuelta fácil**: una vez en modo Miembro de equipo tras «Tomar el mando», aparece un botón **«👤 Volver a Operador»** en el pie. Al pulsarlo → vuelta a la visión de conjunto del Operador intacta (la vuelta sigue siendo posible tras una recarga o un cambio de plano).
 
@@ -2142,7 +2162,7 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
    - Transmite el escenario a los miembros mediante la exportación `.mkmsec.json` clásica (correo / memoria USB / AirDrop)
 
 2. **Lado de cada Miembro (terreno)**:
-   - Importa el `.mkmsec.json` del operador (coherencia de los identificadores de equipo)
+   - Importa el `.mkmsec.json` del operador: la importación conserva los identificadores del puesto de mando, que es lo que permitirá al operador aceptar su informe. Si el plan **ya** está en el teléfono (plan actualizado por el operador), la vista previa ofrece **«Reemplazar»** (marcado: conserva el vínculo con el operador, pero borra los estados, observaciones y fotos ya introducidos en este teléfono) o **«Importar como copia»** (un escenario nuevo, cuyo informe el operador rechazará)
    - Lanza el plan → vista en directo de Equipo → introduce observaciones + estados + fotos por etapa
    - **Al volver a superficie**: genera su informe mediante «📤 Informe» en el pie de la vista en directo de Equipo → formato **`.mkmsec.report.json`** → exporta el archivo (descarga local)
 
@@ -2152,10 +2172,14 @@ Al volver del terreno, cada miembro de equipo puede **compartir su informe** con
    - Selector de archivos → selecciona el archivo → ventana de vista previa que muestra: nombre del equipo afectado, número de etapas a fusionar, fotos y **conflictos detectados** (etapas ya rellenadas del lado del operador que van a fusionarse)
    - Confirma la importación → la app hace una **instantánea PREVIA** (copia de seguridad de emergencia) y después fusiona:
      - Observaciones **concatenadas con un separador fechado** (sin ninguna pérdida)
-     - Se conserva el estado **más severo**
+     - Se conserva el estado **más grave**; a igual gravedad, **el más reciente** — un «Sin novedad» informado por el equipo sustituye a «En espera», una víctima nunca se rebaja
      - Fotos **importadas con deduplicación**
    - Ventana de resultado con estadísticas detalladas (X etapas fusionadas, Y fotos importadas, Z advertencias eventuales)
    - Repite con los otros 2 equipos
+   - ⚠️ **Informe que llega tras un cambio de fase**: si trata de una fase ya cerrada, se guarda en **el historial de esa fase** — nunca en la fase en curso — y la app lo señala en naranja (en rojo si contiene «Ayuda solicitada» o «Víctima encontrada»)
+   - 🧭 **Aviso sobre una etapa que quitaste**: no se pierde — aparece en naranja al importar y en la sección **«Avisos fuera del recorrido»** del informe final
+   - 🗺️ **Plano modificado desde el envío**: si el plano cambió de versión (o se redibujó) desde la exportación del escenario, la vista previa de importación te avisa y cuenta los trazados de zona que ya no encuentra
+   - 📚 El **informe final** incluye también las etapas de las **fases cerradas**, fase por fase
 
 4. **Visualización tras la fusión**:
    - En la tarjeta de cada equipo del Operador: aparece una ficha azul «📥 importado» si al menos una etapa ha recibido consolidación
@@ -2405,7 +2429,7 @@ Puedes adjuntar hasta **5 fotos por punto** (límite para evitar saturar el alma
 
 **🔒 Metadatos limpiados**: **toda** foto se recodifica al añadirla, aunque ya sea pequeña — los metadatos ocultos del archivo (**EXIF: posición GPS de la toma, fecha, modelo de dispositivo**) se eliminan sistemáticamente. Nada de eso entra en la app ni sale en una exportación. Las fotos pequeñas se recodifican sin redimensionar con calidad alta (degradación invisible).
 
-**🛡️ Exportación anonimizada + fotos**: en 💾 Guardar sesión → 📦 Completa, la casilla «🛡️ Anonimizar para compartir públicamente» acepta ahora las fotos: cada una se **recodifica sin metadatos** (incluidas las añadidas antes de la llegada de esta protección) y se **renombra** (`photo-anon-1`, `photo-anon-2`…), vinculada a los códigos anonimizados de los puntos (`💎 POI #1`…). Una foto que no pueda recodificarse queda **excluida** de la exportación — nunca se incluye tal cual. La nota libre y el PDF de Historia siguen excluidos de la exportación anonimizada.
+**🛡️ Exportación anonimizada + fotos**: en 💾 Guardar sesión → 📦 Completa, la casilla «🛡️ Anonimizar para compartir públicamente» acepta ahora las fotos: cada una se **recodifica sin metadatos** (incluidas las añadidas antes de la llegada de esta protección) y se **renombra** (`photo-anon-1`, `photo-anon-2`…), vinculada a los códigos anonimizados de los puntos (`📍 POI salle #1`…). Una foto que no pueda recodificarse queda **excluida** de la exportación — nunca se incluye tal cual. La nota libre y el PDF de Historia siguen excluidos de la exportación anonimizada.
 
 **Retirar una foto**: pulsa la cruz ✕ roja de la esquina superior derecha de la miniatura → aparece atenuada con rayas rojas (marcada para eliminar). Si cambias de opinión, pulsa la flecha verde ↺ para anularlo. La eliminación real solo ocurre cuando **💾 Guardas**.
 
@@ -2684,7 +2708,7 @@ Si sales de MyKTAMap durante una salida —para cambiar de música, para atender
 
 **Ahora se reanuda sola.** Al volver, si la salida anterior del mismo plano se interrumpió así hace menos de **45 minutos**, la app la **continúa** en vez de abrir otra. Un mensaje te lo indica.
 
-**Y si abres otro plano por el camino** —para enseñárselo a alguien, para comprobar un paso— tu salida queda **en pausa**, no terminada. Vuelve al plano de tu salida en menos de **2 horas**: se **reanuda** donde estaba, contadores y trazado incluidos. Pasado ese tiempo, se guarda en el cuaderno como siempre. El tiempo pasado en el otro plano no se suma a tu salida. ⚠️ El **seguimiento**, en cambio, se detiene al cambiar de plano: al reanudarse una salida de campo, la app te propone **«▶️ Reanudar el seguimiento»** — basta con un toque.
+**Y si abres otro plano por el camino** —para enseñárselo a alguien, para comprobar un paso— tu salida queda **en pausa**, no terminada. Vuelve al plano de tu salida en menos de **2 horas**: se **reanuda** donde estaba, contadores y trazado incluidos. Pasado ese tiempo, se guarda en el cuaderno como siempre. En una salida de campo, el tiempo pasado en el otro plano **cuenta** en su duración (medida del inicio al final): seguías bajo tierra. ⚠️ El **seguimiento**, en cambio, se detiene al cambiar de plano: al reanudarse una salida de campo, la app te propone **«▶️ Reanudar el seguimiento»** — basta con un toque.
 
 > ℹ️ Una salida que hayas cerrado **tú mismo** (🏁) nunca se vuelve a unir. La app solo reanuda lo que se cortó *sin que lo quisieras*.
 
@@ -2948,7 +2972,7 @@ Para un control preciso sobre todo lo que exportas:
   - **Tamaño**: Compacto / Estándar / Grande
   - **Contenido**: Iconos / Trazados / Zonas / Etiqueta del rastreador / Metadatos del plano (nombre, versión, autor, fecha)
 - **Formato**: PNG o JPEG (calidad 90 %, archivo más ligero)
-- **Resolución**: Original, ½ o ¼ (útil para planos muy grandes)
+- **Resolución**: Original, ½ o ¼. La app preselecciona la mayor que sigue siendo razonable (½ o ¼ en un plano muy grande) y muestra, bajo la opción, el tamaño de la imagen y la memoria que necesitará; más allá, aparece un aviso. En iPhone/iPad, las resoluciones que Safari no puede crear aparecen en gris
 - **Vista previa**: un minilienzo se actualiza en tiempo real para visualizar el resultado
 
 > ⚠️ Antes de compartir esta imagen, comprueba que no revele información sensible.
@@ -3468,7 +3492,7 @@ El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**:
 
 ### 🔎 Buscar en la documentación
 
-Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
+Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «busqueda» encuentra «Búsqueda». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
 
 ## 🤖 Ayuda con IA
 

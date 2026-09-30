@@ -444,7 +444,7 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 **Actions disponibles** sur chaque ligne :
 
 - **⭐/☆** — épingle/désépingle le plan en tête de liste
-- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), le **✏️ renommage d'affichage** *(nom local, 40 caractères max, pratique pour différencier deux plans homonymes ; champ vide = retour au nom d'origine ; le vrai nom du plan reste utilisé pour les vérifications de fichier)*, l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app.
+- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), le **✏️ renommage d'affichage** *(nom local, 40 caractères max, pratique pour différencier deux plans homonymes ; champ vide = retour au nom d'origine ; le vrai nom du plan reste utilisé pour les vérifications de fichier)*, l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app. Si le plan a des **documents d'histoire** (PDF du Mode Histoire), la confirmation propose une case **« Supprimer aussi ses documents (X Mo) »**, décochée : laissée telle quelle, ils restent lisibles dans 📔 Mon carnet → 📖 Récits.
 - **Clic sur la ligne** — charge le plan
 
 **Boutons en haut de la liste :**
@@ -542,7 +542,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 > 📔 **Tenir un carnet de mes sorties** — chaque plan que tu ouvres devient une **sortie** archivée dans 📔 Mon carnet (durée, distance, ajouts, photos). Décoché, l'app n'ouvre plus rien toute seule et la sortie en cours s'arrête ; ce qui est déjà dans le carnet reste, et tu peux toujours en démarrer une à la demande depuis **📊 Détails de la session**. *(Réglage déplacé ici depuis ⚙️ Réglages du mode carte : il vaut pour tous tes plans, et le carnet s'ouvre depuis l'accueil.)*
 
-> 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. Seule l'**Aide intégrée** (le 📚 de la barre latérale en mode carte) reste en français et en anglais : en espagnol, elle s'affiche en **anglais par défaut**. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
+> 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. L'**Aide intégrée** (le 📚 de la barre latérale en mode carte) aussi. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
 
 > 💡 L'option « Afficher les ronds aux intersections de tracés » n'est **pas dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
@@ -555,7 +555,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
    > 💡 **Cas d'usage** : tu utilises MyKTAMap uniquement avec tes propres plans locaux et tu ne veux pas voir les plans de démo / tests du serveur qui polluent ta liste. Coche cette case → reload → ta liste 📚 Mes plans ne contient plus que TES plans.
 
-7. **🔐 Code d'accès local (PIN / Face ID)** — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+7. **🔐 Code d'accès local (PIN / Face ID)** — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 codes faux = verrou **temporaire** (10 min, puis 1 h, 6 h, 24 h), jamais définitif. Aucune récupération du code en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
 
 8. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
@@ -653,7 +653,7 @@ La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **ca
 **Y accéder :** tuile **📔 Mon carnet** sur l'écran d'accueil, dans la carte « 🧰 Outils » (grille sous « 📦 Ajouter un plan », visible aussi sur mobile). Aucun plan à charger. Depuis un plan : modale **Session** → section **📔 Sortie en cours**.
 
 **Ce que contient une sortie :**
-- la date, la **durée** (temps réellement passé dans l'app, pas le temps écoulé) et la **distance parcourue** au tracker,
+- la date, la **durée** (du départ à la fin pour une sortie de terrain ; temps d'utilisation de l'app pour du travail sur plan) et la **distance parcourue** au tracker,
 - le nombre de **points, tracés, zones et structures ajoutés**,
 - le **tracé de votre déplacement** (mini-carte dans la fiche),
 - les **photos prises pendant la sortie** (le carnet ne les recopie pas : il pointe vers vos photos existantes — si vous en supprimez une, sa vignette devient « 🚫 »),
@@ -682,7 +682,7 @@ Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez
 - Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 
 **Quand une session est-elle archivée ?**
-- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), si **l'une** de ces conditions est remplie :
+- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil) — mais pas tout de suite : la sortie est d'abord **mise en pause 2 heures** (revenez sur le même plan et elle reprend, cf. « Reprise » plus bas). Passé ce délai, elle est archivée si **l'une** de ces conditions est remplie :
   - **50 m parcourus** (mesurés au podomètre ou estimés entre vos « 📍 Je suis ici »),
   - **ou** 10 minutes de travail réel **et** au moins une annotation.
   - En dessous, rien n'est conservé — ouvrir un plan 20 secondes pour vérifier un détail ne pollue pas le carnet.
@@ -1637,7 +1637,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
 - 📋 **« Copier ma position »** : un bouton carré **à droite des chiffres** (les chiffres eux-mêmes marchent aussi — c'est là que le doigt va d'abord). Il devient ✅ le temps de te confirmer la copie. Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.823328, 2.322915` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
 - 🔋 **Une ligne d'état en haut à droite** : ton **niveau de batterie** (seulement si ton navigateur l'expose et si tu n'as pas décoché le réglage — sinon rien du tout, pas de « ? » ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨. *L'échelle du plan n'y est plus (v1.97.11) : c'est un chiffre de calibrage, il se lit dans ⚙️ Réglages, pas quand on cherche où l'on est.*
-- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Réglages.
+- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Configuration de l'accueil.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
 - 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone, et la mise en page change — position à gauche, carte à droite sur toute la hauteur.
 - 🗺️ **Tout tient dans un écran** : plus rien à faire défiler, et **la carte prend toute la place gagnée** (mesuré : elle a doublé de hauteur sur un téléphone en portrait).
@@ -1664,7 +1664,7 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 
 #### Workflow
 
-1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés).
+1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours, celui que tu as ouvert, ni une intervention terminée dont aucun rapport n'est encore sorti de l'appareil).
 2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
 3. **Édition free-form** — 3 sections accordéon :
    - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
@@ -1677,8 +1677,20 @@ Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté 
 |---|---|
 | 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
 | 🚪 Sortie | 1 clic carte = capture la position de sortie |
-| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic (re-clic = retirer, highlight rouge pour les sélectionnés) |
-| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée (vitesse 0.5 m/s méthodique) |
+| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic : la galerie la plus proche, parmi les niveaux affichés, est prise (re-clic = retirer, surlignée en rouge). Les galeries du plan sont retrouvées à l'identique sur tout téléphone qui a le même plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur celui-ci. Les calques masqués restent sélectionnables |
+| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée selon les réglages **⏱️ Durées estimées** du plan de secours (vitesse de fouille 1,5 km/h et pause 0 par défaut, modifiables) |
+
+> 🔁 **Pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu modifies l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a déjà été saisi (statut, observations, photos) reste sur la même étape, même si deux étapes portent le même nom. Retirer une étape déjà renseignée demande une confirmation, et c'est **refusé** si elle signale « Aide demandée » ou « Victime trouvée » : change d'abord son statut. Remise plus tard **dans la même phase**, l'étape retrouve ce qui y avait été saisi (après un changement de phase, elle repart vide ; ses saisies restent dans l'historique de la phase close). Si une équipe signale « Aide demandée » ou « Victime trouvée » sur une étape que tu avais retirée entre-temps, l'import de son rapport **remet le point dans son parcours**, à sa place, et te l'annonce en rouge ; si le point ne peut pas être remis (équipe qui n'est plus dans la phase en cours), l'alerte rouge s'affiche quand même. ⚠️ **Après une mise à jour de l'application, réimporte le plan sur chaque téléphone avant l'intervention** : un téléphone qui avait importé le plan avec une ancienne version (avant la v1.98.5) envoie des rapports que le PC ne peut pas fusionner. **Relancer** un plan terminé efface l'intervention précédente, photos comprises : une confirmation le rappelle, exporte son rapport avant. « Tous les POI de la zone » ajoute les étapes de proche en proche, pour éviter les allers-retours.
+
+> 🗺️ **Sur la carte, pendant l'intervention** : en **lançant le plan en mode équipe**, tu es **placé à l'entrée de ton équipe** — automatiquement si ta position n'était pas encore confirmée, sinon l'app te le propose (« Me placer à l'entrée » / « Garder ma position »). Au lancement, **un seul message** résume tout (plan lancé, placé à l'entrée, plan pas disponible hors-ligne) et ne bloque plus les boutons dessous ; relancer un scénario déjà joué repart de zéro (plus de faux retards hérités de la veille). Fermer la fenêtre du Mode Secours ne retire plus rien — ta zone et ton tracé restent affichés (l'équipier voit son équipe, l'opérateur toutes), même après un rechargement. En bas de l'écran, une pastille rouge **« 🚨 Secours · Alpha · 3/8 › »** rappelle que l'intervention tourne et où tu en es : un toucher te ramène **directement aux étapes** à valider. En préparation : les équipes se **replient** (▾/▸ ou « Tout replier ») ; en dessinant une zone, celles des autres équipes s'affichent en pointillé pour caler les limites ; toucher un POI pour choisir l'entrée, la sortie ou une étape **le prend comme point** (sa fiche ne s'ouvre plus) ; un point sans nom s'affiche en **coordonnées GPS** si le plan est géoréférencé ; « Auto : 1 équipe par niveau » ignore les niveaux vides, et les listes de niveaux marquent « (vide) » ceux où il n'y a rien (toujours choisissables).
+
+> 🚑 **Victime, retards et rappel** : une étape passée en **« Victime trouvée »** donne une **position** (celle de l'étape, niveau compris) — **📍 Préciser sur la carte** l'ajuste, **🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime, et un **✚ rouge** la marque sur la carte, pour tous. L'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier. Chaque équipe a son **heure de départ** (**▶️ Départ**, sinon le lancement) et son **heure de retour prévue** (départ + durée estimée) : **orange** passé l'heure, **rouge** après la marge (30 min par défaut, réglable dans ⏱️ Durées estimées) — les équipes en retard remontent en tête, la pastille du bas change de couleur, un message et une vibration préviennent. **✅ Rentrée** arrête le chrono. **📢 Rappel général** (ou 📢 Rappeler, par équipe) marque les équipes encore sous terre comme rappelées, avec l'heure. ⚠️ **L'app ne prévient personne** — il n'y a pas de réseau sous terre : transmets l'ordre par radio ou à la voix. Départ, rentrée, rappel et position précisée voyagent dans le rapport d'équipe.
+
+> 🧭 **Guidage pas à pas du parcours** : dans la vue de ton équipe, **🧭 Suivre mon parcours** transforme le parcours en itinéraire de l'app — le bandeau de guidage (« Dans 40 m, tourner à gauche »), la feuille de route et l'écran XL te mènent d'étape en étape (active le suivi 🧭). Les étapes que tu valides sont cochées sur l'itinéraire ; si tu t'écartes, **Recalculer** repart d'ici vers la **prochaine étape non faite**, en contournant toujours les zones des autres équipes. En arrivant sur une étape, un message et une vibration te préviennent, et la pastille 🚨 t'ouvre directement cette étape. Le **PDF de briefing** imprime aussi, pour chaque équipe, sa **feuille de route** carrefour par carrefour (changements de niveau compris) — calcule l'itinéraire de l'équipe pour l'obtenir.
+
+> 👥 **Chef, effectif, remontés et main courante** : chaque équipe a un **👤 chef** (choisi parmi ses membres) et un **effectif**. À **✅ Rentrée**, l'app demande **combien sont remontés** : en dessous de l'effectif, une **alerte rouge « N personne(s) manquante(s) »** reste affichée (et la pastille du bas passe au rouge) tant que le compte n'est pas corrigé. La **📜 main courante** (vue opérateur) note tout, heure par heure : lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes propres notes (appel radio, décision). Elle voyage dans les rapports d'équipe et s'imprime en annexe du rapport. Le **rapport du secouriste libre** s'importe désormais comme celui d'une équipe : ses notes rejoignent la main courante, à leur heure.
+
+> 🗂️ **Préparer et relancer** : à la clôture d'une phase, le **parcours prévu** de chaque équipe est gardé — replanifier la phase suivante ne l'efface plus, et le rapport affiche le parcours de chaque phase. Dans la vue édition, le bloc **📊 Couverture** (calculé à l'ouverture) donne la **part des galeries couvertes** par les zones, les **POI situés dans la zone d'une équipe mais hors de son parcours**, et les **POI visités par plusieurs équipes** — une aide à la lecture, rien n'est affecté automatiquement. Au lancement, l'app te **prévient si le plan n'est pas entièrement disponible hors-ligne** sur l'appareil (plan serveur non téléchargé). Dans la vue de l'équipe, trois raccourcis : **🚪 Sortie d'urgence**, **🆘 Écran XL**, **⛑️ Je suis perdu** — absents, comme « Suivre mon parcours », quand l'opérateur de surface **prend la main** pour relayer une équipe : ils agiraient sur son propre appareil.
 
 #### Visualisation carte
 
@@ -1692,11 +1704,11 @@ Auto-refresh à chaque modif. Re-cliquer le bouton pour masquer.
 
 #### Multi-scénarios par plan
 
-Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan (au-delà, le plus ancien est purgé automatiquement).
+Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan : au-delà, le plus ancien est purgé automatiquement — sauf un scénario en cours, celui que tu as ouvert, le plus récent, ou une intervention terminée dont aucun rapport (PDF ou fichier) n'est encore sorti de l'appareil.
 
 #### Exports
 
-**📄 PDF imprimable** : 1 page A4 portrait par équipe avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
+**📄 PDF imprimable** : 1 page A4 portrait par équipe (une 2e si la liste des étapes est longue) avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
 
 **🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
 
@@ -1803,7 +1815,7 @@ Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent en
 
 Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
 
-#### 🛑 Pause configurable cross-feature
+#### 🛑 Pause entre les arrêts (itinéraire)
 
 Nouvelle section dans la modale 🗺️ Itinéraire :
 
@@ -1813,7 +1825,7 @@ Nouvelle section dans la modale 🗺️ Itinéraire :
    Durée par pause : [15] min
 ```
 
-Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
+Default checked + 15 min (= comportement préservé). ⚠️ Depuis la v1.98.11, cette pause ne concerne **plus** le Mode Secours : chaque plan de secours a ses propres réglages (bloc **⏱️ Durées estimées** : vitesse de fouille et pause par étape), transmis aux équipes avec le plan.
 
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
@@ -1858,16 +1870,17 @@ Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. G
 
 | Section | Contenu |
 |---------|---------|
+| **ACCÈS SURFACE** | En tête : le plan **recadré sur les accès** des équipes (sans POI), un **repère numéroté** par accès, et un tableau N° · accès (entrée, sortie ou les deux) · équipes · **GPS + lien de carte cliquable**. Deux équipes qui partent du même accès n'ont qu'un numéro. Pense à **nommer tes entrées** (« Plaque rue X ») : sinon le tableau dit « Accès sans nom » |
 | **INFOS** | Nom scénario · nom plan · date génération |
 | **LOCALISATION** | Coordonnées GPS centre + bbox + **lien OpenStreetMap cliquable** + **lien Google Maps cliquable** |
 | **EQUIPES SUR PLACE** | Pour chaque équipe : nom + membres + GPS surface (si renseigné) + lien OSM individuel par équipe |
-| **POI CRITIQUES** | 🚪 Points d'entrée du plan · 🚨 Sorties urgence · 🪜 Cavages (ouverts/fermés) avec niveau M-LVL |
+| **POI CRITIQUES** | Les accès du plan, avec leur niveau : d'abord les **ouverts** (🚪 points d'entrée, cavages, puits à échelons, escaliers de service — les mêmes que la Sortie d'urgence), puis les **fermés** (que pompiers et IGC peuvent ouvrir). Liste tirée des points tagués du plan (jusqu'en v1.98.6, ce bloc restait vide) |
 
 > 💡 **Comment utiliser** : Le PDF s'imprime ou s'envoie par mail/Signal au chef de groupe pompiers AVANT son arrivée. Sur place, il clique les liens depuis son tél/PC pour ouvrir OSM ou Google Maps centrés sur ton site. Aucune installation MyKTAMap nécessaire chez lui.
 
 #### 📤 Page « Briefing surface » dans le rapport post-mission
 
-Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
+Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos, carte des accès en tête (la vue OpenStreetMap du plan entier, illisible sur un A4, n'y figure plus ; dans le briefing pompiers, elle reste en option, POI décochés par défaut). Sur les cartes d'équipe, une entrée et une sortie posées au même accès (à moins de 10 m) ne font plus qu'un repère « ENTRÉE / SORTIE ». Au calcul d'un itinéraire, une étape posée loin de toute galerie est nommée (« L'étape « PA3 » est à 68 m du tracé le plus proche ») : corrige-la avant de descendre. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
 
 #### 🏷️ Filtre tags Vue OSM
 
@@ -2046,7 +2059,7 @@ Pour le PC chef qui coordonne plusieurs équipes en parallèle :
 
 **Bouton « 👁️ Détails »** → mini-modale read-only avec liste chronologique des étapes de l'équipe (ts + statut emoji + obs).
 
-**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs).
+**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs). La vue s'ouvre sur la **première étape non terminée de cette équipe**, même si tu étais plus loin chez une autre.
 
 **Retour facile** : une fois en mode Équipier après « Prendre la main », un bouton **« 👤 Retour Opérateur »** apparaît dans le footer. Au clic → retour à la vue d'ensemble Opérateur intacte (le retour reste possible après un rechargement ou un changement de plan).
 
@@ -2153,7 +2166,7 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
    - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
 
 2. **Côté chaque Équipier (terrain)** :
-   - Importe le `.mkmsec.json` de l'opérateur (cohérence IDs équipe)
+   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts, observations et photos déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
    - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
    - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
 
@@ -2163,10 +2176,14 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
    - File picker → sélectionne le fichier → modale preview qui montre : nom équipe ciblée, nombre d'étapes à fusionner, photos, et **conflits détectés** (étapes côté op déjà renseignées qui vont être fusionnées)
    - Confirme l'import → l'app fait un **snapshot AVANT** (backup d'urgence) puis fusionne :
      - Observations **concaténées avec séparateur daté** (aucune perte)
-     - Statut **le plus sévère retenu**
+     - Statut **le plus grave retenu** ; à gravité égale, **le plus récent** — un « RAS » rapporté par l'équipe remplace « en attente », une victime n'est jamais rétrogradée
      - Photos **importées avec déduplication**
    - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
    - Répète pour les 2 autres équipes
+   - ⚠️ **Rapport arrivé après un changement de phase** : s'il porte sur une phase déjà close, il est rangé dans **l'historique de cette phase** — jamais dans la phase en cours — et l'app le signale en orange (en rouge s'il contient « Aide demandée » ou « Victime trouvée »)
+   - 🧭 **Signalement sur une étape que tu as retirée** : il n'est pas perdu — il s'affiche en orange à l'import et figure dans la section **« Signalements hors parcours »** du rapport final
+   - 🗺️ **Plan modifié depuis l'envoi** : si le plan a changé de version (ou a été retracé) depuis l'export du scénario, l'aperçu d'import te prévient et compte les tracés de zone qu'il ne retrouve plus
+   - 📚 Le **rapport final** reprend aussi les étapes des **phases closes**, phase par phase
 
 4. **Visualisation post-fusion** :
    - Sur la card de chaque équipe Op : chip bleu « 📥 importé » apparaît si au moins une étape a reçu de la consolidation
@@ -2416,7 +2433,7 @@ Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockag
 
 **🔒 Métadonnées nettoyées** : **toute** photo est ré-encodée à l'ajout, même déjà petite — les métadonnées cachées du fichier (**EXIF : position GPS de la prise de vue, date, modèle d'appareil**) sont systématiquement supprimées. Rien de tout ça n'entre dans l'app ni ne sort dans un export. Les petites photos sont ré-encodées sans redimensionnement à qualité haute (dégradation invisible).
 
-**🛡️ Export anonymisé + photos** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant l'arrivée de cette protection) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`💎 POI #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
+**🛡️ Export anonymisé + photos** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant l'arrivée de cette protection) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`📍 POI salle #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
 
 **Retirer une photo** : clic sur la croix ✕ rouge en haut à droite de la miniature → elle apparaît grisée avec hachures rouges (marquée à supprimer). Si tu changes d'avis, clic sur la flèche verte ↺ pour annuler. La vraie suppression n'a lieu qu'au moment où tu **💾 Enregistres**.
 
@@ -2696,7 +2713,7 @@ Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un app
 
 **Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
 
-**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Le temps passé sur l'autre plan ne s'ajoute pas à ta sortie. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
+**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Pour une sortie de terrain, le temps passé sur l'autre plan **compte** dans sa durée (mesurée du départ à la fin) : tu étais toujours sous terre. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
 
 > ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
 
@@ -2961,7 +2978,7 @@ Pour un contrôle précis sur tout ce que tu exportes :
   - **Taille** : Compact / Standard / Large
   - **Contenu** : Icônes / Tracés / Zones / Tag tracker / Métadonnées du plan (nom, version, auteur, date)
 - **Format** : PNG ou JPEG (qualité 90%, fichier plus léger)
-- **Résolution** : Originale, ½ ou ¼ (utile pour les très gros plans)
+- **Résolution** : Originale, ½ ou ¼. L’app pré-coche la plus grande qui reste raisonnable (sur un très gros plan, ½ ou ¼) et affiche sous le choix la taille de l’image et la mémoire qu’elle demandera ; au-delà, un avertissement s’affiche. Sur iPhone/iPad, les résolutions que Safari ne peut pas créer sont grisées
 - **Aperçu** : un mini-canvas se met à jour en temps réel pour visualiser le résultat
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.

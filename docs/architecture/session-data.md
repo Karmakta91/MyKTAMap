@@ -1041,7 +1041,10 @@ KARMA quote :
 #### 72.1 Workflow terrain
 
 1. **Opérateur** prépare le scénario + lance le plan AVANT incident (3 rôles disponibles : op surface / équipier / secouriste libre)
-2. **Équipiers** reçoivent le scénario via `.mkmsec.json` classique (Phase 2) OU mêmes IDs équipe (importés à la création du scénario)
+2. **Équipiers** reçoivent le scénario via `.mkmsec.json` classique (Phase 2), qui **garde les ids** du PC.
+   🩸 Faux jusqu'au 29/09/2026 : l'import régénérait scénario + équipes, et l'étape 6 refusait **tous** les rapports
+   venus d'un autre appareil (audit Secours A1, `secours.md` §67.3). Un scénario réimporté « comme copie » a de
+   nouveaux ids : il ne peut plus recevoir de rapport.
 3. Sur le terrain, chaque **équipier renseigne** obs / statuts / photos via vue Live Équipe (Phase 3)
 4. **Au retour surface**, équipier exporte son rapport via « 📤 Rapport » → scope=équipier → format `.mkmsec.report.json` (avec ou sans photos base64 inline)
 5. Équipier **transmet le fichier** à l'opérateur (AirDrop / mail / clé USB / Discord / WhatsApp — peu importe le canal, c'est un fichier statique)
@@ -1051,8 +1054,8 @@ KARMA quote :
 
 | Champ étape | Politique | Détail |
 |---|---|---|
-| `observations` | Concaténation datée | `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` — **aucune perte d'info** |
-| `statut` | Plus sévère | `_severitéMaxStatut(opStatut, impStatut)` via `TABLEAU_STATUTS.severity` (sauf si import=pending qui n'écrase jamais) |
+| `observations` | Concaténation datée — **sans doublon** depuis le 29/09/2026 (R4-3) : l'étape mémorise le dernier texte reçu (`_obsImport`), un ré-import identique n'ajoute rien, un rapport cumulatif n'ajoute que la suite | `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` — **aucune perte d'info** |
+| `statut` | Plus sévère, puis plus récent | Via `TABLEAU_STATUTS.severity` ; import=pending n'écrase jamais. 🩸 29/09/2026 : un statut reçu bat « en attente » (avant, un RAS reçu était perdu — même sévérité 0) ; à sévérité égale, le plus récent `completedAt` gagne (avant : le PC gagnait toujours). Helper `_severitéMaxStatut` supprimé, logique inline dans `_appliquerImportRapportEquipe`. Étapes appariées par identité de point (`wid`, cf `secours.md` §67.7.2) ; « aide »/« victime » sur une étape retirée côté PC → point remis + alerte rouge. **Rapport d'une phase close** (4e relecture R4-2) : le rapport porte `execution.currentPhaseIdx` (à défaut : déduit des horodatages) ; s'il vise une phase close, il est fusionné dans `etapesArchive[phase]`, jamais dans la phase en cours, avec un avis orange et une alerte rouge pour aide/victime. **Signalement hors parcours** (R4-4) : une étape inconnue du PC porteuse de saisies (gravité < 2) → avis orange en clair, photos importées (stepIdx −2), archive `_etapesRetirees` recopiée dans `etapesArchive[phase]._retirees` au passage de phase, section « Signalements hors parcours » dans la page équipe du rapport PDF |
 | `photoIds[]` | Push avec dédup | Dédup par `photo.id` (genId aléatoire = collision rare). Idempotent via `MyKTAMapSecoursPhotos.importPhotoFromDataUrl` qui détecte déjà-présent |
 | `startedAt` | Min (plus ancien) | `Math.min(opStartedAt, impStartedAt)` — préserve la première activation |
 | `completedAt` | Max (plus récent) | `Math.max(opCompletedAt, impCompletedAt)` — préserve la dernière update |

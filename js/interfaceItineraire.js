@@ -90,8 +90,7 @@ function _itiAucunTrace() {
 // Décision KARMA : raccord à vol d'oiseau de plus de 50 m → on avertit sans bloquer.
 function _texteAlerteRaccord(road) {
   if (!window.ItiGuidage) return "";
-  const a = window.ItiGuidage.alerteRaccord(road);
-  return a ? window.I18n.t("guid.alerte.raccordLoin", { dist: window.formatDistance(a.distM, 0) }) : "";
+  return window.ItiGuidage.texteAlerteRaccord(window.ItiGuidage.alerteRaccord(road));
 }
 
 // =========================
@@ -912,6 +911,29 @@ window._onTrackerRecale = function(x, y, source) {
 
 // 🪧 Guidage (lot 2, décision D) — « Recalculer d'ici » du bandeau. Geste
 // explicite de l'utilisateur : pas de confirmation en plus.
+// 🧭 Mode Secours (B1, 30/09/2026) : active un itinéraire DÉJÀ calculé (le parcours
+// d'une équipe) comme l'itinéraire de l'app — bandeau de guidage, feuille de route,
+// écran XL et replanification le prennent tel quel. `opts.confirmer` : demande avant
+// de remplacer un itinéraire en cours (même fenêtre que le calcul classique).
+window.itineraireActiverRoad = function(newRoad, opts) {
+  opts = opts || {};
+  if (!newRoad || newRoad.type !== "itinerary" || !Array.isArray(newRoad.points) || newRoad.points.length < 2) return;
+  const activer = function() {
+    const filtered = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+    filtered.push(newRoad);
+    if (window.setRoads) window.setRoads(filtered);
+    _itineraryWaypoints = (newRoad.waypoints || []).map(function(w) { return Object.assign({}, w); });
+    _redessinerWaypoints();
+    _majLabelDistanceItineraire();
+    const alerteRaccord = _texteAlerteRaccord(newRoad);
+    if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
+    if (typeof opts.onDone === "function") opts.onDone();
+  };
+  const existing = (window.getRoads ? window.getRoads() : []).find(function(r) { return r.type === "itinerary"; });
+  if (existing && opts.confirmer) _confirmRemplacerItineraire(activer);
+  else activer();
+};
+
 window.itineraireReplanifierDepuis = function(px, py) {
   if (typeof px !== "number" || typeof py !== "number") return;
   _replanifierDepuis(px, py);
@@ -944,14 +966,17 @@ async function _replanifierDepuis(px, py) {
   };
   try {
     const avoidPrefs = _getItiAvoidPrefs();
+    // 🧭 Parcours d'une équipe de secours : on garde SES évitements (les zones des
+    // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
+    const sec = road.secours || null;
     const result = await _withItiComputeLoader(function() {
       return window.Pathfinder.computeRoute([origin].concat(restantes), {
-        avoidPoints: avoidPrefs.points || [],
-        avoidTags:   avoidPrefs.tags   || [],
-        avoidZones:  avoidPrefs.zones  || [],
+        avoidPoints: sec ? (sec.avoidPoints || []) : (avoidPrefs.points || []),
+        avoidTags:   sec ? [] : (avoidPrefs.tags   || []),
+        avoidZones:  sec ? [] : (avoidPrefs.zones  || []),
         // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
         respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+        avoidRadius: sec ? (sec.avoidRadius || 30) : (avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS)
       });
     });
     // road.waypoints conserve TOUTES les étapes (validées incluses, avec leur
@@ -964,6 +989,7 @@ async function _replanifierDepuis(px, py) {
     }, _champsGuidage(result));
     // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
+    if (road.secours) newRoad.secours = road.secours;   // reste le parcours de l'équipe
     const filtered = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; });
     filtered.push(newRoad);

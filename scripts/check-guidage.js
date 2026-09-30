@@ -375,6 +375,61 @@ async function bandeau() {
     t("ancien itinéraire : aucune longueur de raccord", w.ItiGuidage.longueurRaccordsPx({ points: [] }) === 0);
   }
 
+  // 12) PERFORMANCE DU PATHFINDER (29/09/2026) — l'enrichissement comparait
+  // chaque segment à tous les autres et Dijkstra balayait tous les nœuds à
+  // chaque pas : ~40 s par itinéraire sur un relevé réel de ~9 000 sommets.
+  // Grille spatiale + tas binaire, résultats identiques au bit près (vérifié
+  // hors dépôt sur le relevé réel : graphe enrichi de même empreinte). Ici,
+  // un quadrillage FICTIF : 90 galeries horizontales × 90 verticales (~16 000
+  // segments), un sommet tous les 40 px, galeries posées à 40k + 20 → chaque
+  // croisement tombe au MILIEU d'un segment des deux côtés, à 20 px de tout
+  // sommet, au-delà de la tolérance de proximité (15 px) : aucun raccourci
+  // diagonal, la distance attendue est exacte.
+  {
+    const N = 90, PAS = 40, L = N * PAS;
+    const roads = [];
+    for (let k = 0; k < N; k++) {
+      const h = [], v = [];
+      for (let s = 0; s <= L; s += PAS) { h.push([s, k * PAS + 20]); v.push([k * PAS + 20, s]); }
+      roads.push(R("principal", h), R("principal", v));
+    }
+    const w = bac(roads);
+    const logs = [];
+    w.console = { log(...a) { logs.push(a.join(" ")); }, warn() {}, error() {} };
+    let t0 = Date.now();
+    const g = w.Pathfinder.buildNetworkGraph({});
+    const msGraphe = Date.now() - t0;
+    const ligne = logs.find(l => /Graphe enrichi/.test(l)) || "";
+    const m = ligne.match(/croisements stricts: (\d+)/);
+    t("pathfinder : les " + (N * N) + " croisements du quadrillage sont trouvés (grille spatiale)",
+      !!m && Number(m[1]) === N * N);
+    t("pathfinder : graphe de ~" + g.segments.length + " segments enrichi en < 3 s (" + msGraphe + " ms ; avant : O(S²))",
+      msGraphe < 3000);
+    t0 = Date.now();
+    // Coin à coin, sur les galeries : la distance exacte est connue d'avance.
+    // Départ (20, 20) = croisement H0 × V0 ; arrivée = croisement de la dernière H × dernière V.
+    const r = await w.Pathfinder.computeRoute(
+      [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
+    const msRoute = Date.now() - t0;
+    const attendu = 2 * (N - 1) * PAS;   // Manhattan sur le quadrillage
+    t("pathfinder : distance coin à coin exacte (" + Math.round(r.totalDistance) + " px, attendu " + attendu + ")",
+      Math.abs(r.totalDistance - attendu) < 1e-6);
+    t("pathfinder : itinéraire complet en < 3 s (" + msRoute + " ms)", msRoute < 3000);
+    // 🩸 Égalités : sur un quadrillage, des milliers de chemins ont la même
+    // longueur. L'ancien balayage choisissait, à égalité, le plus PETIT indice ;
+    // le tas doit faire pareil, sinon le trajet dessiné changerait d'un appel à
+    // l'autre. Deux calculs identiques → deux trajets identiques, et le 1er
+    // pas suit la galerie créée en premier (l'horizontale).
+    const r2 = await w.Pathfinder.computeRoute(
+      [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
+    t("pathfinder : à égalité de longueur, le même trajet à chaque calcul",
+      JSON.stringify(r.path) === JSON.stringify(r2.path));
+    t0 = Date.now();
+    const zone = w.Pathfinder.computeReachable({ x: 20, y: 20 }, 400, {});
+    t("pathfinder : zone atteignable calculée en < 3 s (" + (Date.now() - t0) + " ms)",
+      !!zone && (Date.now() - t0) < 3000);
+  }
+
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal
   await bandeau();
 

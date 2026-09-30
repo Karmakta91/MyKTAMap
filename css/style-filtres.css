@@ -352,7 +352,7 @@ html.kta-theme-light .kta-fp-section {
 body.kta-theme-light .kta-fp-section-titre,
 html.kta-theme-light .kta-fp-section-titre {
   background: rgba(244, 197, 66, 0.18) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-fp-section-titre:hover,
 html.kta-theme-light .kta-fp-section-titre:hover {

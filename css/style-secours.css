@@ -65,7 +65,7 @@ html.kta-theme-light .kta-secours-context-imported-row {
 }
 body.kta-theme-light .kta-secours-context-imported-row strong,
 html.kta-theme-light .kta-secours-context-imported-row strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* 🆕 v1.23.0 Phase 2 / Feature D — Bloc outils d'analyse (heatmap) dans
@@ -175,7 +175,7 @@ html.kta-theme-light .kta-secours-tool-block {
 }
 body.kta-theme-light .kta-secours-tool-block-titre,
 html.kta-theme-light .kta-secours-tool-block-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-tool-block-desc,
 html.kta-theme-light .kta-secours-tool-block-desc {
@@ -236,13 +236,13 @@ html.kta-theme-light .kta-secours-pick-favoris {
 }
 body.kta-theme-light .kta-secours-pick-favoris-titre,
 html.kta-theme-light .kta-secours-pick-favoris-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-pick-favori,
 html.kta-theme-light .kta-secours-pick-favori {
   background: rgba(244, 197, 66, 0.30) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-pick-favori:hover,
 html.kta-theme-light .kta-secours-pick-favori:hover {
@@ -356,7 +356,7 @@ html.kta-theme-light .kta-secours-assign-info {
 }
 body.kta-theme-light .kta-secours-assign-info strong,
 html.kta-theme-light .kta-secours-assign-info strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-assign-role,
 html.kta-theme-light .kta-secours-assign-role {
@@ -506,7 +506,7 @@ html.kta-theme-light .kta-secours-import-preview-card {
 }
 body.kta-theme-light .kta-secours-import-preview-titre,
 html.kta-theme-light .kta-secours-import-preview-titre {
-  color: #d9a82e !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-import-preview-grid,
 html.kta-theme-light .kta-secours-import-preview-grid,
@@ -760,6 +760,25 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 .kta-secours-groupe-header > button[data-action="del-groupe"] {
   flex-shrink: 0;
 }
+/* Équipes repliables (29/09/2026) */
+.kta-secours-groupe-replier {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #c8d0e0;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  cursor: pointer;
+  padding: 0;
+}
+.kta-secours-groupe-resume { display: none; flex-basis: 100%; font-size: 12px; padding-left: 40px; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-body { display: none; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-header { margin-bottom: 0; }
+.kta-secours-groupe-card--repliee .kta-secours-groupe-resume { display: block; }
+body.kta-theme-light .kta-secours-groupe-replier,
+html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, #2a2620) !important; }
 .kta-secours-groupe-nom:focus {
   outline: none;
   border-bottom-color: #f4c542;
@@ -845,7 +864,7 @@ html.kta-theme-light .kta-secours-list-row {
 }
 body.kta-theme-light .kta-secours-list-nom,
 html.kta-theme-light .kta-secours-list-nom {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-list-meta,
 html.kta-theme-light .kta-secours-list-meta,
@@ -885,7 +904,7 @@ html.kta-theme-light .kta-secours-section {
 body.kta-theme-light .kta-secours-section-titre,
 html.kta-theme-light .kta-secours-section-titre {
   background: rgba(244, 197, 66, 0.20) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-groupe-card,
 html.kta-theme-light .kta-secours-groupe-card {
@@ -900,7 +919,7 @@ body.kta-theme-light .kta-secours-edit-titre,
 html.kta-theme-light .kta-secours-edit-titre,
 body.kta-theme-light .kta-secours-groupe-nom,
 html.kta-theme-light .kta-secours-groupe-nom {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* Floater compact en bas de l'écran pendant les modes interactifs map
@@ -1009,7 +1028,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info {
 }
 body.kta-theme-light .kta-secours-overlay-floater-info strong,
 html.kta-theme-light .kta-secours-overlay-floater-info strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1166,7 +1185,7 @@ html.kta-theme-light .kta-search-gps-hint strong {
 body.kta-theme-light .kta-search-gps-hint code,
 html.kta-theme-light .kta-search-gps-hint code {
   background: rgba(0, 0, 0, 0.05) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-search-gps-card-msg,
 html.kta-theme-light .kta-search-gps-card-msg {
@@ -1255,7 +1274,7 @@ html.kta-theme-light .kta-search-gps-poi-info {
 body.kta-theme-light .kta-secours-groupe-level-chip,
 html.kta-theme-light .kta-secours-groupe-level-chip {
   background: rgba(244, 197, 66, 0.40) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
 }
 
@@ -1442,7 +1461,7 @@ html.kta-theme-light .kta-secours-pick-result {
 }
 body.kta-theme-light .kta-secours-pick-result strong,
 html.kta-theme-light .kta-secours-pick-result strong {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* ============================================================
@@ -1757,7 +1776,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
 body.kta-theme-light .kta-btn-phase-end,
 html.kta-theme-light .kta-btn-phase-end {
   background: rgba(217, 168, 46, 0.16) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.60) !important;
 }
 body.kta-theme-light .kta-btn-phase-end:hover,
@@ -1813,7 +1832,10 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-phase-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* minmax(0,…) : sans lui, la colonne texte refusait de rétrécir sous sa largeur
+     minimale (nom + statut) → boutons hors de la carte et fenêtre qui défile en
+     largeur sur iPhone (capture KARMA 29/09). */
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "head    actions"
     "meta    actions";
@@ -1852,6 +1874,22 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.kta-secours-phase-row-head > [class^="kta-secours-phase-status-"] {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Téléphone : les boutons passent sous le nom — le nom de la phase garde toute
+   la largeur au lieu de finir en « Pha… ». */
+@media (max-width: 480px) {
+  .kta-secours-phase-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "meta"
+      "actions";
+  }
+  .kta-secours-phase-row-actions { justify-content: flex-end; }
 }
 .kta-secours-phase-status-active {
   color: #6ee287;
@@ -2387,7 +2425,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-cta {
 }
 body.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre,
 html.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-lancer-bandeau-sub,
 html.kta-theme-light .kta-secours-lancer-bandeau-sub {
@@ -2430,14 +2468,14 @@ html.kta-theme-light .kta-secours-live-header-meta {
 }
 body.kta-theme-light .kta-secours-live-header-timer,
 html.kta-theme-light .kta-secours-live-header-timer {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* 🆕 v1.29.0 C2 — Thème clair pour les nouveaux éléments multi-phases */
 body.kta-theme-light .kta-secours-live-phase-badge,
 html.kta-theme-light .kta-secours-live-phase-badge {
   background: rgba(217, 168, 46, 0.16) !important;
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: rgba(217, 168, 46, 0.55) !important;
 }
 body.kta-theme-light .kta-secours-phase-row,
@@ -2488,7 +2526,7 @@ html.kta-theme-light .kta-secours-phase-equipe-nom {
 }
 body.kta-theme-light .kta-secours-phase-equipe-level,
 html.kta-theme-light .kta-secours-phase-equipe-level {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
   background: rgba(217, 168, 46, 0.18) !important;
 }
 body.kta-theme-light .kta-secours-live-etape,
@@ -2503,7 +2541,7 @@ html.kta-theme-light .kta-secours-op-card {
 }
 body.kta-theme-light .kta-secours-live-etape-titre,
 html.kta-theme-light .kta-secours-live-etape-titre {
-  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 body.kta-theme-light .kta-secours-live-etape-textarea,
 html.kta-theme-light .kta-secours-live-etape-textarea {
@@ -2827,3 +2865,117 @@ html.kta-theme-light .kta-secours-sub-modal label strong {
   color: #1f2937 !important;
 }
 
+/* Zones des autres équipes pendant le dessin (29/09/2026) : étiquette discrète */
+.leaflet-tooltip.kta-secours-zone-autre-label {
+  background: rgba(26, 31, 46, 0.80);
+  color: #e8eaf0;
+  border: none;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+.leaflet-tooltip.kta-secours-zone-autre-label::before { display: none; }
+
+/* Pastille « intervention en cours » dans la barre d'état (29/09/2026) */
+/* Pastille pleine, impossible à rater sur la carte : l'intervention tourne, un
+   toucher ramène à la vue live pour valider les étapes. */
+.kta-refonte-stat.kta-secours-footer-pastille {
+  background: #b3261e;
+  color: #fff !important;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+  box-shadow: 0 0 0 2px rgba(255, 90, 80, 0.35);
+  animation: kta-secours-pastille-pulse 2.4s ease-in-out infinite;
+  white-space: nowrap;
+}
+.kta-refonte-stat.kta-secours-footer-pastille .kta-refonte-stat-val { color: #fff !important; }
+.kta-secours-footer-go { margin-left: 6px; font-size: 15px; line-height: 1; }
+@keyframes kta-secours-pastille-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 90, 80, 0.35); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 90, 80, 0.10); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-refonte-stat.kta-secours-footer-pastille { animation: none; }
+}
+body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille,
+html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille { background: #a01818 !important; color: #fff !important; }
+
+/* A3 (vague 5) : victime — bloc équipier, bandeau opérateur, marqueur carte */
+.kta-secours-victime-bloc, .kta-secours-victime-bandeau {
+  background: rgba(255, 68, 68, 0.14);
+  border: 1px solid #ff4444;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  color: #ffd0d0;
+}
+.kta-secours-victime-ligne { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; padding: 3px 0; }
+.kta-secours-victime-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.kta-secours-victime-marker span {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #d11f1f; color: #fff; font-size: 20px; font-weight: 700;
+  border: 2px solid #fff; box-shadow: 0 0 0 3px rgba(209, 31, 31, 0.45);
+}
+body.kta-theme-light .kta-secours-victime-bloc, html.kta-theme-light .kta-secours-victime-bloc,
+body.kta-theme-light .kta-secours-victime-bandeau, html.kta-theme-light .kta-secours-victime-bandeau {
+  background: #fde2e0 !important; color: #7a1010 !important; border-color: #c62828 !important;
+}
+
+/* A4 (vague 5) : départ / retour prévu / retard */
+.kta-secours-retour {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;
+  margin: 6px 0; padding: 5px 8px; border-radius: 6px; font-size: 12px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.10); color: #c8d0e0;
+}
+.kta-secours-retour-btns { display: flex; gap: 6px; }
+.kta-secours-retour--orange { background: rgba(255, 140, 0, 0.16); border-color: #ff8c00; color: #ffc98a; font-weight: 600; }
+.kta-secours-retour--rouge { background: rgba(255, 50, 50, 0.20); border-color: #ff3b3b; color: #ffc0c0; font-weight: 700; }
+.kta-secours-retour--rentree { color: #6ee287; }
+.kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #c46a00; }
+body.kta-theme-light .kta-secours-retour, html.kta-theme-light .kta-secours-retour { background: #f3ecdc !important; color: #2a2620 !important; border-color: rgba(0,0,0,0.15) !important; }
+body.kta-theme-light .kta-secours-retour--orange, html.kta-theme-light .kta-secours-retour--orange { background: #ffe3bf !important; color: #8b3a00 !important; border-color: #c46a00 !important; }
+body.kta-theme-light .kta-secours-retour--rouge, html.kta-theme-light .kta-secours-retour--rouge { background: #fde2e0 !important; color: #a01818 !important; border-color: #c62828 !important; }
+body.kta-theme-light .kta-secours-retour--rentree, html.kta-theme-light .kta-secours-retour--rentree { color: #1e7a3a !important; }
+body.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange,
+html.kta-theme-light .kta-refonte-stat.kta-secours-footer-pastille.kta-secours-footer-pastille--orange { background: #a85a00 !important; }
+
+/* Rappel (vague 5) : violet — un ordre donné par l'opérateur */
+.kta-secours-rappel-badge {
+  background: rgba(167, 139, 250, 0.22); color: #d4c6ff; border: 1px solid #a78bfa;
+  border-radius: 999px; padding: 1px 8px; font-weight: 700; white-space: nowrap;
+}
+.kta-btn.kta-btn-rappel { background: #5b3fb0; color: #fff; border: 1px solid #a78bfa; }
+body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secours-rappel-badge { background: #ece6ff !important; color: #4a2f9a !important; border-color: #6d4fd0 !important; }
+
+/* En-tête live HORS de la zone qui défile (30/09/2026, bug iOS sticky) */
+.kta-secours-live-slot { flex: 0 0 auto; padding: 8px 12px 0; }
+.kta-secours-live-slot .kta-secours-live-header { position: static; margin-bottom: 4px; box-shadow: none; }
+
+/* B1 (vague 6) : bouton « Suivre mon parcours » */
+.kta-secours-suivre-btn { display: block; width: 100%; margin: 4px 0 8px; padding: 10px 12px; font-size: 14px; }
+
+/* Main courante (vague 7) */
+.kta-secours-mc-saisie { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 8px; }
+.kta-secours-mc-saisie textarea { flex: 1; min-width: 0; font-size: 13px; }
+.kta-secours-mc-liste { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 12.5px; }
+.kta-secours-mc-liste li { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.kta-secours-mc-h { font-variant-numeric: tabular-nums; color: #8cb4ff; margin-right: 4px; }
+.kta-secours-mc-note { font-style: italic; }
+body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h { color: #1e5f99 !important; }
+
+/* B9 (vague 7) : chef / effectif, personnes manquantes */
+.kta-secours-b9-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.kta-secours-retour--manquant { background: rgba(255, 30, 30, 0.28); border: 2px solid #ff3b3b; color: #fff; font-weight: 800; }
+body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-secours-retour--manquant { background: #fdd4d0 !important; color: #8a0f0f !important; border-color: #b71c1c !important; }
+
+/* B3 (vague 7b) : couverture */
+.kta-secours-couv-titre { margin: 10px 0 4px; font-weight: 700; font-size: 13px; }
+.kta-secours-couv-liste { margin: 0 0 6px; padding-left: 18px; font-size: 12.5px; }
+.kta-secours-couv-note { font-size: 11.5px; margin-top: 8px; }
+
+/* B10 (vague 7b) : raccourcis de sécurité de la vue équipe */
+.kta-secours-raccourcis { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.kta-secours-raccourcis .kta-btn { flex: 1 1 30%; }

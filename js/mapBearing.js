@@ -477,52 +477,15 @@
   // croisent pas le viewport élargi. On ne remet QUE celles qu'on a retirées
   // (drapeau `_ktaCulled`) — sans ça on rendrait visibles des tuiles que le
   // filtre multi-niveau avait volontairement masquées.
-  const MARGE_TUILES = 0.15;        // anti pop-in, AUTOUR de la zone exacte
-  let _cullEnCours = false;
-
-  function _cullerTuiles(forcerTout) {
-    const map = window.map;
-    const st = window._tilingV2State;
-    if (!map || !st || !Array.isArray(st.activeOverlays) || !st.activeOverlays.length) return;
-    const actif = !forcerTout && isActive() && Math.abs(_bearing) > 0.01;
-    let zone = null;
-    if (actif) {
-      // Zone RÉELLE (coins de l'écran dé-tournés), pas le rectangle non
-      // tourné de `getBounds()` — c'est toute la différence.
-      zone = zoneVisible(MARGE_TUILES);
-      if (!zone) return;
-    }
-    let retirees = 0, rendues = 0;
-    st.activeOverlays.forEach(function(ov) {
-      if (!ov || typeof ov.getBounds !== "function") return;
-      let dedans = true;
-      if (zone) {
-        try { dedans = zone.intersects(ov.getBounds()); } catch(e) { dedans = true; }
-      }
-      const surCarte = map.hasLayer(ov);
-      if (!dedans && surCarte) {
-        try { map.removeLayer(ov); ov._ktaCulled = true; retirees++; } catch(e) {}
-      } else if (dedans && !surCarte && ov._ktaCulled) {
-        // Uniquement celles que NOUS avons retirées : une tuile absente pour
-        // une autre raison (filtre multi-niveau) doit le rester.
-        try { ov.addTo(map); ov._ktaCulled = false; rendues++; } catch(e) {}
-      }
-    });
-    if (retirees || rendues) {
-      console.log("[MapBearing] Tuiles hors écran : " + retirees + " retirée(s), " +
-                  rendues + " rendue(s) — " + st.activeOverlays.length + " au total");
-    }
-  }
-
-  // Le tuilage repose ses tuiles à chaque changement de niveau (zoomend) : on
-  // repasse derrière lui, après coup, et jamais plus d'une fois par frame.
+  // 🧱 29/09/2026 — le retrait des tuiles hors écran n'est plus propre à ce
+  // mode : le tuilage l'applique TOUT LE TEMPS (tiling.js > ktaCullerTuilesV2,
+  // mesuré : 864 tuiles posées pour 6 visibles sans rotation). Une seule
+  // implémentation ; ce mode se contente de la redemander pendant que la vue
+  // tourne (la zone visible change sans moveend), zone réelle dé-tournée comprise
+  // (`zoneVisible` ci-dessous). Plus de « tout remettre » au retour à plat :
+  // les tuiles lointaines n'ont plus de raison d'être posées.
   function _cullerTuilesThrottle() {
-    if (_cullEnCours) return;
-    _cullEnCours = true;
-    requestAnimationFrame(function() {
-      _cullEnCours = false;
-      try { _cullerTuiles(false); } catch(e) {}
-    });
+    if (typeof window.ktaCullerTuilesV2Throttle === "function") window.ktaCullerTuilesV2Throttle();
   }
 
   // ===== Bouton « recentrer » =====
@@ -547,9 +510,13 @@
   // KARMA sur le bouton Retour.
   // On ne fige donc aucune hauteur : on mesure ce qui est là et on se place
   // au-dessus. Ajouter un flottant à cette liste suffira pour le suivant.
+  // 🐛 30/09/2026 (capture KARMA) : la BARRE D'ÉTAT elle-même manquait — elle grandit
+  // quand un plan de secours tourne (pastille « 🚨 Secours ») et recouvrait le bouton,
+  // resté à sa hauteur CSS fixe. Sa taille change sans ajout de nœud à <html> : elle
+  // est aussi suivie par un ResizeObserver (cf _observerFloaters).
   const FLOATERS_BAS = ["#kta-ipl-back-float", ".kta-ipr-next-float",
                         ".kta-iti-floater", ".kta-north-picker-overlay",
-                        ".kta-supp-trace-floater"];
+                        ".kta-supp-trace-floater", "#kta-refonte-statusbar"];
 
   function _placerBoutonRecentrer() {
     if (!_btnRecentrer) return;
@@ -576,6 +543,7 @@
   // sont posés. childList sans subtree = quasi gratuit, et seulement tant que
   // notre bouton existe.
   let _observateurFloaters = null;
+  let _observateurBarre = null;
   function _observerFloaters(actif) {
     if (actif && !_observateurFloaters && typeof MutationObserver === "function") {
       _observateurFloaters = new MutationObserver(function() { _placerBoutonRecentrer(); });
@@ -583,6 +551,15 @@
     } else if (!actif && _observateurFloaters) {
       try { _observateurFloaters.disconnect(); } catch(e) {}
       _observateurFloaters = null;
+    }
+    // Barre d'état : sa hauteur varie (pastille Secours, barre repliée / dépliée).
+    const barre = document.getElementById("kta-refonte-statusbar");
+    if (actif && !_observateurBarre && barre && typeof ResizeObserver === "function") {
+      _observateurBarre = new ResizeObserver(function() { _placerBoutonRecentrer(); });
+      _observateurBarre.observe(barre);
+    } else if (!actif && _observateurBarre) {
+      try { _observateurBarre.disconnect(); } catch(e) {}
+      _observateurBarre = null;
     }
   }
 
@@ -618,9 +595,6 @@
     map.on("move zoom moveend zoomend viewreset", function() {
       if (Math.abs(_bearing) > 0.01) _appliquer();
     });
-    // Après le swap de niveau du tuilage (il repose toutes ses tuiles) et
-    // après chaque déplacement : on retire celles qui sont hors écran.
-    map.on("moveend zoomend", _cullerTuilesThrottle);
     // Un pan manuel (s'il redevient possible) désarme le suivi.
     // Vaut pour le drag natif de Leaflet (mode inactif) comme pour notre pan
     // manuel : dans les deux cas l'utilisateur vient de partir voir ailleurs.
@@ -771,9 +745,8 @@
     _bearing = 0; _cible = 0; _capLisse = null;
     _appliquer();
     _deverrouiller(window.map);
-    // La vue est droite : plus de couche de compositing, plus de raison de
-    // priver le fond de ses tuiles.
-    try { _cullerTuiles(true); } catch(e) {}
+    // La vue est droite : la zone visible redevient le rectangle de l'écran.
+    _cullerTuilesThrottle();
     _majBoutonRecentrer();
   }
 

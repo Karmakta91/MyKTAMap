@@ -79,7 +79,7 @@
 
   // ===== État interne =====
   let _active           = false;
-  let _lastKnownPos     = null;   // {x, y, label}
+  let _lastKnownPos     = null;   // {x, y, level, label} (level depuis le 29/09/2026)
   let _elapsedMinutes   = DEFAULT_ELAPSED_MIN;
   let _speedKmH         = DEFAULT_SPEED_KMH;
   let _radiusPx         = 0;
@@ -541,6 +541,11 @@
   }
 
   // ===== Mode "clic carte" pour saisir la dernière position =====
+  // Niveau affiché (clic carte, tracker) : c'est là que la personne a été vue.
+  function _niveauAffiche() {
+    return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
+  }
+
   function _activerClicCarte(callback) {
     if (!window.map) return;
     _desactiverClicCarte();
@@ -554,7 +559,7 @@
       const x = Math.round(e.latlng.lng);
       const y = Math.round((window.APP_CONFIG.imageHeight || 0) - e.latlng.lat);
       _desactiverClicCarte();
-      callback({ x: x, y: y, label: _t("lost.pos.clickLabel", { x: x, y: y }) });
+      callback({ x: x, y: y, level: _niveauAffiche(), label: _t("lost.pos.clickLabel", { x: x, y: y }) });
     };
     window.map.on("click", _clickHandler);
   }
@@ -1051,6 +1056,9 @@
             div.addEventListener("click", function() {
               _selectionnerPosition({
                 x: p.x, y: p.y,
+                // Niveau du POI, pas celui affiché ; POI sans niveau → null (4e relecture,
+                // R4-14 : « sans niveau » ne doit pas activer le calage au niveau 0).
+                level: Number.isInteger(p.level) ? p.level : null,
                 label: (p.nom || p.id || "?") + " — " + (item.layerLabel || item.layer || "")
               });
               searchInput.value = "";
@@ -1084,7 +1092,10 @@
         pos = window.getTrackingPosition();
       }
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-        _selectionnerPosition({ x: pos.x, y: pos.y, label: _t("lost.pos.trackerLabel") });
+        _selectionnerPosition({ x: pos.x, y: pos.y, level: _niveauAffiche(), label: _t("lost.pos.trackerLabel") });
+      } else if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        // Relecture (C1) : alert() natif migré — fonction touchée au 29/09/2026.
+        window.OOMGuard.showToast(_t("lost.err.noTracker"), "warn");
       } else {
         alert(_t("lost.err.noTracker"));
       }
@@ -1306,6 +1317,10 @@
       lastKnownPos:   _lastKnownPos ? {
         x:     _lastKnownPos.x,
         y:     _lastKnownPos.y,
+        // 🩸 29/09/2026 (audit Secours) — le niveau voyage avec la position : le
+        // Mode Secours prenait le niveau AFFICHÉ au moment du clic sur « Lancer un
+        // plan de secours », faux dès qu'on avait changé d'étage entre-temps.
+        level: Number.isInteger(_lastKnownPos.level) ? _lastKnownPos.level : null,
         label: _lastKnownPos.label || null
       } : null,
       elapsedMinutes: _elapsedMinutes,

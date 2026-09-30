@@ -1677,7 +1677,7 @@
   // 🛡️ v1.31.7 F1 — ANONYMISATION POUR PARTAGE PUBLIC
   // ========================================================
   // Substitue les noms POI / roads / zones / structures par des codes
-  // séquentiels (emoji + #N) et vide les notes/descriptions, retire le
+  // séquentiels (tag + #N) et vide les notes/descriptions, retire le
   // tracker GPS et le profil user.
   //
   // Objectif : permettre à un cataphile/spéléo de partager un plan utile
@@ -1685,7 +1685,7 @@
   // de POI sensibles, notes opérationnelles, historique de présence).
   //
   // Le destinataire qui connaît la zone peut toujours coordonner ("celui
-  // qu'on appelle 💎 POI #3") — la traçabilité humaine reste possible mais
+  // qu'on appelle 📍 POI salle #3") — la traçabilité humaine reste possible mais
   // ne fuite plus dans l'archive numérique.
   //
   // 1:1 préservé : x, y, level, tags, type. Reconstructibles par le ré-import.
@@ -1699,22 +1699,6 @@
   // anonymisés récupèrent leur liste `photos` — la liaison photo↔point
   // survit à l'anonymisation sans fuiter les ids d'origine.
   function _anonymiserSession(session, photos) {
-    // Mapping emoji par tag (built-in connus + fallback "🎯")
-    // ⚠️ Synchroniser avec TAGS_BUILTIN si nouveau tag ajouté.
-    const EMOJI_PAR_TAG = {
-      aeration: "💨", pa: "🕳️", siphon: "💧",
-      effondrement: "⚠️", incertain: "❓",
-      chaufferette: "🔥", baffle: "🚧",
-      eau: "💧", lampe: "🔦", echelle: "🪜",
-      fissure: "💔", entree: "🚪", sortie: "🚪",
-      explosif: "💥", chantier: "🏗️",
-      gem: "💎", graff: "🎨", photo: "📷"
-    };
-    function _emojiPour(tag) {
-      const t = String(tag || "").toLowerCase();
-      return EMOJI_PAR_TAG[t] || "🎯";
-    }
-
     // 1. editorPoints — séquence par tag (cohérent avec coordination terrain)
     // 🔒 v1.63.0 : idMap id d'origine → code anonymisé (remappage photos)
     const idMap = {};
@@ -1722,10 +1706,12 @@
       const counterByTag = {};
       session.editorPoints = session.editorPoints.map(function(p) {
         const firstTag = (Array.isArray(p.tags) && p.tags.length) ? p.tags[0] : "";
-        const emoji   = _emojiPour(firstTag);
         const key     = firstTag || "_notag";
         counterByTag[key] = (counterByTag[key] || 0) + 1;
-        const code = emoji + " POI #" + counterByTag[key];
+        // 29/09/2026 : le TAG entre dans le code. Avant, une table d'emojis (1 tag
+        // connu sur 22) donnait « 🎯 POI #1 » à la 1re salle ET au 1er puits : codes
+        // en double, donc ids en double et photos rattachées au mauvais point.
+        const code = "📍 POI " + (firstTag ? firstTag + " " : "") + "#" + counterByTag[key];
         if (p.id) idMap[String(p.id)] = code;
         const out  = {
           id:    code,
@@ -3498,8 +3484,10 @@
 
     // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
     if (typeof window.attacherBoutonCopierEchelleGps === "function") {
-      const modal = document.getElementById("kta-ses-modal") || document;
-      window.attacherBoutonCopierEchelleGps(modal);
+      // 29/09/2026 : visait « kta-ses-modal », id qui n’a jamais existé → repli
+      // silencieux sur tout le document. La bannière vit dans le contenu de l’onglet.
+      const zone = document.getElementById("kta-ses-content") || document;
+      window.attacherBoutonCopierEchelleGps(zone);
     }
 
     // Boutons "🔍 Chercher un point" → autocomplete

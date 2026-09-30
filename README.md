@@ -12,7 +12,25 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.1` (28/09/2026)
+## 📦 Version courante — `v1.98.23` (30/09/2026)
+
+> 🎛️ **v1.98.23 — Mode Secours, retours KARMA** : l'opérateur qui relaie une équipe n'a plus les raccourcis du terrain ; aide et tutoriel sans « État N — ».
+
+> 🚒 **v1.98.22 — Mode Secours, test terrain sur Pandemonium** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
+
+> 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
+
+> 📄 **v1.98.7 — Mode Secours, vague 3 : les documents papier** : le briefing pompiers liste enfin les accès du plan (le bloc était toujours vide) ; le fond des PDF est plafonné à 16 Mpx (226 Mpx avant, PDF sans carte sur iPhone) ; la mini-carte du rapport PDF se dessine (elle ne s'était jamais générée — trouvé en test) ; le briefing par équipe liste ses étapes au lieu d'un nombre de points de tracé.
+
+> 🗺️ **v1.98.6 — Mode Secours, vague 2 : la saisie du plan** : le mode « zone = tracés » sélectionne enfin des galeries (il ne prenait aucun clic) ; l'itinéraire garde le vrai niveau de chaque point ; « POI de la zone » ordonne au plus proche voisin (26-45 % plus court) ; Ctrl+K n'écrase plus l'entrée d'une équipe ; le Mode Perdu transmet le niveau du dernier point connu ; un renfort ou un parcours modifié en cours de phase a ses étapes, sans perdre les saisies.
+
+> 🚨 **v1.98.5 — Mode Secours, vague 1 des correctifs : la remontée PC ↔ équipes fonctionne enfin** : le rapport d'une équipe fait sur son propre téléphone était refusé à 100 % par le PC (ids régénérés à l'import) — il est accepté ; la limite de 10 scénarios n'efface plus une intervention en cours ; un « RAS » rapporté n'est plus perdu à la fusion ; « Prendre la main » ouvre la bonne étape. Issu de l'audit `docs/audits/2026-09-29_audit-secours-v1.md`.
+
+> 🧱 **v1.98.4 — Le fond d'un gros plan ne télécharge plus que ce qui est à l'écran** : 864 → 12 tuiles posées et demandées au zoom le plus fin, sans trou à l'écran ; et le cache des tuiles d'un plan ZIP libère enfin de la mémoire sur ordinateur. Notes de version inchangées (décision KARMA).
+
+> ⚡ **v1.98.3 — Itinéraire ~150× plus rapide, réglages ULTRA enfin actifs sur les tracés d'un plan** : un itinéraire sur un relevé de ~9 000 sommets passait de ~45 s à ~0,3 s (mêmes trajets au bit près) ; « Ne rendre que le visible » et « Décimer au dézoom » agissent désormais sur les tracés du plan (893 → 8 sur la carte). Notes de version inchangées (décision KARMA).
+
+> 🧹 **v1.98.2 — Correctifs sans nouveauté visible** : supprimer un plan peut emporter ses documents d'histoire (case décochée) ; l'export image ne pré-coche plus 861 Mo de mémoire ; codes uniques dans l'export anonymisé ; module hors-ligne enfin pré-caché ; premier rendu du tuilage et écran d'urgence immobile assainis. Notes de version inchangées (décision KARMA : rien que l'utilisateur doive apprendre).
 
 > 🔁 **v1.98.1 — Une sortie ne s'arrête plus quand on montre un autre plan** : changer de plan en cours de sortie la **met en pause** au lieu de la terminer (et de la jeter sous les seuils) ; retour sur son plan sous 2 h → elle reprend, et l'app propose de relancer le suivi. Corrigé aussi : le bouton « 🎯 Recentrer » survivait au changement de plan. Et la dette de traduction des guides (EN/ES), dont une règle de sécurité fausse, est rattrapée et désormais gardée par un contrôle de commit.
 
@@ -479,6 +497,199 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.23 (30/09/2026) — Mode Secours : retours KARMA
+
+- 🎛️ **Relais opérateur** (`857ceaf`) : l'opérateur de surface qui « prend la main » sur une équipe voyait Sortie d'urgence, Écran XL, Je suis perdu et « Suivre mon parcours » — des gestes qui agissent sur l'appareil qui les affiche. Masqués quand `s.execution._previousRole` est posé ; le téléphone de l'équipe les garde. Guides FR/EN/ES précisés.
+- 📖 **Aide intégrée** (`893afcf`) et **tutoriel** (`e50445d`) : « État 1 — CRÉATION (vue Édition) » → « CRÉATION (vue Édition) », idem pour les deux autres chapitres, en FR / EN / ES ; plus aucune occurrence « État N » dans les dictionnaires.
+- ✅ **Tests** : relais opérateur → 0 bouton, retour à l'opérateur présent ; téléphone en mode équipe → 3 raccourcis + Suivre ; check-i18n, check-doc-langues.
+
+#### v1.98.22 (30/09/2026) — Mode Secours : test terrain sur le plan réel
+
+- 🔍 **Origine** : scénario de KARMA (8 équipes, Pandemonium 23 000 × 18 000) rejoué en navigateur, PC + téléphone. Décisions KARMA : les 6 recos du topo.
+- 🔴 **Faux retards** (`cf809f3`) : relancer un scénario joué gardait `phases[].startedAt/endedAt` → 8 équipes « en retard de 9 à 12 h » à la 1re seconde. `lancerExecution` remet les heures de phase ; l'équipe avec victime passe en tête des cartes opérateur.
+- 🔴 **Messages du lancement** (`0183514`) : 4 messages successifs, le dernier posé 10 s sur « Suivre mon parcours » (touchers captés) ; le placement (info) jamais vu en « Essentielles ». Un message unique (type avertissement dès qu'il dit plus que « lancé ») ; `.kta-toast` en `pointer-events: none` sauf la croix, `white-space: pre-line`.
+- 🟡 **Plan différent** (`b7f2e75`) : `local_pandemonium_2023` ≠ `server_test` → alerte « Pandemonium / Pandemonium ». `_autrePlan` : ids différents ET (nom ou dimensions différents).
+- 🟡 **Étape loin des galeries** (`0a66dc6`) : « vérifie ta position » visait l'équipe, la cause était l'étape « PA3 » à 68 m de tout tracé. `ItiGuidage.texteAlerteRaccord` selon le bout (départ / étape / arrivée) ; message de calcul unique, qui la signale dès la préparation.
+- 🟠 **Cartes d'équipe** (`8255e93`) : entrée masquée par la sortie posée à 1 m (`_memeAcces` : même point ou < 10 m au même niveau → un repère « ENTRÉE / SORTIE » / « E/S ») ; briefing plafonné à 1000 px → jusqu'à la résolution du canvas plan (Golf 1868 px), carte 125 mm, repères à l'échelle.
+- 🟠 **Accès surface** (`6b762b6`) : la page surface montrait le plan entier (1229 × 638, tous les POI). `_accesSurface` + `_canvasAcces` : plan recadré sur les accès dédoublonnés, repères numérotés, tableau GPS + lien ; capture Vue OSM retirée du rapport, optionnelle dans le briefing (POI décochés).
+- ✅ **Tests** : harnais navigateur par cas sur le scénario réel (relance, messages, import, calcul Golf/Hotel, PDF régénérés et relus) ; 16 harnais Node ; check-guidage, check-i18n.
+
+#### v1.98.21 (30/09/2026) — Mode Secours : retours de test de KARMA
+
+- 📍 **Placé à l'entrée** (`167ef90`) : au lancement en mode équipe, `_placerAEntree` → `recalerTrackerSurPoint(x, y, niveau, { teleport: true })` ; automatique si la position n'est pas confirmée, proposé sinon (`ktaConfirm`).
+- 🎨 **Titre « Détails d'équipe »** (`8f4a39c`) : `<h2>` nu, sans `kta-readme-modal-titre` → presque noir sur fond sombre. Titres des fenêtres de résultat / lancement : classes `kta-tx-*` pour le thème clair.
+- 🎨 **Listes déroulantes** (`8fc981a`) : une `<option>` ouverte (Windows / Chrome) = texte clair sur fond blanc système. Règle commune `.kta-readme-modal-overlay select option` (sombre + clair), au lieu des corrections composant par composant.
+- ✅ **Tests** : placement (automatique, proposé-accepté, proposé-refusé) ; couleurs calculées sur WebKit et Chromium, deux thèmes.
+
+#### v1.98.20 (30/09/2026) — Mode Secours, vague 7b : planification
+
+- 🔍 **Origine** : seconde moitié de la vague 7. Décisions KARMA 6:a 7:a 8:a.
+- 🗂️ **Un parcours par phase** (`b094e0d`) : `terminerPhase` → `_archivePhaseParcours` (`s.execution.parcoursArchive[phase][gid]` : libellés, distance, durée) ; « Parcours prévu : … » dans chaque PHASE CLOSE du PDF.
+- 📊 **B3 — Couverture** (`96f473e`) : `_calculerCouverture` (galeries couvertes par tracés de zone ou milieu de segment dans un polygone ; POI dans une zone hors parcours ; POI communs) ; bloc de la vue édition, calculé à l'ouverture ; niveaux non distingués (dit dans le bloc).
+- 📴 **B10** (`5e5a3e5`) : `_verifierHorsLigne` au lancement (plan `type: "server"` et `PlanOffline.statut ≠ complet` → avertissement + main courante, sans bloquer) ; raccourcis Sortie d'urgence / Écran XL / Je suis perdu dans la vue équipe.
+- ✅ **Tests** : checkups navigateur par case (parcours de phase 1 gardé après replanification, couverture sur le plan de test, avertissement hors-ligne, trois raccourcis), PDF régénéré et relu, 16 harnais Node, checkups vagues 5 à 7a.
+
+#### v1.98.19 (30/09/2026) — Mode Secours, vague 7a : sécurité et traçabilité
+
+- 🔍 **Origine** : refonte du Mode Secours, vague 7 coupée en deux (7a sécurité / traçabilité, 7b planification). Décisions KARMA 1:a 2:a 3:a 4:a 5:a.
+- 📜 **Main courante** (`f099c3e`) : `s.execution.mainCourante` = `{ at, cle, p, source? }` traduit à l'affichage ; événements automatiques (lancement, statuts, victime, départ / rentrée / rappel, imports, phases, fin) + notes libres ; panneau opérateur ; fusion depuis les rapports (sans doublon, signée de l'équipe) ; annexe des rapports texte / PDF.
+- 👥 **B9** (`c5d40d5`) : `g.chef`, `g.effectif` ; « ✅ Rentrée » → compte des remontés (`suivi.remontes`) ; sous l'effectif : état `manquant` (le pire, en tête), pastille rouge, toast + vibration, « Corriger le compte » ; `ktaConfirm` gagne `opts.nombre` (utils.js). Trouvé en relisant : effectif inconnu → on peut valider sans compte.
+- 📥 **Secouriste** (`e125351`) : son rapport n'est plus refusé ; notes → main courante à leur heure, signées « Secouriste », sans doublon.
+- ✅ **Tests** : checkups navigateur (événements par l'interface, 4/5 → alerte puis correction), deux tests à deux appareils (équipe : main courante du téléphone signée ; secouriste : notes, ré-import sans doublon), PDF (annexe), 16 harnais Node, checkups vagues 5-6.
+
+#### v1.98.18 (30/09/2026) — Mode Secours, vague 6 : guidage (B1, B2)
+
+- 🔍 **Origine** : refonte du Mode Secours, vague 6. Constat : le parcours d'une équipe n'était qu'un dessin ; le guidage ne lit qu'un itinéraire de l'app, que le Secours ne créait jamais, et le calcul jetait carrefours et raccords. Décisions KARMA 1:a 2:a 3:a 4:a 5:a.
+- 🗂️ **Données de guidage** (`8f5fe5b`) : `g.guidage = { carrefours, raccords, n }` gardé aux deux calculs, voyage dans le `.mkmsec`.
+- 🧭 **Suivre mon parcours** (`832f01f`) : `window.itineraireActiverRoad` (interfaceItineraire) active le parcours comme itinéraire (`secours` : scénario, équipe, évitements) avec confirmation si un itinéraire perso existe ; étapes validées → waypoints `done` ; `_replanifierDepuis` garde `secours` et ses évitements ; arrivée à ~12 m → toast + focus live.
+- 📄 **Feuille de route PDF** (`e858868`) : `ItiGuidage.construire` → consignes numérotées sous « Itinéraire suggéré » ; rien d'inventé si les données manquent.
+- 🐛 **Au passage** (`3bc081d`) : l'infobulle de version de l'accueil appelait `I18n.t` au chargement, avant les dicos (« Clé manquante », introduit en v1.98.13) — trouvé par `checkup-guidage`.
+- ✅ **Tests** : checkups navigateur par case (position simulée comme `checkup-guidage` : bandeau, étape faite, replanification Secours, arrivée), `checkup-guidage` vert, PDF régénérés et relus (10 et 28 consignes), 16 harnais Node, checkups vague 5.
+
+#### v1.98.17 (30/09/2026) — Deux défauts d'affichage sur iPhone
+
+- 📱 **En-tête live du Mode Secours** (`068f71d`) : en vue opérateur, les cartes défilaient PAR-DESSUS l'en-tête « Opérateur surface ». 3e récidive — v1.24.2 (fond opaque) et v1.25.1 (`z-index: 100` + `isolation`) sans effet sur Safari iOS. **Reproduit sur WebKit** (Playwright, installé le 30/09 pour ça) : les boutons des cartes sont peints au-dessus de l'en-tête `sticky`. Correctif par construction : en vue live, l'en-tête sort de la zone qui défile (`_placerEnteteLive`). Vérifié sur WebKit et Chromium à 390 px.
+- 🎯 **« Recentrer »** (`eeee9ba`, `mapBearing.js`) : la barre d'état manquait à la liste des flottants du bas ; avec un itinéraire actif, le bouton se calait sur lui et passait sous la barre agrandie par la pastille Secours. Barre ajoutée + `ResizeObserver`. `checkup-plan-oriente` vert.
+- 🧰 **Outillage** : WebKit disponible pour les harnais Playwright (`webkit.launch()`) — les bugs propres à Safari se reproduisent désormais ici.
+
+#### v1.98.16 (30/09/2026) — Mode Secours, vague 5 : sécurité terrain (A3, A4, rappel)
+
+- 🔍 **Origine** : refonte du Mode Secours (audit du 29/09), vague 5. Décisions KARMA : 1:a (position = point de l'étape + « Préciser »), 2:a (Évacuer = Sortie d'urgence, options brancard plus tard), 4:a (bouton Départ, sinon lancement), 5:a (orange à l'heure, rouge après une marge réglable), 8:a (rappel = état tenu par l'opérateur).
+- 🚑 **A3 — victime** (`5ffb1c7`) : `etape.victimePos` (fusion : la plus récente), `_victimesDe` source unique ; bloc équipier, bandeau opérateur, marqueur ✚ visible de tous, section VICTIME(S) en tête des rapports texte / PDF ; `SortieUrgence.declencherDepuis(x, y, level)` transmet désormais le niveau. Corrige « ((niv 0)) » des libellés GPS de v1.98.14.
+- ⏰ **A4 — retards** (`e863075`) : `s.execution.suivi[phase][gid]` (départ, rentrée) ; retour prévu = départ + durée estimée ; marge `reglagesDuree.margeRetardMin` (30 min, 0-240) ; tri des cartes, lignes rafraîchies sans re-rendu, veille 20 s fenêtre fermée (pastille, toast regroupé, vibration) ; fusion à l'import (heure la plus ancienne) ; API `SecoursMode.marquerSuivi`.
+- 📢 **Rappel** (`196e0f9`) : général (engagées, ni rentrées ni rappelées) ou par équipe ; badge violet ; confirmation explicite « l'app ne peut PAS les prévenir » ; heure dans les rapports.
+- ✅ **Tests** : un checkup navigateur par case (équipier et opérateur, par l'interface), **test à deux appareils** (téléphone : départ, victime précisée, rentrée → rapport → PC : position et heures fusionnées), matrice de versions, 16 harnais Node, PDF régénéré et relu. ⚠️ Rien encore sur appareil réel ; options brancard (éviter eau / remblais) non faites.
+
+#### v1.98.15 (29/09/2026) — Mode Secours : niveaux vides signalés
+
+- 🏗️ **`5b176e1`** (décision KARMA) : les deux listes de niveaux (« Ajouter une équipe », niveau d'une équipe) suffixent « (vide) » / « (empty) » / « (vacío) » aux niveaux sans contenu, d'après `window.ktaNiveauxOccupes()` (même source que le bouton Auto) ; le 0 n'est jamais marqué ; le niveau reste choisissable.
+- ✅ **Test** : checkup navigateur — sur le plan de test, −2 et +2 marqués, −1 / RDC / +1 non, dans les deux listes ; `check-i18n`.
+
+#### v1.98.14 (29/09/2026) — Mode Secours : retours terrain de KARMA (iPhone)
+
+- 📱 **Phases sur téléphone** (`a60a8bc`) : `.kta-btn-secondary` n'avait aucun style sombre (bouton natif blanc sur iOS, défaut depuis v1.13.0, 32 boutons) ; grille de la carte de phase `minmax(0,1fr)` (boutons hors cadre, fenêtre qui défilait en largeur) ; boutons sous le nom à ≤ 480 px.
+- 🏗️ **Niveaux vides** (`83cefda`) : `availableLevels` vaut −2..+2 par défaut → « 1 équipe par niveau » en créait sur des niveaux vides. Scan factorisé en `window.ktaNiveauxOccupes()` (main.js) ; plan de test 5 → 3 équipes.
+- 👆 **Clic sur un POI** (`ba28ad5`, `e71dc36`) : Leaflet ne remonte pas le clic d'un marqueur à la carte → choisir un point (ou poser un sommet de zone) sur un POI ouvrait sa fiche. Écouteur en capture pendant les modes carte. **Équipes repliables** (▾/▸, « Tout replier », `localStorage`).
+- 🗺️ **Zones des autres équipes** au dessin (`e71dc36`) : pointillé, couleur, nom, non interactives.
+- 📍 **GPS** (`5b15fc0`) : point sans nom affiché en GPS si plan géoréférencé (même cascade que la Vue OSM) ; libellé STOCKÉ inchangé (identité des étapes sans nom entre appareils).
+- 🚨 **Intervention en cours** (`abad82b`, `f5b427c`) : `fermer()` effaçait la zone et le tracé même en pleine intervention → ils restent (et reviennent au rechargement) ; pastille pleine « 🚨 Secours · Alpha · 3/8 › » dans la barre d'état, tenue à jour à chaque mutation ; ouvrir un scénario en cours = vue live directe.
+- ✅ **Tests** : un checkup navigateur par correctif, par l'interface (390 px, clic sur icône, rechargement…), 16 harnais Node + checkups Secours. ⚠️ Vue équipier du GPS non atteinte par le test ; rien encore sur l'iPhone lui-même.
+
+#### v1.98.13 (29/09/2026) — Doc utilisateur, i18n et thème clair : audit du 29/09
+
+- 🔍 **Origine** : deux audits en lecture seule (demande KARMA) — doc/onboarding/aide/i18n (🔴 9 · 🟠 13 · 🟡 12) et thème clair/sombre (🔴 5 · 🟠 4 · 🟡 6, contrastes mesurés sur captures). Décisions KARMA : R4 = corriger la phrase (le temps passé sur un autre plan compte dans une sortie terrain), code source public.
+- 📄 **Étape 1** (`8239b20`) : le faux en service — PIN « lockout définitif » (y compris le message de la proposition d'activation), carnet archivé au changement de plan / durée « temps dans l'app », PDF du ZIP dans Récits, Aide intégrée « anglaise » en ES, « Drunk » en EN, section Configuration ES retraduite, tag « Point d'entrée » EN/ES. Thème : `--kta-light-accent-text` (#7a5a00) pour 60 règles de texte ambre, palette claire aussi sur `<html>`, sommaire de la doc.
+- 🎨 **Étape 2** (`5729d8d`) : classes `.kta-tx-*` (variante claire qui bat les filets) — 46 couleurs inline des dicos ×3 et 15 alertes du Secours ; « RDC » en dur → `_lblNiveau` ; accueil (`homeConfig`) et modale Documentation traduits ; `find-hardcoded-fr.js` rescanne `tutorial.js` / `interfaceDocs.js`.
+- 🎓 **Étape 3** (`4d21ed8`) : tutoriel (réglages retirés, « single-device », Guidage et Plan orienté, texte cassé par un remplacement automatique, renvois de cartes) ; Secours dans les guides et l'Aide intégrée (phases closes, hors parcours, plan modifié, limite des 10) ; Aide IA purgée (dépôt public, 4 sections périmées).
+- 🧹 **Étape 4** (ce commit) : `window.ktaLocale()` (fr-FR / en-GB / es-ES) pour 45 dates affichées et imprimées ; 45 clés orphelines purgées ×3 ; `ktaConfirm` (titre collé au coin : classe inexistante) ; feuille de route du guidage en clair ; crédits du splash lisibles ; `docs/architecture/i18n.md` à jour.
+- ⏸️ **Non fait, volontairement** : gris `#8892a4` des cartes Secours en sombre (3,8–4,1) — c'est une couleur de la charte, à trancher par KARMA ; étiquette sombre de la carte OSM du Secours (lisible sur les deux thèmes). Hors audit : le reste de l'app n'a pas été trié pour le FR en dur (960 candidats du détecteur).
+- ✅ **Tests** : contrastes mesurés avant/après (Playwright, 2 thèmes : sombre identique, 0 régression en clair), 16 harnais Node, checkups navigateur Secours, 3 PDF régénérés ; `check-i18n`, `check-doc-langues`, `node -c`.
+
+#### v1.98.12 (29/09/2026) — Mode Secours, vague 4bis : 4e relecture (vagues 1 à 4)
+
+- 🔍 **Origine** : relecture globale des commits des vagues 1 à 4 (demande KARMA) : 9 défauts (R4-1 à R4-9) + 9 mineurs. Décisions KARMA : 1a (rapport d'une phase close → historique de cette phase, avis orange, alerte rouge si aide/victime), 2a (durées des scénarios existants recalculées automatiquement).
+- 🏗️ **R4-1** (`e24a4a1`) : le niveau des étapes n'était pas transmis au calcul d'itinéraire → **correction de la v1.98.11** : son calage par niveau (4.2) n'atteignait PAS les itinéraires d'équipe du Secours ; c'est le cas maintenant (niveau porté aussi par le POI accroché).
+- 🗂️ **R4-2** (`812b0d6`) : un rapport de phase 1 importé après le passage en phase 2 remplissait les étapes de la phase 2 (équipe reconduite) → fusion dans l'historique de la phase 1 (`_phaseDuRapport`, `etapesArchive`).
+- 🔁 **R4-3** (`889af67`) : réimporter un rapport ne duplique plus les observations (`_obsImport`, delta). `032341d` : clé i18n en double (`secours.pdf.etapesTitre`) qui imprimait « ({n}) ».
+- 🧭 **R4-4** (`e67eb5a`) : un signalement (indice…) sur une étape retirée côté PC n'est plus invisible : avis orange, photos rangées à part, section « Signalements hors parcours » du rapport.
+- 📜 **R4-7** (`4f1266a`) : le rapport final garde les étapes des phases closes (section par phase ; photos libellées « Phase k - Étape N »).
+- ⏱️ **R4-6** (`a075631`, décision 2a) : scénarios d'avant 4.1 (stockés ou importés) → réglages par défaut posés et durées recalculées ; bornes à l'import (R4-12).
+- 📨 **R4-5** (`038e68c`) : le refus « scénario d'origine différent » dit quoi faire ; guides : réimporter le plan sur chaque téléphone après une mise à jour.
+- 🔄 **R4-8/9** (`8dbd2c1`) : la vue opérateur se rafraîchit après un import (`_renderInline` n'avait jamais existé) ; l'aperçu annonce ce qui sera vraiment fusionné.
+- 📄 **PDF relus page par page** (`99785b7`) : page « Briefing surface » du rapport qui disait « aucune équipe définie » ; « Plan : (plan) » ; titres gris ; entrée/sortie en coordonnées → nom ; boutons de zoom capturés ; équipe hors phase.
+- 🧹 **Mineurs** (`af8019d`) : `VITESSE_MPS_DEFAUT` = 1,5 km/h ; commentaires périmés ; tracés de zone introuvables annoncés à l'import ; badges ✓ par identité ; la limite des 10 scénarios épargne une intervention terminée non rapportée ; guide (étape remise = même phase) ; plus d'entrée vide à l'import.
+- ✅ **Tests** : 16 harnais Node + checkups navigateur (fusion 2 appareils, phase close, mineurs), 3 PDF générés et relus visuellement ; `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Toujours rien sur appareil réel ; cadre jaune de la vue OSM non vérifié (test hors connexion).
+
+#### v1.98.11 (29/09/2026) — Mode Secours, vague 4 : correctifs inter-modules
+
+- ⏱️ **4.1** (`2eab443`, décision KARMA : réglages Secours propres) : `reglagesDuree` du scénario (vitesse de fouille 1,5 km/h, pause 0 par défaut, transmis par le `.mkmsec`) ; la pause de l'itinéraire classique ne s'applique plus au Secours. Secteur de l'audit : 588 min au lieu de ~971. ⚠️ Le 1er patch avait supprimé `_recalculerToutesDureesEquipes` (invisible à `node -c`) : attrapé par le test, et par un nouveau contrôle « toute fonction interne appelée est définie » (hors dépôt).
+- 🏗️ **4.2** (`1d56b6f`, `pathfinder.js`, module partagé) : un point avec niveau s'accroche au segment de son niveau (tolérance 40 px) ; 40 clics ambigus au −1 : ancien 1/40, nouveau 40/40 ; point sans niveau identique au bit près.
+- 🗺️ **4.3** (`61a2948`) : avertissement à l'import (plan et rapport) si le plan a changé de version ou de dimensions depuis l'export.
+- ✅ **Tests** : 13 harnais Node (dont la matrice de versions) + 14 checkups navigateur ; `check-guidage`, `check-repositionner`, `check-position-confirmee`, `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Toujours rien sur appareil réel.
+
+#### v1.98.10 (29/09/2026) — Mode Secours, vague 3quater : 3e relecture
+
+- 🔍 **Origine** : 3e relecture de `6b33638` : **à reprendre** — la fusion cassée pour toute donnée d'avant la version (cas normal au déploiement), régression de v1.98.9 prouvée en rejouant les scénarios sur `6b33638^`. Décisions KARMA : A (corriger en avant + matrice de versions), a (relance confirmée).
+- 🧮 **Correctif** (`5108b6f`) : `wid` calculés (`_widDeterministe`), wid inconnu = absent, libellé symétrique, rattachement prudent ; N11 encadré (phase, vrai retrait, ordre, type, alerte sans remise) ; photos des phases closes ; relance confirmée ; titre « ETAPES ».
+- ✅ **Tests** : matrice à deux versions (ancien `b845ee6` ↔ nouveau, même stockage) 10/10, **9 échecs sur le code précédent** ; cas rev3 verts (S2 : alerte + archive, voulu) ; 12 harnais Node + 12 checkups navigateur. ⚠️ Leçon consignée : tester depuis l'état réel de la prod, pas depuis son propre modèle.
+
+#### v1.98.9 (29/09/2026) — Mode Secours, vague 3ter : 2e relecture
+
+- 🔍 **Origine** : 2e relecture adversariale de la vague 3bis (`6c9a4fd..d652597`) : 10 défauts reproduits, dont 3 🔴 introduits par la 2.6 v2 et N11 (antérieur). Décisions KARMA : simplification « identité par point » ; N11 option a (point remis + alerte).
+- 🆔 **Identité des points** (`6b33638`) : `wid` par point de passage (création, export, lancement), porté par l'étape ; héritage par rôle + position (archive comprise) ; apparieur : `wid`, puis position (données d'avant), puis libellé (rapports d'avant v1.98.8). Corrige N1, N3, N7 (par l'UI), N8 ; archive vidée au passage de phase (N2) ; garde = conditions de la resync (N4) ; refus re-vérifié après confirmation (N5).
+- 🚨 **N11** (même commit) : « aide »/« victime » sur une étape retirée côté PC → point remis après le point importé précédent + alerte rouge en clair ; autres saisies archivées. Vérifié par l'interface sur **deux appareils** simulés.
+- 📷 **N9 / N10b** (même commit) : photo détenue par aucune étape exclue du rapport ; photos purgées avec leur scénario (suppression, limite de 10) et à la relance.
+- 🧾 **D-b** (`c77297b`) : la liste d'étapes du briefing s'imprime même sans itinéraire calculé.
+- ⚠️ **Limite** : deux passages au même endroit fournis en objets neufs (appel programmatique) sont indiscernables ; par l'interface, non. Un seul commit pour N1-N11 (correctifs entremêlés dans les mêmes fonctions).
+- ✅ **Tests** : cas du relecteur rejoués, `t3ter` 7/7, checkup navigateur à 2 appareils ; non-régression 11 harnais Node + 10 checkups navigateur ; `check-i18n`, `check-doc-langues`, `node -c`. ⚠️ Rien sur téléphone réel.
+
+#### v1.98.8 (29/09/2026) — Mode Secours, vague 3bis : reprise après relecture
+
+- 🔍 **Origine** : relecture adversariale en lecture seule des 16 commits `b41de8d..6c9a4fd` (demande KARMA). 14 correctifs jugés conformes, **2.6 à reprendre**, 10 défauts reproduits par scripts. Décisions KARMA : 1:a (retrait d'étape renseignée = confirmation, refus si aide/victime), 2:a (photos effacées au « Remplacer »), 3 (note de version sans « sur iPhone », non testé).
+- 📥 **R1** (`bcbe5ae`) : un `.mkmsec` importé sur un téléphone qui avait 10 scénarios était purgé dans le commit de l'import (`createdAt` du PC) → âge FIFO = max(`createdAt`, `arriveeAt`).
+- 🔁 **2.6 refaite** (`d9235bf`) : étapes identifiées par la position de leur point (`cle`), un seul apparieur `_apparierEtapes` (resync + fusion : position, puis libellé par rang, puis numéro) ; archive restaurée si l'étape revient ; photos suivies en IndexedDB (`setStepIdx`, −2 = retirée, hors rapport) ; focus recalé ; `affecterEquipeAPhase` resynchronise ; retrait confirmé / refusé.
+- 🗺️ **R5** (`815fa4b`) : la Vue OSM filtrait l'itinéraire par niveau puis reliait les points → trait à travers la surface depuis 2.2 (j'avais écrit à tort qu'aucun lecteur n'utilisait le niveau). Tronçons par niveau visible.
+- 📷 **R8** (`399e91d` + doc `11ad8bc`) : « Remplacer » efface aussi les photos de l'exécution remplacée ; ⚠️ le commit `399e91d` annonçait des docs qui n'y étaient pas (script échoué) — rattrapé par `11ad8bc`.
+- 🧩 **R2** (`ab77825`) ids d'équipe en double · **H1** (`0664a6d`) « Dupliquer » remappe les phases et ne recopie plus l'exécution · **R11-12** (`744df35`) mini-carte alignée au bord (124 px → 0) et fond rendu une fois · **mineurs** (`93e29cb`) clés de tracés gardées, saut de page de la liste d'étapes, doc (R10, D2, D5), `alert()` migré.
+- ✅ **Tests** : 10 harnais Node + 9 checkups navigateur (Playwright, plan réel servi en local, hors dépôt), plusieurs rejoués contre l'ancien code pour prouver le défaut ; `check-i18n`, `check-doc-langues`, `node -c` verts. ⚠️ Toujours rien sur téléphone réel.
+
+#### v1.98.7 (29/09/2026) — Mode Secours, vague 3 des correctifs : documents papier
+
+- 📝 **Notes de version** : la ligne Secours couvre les vagues 1 à 3 (écart avec la prod) ; les deux autres restent.
+- 🚒 **3.1 — Briefing pompiers : « POI critiques » rempli** (`8350772`) : il lisait `window.listePoints` (jamais sur `window`), `p.tag` au lieu de `tags[]` et un tag `sortieurgence` inexistant. Lecture session + calques ; accès ouverts (`entree_plan`, `cao`, `peo`, `eso`, alignés sur la Sortie d'urgence) puis fermés (`caf`, `pef`, `esf`).
+- 🖼️ **3.2 — Fond des PDF sous la limite iOS** (`f9d4742`) : briefing à l'échelle 1 (225,7 Mpx, ~860 Mo) et mini-carte du rapport à 0,5 (56 Mpx) → `_echelleCanvasPlan` plafonne à 16 Mpx, recadrage par l'échelle mesurée.
+- 🗺️ **3.2b — La mini-carte du rapport PDF se dessine** (`e8d4b24`, trouvé en test, hors audit) : elle recevait la copie allégée de l'équipe (sans parcours) → cadrage nul → page toujours sautée sans message.
+- 🧾 **3.3 — Le briefing liste les étapes** (`9c90394`) : « N waypoints » comptait les points du tracé (46 à 480) ; liste ordonnée des étapes, cadre Observations reporté à la page suivante s'il ne tient plus.
+- ✅ **Tests** : navigateur (Playwright, plan réel servi en local, hors dépôt), PDF réellement générés et lus — accès listés (1 puits ouvert, 2 fermés, 1 escalier fermé) ; canvas 16,0 Mpx pour le briefing et la mini-carte ; « 4 etapes : » avec les noms ; zéro erreur console. ⚠️ Pas testé sur iPhone réel (limite canvas de Safari).
+
+#### v1.98.6 (29/09/2026) — Mode Secours, vague 2 des correctifs : saisie du plan
+
+- 📝 **Notes de version** : la ligne Secours est réécrite pour couvrir les vagues 1 et 2 (écart avec la prod) ; les deux autres restent.
+- 🗺️ **2.1 — Le mode « zone = tracés » sélectionne des galeries** (`ec4e2ac`) : il cherchait `entry.road` / `entry.layer`, absents de `_ktaDataPolylines` → aucun clic branché. Clé d'un tracé = empreinte de sa géométrie (`_cleTrace`, 0 collision sur 893 géométries réelles), clic au plus proche tracé des niveaux visibles, un seul lecteur `_tracesZone` (overlay, PDF, avoidances, POI de la zone, KMZ via `SecoursMode.tracesZone`).
+- 🏗️ **2.2 — Niveau réel des points de l'itinéraire** (`ccce505`) : il était écrasé par celui de l'entrée (mesuré : 33 points au −1 déclarés « 0 »).
+- 🧭 **2.3 — « POI de la zone » au plus proche voisin** (`dd1e176`) : tri par distance à l'entrée malgré le commentaire ; 26-45 % plus court à vol d'oiseau sur 6 secteurs réels.
+- 📌 **2.4 — Ctrl+K : rôle par défaut selon l'équipe** (`49824dd`) : « Entrée » cochée d'office écrasait l'entrée existante.
+- ⛑️ **2.5 — Mode Perdu → Secours : niveau du point** (`f20a165`) : `lostMode.js` porte `level` ; avant, le niveau affiché au clic.
+- 🔁 **2.6 — Renfort / parcours modifié en cours de phase** (`6b89cf2`) : `_resyncEtapesEquipe` reconstruit et reporte les saisies (type + libellé), archive les étapes retirées ; la fusion apparie désormais par numéro + type + libellé, les photos suivent leur étape.
+- ✅ **Tests** : harnais Node (vrai `secoursMode.js`, vrai `pathfinder.js`, 912 tracés réels) — 2.1 10/10, 2.2 6/6, 2.3 12/12, 2.6 10/10 ; **checkup navigateur** Playwright sur le plan réel servi en local (hors dépôt) : Ctrl+K, mode tracés au clic, aperçu d'import Remplacer / Copie, Mode Perdu → Secours au −1 — tout vert, zéro erreur console. ⚠️ Pas testé sur téléphone réel (clic tactile sur une galerie).
+
+#### v1.98.5 (29/09/2026) — Mode Secours, vague 1 des correctifs : remontée PC ↔ équipes
+
+- 📝 **Notes de version** : une ligne ajoutée (décision KARMA) — la prod n'a pas encore reçu v1.98.0-v1.98.4, les deux lignes précédentes restent.
+- 🔍 **Origine** : audit fonctionnel GRIMP × IGC (`docs/audits/2026-09-29_audit-secours-v1.md`, `b41de8d`). Plan en vagues validé par KARMA : correctifs d'abord, un commit par case, un bump par vague (`docs/BACKLOG.md` §🚑).
+- 🩸 **1.1 — Le rapport d'équipe est enfin accepté par le PC** (`3aeea32`) : `_appliquerPayloadImport` régénérait l'id du scénario et de chaque équipe ; `_parsePayloadReport` exige les ids d'origine → **100 % des rapports venus d'un autre appareil refusés** (`errScenarioDifferent` / `errEquipeAbsente`). L'import consolidé v1.26 n'avait jamais fonctionné entre deux appareils. Les ids (scénario, équipes, phases) sont gardés ; scénario déjà présent → aperçu « Remplacer » (coché, mêmes ids, exécution locale perdue — affiché) / « Importer comme copie » (nouveaux ids). Fin des doublons au réimport. `importerScenario(input, {mode})` : sans mode, copie ; son `confirm()` natif passe à `ktaConfirm`. 6 clés i18n × 3.
+- 🛡️ **1.2 — La limite de 10 scénarios n'efface plus une intervention** (`75b6dc8`) : la purge FIFO saute les scénarios en cours, celui ouvert et le plus récent ; excédent tout protégé → cap dépassé. Le test a trouvé un 2ᵉ cas : 10 scénarios en cours → le scénario qu'on venait de créer disparaissait.
+- ⚖️ **1.3 — Fusion : un « RAS » reçu n'est plus perdu** (`1baee72`) : à sévérité égale le PC gagnait toujours (RAS = en attente = 0). Désormais : reçu bat « en attente », plus grave gagne, égalité → plus récent `completedAt`. Victime jamais rétrogradée. `_severitéMaxStatut` supprimé (plus d'appelant).
+- 🎯 **1.4 — « Prendre la main » ouvre la bonne étape** (`a5c9223`) : le focus d'étape est un état du module ; relayer Alpha (étape 5) puis prendre Bravo ouvrait l'étape 5 de Bravo. Reset + session fraîche → 1ʳᵉ étape non terminée.
+- ✅ **Tests** : harnais Node 2 appareils sur le vrai `secoursMode.js` — 1.1 19/19, 1.2 6/6, 1.3 7/7, 1.4 4/4 (logique ; câblage du bouton lu, non simulé). `node -c`, `check-i18n`, pré-commit verts. ⚠️ **Rien de testé en navigateur** : modale d'aperçu (Remplacer / Copie) et prise de main **à voir sur appareil** (porte de release).
+
+#### v1.98.4 (29/09/2026) — Vague 3 (optimisations) : tuiles hors écran, cache des tuiles
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées**.
+- 🧱 **Seules les tuiles proches de l'écran sont posées et demandées** (`2edcd15`) : le tuilage V2 posait tout le niveau (mesuré : 864 overlays au niveau 0 pour 6 visibles, 880 requêtes, ~30 Mo). `_renderNiveau` ne pose que ce qui croise l'écran élargi de 15 % (rotation comprise) ; `ktaCullerTuilesV2` pose/retire à chaque déplacement. **864 → 12 posées, 12 requêtes, aucun point de l'écran sans tuile.** Le retrait propre au mode « plan orienté » (parade iOS v1.97.1) est absorbé : une implémentation au lieu de deux. Filtre multi-niveau et repli d'erreur préservés. `checkup-tuiles-hors-ecran.js` (falsifié : 864/864).
+- 🧠 **Le cache des tuiles libère enfin de la mémoire sur desktop** (`2cd4747`) : plafond 4 = nombre de niveaux générés → éviction impossible. Plafond 3 ; le plus ancien niveau d'un plan ZIP est libéré (URL + fichier extrait). Plan serveur : rien à libérer par construction (cache HTTP du navigateur). `check-tiling.js` §17 (falsifié).
+- 🩹 **Checkup plan orienté** : il plantait à sa dernière étape depuis v1.98.1 (deux `t19` oubliés au renommage en T20 — erreur de Claude). Corrigé ; T15 suit la nouvelle règle des tuiles.
+- ✅ **Tests** : pre-commit vert ; smoke, `checkup-plan-oriente` (entier) et `checkup-tuiles-hors-ecran` verts. ⚠️ Non testé sur iPhone : le mode « plan orienté » touche au même mécanisme que les tuiles noires de v1.97.0 — **à voir sur appareil avant merge** (porte de release).
+
+#### v1.98.3 (29/09/2026) — Vague 2 du plan backlog : itinéraire rapide, ULTRA sur les tracés du plan
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées**.
+- ⚡ **Calcul d'itinéraire ~150× plus rapide** (`bc4ba8b`) : l'enrichissement du graphe comparait chaque segment à tous les autres (3 passes O(S²)) et Dijkstra balayait tous les nœuds à chaque pas (O(V²)). Mesuré sur un relevé réel (912 tracés, ~9 000 sommets) : **~45 s → ~0,3 s** par itinéraire, **~44 s → ~0,23 s** pour la zone atteignable (Mode Perdu), **~48 s → ~0,28 s** pour le graphe de la navigation intelligente. Grille spatiale de 64 px + tas binaire. 🩸 **Résultats identiques au bit près** : candidats triés par indice (mêmes nœuds virtuels, mêmes indices) et tas ordonné sur (distance, indice), le départage exact de l'ancien balayage. Vérifié hors dépôt : graphe enrichi de même empreinte SHA-256 (multi-niveau on/off), 8 trajets + 2 zones identiques. Tenu par `check-guidage.js` §12 (quadrillage fictif ~16 000 segments). Profite à « Recalculer d'ici », la sortie d'urgence, le Mode Perdu, le Secours et la navigation intelligente.
+- 🚀 **Réglages ULTRA sur les tracés d'un plan** (`627d792`) : « Ne rendre que les éléments visibles » et « Décimer les tracés au dézoom » ne parcouraient que les annotations. Désormais `utils.js > _refreshDataPolylinesUltra` : 893 → 8 tracés sur la carte (cull, z=0), 8 968 → 5 313 sommets dessinés (decim, z=−3), calque décoché respecté, géométrie source intacte. `checkup-ultra-traces-plan.js` (falsifié sur l'ancien code).
+- ✅ **Tests** : pre-commit vert ; smoke complet, `checkup-guidage` et le nouveau checkup ULTRA verts en navigateur. ⚠️ Non testé sur iPhone.
+
+#### v1.98.2 (29/09/2026) — Tour du backlog : correctifs, sans note de version
+
+- 📝 **Décision KARMA** : `version.json > notes` **inchangées** — ces correctifs ne changent rien que l'utilisateur doive apprendre (le hors-ligne ne concerne que les plans serveur, sans cas réel côté client).
+- 🗑️ **Supprimer un plan peut emporter ses documents d'histoire** (`a3e580a`) : ses PDF restaient orphelins dans 📔 Mon carnet → 📖 Récits. La confirmation propose une case **décochée** « supprimer aussi ses N document(s) (X Mo) », poids mesuré au moment de supprimer, absente sans document. `ktaConfirm` accepte `opts.caseACocher` (la Promise rend toujours un booléen) ; `JournalUi.histoire.supprimerPourPlan`. Tenu par `checkup-suppression-plan-docs.js` (falsifié : case décochée → rien ne part ; le document d'un autre plan reste).
+- 🖼️ **Export image : fin des 861 Mo pré-cochés** (`0e13ea0`) : pré-sélection de la plus grande résolution sous 64 Mpx, taille et mémoire estimée affichées, avertissement au-delà ; sur iPhone/iPad, les résolutions au-delà de 16,7 Mpx (limite WebKit, `toBlob → null`) sont grisées. Test navigateur 8/8. Reste au backlog : le fond retéléchargé au lieu des tuiles.
+- 🎭 **Export anonymisé : codes uniques** (`2759f3c`) : la table d'emojis ne connaissait qu'un tag sur 22 → « 🎯 POI #1 » pour la 1re salle ET le 1er puits : ids en double, photos rattachées par ces ids. Le tag entre dans le code (« 📍 POI salle #1 »). Contre-essai sur l'ancien code : doublons reproduits.
+- 💾 **`js/planOffline.js` absent du pré-cache** (`31615ec`) : le module hors-ligne ne l'était pas lui-même. `check-html-integrite.js` §5 bloque désormais tout script local d'`index.html` absent de `ASSETS_TO_CACHE`.
+- 🧩 **Tuilage : plus de rendu fantôme « z=NaN »** (`543fc28`) : le premier rendu partait avant que la carte ait une vue et désarmait le repli « toutes les tuiles ont échoué → image entière ». Rendu initial différé (`whenReady`), `smoke.js` vérifie `attendusPremier > 0`.
+- 🚨 **Écran d'urgence XL immobile** (`a26e1b9`) : la mini-carte n'est plus recentrée 4×/s quand rien ne bouge (8 → 0 `setView` en 2 s, `checkup-urgence-memoire.js`).
+- 🔧 **Divers** : bannière d'échelle de l'export KMZ/GPX qui visait un id inexistant (`3dbf3a1`, contre-essai fait) · −57 lignes de CSS mort du chargeur (`c40f77b`) · `docs/BACKLOG.md` réécrit (551 → ~220 lignes, enterrés regroupés, `bd65674`).
+- ✅ **Tests** : pre-commit vert à chaque commit ; 3 harnais navigateur (suppression, résolution, bannière) dont 1 versionné. ⚠️ Non testé sur iPhone (la désactivation iOS de l'export est simulée).
 
 #### v1.98.1 (28/09/2026) — Une sortie ne s'arrête plus quand on montre un autre plan
 

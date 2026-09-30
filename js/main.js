@@ -794,10 +794,14 @@ async function lancerApplication() {
 // Defaut v154 = [-2, -1, 0, 1, 2]. Si l'user avait un plan v153 ou il avait
 // etendu manuellement a [0..4], l'auto-extension ajoute 3 et 4 pour qu'il
 // retrouve ses niveaux dans l'UI.
-window._etendreAvailableLevelsSiBesoin = function() {
-  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return false;
+// Niveaux qui portent réellement quelque chose (tracés, zones, structures, points,
+// calques de données, images de niveau). 29/09/2026 (bug KARMA) : sans niveaux
+// déclarés, availableLevels vaut -2..+2 par défaut — le Mode Secours créait alors
+// des équipes sur des niveaux vides. Source unique du scan, partagée avec l'auto-
+// extension ci-dessous. Rend une liste triée, sans doublon (peut être vide).
+window.ktaNiveauxOccupes = function() {
+  const levelsFound = [];
   try {
-    const levelsFound = [];
     const _push = function(arr) {
       if (!Array.isArray(arr)) return;
       arr.forEach(function(it) {
@@ -842,7 +846,17 @@ window._etendreAvailableLevelsSiBesoin = function() {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
     }
+  } catch(e) {
+    console.warn("[Main] ktaNiveauxOccupes echec :", e);
+  }
+  return levelsFound.filter(function(v, i, a) { return a.indexOf(v) === i; })
+                    .sort(function(a, b) { return a - b; });
+};
 
+window._etendreAvailableLevelsSiBesoin = function() {
+  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return false;
+  try {
+    const levelsFound = window.ktaNiveauxOccupes();
     if (levelsFound.length === 0) return false;
 
     let avail = Array.isArray(window.APP_CONFIG.availableLevels)

@@ -411,6 +411,17 @@ function _decimatePointsRDP(pts, epsilon) {
   return out;
 }
 
+// 🚀 29/09/2026 — même décimation pour les tracés d'un PLAN (calques de
+// données, `utils.js`), qui ne passent jamais par `renderRoads`. Exposé ici
+// plutôt que recopié : un seul epsilon, une seule RDP. Rend `null` quand le
+// zoom ne justifie aucune décimation (l'appelant garde alors la précision).
+window.ktaDecimerPointsTrace = function(pts) {
+  const eps = _decimationEpsilon();
+  if (!(eps > 0) || !Array.isArray(pts) || pts.length <= 8) return null;
+  return { epsilon: eps, points: _decimatePointsRDP(pts, eps) };
+};
+window.ktaEpsilonDecimation = _decimationEpsilon;
+
 // Calcule l'AABB (bounding box) d'une road : { minX, minY, maxX, maxY }.
 // Utilise pour le pre-check rapide dans _calculerIntersectionsRoads :
 // si les boxes de 2 routes ne se recouvrent pas, on skip toutes les

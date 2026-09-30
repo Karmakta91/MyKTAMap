@@ -904,11 +904,12 @@
                      '</Placemark>';
         }
         // 2b. Zone roads (halo par road sélectionnée)
-        if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-          g.zoneRoadIds.forEach(function(rid) {
-            const road = allRoads.find(function(r) { return r.id === rid; });
+        // 🩸 29/09/2026 — `zoneRoadIds` porte des EMPREINTES de géométrie, pas des
+        // `road.id` : la résolution appartient au Mode Secours (SecoursMode.tracesZone).
+        const tracesZone = (window.SecoursMode && typeof window.SecoursMode.tracesZone === "function")
+                           ? window.SecoursMode.tracesZone(g) : [];
+        if (tracesZone.length > 0) {
+          tracesZone.forEach(function(road) {
             if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
             const coords = road.points.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
             zoneXml += '<Placemark>' +

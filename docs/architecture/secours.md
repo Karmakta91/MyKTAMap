@@ -232,7 +232,7 @@ Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) → `window.SecoursMode`.
 
 #### 65.1 Architecture & API
 
-`window.SecoursMode = { init, reset, ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update, delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF, exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, MAX_SCENARIOS, VITESSE_MPS_DEFAUT }`.
+`window.SecoursMode = { init, reset, ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update, delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF, exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, MAX_SCENARIOS, VITESSE_MPS_DEFAUT }` (`VITESSE_MPS_DEFAUT` = 1,5 km/h en m/s, informatif : le calcul lit `reglagesDuree` du scénario).
 
 **State module-level** :
 - `_scenarios: Array` — cache chargé via _loadScenarios depuis localStorage
@@ -269,7 +269,7 @@ Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) → `window.SecoursMode`.
 #### 65.3 Persistance per-plan multi-scénarios
 
 localStorage `myktamap_secours_v1_<planId>` = array de scénarios.
-Cap FIFO `MAX_SCENARIOS = 10` (au-delà, suppression du plus ancien par createdAt).
+Cap FIFO `MAX_SCENARIOS = 10` (au-delà, suppression du plus ancien par createdAt). 🩸 Depuis le 29/09/2026 (audit A5) : **jamais** un scénario en cours d'exécution, ni celui ouvert, ni le plus récent — si tout l'excédent est protégé, le cap est dépassé plutôt que de perdre une intervention (avant : 12 créations pendant une intervention l'effaçaient). **Âge FIFO = max(`createdAt`, `arriveeAt`)** : un import pose `arriveeAt` (arrivée sur l'appareil) — sans lui, un `.mkmsec` importé sur un téléphone qui avait déjà 10 scénarios était purgé dans le commit même de l'import (relecture R1). **Intervention terminée non rapportée protégée** (R4-16, v1.98.12) : `execution.endedAt` sans `execution.rapportExporteAt` n'est pas purgeable ; le flag est posé par `_marquerRapportExporte` après un export JSON ou PDF du rapport (remis à zéro par la relance, qui recrée `execution`).
 Quota toast via OOMGuard si `QuotaExceededError` (pattern sessionPersist).
 KARMA validation : « Oui — N scénarios sauvegardés par plan ».
 
@@ -288,17 +288,22 @@ Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instru
 
 **POLYGON** (`_startDefiningZonePolygon`) : multi-clic. Preview L.polyline dashed rouge mise à jour à chaque sommet ajouté. Double-clic = ferme (min 3 sommets). Floater compte les sommets.
 
-**ROADS** (`_startDefiningZoneRoads`) : hook click sur chaque polyline session (`getRoads()`) + embedded (`_ktaDataPolylines` registry). Re-clic toggle. Preserve `_kta_originalStyle` sur chaque layer cliqué pour restore propre. Skip `road.type === "itinerary"`.
-
-⚠️ **Préserver les styles originaux** : `_kta_originalStyle` posé sur chaque layer modifié pour pouvoir restore exactement à l'état d'origine au cleanup. Sans ça, les polylines clignotent en rouge persistant après fermeture du mode.
+**ROADS** (`_startDefiningZoneRoads`) — 🩸 **réécrit le 29/09/2026 (audit Secours, A2)** : l'ancien mode accrochait un clic à chaque polyline via `entry.road` / `entry.layer`, absents du registre `_ktaDataPolylines` ; les tracés de session passaient sans calque → **aucun clic branché, rien de sélectionnable**. Et l'id posé aurait été aléatoire, sur une copie (`getAllEmbeddedRoads` clone). Désormais :
+- **Clé = empreinte de la géométrie** (`_cleTrace` : FNV-1a sur les coordonnées au 1/10 px, préfixe `tr_<n>_`). Identique sur tous les appareils qui ont le même plan, rien n'est écrit dans le plan. Mesuré : 893 clés pour 893 géométries distinctes du plan de test (0 collision). Un tracé du plan modifié change de clé → il sort de la zone (voulu : ce n'est plus la même galerie). Mémo `WeakMap` par tableau de points, **réservé aux tracés du plan** (les tracés de session s'éditent en place).
+- **Sélection** : `map.on("click")` → tracé le plus proche parmi les niveaux visibles (`passeFiltreNiveau`), tolérance 14 px écran convertie en unités plan (`14 / 2^zoom`) ; re-clic = retire. Surbrillance dans un `L.layerGroup` propre au mode (plus de `setStyle` sur les couches du rendu, plus de `_kta_originalStyle`). Rouvrir le mode reprend la sélection de l'équipe. La popup de note d'un tracé de session, ouverte par le même clic, est refermée.
+- **Un seul lecteur** : `_tracesZone(g)` (overlay, bbox et canvas du PDF, avoidances, « POI de la zone », et `kmzExport.js` via `SecoursMode.tracesZone`). Accepte encore un ancien `road.id`. ⚠️ Ne jamais relire `zoneRoadIds` à la main : ce ne sont pas des `road.id`. Relecture (D2, D5) : une clé non résolue sur l'appareil (tracé de **session** d'un autre appareil) est **gardée** à la réouverture du mode ; les tracés des calques **masqués** restent sélectionnables (galeries souvent dessinées dans le PNG) — choix assumé.
 
 #### 65.6 Pathfinder intégration
+
+> 🩸 **29/09/2026 (audit Secours)** — « Tous les POI de la zone » (`_ajouterPoisDansZone`) ordonne les étapes en **chaîne du plus proche voisin** (`_ordrePlusProcheVoisin`, O(n²), pénalité de changement de niveau), à partir de la dernière étape déjà saisie, à défaut de l'entrée. Avant : tri par distance à l'entrée, malgré un commentaire qui annonçait l'inverse — +8 à +84 % de marche mesurés par l'audit sur 6 secteurs réels. Gain à vol d'oiseau mesuré après correctif : 26 à 45 %.
+
+> 🩸 **29/09/2026 (audit Secours)** — `itineraireSuggere[].level` porte le **niveau réel** de chaque point (`_niveauxItineraire`) : les deux calculs (sync / async) l'écrasaient par `g.entree.level`. Point ambigu du pathfinder (`null` : milieu de jonction, nœud fusionné) → dernier niveau connu, à défaut l'entrée. Mesuré sur un trajet 0 → −1 réel : 33 points au −1, tous déclarés « 0 » avant. ⚠️ **Correction (relecture R5)** : j'avais écrit qu'aucun lecteur n'exploitait ce champ — **faux** : la Vue OSM (`osmView.js`) filtre l'itinéraire par niveau visible. Filtrer puis relier tirait un trait droit à travers la surface entre la descente et la remontée ; elle trace désormais des **tronçons** continus (multi-polyligne). Mesuré : niveau −1 masqué → 2 tronçons (3 + 2 points) au lieu d'un trait de 5 points. C'est aussi la donnée dont le guidage Secours (B1) aura besoin.
 
 `_recalculerItineraireGroupe(scenarioId, groupeId)` :
 1. Vérifie entree + sortie définies (toast warn sinon)
 2. Appel async `Pathfinder.computeRoute([entree, sortie], {})` (async depuis v1.21.x pour expansion avoid tags)
 3. Convertit `result.totalDistance` (px) → distM via `APP_CONFIG.scale`
-4. Calcule `dureeEstimeeMin = distM / VITESSE_MPS_DEFAUT (0.5 m/s) / 60`
+4. Calcule `dureeEstimeeMin` via `_dureeEquipeMin` (réglages du scénario : vitesse de fouille, défaut 1,5 km/h, + pause par étape)
 5. Update groupe avec `itineraireSuggere`, `distanceM`, `dureeEstimeeMin`
 6. Toast feedback + re-render edit view
 
@@ -318,6 +323,10 @@ Toutes les couches taggées d'un tooltip "🚨 nom équipe" (ou role : Entrée/S
 **Auto-refresh** : `_commitMutation` détecte si overlay actif pour ce scénario → appelle `renderOverlay` pour update live.
 
 #### 65.8 Export PDF (1 page A4 par équipe)
+
+> 🩸 **29/09/2026 (audit Secours)** — la section Itinéraire imprimait « N waypoints » avec N = points du **tracé** (46 à 480 selon l'équipe) : elle liste désormais les **étapes** dans l'ordre (« 4 etapes : A > B > C > A », clé `secours.pdf.etapesLigne`, `waypointsLigne` retirée) ; le cadre Observations passe à la page suivante s'il ne tient plus.
+
+> 🩸 **29/09/2026 (audit Secours)** — le fond du PDF de briefing se rendait à l'**échelle 1** (plan 16 332 × 13 820 : 225,7 Mpx, ~860 Mo de canvas ; Safari iOS refuse au-delà de 16,7 Mpx → PDF sans carte). `_echelleCanvasPlan(voulue)` plafonne à **16 Mpx** (`PX_MAX_CANVAS_PLAN`), pour le briefing et la mini-carte du rapport (qui était à 0,5 = 56 Mpx). Le recadrage par équipe travaille en unités plan et convertit par l'échelle **mesurée** du canvas (`_echelleDuCanvas`). Mesuré en navigateur : 4 348 × 3 680 = 16,0 Mpx, carte présente dans le PDF. ⚠️ Contrepartie (relecture R10) : une petite zone (< ~3 700 unités plan) est agrandie jusqu'à ×3,8 dans son recadrage → fond moins net ; « perte minime » annoncé au commit `f9d4742` était inexact. La liste d'étapes (3.3) saute de page ligne à ligne.
 
 Via jsPDF déjà chargé pour pdfExport.js. Layout texte :
 - Header bold "PLAN DE SECOURS — Nom équipe"
@@ -411,6 +420,8 @@ Limitations connues : auto-calc batch parallèle à l'export ne propage pas les 
 
 #### 66.3 Feature C — Lost Mode → Mode Secours pre-fill
 
+> 🩸 **29/09/2026 (audit Secours)** — `context.lastKnownPoint.level` = **niveau du point**, plus le niveau affiché au clic sur « Lancer un plan de secours ». `lostMode.js` porte désormais `level` sur la position : POI choisi par recherche → son niveau (sans niveau = 0) ; clic carte / tracker → niveau affiché à ce moment ; `getState().lastKnownPos.level` (null si inconnu). `creerDepuisLostMode` retombe sur le niveau affiché pour un état sans niveau (appelant ancien). Testé en navigateur sur le plan réel.
+
 `LostMode.getState()` nouveau API expose `{lastKnownPos, elapsedMinutes, speedKmH, radiusMeters, radiusPx, presetKey, clues}` (snapshot défensif).
 
 `SecoursMode.creerDepuisLostMode(lostState)` :
@@ -444,6 +455,8 @@ Bouton conditionnel `🏗️ Auto : 1 équipe par niveau (N)` visible si `multiL
 `_renderFavorisBlock()` dans `_ouvrirChoixWaypoint`. Affiche jusqu'à 8 favoris du plan en chips ambrés cliquables au-dessus de la recherche autocomplete. Clic = `_appliquerWaypoint(groupeId, role, idx, wp)` + close modale.
 
 #### 66.7 Bonus — Pause configurable cross-feature
+
+> 🩸 **29/09/2026 (audit Secours, 4.1 — décision KARMA)** — **n'est plus partagée.** Le Mode Secours reprenait la vitesse de l'itinéraire (5 km/h) et la pause commune (15 min) à CHAQUE étape : ~971 min affichées pour ~586 réalistes sur un secteur de 55 étapes. Le scénario porte `reglagesDuree` { vitesseKmh (défaut 1,5), pauseMin (défaut 0) }, bornés, transmis par le `.mkmsec`, réglés dans le bloc « ⏱️ Durées estimées » (`_reglagesDuree`, `_dureeEquipeMin`). L'itinéraire classique garde ses propres réglages. **Migration** (R4-6, décision KARMA) : un scénario sans `reglagesDuree` (d'avant 4.1) reçoit les réglages par défaut et ses durées sont recalculées, au chargement (`_loadScenarios`, persisté) comme à l'import (`_migrerDurees`, idempotente) ; les réglages importés sont bornés comme dans `updateScenario` (R4-12).
 
 Refactor `TEMPS_PAUSE_PAR_POINT_MIN` (hardcoded 15 min interface.js) en localStorage configurable :
 - `myktamap_iti_pause_enabled` (bool, default true)
@@ -597,9 +610,20 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 
 **Fonctions exposées** : `exporterScenario(scenarioId)` + `async importerScenario(input)` (File | Blob | string). Import valide type + version ≤ max + structure scenario (nom + groupes array), re-génère ids (anti-collision si re-import multiple), filtre défensif whitelist champs. Si plan.id ≠ plan courant → `confirm()` natif (sera remplacé par modale charte en v1.23.5).
 
+> 🩸 **Corrigé le 29/09/2026 (audit Secours, A1) — les ids d'origine sont GARDÉS.** La régénération systématique
+> cassait l'import consolidé (§72) : le téléphone d'une équipe travaillait sur d'autres ids que le PC, et son rapport
+> était refusé à 100 % (`errScenarioDifferent` / `errEquipeAbsente`). Désormais `_appliquerPayloadImport(payload, mode)`
+> garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
+> choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
+> réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue **avec ses photos** (`deletePhotosForScenario`, relecture R8 : sinon elles revenaient dans le rapport suivant et comptaient dans le quota), l'aperçu le dit dès qu'une exécution existe, en cours ou terminée.
+> `importerScenario(input, {mode})` : sans `mode`, un existant part en **copie** (jamais d'écrasement implicite) ;
+> son `confirm()` de plan différent est passé à `ktaConfirm`. Test : harnais 2 appareils, 19 contrôles.
+
 **Fix Heatmap « ⚙️ Régler »** : bouton TOUJOURS visible tant que `window.MyKTAMapHeatmap` chargé (avant : condition fragile `_secoursHeatmapActive && isVisible()` faisait disparaître le bouton après cycles de rendu).
 
 #### 67.4 v1.23.5 — Modale preview AVANT import + mini-légende carte PDF
+
+> 🩸 **29/09/2026 (audit Secours, 4.3)** — seul l'**id** du plan était comparé à l'import. Un plan **regénéré** depuis l'export (autre `version`, autres dimensions) passait sans un mot, alors que positions d'étapes, zones et empreintes de tracés peuvent ne plus tomber juste. `_ecartVersionPlan` → avertissement orange dans l'aperçu d'import du `.mkmsec` **et** du rapport d'équipe (`secours.import.warnVersionPlan`). Un plan différent (autre id) garde son avertissement d'origine.
 
 **Refactor `importerScenario` split en 2 fonctions internes** (pattern §35 charte Promise-based, plus de `confirm()` natif) :
 
@@ -684,6 +708,15 @@ scenario.execution = {
 ```
 
 ##### 67.7.2 Helpers CRUD execution (API publique `window.SecoursMode`)
+
+> 🩸 **29/09/2026 (audit Secours — 3e version, après deux relectures)** — les étapes ne se construisaient qu'au lancement et au passage de phase. `addGroupe`, `updateGroupe` (entrée, sortie, intermédiaires) et `affecterEquipeAPhase` (équipe cochée dans la phase **en cours**) appellent `_resyncEtapesEquipe`, dans les conditions de `_resyncApplicable` (exécution active, équipe dans la phase courante). Règles :
+> - 🩸 **3e relecture (R3-1)** : un `wid` manquant est **CALCULÉ** (`_widDeterministe` : équipe + rôle + position + rang d'occurrence), jamais tiré au hasard — sinon PC et téléphone en fabriquaient de différents pour toute donnée d'avant la version (1 étape fusionnée sur 5, victime dupliquée). Un `wid` **inconnu de l'autre côté** compte comme absent dans l'apparieur (repli position, puis libellé, symétrique). Vérifié par une **matrice à deux versions** (ancien code ↔ nouveau, même stockage relu après mise à jour), qui échoue 9 fois sur le code d'avant ce correctif.
+> - **identité d'un point de passage = `wid`**, posé à sa création (`updateGroupe`, `exporterScenario` — avant le départ vers les équipes —, `lancerExecution`) ; chaque étape porte le `wid` de son point. Un point fourni sans `wid` **hérite** de celui d'un point de même rôle à la même position — y compris d'une étape archivée (retiré puis remis). Un point nouveau, **déplacé**, ou un homonyme ailleurs, est un autre point. Les étapes d'avant les `wid` sont rattachées au parcours actuel par ordre (`_rattacherWidEtapes`).
+> - **un seul apparieur** `_apparierEtapes` (resync ET fusion) : même `wid` ; sinon (l'un sans `wid`) même type + position ; sinon (rapport d'avant la v1.98.8, ni `wid` ni position) libellé par rang ; sinon numéro. **Jamais le libellé quand l'identité existe** (deux relectures ont montré qu'il reliait des étapes sans rapport).
+> - saisies reportées ; étape retirée porteuse de saisies → `execution._etapesRetirees[gid]` (**vidée au passage de phase**), restaurée par `wid` si le point revient ; photos suivies en IndexedDB (`setStepIdx`, −2 = retirée) ; une photo est « détenue » par une étape courante **ou d'une phase close** (`etapesArchive`, R3-3), sinon hors rapport ; photos purgées avec leur scénario et à la relance — **confirmée** (`secours.lancer.relanceConfirme`, R3-7) ; focus live recalé.
+> - **retrait en cours d'intervention** (décision KARMA 1:a) : refus si une étape perdue porte « aide » ou « victime » — **re-vérifié au ré-appel après confirmation** —, sinon `ktaConfirm`.
+> - **fusion d'un rapport** (décision KARMA a, relecture N11) : « aide » ou « victime » sur une étape que le PC a retirée → le point est **remis** dans le parcours de l'équipe, après le point importé précédent (ou le point remis juste avant), puis fusionné par son `wid` quel que soit son ancien type ; **alerte rouge en clair** (`stats.alertes`). Remise **seulement** si le point a vraiment quitté le parcours, que le rapport donne sa position et que l'équipe est dans la phase en cours ; sinon **alerte rouge sans remise** (`alerteNonRemise` : équipe hors phase, rapport d'une version sans position). Une étape inconnue porteuse d'autres saisies est archivée.
+> - ⚠️ Limite assumée : deux passages **au même endroit** fournis en objets neufs (appel programmatique) sont indiscernables — l'information reste au même lieu. Par l'interface (objets conservés), chacun garde son identité.
 
 - `lancerExecution(scenarioId, opts)` : initialise s.execution (etapes via `_buildEtapesPourEquipe(g)` pour chaque équipe OU `_notes_libres: []` si role=secouriste). Si execution déjà active → update role/equipeId sans casser étapes.
 - `arreterExecution(scenarioId)` : active=false + endedAt = now. Si en pause, comptabilise dernier segment avant arrêt. Garde execution comme historique consultable.
@@ -955,6 +988,8 @@ realSize = 3 × 165 = 495 px
 - Debug facile (lisible humain)
 
 #### 69.2 Mini-carte PDF page A4 paysage (C5 — CONSERVÉ)
+
+> 🩸 **29/09/2026 (audit Secours, trouvé en test)** — cette mini-carte **ne s'était jamais dessinée** : `_drawRapportPDFEquipeMiniaturePage` recevait `ed.equipe`, la copie allégée du rapport (sans entrée, étapes, zone ni itinéraire) → `_calculerBoundsEquipe` = null → page sautée sans message. Elle reprend maintenant l'équipe complète dans le scénario local (le PDF se génère sur l'appareil qui le détient), avec la copie en repli. Mesuré en navigateur : 0 → 1 canvas plan généré (16,0 Mpx). Relecture (R11, R12) : le fond est rendu **une fois** pour tout le rapport (`cacheFond`), et l'équipe est projetée sur la source **rognée** au bord du plan (avant : jusqu'à 124 px de décalage mesuré pour une zone collée au coin).
 
 `genererRapportPDF` reste async pour permettre await sur la mini-carte. Pour chaque équipe (scope=operateur ou equipe), le PDF intercale 3 pages :
 1. Page texte étapes (synchrone)
@@ -1347,8 +1382,8 @@ couverts :
 Appelée par :
 - `_loadScenarios()` au boot (sur tous les scénarios localStorage)
 - `_appliquerPayloadImport(payload)` à chaque import `.mkmsec.json` (couvre v1 re-importés ET
-  v1.29+ avec phases[] explicites — remap `phase.groupeIds[]` avec les nouveaux g.id régénérés
-  via `idMap[oldGid]`)
+  v1.29+ avec phases[] explicites — remap `phase.groupeIds[]` via `idMap[oldGid]` ; depuis le
+  29/09/2026 les g.id ne sont régénérés que pour une **copie**, cf §67.3)
 
 Format `.mkmsec.json` reste à **`version: 1`** (champ `phases` optionnel ignoré par anciens
 parsers — **pas de cassure rétro-compat**).
@@ -1520,6 +1555,8 @@ Sections de la page :
 
 ### 79.5 Étape C (v1.41.0) — `genererBriefingPompiersPDF()` dédié
 
+> 🩸 **29/09/2026 (audit Secours)** — le bloc « POI critiques » était **toujours vide** : il lisait `window.listePoints` (un `let` racine d'`editor.js`, jamais sur `window`), `p.tag` au lieu de `tags[]`, et un tag `sortieurgence` qui n'existe pas. Il lit maintenant session + calques du plan (`getEditorPoints` + `getAllEmbeddedPoints`, comme `sortieUrgence.js`) et liste les accès **ouverts** (`entree_plan` + libellés « entrée », `cao`, `peo`, `eso` — les mêmes que la Sortie d'urgence) puis **fermés** (`caf`, `pef`, `esf`), un POI une seule fois. Clés `critPeo/Eso/Pef/Esf` ajoutées, `critSortie` retirée. Vérifié sur le PDF réel généré en navigateur.
+
 Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async → PDF dédié 1+ pages via `_drawBriefingSurfacePage`. Bouton 🚒 dans :
 
 - Bandeau Mode Secours (vue Edit, plan actif + plan terminé)
@@ -1555,3 +1592,47 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 🩸 **Branché sur `_formatLevelShort`, source UNIQUE des trois sorties.** L'écrire trois fois aurait garanti qu'une des trois dérive — c'est le défaut que ce dépôt a déjà payé sur les tables de styles et sur le catalogue d'icônes.
 
 ⚠️ Un plan **sans profondeurs** affiche le niveau seul, exactement comme avant : rien n'est inventé.
+
+## 🗺️ Retours terrain v1.98.14 (29/09/2026) — règles à connaître
+
+- **Intervention en cours = affichage persistant** : `fermer()` re-rend l'overlay si `_scenarioEnCours()` (execution.active) ; `init()` le remonte au chargement du plan ; seul `reset()` (changement de plan) nettoie. La pastille `#kta-refonte-stat-secours` (barre d'état) est tenue par `_majFooterSecours()`, appelée par `_commitMutation` — ne pas la mettre à jour ailleurs. `ouvrir()` d'un scénario actif → vue `live`.
+- **Clic sur un marqueur en mode carte** : Leaflet ne remonte pas le clic d'un marqueur à la carte. `_armerCaptureMarqueurs()` (capture sur le conteneur, `.leaflet-marker-icon`) redirige vers le mode actif (point / polygone / tracés) ; désarmé par `_finishMapMode()`.
+- **Libellé d'une étape sans nom** : TOUJOURS `_fmtPoint` (« x=… y=… niv=… ») à l'écriture — c'est une identité d'appariement entre appareils. L'affichage passe par `_lblEtape()` / `_gpsTxt()` (GPS si géoréférencé). Ne jamais stocker le GPS à la place.
+- **Niveaux** : `window.ktaNiveauxOccupes()` (main.js) = source unique des niveaux qui portent quelque chose ; `availableLevels` peut contenir des niveaux vides (défaut −2..+2).
+- **Équipes repliées** : état par appareil (`myktamap_secours_equipes_repliees_v1`), pas une donnée du scénario.
+
+## 🚑 Vague 5 (v1.98.16, 30/09/2026) — victime, retards, rappel
+
+- **Victime** : pas de structure à part — une étape au statut `victime` EST la victime. Position = `etape.victimePos` (précisée, horodatée, `ETAPE_CHAMPS_SAISIS`, fusion : la plus récente) sinon `etape.cle`. Lecteur unique : `_victimesDe(s)` (phase en cours + archives) ; rapports : `_victimesDuRapport(r)`. Évacuer = `SortieUrgence.declencherDepuis(x, y, level)`.
+- **Suivi d'équipe** : `s.execution.suivi[phaseIdx][gid] = { departAt, rentreeAt, rappelAt }` — par phase (une équipe reconduite repart à zéro), remis à zéro par la relance. État : `_etatRetour` (`rentree` / `inconnu` / `ok` / `orange` / `rouge`), marge `reglagesDuree.margeRetardMin`. Écriture : `marquerSuivi` (API) ; fusion d'un rapport : heure la plus ancienne. Voyage dans `equipesData[].suivi`.
+- **Veille** : `_veilleRetards` (20 s) démarrée / arrêtée par `_majFooterSecours` ; notifie une fois par équipe et par seuil (`_seuilsNotifies`), en UN toast. Minuteries gardées (`typeof setInterval`) pour les harnais Node.
+- **Rappel** : état tenu par l'opérateur, JAMAIS présenté comme un message envoyé (aucun réseau) — ne pas écrire « les équipes sont prévenues » dans l'UI ni la doc.
+
+## 🧭 Vague 6 (v1.98.18, 30/09/2026) — guidage du parcours
+
+- **Données** : `g.guidage = { carrefours, raccords, n }` (n = points du tracé ; différent de `itineraireSuggere.length` = périmé → « Suivre » recalcule sur place, le PDF n'imprime pas de feuille).
+- **Itinéraire suivi** : une road `type: "itinerary"` avec `secours: { scenarioId, equipeId, avoidPoints, avoidRadius }`, activée par `window.itineraireActiverRoad` (interfaceItineraire). Waypoints `source: "secours"`, `wid`, `done` = étape faite (`_majRoadSuivi` à chaque mutation). `_replanifierDepuis` (interfaceItineraire) garde `secours` et ses évitements — ne pas le perdre dans une future réécriture de la replanification.
+- **Arrivée** : `_veilleArrivee` (3 s, tant qu'un itinéraire Secours existe) — prochain waypoint non fait à ≤ 12 m → toast, vibration, `_liveEquipeFocusIdx`.
+- **Feuille de route PDF** : `_feuilleDeRouteLignes` → `ItiGuidage.construire` / `texteAction` / `majuscule` (même moteur que la feuille de l'app).
+
+## 👥 Vague 7a (v1.98.19, 30/09/2026) — main courante, chef / effectif / remontés, secouriste
+
+- **Main courante** : `s.execution.mainCourante[] = { at, cle, p, source? }` — clé i18n `secours.mc.*` + paramètres, traduits À L'AFFICHAGE (`_texteMc`) ; jamais de texte figé. Écriture : `_journaliser(s, cle, p, extra)` (sans commit, l'appelant commite). Plafond 2000 entrées. Fusion des rapports : clé `at|cle|p` pour dédoublonner ; notes du secouriste : `p.noteId`.
+- **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon nombre de membres). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
+- **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`.
+- **Secouriste** : `_parsePayloadReport` rend `{ ok, payload, secouriste: true }` → `_importerNotesSecouriste` (pas d'aperçu, pas de fusion d'étapes).
+
+## 🗂️ Vague 7b (v1.98.20, 30/09/2026) — parcours par phase, couverture, hors-ligne
+
+- **Parcours par phase** : `s.execution.parcoursArchive[phaseIdx][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }`, écrit par `terminerPhase` (`_archivePhaseParcours`), lu dans `historique[].parcours` du rapport. Copie légère (pas de géométrie) : le parcours EN COURS reste `g.entree/intermediaires/sortie`. Préparer la phase 2 pendant la phase 1 (option 6:b) n'est PAS fait.
+- **Couverture** : `_calculerCouverture(s)` — pur calcul, sans effet ; POI = `getAllEmbeddedPoints` (POI du plan) ; niveaux ignorés.
+- **Hors-ligne** : `_verifierHorsLigne()` après la confirmation de lancement ; ne concerne que `PlanRegistry.findById(id).type === "server"`.
+
+## 🚒 Test terrain (v1.98.22, 30/09/2026) — scénario réel, Pandemonium
+
+- **Relance** : `lancerExecution` remet `phases[0].startedAt` = lancement, les autres à `null`, et `endedAt = null` partout (le débriefing écrit reste). Le départ par défaut d'une équipe est le début de phase : sans ça, faux retards.
+- **Messages** : `_placerAEntree` et `_verifierHorsLigne` RENDENT leur texte ; le lancement émet UN toast (warn dès qu'il dit plus que « lancé » — les info sont tus en « Essentielles »). Les toasts laissent passer les touchers (`pointer-events: none`, sauf la croix).
+- **Même plan** : `_autrePlan(planFichier)` — ids différents ET (nom ou dimensions différents). Un plan importé (`local_…`) et le même servi (`server_…`) sont le même plan.
+- **Même accès** : `_memeAcces(a, b)` — `_samePoint` ou même niveau à < 10 m. Sert aux cartes PDF (repère « ENTRÉE / SORTIE » / « E/S ») et à `_accesSurface` (dédoublonnage des accès).
+- **Accès surface** : `_dessinerAccesSurface` (carte + tableau) en tête de `_drawBriefingSurfacePage` ; `_canvasAcces` recadre le canvas plan (`MyKTAMapExporterGenererCanvas`, sans annotations) sur les accès + marge (12 %, ≥ 150 m). La capture Vue OSM n'est plus faite pour `overlayContext === "rapport"`.
+- **Limite connue** : le canvas plan est plafonné à 16 Mpx (Safari iOS) — sur Pandemonium, 20 % de la résolution. Rendre chaque zone depuis les tuiles : backlog.

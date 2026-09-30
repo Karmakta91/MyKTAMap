@@ -98,7 +98,7 @@ function _fmtDateRel(iso) {
     const j = Math.floor(h / 24);
     if (j === 1)    return window.I18n.t("ui.date.yesterday");
     if (j < 7)      return window.I18n.t("ui.date.daysAgo", { n: j });
-    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+    return d.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { day: "2-digit", month: "2-digit" });
   } catch(e) { return ""; }
 }
 

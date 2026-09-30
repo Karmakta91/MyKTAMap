@@ -1682,7 +1682,16 @@
     const maxZ  = _miniMap.getMaxZoom();
     const baseZ = _miniMap.getBoundsZoom([[0, 0], [imgH, imgW]], true) || 0;
     const targetZ = Math.min(maxZ, baseZ + MINIMAP_ZOOM_OFFSET);
-    _miniMap.setView(latlng, targetZ, { animate: false });
+    // 🔋 29/09/2026 — ce tick tourne 4 fois par seconde, et recentrait la
+    // minimap à CHAQUE fois, même immobile : 40 setView en 10 s, chacun
+    // relançant un parcours de toute la grille de tuiles (~35 000 itérations
+    // pour rien), sur l'écran qu'on ouvre justement quand la batterie baisse.
+    // On compare à la vue RÉELLE (pas à une valeur mémorisée) : si autre chose
+    // l'a bougée — le recadrage après rotation de l'écran —, on recentre.
+    const centre = _miniMap.getCenter();
+    const dejaCentree = centre && _miniMap.getZoom() === targetZ &&
+      Math.abs(centre.lat - latlng[0]) < 0.5 && Math.abs(centre.lng - latlng[1]) < 0.5;
+    if (!dejaCentree) _miniMap.setView(latlng, targetZ, { animate: false });
 
     // Add ou move le marker tracker
     if (_miniTrackerMark) {

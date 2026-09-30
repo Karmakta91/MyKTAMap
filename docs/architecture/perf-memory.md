@@ -147,12 +147,14 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 
 | Toggle | Module | Comportement |
 |---|---|---|
-| `decim` | `road.js > renderRoads` | Applique RDP (`_decimatePointsRDP`) avec epsilon dynamique selon zoom (0/2/4/8/16 px). Skip sur `type === "itinerary"` (précision navigation > perf) et si `points.length <= 8`. Re-render hook sur `moveend/zoomend`. |
+| `decim` | `road.js > renderRoads` **+ `utils.js > _refreshDataPolylinesUltra`** (tracés du plan, depuis 29/09/2026) | Applique RDP (`_decimatePointsRDP`) avec epsilon dynamique selon zoom (0/2/4/8/16 px). Skip sur `type === "itinerary"` (précision navigation > perf) et si `points.length <= 8`. Re-render hook sur `moveend/zoomend`. |
 | `animOff` | `map.js > L.map()` | `zoomAnimation/fadeAnimation/markerZoomAnimation: false`. **Lu UNIQUEMENT à init** → reload requis. UI signale via `.kta-perf-ultra-row-danger` (liseré orange). |
 | `noIntersect` | `road.js > _calculerIntersectionsRoads` | Seuil `_roadIntersectionMaxRoads()` → 50 si actif, 200 sinon. Lu à chaque appel. |
 | `noTooltips` | `utils.js > ajouterPointsDepuisJSON` | Skip `bindPopup` sur markers data-layer. Points session éditeur gardent leurs popups. Compromis : user passe par 🔍 pour interagir. |
 | `slowSave` | `sessionPersist.js > _currentPollInterval` | `POLL_INTERVAL_SLOW_MS = 30000` au lieu de 1500. Hook `onChange` → restart polling avec nouvel intervalle (sans reload). |
-| `viewportCull` | `road.js > renderRoads` | AABB check vs `map.getBounds()` + 10% padding. Skip création L.polyline si road hors viewport. Skip culling sur `type === "itinerary"`. Re-render hook sur `moveend/zoomend`. |
+| `viewportCull` | `road.js > renderRoads` **+ `utils.js > _refreshDataPolylinesUltra`** (tracés du plan, depuis 29/09/2026) | AABB check vs `map.getBounds()` + 10% padding. Skip création L.polyline si road hors viewport. Skip culling sur `type === "itinerary"`. Re-render hook sur `moveend/zoomend`. |
+
+> 🩸 **Jusqu’au 29/09/2026, `decim` et `viewportCull` ne touchaient PAS les tracés d’un plan** : ils ne parcouraient que `roadsData` (annotations), alors que les tracés des calques de données sont créés par `utils.js` et vivent dans `window._ktaDataPolylines`. Mesuré sur un relevé de 893 tracés à z=0 : 893 sur la carte, 6 dans l’écran. Désormais `_refreshDataPolylinesUltra` (crochet `moveend/zoomend` de `_refreshDataMarkersViewport` + `PerfUltra.onChange` + fin de chargement du calque) : bbox mise en cache par entrée, retrait/réintégration dans **son calque** (`entry.groupe`, jamais la carte : un calque décoché reste décoché), décimation via `window.ktaDecimerPointsTrace` exposé par `road.js` (même epsilon, même RDP), `entry.points` jamais modifié (exports, pathfinder, heatmap le lisent). Mesuré : 8/893 tracés sur la carte cull ON ; 5 313 sommets dessinés pour 8 968 à z=−3. Tenu par `scripts/smoke/checkup-ultra-traces-plan.js`. Zones et structures du plan restent hors de ces deux réglages.
 
 **UI dans `js/interface.js > afficherConfig`** :
 - `_renderPerfUltraSection()` génère le HTML — section dédiée après "Debug", avant les boutons d'action

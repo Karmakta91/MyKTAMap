@@ -749,7 +749,7 @@ if (anonymize) {
 
 | Champ source | Transformation | Préservé pour |
 |---|---|---|
-| `editorPoints[].id` / `.nom` | `<emoji par tag> POI #N` (compteur par premier tag) | Coordination terrain ("celui qu'on appelle 💎 POI #3") |
+| `editorPoints[].id` / `.nom` | `📍 POI <1er tag> #N` (compteur par premier tag ; sans tag : `📍 POI #N`) | Coordination terrain ("celui qu'on appelle 📍 POI salle #3") — codes uniques depuis v1.98.2 (l'ancienne table d'emojis ne connaissait qu'un tag sur 22 : codes en double) |
 | `editorPoints[].description` | `""` | — |
 | `editorPoints[].etat` | `"Non inspectée"` (valeur neutre par défaut) | — |
 | `editorPoints[].profondeur` | `null` | — |

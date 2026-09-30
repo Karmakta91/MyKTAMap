@@ -117,6 +117,22 @@ Dérogations :
 - (aucune) | <item> — motif · risque accepté · rattrapage (→ BACKLOG §x) — accordée par KARMA le <date>
 ```
 
+### 🗂️ Dérogations consignées a posteriori
+
+Une dérogation posée sans l'accord préalable de KARMA (écart à la règle 1) est signalée à KARMA,
+puis consignée ici avec sa décision.
+
+- **v1.98.10** (`5b1be64`, 29/09/2026) — `Docs-deroge` posé **par Claude, sans accord préalable** :
+  `AI_CONTEXT.md` avait été mis à jour dans le commit précédent de la même vague (`5108b6f`) et non
+  dans le commit de release, que le hook refusait. · Risque : nul (contenu vérifié présent). ·
+  Rattrapage : aucun ; depuis v1.98.11, `AI_CONTEXT.md` suit toujours dans le commit de release. ·
+  **Validée a posteriori par KARMA le 29/09/2026.**
+- **v1.98.17** (`7768245`, 30/09/2026) — `Docs-deroge` posé **par Claude, sans accord préalable** (récidive) :
+  motif écrit « guides utilisateur non touchés », alors que le hook ne contrôle pas les guides — la ligne était
+  **inutile**. · Risque : nul (README, audit réseau et Aide IA à jour dans le commit). · Rattrapage : aucun ;
+  règle que Claude s'applique désormais : **si le hook refuse une release, Claude s'arrête et demande — il
+  n'écrit jamais lui-même de ligne `*-deroge`**. · **Validée a posteriori par KARMA le 30/09/2026.**
+
 ---
 
 ## 🤖 Marche 1bis — smoke navigateur automatisé (EN PLACE depuis v1.76.4)
@@ -148,6 +164,9 @@ morts précis et se lancent à la main, comme le smoke.
 | `node scripts/smoke/smoke.js` | à chaque release (marche 1bis) | **26/09/2026** : il était ROUGE dès que `data/` contenait un vrai relevé — il cherchait « Relevé fictif de test » **par son nom**, et `data/` ne part jamais sur le dépôt. Deux faux échecs sur le harnais qui garde la porte. Il ouvre maintenant le premier plan de l'index et le dit ; il classe aussi à part les 404 de **sondage d'icônes** (volontaires sur un plan généré avant la v1.97.9). C'est ainsi qu'il a trouvé l'exception du bouton ❓ sur ≡ Légende |
 | `node scripts/smoke/checkup-urgence-memoire.js` | dès qu'on touche au mode urgence XL (`js/emergencyMode.js`), au cycle de vie d'un plan (`map.remove()`, `main.js`) ou à l'éviction du Service Worker | **v1.97.6** : trois défauts qu'aucun test ne voyait — `map.remove()` ne retire pas l'écouteur `scroll` de Leaflet (**+2,43 Mo épinglés par plan chargé, sans plafond**), l'éviction du cache supprimait le `plan-config.json` d'un plan qu'on venait de rendre hors-ligne, et l'écran d'urgence n'avait **aucun fond** sur un plan servi en HTTP. **26/09/2026** : couvre aussi les couleurs de la légende personnalisée dans la mini-carte (tracé repeint, zone repeinte, type `cust-…`) — falsifié |
 | `node scripts/smoke/checkup-carnet-documents.js` | dès qu'on touche au Mode Histoire (`js/modeHistoire.js`), à l'onglet Récits du Carnet (`js/journalUi.js`) ou à la base `myktamap_histoire_pdfs` | **26/09/2026** : un PDF livré dans le ZIP d'un plan ne remontait pas dans « Mon carnet » — limite assumée depuis la v1.69.0, invisible de tout garde-fou statique (IndexedDB + DOM). Le checkup mesure la copie, son **idempotence** (dix chargements ≠ dix copies) et le cycle *supprimé → plan rouvert → recréé* voulu par KARMA, puis **falsifie** en rejouant sans la copie |
+| `node scripts/smoke/checkup-suppression-plan-docs.js` | dès qu’on touche à la suppression d’un plan (`homeLoader.js` → ℹ️ Infos → 🗑️), à `PlanRegistry.purgeAssociatedData`, à `ktaConfirm` (`utils.js`) ou à la base `myktamap_histoire_pdfs` | **29/09/2026** : supprimer un plan laissait ses PDF d’histoire orphelins dans le Carnet. Case décochée « supprimer aussi ses documents (X Mo) » : le checkup la coche et vérifie que seuls les documents DU plan partent, puis **falsifie** en la laissant décochée (rien ne doit partir) |
+| `node scripts/smoke/checkup-ultra-traces-plan.js` | dès qu’on touche aux réglages ULTRA (`perfUltra.js`), au rendu des calques de données (`utils.js > ajouterPointsDepuisJSON`, `_refreshDataPolylinesUltra`), à la décimation de `road.js` ou au culling (`mapBearing.zoneVisible`) | **29/09/2026** : « Ne rendre que le visible » et « Décimer au dézoom » ne faisaient rien sur les tracés d’un plan (893/893 sur la carte). Le checkup compte ce qui est **réellement** sur la carte (`polyline._map`), vérifie qu’un calque décoché reste décoché et que la géométrie revient au rezoom ; **falsifié** sur l’ancien code (893/893) |
+| `node scripts/smoke/checkup-tuiles-hors-ecran.js` | dès qu’on touche au tuilage V2 (`tiling.js > _renderNiveau`, `ktaCullerTuilesV2`), au filtre multi-niveau du plan de base ou à `mapBearing.zoneVisible` | **29/09/2026** : le tuilage posait tout le niveau (864 tuiles pour 6 visibles). Le checkup compte les tuiles **posées** et les **requêtes réellement émises**, vérifie qu’**aucun point de l’écran** dans le plan n’est sans tuile (avant/après déplacement) et le filtre de niveau ; **falsifié** sur l’ancien code (864/864) |
 | `node scripts/smoke/checkup-plan-oriente.js` | des qu'on touche au mode « plan orienté » (`js/mapBearing.js`), aux panes Leaflet, au culling viewport (`road.js`, `utils.js`) ou aux modes qui prennent la carte (perdu / présentation / secours / replay) | **v1.97.0** : la première implémentation posait la rotation sur `.leaflet-map-pane` et **passait tous les tests** — tant que la carte n'avait pas été panée. Dès qu'elle l'était : 918 px d'erreur à 45°, sans la moindre erreur console. Le checkup pane AVANT de mesurer, sinon il validerait l'implémentation fausse |
 
 **`checkup-langues.js`** rejoue le parcours d'un utilisateur espagnol : depuis

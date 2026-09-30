@@ -197,6 +197,19 @@ const sondesIcones = [];
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
     await page.waitForTimeout(2500);   // rendu calques + restore session
 
+    // 🩸 29/09/2026 — le premier rendu du tuilage doit COMPTER ses tuiles. Il
+    // était consommé par un rendu fantôme « z=NaN » (carte encore sans vue) :
+    // `attendusPremier` restait à 0 et le repli « toutes les tuiles du premier
+    // rendu ont échoué → image entière » était désarmé, en silence.
+    const tuilage = await page.evaluate(function () {
+      const s = window._tilingV2State;
+      return s ? { niveau: s.currentLevel, attendus: s.attendusPremier } : null;
+    });
+    if (!tuilage) ok("plan non tuilé V2 — contrôle du premier rendu sans objet");
+    else if (Number.isInteger(tuilage.niveau) && tuilage.attendus > 0) {
+      ok("tuilage : premier rendu au niveau z=" + tuilage.niveau + ", " + tuilage.attendus + " tuiles attendues (repli d'erreur armé)");
+    } else pb("tuilage", "premier rendu fantôme — niveau " + tuilage.niveau + ", " + tuilage.attendus + " tuile(s) attendue(s)");
+
     // ───────────────── 5. ⚙️ RÉGLAGES (le ReferenceError `saved`) ─────────────────
     console.log("— 5. ⚙️ Réglages carte —");
     const ouvert = await page.evaluate(function () {

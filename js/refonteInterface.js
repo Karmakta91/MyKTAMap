@@ -1357,7 +1357,7 @@
     const lines = [];
     lines.push("# 📊 " + window.I18n.t("ui.refonte.export_titre"));
     if (planName) lines.push(window.I18n.t("ui.refonte.export_plan", { name: planName }));
-    lines.push(window.I18n.t("ui.refonte.export_date", { date: new Date().toLocaleString("fr-FR") }));
+    lines.push(window.I18n.t("ui.refonte.export_date", { date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }));
     lines.push(window.I18n.t("ui.refonte.export_duration", { duration: _formatDurationStats(stats.session.durationMs) }));
     lines.push("");
     if (stats.roads.total > 0) {

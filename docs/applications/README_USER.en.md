@@ -448,7 +448,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 - **▶️** — loads the map
 - **⭐/☆** — pins/unpins the map to the top of the list
 - **✏️ Rename display** — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
-- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
+- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app. If the plan has **story documents** (Story Mode PDFs), the confirmation offers an **« Also delete its documents (X MB) »** box, unchecked: left as is, they remain readable in 📔 My logbook → 📖 Stories.
 
 **Buttons at the top of the list:**
 
@@ -543,7 +543,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 > 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode: it applies to all your maps, and the logbook opens from the home screen.)*
 
-> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
+> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. So does the **built-in Help** (the 📚 in the sidebar in map mode). On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
@@ -556,7 +556,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
    > 💡 **Use case**: you use MyKTAMap only with your own local maps and you don't want to see the server demo/test maps that pollute your list. Check this box → reload → your 📚 My maps list only contains YOUR maps.
 
-7. **🔐 Local access code (PIN / Face ID)** — locks the app at each startup with a 4-6 digit code + Face ID / Touch ID if the device supports it. 100% local (never sent over the Internet). 5 failed attempts = permanent lockout. No recovery if forgotten. See dedicated section **🔐 Local access code (PIN / Face ID)** below for full details (activation, modification, deactivation, lockout).
+7. **🔐 Local access code (PIN / Face ID)** — locks the app at each startup with a 4-6 digit code + Face ID / Touch ID if the device supports it. 100% local (never sent over the Internet). 5 wrong codes = **temporary** lock (10 min, then 1 h, 6 h, 24 h), never permanent. No code recovery if forgotten. See dedicated section **🔐 Local access code (PIN / Face ID)** below for full details (activation, modification, deactivation, lockout).
 
 8. **🔄 Update — Force soft update** — re-downloads the latest version of the code (purges the PWA cache, keeps your data and your maps). Useful if you suspect that your app remains on an old version after a release. **Never** touches your maps, your active session, your community code or your local PIN. **Mandatory confirmation before triggering** (blue modal detailing what is preserved + need for active Internet connection).
 
@@ -655,7 +655,7 @@ The auto-save above keeps the **current state** of a map. The **logbook** keeps 
 **Where to find it:** the **📔 My logbook** tile on the home screen, in the « 🧰 Tools » card (grid under « 📦 Add a map », visible on mobile too). No map to load. From a map: **Session** modal → **📔 Trip in progress** section.
 
 **What a trip contains:**
-- date, **duration** (time actually spent in the app, not elapsed time) and **distance travelled** with the tracker,
+- date, **duration** (from start to finish for a field outing; time using the app for work on the plan) and **distance travelled** with the tracker,
 - how many **points, paths, zones and structures you added**,
 - the **path you walked** (mini-map in the trip sheet),
 - the **photos taken during the trip** (the logbook does not copy them: it points at your existing photos — delete one and its thumbnail becomes « 🚫 »),
@@ -684,7 +684,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - A **map click** to correct your position does not count as travel, and neither does a **portal crossing** to another map.
 
 **When is a session archived?**
-- **Automatically** when you leave the map (map switch or back to home), if **either** condition is met:
+- **Automatically** when you leave the map (map switch or back to home) — but not right away: the outing is first **paused for 2 hours** (come back to the same map and it resumes, see "Resuming" below). After that, it is archived if **either** condition is met:
   - **50 m travelled** (measured by the pedometer or estimated between your "📍 I am here" markers),
   - **or** 10 minutes of actual work **and** at least one annotation.
   - Below that, nothing is kept — opening a map for 20 seconds to check a detail does not clutter the logbook.
@@ -909,7 +909,7 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
    - `cao` → **C**avage **A**utre **O**uvert (Open Cavage)
    - `peo` → **P**uits à **E**chelon **O**uvert (Open Echelon Shaft)
    - `eso` → **E**scalier de **S**ervice **O**uvert (Open Service Stairs)
-   - `entrée` → any POI marked as a known entrance
+   - `entrée` → any POI marked as a known entrance, **and** the built-in "🚪 Plan entry point" tag
 3. For each candidate the app computes the **real navigable path** via the pathfinder (handles walls AND inter-level junctions).
 4. A compact modal shows:
    - The nearest exit + its distance + its level if the plan is multi-floor
@@ -1567,7 +1567,7 @@ The orange **⛑️** button in the **🧭 Tracker** group opens emergency mode.
 
    | Preset | Speed | Radius for 10 min | When to use |
    |---|---|---|---|
-   | 🍺 **Drunk** | 2 km/h | ~333 m | Very slow, confused, disoriented, hesitant walking |
+   | 🤕 **Injured** | 2 km/h | ~333 m | Very slow, hindered progress (injury, fatigue, hesitant walking) |
    | 🐌 **Slow** | 3 km/h | ~500 m | Cautious walking, tight passages, exploration |
    | 🚶 **Normal** *(default)* | 5 km/h | ~833 m | Standard walking pace |
    | 🏃 **Fast** | 7 km/h | ~1167 m | Known route, sustained walking |
@@ -1632,7 +1632,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
 - 📋 **“Copy my position”**: a square button **to the right of the figures** (tapping the figures works too — that is where your finger goes first). It turns into ✅ while it confirms the copy. If your map is georeferenced it copies **the coordinates alone** — `48.823328, 2.322915` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
 - 🔋 **One status line at the top right**: your **battery level** (only if your browser exposes it and you have not unticked the setting — otherwise nothing at all, no “?”; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title. *The map scale is gone (v1.97.11): it is a calibration figure, it belongs in ⚙️ Settings, not on the screen where you are looking for yourself.*
-- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in ⚙️ Settings.
+- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in the home screen's ⚙️ Configuration.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
 - 📱 **Landscape**: the minimap reframes correctly when you turn the phone, and the layout changes — position on the left, map on the right over the full height.
 - 🗺️ **Everything fits on one screen**: nothing to scroll any more, and **the map takes all the room freed up** (measured: its height doubled on a phone in portrait).
@@ -1661,7 +1661,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Workflow
 
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped).
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped — never a running scenario, the one you have open, nor a finished intervention whose report has not yet left the device).
 2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
 3. **Free-form editing** — 3 accordion sections:
    - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
@@ -1674,8 +1674,20 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 |---|---|
 | 📍 Entry | 1 map click = captures the team's entry position |
 | 🚪 Exit | 1 map click = captures the exit position |
-| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click (re-click = remove, red highlight for selected) |
-| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration (methodical speed 0.5 m/s) |
+| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click: the nearest gallery, among the displayed levels, is taken (re-click = remove, highlighted in red). The map's galleries are found identically on any phone that has the same map; a path drawn by hand on a single device only exists on that one. Hidden layers remain selectable |
+| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration according to the rescue plan's **⏱️ Estimated durations** settings (search speed 1.5 km/h and pause 0 by default, adjustable) |
+
+> 🔁 **During the intervention**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps right away. What has already been entered (status, observations, photos) stays on the same step, even when two steps share the same name. Removing a step that already has entries asks for confirmation, and is **refused** if it reports "Help requested" or "Victim found": change its status first. Put back later **in the same phase**, the step recovers what had been entered (after a phase change it starts empty; its entries stay in the closed phase's history). If a team reports "Help requested" or "Victim found" on a step you removed in the meantime, importing its report **puts the point back in its route**, in its place, and tells you in red; if the point cannot be put back (team no longer in the current phase), the red alert is shown anyway. ⚠️ **After an app update, re-import the plan on every phone before the intervention**: a phone that imported the plan with an older version (before v1.98.5) sends reports the PC cannot merge. **Relaunching** a finished plan erases the previous intervention, photos included: a confirmation reminds you, export its report first. "All POIs in the zone" adds the steps from nearest to nearest, to avoid back-and-forth.
+
+> 🗺️ **On the map, during the intervention**: when you **launch the plan in team mode**, you are **placed at your team's entry** — automatically if your position was not confirmed yet, otherwise the app offers it ("Place me at the entry" / "Keep my position"). At launch, **a single message** sums everything up (plan launched, placed at the entry, map not available offline) and no longer blocks the buttons below it; relaunching a scenario already played starts from scratch (no more false delays carried over from the day before). Closing the Rescue Mode window no longer removes anything — your zone and your route stay displayed (a team member sees their team, the operator all of them), even after a reload. At the bottom of the screen, a red badge **"🚨 Rescue · Alpha · 3/8 ›"** reminds you the intervention is running and where you stand: one tap takes you **straight to the steps** to validate. While preparing: teams **collapse** (▾/▸ or "Collapse all"); while drawing a zone, the other teams' zones show dashed so you can line up the edges; tapping a POI to choose the entry, the exit or a step **takes it as the point** (its sheet no longer opens); an unnamed point shows as **GPS coordinates** if the plan is georeferenced; "Auto: 1 team per level" skips empty levels, and level lists mark the ones with nothing on them "(empty)" (still selectable).
+
+> 🚑 **Victim, delays and recall**: a step set to **"Victim found"** gives a **position** (the step's, level included) — **📍 Refine on the map** adjusts it, **🚑 Evacuate** opens the Emergency exit from the victim, and a **red ✚** marks it on the map, for everyone. The operator sees it as a banner at the top of their view, and the report prints it first. Each team has its **departure time** (**▶️ Departure**, otherwise the launch) and its **expected return time** (departure + estimated duration): **orange** once that time has passed, **red** after the margin (30 min by default, adjustable in ⏱️ Estimated durations) — late teams move to the top, the bottom badge changes colour, a message and a vibration warn you. **✅ Back** stops the clock. **📢 General recall** (or 📢 Recall, per team) marks the teams still underground as recalled, with the time. ⚠️ **The app notifies nobody** — there is no network underground: pass the order on by radio or by voice. Departure, return, recall and refined position travel in the team report.
+
+> 🧭 **Step-by-step route guidance**: in your team's view, **🧭 Follow my route** turns the route into the app's itinerary — the guidance banner ("In 40 m, turn left"), the road book and the XL screen take you from step to step (turn tracking 🧭 on). The steps you validate are ticked on the itinerary; if you stray, **Recompute** starts again from here towards the **next step not done**, still avoiding the other teams' zones. When you reach a step, a message and a vibration warn you, and the 🚨 badge opens that step directly. The **briefing PDF** also prints, for each team, its **road book** junction by junction (level changes included) — compute the team's route to get it.
+
+> 👥 **Leader, headcount, people back up and log**: each team has a **👤 leader** (chosen among its members) and a **headcount**. At **✅ Back**, the app asks **how many came back up**: below the headcount, a **red alert "N person(s) missing"** stays on screen (and the bottom badge turns red) until the count is corrected. The **📜 log** (operator view) records everything, time by time: launch, statuses, victim, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It travels in team reports and is printed as an annex of the report. The **free rescuer's report** can now be imported like a team's: their notes join the log, at their time.
+
+> 🗂️ **Preparing and relaunching**: when a phase is closed, each team's **planned route** is kept — replanning the next phase no longer erases it, and the report shows each phase's route. In the edit view, the **📊 Coverage** block (computed when opened) gives the **share of galleries covered** by the zones, the **POIs inside a team's zone but off its route**, and the **POIs visited by several teams** — a reading aid, nothing is assigned automatically. At launch, the app **warns you if the map is not fully available offline** on the device (server map not downloaded). In the team view, three shortcuts: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost** — hidden, like "Follow my route", when the surface operator **takes over** to relay a team: they would act on the operator's own device.
 
 #### Map visualization
 
@@ -1689,11 +1701,11 @@ Auto-refresh on each modification. Re-click the button to hide.
 
 #### Multi-scenarios per map
 
-You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map (beyond that, the oldest is automatically purged).
+You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map: beyond that, the oldest is automatically purged — except a running scenario, the one you have open, the most recent one, or a finished intervention whose report (PDF or file) has not yet left the device.
 
 #### Exports
 
-**📄 Printable PDF**: 1 A4 portrait page per team with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
+**📄 Printable PDF**: 1 A4 portrait page per team (a 2nd one if the step list is long) with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
 
 **🌍 Geolocated KMZ**: embeds the complete scenario in a KMZ annex file (`myktamap-extras.json > secoursPlan`). Prerequisite: map already KMZ-calibrated (see Export sessions modal 🌍 KMZ tab). MyKTAMap can re-import the KMZ and reload the scenario as-is. Filename `Rescue_<scenario_name>_<date>.kmz`.
 
@@ -1802,7 +1814,7 @@ In the mini-modal "📍 Choose a point", your map favorites appear as clickable 
 
 Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
 
-#### 🛑 Configurable cross-feature pause
+#### 🛑 Pause between stops (route)
 
 New section in the 🗺️ Route modal:
 
@@ -1812,7 +1824,7 @@ New section in the 🗺️ Route modal:
    Duration per pause: [15] min
 ```
 
-Default checked + 15 min (= preserved behavior). Modifiable → also applies to Rescue Mode duration calculations (cross-feature).
+Default checked + 15 min (= preserved behavior). ⚠️ Since v1.98.11 this pause **no longer** applies to Rescue Mode: each rescue plan has its own settings (**⏱️ Estimated durations** block: search speed and pause per step), sent to the teams with the plan.
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
 
@@ -1857,16 +1869,17 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 
 | Section | Content |
 |---------|---------|
+| **SURFACE ACCESS POINTS** | At the top: the map **cropped to the teams' access points** (no POIs), a **numbered marker** per access, and a table No. · access (entry, exit or both) · teams · **GPS + clickable map link**. Two teams leaving from the same access share one number. Remember to **name your entries** ("Manhole, X street"): otherwise the table says "Unnamed access" |
 | **INFO** | Scenario name · plan name · generation date |
 | **LOCATION** | GPS center coordinates + bbox + **clickable OpenStreetMap link** + **clickable Google Maps link** |
 | **TEAMS ON SITE** | For each team: name + members + surface GPS (if set) + individual OSM link per team |
-| **CRITICAL POIs** | 🚪 Plan entry points · 🚨 Emergency exits · 🪜 Cavages (open/closed) with M-LVL level |
+| **CRITICAL POIs** | The map's accesses, with their level: first the **open** ones (🚪 entry points, cavages, rung shafts, service staircases — the same as the Emergency exit), then the **closed** ones (which firefighters and the IGC can open). List taken from the map's tagged points (up to v1.98.6 this block stayed empty) |
 
 > 💡 **How to use**: Print the PDF or send it by email/Signal to the firefighter group leader BEFORE arrival. On site, they click the links from their phone/PC to open OSM or Google Maps centered on your site. No MyKTAMap installation needed on their side.
 
 #### 📤 "Surface briefing" page in post-mission report
 
-The post-mission PDF report (generated via 📤 Report button) includes a "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
+The post-mission PDF report (generated via 📤 Report button) includes a "SURFACE BRIEFING" page with the same info, access map at the top (the OpenStreetMap view of the whole map, unreadable on an A4 page, is no longer in it; in the firefighter briefing it stays optional, POIs unticked by default). On team maps, an entry and an exit set at the same access (less than 10 m apart) now make a single "ENTRY / EXIT" marker. When a route is computed, a step placed far from any gallery is named ("Step "PA3" is 68 m from the nearest trace"): fix it before going down. Useful for geographic debrief with firefighters or archiving the intervention file.
 
 #### 🏷️ OSM View tag filter
 
@@ -2045,7 +2058,7 @@ For the command center coordinating several teams in parallel:
 
 **"👁️ Details" button** → read-only mini-modal with chronological list of the team's steps (ts + emoji status + obs).
 
-**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you).
+**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you). The view opens on **this team's first unfinished step**, even if you were further along with another team.
 
 **Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (going back stays possible after a reload or a map switch).
 
@@ -2152,7 +2165,7 @@ On field return, each team member can **share their report** with the surface op
    - Transmits the scenario to team members via classic `.mkmsec.json` export (mail / USB stick / AirDrop)
 
 2. **Each Team Member side (field)**:
-   - Imports the operator's `.mkmsec.json` (team ID consistency)
+   - Imports the operator's `.mkmsec.json`: the import keeps the command post's identifiers, which is what lets the operator accept their report. If the plan is **already** on the phone (plan updated by the operator), the preview offers **"Replace"** (checked: keeps the link with the operator, but erases the statuses, observations and photos already entered on this phone) or **"Import as a copy"** (a new scenario, whose report the operator will refuse)
    - Launches the plan → Team Live view → fills in obs + statuses + photos per step
    - **On surface return**: generates their report via "📤 Report" in the Team Live footer → **`.mkmsec.report.json`** format → exports the file (local download)
 
@@ -2162,10 +2175,14 @@ On field return, each team member can **share their report** with the surface op
    - File picker → selects the file → preview modal showing: targeted team name, number of steps to merge, photos, and **detected conflicts** (steps on the op side already filled that will be merged)
    - Confirms the import → the app does a **snapshot BEFORE** (emergency backup) then merges:
      - Observations **concatenated with dated separator** (no loss)
-     - **Most severe status retained**
+     - **Most serious status retained**; at equal seriousness, **the most recent** — an "All clear" reported by the team replaces "Pending", a victim is never downgraded
      - Photos **imported with deduplication**
    - Result modal with detailed stats (X steps merged, Y photos imported, Z possible warnings)
    - Repeat for the 2 other teams
+   - ⚠️ **Report arriving after a phase change**: if it concerns a phase already closed, it is filed in **that phase's history** — never in the current phase — and the app flags it in orange (in red if it contains "Help requested" or "Victim found")
+   - 🧭 **Report on a step you removed**: it is not lost — it shows in orange on import and appears in the **"Reports outside the route"** section of the final report
+   - 🗺️ **Plan changed since sending**: if the plan changed version (or was redrawn) since the scenario was exported, the import preview warns you and counts the zone traces it can no longer find
+   - 📚 The **final report** also includes the steps of **closed phases**, phase by phase
 
 4. **Post-merge visualization**:
    - On each Op team card: blue "📥 imported" chip appears if at least one step received consolidation
@@ -2415,7 +2432,7 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 
 **🔒 Metadata scrubbed**: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
 
-**🛡️ Anonymized export + photos**: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before this protection existed) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
+**🛡️ Anonymized export + photos**: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before this protection existed) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`📍 POI salle #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
 
 **Remove a photo**: click on the red ✕ at the top right of the thumbnail → it appears greyed out with red hatching (marked for deletion). If you change your mind, click on the green ↺ arrow to undo. The actual deletion only happens when you **💾 Save**.
 
@@ -2695,7 +2712,7 @@ If you leave MyKTAMap during an outing — to change music, to take a call — t
 
 **It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
 
-**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. The time spent on the other plan is not added to your outing. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
+**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. For a field outing, the time spent on the other plan **counts** in its duration (measured from start to finish): you were still underground. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
 
 > ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
 
@@ -2960,7 +2977,7 @@ For precise control over everything you export:
   - **Size**: Compact / Standard / Large
   - **Content**: Icons / Paths / Zones / Tracker tag / Map metadata (name, version, author, date)
 - **Format**: PNG or JPEG (90% quality, lighter file)
-- **Resolution**: Original, ½ or ¼ (useful for very large maps)
+- **Resolution**: Original, ½ or ¼. The app pre-selects the largest one that stays reasonable (½ or ¼ on a very large map) and shows, below the choice, the image size and the memory it will need; beyond that, a warning appears. On iPhone/iPad, the resolutions Safari cannot create are greyed out
 - **Preview**: a mini-canvas updates in real time to visualize the result
 
 > ⚠️ Before sharing this image, check that it does not reveal sensitive information.
@@ -3479,7 +3496,7 @@ The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Doc
 
 ### 🔎 Searching the documentation
 
-This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “reglages” finds “Réglages”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
+This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “cafe” finds “café”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
 
 ## 🤖 AI Help
 

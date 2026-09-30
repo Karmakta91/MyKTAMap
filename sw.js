@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.98.1";
+const CACHE_NAME = "myktamap-cache-v1.98.23";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -277,6 +277,10 @@ const ASSETS_TO_CACHE = [
   "./js/crossPlanSearch.js",
   "./js/interPlanRoute.js",
   "./js/planNetwork.js",
+  // 💾 28/09/2026 — ABSENT jusqu'ici alors qu'index.html le charge : le module
+  // qui rend un plan serveur disponible hors-ligne ne l'était pas lui-même.
+  // Garde : scripts/check-html-integrite.js §5.
+  "./js/planOffline.js",
   "./js/homeLoader.js",
   "./js/homeProfile.js",
   "./js/homeConfig.js",

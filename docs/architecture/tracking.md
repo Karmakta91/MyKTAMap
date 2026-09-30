@@ -1034,6 +1034,8 @@ Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**
 
 **Parade** : pendant le mode, `MapBearing` retire de la carte les tuiles qui ne croisent pas la zone visible, et les y remet dès que la vue se redresse.
 
+> 🧱 **Depuis le 29/09/2026, ce retrait n’est plus propre au mode** : le tuilage l’applique en permanence (`tiling.js > ktaCullerTuilesV2`, cf `docs/TILING.md` §6) — la mesure disait que c’est le mode de base qui payait (864 tuiles posées pour 6 visibles). `MapBearing` ne fait plus que redemander ce calcul pendant la rotation ; au retour à plat, ne reviennent que les tuiles proches de l’écran droit (checkup T15 mis à jour).
+
 🩸 **Et la marge de cette zone ne peut PAS être une constante (v1.97.3).** Trois marges cohabitaient ici ; la formule juste avait été dérivée **une seule fois**, pour le canvas du renderer, et deux constantes posées au doigt ailleurs (0,35 tuiles, 0,45 tracés/POI). Or la valeur requise vaut `(grand côté / petit côté − 1)/2` : **0,19** en 1100×800 — le format du checkup — mais **0,58** sur un iPhone en portrait. Mesuré sur 430×932 : **17,2 % de l'écran jamais peint** à 90°, et 112 points sur 200 pris au bord de l'écran tenus pour hors vue. `MapBearing.zoneVisible(pad)` rend donc la **boîte englobante des quatre coins réels** de la vue (coins du conteneur dé-tournés comme dans le patch des gestes) : exacte à tout format, moins chère qu'une marge élargie, et **identique à `getBounds()` hors rotation**. Consommée par `road.js` (×2) et `utils.js` ; `padCull` a disparu.
 
 🩸 **Le pan manuel doit reposer la contrainte de `maxBounds` (v1.97.3).** `panBy({animate:false})` passe par `_rawPanBy`, qui ne limite pas le centre : la vue s'échappait des limites du plan et le zoom suivant la ramenait d'un coup (150 unités mesurées après 60 pans). D'où `panInsideBounds` après chaque pan, comme le fait le drag natif. Il ne réintègre **que** celles qu'il a retirées (drapeau `_ktaCulled` sur l'overlay) — une tuile masquée par le filtre multi-niveau doit le rester. Mesuré au harnais : 25 tuiles → 4 pendant la rotation, 25 au retour à plat.
@@ -1088,11 +1090,11 @@ rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), l
 | Compter les **voisins** d'un nœud | Arêtes doublées + liens de proximité entre sommets d'un même tracé + tremblement : un tracé tremblé devenait un croisement à chaque sommet | **cercle de ~3 m** : chaque traversée du réseau = une sortie ; une amorce < 3 m ne compte pas |
 | Départ accroché sur un segment portant un nœud de croisement | Le nœud virtuel n'était relié qu'aux extrémités → **aller-retour** au départ (+2× le recul, « demi-tour » annoncé) | `_insertVirtualNode` relie aussi les nœuds posés sur le segment (même niveau). Profite à `computeReachable` |
 | Itinéraire dans des **renderers SVG hors mode orienté** | `mapBearing` n'élargissait que le renderer par défaut ; l'itinéraire (SVG à part, un NEUF par polyline et par rendu) restait cadré sur le rectangle non tourné → coupé dans les coins, il « avançait » au dézoom (retour KARMA) | `road.js > _rendererItineraire` (UN renderer SVG par carte) + `_majPaddingRenderer` élargit TOUS les renderers, y compris ajoutés pendant le mode |
-| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | grappe ≤ `FUSION_M` depuis son **premier** événement ; `demiTour` seulement si le trajet se replie |
+| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | seuls des **croisements** sont candidats (plus de virage sur un coude) ; une grappe = croisements à ≤ `ZONE_ECART_M` (5 m) du **précédent** = UN carrefour ; `demiTour` seulement si le trajet se replie (`replie`) |
 
 ### Seuils (calés sur un plan réel local, 27/09/2026)
 
-`FENETRE_M 4` (angle mesuré sur 4 m) · `FUSION_M 6` · **aucun virage sans croisement** (retour KARMA : sur
+`FENETRE_M 4` (angle mesuré sur 4 m) · `ZONE_ECART_M 5` (zone de carrefour, même valeur que `pathfinder.js` ; KARMA : « 20 m c’est beaucoup trop ») · **aucun virage sans croisement** (retour KARMA : sur
 un réseau de galeries c'est du bruit ; la 1re version en annonçait, 9 consignes sur 15 étaient des coudes) · présence sur le trajet 3 m / 8 m, écart 6 m /
 15 m, demi-tour 10 m ×3 / 20 m ×5 (avec / sans navigation intelligente : sans, 10 m donnaient 3 faux
 demi-tours en 350 m sous 4 m de bruit).
