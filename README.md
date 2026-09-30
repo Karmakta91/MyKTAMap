@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.24` (30/09/2026)
+## 📦 Version courante — `v1.98.25` (30/09/2026)
+
+> 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
 
 > 🚑 **v1.98.24 — Mode Secours, vague 8a (contre-audits GRIMP/IGC)** : Évacuer vers les accès des équipes ; bilan des engagés ; retour impératif ; durées approche/fouille ; recalage à l'étape validée ; numéro d'étape unique ; écran XL ; accès surface renseignés.
-
-> 🎛️ **v1.98.23 — Mode Secours, retours KARMA** : l'opérateur qui relaie une équipe n'a plus les raccourcis du terrain ; aide et tutoriel sans « État N — ».
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.25 (30/09/2026) — Mode Secours, vague 8b : couverture honnête
+
+- 🔍 **Origine** : contre-audits GRIMP et IGC du 30/09 (risque n°1 des deux) — « 93 % couvert » mesurait les galeries sous une zone ; 21-24 % seulement sont sur un parcours. Décision KARMA 1:a 2:a.
+- 🧭 **Zones liées à un niveau** (`f1138e9`) : `_niveauZone` (niveau des sommets du polygone, sinon de l'équipe ; `g.zoneTousNiveaux`) / `_dansZonePolygone`, appliqués à la couverture, aux POI hors parcours et à la part « fouille » des durées ; `_niveauxNonParcourus` → alerte au calcul (« Sous la zone de Delta : 163 m au niveau −1… »). Case sur la fiche d'équipe.
+- 📊 **Couverture par niveau** (`c5db9df`) : `_couvertureParNiveau` — galeries, % zone, % sur un parcours (milieu du tronçon à < 3 m d'un itinéraire, même niveau ; grille de 20 m), longueur affectée 2×. `_basculerSurlignageCouverture` : une polyligne multiple rouge, niveau affiché.
+- ✅ **Tests** : scénario réel — total 24 % sur un parcours (niveau 0 : 26 %, −1 : 5 %), 86 % en zone (93 % avant), 10,98 km affectés deux fois, 59 km surlignés, calcul en 54 ms ; `navV8.js` (10 cas), `navFix` (5), 16 harnais Node.
 
 #### v1.98.24 (30/09/2026) — Mode Secours, vague 8a : contre-audits GRIMP et IGC
 

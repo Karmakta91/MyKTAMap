@@ -1,8 +1,8 @@
 {
-  "version": "v1.98.24",
+  "version": "v1.98.25",
   "released": "2026-09-29",
   "notes": [
     "🚑 Mode Secours : « Évacuer » propose aussi les accès de tes équipes, le poste de surface voit combien de personnes sont encore sous terre, chaque équipe peut avoir une heure de retour impérative, et valider une étape recale ta position.",
-    "🆘 L'écran XL affiche aussi les longs itinéraires, et le briefing pompiers dit quels accès sont fermés et doivent être ouverts."
+    "📊 La couverture distingue enfin ce qui est dans une zone de ce qui sera vraiment parcouru, niveau par niveau, et peut surligner sur la carte les galeries que personne ne parcourt."
   ]
 }

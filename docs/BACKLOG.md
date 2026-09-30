@@ -58,11 +58,6 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
 natives).
 
-- **Vague 8b — couverture honnête** (contre-audits du 30/09) : deux chiffres, « dans une zone » ET « sur un parcours »,
-  **par niveau**, + linéaire affecté à deux équipes, + galeries hors parcours surlignées sur la carte. Mesuré sur le
-  scénario réel : 93 % en zone, 21-24 % sur un parcours, −1 : 80 % contre 4,9 %. **S-M**
-- **Vague 8b — zones liées à un niveau** : polygone rattaché à un niveau (ou « tous »), alerte « galeries au −1, aucun
-  parcours n'y descend ». **M**
 - **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
   recadré — sur Pandemonium, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
   zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**

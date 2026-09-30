@@ -1625,7 +1625,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 ## 🗂️ Vague 7b (v1.98.20, 30/09/2026) — parcours par phase, couverture, hors-ligne
 
 - **Parcours par phase** : `s.execution.parcoursArchive[phaseIdx][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }`, écrit par `terminerPhase` (`_archivePhaseParcours`), lu dans `historique[].parcours` du rapport. Copie légère (pas de géométrie) : le parcours EN COURS reste `g.entree/intermediaires/sortie`. Préparer la phase 2 pendant la phase 1 (option 6:b) n'est PAS fait.
-- **Couverture** : `_calculerCouverture(s)` — pur calcul, sans effet ; POI = `getAllEmbeddedPoints` (POI du plan) ; niveaux ignorés.
+- **Couverture** (état actuel) : `_calculerCouverture(s)` (POI dans une zone hors parcours, POI en double) + `_couvertureParNiveau(s)` → `{ niveaux: { L: { total, zone, parcours, double } }, horsParcours: [{ level, a, b }], alertes, sansIti }` (mètres). « Sur un parcours » = milieu du tronçon à < 3 m d'un `itineraireSuggere` au même niveau (grille de 20 m). Zones : `_niveauZone(g)` (niveau des sommets, sinon `g.level` ; `null` si `g.zoneTousNiveaux` ou plan mononiveau) et `_dansZonePolygone(g, pt, niveau)` — aussi utilisés par `_dureeEquipeMin`. `_niveauxNonParcourus(g)` : galeries sous le polygone à un niveau que l'itinéraire ne visite pas (≥ 50 m). Surlignage : `_basculerSurlignageCouverture` (une `L.polyline` multiple, niveau affiché). Calculé à l'ouverture du bloc, sans effet sur le scénario.
 - **Hors-ligne** : `_verifierHorsLigne()` après la confirmation de lancement ; ne concerne que `PlanRegistry.findById(id).type === "server"`.
 
 ## 🚒 Test terrain (v1.98.22, 30/09/2026) — scénario réel, Pandemonium
