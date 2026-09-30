@@ -1738,6 +1738,27 @@
     _majFooterSecours(true);
   }
 
+  // Vague 7 (5:a) : notes du secouriste libre → main courante du PC, à leur heure,
+  // signées « Secouriste », sans doublon (id de la note). Photos non importées
+  // (elles restent dans son propre rapport PDF). Retourne le nombre ajouté.
+  function _importerNotesSecouriste(payload) {
+    const s = get(_currentScenarioId);
+    if (!s || !s.execution) return 0;
+    const deja = {};
+    (s.execution.mainCourante || []).forEach(function(e) { if (e.p && e.p.noteId) deja[e.p.noteId] = true; });
+    let n = 0;
+    (payload.notesLibres || []).forEach(function(note) {
+      if (!note || isNaN(Date.parse(note.ts)) || (note.id && deja[note.id])) return;
+      _journaliser(s, "secours.mc.secouriste",
+        { texte: String(note.texte || "").slice(0, 2000), statut: typeof note.statut === "string" ? note.statut : "ras", noteId: note.id || null },
+        { at: note.ts, source: t("secours.secouriste.source") });
+      n++;
+    });
+    _journaliser(s, "secours.mc.importSecouriste", { n: n });
+    _commitMutation(s);
+    return n;
+  }
+
   // ─── Main courante (vague 7, 30/09/2026 — décision KARMA 4:a) ───
   // Avant : aucun journal — chaque statut écrasait le précédent, et les décisions de
   // l'opérateur ne laissaient aucune trace pour le RETEX. Journal horodaté, AUTOMATIQUE
@@ -3071,7 +3092,17 @@
         return { ok: false, error: t("secours.report.errScopeOperateur") };
       }
       if (payload.scope === "secouriste") {
-        return { ok: false, error: t("secours.report.errScopeSecouriste") };
+        // Vague 7 (décision KARMA 5:a) : le rapport du secouriste libre est ACCEPTÉ —
+        // ses notes entrent dans la main courante (mêmes contrôles de scénario).
+        const sc = get(_currentScenarioId);
+        if (!sc) return { ok: false, error: t("secours.report.errAucunScenario") };
+        if (!sc.execution || !sc.execution.active) return { ok: false, error: t("secours.report.errPasExecution") };
+        if (payload.scenario && payload.scenario.id && payload.scenario.id !== sc.id) {
+          return { ok: false, error: t("secours.report.errScenarioDifferent", { nom: (payload.scenario.nom || t("secours.import.sansNom")),
+            id: payload.scenario.id.slice(0, 8), nomActif: sc.nom }) };
+        }
+        if (!Array.isArray(payload.notesLibres)) return { ok: false, error: t("secours.report.errScopeSecouriste") };
+        return { ok: true, payload: payload, secouriste: true };
       }
       return { ok: false, error: t("secours.report.errScopeInconnu", { scope: payload.scope }) };
     }
@@ -3763,6 +3794,17 @@
       }
       if (!parsed.ok) {
         _afficherResultatImportRapport({ ok: false, error: parsed.error }, file.name);
+        return;
+      }
+      if (parsed.secouriste) {   // vague 7 : notes du secouriste → main courante
+        const n = parsed.payload.notesLibres.length;
+        const ok = (typeof window.ktaConfirm === "function")
+          ? await window.ktaConfirm(t("secours.secouriste.importConfirm", { n: n }), { titre: t("secours.secouriste.importTitre") })
+          : false;
+        if (!ok) return;
+        const ajoutees = _importerNotesSecouriste(parsed.payload);
+        _toast(t("secours.secouriste.importFait", { n: ajoutees }), "info");
+        if (_modal) _switchView("live");
         return;
       }
       // Modale preview avec callback de confirmation
