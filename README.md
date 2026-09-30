@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.20` (30/09/2026)
+## 📦 Version courante — `v1.98.21` (30/09/2026)
+
+> 📍 **v1.98.21 — Mode Secours, retours de test** : lancer en mode équipe place le suivi à l'entrée de l'équipe ; titre de la fenêtre « Détails d'équipe » et listes déroulantes des fenêtres lisibles.
 
 > 🗂️ **v1.98.20 — Mode Secours, vague 7b (planification)** : parcours prévu gardé à chaque clôture de phase ; bloc « 📊 Couverture » (galeries couvertes, POI hors parcours, POI en double) ; avertissement si le plan n'est pas hors-ligne au lancement ; raccourcis Sortie d'urgence / XL / Je suis perdu.
-
-> 👥 **v1.98.19 — Mode Secours, vague 7a (sécurité et traçabilité)** : chef + effectif par équipe et compte des remontés à la rentrée (alerte rouge « personne manquante ») ; main courante horodatée (vue opérateur, rapports, fusion) ; le rapport du secouriste libre est accepté.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.21 (30/09/2026) — Mode Secours : retours de test de KARMA
+
+- 📍 **Placé à l'entrée** (`167ef90`) : au lancement en mode équipe, `_placerAEntree` → `recalerTrackerSurPoint(x, y, niveau, { teleport: true })` ; automatique si la position n'est pas confirmée, proposé sinon (`ktaConfirm`).
+- 🎨 **Titre « Détails d'équipe »** (`8f4a39c`) : `<h2>` nu, sans `kta-readme-modal-titre` → presque noir sur fond sombre. Titres des fenêtres de résultat / lancement : classes `kta-tx-*` pour le thème clair.
+- 🎨 **Listes déroulantes** (`8fc981a`) : une `<option>` ouverte (Windows / Chrome) = texte clair sur fond blanc système. Règle commune `.kta-readme-modal-overlay select option` (sombre + clair), au lieu des corrections composant par composant.
+- ✅ **Tests** : placement (automatique, proposé-accepté, proposé-refusé) ; couleurs calculées sur WebKit et Chromium, deux thèmes.
 
 #### v1.98.20 (30/09/2026) — Mode Secours, vague 7b : planification
 
