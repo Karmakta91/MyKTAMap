@@ -1945,7 +1945,7 @@ function planRowHTML(plan) {
 
       // ═══════════════════════════════════════════════════════════════════
       // 📁 16/09/2026 — MODE DOSSIERS DE « MES PLANS » (étude + décisions
-      // KARMA 1-11, docs/audits/2026-09-16_etude-dossiers-mes-plans.md).
+      // KARMA 1-11, docs/audits/2026-09-16_etude-dossiers-mes-plans.md (archivé : tag Git `archive-docs-2026-09-30`)).
       // Contrainte stricte : « Mes plans » garde sa hauteur et sa place. Le
       // sélecteur TOUT / DOSSIERS vit dans la ligne de titre (0 px ajouté),
       // un en-tête de dossier a la hauteur d'une ligne de plan, replié par

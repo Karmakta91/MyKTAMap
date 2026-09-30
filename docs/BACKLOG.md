@@ -141,7 +141,7 @@ Si on le rouvre, trois faits mesurés à ne pas repayer :
 ## 📝 Stratégie doc — à trancher par KARMA
 
 Une source / trois rendus (guide utilisateur, Aide intégrée, contexte IA) + garde-fou pré-commit sur les libellés
-cités (§6.7 de `docs/audits/2026-09-13_audit-ergonomie-v1.md`). Depuis, `check-doc-langues.js` (v1.98.0) aligne
+cités (§6.7 de `docs/audits/2026-09-13_audit-ergonomie-v1.md` (archivé : tag Git `archive-docs-2026-09-30`)). Depuis, `check-doc-langues.js` (v1.98.0) aligne
 déjà les trois langues du guide ; il ne relie pas le guide à l'Aide intégrée.
 
 ## 💡 Pistes de features
@@ -239,7 +239,7 @@ fix de la v1.77.0.*
 
 | Sujet | Statut |
 |---|---|
-| **Podomètre / mode poche** | Enterré le 29/09 : **infaisable en l'état**. Le podomètre du téléphone est inaccessible depuis une page web (aucune plateforme), Web Bluetooth n'existe pas sur iOS, et le vrai obstacle en poche est le **cap**, pas le comptage. Étude : `docs/ETUDE_PODOMETRE.md` |
+| **Podomètre / mode poche** | Enterré le 29/09 : **infaisable en l'état**. Le podomètre du téléphone est inaccessible depuis une page web (aucune plateforme), Web Bluetooth n'existe pas sur iOS, et le vrai obstacle en poche est le **cap**, pas le comptage. Étude : `docs/ETUDE_PODOMETRE.md` (archivé : tag Git `archive-docs-2026-09-30`) |
 | **Plein écran iPhone** | 2 tentatives (v1.9.2, v1.71.0), 2 rollbacks. Un commentaire d'`index.html` **interdit une 3ᵉ tentative** sans diagnostic précis sur appareil |
 | **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 (réellement fonctionnel entre deux appareils depuis le correctif A1 du 29/09) |
 | **Traversée de portail en Vue OSM** | Arbitré 01/08 : le mode OSM n'a ni position courante ni plan « où tu es » |

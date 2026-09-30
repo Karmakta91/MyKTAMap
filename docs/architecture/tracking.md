@@ -549,7 +549,7 @@ session — chaque clic de point re-rendait tout l'univers. Cf. fil RAM (history
 
 #### 75.3 📐 Conception navigation intelligente (non implémenté)
 
-Doc `docs/DESIGN_NAV_INTELLIGENTE.md` ajoutée : future nav qui calera la position estimée sur le réseau de
+Doc `docs/DESIGN_NAV_INTELLIGENTE.md` (archivé : tag Git `archive-docs-2026-09-30`) ajoutée : future nav qui calera la position estimée sur le réseau de
 tracés (**map-matching**), en complément **réversible** du PDR + raster collision actuel (toggle `smartNav`,
 défaut OFF). Découverte clé : le **graphe topologique existe déjà** dans `pathfinder.js > _buildGraph`
 (nodes/edges/buckets + enrichissement aux croisements), construit à la volée → à rendre réutilisable/caché.
@@ -568,7 +568,7 @@ les clics carte existants (100 % offline). `connect-src` inchangé.
 ### 76. v1.28.0 — 🧭 Navigation Intelligente (map-matching) + tracé persistant + stats (2026-05-29)
 
 Release **mineure**. Grosse évolution user : la nav intelligente compense l'imprécision des capteurs
-(boussole/pas) sous terre. Conception complète : `docs/DESIGN_NAV_INTELLIGENTE.md`.
+(boussole/pas) sous terre. Conception complète : `docs/DESIGN_NAV_INTELLIGENTE.md` (archivé : tag Git `archive-docs-2026-09-30`).
 
 #### 76.1 Principe
 
@@ -881,7 +881,7 @@ ont été falsifiés un par un.
 
 ## 📍 Position confirmée & permission capteurs — règle « instant T » (13/09/2026)
 
-Issu de l'audit ergonomie (`docs/audits/2026-09-13_audit-ergonomie-v1.md`, bloquants B1 et B2), décision KARMA :
+Issu de l'audit ergonomie (`docs/audits/2026-09-13_audit-ergonomie-v1.md` (archivé : tag Git `archive-docs-2026-09-30`), bloquants B1 et B2), décision KARMA :
 *« le bouton sortie d'urgence doit prendre la position à l'instant T, bien sûr »*.
 
 ### Le trou
@@ -974,7 +974,7 @@ Une icône de 30 px qui frémit se tolère ; un plan entier qui frémit donne la
 
 Le défaut était de conception, pas d'implémentation : **on s'arrête précisément pour se réorienter** — c'est le moment où la rotation est la plus utile. À la place, deux seuils : on suit **toujours**, mais il faut une intention claire (15°) quand aucun pas n'a été détecté depuis 2,5 s. Mesuré : une rotation sur place de 90° est suivie à 7° près, et un magnétomètre bruité à ±8° ne fait pas bouger la vue d'un degré. Conséquence acceptée : à l'arrêt, la vue ne rejoint le cap qu'à moins de 15° près.
 
-⚠️ Ces quatre valeurs sont des **réglages de départ, pas des mesures de terrain**. Elles se règlent avec un retour de marche réelle (cf `docs/ETUDE_PODOMETRE.md` §2 sur la qualité du cap).
+⚠️ Ces quatre valeurs sont des **réglages de départ, pas des mesures de terrain**. Elles se règlent avec un retour de marche réelle (cf `docs/ETUDE_PODOMETRE.md` (archivé : tag Git `archive-docs-2026-09-30`) §2 sur la qualité du cap).
 
 #### Gestes sous rotation — un seul patch, sur le point d'entrée
 

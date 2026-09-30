@@ -791,7 +791,7 @@
     Image/Data/Tags/show-all/hide-all (cohérence avec M-LVL déjà délégué en
     v1.43.26). <strong>Aucun changement de surface réseau</strong> : pur
     hardening client. Audit V2 complet sauvegardé dans
-    <code>docs/audits/2026-06-09_audit-modales-v2.md</code>.</li>
+    <code>docs/audits/2026-06-09_audit-modales-v2.md (archivé : tag Git archive-docs-2026-09-30)</code>.</li>
 
     <li><strong>v1.43.26</strong> — Sprint hardening modales (top 10 fixes de
     l'audit perf/UX modales, workflow adversarial verify) :
@@ -1950,7 +1950,7 @@
     <strong>(v1.26.1)</strong> banner cohérence échelle px/m ↔ géoréf — calcul 100 % client-side (lecture <code>APP_CONFIG.scale</code> + calibrage localStorage existant), bouton « 📋 Copier » via Clipboard API (permission silencieuse HTTPS).
     <strong>(v1.26.2 / v1.26.3)</strong> consolidation + professionnalisation (renommage « Bourré » → « Blessé » avec micro-migration localStorage locale, ton lockout factuel) + nettoyage de ~395 lignes de code mort — purement cosmétique/structurel, réduit même la taille des assets cachés.
     <strong>(v1.26.3-hotfix4)</strong> 3 optimisations RAM (snapshots undo/redo ciblés, LRU des tuiles décodées via <code>URL.revokeObjectURL</code> local, débounce du calcul d'intersections) — purement intra-runtime, aucun réseau.
-    <strong>(v1.27.0)</strong> saisie assistée de la position initiale du tracker (boutons « 🔍 Choisir via un point » et « 📍 Cliquer sur la carte ») — réutilise la recherche de POI locale (<code>SearchPoints.findByQuery</code>) et le clic carte Leaflet local, aucun fetch ajouté ; + document de conception navigation intelligente (<code>docs/DESIGN_NAV_INTELLIGENTE.md</code>, aucun code applicatif).
+    <strong>(v1.27.0)</strong> saisie assistée de la position initiale du tracker (boutons « 🔍 Choisir via un point » et « 📍 Cliquer sur la carte ») — réutilise la recherche de POI locale (<code>SearchPoints.findByQuery</code>) et le clic carte Leaflet local, aucun fetch ajouté ; + document de conception navigation intelligente (<code>docs/DESIGN_NAV_INTELLIGENTE.md (archivé : tag Git archive-docs-2026-09-30)</code>, aucun code applicatif).
     Verdict : ✅ aucune régression réseau sur tout le cycle — fonctionnalités strictement locales (fichiers, calculs, recherche POI, clic carte), perf intra-runtime, conception sans code.
   </p>
 

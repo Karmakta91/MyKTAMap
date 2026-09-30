@@ -177,7 +177,7 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 3. Tous les autres paths → page HTML de transition (cleanup JS + redirect avec triple filet meta/JS/countdown)
 4. Headers `no-cache, no-store` strict partout
 
-**Fichier `docs/alert-example-migration.json`** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle (incendie, etc.). Le vrai `alert.json` racine (servi en prod) contient déjà les 2 alertes (gaz toxiques emergency + migration info) au format v163+.
+**Fichier `docs/alert-example-migration.json` (archivé : tag Git `archive-docs-2026-09-30`)** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle (incendie, etc.). Le vrai `alert.json` racine (servi en prod) contient déjà les 2 alertes (gaz toxiques emergency + migration info) au format v163+.
 
 **Constantes à mettre à jour quand `myktamap.fr` sera DNS-pointé** :
 - `js/copyright.js > __MKM__.site` (sur le nouveau domaine, garder l'ancien sur l'ancien domaine pour cohérence pendant la transition)
