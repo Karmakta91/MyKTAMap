@@ -1763,6 +1763,24 @@
     return n;
   }
 
+  // ─── B10 (vague 7b, décision KARMA 8:a) ───
+  // Au lancement : un plan SERVEUR qui n'est pas entièrement disponible hors-ligne
+  // sur cet appareil = risque de carte incomplète sous terre. On prévient, sans
+  // bloquer (un plan importé depuis un ZIP est déjà sur l'appareil : rien à dire).
+  async function _verifierHorsLigne() {
+    try {
+      const id = window._currentLoadedPlanId;
+      const R = window.PlanRegistry, PO = window.PlanOffline;
+      const e = (id && R && typeof R.findById === "function") ? R.findById(id) : null;
+      if (!e || e.type !== "server" || !PO || !PO.supporte()) return;
+      const st = await PO.statut(id);
+      if (st && st.etat === "complet") return;
+      _toast(t("secours.b10.pasHorsLigne"), "warn");
+      const s = _scenarioEnCours();
+      if (s) { _journaliser(s, "secours.mc.pasHorsLigne", {}); _commitMutation(s); }
+    } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); }
+  }
+
   // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
   // Une aide à la lecture, sans affectation automatique : (1) POI situés DANS la zone
   // d'une équipe mais absents de son parcours, (2) POI visités par plusieurs équipes,
@@ -8695,6 +8713,7 @@
         try { onConfirm({ role: role, currentEquipeId: equipeId }); } catch(e) {
           console.warn("[SecoursMode] onConfirm exception :", e);
         }
+        _verifierHorsLigne();   // B10 : prévenir (sans bloquer) si le plan n'est pas hors-ligne
       });
     });
     document.addEventListener("keydown", _onKey);
@@ -8814,6 +8833,12 @@
         ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + t("secours.suivre.actif") + '</button>'
         : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + t("secours.suivre.btn") + '</button>';
     }
+    // B10 : raccourcis de sécurité, à un toucher depuis la vue de l'équipe.
+    html += '<div class="kta-secours-raccourcis">' +
+              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="raccourci-sortie">' + t("secours.b10.sortie") + '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-xl">' + t("secours.b10.xl") + '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-perdu">' + t("secours.b10.perdu") + '</button>' +
+            '</div>';
 
     // ─── Stepper visuel cliquable ───
     html += '<div class="kta-secours-live-stepper">';
@@ -10171,6 +10196,18 @@
 
   // Handlers communs aux 3 sous-vues Live
   function _bindLiveCommonHandlers(corps, s) {
+    // B10 : raccourcis — la fenêtre se ferme (la zone et le tracé restent sur la carte).
+    const raccourci = function(action, fn) {
+      corps.querySelectorAll('[data-action="' + action + '"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          fermer();
+          try { fn(); } catch(e) { console.warn("[SecoursMode] raccourci " + action + " :", e); }
+        });
+      });
+    };
+    raccourci("raccourci-sortie", function() { if (window.SortieUrgence) window.SortieUrgence.declencher(); });
+    raccourci("raccourci-xl", function() { if (window.EmergencyMode) window.EmergencyMode.activer(); });
+    raccourci("raccourci-perdu", function() { if (window.LostMode) window.LostMode.open(); });
     // Main courante : note libre de l'opérateur.
     corps.querySelectorAll('[data-action="mc-ajouter"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
