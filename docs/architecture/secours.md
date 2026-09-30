@@ -1627,3 +1627,12 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Parcours par phase** : `s.execution.parcoursArchive[phaseIdx][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }`, écrit par `terminerPhase` (`_archivePhaseParcours`), lu dans `historique[].parcours` du rapport. Copie légère (pas de géométrie) : le parcours EN COURS reste `g.entree/intermediaires/sortie`. Préparer la phase 2 pendant la phase 1 (option 6:b) n'est PAS fait.
 - **Couverture** : `_calculerCouverture(s)` — pur calcul, sans effet ; POI = `getAllEmbeddedPoints` (POI du plan) ; niveaux ignorés.
 - **Hors-ligne** : `_verifierHorsLigne()` après la confirmation de lancement ; ne concerne que `PlanRegistry.findById(id).type === "server"`.
+
+## 🚒 Test terrain (v1.98.22, 30/09/2026) — scénario réel, Pandemonium
+
+- **Relance** : `lancerExecution` remet `phases[0].startedAt` = lancement, les autres à `null`, et `endedAt = null` partout (le débriefing écrit reste). Le départ par défaut d'une équipe est le début de phase : sans ça, faux retards.
+- **Messages** : `_placerAEntree` et `_verifierHorsLigne` RENDENT leur texte ; le lancement émet UN toast (warn dès qu'il dit plus que « lancé » — les info sont tus en « Essentielles »). Les toasts laissent passer les touchers (`pointer-events: none`, sauf la croix).
+- **Même plan** : `_autrePlan(planFichier)` — ids différents ET (nom ou dimensions différents). Un plan importé (`local_…`) et le même servi (`server_…`) sont le même plan.
+- **Même accès** : `_memeAcces(a, b)` — `_samePoint` ou même niveau à < 10 m. Sert aux cartes PDF (repère « ENTRÉE / SORTIE » / « E/S ») et à `_accesSurface` (dédoublonnage des accès).
+- **Accès surface** : `_dessinerAccesSurface` (carte + tableau) en tête de `_drawBriefingSurfacePage` ; `_canvasAcces` recadre le canvas plan (`MyKTAMapExporterGenererCanvas`, sans annotations) sur les accès + marge (12 %, ≥ 150 m). La capture Vue OSM n'est plus faite pour `overlayContext === "rapport"`.
+- **Limite connue** : le canvas plan est plafonné à 16 Mpx (Safari iOS) — sur Pandemonium, 20 % de la résolution. Rendre chaque zone depuis les tuiles : backlog.

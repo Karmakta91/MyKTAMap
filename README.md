@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.21` (30/09/2026)
+## 📦 Version courante — `v1.98.22` (30/09/2026)
+
+> 🚒 **v1.98.22 — Mode Secours, test terrain sur Pandemonium** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
 
 > 📍 **v1.98.21 — Mode Secours, retours de test** : lancer en mode équipe place le suivi à l'entrée de l'équipe ; titre de la fenêtre « Détails d'équipe » et listes déroulantes des fenêtres lisibles.
-
-> 🗂️ **v1.98.20 — Mode Secours, vague 7b (planification)** : parcours prévu gardé à chaque clôture de phase ; bloc « 📊 Couverture » (galeries couvertes, POI hors parcours, POI en double) ; avertissement si le plan n'est pas hors-ligne au lancement ; raccourcis Sortie d'urgence / XL / Je suis perdu.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.22 (30/09/2026) — Mode Secours : test terrain sur le plan réel
+
+- 🔍 **Origine** : scénario de KARMA (8 équipes, Pandemonium 23 000 × 18 000) rejoué en navigateur, PC + téléphone. Décisions KARMA : les 6 recos du topo.
+- 🔴 **Faux retards** (`cf809f3`) : relancer un scénario joué gardait `phases[].startedAt/endedAt` → 8 équipes « en retard de 9 à 12 h » à la 1re seconde. `lancerExecution` remet les heures de phase ; l'équipe avec victime passe en tête des cartes opérateur.
+- 🔴 **Messages du lancement** (`0183514`) : 4 messages successifs, le dernier posé 10 s sur « Suivre mon parcours » (touchers captés) ; le placement (info) jamais vu en « Essentielles ». Un message unique (type avertissement dès qu'il dit plus que « lancé ») ; `.kta-toast` en `pointer-events: none` sauf la croix, `white-space: pre-line`.
+- 🟡 **Plan différent** (`b7f2e75`) : `local_pandemonium_2023` ≠ `server_test` → alerte « Pandemonium / Pandemonium ». `_autrePlan` : ids différents ET (nom ou dimensions différents).
+- 🟡 **Étape loin des galeries** (`0a66dc6`) : « vérifie ta position » visait l'équipe, la cause était l'étape « PA3 » à 68 m de tout tracé. `ItiGuidage.texteAlerteRaccord` selon le bout (départ / étape / arrivée) ; message de calcul unique, qui la signale dès la préparation.
+- 🟠 **Cartes d'équipe** (`8255e93`) : entrée masquée par la sortie posée à 1 m (`_memeAcces` : même point ou < 10 m au même niveau → un repère « ENTRÉE / SORTIE » / « E/S ») ; briefing plafonné à 1000 px → jusqu'à la résolution du canvas plan (Golf 1868 px), carte 125 mm, repères à l'échelle.
+- 🟠 **Accès surface** (`6b762b6`) : la page surface montrait le plan entier (1229 × 638, tous les POI). `_accesSurface` + `_canvasAcces` : plan recadré sur les accès dédoublonnés, repères numérotés, tableau GPS + lien ; capture Vue OSM retirée du rapport, optionnelle dans le briefing (POI décochés).
+- ✅ **Tests** : harnais navigateur par cas sur le scénario réel (relance, messages, import, calcul Golf/Hotel, PDF régénérés et relus) ; 16 harnais Node ; check-guidage, check-i18n.
 
 #### v1.98.21 (30/09/2026) — Mode Secours : retours de test de KARMA
 

@@ -69,6 +69,13 @@ un commit par case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `
 |---|---|
 | 8 — Plus tard | lot C |
 
+- **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
+  recadré — sur Pandemonium, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
+  zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
+- **Briefing pompiers — capture OSM sans accord OSM** (relu le 30/09, à trancher) : quand la Vue OSM n'est pas autorisée,
+  `_captureOsmCanvasForBriefing` se rabat sur une carte hors écran qui **charge quand même les tuiles
+  `tile.openstreetmap.org`** — contraire à `NETWORK_AUDIT` (« uniquement quand la modale Vue OSM est ouverte, opt-in
+  strict »). Correctif probable : pas de capture sans accord (la carte des accès suffit). **S**
 - **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
   lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
