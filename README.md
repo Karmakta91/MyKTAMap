@@ -12,11 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.22` (30/09/2026)
+## 📦 Version courante — `v1.98.23` (30/09/2026)
+
+> 🎛️ **v1.98.23 — Mode Secours, retours KARMA** : l'opérateur qui relaie une équipe n'a plus les raccourcis du terrain ; aide et tutoriel sans « État N — ».
 
 > 🚒 **v1.98.22 — Mode Secours, test terrain sur Pandemonium** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
-
-> 📍 **v1.98.21 — Mode Secours, retours de test** : lancer en mode équipe place le suivi à l'entrée de l'équipe ; titre de la fenêtre « Détails d'équipe » et listes déroulantes des fenêtres lisibles.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -497,6 +497,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.23 (30/09/2026) — Mode Secours : retours KARMA
+
+- 🎛️ **Relais opérateur** (`857ceaf`) : l'opérateur de surface qui « prend la main » sur une équipe voyait Sortie d'urgence, Écran XL, Je suis perdu et « Suivre mon parcours » — des gestes qui agissent sur l'appareil qui les affiche. Masqués quand `s.execution._previousRole` est posé ; le téléphone de l'équipe les garde. Guides FR/EN/ES précisés.
+- 📖 **Aide intégrée** (`893afcf`) et **tutoriel** (`e50445d`) : « État 1 — CRÉATION (vue Édition) » → « CRÉATION (vue Édition) », idem pour les deux autres chapitres, en FR / EN / ES ; plus aucune occurrence « État N » dans les dictionnaires.
+- ✅ **Tests** : relais opérateur → 0 bouton, retour à l'opérateur présent ; téléphone en mode équipe → 3 raccourcis + Suivre ; check-i18n, check-doc-langues.
 
 #### v1.98.22 (30/09/2026) — Mode Secours : test terrain sur le plan réel
 
