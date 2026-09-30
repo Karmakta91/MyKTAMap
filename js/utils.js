@@ -587,6 +587,16 @@ window.ktaConfirm = function(message, opts) {
                 ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
                 (opts.caseACocher.coche ? ' checked' : '') + ' style="margin-top:2px;"> <span></span></label>'
             : '') +
+          // 🔢 30/09/2026 — champ nombre optionnel (`opts.nombre = {label, valeur, min, max}`), même
+          // contrat que la case : la Promise rend un booléen, la valeur est relue dans
+          // `opts.nombre.valeur` (Mode Secours : « combien sont remontés ? »).
+          (opts.nombre
+            ? '<label style="display:flex; gap:8px; align-items:center; margin:0 0 14px; color:#e8eaf0;">' +
+                '<span></span><input type="number" id="kta-confirm-nombre" inputmode="numeric" style="width:6em;"' +
+                ' min="' + (Number.isFinite(opts.nombre.min) ? opts.nombre.min : 0) + '"' +
+                (Number.isFinite(opts.nombre.max) ? ' max="' + opts.nombre.max + '"' : '') +
+                ' value="' + (Number.isFinite(opts.nombre.valeur) ? opts.nombre.valeur : '') + '"></label>'
+            : '') +
           '<div class="kta-conv-actions">' +
             '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
             '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
@@ -600,11 +610,17 @@ window.ktaConfirm = function(message, opts) {
     // Libellé posé en textContent : il peut porter un nom de fichier.
     const caseEl = ov.querySelector("#kta-confirm-case");
     if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
+    const nombreEl = ov.querySelector("#kta-confirm-nombre");
+    if (nombreEl) nombreEl.previousElementSibling.textContent = opts.nombre.label || "";
     let resolu = false;
     const finir = function(val) {
       if (resolu) return;
       resolu = true;
       if (caseEl) opts.caseACocher.coche = !!(val && caseEl.checked);
+      if (nombreEl && val) {
+        const n = parseInt(nombreEl.value, 10);
+        opts.nombre.valeur = Number.isFinite(n) ? n : null;
+      }
       document.removeEventListener("keydown", surTouche);
       ov.remove();
       resolve(val);
@@ -614,8 +630,9 @@ window.ktaConfirm = function(message, opts) {
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
     ov.querySelector("#kta-confirm-non").addEventListener("click", function() { finir(false); });
     ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
-    // focus sur OK : Entrée valide, comme le confirm natif
-    setTimeout(function() { try { ov.querySelector("#kta-confirm-oui").focus(); } catch(e) {} }, 30);
+    // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre s'il y en a un)
+    if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
+    setTimeout(function() { try { (nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {} }, 30);
   });
 };
 

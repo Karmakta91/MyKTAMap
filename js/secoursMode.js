@@ -1517,6 +1517,11 @@
     if (su.departAt)  parts.push(t("secours.retour.depart", { h: _heureCourte(su.departAt) }));
     if (su.rappelAt)  parts.push(t("secours.retour.rappeleeA", { h: _heureCourte(su.rappelAt) }));
     if (su.rentreeAt) parts.push(t("secours.retour.rentreeA", { h: _heureCourte(su.rentreeAt) }));
+    const effR = _effectif(ed && ed.equipe);
+    if (Number.isInteger(su.remontes)) {
+      parts.push(effR && su.remontes < effR ? t("secours.b9.manquantsCourt", { n: effR - su.remontes, remontes: su.remontes, effectif: effR })
+                                            : t("secours.b9.remontesOk", { n: su.remontes, effectif: effR || "?" }));
+    }
     return parts.join(" · ");
   }
   function _stripPourPdf(txt) {
@@ -1550,6 +1555,22 @@
     return (ex.suivi && ex.suivi[k] && ex.suivi[k][gid]) || null;
   }
   function _equipeEngagee(s, g) { return _getEtapesEquipe(s, g.id).length > 0; }
+  // B9 : effectif = saisi, sinon nombre de membres nommés (null si inconnu).
+  function _effectif(g) {
+    if (g && Number.isInteger(g.effectif) && g.effectif > 0) return g.effectif;
+    const n = (g && Array.isArray(g.membres)) ? g.membres.length : 0;
+    return n > 0 ? n : null;
+  }
+  function _chef(g) {
+    const m = (g && Array.isArray(g.membres)) ? g.membres : [];
+    return (g && g.chef && m.indexOf(g.chef) >= 0) ? g.chef : (m[0] || null);
+  }
+  // Personnes manquantes à la rentrée (0 si tout le monde est remonté ou effectif inconnu).
+  function _manquants(g, su) {
+    const eff = _effectif(g);
+    if (!su || !su.rentreeAt || !Number.isInteger(su.remontes) || !eff) return 0;
+    return Math.max(0, eff - su.remontes);
+  }
   function _fmtMinutes(m) {
     m = Math.max(0, Math.round(m));
     return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") : m + " min";
@@ -1560,7 +1581,11 @@
     const phase = Array.isArray(s.phases) ? s.phases[_phaseCour(s)] : null;
     const departIso = su.departAt || (phase && phase.startedAt) || (s.execution && s.execution.startedAt) || null;
     const base = { departIso: departIso, departExplicite: !!su.departAt, rentreeAt: su.rentreeAt || null, rappelAt: su.rappelAt || null };
-    if (su.rentreeAt) return Object.assign(base, { etat: "rentree" });
+    if (su.rentreeAt) {
+      const manque = _manquants(g, su);
+      return Object.assign(base, { etat: manque > 0 ? "manquant" : "rentree", manquants: manque,
+                                   remontes: su.remontes, effectif: _effectif(g) });
+    }
     const duree = (typeof g.dureeEstimeeMin === "number" && g.dureeEstimeeMin > 0) ? g.dureeEstimeeMin : null;
     if (!duree || !departIso) return Object.assign(base, { etat: "inconnu" });
     const retourMs = Date.parse(departIso) + duree * 60000;
@@ -1571,7 +1596,9 @@
   }
   function _texteRetour(s, g) {
     const e = _etatRetour(s, g);
-    if (e.etat === "rentree") return t("secours.retour.rentreeA", { h: _heureCourte(e.rentreeAt) });
+    if (e.etat === "manquant") return t("secours.b9.manquants", { n: e.manquants, remontes: e.remontes, effectif: e.effectif, h: _heureCourte(e.rentreeAt) });
+    if (e.etat === "rentree") return t("secours.retour.rentreeA", { h: _heureCourte(e.rentreeAt) }) +
+      (Number.isInteger(e.remontes) && e.effectif ? " · " + t("secours.b9.remontesOk", { n: e.remontes, effectif: e.effectif }) : "");
     const dep = e.departIso ? t("secours.retour.depart", { h: _heureCourte(e.departIso) }) +
                 (e.departExplicite ? "" : " " + t("secours.retour.departDefaut")) : "";
     if (e.etat === "inconnu") return dep + " · " + t("secours.retour.sansDuree");
@@ -1587,7 +1614,10 @@
     return '<div class="kta-secours-retour kta-secours-retour--' + e.etat + '" data-live-retour="' + _escAttr(g.id) + '">' +
              (e.rappelAt ? '<span class="kta-secours-rappel-badge">' + _escHtml(t("secours.retour.rappeleeA", { h: _heureCourte(e.rappelAt) })) + '</span>' : '') +
              '<span class="kta-secours-retour-txt">' + _escHtml(_texteRetour(s, g)) + '</span>' +
-             (e.etat !== "rentree"
+             (e.etat === "manquant"
+               ? '<span class="kta-secours-retour-btns"><button class="kta-btn kta-btn-danger kta-btn-xs" data-action="retour-remontes" data-gid="' + _escAttr(g.id) + '">' + t("secours.b9.corriger") + '</button></span>'
+               : '') +
+             (e.etat !== "rentree" && e.etat !== "manquant"
                ? '<span class="kta-secours-retour-btns">' +
                    (!e.departExplicite ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-depart" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnDepart") + '</button>' : '') +
                    (estOp && !e.rappelAt ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="rappel-equipe" data-gid="' + _escAttr(g.id) + '">' + t("secours.rappel.btnEquipe") + '</button>' : '') +
@@ -1628,6 +1658,43 @@
     return true;
   }
 
+  // B9 (décision KARMA 3:a) : « ✅ Rentrée » demande COMBIEN sont remontés. En dessous
+  // de l'effectif : alerte rouge « N personne(s) manquante(s) » tant que ce n'est pas
+  // corrigé — le contrôle le plus important sur le terrain.
+  async function _demanderRemontes(sid, gid) {
+    const s = get(sid);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
+    if (!g) return false;
+    const eff = _effectif(g);
+    const su0 = _suiviEquipe(s, gid) || {};
+    const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
+                     valeur: Number.isInteger(su0.remontes) ? su0.remontes : (eff || null), min: 0, max: 99 };
+    const msg = t("secours.b9.remontesQuestion", { equipe: _escHtml(g.nom) });
+    const ok = (typeof window.ktaConfirm === "function")
+      ? await window.ktaConfirm(msg, { titre: t("secours.b9.remontesTitre"), okLabel: t("secours.b9.remontesOk2"), nombre: nombre })
+      : false;
+    if (!ok) return false;
+    const compte = (Number.isInteger(nombre.valeur) && nombre.valeur >= 0) ? nombre.valeur : null;
+    // Effectif connu : le compte est obligatoire. Inconnu : on peut valider sans compte
+    // (sinon une équipe aux membres non nommés ne pourrait jamais être déclarée rentrée).
+    if (compte === null && eff) return false;
+    const s2 = get(sid);
+    if (!s2 || !_estExecutionActive(s2)) return false;
+    const su = _suiviEquipe(s2, gid, true);
+    const premiere = !su.rentreeAt;
+    if (premiere) su.rentreeAt = _nowIso();
+    if (compte !== null) su.remontes = compte;
+    const manque = _manquants(g, su);
+    _journaliser(s2, manque > 0 ? "secours.mc.manquants" : (premiere ? "secours.mc.rentree" : "secours.mc.remontesCorrige"),
+                 { equipe: g.nom, n: manque, remontes: su.remontes, effectif: eff || "?" });
+    _commitMutation(s2);
+    if (manque > 0) {
+      _toast(t("secours.b9.toastManquants", { equipe: g.nom, n: manque }), "error");
+      try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]); } catch(e) {}
+    }
+    return true;
+  }
+
   function marquerSuivi(scenarioId, gid, champ) {
     const s = get(scenarioId);
     if (!s || !_estExecutionActive(s) || ["departAt", "rentreeAt", "rappelAt"].indexOf(champ) < 0) return;
@@ -1637,7 +1704,7 @@
     _commitMutation(s);
   }
   // Rang d'affichage : les équipes en retard d'abord.
-  const RANG_RETOUR = { rouge: 0, orange: 1, ok: 2, inconnu: 3, rentree: 4 };
+  const RANG_RETOUR = { manquant: -1, rouge: 0, orange: 1, ok: 2, inconnu: 3, rentree: 4 };
 
   // Veille des retards, fenêtre fermée comprise : pastille du footer + toast et
   // vibration au franchissement d'un seuil (une fois par équipe et par seuil).
@@ -1775,7 +1842,7 @@
       if (RANG_RETOUR[e] < RANG_RETOUR[pire]) pire = e;
     });
     pastille.classList.toggle("kta-secours-footer-pastille--orange", pire === "orange");
-    pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge");
+    pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge" || pire === "manquant");
     pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
                          '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
@@ -3412,6 +3479,8 @@
       ["departAt", "rentreeAt", "rappelAt"].forEach(function(k) {
         if (ed.suivi[k] && !isNaN(Date.parse(ed.suivi[k]))) su[k] = tot(su[k], ed.suivi[k]);
       });
+      // B9 : le compte des remontés fait par l'équipe elle-même, si le PC n'en a pas.
+      if (Number.isInteger(ed.suivi.remontes) && !Number.isInteger(su.remontes)) su.remontes = ed.suivi.remontes;
     }
 
     // Main courante : les entrées du téléphone (vraies heures) rejoignent celle du PC,
@@ -3906,6 +3975,12 @@
     if ("membres" in partial && Array.isArray(partial.membres)) {
       g.membres = partial.membres.slice();
     }
+    // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
+    if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef) ? partial.chef : null;
+    if ("effectif" in partial) {
+      const n = parseInt(partial.effectif, 10);
+      g.effectif = (Number.isFinite(n) && n > 0 && n < 100) ? n : null;
+    }
     if ("entree" in partial) g.entree = partial.entree;       // {x,y,level?,pointId?,label?} | null
     if ("sortie" in partial) g.sortie = partial.sortie;
     if ("intermediaires" in partial && Array.isArray(partial.intermediaires)) {
@@ -4329,7 +4404,9 @@
         membres:    (g.membres || []).slice(),
         level:      (typeof g.level === "number") ? g.level : null,
         statut:     g.statut || null,
-        observations: g.observations || ""
+        observations: g.observations || "",
+        chef:       _chef(g),                                            // B9
+        effectif:   Number.isInteger(g.effectif) ? g.effectif : null     // B9 (sinon : nombre de membres)
       };
       // Résolution photos
       let photosResolved = [];
@@ -8146,6 +8223,19 @@
                     '<label>' + t("secours.groupe.membresLabel") + '</label>' +
                     '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="' + _escAttr(t("secours.groupe.membresPlaceholder")) + '" maxlength="200">' +
                   '</div>' +
+                  // B9 (vague 7) : chef d'équipe (parmi les membres) + effectif.
+                  '<div class="kta-secours-groupe-row kta-secours-b9-row">' +
+                    '<label>' + t("secours.b9.chefLabel") + '</label>' +
+                    ((g.membres || []).length
+                      ? '<select data-action="edit-chef" data-gid="' + _escAttr(g.id) + '">' +
+                          (g.membres || []).map(function(m) {
+                            return '<option value="' + _escAttr(m) + '"' + (m === _chef(g) ? ' selected' : '') + '>' + _escHtml(m) + '</option>';
+                          }).join('') + '</select>'
+                      : '<span class="kta-tx-muted">' + t("secours.b9.chefSansMembres") + '</span>') +
+                    '<label>' + t("secours.b9.effectifLabel") + '</label>' +
+                    '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1" style="width:5em;"' +
+                      ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
+                  '</div>' +
                   // 🆕 v1.41.0 E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
                   //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
                   //    Sérialisé en {lat, lng} dans le data model. Optionnel.
@@ -9727,6 +9817,13 @@
         });
       });
       // Edit membres
+      // B9 : chef et effectif.
+      corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
+        sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
+      });
+      corps.querySelectorAll('[data-action="edit-effectif"]').forEach(function(inp) {
+        inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { effectif: inp.value }); });
+      });
       corps.querySelectorAll('[data-action="edit-membres"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
           const arr = inp.value.split(",").map(function(x) { return x.trim(); }).filter(Boolean);
@@ -9926,11 +10023,18 @@
       });
     });
     // A4 : départ / rentrée d'une équipe (vue équipier ou carte opérateur).
-    corps.querySelectorAll('[data-action="retour-depart"], [data-action="retour-rentree"]').forEach(function(btn) {
+    corps.querySelectorAll('[data-action="retour-depart"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
-        const champ = btn.getAttribute("data-action") === "retour-depart" ? "departAt" : "rentreeAt";
-        marquerSuivi(s.id, btn.getAttribute("data-gid"), champ);
+        marquerSuivi(s.id, btn.getAttribute("data-gid"), "departAt");
         _switchView("live");
+      });
+    });
+    // B9 : la rentrée (et sa correction) passe par le compte des remontés.
+    corps.querySelectorAll('[data-action="retour-rentree"], [data-action="retour-remontes"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _demanderRemontes(s.id, btn.getAttribute("data-gid")).then(function(fait) {
+          if (fait && _modal) _switchView("live");
+        });
       });
     });
     // A3 : voir / évacuer / préciser la victime (index dans _victimesDe au rendu).
