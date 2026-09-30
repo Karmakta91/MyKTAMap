@@ -951,6 +951,7 @@
       const r = partial.reglagesDuree;
       s.reglagesDuree = {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(r.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(r.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
         pauseMin:   Math.max(0, Math.min(120, Number(r.pauseMin) || 0)),
         margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(r.margeRetardMin)) && r.margeRetardMin !== ""
                           ? Number(r.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
@@ -1645,12 +1646,24 @@
                                    remontes: su.remontes, effectif: _effectif(g) });
     }
     const duree = (typeof g.dureeEstimeeMin === "number" && g.dureeEstimeeMin > 0) ? g.dureeEstimeeMin : null;
-    if (!duree || !departIso) return Object.assign(base, { etat: "inconnu" });
-    const retourMs = Date.parse(departIso) + duree * 60000;
+    const imperatif = _heureRetourMs(g, departIso);   // prime sur l'estimation
+    if (!imperatif && (!duree || !departIso)) return Object.assign(base, { etat: "inconnu" });
+    const retourMs = imperatif || (Date.parse(departIso) + duree * 60000);
+    base.imperatif = !!imperatif;
     const now = Date.now();
     const marge = _reglagesDuree(s).margeRetardMin * 60000;
     const etat = now > retourMs + marge ? "rouge" : (now > retourMs ? "orange" : "ok");
     return Object.assign(base, { etat: etat, retourMs: retourMs, ecartMin: (now - retourMs) / 60000 });
+  }
+  // « HH:MM » → instant : le prochain HH:MM à partir du départ (une consigne à 01:00
+  // pour un départ à 22:00 tombe le lendemain). null si pas de consigne.
+  function _heureRetourMs(g, departIso) {
+    if (!g || typeof g.heureRetour !== "string" || !/^\d{2}:\d{2}$/.test(g.heureRetour)) return null;
+    const dep = departIso ? new Date(departIso) : new Date();
+    const d = new Date(dep.getTime());
+    d.setHours(Number(g.heureRetour.slice(0, 2)), Number(g.heureRetour.slice(3, 5)), 0, 0);
+    if (d.getTime() <= dep.getTime()) d.setDate(d.getDate() + 1);
+    return d.getTime();
   }
   function _texteRetour(s, g) {
     const e = _etatRetour(s, g);
@@ -1660,7 +1673,7 @@
     const dep = e.departIso ? t("secours.retour.depart", { h: _heureCourte(e.departIso) }) +
                 (e.departExplicite ? "" : " " + t("secours.retour.departDefaut")) : "";
     if (e.etat === "inconnu") return dep + " · " + t("secours.retour.sansDuree");
-    const prevu = t("secours.retour.prevu", { h: _heureCourte(new Date(e.retourMs).toISOString()) });
+    const prevu = t(e.imperatif ? "secours.retour.imperatif" : "secours.retour.prevu", { h: _heureCourte(new Date(e.retourMs).toISOString()) });
     const reste = e.ecartMin > 0 ? t("secours.retour.retard", { duree: _fmtMinutes(e.ecartMin) })
                                  : t("secours.retour.dans", { duree: _fmtMinutes(-e.ecartMin) });
     return dep + " · " + prevu + " · " + reste;
@@ -2880,6 +2893,7 @@
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
       reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
         pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0)),
         margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(sc.reglagesDuree.margeRetardMin))
                           ? Number(sc.reglagesDuree.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
@@ -4268,6 +4282,9 @@
       g.membres = partial.membres.slice();
     }
     // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
+    // Contre-audit GRIMP (30/09) : l'heure de retour IMPÉRATIVE (autonomie des éclairages,
+    // relève) est une consigne du chef, pas une estimation. « HH:MM » ou null.
+    if ("heureRetour" in partial) g.heureRetour = (typeof partial.heureRetour === "string" && /^\d{2}:\d{2}$/.test(partial.heureRetour)) ? partial.heureRetour : null;
     if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef.trim()) ? partial.chef.trim().slice(0, 60) : null;
     if ("effectif" in partial) {
       const n = parseInt(partial.effectif, 10);
@@ -7221,6 +7238,11 @@
         y += 4;
         pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
                                                  effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin, y);
+        if (g.heureRetour) {
+          y += 4; pdf.setFont(undefined, "bold");
+          pdf.text(t("secours.pdf.retourImperatif", { h: g.heureRetour }), margin, y);
+          pdf.setFont(undefined, "normal");
+        }
         y += 8;
         // Section Mission
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
@@ -8747,6 +8769,8 @@
                     '<label>' + t("secours.b9.effectifLabel") + '</label>' +
                     '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1" style="width:5em;"' +
                       ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
+                    '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
+                    '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
                   '</div>' +
                   // 🆕 v1.41.0 E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
                   //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
@@ -9717,6 +9741,11 @@
                  '<span class="kta-secours-pause-unit">km/h</span>' +
                '</div>' +
                '<div class="kta-secours-pause-input-wrap">' +
+                 '<label for="kta-sec-vitesse-app">' + t("secours.duree.vitesseApprocheLabel") + '</label>' +
+                 '<input type="number" id="kta-sec-vitesse-app" min="0.2" max="8" step="0.1" value="' + r.vitesseApprocheKmh + '">' +
+                 '<span class="kta-secours-pause-unit">km/h</span>' +
+               '</div>' +
+               '<div class="kta-secours-pause-input-wrap">' +
                  '<label for="kta-sec-pause-min">' + t("secours.duree.pauseLabel") + '</label>' +
                  '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" value="' + Math.round(r.pauseMin) + '">' +
                  '<span class="kta-secours-pause-unit">min</span>' +
@@ -9735,19 +9764,46 @@
   // (15 min) ajoutée à CHAQUE étape : ~971 min affichées dont 795 de pauses pour un
   // secteur réel, contre ~586 réalistes. Le scénario porte désormais ses propres
   // réglages (voyagent dans le .mkmsec) : vitesse de fouille, pause par étape.
-  const DUREE_DEFAUT = { vitesseKmh: 1.5, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
+  // Contre-audit IGC (30/09) : une seule vitesse pour tout le trajet. L'approche
+  // (hors de la zone de l'équipe) se marche ; seule la zone se fouille.
+  const DUREE_DEFAUT = { vitesseKmh: 1.5, vitesseApprocheKmh: 3, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
   function _reglagesDuree(s) {
     const r = (s && s.reglagesDuree) || {};
     return {
       vitesseKmh: (typeof r.vitesseKmh === "number" && r.vitesseKmh > 0) ? r.vitesseKmh : DUREE_DEFAUT.vitesseKmh,
+      vitesseApprocheKmh: (typeof r.vitesseApprocheKmh === "number" && r.vitesseApprocheKmh > 0) ? r.vitesseApprocheKmh : DUREE_DEFAUT.vitesseApprocheKmh,
       pauseMin:   (typeof r.pauseMin === "number" && r.pauseMin >= 0) ? r.pauseMin : DUREE_DEFAUT.pauseMin,
       margeRetardMin: (typeof r.margeRetardMin === "number" && r.margeRetardMin >= 0) ? r.margeRetardMin : DUREE_DEFAUT.margeRetardMin
     };
   }
-  function _dureeEquipeMin(s, distM, nbWaypoints) {
+  // `geo` (facultatif) = { path, raccords, g } : sépare approche / fouille et compte les
+  // raccords à vol d'oiseau (départ et arrivée une fois, étape aller-retour), à la
+  // vitesse de fouille. Sans zone polygone, tout le trajet est compté en fouille.
+  function _dureeEquipeMin(s, distM, nbWaypoints, geo) {
     if (typeof distM !== "number" || distM <= 0) return 0;
     const r = _reglagesDuree(s);
-    return distM / (r.vitesseKmh * 1000 / 60) + Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    let fouilleM = distM, approcheM = 0;
+    const g = geo && geo.g, path = geo && geo.path;
+    if (g && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3 &&
+        Array.isArray(path) && path.length >= 2) {
+      let dedans = 0, total = 0;
+      for (let i = 1; i < path.length; i++) {
+        const d = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+        total += d;
+        if (_pointInPolygon({ x: (path[i].x + path[i - 1].x) / 2, y: (path[i].y + path[i - 1].y) / 2 }, g.zonePolygon)) dedans += d;
+      }
+      if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
+    }
+    let raccordsM = 0;
+    ((geo && geo.raccords) || []).forEach(function(rc) {
+      raccordsM += ((Number(rc && rc.distPx) || 0) / pxParM) * ((rc && rc.role === "etape") ? 2 : 1);
+    });
+    return (fouilleM + raccordsM) / (r.vitesseKmh * 1000 / 60) + approcheM / (r.vitesseApprocheKmh * 1000 / 60) +
+           Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+  }
+  function _geoDuree(g) {
+    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords };
   }
 
   // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
@@ -9760,7 +9816,7 @@
     (s.groupes || []).forEach(function(g) {
       if (typeof g.distanceM !== "number" || g.distanceM <= 0) return;
       const nbWp = (g.entree ? 1 : 0) + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0) + (g.sortie ? 1 : 0);
-      g.dureeEstimeeMin = _dureeEquipeMin(s, g.distanceM, nbWp);
+      g.dureeEstimeeMin = _dureeEquipeMin(s, g.distanceM, nbWp, _geoDuree(g));
     });
     return true;
   }
@@ -9776,7 +9832,7 @@
       const nbWp = (g.entree ? 1 : 0)
                  + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0)
                  + (g.sortie ? 1 : 0);
-      const newDuree = _dureeEquipeMin(s, g.distanceM, nbWp);
+      const newDuree = _dureeEquipeMin(s, g.distanceM, nbWp, _geoDuree(g));
       if (Math.abs((g.dureeEstimeeMin || 0) - newDuree) > 0.01) {
         g.dureeEstimeeMin = newDuree;
         updated++;
@@ -10250,11 +10306,13 @@
       // update visuel des chips durée dans les cards équipes + toast feedback.
       // 4.1 : réglages de durée du scénario → recalcul des durées de toutes les équipes.
       const vitesseInput = document.getElementById("kta-sec-vitesse");
+      const vitesseAppInput = document.getElementById("kta-sec-vitesse-app");
       const pauseMinInput = document.getElementById("kta-sec-pause-min");
       const margeInput = document.getElementById("kta-sec-marge");
       const majDurees = function() {
         updateScenario(_currentScenarioId, { reglagesDuree: {
           vitesseKmh: parseFloat(vitesseInput && vitesseInput.value),
+          vitesseApprocheKmh: parseFloat(vitesseAppInput && vitesseAppInput.value),
           pauseMin:   parseFloat(pauseMinInput && pauseMinInput.value),
           margeRetardMin: parseFloat(margeInput && margeInput.value)
         } });
@@ -10386,6 +10444,9 @@
       // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
         sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
+      });
+      corps.querySelectorAll('[data-action="edit-heure-retour"]').forEach(function(inp) {
+        inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { heureRetour: inp.value || null }); });
       });
       corps.querySelectorAll('[data-action="edit-effectif"]').forEach(function(inp) {
         inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { effectif: inp.value }); });
@@ -12031,7 +12092,7 @@
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
         // 4.1 : réglages du SCÉNARIO (vitesse de fouille, pause par étape).
-        const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
+        const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length, { g: g, path: r.path, raccords: r.raccords }));
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
           distanceM:       distM,
@@ -12348,7 +12409,7 @@
           const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                         ? window.APP_CONFIG.scale : 1;
           const distM = r.totalDistance / scale;
-          const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
+          const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length, { g: g, path: r.path, raccords: r.raccords }));
           updateGroupe(scenarioId, groupeId, {
             itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
             distanceM:       distM,
