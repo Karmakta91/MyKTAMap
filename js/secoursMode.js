@@ -1303,11 +1303,17 @@
       currentPhaseIdx: 0
     };
     _journaliser(s, "secours.mc.lancement", {});   // main courante
-    // 🆕 v1.29.0 C1 — Set startedAt de la phase 0 au lancement initial.
-    // Si re-lancement ultérieur (cas marginal Phase 3 hotfix11), on ne touche
-    // PAS startedAt si déjà set (= préserver l'historique de la mission).
-    if (Array.isArray(s.phases) && s.phases[0] && !s.phases[0].startedAt) {
-      s.phases[0].startedAt = s.execution.startedAt;
+    // Test terrain KARMA (30/09) : un scénario DÉJÀ JOUÉ gardait les heures de ses
+    // phases. Les étapes repartent de zéro, mais le départ par défaut d'une équipe est
+    // le début de phase : relancé le lendemain, les 8 équipes étaient « en retard de
+    // 9 à 12 h » dès la première seconde. Nouveau lancement = nouvelles heures.
+    // (Le débriefing écrit reste : c'est du texte de l'utilisateur.)
+    if (Array.isArray(s.phases)) {
+      s.phases.forEach(function(p, i) {
+        if (!p) return;
+        p.startedAt = i === 0 ? s.execution.startedAt : null;
+        p.endedAt = null;
+      });
     }
     // 🐛 hotfix11 — Reset focus + fresh session flag pour le nouveau lancement.
     // Permet le smart-skip initial vers la 1ère étape pending au boot,
@@ -9081,9 +9087,14 @@
                 '<p>' + t("secours.liveOp.aucuneEquipe") + '</p></div>';
     } else {
       html += '<div class="kta-secours-live-op-grid">';
-      // A4 : les équipes en retard remontent en tête.
+      // A4 : les équipes en retard remontent en tête — et d'abord celles qui ont
+      // trouvé une victime (test terrain 30/09 : elle passait en dernier, derrière
+      // des retards).
+      const avecVictime = {};
+      _victimesDe(s).forEach(function(v) { avecVictime[v.g.id] = true; });
       groupes.slice().sort(function(a, b) {
-        return RANG_RETOUR[_etatRetour(s, a).etat] - RANG_RETOUR[_etatRetour(s, b).etat];
+        return ((avecVictime[b.id] ? 1 : 0) - (avecVictime[a.id] ? 1 : 0)) ||
+               (RANG_RETOUR[_etatRetour(s, a).etat] - RANG_RETOUR[_etatRetour(s, b).etat]);
       }).forEach(function(g) {
         html += _renderOperateurCard(s, g);
       });
