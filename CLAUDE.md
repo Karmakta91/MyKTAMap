@@ -81,7 +81,8 @@
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
 | Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
-| **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** ← lire AVANT d'annoncer qu'une feature manque |
+| **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** — ne liste que l'OUVERT : son silence ne prouve pas qu'une feature manque (cf ci-dessous) |
+| **Une feature « manque » ? une dette « existe » ?** | AVANT de l'annoncer : `grep` le symbole et les mots-clés dans `js/`, puis le journal `README.md`, puis `docs/architecture/<sujet>.md` (état actuel). Le code est la seule source qui ne ment pas |
 | Porte de release : smoke test 12 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
 | **Méthode de travail avec l'IA** (rôles, hooks, garde-fous, porte, audits, doc, tokens) — guide transposable, à donner à un tiers ou à son IA | `docs/IA_POUR_LES_NULS.md` |
 
