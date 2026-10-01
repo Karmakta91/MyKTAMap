@@ -955,6 +955,7 @@ function _couperDerriere(road, x, y) {
   };
   if (road.urgence) newRoad.urgence = true;
   if (road.secours) newRoad.secours = road.secours;
+  if (road.suite) newRoad.suite = road.suite;   // inter-plans : la suite après le portail
 
   const restantes = etapes.filter(function(w) { return !w.done; }).length;
   const filtered = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
@@ -1131,6 +1132,7 @@ async function _replanifierDepuis(px, py) {
     // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
     if (road.secours) newRoad.secours = road.secours;   // reste le parcours de l'équipe
+    if (road.suite) newRoad.suite = road.suite;         // inter-plans : la suite après le portail
     const filtered = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; });
     filtered.push(newRoad);

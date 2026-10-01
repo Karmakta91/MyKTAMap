@@ -1421,7 +1421,7 @@ When an **itinerary is drawn** and your position is known — **tracker on**, or
 
 **Moving away or turning back?** The banner turns orange ("Off the itinerary?" / "Turning back?") and offers **[I am here]** (tap where you are, the itinerary is recomputed from there), **[Recompute from here]** and **[Ignore]** (no more alerts until you are back on the path). Nothing is recomputed without you: step-counter drift looks like a deviation.
 
-**Tapping the banner** opens the **🪧 Route sheet**: every instruction with its distance (tap a line to see the spot). It is also available **without the tracker**, from the Itinerary modal ("🪧 Route sheet" button), to prepare an outing.
+**Tapping the banner** opens the **🪧 Route sheet**: every instruction with its distance (tap a line to see the spot). It is also available **without the tracker**, from the Itinerary modal ("🪧 Route sheet" button), to prepare an outing. **Itinerary to another map** (through a portal 🌀): the sheet details your map up to the portal, then one line per following map sums up what awaits you ("Then 🌀 portal → map: 350 m, 4 junctions"); the details show once you are on that map, with its junctions announced as usual.
 
 **The ✕** **turns guidance off**: the **🪧 Itinerary guidance** tile in the 🧭 Tracker menu goes dark. **Tap it to turn guidance back on** — on the same itinerary, with nothing recomputed.
 

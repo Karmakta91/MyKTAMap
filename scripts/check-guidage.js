@@ -476,6 +476,31 @@ async function bandeau() {
       ip.includes("raccords: leg.raccords || [], carrefours: leg.carrefours || []"));
     t("câblage inter-plans : distances avec les raccords (décision K)",
       ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
+
+    // Feuille de route : elle s'arrête au portail, puis UNE ligne par plan
+    // suivant (`road.suite`, posée par interPlanRoute > _tracerItinerary).
+    const w2 = bac([R("principal", [[0, 500], [800, 500]])]);
+    const it2 = await itineraire(w2, [20, 500], [780, 500]);
+    let feuille = null;
+    w2.document = {
+      getElementById: () => null,
+      createElement: () => (feuille = fauxElement()),
+      documentElement: { appendChild() {} }
+    };
+    w2.ItiGuidage.ouvrirFeuilleDeRoute(Object.assign({}, it2.road, {
+      suite: [{ portail: "Sortie nord", plan: "Plan B", distM: 350, croisements: 4 },
+              { portail: "Puits", plan: "Plan C", distM: 80, croisements: 0 }]
+    }));
+    const html = feuille ? feuille.innerHTML : "";
+    t("feuille inter-plans : une ligne « Puis 🌀 portail → plan » par plan suivant",
+      (html.match(/guid\.feuille\.suite/g) || []).length === 2 && html.includes("Plan B") && html.includes("Plan C"));
+    t("feuille inter-plans : nombre de croisements (4, puis aucun)",
+      html.includes("guid.feuille.croisementsN") && html.includes("guid.feuille.croisements0"));
+    t("câblage inter-plans : la suite est posée au tracé de chaque étape",
+      ip.includes("_tracerItinerary(leg0, chain.legs.slice(1))") && ip.includes("_tracerItinerary(head, reste)"));
+    const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
+    t("câblage inter-plans : la suite survit à la coupe et à la replanification",
+      (ii.match(/if \(road\.suite\) newRoad\.suite = road\.suite;/g) || []).length === 2);
   }
 
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal

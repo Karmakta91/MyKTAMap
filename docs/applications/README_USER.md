@@ -1423,7 +1423,7 @@ Quand un **itinéraire est tracé** et que ta position est connue — **tracker 
 
 **Tu t'écartes ou tu fais demi-tour ?** Le bandeau passe en orange (« Hors itinéraire ? » / « Demi-tour ? ») et propose **[Je suis ici]** (touche l'endroit où tu es, l'itinéraire se recalcule depuis là), **[Recalculer d'ici]** et **[Ignorer]** (plus d'alerte jusqu'à ton retour sur le chemin). Rien n'est recalculé sans toi : une dérive du podomètre ressemble à un écart.
 
-**Toucher le bandeau** ouvre la **🪧 Feuille de route** : toutes les consignes avec leurs distances (touche une ligne pour voir l'endroit). Elle est aussi accessible **sans tracker**, depuis la modale Itinéraire (bouton « 🪧 Feuille de route »), pour préparer une sortie.
+**Toucher le bandeau** ouvre la **🪧 Feuille de route** : toutes les consignes avec leurs distances (touche une ligne pour voir l'endroit). Elle est aussi accessible **sans tracker**, depuis la modale Itinéraire (bouton « 🪧 Feuille de route »), pour préparer une sortie. **Itinéraire vers un autre plan** (par un portail 🌀) : la feuille détaille ton plan jusqu'au portail, puis une ligne par plan suivant résume ce qui t'attend (« Puis 🌀 portail → plan : 350 m, 4 croisements ») ; le détail s'affiche une fois arrivé sur ce plan, avec ses croisements annoncés comme d'habitude.
 
 **La croix ✕** **coupe le guidage** : la tuile **🪧 Guidage de l'itinéraire** du menu 🧭 Tracker s'éteint. **Touche-la pour le rallumer** — sur le même itinéraire, sans rien recalculer.
 

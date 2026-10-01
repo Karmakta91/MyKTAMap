@@ -1125,6 +1125,9 @@ demi-tours en 350 m sous 4 m de bruit).
   `computeRouteOnRoads(…, { echelle })` mesure ses carrefours à l'échelle de SON plan (sinon rayon de sortie et
   zone faux d'un plan à l'autre). Deux morceaux bout à bout sur un même plan : seuls le départ du premier et
   l'arrivée du dernier restent. Distances avec raccords (décision K). La feuille de route est **par étape** :
-  elle s'arrête au portail, la suivante s'ouvre une fois l'itinéraire du plan suivant tracé.
+  elle s'arrête au portail, puis `road.suite` (posée par `_tracerItinerary(leg, suivants)`, gardée par la coupe et
+  la replanification) ajoute une ligne par plan suivant : portail, plan, distance, nombre de croisements (carrefour
+  isolé ou zone = 1). Pas de consignes détaillées d'avance : elles se calculent à l'échelle du plan suivant, une
+  fois son étape tracée.
 - **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
   `carrefours`.

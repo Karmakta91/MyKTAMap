@@ -1419,7 +1419,7 @@ Cuando hay un **itinerario trazado** y se conoce tu posición — **tracker acti
 
 **¿Te alejas o das media vuelta?** El banner se pone naranja («¿Fuera del itinerario?» / «¿Media vuelta?») y propone **[Estoy aquí]** (toca donde estás, el itinerario se recalcula desde ahí), **[Recalcular desde aquí]** e **[Ignorar]** (no más alertas hasta que vuelvas al camino). Nada se recalcula sin ti: una deriva del podómetro se parece a un desvío.
 
-**Tocar el banner** abre la **🪧 Hoja de ruta**: todas las indicaciones con sus distancias (toca una línea para ver el lugar). También está disponible **sin tracker**, desde el modal Itinerario (botón «🪧 Hoja de ruta»), para preparar una salida.
+**Tocar el banner** abre la **🪧 Hoja de ruta**: todas las indicaciones con sus distancias (toca una línea para ver el lugar). También está disponible **sin tracker**, desde el modal Itinerario (botón «🪧 Hoja de ruta»), para preparar una salida. **Itinerario hacia otro plano** (por un portal 🌀): la hoja detalla tu plano hasta el portal, y luego una línea por cada plano siguiente resume lo que te espera («Después 🌀 portal → plano: 350 m, 4 cruces»); el detalle aparece al llegar a ese plano, con sus cruces anunciados como siempre.
 
 **La ✕** **desactiva el guiado**: la casilla **🪧 Guiado del itinerario** del menú 🧭 Tracker se apaga. **Púlsala para volver a activarlo** — sobre el mismo itinerario, sin recalcular nada.
 

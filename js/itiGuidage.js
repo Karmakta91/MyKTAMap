@@ -442,6 +442,18 @@
       }
       lignes += _ligne(n, c, txt, c.picto ? _pictoSvg(c.picto, 28) : _icone(c));
     });
+    // 🌀 Itinéraire inter-plans (01/10/2026) : la feuille s'arrête au portail —
+    // une ligne par plan suivant dit ce qui attend derrière (`road.suite`,
+    // posée par interPlanRoute). Pas de consignes détaillées : elles se
+    // calculent à l'échelle du plan suivant, une fois l'étape tracée là-bas.
+    (Array.isArray(road.suite) ? road.suite : []).forEach(function(sv) {
+      n++;
+      const nb = sv.croisements || 0;
+      lignes += _ligne(n, null, _t("guid.feuille.suite", {
+        portail: sv.portail || "?", plan: sv.plan || "?", dist: _fmtM(sv.distM || 0),
+        croisements: _t(nb === 0 ? "guid.feuille.croisements0" : (nb === 1 ? "guid.feuille.croisements1" : "guid.feuille.croisementsN"), { n: nb })
+      }), "🌀");
+    });
 
     const modal = document.createElement("div");
     modal.id = "kta-guid-feuille";

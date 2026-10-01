@@ -611,15 +611,40 @@
   // { planId, sortie:{x,y}, portalOut, nextDistM }
   let _currentPortalOut = null;
 
+  // Croisements que le guidage annoncera sur une étape : un carrefour isolé,
+  // ou une zone de carrefours (membres qui partagent le même centre) = UN.
+  function _nbCroisements(carrefours) {
+    const vus = {};
+    let n = 0;
+    (carrefours || []).forEach(function(c) {
+      if (!c.zone) { n++; return; }
+      const k = Math.round(c.zone.x) + "," + Math.round(c.zone.y);
+      if (!vus[k]) { vus[k] = true; n++; }
+    });
+    return n;
+  }
+
   // 🪧 01/10/2026 — `leg` porte aussi `raccords` / `carrefours` : le guidage
   // annonce les croisements, le pointillé jusqu'au tracé est dessiné et compté.
-  function _tracerItinerary(leg) {
+  // `suivants` = étapes des plans d'après : résumées sur la road (`suite`) pour
+  // que la feuille de route dise ce qui attend après le portail.
+  function _tracerItinerary(leg, suivants) {
     if (!window.getRoads || !window.setRoads) return;
     const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
-    roads.push({
+    const road = {
       type: "itinerary", points: leg.path, waypoints: leg.waypoints || [],
       raccords: leg.raccords || [], carrefours: leg.carrefours || []
-    });
+    };
+    if (Array.isArray(suivants) && suivants.length) {
+      let portail = leg.portalOut;
+      road.suite = suivants.map(function(l) {
+        const s = { portail: (portail && portail.nom) || "", plan: l.planName || l.planId || "",
+                    distM: l.distM || 0, croisements: _nbCroisements(l.carrefours) };
+        portail = l.portalOut;
+        return s;
+      });
+    }
+    roads.push(road);
     window.setRoads(roads);
   }
 
@@ -792,7 +817,7 @@
     // Trace le 1er leg (remplace l'itinéraire actif — même sémantique que
     // « Y aller ») + flash sur le portail à rejoindre.
     const leg0 = chain.legs[0];
-    _tracerItinerary(leg0);
+    _tracerItinerary(leg0, chain.legs.slice(1));
     try {
       const cible = leg0.waypoints[1];
       const latlng = window.convertCoord(cible.x, cible.y);
@@ -840,7 +865,7 @@
     const reste = _pendingChain;
     setTimeout(function() {
       try {
-        _tracerItinerary(head);
+        _tracerItinerary(head, reste);
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(_t("ipr.toast.legTraced", {
             dest: (head.waypoints[1] && head.waypoints[1].label) || "",
