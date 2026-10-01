@@ -12,13 +12,14 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.26` (01/10/2026)
+## 📦 Version courante — `v1.99.0` (01/10/2026)
+
+> 🧩 **v1.99.0 — Fonctionnalités optionnelles** : Replay, Heatmap, batterie et vibration désactivés par défaut, regroupés dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles (la heatmap du Mode Secours reste) ; 🤖 Aide IA déplacée dans l’en-tête de la Documentation (menu de langue au lieu des drapeaux) ; vibration plus perdue à l’ouverture d’un plan.
 
 > 🔄 **v1.98.26 — Calques en modification à l’import de session** : réimporter une session (même sur un autre appareil) remet en modification les calques dont elle porte la copie ; plus de doublon ni de calque masqué et vide. Plus : import unifié (un sélecteur), « ➕ Nouveau type… » dans les menus de la légende.
 
 > 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
 
-> 🚑 **v1.98.24 — Mode Secours, vague 8a (contre-audits GRIMP/IGC)** : Évacuer vers les accès des équipes ; bilan des engagés ; retour impératif ; durées approche/fouille ; recalage à l'étape validée ; numéro d'étape unique ; écran XL ; accès surface renseignés.
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -499,6 +500,19 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.0 (01/10/2026) — Fonctionnalités optionnelles ; Aide IA dans la Documentation
+
+- 🔍 **Origine** : demande KARMA — « plusieurs fonctions pas très pertinentes surchargent l’app ». Analyse d’inventaire, puis décisions : Replay, Heatmap, Batterie, Vibration passent en options OFF par défaut ; la batterie est éteinte pour TOUS (migration) ; les vibrations du Mode Secours suivent le réglage ; l’Aide IA quitte le groupe 📚 pour l’en-tête de la Documentation.
+- 🧩 **Groupe « Fonctionnalités optionnelles »** (ex-« 🛰️ Options via capteur ») à l’accueil (`index.html` + `homeConfig.js`) et dans ⚙️ Réglages du plan (`interfaceConfig.js`), même état `APP_CONFIG` + `app_user_prefs`. Nouvelles clés `replayEnabled` / `heatmapEnabled` ; helper partagé `window.ktaBrancherOptionnel` (`utils.js`). Tous les lecteurs en `=== true`.
+- 🎬🔥 **Tuiles Tracker** : champ `optionnel: "<clé>"` sur la sous-action, filtré dans `_ouvrirTrackerModal` à chaque ouverture → effet immédiat. `heatmap.js` reste chargé : le bloc « Heatmap d’activité » du Mode Secours ne dépend pas du réglage. Aide-mémoire clavier : la ligne Replay suit l’option.
+- 🔋 **Batterie** : défaut ON → OFF ; `_migrerOptionnels` (`config.js`, marqueur `myktamap_optionnels_migres_v1`) l’éteint une fois chez les installs existantes, dont `app_user_prefs` portait `true`. `batteryGuard.js` sort sur `!== true`.
+- 📳 **Vibration** : les 3 `navigator.vibrate` directs de `secoursMode.js` passent par `kta_vibrate` (soumis au réglage) ; `kta_vibrate.urgence` (sortie trouvée, alerte critique) inchangé.
+- 🐛 **Corrige** : `vibrationEnabled` absent de `buildAppConfigFromPlan` → la vibration retombait OFF à chaque ouverture de plan, et la première sauvegarde de réglage écrasait le choix (même piège que `snapDraw` v1.75.0).
+- 🤖 **Aide IA** : bouton `#kta-readme-aiia-btn` dans l’en-tête de la Documentation (aussi depuis l’accueil ; hérite de `kta-readme-over-locker`) ; les drapeaux deviennent `<select id="kta-readme-lang-select">`. Sous-bouton retiré du groupe 📚.
+- 📖 **Docs** : chapitre « 🧩 Fonctionnalités optionnelles » dans README_USER fr/en/es (Replay, Heatmap, Batterie déplacés ; Vibration créée ; section capteurs fusionnée) ; aide intégrée : catégorie `optionnels` + fiches `heatmap`, `vibration` ; tutoriel, AI_CONTEXT, `ui.md`, `i18n.md`. `check-wakelock.js` et le smoke langues suivent.
+- 📦 **Embarqué depuis la prod (v1.98.23)** : v1.98.24-26 — Mode Secours vagues 8a/8b, calques en modification à l’import de session, import unifié, « ➕ Nouveau type… ».
+- ✅ **Tests** : tous les check-* du pré-commit ; smoke `checkup-langues` vert ; test Playwright dédié (25 vérifs : migration, cases accueil/plan, tuiles filtrées puis visibles sans recharger, persistance reload + ouverture de plan, 🤖 par-dessus la doc, menu de langue, 0 erreur JS). ⚠️ Pas testé sur téléphone réel (capteurs, iOS grisé).
 
 #### v1.98.26 (01/10/2026) — Calques en modification : l’import de session les reconstruit
 
