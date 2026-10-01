@@ -22,12 +22,11 @@
 //        → Import depuis un fichier JSON. Validation du format + restore
 //          via les setters globaux.
 //   - window.ouvrirImportChoix()
-//        → Modale "choix d'import" (refonte from-scratch v1.14.17) : 3
-//          options proposées (JSON session, KMZ, GPX). Délègue au bon
-//          importeur selon le choix.
-//   - window.ouvrirImportSession()
-//        → Modale plein écran d'import session (UI complète avec
-//          preview + boutons).
+//        → Ouvre directement le sélecteur de fichier (.json/.zip/.gpx) ;
+//          window.ouvrirImportFichier(file) route selon l'extension.
+//   - window.ouvrirImportSession([file]) / window.ouvrirImportGpx([file])
+//        → Modales d'import (aperçu + validation), fichier pré-chargé
+//          si fourni.
 //
 // 🔌 Dépendances externes (toutes via window.* / global declarations) :
 //   - window.getRoads / setRoads / resetRoads
@@ -127,9 +126,9 @@ function importerSessionJSON(file) {
 // .getCalibration / gpsToPlan) pour transformer les coords WGS84 → plan.
 // Flow : sélection fichier → preview (X points / Y tracés) → confirm
 // → ajout aux annotations session avec snapshot HistoryManager (undo OK).
-window.ouvrirImportGpx = function() {
+window.ouvrirImportGpx = function(fichierInitial) {
   const existing = document.getElementById("kta-import-gpx-modal");
-  if (existing) { existing.remove(); return; }
+  if (existing) { existing.remove(); if (!fichierInitial) return; }
 
   if (!window.GpxIO) {
     alert(window.I18n.t("impexp.gpxIoUnavailable"));
@@ -197,7 +196,11 @@ window.ouvrirImportGpx = function() {
   }
 
   fileInput.addEventListener("change", function(e) {
-    const file = e.target.files && e.target.files[0];
+    _traiterFichier(e.target.files && e.target.files[0]);
+  });
+  if (fichierInitial) _traiterFichier(fichierInitial);
+
+  function _traiterFichier(file) {
     if (!file) return;
 
     previewEl.innerHTML = '<p style="color:#8892a4;">' + window.I18n.t("impexp.gpx.reading") + '</p>';
@@ -249,134 +252,52 @@ window.ouvrirImportGpx = function() {
         overlay.remove();
       });
     });
-  });
+  }
 };
 
 // =========================
-// 📥 IMPORT — modale de choix (refonte from-scratch v1.14.17)
+// 📥 IMPORT — un seul sélecteur, l'extension choisit le parcours
 // =========================
-// KARMA : « le modal ne va pas mieux, reprend depuis 0 sans toute nos
-// itérations, et génère-moi un modal qui était historiquement import
-// session, à deux choix, comme enregistrer session, ou export image ».
-//
-// On calque le pattern de la modale « 🖼️ Exporter en PNG/JPG »
-// (window.ouvrirExportModal dans js/exporter.js) qui marche parfaitement
-// depuis longtemps : deux gros boutons .kta-conv-sens-btn en haut pour
-// le choix de mode + 2 sections de contenu togglées par display.
-//
-// Pas de dépendance sur les styles dynamiques de sessionExporter.js
-// (cause des bugs v1.14.5 → v1.14.16). On utilise UNIQUEMENT des classes
-// CSS statiques déjà présentes dans css/style.css :
-//   - .kta-readme-modal-overlay / -boite / -header / -titre / -corps
-//   - .kta-panneau-close (bouton ✕)
-//   - .kta-conv-sens-wrap / -btn / -label / -desc (sélecteur de mode)
-//   - .kta-aide-section / -section-titre (panneaux de contenu)
-//   - .kta-btn / -btn-primary / -btn-ghost (boutons d'action)
+// Avant (v1.14.5 → v1.98.25) : une modale à 2 cartes (Session / GPX), puis
+// une 2e modale avec son propre sélecteur — 3 clics, et rien ne disait que
+// l'une REMPLACE la session quand l'autre y AJOUTE. Désormais :
+//   .json / .zip → ouvrirImportSession(file) : aperçu + avertissement « remplace »
+//   .gpx         → ouvrirImportGpx(file)     : aperçu + « ajoute, Ctrl+Z »
+// Le nom ouvrirImportChoix est gardé (appelé par le menu ⬇️ de interface.js).
 window.ouvrirImportChoix = function() {
-  // Suppr d'éventuelles modales orphelines avec l'ancien id
-  ["kta-import-choix-modal", "kta-import-choix-modal-v2"].forEach(function(id) {
-    const old = document.getElementById(id);
-    if (old) old.remove();
+  const ancien = document.getElementById("kta-import-fichier");
+  if (ancien) ancien.remove();  // sélecteur précédent annulé par l'user
+  const input = document.createElement("input");
+  input.type = "file";
+  input.id = "kta-import-fichier";
+  input.accept = ".json,.zip,.gpx,application/json,application/zip,application/gpx+xml";
+  input.style.display = "none";
+  input.addEventListener("change", function() {
+    const f = input.files && input.files[0];
+    input.remove();
+    if (f) window.ouvrirImportFichier(f);
   });
+  document.documentElement.appendChild(input);
+  input.click();
+};
 
-  let _mode = "session"; // "session" | "gpx"
-
-  const modal = document.createElement("div");
-  modal.id = "kta-import-choix-modal-v2";
-  modal.className = "kta-readme-modal-overlay";
-  modal.innerHTML =
-    '<div class="kta-readme-modal-boite" style="max-width:560px; max-height:88vh; height:auto; display:flex; flex-direction:column;">' +
-      '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("impexp.choix.modalTitle") + '</span>' +
-        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
-      '</div>' +
-      '<div class="kta-readme-modal-corps" style="overflow-y:auto;">' +
-
-        // === SÉLECTEUR DE MODE (2 gros boutons côte-à-côte) ===
-        '<div class="kta-conv-sens-wrap">' +
-          '<button class="kta-conv-sens-btn active" id="kta-imp2-mode-session" type="button">' +
-            '<span class="kta-conv-sens-label">' + window.I18n.t("impexp.choix.modeSessionLabel") + '</span>' +
-            '<span class="kta-conv-sens-desc">' + window.I18n.t("impexp.choix.modeSessionDesc") + '</span>' +
-          '</button>' +
-          '<button class="kta-conv-sens-btn" id="kta-imp2-mode-gpx" type="button">' +
-            '<span class="kta-conv-sens-label">' + window.I18n.t("impexp.choix.modeGpxLabel") + '</span>' +
-            '<span class="kta-conv-sens-desc">' + window.I18n.t("impexp.choix.modeGpxDesc") + '</span>' +
-          '</button>' +
-        '</div>' +
-
-        // === PANEL SESSION (visible par défaut) ===
-        '<div id="kta-imp2-panel-session">' +
-          '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">' + window.I18n.t("impexp.choix.contentTitle") + '</div>' +
-            '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
-              window.I18n.t("impexp.choix.sessionContent") +
-            '</p>' +
-          '</div>' +
-        '</div>' +
-
-        // === PANEL GPX (masqué par défaut) ===
-        '<div id="kta-imp2-panel-gpx" style="display:none;">' +
-          '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">' + window.I18n.t("impexp.choix.contentTitle") + '</div>' +
-            '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
-              window.I18n.t("impexp.choix.gpxContent") +
-            '</p>' +
-          '</div>' +
-        '</div>' +
-
-      '</div>' +
-
-      // === ACTIONS (footer fixe) ===
-      '<div style="display:flex; justify-content:flex-end; gap:10px; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06);">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-imp2-cancel" type="button">' + window.I18n.t("impexp.choix.cancel") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-imp2-ok"     type="button">' + window.I18n.t("impexp.choix.chooseFile") + '</button>' +
-      '</div>' +
-    '</div>';
-
-  document.documentElement.appendChild(modal);
-
-  function _setMode(nouveau) {
-    _mode = nouveau;
-    document.getElementById("kta-imp2-mode-session").classList.toggle("active", nouveau === "session");
-    document.getElementById("kta-imp2-mode-gpx").classList.toggle("active",     nouveau === "gpx");
-    document.getElementById("kta-imp2-panel-session").style.display = (nouveau === "session") ? "block" : "none";
-    document.getElementById("kta-imp2-panel-gpx").style.display     = (nouveau === "gpx")     ? "block" : "none";
+window.ouvrirImportFichier = function(file) {
+  if (/\.gpx$/i.test(file.name)) {
+    if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx(file);
+    else alert(window.I18n.t("impexp.gpxModuleUnavailable"));
+  } else if (/\.(json|zip)$/i.test(file.name)) {
+    ouvrirImportSession(file);
+  } else {
+    alert(window.I18n.t("impexp.extInconnue", { name: file.name }));
   }
-
-  function _fermer() {
-    modal.remove();
-    document.removeEventListener("keydown", _onKey);
-  }
-  function _onKey(e) {
-    if (e.key === "Escape") _fermer();
-    else if (e.key === "Enter") _valider();
-  }
-  function _valider() {
-    const choix = _mode;
-    _fermer();
-    if (choix === "session") {
-      ouvrirImportSession();
-    } else {
-      if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
-      else alert(window.I18n.t("impexp.gpxModuleUnavailable"));
-    }
-  }
-
-  document.getElementById("kta-imp2-close").addEventListener("click",  _fermer);
-  document.getElementById("kta-imp2-cancel").addEventListener("click", _fermer);
-  document.getElementById("kta-imp2-ok").addEventListener("click",     _valider);
-  document.getElementById("kta-imp2-mode-session").addEventListener("click", function() { _setMode("session"); });
-  document.getElementById("kta-imp2-mode-gpx").addEventListener("click",     function() { _setMode("gpx"); });
-  modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
-  document.addEventListener("keydown", _onKey);
 };
 
 // =========================
 // IMPORT SESSION — modale plein écran
 // =========================
-function ouvrirImportSession() {
+function ouvrirImportSession(fichierInitial) {
   const existing = document.getElementById("kta-import-modal");
-  if (existing) { existing.remove(); return; }
+  if (existing) { existing.remove(); if (!fichierInitial) return; }
 
   const modal = document.createElement("div");
   modal.id = "kta-import-modal";
@@ -691,6 +612,7 @@ function ouvrirImportSession() {
     // 🆕 v1.9.3-B1d : accepte aussi les .zip (session avec photos)
     const okExt = f && (/\.(json|zip)$/i).test(f.name);
     if (okExt) chargerFichier(f);
+    else if (f && /\.gpx$/i.test(f.name)) { fermer(); window.ouvrirImportFichier(f); }
     else setErr(window.I18n.t("impexp.session.errDropExt"));
   });
 
@@ -847,6 +769,8 @@ function ouvrirImportSession() {
       setErr(window.I18n.t("impexp.session.errPhotos", { msg: err.message || err }));
     });
   });
+
+  if (fichierInitial) chargerFichier(fichierInitial);
 }
 
 

@@ -3113,14 +3113,17 @@ Your 2-point calibration is saved **per map** (on this device). On the next expo
 
 > The **⬇️ Load / Import** group in the sidebar contains the import actions.
 
-### 📥 Import a session
+### 📥 Import a file (session or GPX)
 
-Press **⬇️ → 📥 Import**, then the **MyKTAMap session** card to open the import window. A modal displays:
+Press **⬇️ → 📥 Import**: the file picker opens directly and the app recognises the file type.
 
-1. **Drag and drop** your `.json` file (or `.zip` with photos) into the area, or click to select it
-2. A **preview** displays: number of points added, number of paths, number of zones, number of measurement points
-3. A **warning** notifies you that the import will replace your current session — remember to export before if necessary
-4. Click **Import** to validate, or **Cancel** to close without changing anything
+**MyKTAMap session** (`.json`, or `.zip` with photos) — **replaces** your current session:
+
+1. A **preview** displays: number of points added, number of paths, number of zones, number of measurement points
+2. A **warning** notifies you that the import will replace your current session — an automatic backup is taken just before
+3. Click **Import** to validate, or **Cancel** to close without changing anything
+
+**GPX file** (`.gpx` from TopoDroid, OsmAnd, Avenza, Strava, Garmin…) — **adds** its waypoints (points) and tracks (paths) to your session. The map must be **GPS-calibrated** (📡 External export). A preview comes before the addition, and **Ctrl+Z** undoes it.
 
 ### 📊 Plan data editor
 

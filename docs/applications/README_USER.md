@@ -3115,14 +3115,17 @@ Ton calibrage 2 points est sauvegardé **par plan** (sur cet appareil). Au proch
 
 > Le groupe **⬇️ Charger / Import** de la barre latérale contient les actions d'import.
 
-### 📥 Importer une session
+### 📥 Importer un fichier (session ou GPX)
 
-Appuyez sur **⬇️ → 📥 Importer**, carte **Session MyKTAMap** pour ouvrir la fenêtre d'import. Une modale s'affiche :
+Appuyez sur **⬇️ → 📥 Importer** : le choix du fichier s'ouvre directement, l'app reconnaît son type.
 
-1. **Glissez-déposez** votre fichier `.json` (ou `.zip` avec photos) dans la zone, ou cliquez pour le sélectionner
-2. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de zones, nombre de points de mesure
-3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
-4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
+**Session MyKTAMap** (`.json`, ou `.zip` avec photos) — **remplace** votre session en cours :
+
+1. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de zones, nombre de points de mesure
+2. Un **avertissement** vous prévient que l'import remplacera votre session en cours — une sauvegarde automatique est prise juste avant
+3. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
+
+**Fichier GPX** (`.gpx` de TopoDroid, OsmAnd, Avenza, Strava, Garmin…) — **ajoute** ses waypoints (points) et tracks (tracés) à votre session. Le plan doit être **calibré GPS** (📡 Export externe). Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
 
 ### 📊 Éditeur de données du plan
 
