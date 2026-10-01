@@ -587,7 +587,7 @@ function _ouvrirReadmeModal(html, opts) {
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
-        <span class="kta-readme-modal-titre">📖 Documentation</span>
+        <span class="kta-readme-modal-titre">Documentation</span>
         ${btnLang}
         ${btnAiia}
         ${btnOnboarding}
