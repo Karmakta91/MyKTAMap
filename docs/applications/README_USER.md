@@ -1796,7 +1796,7 @@ Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. G
 
 #### 📤 Page « Briefing surface » dans le rapport post-mission
 
-Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos, carte des accès en tête (la vue OpenStreetMap du plan entier, illisible sur un A4, n'y figure plus ; dans le briefing pompiers, elle reste en option, POI décochés par défaut). Sur les cartes d'équipe, une entrée et une sortie posées au même accès (à moins de 10 m) ne font plus qu'un repère « ENTRÉE / SORTIE ». Au calcul d'un itinéraire, une étape posée loin de toute galerie est nommée (« L'étape « PA3 » est à 68 m du tracé le plus proche ») : corrige-la avant de descendre. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
+Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos, carte des accès en tête (la vue OpenStreetMap du plan entier, illisible sur un A4, n'y figure plus ; dans le briefing pompiers, elle reste en option, POI décochés par défaut). Sur les cartes d'équipe, une entrée et une sortie posées au même accès (à moins de 10 m) ne font plus qu'un repère « ENTRÉE / SORTIE ». Au calcul d'un itinéraire, une étape posée loin de toute galerie est nommée (« L'étape « Puits 2 » est à 68 m du tracé le plus proche ») : corrige-la avant de descendre. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
 
 #### 🏷️ Filtre tags Vue OSM
 

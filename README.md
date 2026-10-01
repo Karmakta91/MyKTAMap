@@ -531,7 +531,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 #### v1.98.24 (30/09/2026) — Mode Secours, vague 8a : contre-audits GRIMP et IGC
 
-- 🔍 **Origine** : contre-audits du 30/09 (scénario réel de KARMA, 8 équipes, Pandemonium) — `audit2-secours-GRIMP.md` / `-IGC.md` (scratchpad). Décision KARMA : 8a = 1, 3b, 4, 5b, 6, 7, 8, 9 ; 8b (couverture en deux chiffres par niveau, zones liées à un niveau) au backlog.
+- 🔍 **Origine** : contre-audits du 30/09 (scénario réel de KARMA, 8 équipes, sur un plan réel) — `audit2-secours-GRIMP.md` / `-IGC.md` (scratchpad). Décision KARMA : 8a = 1, 3b, 4, 5b, 6, 7, 8, 9 ; 8b (couverture en deux chiffres par niveau, zones liées à un niveau) au backlog.
 - 🚑 **Évacuer** (`986ad43`) : ne visait que les accès tagués ouverts (un puits sur tout le plan) — Delta 3,19 km au lieu de 492 m. `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp, origine })` ; `_sortiesScenario` = accès du scénario, « à ouvrir » si fermés ; « depuis la position de la victime ».
 - 📍 **Recalage** (`4fea9ed`) : étape validée « sur place » → `recalerTrackerSurPoint(…, { sansReplan: true })`, silencieux < 30 m, question au-delà ; `_onTrackerRecale` coche l'étape sans proposer de recalcul. « Suivre » démarre le suivi dans le geste (`ktaDemarrerSuivi`).
 - ⏱️ **Durées** (`44d4f79`) : vitesse d'approche (hors polygone, 3 km/h) / fouille (dans la zone) + raccords ; `g.heureRetour` (« HH:MM ») prime sur l'estimation (`_heureRetourMs`), sur le briefing.
@@ -550,11 +550,11 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 #### v1.98.22 (30/09/2026) — Mode Secours : test terrain sur le plan réel
 
-- 🔍 **Origine** : scénario de KARMA (8 équipes, Pandemonium 23 000 × 18 000) rejoué en navigateur, PC + téléphone. Décisions KARMA : les 6 recos du topo.
+- 🔍 **Origine** : scénario de KARMA (8 équipes, sur un grand plan réel) rejoué en navigateur, PC + téléphone. Décisions KARMA : les 6 recos du topo.
 - 🔴 **Faux retards** (`cf809f3`) : relancer un scénario joué gardait `phases[].startedAt/endedAt` → 8 équipes « en retard de 9 à 12 h » à la 1re seconde. `lancerExecution` remet les heures de phase ; l'équipe avec victime passe en tête des cartes opérateur.
 - 🔴 **Messages du lancement** (`0183514`) : 4 messages successifs, le dernier posé 10 s sur « Suivre mon parcours » (touchers captés) ; le placement (info) jamais vu en « Essentielles ». Un message unique (type avertissement dès qu'il dit plus que « lancé ») ; `.kta-toast` en `pointer-events: none` sauf la croix, `white-space: pre-line`.
-- 🟡 **Plan différent** (`b7f2e75`) : `local_pandemonium_2023` ≠ `server_test` → alerte « Pandemonium / Pandemonium ». `_autrePlan` : ids différents ET (nom ou dimensions différents).
-- 🟡 **Étape loin des galeries** (`0a66dc6`) : « vérifie ta position » visait l'équipe, la cause était l'étape « PA3 » à 68 m de tout tracé. `ItiGuidage.texteAlerteRaccord` selon le bout (départ / étape / arrivée) ; message de calcul unique, qui la signale dès la préparation.
+- 🟡 **Plan différent** (`b7f2e75`) : `local_…` ≠ `server_…` pour le même plan → alerte « plan différent » qui affichait deux fois le même nom. `_autrePlan` : ids différents ET (nom ou dimensions différents).
+- 🟡 **Étape loin des galeries** (`0a66dc6`) : « vérifie ta position » visait l'équipe, la cause était une étape posée à 68 m de tout tracé. `ItiGuidage.texteAlerteRaccord` selon le bout (départ / étape / arrivée) ; message de calcul unique, qui la signale dès la préparation.
 - 🟠 **Cartes d'équipe** (`8255e93`) : entrée masquée par la sortie posée à 1 m (`_memeAcces` : même point ou < 10 m au même niveau → un repère « ENTRÉE / SORTIE » / « E/S ») ; briefing plafonné à 1000 px → jusqu'à la résolution du canvas plan (Golf 1868 px), carte 125 mm, repères à l'échelle.
 - 🟠 **Accès surface** (`6b762b6`) : la page surface montrait le plan entier (1229 × 638, tous les POI). `_accesSurface` + `_canvasAcces` : plan recadré sur les accès dédoublonnés, repères numérotés, tableau GPS + lien ; capture Vue OSM retirée du rapport, optionnelle dans le briefing (POI décochés).
 - ✅ **Tests** : harnais navigateur par cas sur le scénario réel (relance, messages, import, calcul Golf/Hotel, PDF régénérés et relus) ; 16 harnais Node ; check-guidage, check-i18n.

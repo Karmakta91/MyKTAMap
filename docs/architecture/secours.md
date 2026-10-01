@@ -1628,14 +1628,14 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Couverture** (état actuel) : `_calculerCouverture(s)` (POI dans une zone hors parcours, POI en double) + `_couvertureParNiveau(s)` → `{ niveaux: { L: { total, zone, parcours, double } }, horsParcours: [{ level, a, b }], alertes, sansIti }` (mètres). « Sur un parcours » = milieu du tronçon à < 3 m d'un `itineraireSuggere` au même niveau (grille de 20 m). Zones : `_niveauZone(g)` (niveau des sommets, sinon `g.level` ; `null` si `g.zoneTousNiveaux` ou plan mononiveau) et `_dansZonePolygone(g, pt, niveau)` — aussi utilisés par `_dureeEquipeMin`. `_niveauxNonParcourus(g)` : galeries sous le polygone à un niveau que l'itinéraire ne visite pas (≥ 50 m). Surlignage : `_basculerSurlignageCouverture` (une `L.polyline` multiple, niveau affiché). Calculé à l'ouverture du bloc, sans effet sur le scénario.
 - **Hors-ligne** : `_verifierHorsLigne()` après la confirmation de lancement ; ne concerne que `PlanRegistry.findById(id).type === "server"`.
 
-## 🚒 Test terrain (v1.98.22, 30/09/2026) — scénario réel, Pandemonium
+## 🚒 Test terrain (v1.98.22, 30/09/2026) — scénario réel
 
 - **Relance** : `lancerExecution` remet `phases[0].startedAt` = lancement, les autres à `null`, et `endedAt = null` partout (le débriefing écrit reste). Le départ par défaut d'une équipe est le début de phase : sans ça, faux retards.
 - **Messages** : `_placerAEntree` et `_verifierHorsLigne` RENDENT leur texte ; le lancement émet UN toast (warn dès qu'il dit plus que « lancé » — les info sont tus en « Essentielles »). Les toasts laissent passer les touchers (`pointer-events: none`, sauf la croix).
 - **Même plan** : `_autrePlan(planFichier)` — ids différents ET (nom ou dimensions différents). Un plan importé (`local_…`) et le même servi (`server_…`) sont le même plan.
 - **Même accès** : `_memeAcces(a, b)` — `_samePoint` ou même niveau à < 10 m. Sert aux cartes PDF (repère « ENTRÉE / SORTIE » / « E/S ») et à `_accesSurface` (dédoublonnage des accès).
 - **Accès surface** : `_dessinerAccesSurface` (carte + tableau) en tête de `_drawBriefingSurfacePage` ; `_canvasAcces` recadre le canvas plan (`MyKTAMapExporterGenererCanvas`, sans annotations) sur les accès + marge (12 %, ≥ 150 m). La capture Vue OSM n'est plus faite pour `overlayContext === "rapport"`.
-- **Limite connue** : le canvas plan est plafonné à 16 Mpx (Safari iOS) — sur Pandemonium, 20 % de la résolution. Rendre chaque zone depuis les tuiles : backlog.
+- **Limite connue** : le canvas plan est plafonné à 16 Mpx (Safari iOS) — sur un grand plan réel, 20 % de la résolution. Rendre chaque zone depuis les tuiles : backlog.
 
 ## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
 

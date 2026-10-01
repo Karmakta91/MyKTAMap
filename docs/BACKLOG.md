@@ -59,7 +59,7 @@ case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`conf
 natives).
 
 - **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
-  recadré — sur Pandemonium, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
+  recadré — sur un grand plan réel, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
   zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
 - **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
   lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**

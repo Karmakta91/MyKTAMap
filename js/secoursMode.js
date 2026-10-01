@@ -2914,7 +2914,7 @@
   // de tracés peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
   // Test terrain (30/09) : le même plan n'a pas le même identifiant selon qu'il est
   // importé (« local_… ») ou servi (« server_… »). Comparer les seuls ids affichait
-  // « plan différent — source : Pandemonium, courant : Pandemonium ». Autre plan =
+  // « plan différent — source : X, courant : X » (même nom). Autre plan =
   // ids différents ET (nom ou dimensions différents).
   function _autrePlan(planFichier) {
     const f = planFichier || {};
@@ -7615,7 +7615,7 @@
 
     // Canvas de sortie : ratio préservé. Au moins 1000 px de côté ; au-delà, jusqu'à
     // la résolution RÉELLEMENT disponible dans le canvas du plan (plafond 2400) —
-    // avant, une grande zone (Golf, Pandemonium) était réduite sous sa source.
+    // avant, une grande zone (équipe Golf du test terrain) était réduite sous sa source.
     const maxOut = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
     let outW, outH;
     if (sw >= sh) {
@@ -10925,7 +10925,7 @@
         }
         fermer();   // la zone et le tracé restent (intervention en cours)
         // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
-        // du plan (un seul sur Pandemonium) — jusqu'à 6,5 fois la distance d'un retour
+        // du plan (un seul sur le plan du test) — jusqu'à 6,5 fois la distance d'un retour
         // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
         // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
         window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level, { sortiesSupp: _sortiesScenario(s), origine: "victime" });

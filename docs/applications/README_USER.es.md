@@ -1791,7 +1791,7 @@ Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescat
 
 #### 📤 Página «Briefing de superficie» en el informe posmisión
 
-El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «PA3» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
+El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «Pozo 2» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
 
 #### 🏷️ Filtro de etiquetas de la Vista OSM
 
