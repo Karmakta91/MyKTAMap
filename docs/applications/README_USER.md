@@ -1388,6 +1388,8 @@ Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre 
 >
 > ⚠️ **Ce que l’app t’annonce avant d’agir** : le poids que la copie prendra dans ta session (un gros relevé dépasse le mégaoctet, la limite du navigateur tourne autour de 5 Mo tous plans confondus) et la place déjà occupée. À l’export, elle te dit aussi combien d’objets **que tu as dessinés toi-même** ne partent pas — ils n’appartiennent pas à ce calque. Et « Effacer la session » **restaure** les calques ouverts à la modification : la copie et le masquage tombent ensemble.
 
+> 🧳 **Plusieurs calques à la fois, et changement d’appareil** : chaque objet copié garde le nom de son calque d’origine. « 💾 Exporter » sur un calque ne sort donc **que ce calque**, même si d’autres sont ouverts en même temps. L’export de session complet emporte tout ; quand tu le **réimportes** (sur le même plan, même sur un autre téléphone), l’app remet en modification les calques dont elle retrouve la copie — elle te le dit — et réaffiche ceux qui n’en ont plus. Une session venue d’un **autre plan** n’a pas ces calques : ses objets deviennent les tiens.
+
 **Comment ça marche :**
 
 - **Live update** : chaque toggle (case cochée/décochée) applique le filtre **immédiatement** sur la carte.

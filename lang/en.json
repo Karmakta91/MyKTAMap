@@ -609,6 +609,7 @@
   "filter.calque.exporte": "✅ {nom} downloaded — {n} object(s).\n\nTo put it back into the plan: 🏗️ Generator → “Edit a plan”, load the ZIP, then on the row of layer “{id}” click “Choose” and give it this file. It REPLACES the old content: no duplicate is possible.",
   "filter.calque.exporteAvecReste": "✅ {nom} downloaded — {n} object(s).\n\n⚠️ {reste} object(s) you created yourself during the session are NOT in it: they do not belong to this layer. Use 💾 Save → Conversion if you also want them in the plan.\n\nTo put it back: 🏗️ Generator → “Edit a plan”, load the ZIP, then on the row of layer “{id}” click “Choose” and give it this file.",
   "calque.verrou.perdu": "⚠️ {n} layer(s) shown again: their session copy is missing. Nothing is lost on the plan side.",
+  "calque.import.remis": "🔄 {n} layer(s) back in edit mode: {noms}.",
   "filter.empty.dataLayers": "No data layer.",
   "filter.empty.imageLayers": "No image layer.",
   "filter.empty.items": "No items in this session.",

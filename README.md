@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.98.25` (30/09/2026)
+## 📦 Version courante — `v1.98.26` (01/10/2026)
+
+> 🔄 **v1.98.26 — Calques en modification à l’import de session** : réimporter une session (même sur un autre appareil) remet en modification les calques dont elle porte la copie ; plus de doublon ni de calque masqué et vide. Plus : import unifié (un sélecteur), « ➕ Nouveau type… » dans les menus de la légende.
 
 > 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
 
@@ -497,6 +499,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.98.26 (01/10/2026) — Calques en modification : l’import de session les reconstruit
+
+- 🔍 **Origine** : question KARMA — « 4 calques en modification, export de session complet : qu’est-ce qui sort ? ». Le fichier emporte les objets marqués `_srcCalque`, mais PAS la liste des calques rapatriés (`calquesSession`, propre à `SessionPersist`). Décision KARMA : 1a (déduire des marques), 2a (message), 3a (ancien `importerSessionJSON`, non branché, laissé).
+- 🔄 **`CalqueSession.resynchroniser()`** : reconstruit `_rapatries` depuis les marques de la session importée (seuls les ids présents dans `PLAN_CONFIG.dataLayers`), masque les calques qui ont une copie, réaffiche ceux qui n’en ont plus, retire les marques de calques inconnus (session d’un autre plan → objets « créés à la main », comptés à l’export). Appelée par l’import de session (`interfaceImportExport.js`) après les setters ; toast `calque.import.remis`.
+- 🩸 **Corrige aussi** : importer une session SANS la copie d’un calque verrouillé le laissait masqué et vide (`appliquerVerrous` ne tourne qu’au rechargement). Les sessions déjà exportées marchent sans être refaites (les marques y sont).
+- 📦 **Embarqué dans cette version (commits KARMA)** : import à sélecteur unique, l’extension choisit le parcours (`e377783`) ; « ➕ Nouveau type… » dans les menus Tracés / Zones / Structures (`e4f8e08`).
+- ✅ **Tests** : harnais Node 6/6 (liste déduite, masquage, libération sans copie, marque inconnue, session vide, sans plan) ; `node -c` ; check-i18n. ⚠️ Pas encore rejoué dans l’app : 2 calques en modification → export complet → Effacer la session → import.
 
 #### v1.98.25 (30/09/2026) — Mode Secours, vague 8b : couverture honnête
 

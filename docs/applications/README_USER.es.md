@@ -1384,6 +1384,8 @@ El botón **≡ de tres barras horizontales** de arriba a la derecha del mapa ab
 >
 > ⚠️ **Lo que la app te anuncia antes de actuar**: el peso que ocupará la copia en tu sesión (un levantamiento grande supera el megabyte, y el límite del navegador ronda los 5 MB para todos los planos) y el espacio ya ocupado. Al exportar, también te dice cuántos objetos **que has dibujado tú mismo** no se incluyen — no pertenecen a esa capa. Y «Borrar la sesión» **restaura** las capas abiertas para modificación: la copia y la ocultación desaparecen juntas.
 
+> 🧳 **Varias capas a la vez, y cambio de dispositivo**: cada objeto copiado conserva el nombre de su capa de origen. «💾 Exportar» en una capa solo saca **esa capa**, aunque haya otras abiertas al mismo tiempo. La exportación completa de la sesión se lo lleva todo; cuando la **vuelves a importar** (en el mismo plano, incluso en otro teléfono), la app vuelve a poner en modificación las capas cuya copia encuentra — te lo dice — y vuelve a mostrar las que ya no la tienen. Una sesión que viene de **otro plano** no tiene esas capas: sus objetos pasan a ser tuyos.
+
 **Cómo funciona:**
 
 - **Actualización en vivo**: cada interruptor (casilla marcada o desmarcada) aplica el filtro **inmediatamente** sobre el mapa.

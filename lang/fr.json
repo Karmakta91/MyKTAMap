@@ -609,6 +609,7 @@
   "filter.calque.exporte": "✅ {nom} téléchargé — {n} objet(s).\n\nPour l’intégrer au plan : 🏗️ Générateur → « Modifier un plan », charge le ZIP, puis sur la ligne du calque « {id} » clique « Choisir » et donne ce fichier. Il REMPLACE l’ancien contenu : aucun doublon possible.",
   "filter.calque.exporteAvecReste": "✅ {nom} téléchargé — {n} objet(s).\n\n⚠️ {reste} objet(s) que tu as créés toi-même pendant la session ne sont PAS dedans : ils n’appartiennent pas à ce calque. Passe par 💾 Enregistrer → Conversion si tu veux aussi les verser au plan.\n\nPour l’intégrer : 🏗️ Générateur → « Modifier un plan », charge le ZIP, puis sur la ligne du calque « {id} » clique « Choisir » et donne ce fichier.",
   "calque.verrou.perdu": "⚠️ {n} calque(s) réaffiché(s) : leur copie de session est introuvable. Rien n’est perdu côté plan.",
+  "calque.import.remis": "🔄 {n} calque(s) remis en modification : {noms}.",
   "filter.empty.dataLayers": "Aucun calque de données.",
   "filter.empty.imageLayers": "Aucun calque image.",
   "filter.empty.items": "Aucun élément dans cette session.",

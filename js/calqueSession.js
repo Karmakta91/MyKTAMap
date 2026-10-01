@@ -63,6 +63,7 @@
 // API : window.CalqueSession = {
 //   estRapatrie, listeRapatries, peser, occupationLocalStorage,
 //   rapatrier, restituer, exporterCalque, compterCopie, appliquerVerrous,
+//   resynchroniser (apres un import de session),
 //   getSessionState, loadSessionState, CLE_SOURCE
 // };
 // 100 % local, aucune surface reseau nouvelle (le `fetch` du calque est celui
@@ -350,6 +351,52 @@ window.CalqueSession = (function () {
     return { verrouilles: _rapatries.slice(), liberes: perdus };
   }
 
+  // ── import d'une session : la liste se DEDUIT des marques ─────────────
+  // 🩸 Un fichier session emporte les objets marques, PAS `_rapatries` (qui ne
+  // vit que dans la sauvegarde locale). Sans ce recalage, deux pannes :
+  //   - autre appareil : le calque d'origine se reaffiche PAR-DESSUS sa copie
+  //     (doublon a l'ecran) et « Exporter » refuse (`pasRapatrie`) ;
+  //   - import d'une session SANS la copie d'un calque verrouille : il reste
+  //     masque et vide — le piege 2 de l'en-tete, par une autre porte.
+  // ⚖️ On reconstruit depuis les marques plutot que d'exporter la liste : une
+  // seule source de verite (la liste ne peut pas contredire les copies), et
+  // les sessions deja exportees marchent sans etre refaites.
+  // Une marque d'un calque ABSENT du plan ouvert (session d'un autre plan) est
+  // retiree : l'objet devient « cree a la main », donc compte dans l'alerte
+  // d'export au lieu de rester orphelin, invisible de tous les exports.
+  function resynchroniser() {
+    const pc = window.PLAN_CONFIG;
+    if (!pc) return null;
+    const connus = {};
+    (Array.isArray(pc.dataLayers) ? pc.dataLayers : []).forEach(function (d) {
+      if (d && d.id) connus[d.id] = true;
+    });
+
+    const presents = [];
+    let orphelins = 0;
+    FAMILLES.forEach(function (fam) {
+      _lire(fam).forEach(function (o) {
+        if (!o || o[CLE_SOURCE] === undefined) return;
+        const id = o[CLE_SOURCE];
+        if (connus[id]) {
+          if (presents.indexOf(id) < 0) presents.push(id);
+        } else {
+          delete o[CLE_SOURCE];   // mutation en place : l'objet EST celui de la session
+          orphelins++;
+        }
+      });
+    });
+
+    const liberes = _rapatries.filter(function (id) { return presents.indexOf(id) < 0; });
+    liberes.forEach(_afficher);
+    _rapatries = presents;
+    presents.forEach(_masquer);
+    _persister();
+    _log("resynchronisation apres import — en modification : [" + presents.join(", ") +
+         "], liberes : [" + liberes.join(", ") + "], marques orphelines retirees : " + orphelins);
+    return { rapatries: presents.slice(), liberes: liberes, orphelins: orphelins };
+  }
+
   // ── persistance (hooks SessionPersist, patron de LegendCustomization) ──
   function getSessionState() {
     return _rapatries.length ? { rapatries: _rapatries.slice() } : null;
@@ -381,6 +428,7 @@ window.CalqueSession = (function () {
     rapatrier:              rapatrier,
     restituer:              restituer,
     exporterCalque:         exporterCalque,
+    resynchroniser:         resynchroniser,
     appliquerVerrous:       appliquerVerrous,
     getSessionState:        getSessionState,
     loadSessionState:       loadSessionState

@@ -177,6 +177,8 @@ Profondeur **sous la surface**, en mètres, par niveau. **Trois états, et la di
 
 Les ids des **calques de données rapatriés** dans la session (cf. `session-data.md`). Ne porte QUE la liste : les objets, eux, vivent déjà dans `roads` / `zones` / `structures` / `editorPoints`, marqués `_srcCalque`. **`null` tant que rien n'est rapatrié** → zéro octet dans `localStorage` pour qui ne s'en sert pas.
 
+⚠️ **Absent du fichier session exporté** (sauvegarde locale uniquement). À l'import, la liste est **reconstruite depuis les marques `_srcCalque`** des objets (`CalqueSession.resynchroniser`) — elle ne peut donc pas contredire les copies.
+
 ### `_srcCalque` (v1.85.0) — marqueur d'objet, session UNIQUEMENT
 
 Porté par chaque objet copié depuis un calque. C'est lui qui rend le retour possible (on sait quoi retirer) et l'export capable de ne réémettre que le contenu du calque.

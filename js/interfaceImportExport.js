@@ -705,6 +705,16 @@ function ouvrirImportSession(fichierInitial) {
         if (window.resetStructures)    window.resetStructures();
         if (window.setStructures)      window.setStructures(dataParsee.structures || []);
 
+        // 🔄 Calques en modification : le fichier emporte les objets marqués,
+        // pas la liste des calques verrouillés — on la déduit des marques
+        // (cf. calqueSession.js > resynchroniser). Sans ça : doublon à l'écran
+        // sur un autre appareil, ou calque masqué et vide si la copie manque.
+        let _calquesRemis = null;
+        if (window.CalqueSession && typeof window.CalqueSession.resynchroniser === "function") {
+          try { _calquesRemis = window.CalqueSession.resynchroniser(); }
+          catch(e) { console.warn("[Import session] resynchronisation des calques :", e); }
+        }
+
         // 🆕 v1.21.2 : restore timeline + startTs du tracker si présent dans
         // le fichier session. Format : session.tracker = {position, path,
         // timeline, startTs}. On ne restaure QUE la timeline + startTs : le
@@ -759,6 +769,16 @@ function ouvrirImportSession(fichierInitial) {
         fermer();
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
+        }
+        if (_calquesRemis && _calquesRemis.rapatries.length
+            && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          const _noms = _calquesRemis.rapatries.map(function(id) {
+            const lc = (window.PLAN_CONFIG && window.PLAN_CONFIG.dataLayers || [])
+              .find(function(d) { return d && d.id === id; });
+            return (lc && lc.label) || id;
+          }).join(", ");
+          window.OOMGuard.showToast(window.I18n.t("calque.import.remis",
+            { n: _calquesRemis.rapatries.length, noms: _noms }), "info");
         }
       } catch(err) {
         console.error(err);

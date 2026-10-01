@@ -1,8 +1,7 @@
 {
-  "version": "v1.98.25",
-  "released": "2026-09-29",
+  "version": "v1.98.26",
+  "released": "2026-10-01",
   "notes": [
-    "🚑 Mode Secours : « Évacuer » propose aussi les accès de tes équipes, le poste de surface voit combien de personnes sont encore sous terre, chaque équipe peut avoir une heure de retour impérative, et valider une étape recale ta position.",
-    "📊 La couverture distingue enfin ce qui est dans une zone de ce qui sera vraiment parcouru, niveau par niveau, et peut surligner sur la carte les galeries que personne ne parcourt."
+    "🔄 Un calque ouvert à la modification le reste quand tu réimportes ta session, même sur un autre appareil : plus de doublons à l’écran, et « Exporter » le calque fonctionne toujours."
   ]
 }

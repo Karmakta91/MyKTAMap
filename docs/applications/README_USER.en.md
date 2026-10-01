@@ -1383,6 +1383,8 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 >
 > ⚠️ **What the app tells you before acting**: the weight the copy will take in your session (a large survey exceeds a megabyte, and the browser's limit is around 5 MB for all plans together) and the space already used. On export, it also tells you how many objects **you drew yourself** are left out — they don't belong to that layer. And "Clear session" **restores** the layers opened for editing: the copy and the hiding go together.
 
+> 🧳 **Several layers at once, and switching devices**: every copied object keeps the name of the layer it came from. "💾 Export" on a layer therefore outputs **that layer only**, even if others are open at the same time. The full session export carries everything; when you **re-import** it (on the same plan, even on another phone), the app puts back in edit mode the layers whose copy it finds — it tells you so — and shows again those that no longer have one. A session coming from **another plan** doesn’t have those layers: its objects become yours.
+
 **How it works:**
 
 - **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map.
