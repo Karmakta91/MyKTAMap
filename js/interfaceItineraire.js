@@ -782,6 +782,16 @@ function _viderItineraire() {
   }
 }
 
+// Supprime l'itinéraire tracé (road + étapes + libellé de distance). Partagé par
+// « ❌ Effacer l'itinéraire » (modale) et « 🗑️ Supprimer l'itinéraire » de la
+// question de recalcul (01/10/2026).
+function _effacerItineraireActif() {
+  const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+  if (window.setRoads) window.setRoads(roadsNow);
+  _viderItineraire();
+  _majLabelDistanceItineraire();
+}
+
 // Mini panneau flottant en bas d'écran pendant le mode clic, pour ne pas
 // bloquer la carte. Bouton "✓ Terminer" → re-affiche la modale principale.
 let _itineraryFloater = null;
@@ -1038,10 +1048,17 @@ window._onTrackerRecale = function(x, y, source, opts) {
         ? window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
             titre: window.I18n.t("iti.replan.confirmTitre"),
             okLabel: window.I18n.t("iti.replan.confirmOk"),
-            cancelLabel: window.I18n.t("iti.replan.confirmNon")
+            cancelLabel: window.I18n.t("iti.replan.confirmNon"),
+            // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
+            autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
           })
         : Promise.resolve(confirm(window.I18n.t("iti.replan.confirm")));
       demander.then(function(ok) {
+        if (ok === "supprimer") {
+          _effacerItineraireActif();
+          _toastIti(window.I18n.t("iti.replan.supprime"), "info");
+          return;
+        }
         if (!ok) { _toastIti(window.I18n.t("iti.replan.skipped"), "info"); return; }
         _replanifierDepuis(x, y);
       });
@@ -2012,11 +2029,8 @@ window.ouvrirItinerairModal = function() {
     });
     document.getElementById("kta-iti-erase").addEventListener("click", function() {
       if (!confirm(window.I18n.t("iti.erase.confirm"))) return;
-      const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
-      if (window.setRoads) window.setRoads(roadsNow);
-      _viderItineraire();
       modal.remove();
-      _majLabelDistanceItineraire();
+      _effacerItineraireActif();
     });
   }
 
