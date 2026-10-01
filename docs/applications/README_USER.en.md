@@ -519,7 +519,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 1. **🌍 Application** — the **language selector** for the whole app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). This is now the **only place** to change it while using the app: it left ⚙️ Settings in map mode, where it looked like it only concerned the open map — and where it offered to restart the app at the worst possible moment, deep underground. You can still pick it on the unlock screen, before going in.
 
-2. **🛰️ Sensor-based options** — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
+2. **🧩 Optional features** — **🎬 Tracker replay**, **🔥 Heatmap**, **🔋 Battery level** and **📳 Haptic vibration**, all **off by default** (see the chapter of the same name). Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
 
 > 🗺️ **OSM view is on by default**. If you have at least one GPS-calibrated map, the home screen shows it on top of an OpenStreetMap background — and therefore **requests that background from `tile.openstreetmap.org` as soon as it loads**, with no click. **No data from your maps leaves the device**: only the coordinates of the tiles you are looking at are requested, everything else is drawn on top locally. A banner tells you the first time. To turn it off: the checkbox above. **If you had already unchecked it, it stays unchecked** — a refusal is never overridden. And nothing is sent in **strict offline mode**, in **incognito**, or if no map is calibrated.
 
@@ -1037,7 +1037,7 @@ The interface is organized into **13 groups** spread over the **two side bars** 
 | Group | Icon | What it's for |
 |---|---|---|
 | **Favorites** | ⭐ | Your favorited points, one click away |
-| **Help / Documentation / Legend** | 📚 | Help, documentation, AI Help, icon legend |
+| **Help / Documentation / Legend** | 📚 | Help, documentation, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
 | **Search** | 🔍 | Quickly find a point on the plan *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
@@ -1198,8 +1198,8 @@ The **🧭 Tracker** button opens a **full-screen modal of large tiles**, arrang
 | **🗺️** | Calculate a route |
 | **🗺️** | **Oriented map** — the map turns with you while tracking |
 | **🪧** | **Itinerary guidance** — Auto / Never ("In 40 m, turn left" banner) |
-| **🎬** | Tracker session replay |
-| **🔥** | Heatmap — see dedicated section |
+| **🎬** | Tracker session replay — *optional, see 🧩 Optional features* |
+| **🔥** | Heatmap — *optional, see 🧩 Optional features* |
 | **⛑️** | I'm lost — **SOLID RED button** (danger signal) |
 | **🚨** | XL Emergency Mode — **SOLID RED button** (danger signal) |
 | **🚨** | Rescue Mode — search plans (teams + zones), **RED background** |
@@ -1275,95 +1275,6 @@ The calculated position inevitably drifts. As soon as you recognize a landmark o
 4. Recalibration mode closes automatically after the click and the directional icon (blue cone) takes over — no need to click 📍 again to deactivate the mode
 
 > Only one mode can be active at a time: measure, add point, route drawing, or recalibration.
-
-### 🎬 Tracker session replay
-
-The **🎬** button in the **🧭 Tracker** group opens the **Replay** modal. It lets you **replay your tracking session** from the beginning, with an interactive timeline and CSV export.
-
-**How it works**:
-
-- While you're tracking, the app internally records a **timeline**: for each applied PDR step, each manual recalibration, and the start moment, it stores `(timestamp_epoch_ms, x_map, y_map, type)`.
-- On clicking 🎬, a full-screen modal opens with:
-  - **Timeline slider** (left → right = start → end)
-  - Buttons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
-  - **Speed** selector: 0.5× · 1× · 2× · 5× · 10×
-  - **💾 Export CSV** button
-  - **⛶** button to toggle to compact mode (bottom sheet) that frees up the map
-- On pressing **▶️ Play**, the modal **automatically switches to compact mode** — you see the map large while the yellow marker replays your steps. The trail (line) extends as it goes.
-
-**Keyboard shortcuts**:
-
-| Key | Action |
-|---|---|
-| Space | Play / Pause |
-| ← | Go back 1s |
-| → | Go forward 1s |
-| Escape | Close the modal |
-
-**💾 Export CSV button** produces a `.csv` file with 5 columns (or 6 in M-LVL):
-
-timestamp_ms_epoch,delta_ms_since_start,x_map,y_map,type[,level]
-- `type` = `start` (tracking start), `pdr` (PDR step applied), `recalage` (manual recalibration)
-- Openable in Excel / LibreOffice / Numbers / Python pandas / R / etc.
-
-**Case of recalibrations**: a recalibration = teleportation. Visually, the trail jumps (no line between point N and N+1 if type = recalage) so as not to display a straight line that has no geographical reality.
-
-**Reset**: the timeline is reset when the map is changed or on reload (RAM-only).
-
-### 🔥 Heatmap — passage density
-
-The **🔥 Heatmap** button in the **🧭 Tracker** menu opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
-
-> 📌 **Relevance**: the heatmap relies on interpolation along segments + histogram normalization + filters on the tracker timeline, for a faithful rendering of actual frequentation.
-
-#### 🗂️ 6 checkable sources (combinable)
-
-You choose what contributes to the displayed heat:
-
-| Source | Content |
-|---|---|
-| 🧭 **Tracker timeline** | All points of your tracking session (filtered: skip recalibrations = teleport, skip starts, skip gaps > 5 min) |
-| 📍 **Session points** | Your points added via the editor |
-| 🛣️ **Session paths** | Your routes (Main / Secondary / Path) drawn in session |
-| ⬛ **Session zones** | Your zones (water / backfill / collapse / inaccessible) |
-| 🏛️ **Session structures** | Your pillars / walls / quarry faces |
-| 📊 **Data layers** | All elements embedded in the map's data layers (points + roads + zones + structures + quarry faces) |
-
-#### 🎚️ Live settings
-
-Two sliders at the bottom of the modal, real-time update:
-
-| Slider | Range | Effect |
-|---|---|---|
-| **Radius** | 10 - 120 px | Spread of the "blob" around each point. Small = locally precise, large = macro view |
-| **Intensity** | 0.2× - 3.0× | Global multiplier. If everything is too pale → increase. If everything is saturated red → decrease |
-
-#### 🏗️ M-LVL level filter
-
-If your map is **multi-level** (underground quarry with several floors — ground floor, basement, mezzanine, etc.), a new **"🏗️ Levels to include"** section appears in the Heatmap modal.
-
-- **Chips per level**: one clickable pill per level available in the map (`Lvl -2`, `Lvl -1`, `Lvl 0`, `Lvl 1`...)
-- **Pre-selection**: levels **currently visible** on the map are pre-checked automatically
-- **⇅ All button**: (un)checks everything in one click
-- **Effect**: the heatmap restricts collection to items belonging to the selected levels. Handy for generating a heatmap dedicated to the ground floor only (for example), or for comparing density between 2 floors without cross-pollution.
-
-> 💡 **Use case**: you want to compare the frequentation of the ground floor vs the basement → 2 successive heatmaps with dedicated filter → screenshot of each → you immediately see the asymmetry.
-
-> 📌 If your map is **not** multi-level, this section does not appear at all.
-
-#### 🎯 Algorithms (why it's relevant now)
-
-- **Interpolation along segments**: for paths / zones / polyline structures / tracker timeline, the app distributes heat points **along the path** instead of a single point per vertex. Result: you see real **continuous trails**, not spaced "pearls".
-- **Histogram normalization**: the densest pixel of the image = pure red, the least dense = pure blue, smoothed gradient in between. **Auto-adaptive**: no need to manually adjust thresholds, it works just as well on a 20-point map as on a 5000-point map.
-- **Tracker timeline filter**: skip teleportations (recalibrations), starts, and gaps > 5 min (pause without moving should not generate phantom heat).
-
-#### 💡 Use cases
-
-- **Identify the main passages** of an underground quarry: what comes out red = where you actually pass, vs what comes out blue = explored once
-- **Completeness audit**: blue zones = under-mapped → next field objective
-- **Visual presentation** of a session: heatmap screenshot + comment to share a macro view of the explored map
-
-> ⚠️ The heatmap is **purely visual** (canvas overlay). It does not alter the map, the annotations, or the exports. Close the modal to hide it.
 
 ### ≡ Unified Filters modal
 
@@ -1807,6 +1718,8 @@ If really no choice (shared unique passage), warn toast `⚠️ Route crosses N 
 #### 🔥 Activity heatmap in Rescue Mode
 
 New orange "🔍 Analysis tools" block in the Context section with **🔥 Show activity heatmap** button. Visualizes the zones where the tracker has recorded passage → useful for identifying probable zones to search in priority.
+
+> 🧩 This block stays available **even when the 🔥 Heatmap option is off**: that option only removes the Tracker menu tile.
 
 If the missing person was using MyKTAMap and exported their session with tracker timeline, the heatmap directly shows where they spent time.
 
@@ -2258,7 +2171,125 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 ---
 
-## 🪫 Battery indicator
+## 🧩 Optional features
+
+Four secondary features are **off by default**, to keep the app light: you only turn on what you use. They are set in the home screen's **⚙️ Settings**, group **🧩 Optional features** — or in **⚙️ Settings** once a map is open: it is the same setting, and it applies to **every map**.
+
+| Option | Default | What it adds |
+|---|---|---|
+| **🎬 Tracker replay** | off | The 🎬 tile in the 🧭 Tracker menu: replay your tracking session, export the timeline as CSV |
+| **🔥 Heatmap** | off | The 🔥 tile in the 🧭 Tracker menu: a passage density map |
+| **🔋 Battery level** | off | The remaining charge at the top of the screen, and warnings below 20 %, 10 % and 5 % |
+| **📳 Haptic vibration** | off | Tactile feedback on some actions |
+
+> ⚡ **Replay and Heatmap take effect immediately**: the tile appears or disappears the next time you open the 🧭 Tracker menu. **The battery, however, takes effect on the next launch**: sensor listening is set up when the app starts, and there is no clean way to remove it mid-session — the app tells you rather than pretending.
+
+> 🔋 **Were you using the battery indicator?** It used to be on by default; the update that created this group **turned it off once** for everyone. Tick it again: your choice is kept from then on.
+
+> 🚨 **Rescue mode keeps its activity heatmap** (scenario context) even when the 🔥 Heatmap option is unticked: only the Tracker menu tile goes away.
+
+### ⛔ “Sensor refused”
+
+If the battery or vibration option appears **greyed out** with “Sensor refused by iOS” or “by this device”, it is neither a bug nor an oversight: **your system does not give that sensor to web pages**. Apple provides neither vibration nor battery level to a website, even installed as an app.
+
+> 💡 These options used to be simply **hidden** — you could not tell whether they did not exist or whether the phone refused them. They now show up, with the reason.
+
+### 🎬 Tracker session replay
+
+> 🧩 **Optional feature** — turn it on in ⚙️ Settings › 🧩 Optional features.
+
+The **🎬** button in the **🧭 Tracker** group opens the **Replay** modal. It lets you **replay your tracking session** from the beginning, with an interactive timeline and CSV export.
+
+**How it works**:
+
+- While you're tracking, the app internally records a **timeline**: for each applied PDR step, each manual recalibration, and the start moment, it stores `(timestamp_epoch_ms, x_map, y_map, type)`.
+- On clicking 🎬, a full-screen modal opens with:
+  - **Timeline slider** (left → right = start → end)
+  - Buttons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
+  - **Speed** selector: 0.5× · 1× · 2× · 5× · 10×
+  - **💾 Export CSV** button
+  - **⛶** button to toggle to compact mode (bottom sheet) that frees up the map
+- On pressing **▶️ Play**, the modal **automatically switches to compact mode** — you see the map large while the yellow marker replays your steps. The trail (line) extends as it goes.
+
+**Keyboard shortcuts**:
+
+| Key | Action |
+|---|---|
+| Space | Play / Pause |
+| ← | Go back 1s |
+| → | Go forward 1s |
+| Escape | Close the modal |
+
+**💾 Export CSV button** produces a `.csv` file with 5 columns (or 6 in M-LVL):
+
+timestamp_ms_epoch,delta_ms_since_start,x_map,y_map,type[,level]
+- `type` = `start` (tracking start), `pdr` (PDR step applied), `recalage` (manual recalibration)
+- Openable in Excel / LibreOffice / Numbers / Python pandas / R / etc.
+
+**Case of recalibrations**: a recalibration = teleportation. Visually, the trail jumps (no line between point N and N+1 if type = recalage) so as not to display a straight line that has no geographical reality.
+
+**Reset**: the timeline is reset when the map is changed or on reload (RAM-only).
+
+### 🔥 Heatmap — passage density
+
+> 🧩 **Optional feature** — turn it on in ⚙️ Settings › 🧩 Optional features.
+
+The **🔥 Heatmap** button in the **🧭 Tracker** menu opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
+
+> 📌 **Relevance**: the heatmap relies on interpolation along segments + histogram normalization + filters on the tracker timeline, for a faithful rendering of actual frequentation.
+
+#### 🗂️ 6 checkable sources (combinable)
+
+You choose what contributes to the displayed heat:
+
+| Source | Content |
+|---|---|
+| 🧭 **Tracker timeline** | All points of your tracking session (filtered: skip recalibrations = teleport, skip starts, skip gaps > 5 min) |
+| 📍 **Session points** | Your points added via the editor |
+| 🛣️ **Session paths** | Your routes (Main / Secondary / Path) drawn in session |
+| ⬛ **Session zones** | Your zones (water / backfill / collapse / inaccessible) |
+| 🏛️ **Session structures** | Your pillars / walls / quarry faces |
+| 📊 **Data layers** | All elements embedded in the map's data layers (points + roads + zones + structures + quarry faces) |
+
+#### 🎚️ Live settings
+
+Two sliders at the bottom of the modal, real-time update:
+
+| Slider | Range | Effect |
+|---|---|---|
+| **Radius** | 10 - 120 px | Spread of the "blob" around each point. Small = locally precise, large = macro view |
+| **Intensity** | 0.2× - 3.0× | Global multiplier. If everything is too pale → increase. If everything is saturated red → decrease |
+
+#### 🏗️ M-LVL level filter
+
+If your map is **multi-level** (underground quarry with several floors — ground floor, basement, mezzanine, etc.), a new **"🏗️ Levels to include"** section appears in the Heatmap modal.
+
+- **Chips per level**: one clickable pill per level available in the map (`Lvl -2`, `Lvl -1`, `Lvl 0`, `Lvl 1`...)
+- **Pre-selection**: levels **currently visible** on the map are pre-checked automatically
+- **⇅ All button**: (un)checks everything in one click
+- **Effect**: the heatmap restricts collection to items belonging to the selected levels. Handy for generating a heatmap dedicated to the ground floor only (for example), or for comparing density between 2 floors without cross-pollution.
+
+> 💡 **Use case**: you want to compare the frequentation of the ground floor vs the basement → 2 successive heatmaps with dedicated filter → screenshot of each → you immediately see the asymmetry.
+
+> 📌 If your map is **not** multi-level, this section does not appear at all.
+
+#### 🎯 Algorithms (why it's relevant now)
+
+- **Interpolation along segments**: for paths / zones / polyline structures / tracker timeline, the app distributes heat points **along the path** instead of a single point per vertex. Result: you see real **continuous trails**, not spaced "pearls".
+- **Histogram normalization**: the densest pixel of the image = pure red, the least dense = pure blue, smoothed gradient in between. **Auto-adaptive**: no need to manually adjust thresholds, it works just as well on a 20-point map as on a 5000-point map.
+- **Tracker timeline filter**: skip teleportations (recalibrations), starts, and gaps > 5 min (pause without moving should not generate phantom heat).
+
+#### 💡 Use cases
+
+- **Identify the main passages** of an underground quarry: what comes out red = where you actually pass, vs what comes out blue = explored once
+- **Completeness audit**: blue zones = under-mapped → next field objective
+- **Visual presentation** of a session: heatmap screenshot + comment to share a macro view of the explored map
+
+> ⚠️ The heatmap is **purely visual** (canvas overlay). It does not alter the map, the annotations, or the exports. Close the modal to hide it.
+
+### 🪫 Battery indicator
+
+> 🧩 **Optional feature** — turn it on in ⚙️ Settings › 🧩 Optional features.
 
 The app monitors in real time the phone's battery level (when the browser exposes this info) and displays a compact indicator in 3 places:
 
@@ -2268,7 +2299,7 @@ The app monitors in real time the phone's battery level (when the browser expose
 | **Footer** of the 📋 Active session modal | Line `🔋 Status · 🪫 23% · Discharging` |
 | **🔋 STATUS block** of emergency mode 🚨 | Long label `🪫 23% · discharging` |
 
-### Levels and colors
+#### Levels and colors
 
 | % | Color | Behavior |
 |---|---|---|
@@ -2280,7 +2311,7 @@ The app monitors in real time the phone's battery level (when the browser expose
 
 Each threshold sends its toast **only once** per discharge cycle (no spam if you oscillate around 10%, 12%, 9%, etc.). The threshold counter is reset as soon as you switch back to charging or rise above 50%.
 
-### Browser compatibility
+#### Browser compatibility
 
 The app uses the standard browser **Battery Status API**. This API is **no longer available everywhere**:
 
@@ -2293,6 +2324,14 @@ The app uses the standard browser **Battery Status API**. This API is **no longe
 | Recent Firefox | ❌ No (the API was disabled by default) |
 
 > 🪫 **If the API is not available** on your phone, the battery chip is **simply hidden** — no error message is displayed. This is normal on iOS. **Emergency mode 🚨 does not show it either** (v1.97.11): with no sensor there is nothing to show, and a “?” where a battery level belongs — on the very screen you open when it dies — reassures nobody. The rest of the status (tracker, compass) is untouched. Same thing if you untick ⚙️ **🔋 Battery level**.
+
+### 📳 Haptic vibration
+
+A short vibration confirms actions: route step reached, repositioning, step validation, Rescue mode alerts (team running late, missing members).
+
+> 🚨 **Life-safety alerts always vibrate**, even with the option off: emergency exit found or not found, critical alert broadcast. Everything else — Rescue mode included — follows your setting.
+
+> 📵 **iOS does not give this sensor to web pages**: on iPhone the option is shown greyed out (see “Sensor refused” above).
 
 ---
 
@@ -2657,23 +2696,6 @@ The typical case: on a survey imported from GIS, a **working face** is in fact a
 The dialog only offers targets **compatible with the object's shape**: a **line** (path, working face) can only become another line, a **closed surface** (zone, pillar, wall) another closed surface. You cannot turn a line into a polygon: there is nothing to close it with.
 
 The object keeps everything else — its geometry, its level, its note.
-
-### 🛰️ Options that use a sensor
-
-⚙️ **Settings** → **🛰️ Sensor-based options**. These settings rely on a phone sensor, and **each can be turned off entirely**: a disabled option shows nothing and listens to nothing.
-
-| Option | Default | What it does |
-|---|---|---|
-| **🔋 Battery level** | on | Shows the remaining charge at the top, warns below 20 %, 10 % and 5 %. Unticked: no icon **and** no sensor listening |
-| **📳 Haptic vibration** | **off** | Tactile feedback on some actions |
-
-> ℹ️ **Turning the battery off takes effect on the next launch.** The listening is set up at startup and there is no clean way to remove it mid-session — the app tells you rather than pretending.
-
-#### ⛔ “Sensor refused”
-
-If an option appears **greyed out** with “Sensor refused by iOS” or “by this device”, it is neither a bug nor an oversight: **your system does not give that sensor to web pages**. Apple provides neither vibration nor battery level to a website, even installed as an app.
-
-> 💡 These options used to be simply **hidden** — you could not tell whether they did not exist or whether the phone refused them. They now show up, with the reason.
 
 ### 🏁 Your distance when the pedometer saw nothing
 
@@ -3501,7 +3523,7 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 
 ### 🎓 Replaying the tutorial
 
-The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Documentation** and tap the **🎓** button in the title row, next to the language flags. Nothing to reinstall or reset.
+The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Documentation** and tap the **🎓** button in the title row, next to the language selector. Nothing to reinstall or reset.
 
 ### 🔎 Searching the documentation
 
@@ -3509,7 +3531,7 @@ This documentation is long. At the top of the 📖 modal, a **🔎 Search** fiel
 
 ## 🤖 AI Help
 
-> Accessible via the **📚 Help / Documentation / Legend → 🤖 AI Help** group.
+> Accessible from **📖 Documentation**: the **🤖** button in the title row, next to the language selector — so also from the home screen.
 
 Downloads a `.md` file that summarizes everything the app allows you to do (this doc + a FAQ + instructions for the AI). Give it to **any conversational AI** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — it will be able to answer all your questions about MyKTAMap with precise context.
 
@@ -3574,8 +3596,8 @@ Every group carries its **scope** in its title — **📍 this map** or **🌍 a
 - **🚀 ULTRA mode** applies 7 optimizations at once, or one by one (path decimation, animations, circles, popups, slow auto-save, viewport-only rendering, mobile zoom-out limit). Details in the Performance section above.
 - On a **multi-level** map: **🏗️ Show every level at launch** (applied at the next map load).
 
-### 🛰️ Sensor options *(🌍 all maps)*
-- **🔋 Battery level** and **📳 Haptic vibration**. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
+### 🧩 Optional features *(🌍 all maps)*
+- **🎬 Tracker replay**, **🔥 Heatmap**, **🔋 Battery level** and **📳 Haptic vibration**, off by default. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
 
 ### 🔒 Privacy & security *(🌍 all maps)*
 - **🕵️ Incognito mode**: opens a new window that writes nothing on the device.

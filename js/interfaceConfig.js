@@ -1333,10 +1333,13 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
-        <!-- ════════ 6. 🛰️ OPTIONS VIA CAPTEUR ════════ -->
+        <!-- ════════ 6. 🧩 FONCTIONNALITÉS OPTIONNELLES ════════ -->
         ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.capteurs", "global")}
-          <!-- 🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
+        ${_cfgGroupeDebut("config.group.optionnels", "global")}
+          <!-- 🧩 01/10/2026 (KARMA) — ex-« Options via capteur », élargi au
+               Replay et à la Heatmap : tout est OFF par défaut, pour
+               désencombrer l'app. Même état que l'accueil (app_user_prefs).
+               🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
                La vibration vivait dans « Affichage », ce qu'elle n'est pas :
                elle dépend d'un CAPTEUR, comme la batterie. Les deux sont
                regroupées ici, et surtout : un capteur indisponible n'est plus
@@ -1344,13 +1347,29 @@ function afficherConfig() {
                laissait croire que l'option n'existait pas — l'utilisateur ne
                pouvait pas savoir que c'est son système qui refuse. -->
           <div class="kta-aide-section" style="margin-top:16px;">
-            <div class="kta-aide-section-titre">${window.I18n.t("config.capteurs.titre")}</div>
+            <div class="kta-aide-section-titre">${window.I18n.t("config.optionnels.titre")}</div>
             <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;">
-              ${window.I18n.t("config.capteurs.intro")}
+              ${window.I18n.t("config.optionnels.intro")}
             </div>
 
-            <label class="kta-perf-ultra-row" id="cfg_batterie_row">
-              <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled !== false ? "checked" : ""}>
+            <label class="kta-perf-ultra-row" id="cfg_replay_row">
+              <input type="checkbox" id="cfg_replay" ${c.replayEnabled === true ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.replay.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-hint">${window.I18n.t("config.replay.hint")}</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row" id="cfg_heatmap_row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg_heatmap" ${c.heatmapEnabled === true ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.heatmap.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-hint">${window.I18n.t("config.heatmap.hint")}</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row" id="cfg_batterie_row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
                 <span class="kta-perf-ultra-hint" id="cfg_batterie_hint">
@@ -1710,7 +1729,7 @@ function afficherConfig() {
     if (typeof navigator.getBattery !== "function") {
       _capteurRefuse(batRow, batCb, document.getElementById("cfg_batterie_hint"));
     } else {
-      batCb.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+      batCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === true);
       batCb.addEventListener("change", function () {
         if (!window.APP_CONFIG) window.APP_CONFIG = {};
         window.APP_CONFIG.batterieEnabled = !!batCb.checked;
@@ -1727,6 +1746,13 @@ function afficherConfig() {
         }
       });
     }
+  }
+
+  // ── 🎬 Replay / 🔥 Heatmap ── (🧩 01/10/2026) Effet immédiat : les tuiles
+  // du menu Tracker sont filtrées à chaque ouverture, rien à recharger.
+  if (typeof window.ktaBrancherOptionnel === "function") {
+    window.ktaBrancherOptionnel(document.getElementById("cfg_replay"), "replayEnabled", "config.replay");
+    window.ktaBrancherOptionnel(document.getElementById("cfg_heatmap"), "heatmapEnabled", "config.heatmap");
   }
 
   // ── 📳 Vibration haptique ──

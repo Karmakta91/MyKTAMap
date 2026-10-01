@@ -518,7 +518,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 1. **🌍 Application** — le **sélecteur de langue** de toute l'app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). C'est désormais le **seul endroit** où on la change en cours d'usage : elle a quitté ⚙️ Réglages du mode carte, où elle laissait croire qu'elle ne concernait que le plan ouvert — et où elle proposait de redémarrer l'app au pire moment, en pleine cavité. Elle reste choisissable sur l'écran de déverrouillage, avant d'entrer.
 
-2. **🛰️ Options via capteur** — les options qui s'appuient sur un capteur du téléphone : **🔋 Niveau de batterie** et **📳 Vibration haptique**. Chacune se coupe, et une option coupée n'affiche rien **et n'écoute plus le capteur**. Quand le système refuse le capteur — la vibration sur iPhone, par exemple — l'option reste **affichée mais grisée, avec la raison**, plutôt que de disparaître sans explication.
+2. **🧩 Fonctionnalités optionnelles** — **🎬 Replay du tracker**, **🔥 Heatmap**, **🔋 Niveau de batterie** et **📳 Vibration haptique**, toutes **désactivées par défaut** (voir le chapitre du même nom). Une option coupée n'affiche rien **et n'écoute plus le capteur**. Quand le système refuse le capteur — la vibration sur iPhone, par exemple — l'option reste **affichée mais grisée, avec la raison**, plutôt que de disparaître sans explication.
 
 > 🗺️ **La Vue OSM est active par défaut**. Si tu as au moins un plan calibré GPS, l'accueil affiche ta carte au-dessus d'un fond OpenStreetMap — et **demande donc ce fond à `tile.openstreetmap.org` dès son chargement**, sans clic. **Aucune donnée de tes plans ne sort** : seules les coordonnées des tuiles que tu regardes sont demandées, le reste est dessiné par-dessus sur ton appareil. Un bandeau te le dit la première fois. Pour la couper : la case ci-dessus. **Si tu l'avais déjà décochée, elle le reste** — un refus n'est jamais réécrasé. Et rien ne part en **mode hors-ligne strict**, en **incognito**, ou si aucun plan n'est calibré.
 
@@ -1036,7 +1036,7 @@ L'interface est organisée en **13 groupes** répartis sur les **deux barres lat
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
 | **Favoris** | ⭐ | Tes points mis en favori, accessibles en un clic |
-| **Aide / Documentation / Légende** | 📚 | Aide, documentation, Aide IA, légende des icônes |
+| **Aide / Documentation / Légende** | 📚 | Aide, documentation, légende des icônes |
 | **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, performance… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
@@ -1200,8 +1200,8 @@ Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles**, 
 | **🗺️** | Calculer un itinéraire |
 | **🗺️** | **Plan orienté** — la carte tourne avec toi pendant le suivi |
 | **🪧** | **Guidage de l'itinéraire** — Auto / Jamais (bandeau « Dans 40 m, tourner à gauche ») |
-| **🎬** | Replay de session tracker |
-| **🔥** | Heatmap — voir section dédiée |
+| **🎬** | Replay de session tracker — *optionnel, voir 🧩 Fonctionnalités optionnelles* |
+| **🔥** | Heatmap — *optionnel, voir 🧩 Fonctionnalités optionnelles* |
 | **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
 | **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
 | **🚨** | Mode Secours — plans de recherche (équipes + zones), **fond ROUGE** |
@@ -1277,98 +1277,6 @@ La position calculée dérive inévitablement. Dès que vous reconnaissez un rep
 4. Le mode recalage se referme automatiquement après le clic et l'icône directionnelle (cône bleu) reprend la main — plus besoin de re-cliquer sur 📍 pour désactiver le mode
 
 > Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage.
-
-### 🎬 Replay de session tracker
-
-Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
-
-**Comment ça marche** :
-
-- Pendant que tu fais du tracking, l'app enregistre en interne une **timeline** : pour chaque pas PDR appliqué, chaque recalage manuel, et l'instant de démarrage, elle stocke `(timestamp_epoch_ms, x_plan, y_plan, type)`.
-- Au clic sur 🎬, une modale plein écran s'ouvre avec :
-  - **Slider timeline** (gauche → droite = début → fin)
-  - Boutons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
-  - Sélecteur de **vitesse** : 0.5× · 1× · 2× · 5× · 10×
-  - Bouton **💾 Export CSV**
-  - Bouton **⛶** pour basculer en mode compact (bottom sheet) qui libère la carte
-- À l'appui sur **▶️ Play**, la modale **bascule automatiquement en mode compact** — tu vois la carte en grand pendant que le marker jaune rejoue tes pas. Le trail (ligne) s'allonge au fur et à mesure.
-
-**Raccourcis clavier** :
-
-| Touche | Action |
-|---|---|
-| Espace | Play / Pause |
-| ← | Reculer de 1s |
-| → | Avancer de 1s |
-| Échap | Fermer la modale |
-
-**Bouton 💾 Export CSV** produit un fichier `.csv` à 5 colonnes (ou 6 en M-LVL) :
-
-```
-timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
-```
-
-- `type` = `start` (démarrage tracking), `pdr` (pas PDR appliqué), `recalage` (recalage manuel)
-- Ouvrable dans Excel / LibreOffice / Numbers / Python pandas / R / etc.
-
-**Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
-
-**Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
-
-### 🔥 Heatmap — densité de passage
-
-Le bouton **🔥 Heatmap** dans le menu **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
-
-> 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
-
-#### 🗂️ 6 sources cochables (combinables)
-
-Tu choisis ce qui contribue à la chaleur affichée :
-
-| Source | Contenu |
-|---|---|
-| 🧭 **Tracker timeline** | Tous les points de ta session de tracking (filtré : skip recalages = téléport, skip starts, skip gaps > 5 min) |
-| 📍 **Points session** | Tes points ajoutés via l'éditeur |
-| 🛣️ **Tracés session** | Tes routes (Principal / Secondaire / Chemin) tracées en session |
-| ⬛ **Zones session** | Tes zones (eau / remblais / effondrement / inaccessible) |
-| 🏛️ **Structures session** | Tes piliers / murs / fronts |
-| 📊 **Calques de données** | Tous les éléments embarqués dans les data layers du plan (points + roads + zones + structures + fronts) |
-
-#### 🎚️ Réglages live
-
-Deux sliders en bas de la modale, mise à jour temps réel :
-
-| Slider | Plage | Effet |
-|---|---|---|
-| **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
-| **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
-
-#### 🏗️ Filtre par niveau M-LVL
-
-Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
-
-- **Chips par niveau** : une pastille cliquable par niveau disponible dans le plan (`Niv -2`, `Niv -1`, `Niv 0`, `Niv 1`...)
-- **Pré-sélection** : les niveaux **actuellement visibles** sur la carte sont pré-cochés automatiquement
-- **Bouton ⇅ Tout** : (dé)coche tout d'un clic
-- **Effet** : la heatmap restreint la collecte aux items qui appartiennent aux niveaux sélectionnés. Pratique pour générer une heatmap dédiée au RDC uniquement (par exemple), ou pour comparer la densité entre 2 étages sans pollution croisée.
-
-> 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
-
-> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout.
-
-#### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
-
-- **Interpolation le long des segments** : pour les tracés / zones / structures polylines / timeline tracker, l'app distribue des points de chaleur **le long du chemin** au lieu d'un seul point par sommet. Résultat : tu vois de vraies **traînées continues**, pas des "perles" espacées.
-- **Normalisation par histogramme** : le pixel le plus dense de l'image = rouge pur, le moins dense = bleu pur, gradient lissé entre. **Auto-adaptatif** : pas besoin de régler manuellement les seuils, ça marche aussi bien sur un plan de 20 points que sur un plan de 5000.
-- **Filtre timeline tracker** : skip les téléportations (recalages), les starts, et les gaps > 5 min (pause sans bouger ne doit pas générer de chaleur fantôme).
-
-#### 💡 Cas d'usage
-
-- **Identifier les axes principaux** d'une carrière : ce qui ressort rouge = par où tu passes vraiment, vs ce qui ressort bleu = exploré une fois
-- **Audit de complétude** : zones bleues = sous-cartographiées → prochain objectif terrain
-- **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
-
-> ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
 
 ### ≡ Modale Filtres unifiée
 
@@ -1808,6 +1716,8 @@ Si vraiment pas le choix (passage unique partagé), toast warn `⚠️ Itinérai
 #### 🔥 Heatmap d'activité dans Mode Secours
 
 Nouveau bloc orange "🔍 Outils d'analyse" dans la section Contexte avec bouton **🔥 Afficher la heatmap d'activité**. Visualise les zones où le tracker a enregistré du passage → utile pour identifier les zones probables à fouiller en priorité.
+
+> 🧩 Ce bloc reste disponible **même si l'option 🔥 Heatmap est désactivée** : elle ne retire que la tuile du menu Tracker.
 
 Si le disparu utilisait MyKTAMap et a exporté sa session avec timeline tracker, la heatmap montre directement où il a passé du temps.
 
@@ -2259,7 +2169,128 @@ Chaque action déclenche un **toast discret** en bas : `↩ Annulé : Pose du po
 
 ---
 
-## 🪫 Indicateur de batterie
+## 🧩 Fonctionnalités optionnelles
+
+Quatre fonctions secondaires sont **désactivées par défaut**, pour garder l'application légère : on n'active que ce qui sert. Elles se règlent dans **⚙️ Configuration** de l'accueil, groupe **🧩 Fonctionnalités optionnelles** — ou dans **⚙️ Réglages** une fois un plan ouvert : c'est le même réglage, il vaut pour **tous les plans**.
+
+| Option | Par défaut | Ce que ça ajoute |
+|---|---|---|
+| **🎬 Replay du tracker** | désactivé | La tuile 🎬 dans le menu 🧭 Tracker : rejouer sa session de suivi, exporter la timeline en CSV |
+| **🔥 Heatmap** | désactivé | La tuile 🔥 dans le menu 🧭 Tracker : carte de densité de passage |
+| **🔋 Niveau de batterie** | désactivé | La charge restante en haut de l'écran, et les alertes sous 20 %, 10 % et 5 % |
+| **📳 Vibration haptique** | désactivé | Un retour tactile sur certaines actions |
+
+> ⚡ **Replay et Heatmap agissent tout de suite** : la tuile apparaît ou disparaît à la prochaine ouverture du menu 🧭 Tracker. **La batterie, elle, prend effet au prochain lancement** : l'écoute du capteur se met en place au démarrage de l'app, et il n'existe aucun moyen propre de la retirer en cours de route — l'app te le dit plutôt que de faire semblant.
+
+> 🔋 **Tu utilisais l'indicateur de batterie ?** Il était actif par défaut jusqu'ici ; la mise à jour qui a créé ce groupe l'a **désactivé une fois** chez tout le monde. Recoche-le : ton choix est ensuite conservé.
+
+> 🚨 **Le Mode Secours garde sa heatmap d'activité** (contexte d'un scénario) même quand l'option 🔥 Heatmap est décochée : seule la tuile du menu Tracker disparaît.
+
+### ⛔ « Capteur refusé »
+
+Si la batterie ou la vibration s'affiche **grisée** avec « Capteur refusé par iOS » ou « par cet appareil », ce n'est ni un bug ni un oubli : **ton système ne donne pas ce capteur aux pages web**. Apple ne fournit ni la vibration ni le niveau de batterie à un site, même installé en application.
+
+> 💡 Avant, ces options étaient simplement **cachées** — impossible de savoir si elles n'existaient pas ou si le téléphone les refusait. Elles s'affichent maintenant, avec la raison.
+
+### 🎬 Replay de session tracker
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
+
+Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
+
+**Comment ça marche** :
+
+- Pendant que tu fais du tracking, l'app enregistre en interne une **timeline** : pour chaque pas PDR appliqué, chaque recalage manuel, et l'instant de démarrage, elle stocke `(timestamp_epoch_ms, x_plan, y_plan, type)`.
+- Au clic sur 🎬, une modale plein écran s'ouvre avec :
+  - **Slider timeline** (gauche → droite = début → fin)
+  - Boutons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
+  - Sélecteur de **vitesse** : 0.5× · 1× · 2× · 5× · 10×
+  - Bouton **💾 Export CSV**
+  - Bouton **⛶** pour basculer en mode compact (bottom sheet) qui libère la carte
+- À l'appui sur **▶️ Play**, la modale **bascule automatiquement en mode compact** — tu vois la carte en grand pendant que le marker jaune rejoue tes pas. Le trail (ligne) s'allonge au fur et à mesure.
+
+**Raccourcis clavier** :
+
+| Touche | Action |
+|---|---|
+| Espace | Play / Pause |
+| ← | Reculer de 1s |
+| → | Avancer de 1s |
+| Échap | Fermer la modale |
+
+**Bouton 💾 Export CSV** produit un fichier `.csv` à 5 colonnes (ou 6 en M-LVL) :
+
+```
+timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
+```
+
+- `type` = `start` (démarrage tracking), `pdr` (pas PDR appliqué), `recalage` (recalage manuel)
+- Ouvrable dans Excel / LibreOffice / Numbers / Python pandas / R / etc.
+
+**Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
+
+**Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
+
+### 🔥 Heatmap — densité de passage
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
+
+Le bouton **🔥 Heatmap** dans le menu **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
+
+> 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
+
+#### 🗂️ 6 sources cochables (combinables)
+
+Tu choisis ce qui contribue à la chaleur affichée :
+
+| Source | Contenu |
+|---|---|
+| 🧭 **Tracker timeline** | Tous les points de ta session de tracking (filtré : skip recalages = téléport, skip starts, skip gaps > 5 min) |
+| 📍 **Points session** | Tes points ajoutés via l'éditeur |
+| 🛣️ **Tracés session** | Tes routes (Principal / Secondaire / Chemin) tracées en session |
+| ⬛ **Zones session** | Tes zones (eau / remblais / effondrement / inaccessible) |
+| 🏛️ **Structures session** | Tes piliers / murs / fronts |
+| 📊 **Calques de données** | Tous les éléments embarqués dans les data layers du plan (points + roads + zones + structures + fronts) |
+
+#### 🎚️ Réglages live
+
+Deux sliders en bas de la modale, mise à jour temps réel :
+
+| Slider | Plage | Effet |
+|---|---|---|
+| **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
+| **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
+
+#### 🏗️ Filtre par niveau M-LVL
+
+Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
+
+- **Chips par niveau** : une pastille cliquable par niveau disponible dans le plan (`Niv -2`, `Niv -1`, `Niv 0`, `Niv 1`...)
+- **Pré-sélection** : les niveaux **actuellement visibles** sur la carte sont pré-cochés automatiquement
+- **Bouton ⇅ Tout** : (dé)coche tout d'un clic
+- **Effet** : la heatmap restreint la collecte aux items qui appartiennent aux niveaux sélectionnés. Pratique pour générer une heatmap dédiée au RDC uniquement (par exemple), ou pour comparer la densité entre 2 étages sans pollution croisée.
+
+> 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
+
+> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout.
+
+#### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
+
+- **Interpolation le long des segments** : pour les tracés / zones / structures polylines / timeline tracker, l'app distribue des points de chaleur **le long du chemin** au lieu d'un seul point par sommet. Résultat : tu vois de vraies **traînées continues**, pas des "perles" espacées.
+- **Normalisation par histogramme** : le pixel le plus dense de l'image = rouge pur, le moins dense = bleu pur, gradient lissé entre. **Auto-adaptatif** : pas besoin de régler manuellement les seuils, ça marche aussi bien sur un plan de 20 points que sur un plan de 5000.
+- **Filtre timeline tracker** : skip les téléportations (recalages), les starts, et les gaps > 5 min (pause sans bouger ne doit pas générer de chaleur fantôme).
+
+#### 💡 Cas d'usage
+
+- **Identifier les axes principaux** d'une carrière : ce qui ressort rouge = par où tu passes vraiment, vs ce qui ressort bleu = exploré une fois
+- **Audit de complétude** : zones bleues = sous-cartographiées → prochain objectif terrain
+- **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
+
+> ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
+
+### 🪫 Indicateur de batterie
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
 
 L'app surveille en temps réel le niveau de batterie du téléphone (quand le navigateur expose cette info) et affiche un indicateur compact à 3 endroits :
 
@@ -2269,7 +2300,7 @@ L'app surveille en temps réel le niveau de batterie du téléphone (quand le na
 | **Footer** de la modale 📋 Session active | Ligne `🔋 État · 🪫 23% · Discharging` |
 | **Bloc 🔋 ÉTAT** du mode urgence 🚨 | Label long `🪫 23% · décharge` |
 
-### Niveaux et couleurs
+#### Niveaux et couleurs
 
 | % | Couleur | Comportement |
 |---|---|---|
@@ -2281,7 +2312,7 @@ L'app surveille en temps réel le niveau de batterie du téléphone (quand le na
 
 Chaque seuil n'envoie son toast **qu'une seule fois** par cycle de décharge (pas de spam si tu oscilles autour de 10 %, 12 %, 9 %, etc.). Le compteur de seuils est reset dès que tu repasses en charge ou que tu remontes au-dessus de 50 %.
 
-### Compatibilité navigateur
+#### Compatibilité navigateur
 
 L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est **plus disponible partout** :
 
@@ -2294,6 +2325,14 @@ L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est *
 | Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
 
 > 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. **Le mode urgence 🚨 ne l'affiche pas non plus** (v1.97.11) : sans capteur il n'y a rien à montrer, et un « ? » à la place d'un niveau de batterie sur l'écran qu'on ouvre quand elle lâche ne rassure personne. Le reste de l'état (tracker, boussole) est intact. Même chose si tu décoches ⚙️ **🔋 Niveau de batterie**.
+
+### 📳 Vibration haptique
+
+Une petite vibration confirme les actions : étape d'itinéraire atteinte, recalage, validation d'une étape, alertes du Mode Secours (équipe en retard, membres manquants).
+
+> 🚨 **Les alertes de survie vibrent toujours**, même option coupée : sortie d'urgence trouvée ou introuvable, alerte critique diffusée. Tout le reste — y compris le Mode Secours — suit ton réglage.
+
+> 📵 **iOS ne donne pas ce capteur aux pages web** : sur iPhone, l'option s'affiche grisée (voir « Capteur refusé » plus haut).
 
 ---
 
@@ -2658,23 +2697,6 @@ Le cas typique : sur un relevé importé du SIG, un **front de taille** est en f
 La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet : une **ligne** (tracé, front de taille) ne peut devenir qu'une autre ligne, une **surface fermée** (zone, pilier, mur) qu'une autre surface fermée. On ne peut pas transformer un trait en polygone : il n'y a rien pour le refermer.
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
-
-### 🛰️ Les options qui utilisent un capteur
-
-⚙️ **Réglages** → **🛰️ Options via capteur**. Ces réglages s'appuient sur un capteur du téléphone, et **chacun se coupe entièrement** : une option coupée n'affiche rien et n'écoute plus rien.
-
-| Option | Par défaut | Ce que ça fait |
-|---|---|---|
-| **🔋 Niveau de batterie** | activé | Affiche la charge restante en haut, prévient sous 20 %, 10 % et 5 %. Décoché : plus d'icône **et** plus d'écoute du capteur |
-| **📳 Vibration haptique** | **désactivé** | Un retour tactile sur certaines actions |
-
-> ℹ️ **Couper la batterie prend effet au prochain lancement.** L'écoute est mise en place au démarrage de l'app, et il n'existe aucun moyen propre de la retirer en cours de route — l'app te le dit plutôt que de faire semblant.
-
-#### ⛔ « Capteur refusé »
-
-Si une option s'affiche **grisée** avec « Capteur refusé par iOS » ou « par cet appareil », ce n'est ni un bug ni un oubli : **ton système ne donne pas ce capteur aux pages web**. Apple ne fournit ni la vibration ni le niveau de batterie à un site, même installé en application.
-
-> 💡 Avant, ces options étaient simplement **cachées** — impossible de savoir si elles n'existaient pas ou si le téléphone les refusait. Elles s'affichent maintenant, avec la raison.
 
 ### 🏁 Ta distance quand le podomètre n'a rien vu
 
@@ -3504,7 +3526,7 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 
 ### 🎓 Revoir le tutoriel
 
-Le tutoriel d'accueil (27 cartes) **se rejoue à tout moment** : ouvre **📖 Documentation** et touche le bouton **🎓** dans la ligne de titre, à côté des drapeaux de langue. Il n'y a rien à réinstaller ni à réinitialiser.
+Le tutoriel d'accueil (27 cartes) **se rejoue à tout moment** : ouvre **📖 Documentation** et touche le bouton **🎓** dans la ligne de titre, à côté du choix de langue. Il n'y a rien à réinstaller ni à réinitialiser.
 
 ### 🔎 Chercher dans la documentation
 
@@ -3512,7 +3534,7 @@ Cette documentation est longue. En haut de la modale 📖, un champ **🔎 Cherc
 
 ## 🤖 Aide IA
 
-> Accessible via le groupe **📚 Aide / Documentation / Légende → 🤖 Aide IA**.
+> Accessible depuis **📖 Documentation** : bouton **🤖** dans la ligne de titre, à côté du choix de langue — donc aussi depuis l'accueil.
 
 Télécharge un fichier `.md` qui résume tout ce que l'app permet de faire (cette doc + une FAQ + des instructions pour l'IA). Donne-le à **n'importe quelle IA conversationnelle** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — elle pourra répondre à toutes tes questions sur MyKTAMap avec un contexte précis.
 
@@ -3577,8 +3599,8 @@ Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍
 - **🚀 Mode ULTRA** applique 7 optimisations d'un coup, ou une à une (décimation des tracés, animations, cercles, popups, auto-save lent, rendu du visible, limite de dézoom mobile). Détail dans la section Performance plus haut.
 - Sur un plan **multi-niveau** : **🏗️ Afficher tous les niveaux au lancement** (pris en compte au prochain chargement du plan).
 
-### 🛰️ Options via capteur *(🌍 tous les plans)*
-- **🔋 Niveau de batterie** et **📳 Vibration haptique**. Un capteur refusé par l'appareil (ou par iOS) s'affiche grisé, avec la raison.
+### 🧩 Fonctionnalités optionnelles *(🌍 tous les plans)*
+- **🎬 Replay du tracker**, **🔥 Heatmap**, **🔋 Niveau de batterie** et **📳 Vibration haptique**, désactivés par défaut. Un capteur refusé par l'appareil (ou par iOS) s'affiche grisé, avec la raison.
 
 ### 🔒 Confidentialité & sécurité *(🌍 tous les plans)*
 - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre qui n'écrit rien sur l'appareil.

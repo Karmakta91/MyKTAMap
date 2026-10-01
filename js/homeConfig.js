@@ -1236,7 +1236,7 @@
             window.ktaCapteurRefuse(batRowH, batCbH, document.getElementById("loaderBatterieHint"));
           }
         } else {
-          batCbH.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+          batCbH.checked = !!(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === true);
           batCbH.addEventListener("change", function () {
             if (!window.APP_CONFIG) window.APP_CONFIG = {};
             window.APP_CONFIG.batterieEnabled = !!batCbH.checked;
@@ -1249,6 +1249,12 @@
             }
           });
         }
+      }
+
+      // 🧩 01/10/2026 — 🎬 Replay / 🔥 Heatmap (Fonctionnalités optionnelles).
+      if (typeof window.ktaBrancherOptionnel === "function") {
+        window.ktaBrancherOptionnel(document.getElementById("loaderReplayCb"), "replayEnabled", "config.replay");
+        window.ktaBrancherOptionnel(document.getElementById("loaderHeatmapCb"), "heatmapEnabled", "config.heatmap");
       }
 
       const vibRowH = document.getElementById("loaderVibrationRow");

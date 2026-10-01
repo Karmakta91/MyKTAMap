@@ -37,6 +37,30 @@
   }
 })();
 
+// 🧩 01/10/2026 (décision KARMA) — la batterie devient une fonctionnalité
+// optionnelle, OFF pour TOUS. `sauvegarderPrefsUtilisateur` réécrivant toutes
+// les clés, les installations existantes ont la batterie stockée à `true` :
+// changer le défaut ne les toucherait pas. On l'éteint donc UNE fois, marqueur
+// à l'appui ; l'utilisateur peut la rallumer ensuite, on n'y revient plus.
+(function _migrerOptionnels() {
+  const MARQUEUR = "myktamap_optionnels_migres_v1";
+  try {
+    if (localStorage.getItem(MARQUEUR)) return;
+    const raw = localStorage.getItem("app_user_prefs");
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.batterieEnabled === true) {
+        saved.batterieEnabled = false;
+        localStorage.setItem("app_user_prefs", JSON.stringify(saved));
+        console.log("[Config] Batterie passée en fonctionnalité optionnelle (OFF)");
+      }
+    }
+    localStorage.setItem(MARQUEUR, "1");
+  } catch(e) {
+    console.warn("[Config] Échec migration fonctionnalités optionnelles :", e);
+  }
+})();
+
 // =========================
 // DEFAULT_CONFIG
 // =========================
@@ -134,11 +158,18 @@ let DEFAULT_CONFIG = {
   // vrai sur `undefined` et rallumerait l'option. Même piège que
   // `showRoadIntersections` en v1.74.0 — les lecteurs doivent tester `=== true`.
   vibrationEnabled: false,
-  // 🔋 v1.85.2 (KARMA) : l'écoute du capteur de batterie est débrayable. Elle
-  // reste ON par défaut — sous terre, savoir combien il reste vaut mieux que
-  // de le découvrir —, mais tout le monde n'a pas envie d'une icône de plus
-  // ni d'un capteur écouté en permanence.
-  batterieEnabled: true,
+  // 🧩 Fonctionnalités optionnelles (décision KARMA 01/10/2026) : batterie,
+  // vibration, replay et heatmap sont OFF par défaut, activables dans
+  // ⚙️ Configuration › Fonctionnalités optionnelles. Lecteurs : `=== true`.
+  // 🔋 La batterie était ON par défaut depuis v1.85.2 : la migration
+  // `_migrerOptionnels` plus bas l'éteint une fois chez les installations
+  // existantes (annoncé dans les notes de version).
+  batterieEnabled: false,
+  // 🎬 / 🔥 Tuiles Replay et Heatmap du menu Tracker. Le module heatmap reste
+  // CHARGÉ quand l'option est OFF : le Mode Secours s'en sert (bloc « Heatmap
+  // d'activité » d'un scénario) indépendamment de ce réglage.
+  replayEnabled: false,
+  heatmapEnabled: false,
 
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
@@ -194,6 +225,8 @@ try {
   // 🆕 v1.34.26 — Restaure la pref vibration au boot
   if ("vibrationEnabled" in saved) APP_CONFIG.vibrationEnabled = !!saved.vibrationEnabled;
   if ("batterieEnabled" in saved) APP_CONFIG.batterieEnabled = !!saved.batterieEnabled;
+  if ("replayEnabled" in saved) APP_CONFIG.replayEnabled = !!saved.replayEnabled;
+  if ("heatmapEnabled" in saved) APP_CONFIG.heatmapEnabled = !!saved.heatmapEnabled;
   // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
   // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne
@@ -541,6 +574,12 @@ function buildAppConfigFromPlan(planConfig) {
     if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
     if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
     if ("batterieEnabled" in saved) cfg.batterieEnabled = !!saved.batterieEnabled;
+    // 🐛 01/10/2026 — `vibrationEnabled` manquait ici (même piège que snapDraw
+    // ci-dessus) : la vibration retombait OFF à chaque ouverture de plan, et la
+    // première sauvegarde de réglage écrasait le choix de l'utilisateur.
+    if ("vibrationEnabled" in saved) cfg.vibrationEnabled = !!saved.vibrationEnabled;
+    if ("replayEnabled" in saved) cfg.replayEnabled = !!saved.replayEnabled;
+    if ("heatmapEnabled" in saved) cfg.heatmapEnabled = !!saved.heatmapEnabled;
     // ⚠️ smartNav* ne sont PLUS lus ici : ils sont devenus PAR PLAN (v1.85.3).
     // La valeur globale reste lue plus bas comme REPLI de migration, via
     // `getPlanSmartNav`, appelé au chargement du plan.
@@ -560,10 +599,11 @@ function buildAppConfigFromPlan(planConfig) {
   if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
   if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
   if (cfg.panneauxAncres === undefined)        cfg.panneauxAncres        = DEFAULT_CONFIG.panneauxAncres === true;
-  // 🩸 Défaut ON : on teste donc `!== false`, l'idiome inverse de celui des
-  // préférences par défaut OFF. Se tromper d'idiome ici éteindrait la
-  // batterie pour tout le monde au premier chargement de plan.
-  if (cfg.batterieEnabled === undefined)       cfg.batterieEnabled       = DEFAULT_CONFIG.batterieEnabled !== false;
+  // 🧩 Fonctionnalités optionnelles : défaut OFF depuis le 01/10/2026 → `=== true`.
+  if (cfg.batterieEnabled === undefined)       cfg.batterieEnabled       = DEFAULT_CONFIG.batterieEnabled === true;
+  if (cfg.vibrationEnabled === undefined)      cfg.vibrationEnabled      = DEFAULT_CONFIG.vibrationEnabled === true;
+  if (cfg.replayEnabled === undefined)         cfg.replayEnabled         = DEFAULT_CONFIG.replayEnabled === true;
+  if (cfg.heatmapEnabled === undefined)        cfg.heatmapEnabled        = DEFAULT_CONFIG.heatmapEnabled === true;
 
   return cfg;
 }
@@ -858,7 +898,9 @@ function sauvegarderPrefsUtilisateur() {
     existing.snapDraw              = APP_CONFIG.snapDraw === true;
     existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE
     existing.vibrationEnabled      = APP_CONFIG.vibrationEnabled === true;      // 📳 v1.85.2 : defaut OFF
-    existing.batterieEnabled       = APP_CONFIG.batterieEnabled !== false;      // 🔋 v1.85.2 : defaut ON                 // 🧲 C5 v1.74.0 : default false
+    existing.batterieEnabled       = APP_CONFIG.batterieEnabled === true;       // 🧩 01/10/2026 : defaut OFF
+    existing.replayEnabled         = APP_CONFIG.replayEnabled === true;         // 🧩 01/10/2026 : defaut OFF
+    existing.heatmapEnabled        = APP_CONFIG.heatmapEnabled === true;        // 🧩 01/10/2026 : defaut OFF
     if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}

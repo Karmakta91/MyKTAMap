@@ -125,7 +125,10 @@
           '<div class="kta-cheat-sectitre">' + _t("cheatsheet.globalTitre", "Actions globales") + "</div>" +
           '<div class="kta-cheat-grille">' + _comboRows() + "</div>" +
           '<p class="kta-cheat-note">' +
-            _t("cheatsheet.replayHint", "Dans le Replay : Espace = lecture, ← → = défilement, Échap = fermer.") + " " +
+            // 🧩 Replay optionnel (01/10/2026) : pas de mode d'emploi d'un outil masqué.
+            (window.APP_CONFIG && window.APP_CONFIG.replayEnabled === true
+              ? _t("cheatsheet.replayHint", "Dans le Replay : Espace = lecture, ← → = défilement, Échap = fermer.") + " "
+              : "") +
             _t("cheatsheet.note", "Inactif quand tu tapes dans un champ texte.") +
           "</p>" +
         "</div>" +

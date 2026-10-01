@@ -204,17 +204,19 @@ function geste(ctx) {
     // vibration disparaissait de la modale, sans que rien ne dise pourquoi.
     // L'utilisateur ne pouvait pas distinguer « ça n'existe pas » de « ton
     // système refuse ». On l'affiche désormais, désactivée, avec la raison.
-    t("🛰️ la rubrique capteur existe", /config\.capteurs\.titre/.test(UIC));
+    // 🧩 01/10/2026 — la rubrique est devenue « Fonctionnalités optionnelles »
+    // (batterie, vibration, replay, heatmap) : même place, mêmes exigences.
+    t("🧩 la rubrique Fonctionnalités optionnelles existe", /config\.optionnels\.titre/.test(UIC));
     // 🩸 Elle doit être un GROUPE DE PREMIER NIVEAU, pas une sous-section
     // d'« Affichage » — c'est précisément l'endroit que KARMA voulait quitter,
     // et ma première version l'y avait laissée (« je vois pas où tu as mis ça »).
-    t("🩸 capteurs : c'est un GROUPE de 1er niveau, pas une sous-section d'Affichage",
-      /config\.group\.capteurs/.test(UIC) &&
-      UIC.indexOf("config.group.capteurs") > UIC.indexOf("config.group.perf") &&
-      UIC.indexOf("config.group.capteurs") < UIC.indexOf("config.group.privacy"));
+    t("🩸 optionnels : c'est un GROUPE de 1er niveau, pas une sous-section d'Affichage",
+      /config\.group\.optionnels/.test(UIC) &&
+      UIC.indexOf("config.group.optionnels") > UIC.indexOf("config.group.perf") &&
+      UIC.indexOf("config.group.optionnels") < UIC.indexOf("config.group.privacy"));
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
-      t("i18n " + l + " : config.group.capteurs", typeof D["config.group.capteurs"] === "string");
+      t("i18n " + l + " : config.group.optionnels", typeof D["config.group.optionnels"] === "string");
     });
 
     // 🐛 Modale en 2 colonnes : un TITRE DE GROUPE ne doit jamais rester seul
@@ -248,11 +250,11 @@ function geste(ctx) {
       /cb\.disabled = true/.test(UTL2));
 
     // 🔋 La batterie est débrayable — icône ET écoute du capteur.
-    t("🔋 batterie : la préférence existe, défaut ON", /batterieEnabled:\s*true/.test(CFG));
+    t("🔋 batterie : la préférence existe, défaut OFF (🧩 01/10/2026)", /batterieEnabled:\s*false/.test(CFG));
     t("🩸 batterie : l'écoute est coupée AVANT `getBattery()` (pas seulement l'icône)",
       (function () {
         const BG = fs.readFileSync("js/batteryGuard.js", "utf8");
-        const iPref = BG.indexOf("batterieEnabled === false");
+        const iPref = BG.indexOf("batterieEnabled !== true");
         // 🩸 Viser le SITE D'APPEL : `navigator.getBattery()` apparaît
         // d'abord dans le COMMENTAIRE d'en-tête du module, vingt lignes
         // avant tout code. Chercher la chaîne nue rendait donc un index
@@ -267,7 +269,7 @@ function geste(ctx) {
     {
       const IDX2 = fs.readFileSync("index.html", "utf8");
       const HC   = fs.readFileSync("js/homeConfig.js", "utf8");
-      t("🛰️ accueil : la rubrique capteur y est aussi", /config\.group\.capteurs/.test(IDX2));
+      t("🧩 accueil : la rubrique Fonctionnalités optionnelles y est aussi", /config\.group\.optionnels/.test(IDX2));
       t("accueil : les deux cases existent",
         /id="loaderBatterieCb"/.test(IDX2) && /id="loaderVibrationCb"/.test(IDX2));
       t("accueil : elles sont câblées", /loaderBatterieCb/.test(HC) && /loaderVibrationCb/.test(HC));
@@ -306,15 +308,18 @@ function geste(ctx) {
           // disparu de l accueil (le tuilage est descendu dans la carte de
           // chargement, ce n est pas un reglage). On borne sur le groupe
           // suivant, qui existe toujours.
-          const q = IDX2.indexOf('data-i18n="config.group.capteurs"');
+          const q = IDX2.indexOf('data-i18n="config.group.optionnels"');
           return a > 0 && p > a && p < q;
         })());
     }
     t("batterie : sauvegardée par le chemin canonique",
       /existing\.batterieEnabled/.test(CFG));
-    t("🩸 batterie : défaut ON donc test en `!== false` (l'idiome inverse des défauts OFF)",
-      /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled !== false/.test(CFG));
-    ["config.capteurs.titre", "config.capteurs.intro", "config.capteurs.refuse",
+    // 🧩 01/10/2026 — la batterie est passée OFF par défaut (fonctionnalité
+    // optionnelle) : l'idiome s'inverse, `=== true` comme tous les défauts OFF.
+    t("🩸 batterie : défaut OFF donc test en `=== true`",
+      /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled === true/.test(CFG) &&
+      !/batterieEnabled\s*!==\s*false/.test(CFG + UIC));
+    ["config.optionnels.titre", "config.optionnels.intro", "config.capteurs.refuse",
      "config.capteurs.refuseIos", "config.batterie.label", "config.batterie.hint",
      "config.batterie.toastOn", "config.batterie.toastOff"].forEach(function (k) {
       ["fr", "en", "es"].forEach(function (l) {

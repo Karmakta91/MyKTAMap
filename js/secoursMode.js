@@ -1763,7 +1763,9 @@
     _commitMutation(s2);
     if (manque > 0) {
       _toast(t("secours.b9.toastManquants", { equipe: g.nom, n: manque }), "error");
-      try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]); } catch(e) {}
+      // 📳 Soumis au réglage Vibration (décision KARMA 01/10/2026). Seules les
+      // alertes de survie passent outre, via kta_vibrate.urgence.
+      if (window.kta_vibrate) window.kta_vibrate([400, 150, 400, 150, 400]);
     }
     return true;
   }
@@ -1806,7 +1808,7 @@
     });
     if (messages.length) {
       _toast(messages.join(" · "), rouge ? "error" : "warn");
-      try { if (navigator.vibrate) navigator.vibrate(rouge ? [300, 150, 300, 150, 300] : [200]); } catch(err) {}
+      if (window.kta_vibrate) window.kta_vibrate(rouge ? [300, 150, 300, 150, 300] : [200]);
     }
     _majFooterSecours(true);
   }
@@ -2507,7 +2509,7 @@
       _liveEquipeFreshSession = false;
     }
     _toast(t("secours.suivre.arrivee", { etape: prochain.label || "?" }), "info");
-    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
+    if (window.kta_vibrate) window.kta_vibrate([120, 80, 120]);
   }
 
   // B2 (vague 6, 30/09/2026) — feuille de route d'une équipe, en texte, pour le PDF.
