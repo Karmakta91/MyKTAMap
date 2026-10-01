@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.2` (01/10/2026)
+## 📦 Version courante — `v1.99.3` (01/10/2026)
+
+> 🗑️ **v1.99.3 — Supprimer l’itinéraire depuis la question de recalcul** : « Je suis ici » hors du trajet propose désormais Recalculer / Garder / **Supprimer l’itinéraire**.
 
 > 🌀 **v1.99.2 — Guidage inter-plans** : croisements annoncés et raccords comptés sur un trajet par portail (carrefours mesurés à l’échelle du plan cible) ; la feuille de route dit ce qui attend sur chaque plan suivant.
 
@@ -499,6 +501,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.3 (01/10/2026) — « 🗑️ Supprimer l’itinéraire » dans la question de recalcul
+
+- 🔍 **Origine** : demande KARMA — itinéraire en cours, « Je suis ici » sur un point hors du trajet : seulement Recalculer / Garder ; il fallait ouvrir la modale Itinéraire pour s’en débarrasser.
+- 🗑️ **3e choix** (`08e0009`) : `ktaConfirm` accepte `opts.autre = {label, valeur}` (bouton `kta-btn-danger`, la Promise rend `valeur`, appelants existants inchangés) ; `_effacerItineraireActif()` extrait du bouton « ❌ Effacer l’itinéraire » et partagé. Texte de la question corrigé (il renvoyait à un bouton « Annuler » inexistant).
+- ✅ **Tests** : Playwright à taille téléphone (3 choix, Garder conserve, Supprimer efface tracé + bandeau + toast, 0 erreur JS) ; tous les check-* du pré-commit.
 
 #### v1.99.2 (01/10/2026) — Guidage des itinéraires inter-plans
 
