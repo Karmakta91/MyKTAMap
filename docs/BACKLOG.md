@@ -48,9 +48,11 @@ Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 trac�
 
 Décisions : `docs/ETUDE_GUIDAGE.md` ; archi : `docs/architecture/tracking.md` §Guidage.
 
-- 🟡 **Itinéraires inter-plans non couverts** : `interPlanRoute.js` crée ses roads sans `raccords` / `carrefours`
-  → pas de pointillé, raccord non compté, et le bandeau n'y dit que l'arrivée (aucun croisement connu). Brancher
-  `_champsGuidage`. ⚠️ doc seule (non re-vérifié le 29/09).
+- 🟡 **Poids des jonctions de niveau sur un plan distant** (vu le 01/10/2026 en branchant le guidage
+  inter-plans) : `pathfinder.js > _poidsSegment` lit l'échelle ET les profondeurs de niveau du plan OUVERT
+  (`APP_CONFIG.scale`, `getProfondeurNiveau`). L'étape d'un itinéraire inter-plans calculée sur un autre plan
+  multi-niveau pèse donc ses jonctions avec les profondeurs du mauvais plan → choix de chemin légèrement
+  faussé. Les carrefours, eux, reçoivent déjà l'échelle du plan cible (`opts.echelle`). ✅ vérifié (code lu).
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 

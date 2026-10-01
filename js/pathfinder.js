@@ -973,7 +973,9 @@
   // Factorise la logique build+enrich+snap+Dijkstra. Appele par computeRoute
   // pour la passe 1 (avec contraintes) puis si necessaire pour la passe 2
   // (sans avoidances). Throw avec messages clairs si echec.
-  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones) {
+  // `echelle` (px/m, facultatif) : celle du plan du RÉSEAU, quand ce n'est pas
+  // le plan ouvert (étape d'un itinéraire inter-plans) — sinon APP_CONFIG.scale.
+  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, echelle) {
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones);
     if (graph.nodes.length === 0) {
       // 🌍 i18n : code + params, localisé côté rendu (interfaceItineraire.js).
@@ -1073,7 +1075,7 @@
           distPx: s.snapDist
         };
       }),
-      carrefours: _carrefoursSurChemin(graph, fullPath)
+      carrefours: _carrefoursSurChemin(graph, fullPath, echelle)
     };
   }
 
@@ -1097,9 +1099,16 @@
   const GRILLE_CHEMIN_PX  = 24;
 
   // Rayon du cercle de sortie : ~3 m, jamais moins de 8 px.
-  function _rayonSortiePx() {
-    const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 0;
-    return Math.max(8, 3 * e);
+  // Échelle (px/m) du réseau mesuré : celle passée par l'appelant (réseau d'un
+  // AUTRE plan — itinéraire inter-plans), sinon celle du plan ouvert. `repli` :
+  // valeur quand aucune n'est connue (0 = pas calibré pour le rayon de sortie).
+  function _echelleReseau(echelle, repli) {
+    if (Number(echelle) > 0) return Number(echelle);
+    return (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : repli;
+  }
+
+  function _rayonSortiePx(echelle) {
+    return Math.max(8, 3 * _echelleReseau(echelle, 0));
   }
 
   function _capDeg(a, b) {
@@ -1198,7 +1207,7 @@
     });
   }
 
-  function _carrefoursSurChemin(graph, path) {
+  function _carrefoursSurChemin(graph, path, echelle) {
     if (!graph || !Array.isArray(path) || path.length < 2) return [];
     // Grille des segments du chemin → test de proximité en O(1) par nœud
     const grille = {};
@@ -1216,7 +1225,7 @@
         }
       }
     }
-    const R = _rayonSortiePx();
+    const R = _rayonSortiePx(echelle);
     const cellA = Math.max(16, 2 * R);
     let grilleA = null;   // grille des arêtes : construite au premier candidat seulement
     const cum = [0];
@@ -1240,7 +1249,7 @@
       const sorties = _capsDeSortie(graph, n, grilleA, cellA, R);
       if (sorties.length >= 3) out.push({ x: n.x, y: n.y, sorties: sorties, _s: sN });
     }
-    _zonesDeCarrefour(graph, out, grilleA, cellA, R);
+    _zonesDeCarrefour(graph, out, grilleA, cellA, R, echelle);
     out.forEach(function(c) { delete c._s; });
     return out;
   }
@@ -1254,9 +1263,9 @@
   // cercle qui l'englobe (rayon de la zone + le rayon de sortie habituel).
   // Chaque membre reçoit la MÊME `zone` : { x, y, r, sorties }.
   const ZONE_ECART_M = 5;   // KARMA : « 20 m c'est beaucoup trop, plutôt 5 »
-  function _zonesDeCarrefour(graph, carrefours, grilleA, cellA, R) {
+  function _zonesDeCarrefour(graph, carrefours, grilleA, cellA, R, echelle) {
     if (carrefours.length < 2 || !grilleA) return;
-    const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 1;
+    const e = _echelleReseau(echelle, 1);
     const ecart = ZONE_ECART_M * e;
     const tries = carrefours.slice().sort(function(a, b) { return a._s - b._s; });
     const groupes = [];
@@ -1443,6 +1452,8 @@
   //   - avoidPoints         : [{x, y, label?}] contrainte souple (passe 2 sans)
   //   - avoidZonesResolved  : zones OBJETS à éviter (souple)
   //   - avoidRadius         : rayon px (défaut 100)
+  //   - echelle             : px/m du plan de CE réseau (défaut : plan ouvert) —
+  //                           mesure des carrefours (rayon de sortie 3 m, zone 5 m)
   // Retour : même forme que computeRoute (+ usedFallback / avoidedThrough).
   function computeRouteOnRoads(waypoints, roads, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -1469,12 +1480,12 @@
     let result = null, usedFallback = false, avoidedThrough = [];
     try {
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, avoidPts, avoidRadius, avoidZones);
+                                    zonesInacc, avoidPts, avoidRadius, avoidZones, opts.echelle);
     } catch(e1) {
       if (!hasAvoid) throw e1;
       // Passe 2 sans évitements souples (mêmes règles que computeRoute)
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, [], 0, []);
+                                    zonesInacc, [], 0, [], opts.echelle);
       usedFallback = true;
       avoidedThrough = avoidPts.filter(function(ap) {
         return _pathPassesNearPoint(result.path, ap, avoidRadius);

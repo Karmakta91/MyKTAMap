@@ -452,6 +452,32 @@ async function bandeau() {
       !!zone && (Date.now() - t0) < 3000);
   }
 
+  // 13) ITINÉRAIRE INTER-PLANS (01/10/2026) — l'étape sur l'AUTRE plan est
+  //     calculée depuis le plan ouvert : ses carrefours doivent se mesurer à
+  //     l'échelle de SON plan (rayon de sortie 3 m), pas du plan courant.
+  //     Une branche de 30 px = 7,5 m à 4 px/m (vrai croisement), 0,75 m à
+  //     40 px/m (amorce du dessin, ignorée).
+  {
+    const reseauB = [R("principal", [[0, 500], [800, 500]]), R("principal", [[400, 500], [400, 530]])];
+    const w = bac([], { scale: 40 });                 // plan OUVERT : 40 px/m
+    const wps = [{ x: 20, y: 500, label: "A" }, { x: 780, y: 500, label: "B" }];
+    const sansEchelle = w.Pathfinder.computeRouteOnRoads(wps, reseauB, {});
+    const avecEchelle = w.Pathfinder.computeRouteOnRoads(wps, reseauB, { echelle: 4 });
+    t("inter-plans : sans échelle, mesuré au plan ouvert (40 px/m) → amorce ignorée",
+      sansEchelle.carrefours.length === 0);
+    t("inter-plans : avec l'échelle du plan cible (4 px/m) → le croisement est vu",
+      avecEchelle.carrefours.length === 1);
+    t("inter-plans : raccords rendus par computeRouteOnRoads",
+      Array.isArray(avecEchelle.raccords) && avecEchelle.raccords.length === 2);
+    const ip = fs.readFileSync(path.join(ROOT, "js/interPlanRoute.js"), "utf8");
+    t("câblage inter-plans : l'étape distante passe l'échelle de son plan",
+      ip.includes("echelle: ctx.scale") && ip.includes("echelle: scaleB"));
+    t("câblage inter-plans : la road tracée porte raccords + carrefours",
+      ip.includes("raccords: leg.raccords || [], carrefours: leg.carrefours || []"));
+    t("câblage inter-plans : distances avec les raccords (décision K)",
+      ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
+  }
+
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal
   await bandeau();
 

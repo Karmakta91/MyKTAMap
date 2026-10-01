@@ -1120,5 +1120,11 @@ demi-tours en 350 m sous 4 m de bruit).
 - **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
   `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
   interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
-- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) —
-  ils créent leurs roads sans `raccords` / `carrefours` (cf `docs/BACKLOG.md`).
+- **Inter-plans** (`interPlanRoute.js`, 01/10/2026) : chaque étape de la chaîne garde `raccords` / `carrefours`
+  et `_tracerItinerary(leg)` les pose sur la road. L'étape sur un AUTRE plan est calculée depuis le plan ouvert :
+  `computeRouteOnRoads(…, { echelle })` mesure ses carrefours à l'échelle de SON plan (sinon rayon de sortie et
+  zone faux d'un plan à l'autre). Deux morceaux bout à bout sur un même plan : seuls le départ du premier et
+  l'arrivée du dernier restent. Distances avec raccords (décision K). La feuille de route est **par étape** :
+  elle s'arrête au portail, la suivante s'ouvre une fois l'itinéraire du plan suivant tracé.
+- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
+  `carrefours`.
