@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.4` (01/10/2026)
+## 📦 Version courante — `v1.99.5` (01/10/2026)
+
+> 🪧 **v1.99.5 — Plus de consigne fantôme** : après « Supprimer l’itinéraire », le bandeau de guidage disparaît aussitôt (il réapparaissait un instant).
 
 > 🌀 **v1.99.4 — Inter-plans : la suite ne passe que par le portail** : supprimer / remplacer l’itinéraire ou ouvrir le plan suivant autrement abandonne la suite (elle s’y traçait et s’enregistrait dans sa session).
 
@@ -503,6 +505,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.5 (01/10/2026) — Plus de consigne fantôme à la suppression de l’itinéraire
+
+- 🔍 **Origine** : retour KARMA — après « 🗑️ Supprimer l’itinéraire », le bandeau « Rejoindre le tracé » réapparaissait un très court instant.
+- 🐛 **Cause / correctif** (`50ad807`) : le « Je suis ici » hors trajet avait affiché le bandeau sous la fenêtre de choix ; il restait jusqu’au battement suivant du guidage (1 s). `_effacerItineraireActif` appelle `ItiGuidage.rafraichir()` (vaut aussi pour « ❌ Effacer »).
+- ✅ **Tests** : Playwright (bandeau masqué juste après le clic — échouait avant) ; check-guidage +1.
 
 #### v1.99.4 (01/10/2026) — Inter-plans : la suite de l’itinéraire ne passe que par le portail
 
