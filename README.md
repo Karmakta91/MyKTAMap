@@ -12,11 +12,12 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.0` (01/10/2026)
+## 📦 Version courante — `v1.99.1` (01/10/2026)
+
+> 🪧 **v1.99.1 — Guidage de plaque en plaque** : guidage sans suivi dès qu’une position est confirmée ; « 📍 Je suis ici » à ≤ 8 m du trajet coupe la partie déjà faite sans recalcul ni question ; la croix du bandeau coupe le guidage (tuile 🪧 pour le rallumer). Plus aucune donnée réelle de terrain citée dans le dépôt.
 
 > 🧩 **v1.99.0 — Fonctionnalités optionnelles** : Replay, Heatmap, batterie et vibration désactivés par défaut, regroupés dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles (la heatmap du Mode Secours reste) ; 🤖 Aide IA déplacée dans l’en-tête de la Documentation (menu de langue au lieu des drapeaux) ; vibration plus perdue à l’ouverture d’un plan.
 
-> 🔄 **v1.98.26 — Calques en modification à l’import de session** : réimporter une session (même sur un autre appareil) remet en modification les calques dont elle porte la copie ; plus de doublon ni de calque masqué et vide. Plus : import unifié (un sélecteur), « ➕ Nouveau type… » dans les menus de la légende.
 
 > 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
 
@@ -500,6 +501,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.1 (01/10/2026) — Guidage de plaque en plaque ; croix = tuile éteinte
+
+- 🔍 **Origine** : retours KARMA en test de la v1.99.0 — le guidage exigeait le suivi actif, alors qu’on peut avancer en tapant « Je suis ici » sur les plaques ; fermer le bandeau obligeait à couper le suivi et recalculer l’itinéraire pour le retrouver ; chaque « Je suis ici » proposait un recalcul complet, même sur le trajet. Décisions 1:a 2:a 3:a 4:a.
+- 🪧 **Guidage sans suivi** (`itiGuidage.js > _maj`) : suivi actif **ou** position confirmée (`getTrackingPositionEtat().confirmee`) ; sans confirmation, la position vaut le départ du plan → masqué.
+- ✕ **Croix = « Jamais »** (`setPref`) : la tuile 🪧 s’éteint et la rallume sur le même itinéraire. `_masquePour` supprimé (la tuile ne savait pas lever ce masquage).
+- ✂️ **Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, source `"point"`) : point à ≤ `COUPE_SEUIL_M` (8 m, tolérance du guidage — un seuil en px changerait de sens selon la résolution du plan) → road coupée au premier passage, sans Dijkstra ni question ; étapes / raccords projetés dans l’ordre du trajet (dépassés → `done` / retirés), raccord de départ retiré, carrefours restés sur le trajet gardés ; dernière étape dépassée → clôture. Hors seuil ou clic carte : question inchangée. **Exclus** : parcours Secours (`road.secours`, étapes validées par le scénario) et `sansReplan`.
+- 🧹 **Données réelles** (`7ad4b5d`) : nom du réseau du test terrain, identifiant / dimensions de son plan et nom d’un point retirés du journal, du backlog, de `secours.md`, d’AI_CONTEXT, des guides et de 4 commentaires de code (suite de `fa402f0`). Doc : titre de la modale Documentation sans 📖 (`1d085b5`).
+- ✅ **Tests** : `check-guidage` +4 ; `checkup-guidage` vert (G9 réécrit pour la nouvelle règle) ; test Playwright dédié (17 vérifs : coupe sans question, étapes validées, guidage sans suivi, croix / tuile, hors trajet → question, 0 erreur JS) ; tous les check-* du pré-commit. ⚠️ Pas testé sur téléphone ni au passage d’un portail.
 
 #### v1.99.0 (01/10/2026) — Fonctionnalités optionnelles ; Aide IA dans la Documentation
 

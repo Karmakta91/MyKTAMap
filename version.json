@@ -1,8 +1,8 @@
 {
-  "version": "v1.99.0",
+  "version": "v1.99.1",
   "released": "2026-10-01",
   "notes": [
     "🧩 Replay, Heatmap, indicateur de batterie et vibration deviennent des options, désactivées par défaut : réactive celles qui te servent dans ⚙️ Configuration › Fonctionnalités optionnelles. L’Aide IA est maintenant dans la Documentation, à côté du choix de langue.",
-    "🚨 Mode Secours : évacuation vers les accès des équipes, bilan des engagés, heure de retour impérative, et une couverture plus honnête, niveau par niveau. Et un calque ouvert à la modification le reste quand tu réimportes ta session."
+    "🪧 Le guidage marche aussi sans le suivi : touche « 📍 Je suis ici » sur une plaque proche de l’itinéraire, la partie déjà faite disparaît sans recalcul. La croix du bandeau coupe le guidage ; la tuile 🪧 du menu Tracker le rallume."
   ]
 }
