@@ -790,6 +790,12 @@ function _effacerItineraireActif() {
   if (window.setRoads) window.setRoads(roadsNow);
   _viderItineraire();
   _majLabelDistanceItineraire();
+  // Le bandeau de guidage ne se recalcule qu'à son battement d'1 s : sans ce
+  // rafraîchissement, l'ancienne consigne (« Rejoindre le tracé », « Hors
+  // itinéraire ? ») réapparaissait un instant à la fermeture de la fenêtre.
+  if (window.ItiGuidage && typeof window.ItiGuidage.rafraichir === "function") {
+    try { window.ItiGuidage.rafraichir(); } catch (e) {}
+  }
   // Itinéraire inter-plans : la suite prévue sur les autres plans part avec lui.
   if (window.InterPlanRoute && typeof window.InterPlanRoute.abandonnerSuite === "function") {
     window.InterPlanRoute.abandonnerSuite();

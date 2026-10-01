@@ -510,6 +510,8 @@ async function bandeau() {
       il.includes("traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); }"));
     t("câblage inter-plans : plan quitté sans le portail ou itinéraire remplacé → suite abandonnée",
       ip.includes("if (!traverse || remplace) {") && ip.includes("const remplace = !!(iti && !iti.suite);"));
+    t("supprimer l'itinéraire rafraîchit le bandeau tout de suite (pas de consigne fantôme 1 s)",
+      /function _effacerItineraireActif\(\) \{[\s\S]*?window\.ItiGuidage\.rafraichir\(\)[\s\S]*?\n\}/.test(ii));
     t("câblage inter-plans : supprimer l'itinéraire abandonne la suite",
       ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
