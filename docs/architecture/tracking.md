@@ -1082,6 +1082,19 @@ rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), l
 `tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
 (apparition / disparition). Les consignes ne sont recalculées que si la road change.
 
+**Affichage** (`_maj`) : road + guide + (**suivi actif OU position confirmée** — `getTrackingPositionEtat().confirmee`,
+sans quoi la position vaut le départ du plan) + (urgence OU réglage « auto »). La croix pose « jamais » (`setPref`) :
+plus d'état « masqué pour cet itinéraire », la tuile 🪧 est le seul interrupteur.
+
+**✂️ Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, appelée par `_onTrackerRecale` pour la source
+`"point"` — « Je suis ici », picker « Où es-tu ? », portail ; jamais le clic carte) : si le point est à ≤ `COUPE_SEUIL_M`
+(8 m) du trajet, au **premier passage** (aller-retour), la road est remplacée par la suite du trajet depuis la
+projection — sans Dijkstra ni question. Étapes et raccords projetés **dans l'ordre** du trajet (chacun au-delà du
+précédent) : dépassés → `done` / retirés ; raccord `depart` retiré ; carrefours gardés s'ils sont à ≤ 3 px du
+nouveau trajet. Dernière étape dépassée → `_replanifierDepuis` (clôture). Hors seuil → replanification habituelle
+(avec question). **Exclus** : parcours Secours (`road.secours`), dont les étapes ne se valident que par le scénario
+(`_majRoadSuivi` les y recale) ; recalage `sansReplan`.
+
 ### 🩸 Pièges rencontrés — à ne pas réintroduire
 
 | Piège | Pourquoi | Garde |

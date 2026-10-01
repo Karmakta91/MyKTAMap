@@ -1399,7 +1399,8 @@ The active mode is displayed next to the estimated time in the bottomleft label.
 
 During a real outing, the tracker can drift and the phone spends time locked in your pocket. The route adapts on its own every time you **recalibrate your position**:
 
-- **Recalibrate your position** (map click in recalibration mode, a point's **📍 I am here** button, or arriving through a portal) → the active route is **automatically recalculated from your new position**. Your position becomes the new point 0, the remaining stops are kept **in the order you planned**, and your avoidance preferences are respected.
+- **Recalibrate on the itinerary** (a point's **📍 I am here** button **within 8 m of the route**, or arriving through a portal) → **nothing is recomputed**: the part already done is **cut behind you**, the stops you have passed are **validated**, and the remaining distance updates. It is instant, guidance on or off — ideal for moving **from plaque to plaque**.
+- **Recalibrate elsewhere** (a point far from the route, or a map click in recalibration mode) → the app **offers to recompute** the itinerary from your new position. Your position becomes the new point 0, the remaining stops are kept **in the order you planned**, and your avoidance preferences are respected.
 - **Validate your passage at a stop**: tap **📍 I am here** on a point that belongs to your route → the stop is **validated** (**green ✓** marker on the map, struck-through line in the modal), excluded from future calculations, and the route restarts from there. **The order is free**: you can visit stop 3 before stop 1 — the app validates what YOU do, not what it suggests.
 - **All stops validated** (including your exit) → a small "🎉 Route complete" message and the path clears. Your tracker trail stays on screen.
 - **Map-click** recalibration never validates a stop (it is approximate by nature): it only replans.
@@ -1409,7 +1410,7 @@ During a real outing, the tracker can drift and the phone spends time locked in 
 
 #### 🪧 Guidance — "In 40 m, turn left" (since v1.98.0)
 
-When the **tracker is on** and an **itinerary is drawn** (from the modal, a "🧭 Go there" on a point, or the emergency exit), a **banner** appears on its own at the top of the map and tells you what to do:
+When an **itinerary is drawn** and your position is known — **tracker on**, or simply a **📍 I am here** set on a point (without the pedometer, you move from plaque to plaque) (from the modal, a "🧭 Go there" on a point, or the emergency exit), a **banner** appears on its own at the top of the map and tells you what to do:
 
 - **"In 40 m, turn left"**, **"Continue for 120 m"**, then **"Now: turn left"** as you get close. Underneath, in small print, the next instruction ("Then turn right").
 - **Only at junctions**: as long as there is a single gallery to follow, guidance stays silent, even if it bends. It never says "the 3rd on the left" (traces do not show every real opening): always a **distance**.
@@ -1422,7 +1423,7 @@ When the **tracker is on** and an **itinerary is drawn** (from the modal, a "�
 
 **Tapping the banner** opens the **🪧 Route sheet**: every instruction with its distance (tap a line to see the spot). It is also available **without the tracker**, from the Itinerary modal ("🪧 Route sheet" button), to prepare an outing.
 
-**The ✕** hides the banner **for this itinerary**; it comes back with the next one. To turn it off **for good**: 🧭 Tracker menu → **🪧 Itinerary guidance**.
+**The ✕** **turns guidance off**: the **🪧 Itinerary guidance** tile in the 🧭 Tracker menu goes dark. **Tap it to turn guidance back on** — on the same itinerary, with nothing recomputed.
 
 **As the crow flies**: if your start, a stop or your destination lies beside the galleries, the stretch to the nearest one is drawn **dashed** and **counted** in the distance (an off-trace stop counts there and back). Beyond **50 m**, the app warns you: that stretch is not a known gallery, check your position. On a plan **with no trace at all**, no itinerary can be computed: the app says so right away.
 

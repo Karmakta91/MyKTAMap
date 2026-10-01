@@ -67,12 +67,16 @@ const sansArrivee = g => g.consignes.filter(c => c.type !== "arrivee");
 function fauxElement() {
   const enfants = {};
   const classes = new Set();
-  return {
+  const el = {
     style: {}, textContent: "", innerHTML: "", title: "", isConnected: true,
     classList: { toggle(c, on) { if (on) classes.add(c); else classes.delete(c); }, contains: c => classes.has(c) },
-    setAttribute() {}, addEventListener() {},
+    setAttribute() {},
+    // garde le handler « click » : `__clic()` le déclenche (croix du bandeau)
+    addEventListener(type, fn) { if (type === "click") el.__onclick = fn; },
+    __clic() { if (el.__onclick) el.__onclick({ target: el }); },
     querySelector(sel) { return enfants[sel] || (enfants[sel] = fauxElement()); }
   };
+  return el;
 }
 
 async function bandeau() {
@@ -131,7 +135,25 @@ async function bandeau() {
   G.setPref("auto");
   actif = false; G.rafraichir();
   t("suivi arrêté : bandeau masqué", G.etat().visible === false);
+  // 01/10/2026 (KARMA 1:a) — sans suivi, une position CONFIRMÉE (« Je suis
+  // ici » sur une plaque) suffit ; la position du départ du plan, non.
+  let confirmee = true;
+  w.getTrackingPositionEtat = () => ({ confirmee: confirmee, suiviActif: actif });
+  G.rafraichir();
+  t("sans suivi, position confirmée : bandeau visible", G.etat().visible === true);
+  confirmee = false; G.rafraichir();
+  t("sans suivi, position NON confirmée : bandeau masqué", G.etat().visible === false);
+  delete w.getTrackingPositionEtat;
   actif = true;
+  // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »),
+  // la tuile 🪧 le rallume, sans recalculer l'itinéraire. (Itinéraire normal :
+  // une sortie d'urgence, elle, reste affichée même sur « Jamais ».)
+  iti = Object.assign({}, it.road);
+  aller(20, 500);
+  w.__bandeau.querySelector(".kta-guid-fermer").__clic();
+  t("croix : réglage passé à « Jamais »", G.getPref() === "jamais" && G.etat().visible === false);
+  G.setPref("auto");
+  t("croix puis tuile : le bandeau revient, même itinéraire", G.etat().visible === true);
 
   // Départ hors tracé : « rejoindre le tracé » + flèche relative au téléphone
   iti = Object.assign({}, it.road);                  // nouvelle road → état neuf

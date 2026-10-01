@@ -1401,7 +1401,8 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 
 Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du temps verrouillé dans la poche. L'itinéraire s'adapte tout seul à chaque **recalage de position** :
 
-- **Recale ta position** (clic carte en mode recalage, bouton **📍 Je suis ici** d'un point, ou arrivée par un portail) → l'itinéraire actif est **automatiquement recalculé depuis ta nouvelle position**. Ta position devient le nouveau point 0, les étapes restantes sont conservées **dans l'ordre que tu avais planifié**, tes préférences d'évitement sont respectées.
+- **Recale ta position sur l'itinéraire** (bouton **📍 Je suis ici** d'un point situé **à moins de 8 m du trajet**, ou arrivée par un portail) → **rien n'est recalculé** : la partie déjà faite est **coupée derrière toi**, les étapes que tu as dépassées sont **validées**, et la distance restante se met à jour. C'est instantané, guidage actif ou non — idéal pour avancer **de plaque en plaque**.
+- **Recale ta position ailleurs** (point loin du trajet, ou clic carte en mode recalage) → l'app te **propose de recalculer** l'itinéraire depuis ta nouvelle position. Ta position devient le nouveau point 0, les étapes restantes sont conservées **dans l'ordre que tu avais planifié**, tes préférences d'évitement sont respectées.
 - **Valide ton passage à une étape** : touche **📍 Je suis ici** sur un point qui fait partie de ton itinéraire → l'étape est **validée** (marker **✓ vert** sur la carte, ligne rayée dans la modale), exclue des prochains calculs, et l'itinéraire repart de là. **L'ordre est libre** : tu peux visiter l'étape 3 avant la 1, l'app valide ce que TU fais, pas ce qu'elle propose.
 - **Toutes les étapes validées** (y compris ta sortie) → petit message « 🎉 Itinéraire terminé » et le tracé s'efface. Ton tracé tracker, lui, reste affiché.
 - Le recalage **clic carte** ne valide jamais d'étape (il est approximatif par nature) : il replanifie seulement.
@@ -1411,7 +1412,7 @@ Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du 
 
 #### 🪧 Guidage — « Dans 40 m, tourner à gauche » (depuis v1.98.0)
 
-Quand le **tracker est actif** et qu'un **itinéraire est tracé** (depuis la modale, un « 🧭 Y aller » sur un point ou la sortie d'urgence), un **bandeau** apparaît tout seul en haut de la carte et te dit quoi faire :
+Quand un **itinéraire est tracé** et que ta position est connue — **tracker actif**, ou simplement un **📍 Je suis ici** posé sur un point (sans podomètre, tu avances de plaque en plaque) (depuis la modale, un « 🧭 Y aller » sur un point ou la sortie d'urgence), un **bandeau** apparaît tout seul en haut de la carte et te dit quoi faire :
 
 - **« Dans 40 m, tourner à gauche »**, **« Continuer sur 120 m »**, puis **« Maintenant : tourner à gauche »** à l'approche. En petit dessous, la consigne suivante (« Puis tourner à droite »).
 - **Seulement aux croisements** : tant qu'il n'y a qu'une galerie à suivre, le guidage se tait, même si elle tourne. Il ne dit jamais « la 3e à gauche » (les tracés ne montrent pas toutes les ouvertures réelles) : toujours une **distance**.
@@ -1424,7 +1425,7 @@ Quand le **tracker est actif** et qu'un **itinéraire est tracé** (depuis la mo
 
 **Toucher le bandeau** ouvre la **🪧 Feuille de route** : toutes les consignes avec leurs distances (touche une ligne pour voir l'endroit). Elle est aussi accessible **sans tracker**, depuis la modale Itinéraire (bouton « 🪧 Feuille de route »), pour préparer une sortie.
 
-**La croix ✕** masque le bandeau **pour cet itinéraire** ; il revient au suivant. Pour le couper **pour de bon** : menu 🧭 Tracker → **🪧 Guidage de l'itinéraire**.
+**La croix ✕** **coupe le guidage** : la tuile **🪧 Guidage de l'itinéraire** du menu 🧭 Tracker s'éteint. **Touche-la pour le rallumer** — sur le même itinéraire, sans rien recalculer.
 
 **Trajet à vol d'oiseau** : si ton départ, une étape ou ton arrivée est à côté des galeries, le bout de trajet jusqu'à la plus proche est dessiné **en pointillé** et **compté** dans la distance (une étape hors tracé compte aller et retour). Au-delà de **50 m**, l'app te prévient : ce trajet n'est pas une galerie connue, vérifie ta position. Sur un plan **sans aucun tracé**, l'itinéraire ne peut pas être calculé : l'app le dit dès le lancement.
 

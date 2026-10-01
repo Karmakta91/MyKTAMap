@@ -23,7 +23,7 @@
 //   G5. s'écarter → « Hors itinéraire ? » + 3 boutons
 //   G6. écran XL → la consigne y est reprise
 //   G8. itinéraire d'urgence → pas de croix
-//   G9. suivi arrêté → bandeau masqué
+//   G9. suivi arrêté → bandeau gardé si position confirmée, masqué sinon
 //   + zéro erreur console / pageerror / clé i18n manquante
 //
 // Captures : dossier $GUID_SHOTS (défaut : dossier temporaire du système).
@@ -234,14 +234,23 @@ function inf(msg) { console.log("  •  " + msg); }
     if (!g8) pb("G8 : la croix reste en urgence");
     else ok("G8 : itinéraire d'urgence → pas de croix");
 
-    // G9 — suivi arrêté
-    await page.evaluate(function () { window.stopTracking(); window.ItiGuidage.rafraichir(); });
-    const g9 = await page.evaluate(function () {
+    // G9 — suivi arrêté. Depuis le 01/10/2026 (KARMA 1:a), une position
+    // CONFIRMÉE suffit (on avance de plaque en plaque) ; sans elle, masqué.
+    const masque = function () {
       const el = document.getElementById("kta-guid-bandeau");
       return !el || el.style.display === "none";
+    };
+    await page.evaluate(function () { window.stopTracking(); window.ItiGuidage.rafraichir(); });
+    const g9a = await page.evaluate(masque);
+    if (g9a) pb("G9 : suivi arrêté, position confirmée → bandeau masqué (il devait rester)");
+    else ok("G9 : suivi arrêté, position confirmée → le guidage continue");
+    await page.evaluate(function () {
+      window.getTrackingPositionEtat = function () { return { confirmee: false, ts: 0, suiviActif: false }; };
+      window.ItiGuidage.rafraichir();
     });
-    if (!g9) pb("G9 : bandeau encore visible suivi arrêté");
-    else ok("G9 : suivi arrêté → bandeau masqué");
+    const g9b = await page.evaluate(masque);
+    if (!g9b) pb("G9 : suivi arrêté, position NON confirmée → bandeau encore visible");
+    else ok("G9 : suivi arrêté, position non confirmée → bandeau masqué");
   } catch (e) {
     if (String(e && e.message) !== "stop") pb("exception : " + (e && e.stack || e));
   } finally {

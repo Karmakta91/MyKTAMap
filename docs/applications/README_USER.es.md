@@ -1397,7 +1397,8 @@ El modo activo se muestra junto al tiempo estimado en la etiqueta inferior izqui
 
 Durante una salida real, el rastreador puede derivar y el teléfono pasa tiempo bloqueado en el bolsillo. El itinerario se adapta solo en cada **reajuste de posición**:
 
-- **Reajusta tu posición** (clic en el mapa en modo reajuste, botón **📍 Estoy aquí** de un punto, o llegada por un portal) → el itinerario activo se **recalcula automáticamente desde tu nueva posición**. Tu posición pasa a ser el nuevo punto 0, las etapas restantes se conservan **en el orden que habías planificado** y se respetan tus preferencias de evitación.
+- **Reajusta tu posición sobre el itinerario** (botón **📍 Estoy aquí** de un punto situado **a menos de 8 m del trayecto**, o llegada por un portal) → **no se recalcula nada**: la parte ya hecha se **corta detrás de ti**, las etapas que has dejado atrás quedan **validadas** y la distancia restante se actualiza. Es instantáneo, con el guiado activado o no — ideal para avanzar **de placa en placa**.
+- **Reajusta tu posición en otro sitio** (un punto lejos del trayecto, o un clic en el mapa en modo reajuste) → la app te **propone recalcular** el itinerario desde tu nueva posición. Tu posición pasa a ser el nuevo punto 0, las etapas restantes se conservan **en el orden que habías planificado** y se respetan tus preferencias de evitación.
 - **Valida tu paso por una etapa**: pulsa **📍 Estoy aquí** en un punto que forme parte de tu itinerario → la etapa queda **validada** (marcador **✓ verde** en el mapa, línea tachada en la ventana), se excluye de los próximos cálculos y el itinerario parte desde ahí. **El orden es libre**: puedes visitar la etapa 3 antes que la 1, la app valida lo que TÚ haces, no lo que ella propone.
 - **Todas las etapas validadas** (incluida tu salida) → pequeño mensaje «🎉 Itinerario terminado» y el trazado se borra. Tu recorrido del rastreador, en cambio, sigue visible.
 - El reajuste por **clic en el mapa** nunca valida una etapa (es aproximado por naturaleza): solo replanifica.
@@ -1407,7 +1408,7 @@ Durante una salida real, el rastreador puede derivar y el teléfono pasa tiempo 
 
 #### 🪧 Guiado — «En 40 m, girar a la izquierda» (desde v1.98.0)
 
-Cuando el **tracker está activo** y hay un **itinerario trazado** (desde el modal, un «🧭 Ir allí» en un punto o la salida de emergencia), aparece solo un **banner** en la parte superior del mapa que te dice qué hacer:
+Cuando hay un **itinerario trazado** y se conoce tu posición — **tracker activo**, o simplemente un **📍 Estoy aquí** puesto en un punto (sin podómetro, avanzas de placa en placa) (desde el modal, un «🧭 Ir allí» en un punto o la salida de emergencia), aparece solo un **banner** en la parte superior del mapa que te dice qué hacer:
 
 - **«En 40 m, girar a la izquierda»**, **«Seguir durante 120 m»** y luego **«Ahora: girar a la izquierda»** al acercarte. Debajo, en pequeño, la indicación siguiente («Luego girar a la derecha»).
 - **Solo en los cruces**: mientras haya una sola galería que seguir, el guiado calla, aunque gire. Nunca dice «la 3.ª a la izquierda» (los trazados no muestran todas las aberturas reales): siempre una **distancia**.
@@ -1420,7 +1421,7 @@ Cuando el **tracker está activo** y hay un **itinerario trazado** (desde el mod
 
 **Tocar el banner** abre la **🪧 Hoja de ruta**: todas las indicaciones con sus distancias (toca una línea para ver el lugar). También está disponible **sin tracker**, desde el modal Itinerario (botón «🪧 Hoja de ruta»), para preparar una salida.
 
-**La ✕** oculta el banner **para este itinerario**; vuelve con el siguiente. Para desactivarlo **del todo**: menú 🧭 Tracker → **🪧 Guiado del itinerario**.
+**La ✕** **desactiva el guiado**: la casilla **🪧 Guiado del itinerario** del menú 🧭 Tracker se apaga. **Púlsala para volver a activarlo** — sobre el mismo itinerario, sin recalcular nada.
 
 **En línea recta**: si tu salida, una etapa o tu llegada está al lado de las galerías, el tramo hasta la más cercana se dibuja **discontinuo** y se **cuenta** en la distancia (una etapa fuera del trazado cuenta ida y vuelta). Más allá de **50 m**, la app te avisa: ese tramo no es una galería conocida, comprueba tu posición. En un plano **sin ningún trazado**, no se puede calcular el itinerario: la app lo dice desde el principio.
 

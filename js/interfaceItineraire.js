@@ -850,6 +850,130 @@ function _toastIti(msg, type) {
   }
 }
 
+// ✂️ 01/10/2026 (KARMA 3:a / 4:a) — « Je suis ici » sur un point qui est SUR
+// l'itinéraire (≤ COUPE_SEUIL_M du trajet) : on n'a rien à recalculer, on
+// COUPE ce qui est derrière. Le Dijkstra (et sa question) ne sert plus qu'au
+// point hors trajet. Guidage actif ou non : la coupe dépend de l'itinéraire.
+// Même tolérance que le guidage pour « tu es sur le trajet » (itiGuidage
+// > _seuils, sans navigation intelligente) — un seuil en pixels changerait
+// de sens d'un plan à l'autre selon sa résolution.
+const COUPE_SEUIL_M = 8;
+
+function _cumulsTrajet(pts) {
+  const c = [0];
+  for (let i = 1; i < pts.length; i++) c.push(c[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  return c;
+}
+function _projSegment(a, b, p) {
+  const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2)) : 0;
+  const x = a.x + t * dx, y = a.y + t * dy;
+  return { t: t, x: x, y: y, d: Math.hypot(p.x - x, p.y - y) };
+}
+// PREMIER passage du trajet à moins de `seuil` (le plus proche dans ce
+// passage) : sur un aller-retour vers un cul-de-sac, le premier « Je suis
+// ici » coupe l'aller, le suivant le retour.
+function _premierPassage(pts, cum, p, seuil) {
+  let best = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const q = _projSegment(pts[i], pts[i + 1], p);
+    if (q.d <= seuil) {
+      if (!best || q.d < best.d) best = Object.assign(q, { i: i, s: cum[i] + q.t * (cum[i + 1] - cum[i]) });
+    } else if (best) {
+      break;
+    }
+  }
+  return best;
+}
+// Point du trajet le plus proche de `p` parmi ceux situés au-delà de `sMin`.
+function _projApres(pts, cum, p, sMin) {
+  let best = null;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (cum[i + 1] < sMin) continue;
+    const q = _projSegment(pts[i], pts[i + 1], p);
+    const s = Math.max(sMin, cum[i] + q.t * (cum[i + 1] - cum[i]));
+    if (!best || q.d < best.d) best = { d: q.d, s: s };
+  }
+  return best;
+}
+
+// Rend true si l'itinéraire a été coupé (rien d'autre à faire), false si le
+// point n'est pas sur le trajet (→ replanification habituelle).
+function _couperDerriere(road, x, y) {
+  const pts = road.points;
+  if (!Array.isArray(pts) || pts.length < 2) return false;
+  // 🚨 Parcours d'une équipe de secours : ses étapes (wid) ne se valident que
+  // par le scénario (`secoursMode > _majRoadSuivi` les y recale à chaque
+  // mutation). Une étape cochée ici serait décochée aussitôt, trajet déjà coupé
+  // derrière — et un recalcul y renverrait l'équipe. Comportement inchangé.
+  if (road.secours) return false;
+  const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 1;
+  const cum = _cumulsTrajet(pts);
+  const coupe = _premierPassage(pts, cum, { x: x, y: y }, COUPE_SEUIL_M * e);
+  if (!coupe) return false;
+
+  const a = pts[coupe.i], b = pts[coupe.i + 1];
+  const lvl = (a.level === b.level) ? a.level : (coupe.t < 0.5 ? a.level : b.level);
+  const tete = { x: coupe.x, y: coupe.y, level: (lvl === undefined) ? null : lvl };
+  const points = [tete].concat(pts.slice(coupe.i + 1).map(function(p) { return Object.assign({}, p); }));
+
+  // Étapes et raccords dépassés : projetés DANS L'ORDRE du trajet (chacun
+  // au-delà du précédent), sinon une étape du retour d'un aller-retour serait
+  // prise pour une étape de l'aller.
+  const etapes = road.waypoints.filter(function(w) { return w.source !== "tracker"; })
+                               .map(function(w) { return Object.assign({}, w); });
+  let sPrec = 0;
+  etapes.forEach(function(w) {
+    if (w.done) return;
+    const pr = _projApres(pts, cum, w, sPrec);
+    if (!pr) return;
+    sPrec = pr.s;
+    if (pr.s < coupe.s - 0.5 * e) w.done = true;
+  });
+  sPrec = 0;
+  const raccords = (Array.isArray(road.raccords) ? road.raccords : []).filter(function(r) {
+    if (!r || r.role === "depart" || !r.vers) return false;   // on part d'un point DU trajet
+    const pr = _projApres(pts, cum, r.vers, sPrec);
+    if (!pr) return false;
+    sPrec = pr.s;
+    return pr.s >= coupe.s - 0.5 * e;
+  });
+  const cumN = _cumulsTrajet(points);
+  const carrefours = (Array.isArray(road.carrefours) ? road.carrefours : []).filter(function(c) {
+    const pr = _projApres(points, cumN, c, 0);
+    return pr && pr.d <= 3;
+  });
+
+  const origin = {
+    x: x, y: y, source: "tracker",
+    label: window.I18n.t("iti.wp.currentPos", { x: Math.round(x), y: Math.round(y) })
+  };
+  const newRoad = {
+    type: "itinerary", points: points,
+    waypoints: [origin].concat(etapes),
+    raccords: raccords, carrefours: carrefours
+  };
+  if (road.urgence) newRoad.urgence = true;
+  if (road.secours) newRoad.secours = road.secours;
+
+  const restantes = etapes.filter(function(w) { return !w.done; }).length;
+  const filtered = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+  filtered.push(newRoad);
+  if (window.setRoads) window.setRoads(filtered);
+  _itineraryWaypoints = newRoad.waypoints.map(function(w) { return Object.assign({}, w); });
+  _redessinerWaypoints();
+  _majLabelDistanceItineraire();
+  // Dernière étape dépassée : c'est la clôture (toast « terminé » + effacement).
+  if (restantes === 0) { _replanifierDepuis(x, y); return true; }
+  const resteM = _distanceItineraireMeters(newRoad);
+  _toastIti(window.I18n.t("iti.coupe.toast", {
+    dist: (typeof window.formatDistance === "function") ? window.formatDistance(resteM, 0) : Math.round(resteM) + " m"
+  }), "info");
+  console.log("[Itineraire] Coupé derrière (" + Math.round(x) + "," + Math.round(y) + ") — reste " +
+              Math.round(resteM) + " m, " + restantes + " étape(s)");
+  return true;
+}
+
 window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
@@ -877,6 +1001,19 @@ window._onTrackerRecale = function(x, y, source, opts) {
   // (`sansReplan`) — on est SUR le parcours prévu : l'étape est cochée ci-dessus, pas
   // de proposition de recalcul à chaque étape.
   if (opts && opts.sansReplan) return;
+  // ✂️ Point SUR le trajet : on coupe derrière, sans Dijkstra ni question. Pas
+  // quand la dernière étape vient d'être validée : c'est la clôture, plus bas.
+  const resteAvant = road.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length;
+  if (source === "point" && resteAvant > 0) {
+    try {
+      if (_couperDerriere(road, x, y)) {
+        if (_replanTimer) { clearTimeout(_replanTimer); _replanTimer = null; }
+        return;
+      }
+    } catch (err) {
+      console.warn("[Itineraire] coupe impossible, replanification habituelle :", err);
+    }
+  }
   if (_replanTimer) clearTimeout(_replanTimer);
   _replanTimer = setTimeout(function() {
     _replanTimer = null;

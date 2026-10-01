@@ -24,7 +24,7 @@ dessiné : il faut une logique de croisements.
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Activation | **Automatique** : le bandeau apparaît dès qu'un tracker actif et un itinéraire coexistent, y compris après un « Y aller » depuis un point. Une croix le masque pour cet itinéraire ; un réglage Auto / Jamais le coupe. |
+| 1 | Activation | **Automatique** : le bandeau apparaît dès qu'un itinéraire coexiste avec un tracker actif **ou une position confirmée** (« 📍 Je suis ici », révision KARMA 01/10/2026 : on peut avancer de plaque en plaque sans suivi), y compris après un « Y aller » depuis un point. Un réglage Auto / Jamais (tuile 🪧 du menu Tracker) le coupe ; **la croix = « Jamais »** et la tuile le rallume (révision 01/10/2026 — elle masquait cet itinéraire seulement, et rien ne permettait de le retrouver sans recalculer). |
 | 2 | Contenu du bandeau | La prochaine consigne + « puis… » en petit ; un toucher déplie la feuille de route complète. |
 | 3 | Distances | **Toujours « dans X m »**, jamais « la 3e à gauche ». |
 | L | Sans navigation intelligente | « ~ » devant le chiffre + arrondi par 10 m + une seule suggestion de l'activer, au premier affichage du bandeau. |

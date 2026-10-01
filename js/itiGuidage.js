@@ -531,8 +531,9 @@
   // 🪧 BANDEAU EN DIRECT (lot 2)
   // =========================
   // Décisions KARMA (docs/ETUDE_GUIDAGE.md) :
-  //   1:c  automatique dès que tracker actif + itinéraire ; croix = masqué pour
-  //        CET itinéraire ; réglage Auto / Jamais (menu Tracker).
+  //   1:c  automatique dès qu'un itinéraire coexiste avec un tracker actif OU
+  //        une position confirmée (« Je suis ici », 01/10/2026) ; réglage
+  //        Auto / Jamais (tuile 🪧 du menu Tracker) ; la croix = « Jamais ».
   //   2:b  prochaine consigne + « puis… » ; toucher = feuille de route.
   //   3/L  toujours en mètres ; sans navigation intelligente : « ~ » + arrondi
   //        10 m + UNE suggestion de l'activer.
@@ -557,7 +558,6 @@
   let _horsCompte = 0, _demiCompte = 0;
   let _alerte = null;          // null | "ecart" | "demi"
   let _ignoreEcart = false;
-  let _masquePour = null;      // road dont le bandeau a été fermé à la croix
   let _dernierRendu = "";
   let _etat = { visible: false };
 
@@ -585,6 +585,14 @@
   }
   function _suiviActif() {
     return !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
+  }
+  // 01/10/2026 (KARMA 1:a) — guidage SANS suivi : on avance de plaque en plaque
+  // (« 📍 Je suis ici »). Il faut alors une position CONFIRMÉE : sans elle, la
+  // position vaut le départ du plan et le bandeau donnerait de fausses consignes.
+  function _positionConfirmee() {
+    if (typeof window.getTrackingPositionEtat !== "function") return false;
+    const e = window.getTrackingPositionEtat();
+    return !!(e && e.confirmee);
   }
 
   function _fmtDirect(m) {
@@ -626,9 +634,12 @@
     _el.querySelector(".kta-guid-corps").addEventListener("click", function() {
       if (_road) ouvrirFeuilleDeRoute(_road);
     });
+    // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »,
+    // la tuile 🪧 du menu Tracker passe à off) ; la tuile le rallume aussitôt.
+    // Avant, elle masquait seulement CET itinéraire, et la tuile ne savait pas
+    // lever ce masquage : il fallait recalculer l'itinéraire pour le retrouver.
     _el.querySelector(".kta-guid-fermer").addEventListener("click", function() {
-      _masquePour = _road;
-      _cacher();
+      setPref("jamais");
       _toast(_t("guid.toast.masque"), "info");
     });
     _el.querySelector(".kta-guid-actions").addEventListener("click", function(ev) {
@@ -825,8 +836,8 @@
     const urgence = !!(road && road.urgence);
     // En sortie d'urgence le guidage s'affiche même réglé sur « Jamais » :
     // c'est l'utilisateur qui vient de demander le chemin vers la sortie.
-    const voulu = !!(road && _guide && _suiviActif() &&
-                     (urgence || (getPref() === "auto" && _masquePour !== road)));
+    const voulu = !!(road && _guide && (_suiviActif() || _positionConfirmee()) &&
+                     (urgence || getPref() === "auto"));
     if (!voulu) { _cacher(); return; }
     const pos = (posForcee && typeof posForcee.x === "number") ? posForcee : _positionTracker();
     if (!pos) { _cacher(); return; }
