@@ -98,7 +98,8 @@ const CALQUE = {
 {
   const { CS } = monter(CALQUE);
   ["estRapatrie", "listeRapatries", "compterCopie", "peser", "occupationLocalStorage",
-   "rapatrier", "restituer", "exporterCalque", "appliquerVerrous", "getSessionState", "loadSessionState"]
+   "rapatrier", "restituer", "exporterCalque", "appliquerVerrous", "getSessionState", "loadSessionState",
+   "resynchroniser"]
     .forEach(function (m) {
       t("API : CalqueSession." + m + "()", typeof CS[m] === "function");
     });
@@ -317,6 +318,37 @@ const CALQUE = {
     t("verrou avec sa copie : rien n'est libere", v.liberes.length === 0);
   }
 
+  // ───────── 4 bis. 🩸 IMPORT D'UNE SESSION : la liste se DEDUIT des marques ─────────
+  // Le fichier session emporte les objets marques, PAS `calquesSession`. Sans
+  // recalage : doublon a l'ecran sur un autre appareil (calque d'origine
+  // reaffiche par-dessus sa copie) et « Exporter » refuse (`pasRapatrie`).
+  {
+    const m = monter(CALQUE, { roads: [{ type: "a", points: [], _srcCalque: "sig" }] });
+    const r = m.CS.resynchroniser();
+    t("🩸 import autre appareil : le calque est remis en modification",
+      m.CS.estRapatrie("sig") && JSON.stringify(r.rapatries) === "[\"sig\"]");
+    t("🩸 import autre appareil : le calque d'origine est MASQUE (pas de doublon)", m.surCarte.sig === false);
+  }
+  {
+    const m = monter(CALQUE);
+    m.CS.loadSessionState({ rapatries: ["sig"] });
+    m.surCarte.sig = false;                          // verrouille avant l'import...
+    const r = m.CS.resynchroniser();                 // ... d'une session SANS sa copie
+    t("🩸 import sans la copie : le calque est LIBERE et reaffiche (pas de calque vide)",
+      r.liberes.indexOf("sig") >= 0 && m.surCarte.sig === true && !m.CS.estRapatrie("sig"));
+  }
+  {
+    const m = monter(CALQUE, { zones: [{ type: "eau", points: [], _srcCalque: "autrePlan" }] });
+    const r = m.CS.resynchroniser();
+    t("import d'un autre plan : la marque inconnue est RETIREE (objet = creation a la main)",
+      r.orphelins === 1 && m.etat.zones[0]._srcCalque === undefined && r.rapatries.length === 0);
+  }
+  {
+    const m = monter(CALQUE);
+    delete m.ctx.PLAN_CONFIG;
+    t("resynchroniser sans plan : ne touche a rien", m.CS.resynchroniser() === null);
+  }
+
   // ───────── etat corrompu ─────────
   {
     const m = monter(CALQUE);
@@ -332,6 +364,7 @@ const CALQUE = {
   const FP = fs.readFileSync("js/filterPanel.js", "utf8");
   const IDX = fs.readFileSync("index.html", "utf8");
   const SW = fs.readFileSync("sw.js", "utf8");
+  const IE = fs.readFileSync("js/interfaceImportExport.js", "utf8");
 
   t("cablage : le script est charge par index.html", /src="js\/calqueSession\.js"/.test(IDX));
   t("cablage : le module est precache (sw.js)", SW.indexOf('"./js/calqueSession.js"') >= 0);
@@ -340,6 +373,8 @@ const CALQUE = {
   t("cablage : le restore le RELIT", /CalqueSession\.loadSessionState\(payload\.calquesSession\)/.test(SP));
   t("cablage : le restore applique les verrous APRES les objets",
     SP.indexOf("CalqueSession.appliquerVerrous") > SP.indexOf("CalqueSession.loadSessionState(payload"));
+  t("🩸 cablage : l import de session RESYNCHRONISE les calques APRES les objets",
+    IE.indexOf("CalqueSession.resynchroniser()") > IE.indexOf("window.setStructures(dataParsee.structures"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
     // 13/09/2026 : clear(opts) — `opts.snapshotFait` évite un double snapshot
     // quand la modale de restauration l'a déjà pris et attendu (audit Q44).

@@ -77,7 +77,7 @@
     // 🔕 v1.85.2 (KARMA) — l'utilisateur peut refuser ce capteur. On sort
     // AVANT `getBattery()` : couper seulement l'icône laisserait l'écoute en
     // place, et c'est justement l'écoute qu'on ne veut pas imposer.
-    if (window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false) {
+    if (!window.APP_CONFIG || window.APP_CONFIG.batterieEnabled !== true) {
       _available = false;
       console.log("[BatteryGuard] Désactivé par l'utilisateur — aucun capteur écouté.");
       return;

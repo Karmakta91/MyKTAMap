@@ -139,6 +139,17 @@
       : info.label;
   }
   // Version ASCII (pour PDF jsPDF latin1) — retire les accents du label i18n.
+  // Contre-audit GRIMP (30/09) : une même étape portait deux numéros à l'écran
+  // (« Étape 6/41 » en tête, « ÉTAPE 5 » dans le bloc). Numéro unique, celui de la
+  // carte et des PDF : entrée « E », étapes 1…N (intermédiaires), sortie « S ».
+  function _numEtape(et, idx) {
+    return (et && et.type === "entree") ? "E" : (et && et.type === "sortie") ? "S" : String(idx);
+  }
+  function _nomEtape(et, idx) {
+    return (et && et.type === "entree") ? t("secours.num.entree")
+         : (et && et.type === "sortie") ? t("secours.num.sortie")
+         : t("secours.num.etape", { n: idx });
+  }
   function _statutLabelAscii(statutId) {
     return _statutLabel(statutId)
       .normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -235,6 +246,17 @@
       label: "Demi-tour forcé",
       color: "#9d44ff",
       severity: 1
+    },
+    // Contre-audit GRIMP (30/09) : « Étape suivante » sans statut posait RAS — une
+    // étape SAUTÉE devenait « fouillée, rien à signaler » dans le rapport. Statut
+    // posé par l'app seulement (`auto` : jamais proposé en bouton).
+    {
+      id: "non-renseigne",
+      emoji: "⚪",
+      label: "Passée, non renseignée",
+      color: "#8892a4",
+      severity: 0,
+      auto: true
     },
     {
       id: "victime",
@@ -929,6 +951,7 @@
       const r = partial.reglagesDuree;
       s.reglagesDuree = {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(r.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(r.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
         pauseMin:   Math.max(0, Math.min(120, Number(r.pauseMin) || 0)),
         margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(r.margeRetardMin)) && r.margeRetardMin !== ""
                           ? Number(r.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
@@ -1573,7 +1596,33 @@
   }
   function _chef(g) {
     const m = (g && Array.isArray(g.membres)) ? g.membres : [];
-    return (g && g.chef && m.indexOf(g.chef) >= 0) ? g.chef : (m[0] || null);
+    // Sans liste de membres, le chef se saisit librement (contre-audit GRIMP 30/09 :
+    // 7 équipes sur 8 du scénario réel n'avaient ni membres ni chef possible).
+    if (g && g.chef && (!m.length || m.indexOf(g.chef) >= 0)) return g.chef;
+    return m[0] || null;
+  }
+  // Contrôle des engagés, pour la vue opérateur (contre-audit GRIMP 30/09 : aucun
+  // total nulle part). Équipes de la phase en cours ; effectif inconnu = compté à part.
+  function _bilanEngages(s) {
+    const r = { engages: 0, sousTerre: 0, manquants: 0, inconnus: [] };
+    const ph = _phaseCour(s);
+    (s.groupes || []).forEach(function(g) {
+      if (!_groupeParticipeAPhase(s, g.id, ph)) return;
+      const eff = _effectif(g), su = _suiviEquipe(s, g.id) || {};
+      if (!eff) { if (!su.rentreeAt) r.inconnus.push(g.nom); return; }
+      r.engages += eff;
+      if (!su.rentreeAt) r.sousTerre += eff;
+      else { const m = _manquants(g, su); r.manquants += m; r.sousTerre += m; }
+    });
+    return r;
+  }
+  function _renderBilanEngages(s) {
+    const b = _bilanEngages(s);
+    const alerte = b.manquants > 0 || b.inconnus.length > 0;
+    return '<div class="kta-secours-bilan ' + (b.manquants > 0 ? 'kta-tx-err' : alerte ? 'kta-tx-warn' : '') + '">' +
+             '👥 ' + _escHtml(t("secours.bilan.ligne", { engages: b.engages, sousTerre: b.sousTerre, manquants: b.manquants })) +
+             (b.inconnus.length ? ' · ' + _escHtml(t("secours.bilan.inconnus", { n: b.inconnus.length, noms: b.inconnus.join(", ") })) : '') +
+           '</div>';
   }
   // Personnes manquantes à la rentrée (0 si tout le monde est remonté ou effectif inconnu).
   function _manquants(g, su) {
@@ -1597,12 +1646,24 @@
                                    remontes: su.remontes, effectif: _effectif(g) });
     }
     const duree = (typeof g.dureeEstimeeMin === "number" && g.dureeEstimeeMin > 0) ? g.dureeEstimeeMin : null;
-    if (!duree || !departIso) return Object.assign(base, { etat: "inconnu" });
-    const retourMs = Date.parse(departIso) + duree * 60000;
+    const imperatif = _heureRetourMs(g, departIso);   // prime sur l'estimation
+    if (!imperatif && (!duree || !departIso)) return Object.assign(base, { etat: "inconnu" });
+    const retourMs = imperatif || (Date.parse(departIso) + duree * 60000);
+    base.imperatif = !!imperatif;
     const now = Date.now();
     const marge = _reglagesDuree(s).margeRetardMin * 60000;
     const etat = now > retourMs + marge ? "rouge" : (now > retourMs ? "orange" : "ok");
     return Object.assign(base, { etat: etat, retourMs: retourMs, ecartMin: (now - retourMs) / 60000 });
+  }
+  // « HH:MM » → instant : le prochain HH:MM à partir du départ (une consigne à 01:00
+  // pour un départ à 22:00 tombe le lendemain). null si pas de consigne.
+  function _heureRetourMs(g, departIso) {
+    if (!g || typeof g.heureRetour !== "string" || !/^\d{2}:\d{2}$/.test(g.heureRetour)) return null;
+    const dep = departIso ? new Date(departIso) : new Date();
+    const d = new Date(dep.getTime());
+    d.setHours(Number(g.heureRetour.slice(0, 2)), Number(g.heureRetour.slice(3, 5)), 0, 0);
+    if (d.getTime() <= dep.getTime()) d.setDate(d.getDate() + 1);
+    return d.getTime();
   }
   function _texteRetour(s, g) {
     const e = _etatRetour(s, g);
@@ -1612,7 +1673,7 @@
     const dep = e.departIso ? t("secours.retour.depart", { h: _heureCourte(e.departIso) }) +
                 (e.departExplicite ? "" : " " + t("secours.retour.departDefaut")) : "";
     if (e.etat === "inconnu") return dep + " · " + t("secours.retour.sansDuree");
-    const prevu = t("secours.retour.prevu", { h: _heureCourte(new Date(e.retourMs).toISOString()) });
+    const prevu = t(e.imperatif ? "secours.retour.imperatif" : "secours.retour.prevu", { h: _heureCourte(new Date(e.retourMs).toISOString()) });
     const reste = e.ecartMin > 0 ? t("secours.retour.retard", { duree: _fmtMinutes(e.ecartMin) })
                                  : t("secours.retour.dans", { duree: _fmtMinutes(-e.ecartMin) });
     return dep + " · " + prevu + " · " + reste;
@@ -1678,7 +1739,9 @@
     const eff = _effectif(g);
     const su0 = _suiviEquipe(s, gid) || {};
     const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
-                     valeur: Number.isInteger(su0.remontes) ? su0.remontes : (eff || null), min: 0, max: 99 };
+                     // Jamais prérempli avec l'effectif (contre-audit GRIMP 30/09) : un seul
+                     // « Valider » donnait « 3/3 » sans que personne n'ait compté.
+                     valeur: Number.isInteger(su0.remontes) ? su0.remontes : null, min: 0, max: 99 };
     const msg = t("secours.b9.remontesQuestion", { equipe: _escHtml(g.nom) });
     const ok = (typeof window.ktaConfirm === "function")
       ? await window.ktaConfirm(msg, { titre: t("secours.b9.remontesTitre"), okLabel: t("secours.b9.remontesOk2"), nombre: nombre })
@@ -1687,7 +1750,7 @@
     const compte = (Number.isInteger(nombre.valeur) && nombre.valeur >= 0) ? nombre.valeur : null;
     // Effectif connu : le compte est obligatoire. Inconnu : on peut valider sans compte
     // (sinon une équipe aux membres non nommés ne pourrait jamais être déclarée rentrée).
-    if (compte === null && eff) return false;
+    if (compte === null && eff) { _toast(t("secours.b9.compteRequis"), "warn"); return false; }
     const s2 = get(sid);
     if (!s2 || !_estExecutionActive(s2)) return false;
     const su = _suiviEquipe(s2, gid, true);
@@ -1700,7 +1763,9 @@
     _commitMutation(s2);
     if (manque > 0) {
       _toast(t("secours.b9.toastManquants", { equipe: g.nom, n: manque }), "error");
-      try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]); } catch(e) {}
+      // 📳 Soumis au réglage Vibration (décision KARMA 01/10/2026). Seules les
+      // alertes de survie passent outre, via kta_vibrate.urgence.
+      if (window.kta_vibrate) window.kta_vibrate([400, 150, 400, 150, 400]);
     }
     return true;
   }
@@ -1743,7 +1808,7 @@
     });
     if (messages.length) {
       _toast(messages.join(" · "), rouge ? "error" : "warn");
-      try { if (navigator.vibrate) navigator.vibrate(rouge ? [300, 150, 300, 150, 300] : [200]); } catch(err) {}
+      if (window.kta_vibrate) window.kta_vibrate(rouge ? [300, 150, 300, 150, 300] : [200]);
     }
     _majFooterSecours(true);
   }
@@ -1789,6 +1854,54 @@
     } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); return null; }
   }
 
+  // ─── Vague 8b (30/09, contre-audit IGC) — NIVEAU DES ZONES ───
+  // Une zone polygone vaut au niveau où elle a été DESSINÉE (niveau de ses sommets,
+  // sinon celui de l'équipe) — ou sur tous les niveaux si l'équipe le demande
+  // (`zoneTousNiveaux`). Avant, la zone valait pour tous les niveaux sans le dire :
+  // le −1 était annoncé « couvert à 80 % » alors que 4,9 % en étaient parcourus.
+  function _mlvlActif() { return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true); }
+  function _niveauZone(g) {   // null = tous niveaux
+    if (!_mlvlActif() || !g || g.zoneTousNiveaux) return null;
+    const v = (g.zonePolygon || []).find(function(p) { return p && Number.isInteger(p.level); });
+    return v ? v.level : (Number.isInteger(g.level) ? g.level : 0);
+  }
+  function _dansZonePolygone(g, pt, niveau) {
+    if (!g || g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return false;
+    const nz = _niveauZone(g);
+    if (nz !== null && (Number.isInteger(niveau) ? niveau : 0) !== nz) return false;
+    return _pointInPolygon(pt, g.zonePolygon);
+  }
+  // Galeries SOUS le polygone d'une équipe, à un niveau où ni sa zone ni son parcours
+  // ne vont : [{ niveau, m, horsZone }] (≥ 50 m). `horsZone` : niveau exclu de la zone
+  // (dessinée ailleurs) ; sinon niveau de la zone que l'itinéraire ne visite pas.
+  function _niveauxNonParcourus(g) {
+    if (!_mlvlActif() || !g || g.zoneType !== "polygon" || !Array.isArray(g.zonePolygon) || g.zonePolygon.length < 3) return [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const visites = {};
+    (g.itineraireSuggere || []).forEach(function(p) { if (p && Number.isInteger(p.level)) visites[p.level] = true; });
+    const nz = _niveauZone(g);
+    const parNiveau = {};
+    _tousLesTraces().forEach(function(r) {
+      const lvl = Number.isInteger(r.level) ? r.level : 0;
+      if (visites[lvl]) return;
+      const pts = r.points;
+      for (let i = 1; i < pts.length; i++) {
+        const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
+        if (_pointInPolygon(m, g.zonePolygon)) parNiveau[lvl] = (parNiveau[lvl] || 0) + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      }
+    });
+    return Object.keys(parNiveau).map(Number).sort(function(a, b) { return a - b; })
+      .map(function(l) { return { niveau: l, m: parNiveau[l] / pxParM, horsZone: nz !== null && l !== nz }; })
+      .filter(function(x) { return x.m >= 50; });
+  }
+  function _texteNiveauxNonParcourus(g, liste) {
+    if (!liste.length) return "";
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
+    return t("secours.niv.sousZone", { equipe: g.nom, liste: liste.map(function(x) {
+      return t(x.horsZone ? "secours.niv.itemHorsZone" : "secours.niv.itemSansParcours", { niveau: x.niveau, long: fmt(x.m) });
+    }).join(" · ") });
+  }
+
   // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
   // Une aide à la lecture, sans affectation automatique : (1) POI situés DANS la zone
   // d'une équipe mais absents de son parcours, (2) POI visités par plusieurs équipes,
@@ -1828,7 +1941,7 @@
         if (dans[p.id] || dans[Math.round(p.x) + "," + Math.round(p.y)]) return;
         let inside = false;
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
-          inside = _pointInPolygon(p, g.zonePolygon);
+          inside = _dansZonePolygone(g, p, p.level);   // 8b : au niveau de la zone
         } else if (g.zoneType === "roads") {
           inside = traces.some(function(r) { return r && Array.isArray(r.points) && _distPointPolyline(p, r.points) <= 30; });
         }
@@ -1840,8 +1953,7 @@
     const tous = _tousLesTraces();
     const clesZones = {};
     groupes.forEach(function(g) { if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { clesZones[_cleTrace(r)] = true; }); });
-    const polys = groupes.filter(function(g) { return g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3; })
-                         .map(function(g) { return g.zonePolygon; });
+    const zonesPoly = groupes.filter(function(g) { return g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3; });
     let total = 0, couvert = 0;
     tous.forEach(function(r) {
       const pts = r.points;
@@ -1851,17 +1963,130 @@
         total += d;
         if (entier) { couvert += d; continue; }
         const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
-        if (polys.some(function(poly) { return _pointInPolygon(m, poly); })) couvert += d;
+        if (zonesPoly.some(function(g) { return _dansZonePolygone(g, m, r.level); })) couvert += d;   // 8b : niveau
       }
     });
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     return { doublons: doublons, horsParcours: horsParcours, totalM: total / pxParM, couvertM: couvert / pxParM };
   }
+  // ─── Vague 8b (30/09, contre-audits GRIMP + IGC) — COUVERTURE HONNÊTE ───
+  // « 93 % couvert » mesurait les galeries SOUS une zone, pas celles qu'une équipe va
+  // parcourir (21-24 % sur le scénario réel). Par niveau : longueur, part dans une
+  // zone, part SUR UN PARCOURS (tronçon dont le milieu est à < 3 m de l'itinéraire
+  // calculé d'une équipe, même niveau), longueur affectée à 2 équipes ou plus.
+  // Les itinéraires sont indexés dans une grille (87 km de galeries × 8 parcours).
+  function _couvertureParNiveau(s) {
+    const groupes = (s && s.groupes) || [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const tol = 3 * pxParM, cell = 20 * pxParM;
+    const grille = {};
+    groupes.forEach(function(g) {
+      const it = g.itineraireSuggere;
+      if (!Array.isArray(it)) return;
+      for (let i = 1; i < it.length; i++) {
+        const a = it[i - 1], b = it[i];
+        const lvl = Number.isInteger(b.level) ? b.level : 0;
+        const x0 = Math.floor(Math.min(a.x, b.x) / cell), x1 = Math.floor(Math.max(a.x, b.x) / cell);
+        const y0 = Math.floor(Math.min(a.y, b.y) / cell), y1 = Math.floor(Math.max(a.y, b.y) / cell);
+        for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+          (grille[lvl + ":" + cx + ":" + cy] = grille[lvl + ":" + cx + ":" + cy] || []).push([a, b]);
+        }
+      }
+    });
+    const surParcours = function(m, lvl) {
+      const cx = Math.floor(m.x / cell), cy = Math.floor(m.y / cell);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const segs = grille[lvl + ":" + (cx + dx) + ":" + (cy + dy)];
+        if (segs && segs.some(function(sg) { return _distPointPolyline(m, sg) <= tol; })) return true;
+      }
+      return false;
+    };
+    const clesParEquipe = groupes.map(function(g) {
+      const k = {};
+      if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { k[_cleTrace(r)] = true; });
+      return k;
+    });
+    const niveaux = {}, horsParcours = [];
+    _tousLesTraces().forEach(function(r) {
+      const lvl = Number.isInteger(r.level) ? r.level : 0;
+      const cleR = _cleTrace(r);
+      const n = niveaux[lvl] = niveaux[lvl] || { total: 0, zone: 0, parcours: 0, double: 0 };
+      const pts = r.points;
+      for (let i = 1; i < pts.length; i++) {
+        const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+        const m = { x: (pts[i].x + pts[i - 1].x) / 2, y: (pts[i].y + pts[i - 1].y) / 2 };
+        n.total += d;
+        let nbZones = 0;
+        groupes.forEach(function(g, gi) { if (clesParEquipe[gi][cleR] || _dansZonePolygone(g, m, lvl)) nbZones++; });
+        if (nbZones > 0) n.zone += d;
+        if (nbZones > 1) n.double += d;
+        if (surParcours(m, lvl)) n.parcours += d;
+        else horsParcours.push({ level: lvl, a: pts[i - 1], b: pts[i] });
+      }
+    });
+    Object.keys(niveaux).forEach(function(k) {
+      const n = niveaux[k];
+      n.total /= pxParM; n.zone /= pxParM; n.parcours /= pxParM; n.double /= pxParM;
+    });
+    const alertes = groupes.map(function(g) { return _texteNiveauxNonParcourus(g, _niveauxNonParcourus(g)); }).filter(Boolean);
+    const sansIti = groupes.filter(function(g) { return !(Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2); })
+                           .map(function(g) { return g.nom; });
+    return { niveaux: niveaux, horsParcours: horsParcours, alertes: alertes, sansIti: sansIti };
+  }
+  let _couvDerniere = null, _couvCalque = null;
+  // Surligne sur la carte les galeries hors parcours du niveau affiché (préparer la
+  // phase suivante). Second appel = on retire.
+  function _basculerSurlignageCouverture(s) {
+    if (_couvCalque) {
+      try { window.map.removeLayer(_couvCalque); } catch(e) {}
+      _couvCalque = null;
+      _toast(t("secours.couv.surlignageRetire"), "info");
+      return false;
+    }
+    if (!window.map || !_couvDerniere) return false;
+    const niveau = _mlvlActif() ? (Number.isInteger(window.APP_CONFIG.activeLevel) ? window.APP_CONFIG.activeLevel : 0) : null;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    let m = 0;
+    const segs = [];
+    _couvDerniere.horsParcours.forEach(function(sg) {
+      if (niveau !== null && sg.level !== niveau) return;
+      m += Math.hypot(sg.b.x - sg.a.x, sg.b.y - sg.a.y) / pxParM;
+      segs.push([_planToLatLng(sg.a), _planToLatLng(sg.b)]);
+    });
+    // UNE polyligne multiple (des milliers de tronçons : un calque chacun pèserait sur mobile)
+    _couvCalque = L.polyline(segs, { color: "#ff6b6b", weight: 5, opacity: 0.85, interactive: false });
+    _couvCalque.addTo(window.map);
+    fermer();
+    const fmt = (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m";
+    _toast(t("secours.couv.surlignageOk", { long: fmt, niveau: niveau === null ? "—" : niveau }), "warn");
+    return true;
+  }
   function _renderCouverture(s) {
     const c = _calculerCouverture(s);
     const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
-    const pct = c.totalM > 0 ? Math.round(100 * c.couvertM / c.totalM) : 0;
-    let html = '<p><strong>' + t("secours.couv.galeries", { pct: pct, couvert: fmt(c.couvertM), total: fmt(c.totalM) }) + '</strong></p>';
+    const cp = _couvDerniere = _couvertureParNiveau(s);
+    const pctDe = function(a, b) { return b > 0 ? Math.round(100 * a / b) + " %" : "—"; };
+    const tot = { total: 0, zone: 0, parcours: 0, double: 0 };
+    const ligne = function(lbl, n, cls) {
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + lbl + '</td><td>' + fmt(n.total) + '</td>' +
+             '<td>' + pctDe(n.zone, n.total) + '</td><td><strong>' + pctDe(n.parcours, n.total) + '</strong></td>' +
+             '<td>' + (n.double > 0 ? fmt(n.double) : "—") + '</td></tr>';
+    };
+    let lignes = '';
+    Object.keys(cp.niveaux).map(Number).sort(function(a, b) { return b - a; }).forEach(function(l) {
+      const n = cp.niveaux[l];
+      ["total", "zone", "parcours", "double"].forEach(function(k) { tot[k] += n[k]; });
+      lignes += ligne(_mlvlActif() ? t("secours.couv.niveauN", { n: l }) : t("secours.couv.plan"), n, n.parcours < 0.5 * n.total ? "kta-tx-warn" : "");
+    });
+    if (Object.keys(cp.niveaux).length > 1) lignes += ligne('<strong>' + t("secours.couv.total") + '</strong>', tot, "kta-secours-couv-total");
+    let html = '<table class="kta-secours-couv-table"><thead><tr>' +
+                 '<th>' + t("secours.couv.colNiveau") + '</th><th>' + t("secours.couv.colGaleries") + '</th>' +
+                 '<th>' + t("secours.couv.colZone") + '</th><th>' + t("secours.couv.colParcours") + '</th>' +
+                 '<th>' + t("secours.couv.colDouble") + '</th></tr></thead><tbody>' + lignes + '</tbody></table>';
+    if (cp.sansIti.length) html += '<p class="kta-tx-warn kta-secours-couv-note">' + _escHtml(t("secours.couv.sansIti", { noms: cp.sansIti.join(", ") })) + '</p>';
+    cp.alertes.forEach(function(a) { html += '<p class="kta-tx-warn kta-secours-couv-note">⚠️ ' + _escHtml(a) + '</p>'; });
+    html += '<p><button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="couv-surligner">' +
+              (_couvCalque ? t("secours.couv.btnMasquer") : t("secours.couv.btnSurligner")) + '</button></p>';
     html += '<p class="kta-secours-couv-titre">' + t("secours.couv.horsParcoursTitre") + '</p>';
     html += c.horsParcours.length
       ? '<ul class="kta-secours-couv-liste">' + c.horsParcours.map(function(h) {
@@ -1955,6 +2180,35 @@
   // l'ENTRÉE de l'équipe. Position pas encore confirmée (suivi éteint, jamais recalé) →
   // automatique ; déjà confirmée → on demande (téléporter sans prévenir effacerait une
   // position juste). `teleport` : le saut ne compte pas comme un trajet parcouru.
+  // Contre-audit GRIMP (30/09) : valider une étape ne recalait pas le suivi — après 5
+  // étapes, 135 m d'écart, et 136 consignes de guidage bâties sur une position qui
+  // dérive. Une étape validée avec un statut qui SUPPOSE d'y être = « Je suis ici » :
+  // recalage silencieux sous RECALAGE_SILENCE_M, question au-delà (la position peut
+  // être juste et l'étape mal posée). Jamais pour « bloqué » / « demi-tour » (on n'y
+  // est pas arrivé), ni pour l'opérateur qui relaie une équipe depuis la surface.
+  const RECALAGE_SILENCE_M = 30;
+  const STATUTS_SUR_PLACE = ["ras", "suspect", "indice", "aide", "victime"];
+  function _recalerSurEtape(sid, gid, idx, statutId) {
+    const s = get(sid);
+    if (!s || !s.execution || s.execution.role !== "equipe" || s.execution._previousRole) return;
+    if (STATUTS_SUR_PLACE.indexOf(statutId) < 0 || typeof window.recalerTrackerSurPoint !== "function") return;
+    const g = (s.groupes || []).find(function(x) { return x.id === gid; });
+    const et = _getEtapesEquipe(s, gid)[idx];
+    if (!g || !et) return;
+    const wps = [g.entree].concat(g.intermediaires || [], [g.sortie]);
+    const w = (et.wid && wps.find(function(x) { return x && x.wid === et.wid; })) || wps[idx];
+    if (!w || typeof w.x !== "number") return;
+    const recaler = function() { window.recalerTrackerSurPoint(w.x, w.y, Number.isInteger(w.level) ? w.level : undefined, { sansReplan: true }); };
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const ecartM = (pos && typeof pos.x === "number") ? Math.hypot(pos.x - w.x, pos.y - w.y) / pxParM : 0;
+    if (ecartM <= RECALAGE_SILENCE_M || typeof window.ktaConfirm !== "function") { recaler(); return; }
+    const fmt = (typeof window.formatDistance === "function") ? window.formatDistance(ecartM, 0) : Math.round(ecartM) + " m";
+    window.ktaConfirm(t("secours.recalage.question", { dist: _escHtml(fmt), etape: _escHtml(_nomEtape(et, idx)) }),
+      { titre: t("secours.recalage.titre"), okLabel: t("secours.recalage.ok"), cancelLabel: t("secours.recalage.non") })
+      .then(function(ok) { if (ok) recaler(); });
+  }
+
   // Placement automatique → rend le texte à glisser dans le message du lancement.
   // Question (position déjà confirmée) → rend null, et le message suit la réponse.
   function _placerAEntree(sid, gid) {
@@ -2127,6 +2381,28 @@
   // le tracé. Ils sont gardés sur l'équipe (`g.guidage`) et partent avec le .mkmsec :
   // le téléphone peut guider sans recalculer. `n` = nombre de points du tracé, pour
   // reconnaître des données qui ne correspondent plus au tracé (recalcul au besoin).
+  // Contre-audit IGC (30/09) : seule la PIRE étape au-delà de 50 m était signalée —
+  // une étape à 31 m d'une galerie passait sans un mot. Toutes les étapes à plus de
+  // SEUIL_ETAPE_LOIN_M de la galerie la plus proche (à vol d'oiseau), numérotées
+  // comme sur la carte (E, 1…N, S), d'après les raccords du dernier calcul.
+  const SEUIL_ETAPE_LOIN_M = 25;   // 15 m (proposé par l'audit) signalait les POI posés dans une salle, à 16-19 m de l'axe tracé
+  function _etapesLoin(raccords) {
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const arr = Array.isArray(raccords) ? raccords : [];
+    return arr.map(function(r, i) {
+      const idx = Number.isInteger(r && r.index) ? r.index : i;
+      const num = (r && r.role === "depart") ? "E" : (r && r.role === "arrivee") ? "S" : String(idx);
+      return { num: num, nom: (r && r.label) ? _lblEtape(r.label) : "", distM: ((r && Number(r.distPx)) || 0) / pxParM };
+    }).filter(function(e) { return e.distM >= SEUIL_ETAPE_LOIN_M; });
+  }
+  function _texteEtapesLoin(liste) {
+    if (!liste.length) return "";
+    const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : Math.round(m) + " m"; };
+    const items = liste.slice(0, 6).map(function(e) {
+      return e.num + (e.nom ? " « " + e.nom + " »" : "") + " " + fmt(e.distM);
+    }).join(" · ") + (liste.length > 6 ? " …" : "");
+    return t("secours.loin.liste", { n: liste.length, liste: items });
+  }
   function _donneesGuidage(r) {
     return {
       carrefours: Array.isArray(r && r.carrefours) ? r.carrefours : [],
@@ -2233,7 +2509,7 @@
       _liveEquipeFreshSession = false;
     }
     _toast(t("secours.suivre.arrivee", { etape: prochain.label || "?" }), "info");
-    try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch(e) {}
+    if (window.kta_vibrate) window.kta_vibrate([120, 80, 120]);
   }
 
   // B2 (vague 6, 30/09/2026) — feuille de route d'une équipe, en texte, pour le PDF.
@@ -2638,7 +2914,7 @@
   // de tracés peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
   // Test terrain (30/09) : le même plan n'a pas le même identifiant selon qu'il est
   // importé (« local_… ») ou servi (« server_… »). Comparer les seuls ids affichait
-  // « plan différent — source : Pandemonium, courant : Pandemonium ». Autre plan =
+  // « plan différent — source : X, courant : X » (même nom). Autre plan =
   // ids différents ET (nom ou dimensions différents).
   function _autrePlan(planFichier) {
     const f = planFichier || {};
@@ -2808,6 +3084,7 @@
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
       reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
+        vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
         pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0)),
         margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(sc.reglagesDuree.margeRetardMin))
                           ? Number(sc.reglagesDuree.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
@@ -4196,7 +4473,11 @@
       g.membres = partial.membres.slice();
     }
     // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
-    if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef) ? partial.chef : null;
+    // Contre-audit GRIMP (30/09) : l'heure de retour IMPÉRATIVE (autonomie des éclairages,
+    // relève) est une consigne du chef, pas une estimation. « HH:MM » ou null.
+    if ("zoneTousNiveaux" in partial) g.zoneTousNiveaux = partial.zoneTousNiveaux === true;
+    if ("heureRetour" in partial) g.heureRetour = (typeof partial.heureRetour === "string" && /^\d{2}:\d{2}$/.test(partial.heureRetour)) ? partial.heureRetour : null;
+    if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef.trim()) ? partial.chef.trim().slice(0, 60) : null;
     if ("effectif" in partial) {
       const n = parseInt(partial.effectif, 10);
       g.effectif = (Number.isFinite(n) && n > 0 && n < 100) ? n : null;
@@ -5928,6 +6209,12 @@
     pdf.text(t("secours.surf.equipesSurPlace"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const groupes = (scenario && Array.isArray(scenario.groupes)) ? scenario.groupes : [];
+    // Contre-audit GRIMP (30/09) : « GPS surface : non renseigné » juste sous le
+    // tableau qui donne le GPS de l'accès de l'équipe. On renvoie au numéro d'accès.
+    const numAcces = {};
+    _accesSurface(scenario).forEach(function(a, i) {
+      a.equipes.forEach(function(g) { (numAcces[g.id] = numAcces[g.id] || []).push(i + 1); });
+    });
     if (groupes.length === 0) {
       pdf.setTextColor(120); pdf.setFont(undefined, "italic");
       pdf.text(t("secours.surf.aucuneEquipe"), margin, y);
@@ -5941,6 +6228,8 @@
         const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
                            ? g.membres.join(", ") : t("secours.surf.membresNonRenseignes");
         pdf.text(t("secours.surf.membresLigne", { membres: membresStr }), margin + 2, y); y += 4;
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+                                                 effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin + 2, y); y += 4;
         if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
             && typeof g.surfaceGps.lng === "number") {
           const gLat = g.surfaceGps.lat.toFixed(6);
@@ -5952,6 +6241,8 @@
           pdf.textWithLink(t("secours.surf.voirPositionEquipe"), margin + 4, y,
                            { url: eqOsm }); y += 4;
           pdf.setTextColor(0);
+        } else if (numAcces[g.id]) {
+          pdf.text(t("secours.surf.voirAcces", { n: numAcces[g.id].join(", ") }), margin + 2, y); y += 4;
         } else {
           pdf.setTextColor(150); pdf.setFont(undefined, "italic");
           pdf.text(t("secours.surf.gpsNonRenseigne"), margin + 2, y); y += 4;
@@ -5974,30 +6265,12 @@
     // pas. Désormais : session + calques du plan (comme `sortieUrgence.js`), accès
     // OUVERTS d'abord (mêmes tags que la Sortie d'urgence), puis FERMÉS — que les
     // pompiers ou l'IGC peuvent ouvrir. Un POI n'apparaît qu'une fois.
-    const poiList = [].concat(
-      (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [],
-      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || []
-    );
-    const critTags = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
-    const ALIAS_ENTREE = ["entree_plan", "entrée", "entree"];
-    const critLabels = {
-      entree_plan:    t("secours.surf.critEntree"),
-      cao:            t("secours.surf.critCao"),
-      peo:            t("secours.surf.critPeo"),
-      eso:            t("secours.surf.critEso"),
-      caf:            t("secours.surf.critCaf"),
-      pef:            t("secours.surf.critPef"),
-      esf:            t("secours.surf.critEsf")
-    };
+    const critTags = CRIT_TAGS;
+    const critLabels = _critLabels();
     const critByTag = {};
-    poiList.forEach(function(p) {
-      if (!p || !Array.isArray(p.tags)) return;
-      const tags = p.tags.map(function(x) { return String(x || "").trim().toLowerCase(); });
-      const tg = tags.some(function(x) { return ALIAS_ENTREE.indexOf(x) >= 0; }) ? "entree_plan"
-               : critTags.find(function(c) { return tags.indexOf(c) >= 0; });
-      if (!tg) return;
-      if (!critByTag[tg]) critByTag[tg] = [];
-      critByTag[tg].push(p);
+    _poisAcces().forEach(function(a) {
+      if (!critByTag[a.tag]) critByTag[a.tag] = [];
+      critByTag[a.tag].push(a.p);
     });
     let critFound = false;
     critTags.forEach(function(tg) {
@@ -6203,6 +6476,36 @@
     }
   }
 
+  // POI d'accès du plan (session + calques), classés par tag — mêmes tags que la
+  // Sortie d'urgence. Partagé par « POI critiques » et « Accès surface ».
+  const CRIT_TAGS = ["entree_plan", "cao", "peo", "eso", "caf", "pef", "esf"];
+  const CRIT_FERMES = ["caf", "pef", "esf"];
+  function _critLabels() {
+    return {
+      entree_plan: t("secours.surf.critEntree"), cao: t("secours.surf.critCao"), peo: t("secours.surf.critPeo"),
+      eso: t("secours.surf.critEso"), caf: t("secours.surf.critCaf"), pef: t("secours.surf.critPef"),
+      esf: t("secours.surf.critEsf")
+    };
+  }
+  function _poisAcces() {
+    const ALIAS_ENTREE = ["entree_plan", "entrée", "entree"];
+    const vus = {};
+    return [].concat(
+      (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [],
+      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || []
+    ).map(function(p) {
+      if (!p || !Array.isArray(p.tags) || typeof p.x !== "number") return null;
+      const tags = p.tags.map(function(x) { return String(x || "").trim().toLowerCase(); });
+      const tg = tags.some(function(x) { return ALIAS_ENTREE.indexOf(x) >= 0; }) ? "entree_plan"
+               : CRIT_TAGS.find(function(c) { return tags.indexOf(c) >= 0; });
+      if (!tg) return null;
+      const k = p.id || (Math.round(p.x) + "," + Math.round(p.y));
+      if (vus[k]) return null;
+      vus[k] = true;
+      return { p: p, tag: tg };
+    }).filter(Boolean);
+  }
+
   // ─── ACCÈS SURFACE (test terrain 30/09) ───
   // Les entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
   // [{ pt, nom, equipes: [g], entree: bool, sortie: bool }].
@@ -6219,7 +6522,31 @@
         a[p[0]] = true;
       });
     });
+    // Contre-audit IGC (30/09) : un accès posé à la main (« Accès sans nom ») est
+    // souvent un accès du plan. Le POI d'accès à moins de 15 m (même niveau) donne
+    // son nom, son type et son état — « escalier fermé » = à ouvrir par la surface.
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const pois = _poisAcces();
+    acces.forEach(function(a) {
+      let best = null, bestD = 15 * pxParM;
+      pois.forEach(function(c) {
+        if (Number.isInteger(a.pt.level) && Number.isInteger(c.p.level) && a.pt.level !== c.p.level) return;
+        const d = Math.hypot(c.p.x - a.pt.x, c.p.y - a.pt.y);
+        if (d <= bestD) { bestD = d; best = c; }
+      });
+      a.poi = best;
+    });
     return acces;
+  }
+  // Accès du scénario comme candidats d'évacuation (SortieUrgence, `sortiesSupp`).
+  function _sortiesScenario(s) {
+    return _accesSurface(s).map(function(a, i) {
+      const ferme = !!(a.poi && CRIT_FERMES.indexOf(a.poi.tag) >= 0);
+      const nom = (a.nom || (a.poi && a.poi.p.nom) || t("secours.acces.accesN", { n: i + 1 })) +
+                  " (" + a.equipes.map(function(g) { return g.nom; }).join(", ") + ")" +
+                  (ferme ? " — " + t("secours.acces.aOuvrir") : "");
+      return { x: a.pt.x, y: a.pt.y, level: Number.isInteger(a.pt.level) ? a.pt.level : undefined, nom: nom, tags: [] };
+    });
   }
   // Carte des accès (recadrée sur eux, sans POI) + tableau. Rend le nouveau y.
   async function _dessinerAccesSurface(pdf, s, y, pageW, pageH, margin) {
@@ -6263,7 +6590,10 @@
     acces.forEach(function(a, i) {
       const role = a.entree && a.sortie ? t("secours.acces.entreeSortie")
                  : a.entree ? t("secours.acces.entree") : t("secours.acces.sortie");
-      const nom = _stripPourPdf((a.nom || t("secours.acces.sansNom")) + " — " + role);
+      const lbl = _critLabels();
+      const nomPoi = a.poi ? (a.poi.p.nom || "") : "";
+      const typePoi = a.poi ? lbl[a.poi.tag] + (CRIT_FERMES.indexOf(a.poi.tag) >= 0 ? " — " + t("secours.acces.aOuvrir") : "") : "";
+      const nom = _stripPourPdf((a.nom || nomPoi || t("secours.acces.sansNom")) + " — " + role + (typePoi ? " · " + typePoi : ""));
       const eq = _stripPourPdf(a.equipes.map(function(g) { return g.nom; }).join(", "));
       const lNom = pdf.splitTextToSize(nom, cols[2] - cols[1] - 2);
       const lEq = pdf.splitTextToSize(eq, cols[3] - cols[2] - 2);
@@ -7107,6 +7437,14 @@
         pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
         pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : t("secours.pdf.nonRenseignes"), margin, y);
+        y += 4;
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+                                                 effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin, y);
+        if (g.heureRetour) {
+          y += 4; pdf.setFont(undefined, "bold");
+          pdf.text(t("secours.pdf.retourImperatif", { h: g.heureRetour }), margin, y);
+          pdf.setFont(undefined, "normal");
+        }
         y += 8;
         // Section Mission
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
@@ -7277,7 +7615,7 @@
 
     // Canvas de sortie : ratio préservé. Au moins 1000 px de côté ; au-delà, jusqu'à
     // la résolution RÉELLEMENT disponible dans le canvas du plan (plafond 2400) —
-    // avant, une grande zone (Golf, Pandemonium) était réduite sous sa source.
+    // avant, une grande zone (équipe Golf du test terrain) était réduite sous sa source.
     const maxOut = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
     let outW, outH;
     if (sw >= sh) {
@@ -8628,10 +8966,13 @@
                           (g.membres || []).map(function(m) {
                             return '<option value="' + _escAttr(m) + '"' + (m === _chef(g) ? ' selected' : '') + '>' + _escHtml(m) + '</option>';
                           }).join('') + '</select>'
-                      : '<span class="kta-tx-muted">' + t("secours.b9.chefSansMembres") + '</span>') +
+                      : '<input type="text" data-action="edit-chef" data-gid="' + _escAttr(g.id) + '" maxlength="60" style="width:10em;"' +
+                        ' value="' + _escAttr(g.chef || "") + '" placeholder="' + _escAttr(t("secours.b9.chefPlaceholder")) + '">') +
                     '<label>' + t("secours.b9.effectifLabel") + '</label>' +
                     '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1" style="width:5em;"' +
                       ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
+                    '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
+                    '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
                   '</div>' +
                   // 🆕 v1.41.0 E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
                   //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
@@ -8660,6 +9001,19 @@
                     '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
                     '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
+                  // 8b : niveau de la zone (multiniveau, zone polygone).
+                  ((_mlvlActif() && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3)
+                    ? '<div class="kta-secours-groupe-row kta-secours-zone-niv">' +
+                        '<span>' + _escHtml(g.zoneTousNiveaux ? t("secours.niv.zoneTous") : t("secours.niv.zoneAuNiveau", { niveau: _niveauZone(g) })) + '</span>' +
+                        '<label><input type="checkbox" data-action="zone-tous-niveaux" data-gid="' + _escAttr(g.id) + '"' + (g.zoneTousNiveaux ? ' checked' : '') + '> ' +
+                          t("secours.niv.caseTous") + '</label>' +
+                      '</div>'
+                    : '') +
+                  // Étapes loin des galeries, gardées en vue après le calcul (30/09).
+                  ((Array.isArray(g.itineraireSuggere) && g.guidage)
+                    ? (function() { const txt = _texteEtapesLoin(_etapesLoin(g.guidage.raccords));
+                        return txt ? '<div class="kta-secours-groupe-loin kta-tx-warn">⚠️ ' + _escHtml(txt) + '</div>' : ''; })()
+                    : '') +
                   // 🆕 v1.22.0-fix2 : section Parcours avec entrée + intermédiaires[] + sortie
                   _renderParcoursSection(g) +
                   '<div class="kta-secours-groupe-actions">' +
@@ -9017,7 +9371,7 @@
                 '<strong>' + _escHtml(g.nom) + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
-                  ' · ' + t("secours.live.etapeCompteur", { n: (idx + 1), total: etapes.length }) +
+                  ' · ' + t("secours.live.etapeCompteur", { nom: _nomEtape(etapes[idx], idx), n: (idx + 1), total: etapes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
@@ -9060,7 +9414,7 @@
                 'title="' + _escAttr(labelType + " — " + _lblEtape(et.label)) + '" ' +
                 'style="--kta-step-color:' + stInfo.color + ';">' +
                 '<span class="kta-secours-live-step-emoji">' + stInfo.emoji + '</span>' +
-                '<span class="kta-secours-live-step-idx">' + (i + 1) + '</span>' +
+                '<span class="kta-secours-live-step-idx">' + _numEtape(et, i) + '</span>' +
               '</button>';
     });
     html += '</div>';
@@ -9092,7 +9446,7 @@
               '<div class="kta-secours-live-etape-statuts-rapides">' +
                 '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.live.saisieRapide") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
-                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const isSel = (st.id === etape.statut);
                     const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn' + (isSel ? ' kta-secours-live-statut-btn-sel' : '') + '" ' +
@@ -9258,6 +9612,7 @@
               '</div>' +
             '</div>';
     html += _renderBandeauVictimesOp(s);
+    html += _renderBilanEngages(s);   // 👥 engagés · sous terre · manquants
 
     // Grille cards équipes
     if (groupes.length === 0) {
@@ -9406,7 +9761,7 @@
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
                    '<span class="kta-secours-op-card-progress-label">' +
-                     t("secours.opCard.etapeProgress", { n: (currentIdx + 1), total: nbEtapes, pct: pctDone }) +
+                     t("secours.opCard.etapeProgress", { nom: _nomEtape(etapes[currentIdx], currentIdx), n: (currentIdx + 1), total: nbEtapes, pct: pctDone }) +
                    '</span>' +
                  '</div>' +
                  '<div class="kta-secours-op-card-statut" style="color:' + highestStatut.color + ';">' +
@@ -9462,7 +9817,7 @@
               '<div class="kta-secours-live-etape-statuts-rapides">' +
                 '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.liveSec.statutAssocie") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
-                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn" ' +
                            'data-action="sec-add-note" data-statut="' + _escAttr(st.id) + '" ' +
@@ -9596,6 +9951,11 @@
                  '<span class="kta-secours-pause-unit">km/h</span>' +
                '</div>' +
                '<div class="kta-secours-pause-input-wrap">' +
+                 '<label for="kta-sec-vitesse-app">' + t("secours.duree.vitesseApprocheLabel") + '</label>' +
+                 '<input type="number" id="kta-sec-vitesse-app" min="0.2" max="8" step="0.1" value="' + r.vitesseApprocheKmh + '">' +
+                 '<span class="kta-secours-pause-unit">km/h</span>' +
+               '</div>' +
+               '<div class="kta-secours-pause-input-wrap">' +
                  '<label for="kta-sec-pause-min">' + t("secours.duree.pauseLabel") + '</label>' +
                  '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" value="' + Math.round(r.pauseMin) + '">' +
                  '<span class="kta-secours-pause-unit">min</span>' +
@@ -9614,19 +9974,46 @@
   // (15 min) ajoutée à CHAQUE étape : ~971 min affichées dont 795 de pauses pour un
   // secteur réel, contre ~586 réalistes. Le scénario porte désormais ses propres
   // réglages (voyagent dans le .mkmsec) : vitesse de fouille, pause par étape.
-  const DUREE_DEFAUT = { vitesseKmh: 1.5, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
+  // Contre-audit IGC (30/09) : une seule vitesse pour tout le trajet. L'approche
+  // (hors de la zone de l'équipe) se marche ; seule la zone se fouille.
+  const DUREE_DEFAUT = { vitesseKmh: 1.5, vitesseApprocheKmh: 3, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
   function _reglagesDuree(s) {
     const r = (s && s.reglagesDuree) || {};
     return {
       vitesseKmh: (typeof r.vitesseKmh === "number" && r.vitesseKmh > 0) ? r.vitesseKmh : DUREE_DEFAUT.vitesseKmh,
+      vitesseApprocheKmh: (typeof r.vitesseApprocheKmh === "number" && r.vitesseApprocheKmh > 0) ? r.vitesseApprocheKmh : DUREE_DEFAUT.vitesseApprocheKmh,
       pauseMin:   (typeof r.pauseMin === "number" && r.pauseMin >= 0) ? r.pauseMin : DUREE_DEFAUT.pauseMin,
       margeRetardMin: (typeof r.margeRetardMin === "number" && r.margeRetardMin >= 0) ? r.margeRetardMin : DUREE_DEFAUT.margeRetardMin
     };
   }
-  function _dureeEquipeMin(s, distM, nbWaypoints) {
+  // `geo` (facultatif) = { path, raccords, g } : sépare approche / fouille et compte les
+  // raccords à vol d'oiseau (départ et arrivée une fois, étape aller-retour), à la
+  // vitesse de fouille. Sans zone polygone, tout le trajet est compté en fouille.
+  function _dureeEquipeMin(s, distM, nbWaypoints, geo) {
     if (typeof distM !== "number" || distM <= 0) return 0;
     const r = _reglagesDuree(s);
-    return distM / (r.vitesseKmh * 1000 / 60) + Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    let fouilleM = distM, approcheM = 0;
+    const g = geo && geo.g, path = geo && geo.path;
+    if (g && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3 &&
+        Array.isArray(path) && path.length >= 2) {
+      let dedans = 0, total = 0;
+      for (let i = 1; i < path.length; i++) {
+        const d = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+        total += d;
+        if (_dansZonePolygone(g, { x: (path[i].x + path[i - 1].x) / 2, y: (path[i].y + path[i - 1].y) / 2 }, path[i].level)) dedans += d;
+      }
+      if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
+    }
+    let raccordsM = 0;
+    ((geo && geo.raccords) || []).forEach(function(rc) {
+      raccordsM += ((Number(rc && rc.distPx) || 0) / pxParM) * ((rc && rc.role === "etape") ? 2 : 1);
+    });
+    return (fouilleM + raccordsM) / (r.vitesseKmh * 1000 / 60) + approcheM / (r.vitesseApprocheKmh * 1000 / 60) +
+           Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
+  }
+  function _geoDuree(g) {
+    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords };
   }
 
   // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
@@ -9639,7 +10026,7 @@
     (s.groupes || []).forEach(function(g) {
       if (typeof g.distanceM !== "number" || g.distanceM <= 0) return;
       const nbWp = (g.entree ? 1 : 0) + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0) + (g.sortie ? 1 : 0);
-      g.dureeEstimeeMin = _dureeEquipeMin(s, g.distanceM, nbWp);
+      g.dureeEstimeeMin = _dureeEquipeMin(s, g.distanceM, nbWp, _geoDuree(g));
     });
     return true;
   }
@@ -9655,7 +10042,7 @@
       const nbWp = (g.entree ? 1 : 0)
                  + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0)
                  + (g.sortie ? 1 : 0);
-      const newDuree = _dureeEquipeMin(s, g.distanceM, nbWp);
+      const newDuree = _dureeEquipeMin(s, g.distanceM, nbWp, _geoDuree(g));
       if (Math.abs((g.dureeEstimeeMin || 0) - newDuree) > 0.01) {
         g.dureeEstimeeMin = newDuree;
         updated++;
@@ -9930,7 +10317,13 @@
               if (place) lignes.push(place);
               const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
               if (horsLigne) lignes.push(horsLigne);
-              _toast(lignes.join("\n"), (place || horsLigne) ? "warn" : "info");
+              // Contrôle des engagés : sans effectif, la rentrée ne compte personne.
+              let sansEff = null;
+              if (opts && opts.role === "operateur") {
+                const inc = _bilanEngages(get(s.id)).inconnus;
+                if (inc.length) { sansEff = t("secours.bilan.lancementSansEffectif", { n: inc.length, noms: inc.join(", ") }); lignes.push(sansEff); }
+              }
+              _toast(lignes.join("\n"), (place || horsLigne || sansEff) ? "warn" : "info");
             };
             // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
             // photos (reçues des équipes comprises) — on le dit avant.
@@ -10123,11 +10516,13 @@
       // update visuel des chips durée dans les cards équipes + toast feedback.
       // 4.1 : réglages de durée du scénario → recalcul des durées de toutes les équipes.
       const vitesseInput = document.getElementById("kta-sec-vitesse");
+      const vitesseAppInput = document.getElementById("kta-sec-vitesse-app");
       const pauseMinInput = document.getElementById("kta-sec-pause-min");
       const margeInput = document.getElementById("kta-sec-marge");
       const majDurees = function() {
         updateScenario(_currentScenarioId, { reglagesDuree: {
           vitesseKmh: parseFloat(vitesseInput && vitesseInput.value),
+          vitesseApprocheKmh: parseFloat(vitesseAppInput && vitesseAppInput.value),
           pauseMin:   parseFloat(pauseMinInput && pauseMinInput.value),
           margeRetardMin: parseFloat(margeInput && margeInput.value)
         } });
@@ -10254,11 +10649,24 @@
       if (couv) couv.addEventListener("toggle", function() {
         if (!couv.open) return;
         const corpsCouv = document.getElementById("kta-secours-couverture-corps");
-        if (corpsCouv) corpsCouv.innerHTML = _renderCouverture(get(s.id));
+        if (!corpsCouv) return;
+        corpsCouv.innerHTML = _renderCouverture(get(s.id));
+        const btnS = corpsCouv.querySelector('[data-action="couv-surligner"]');
+        if (btnS) btnS.addEventListener("click", function() { _basculerSurlignageCouverture(get(s.id)); if (_modal) _switchView("edit"); });
       });
       // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
         sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
+      });
+      corps.querySelectorAll('[data-action="zone-tous-niveaux"]').forEach(function(cb) {
+        cb.addEventListener("change", function() {
+          updateGroupe(s.id, cb.getAttribute("data-gid"), { zoneTousNiveaux: cb.checked });
+          _recalculerToutesDureesEquipes(s.id);   // la part « fouille » dépend du niveau de la zone
+          _switchView("edit");
+        });
+      });
+      corps.querySelectorAll('[data-action="edit-heure-retour"]').forEach(function(inp) {
+        inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { heureRetour: inp.value || null }); });
       });
       corps.querySelectorAll('[data-action="edit-effectif"]').forEach(function(inp) {
         inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { effectif: inp.value }); });
@@ -10453,7 +10861,16 @@
     });
     // B1 : suivre le parcours de l'équipe / revenir à la carte.
     corps.querySelectorAll('[data-action="suivre-parcours"]').forEach(function(btn) {
-      btn.addEventListener("click", function() { _suivreParcours(s.id, btn.getAttribute("data-gid")); });
+      btn.addEventListener("click", function() {
+        // Contre-audit GRIMP (30/09) : « Suivre » ne lançait pas le suivi → bandeau de
+        // guidage vide. On le démarre ICI, dans le geste (iOS n'accorde la permission
+        // des capteurs que sur un geste), par le chemin commun de la tuile ▶️.
+        const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif();
+        if (!actif && typeof window.ktaDemarrerSuivi === "function") {
+          try { window.ktaDemarrerSuivi(); } catch(e) { console.warn("[SecoursMode] démarrage du suivi :", e); }
+        }
+        _suivreParcours(s.id, btn.getAttribute("data-gid"));
+      });
     });
     corps.querySelectorAll('[data-action="suivre-voir-carte"]').forEach(function(btn) {
       btn.addEventListener("click", function() { fermer(); });
@@ -10507,7 +10924,11 @@
           return;
         }
         fermer();   // la zone et le tracé restent (intervention en cours)
-        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level);
+        // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
+        // du plan (un seul sur le plan du test) — jusqu'à 6,5 fois la distance d'un retour
+        // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
+        // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
+        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level, { sortiesSupp: _sortiesScenario(s), origine: "victime" });
       });
     });
     corps.querySelectorAll('[data-action="victime-preciser"]').forEach(function(btn) {
@@ -10600,10 +11021,11 @@
         if (_liveEquipeFocusIdx < etapes.length - 1) {
           // En passant à l'étape suivante, marque l'étape actuelle comme
           // "passée" si elle est encore pending (= l'user n'a pas explicitement
-          // mis un statut). Pose un statut RAS par défaut + completedAt.
+          // mis un statut) : « passée, non renseignée » — plus RAS (30/09), qui
+          // affirmait une fouille que personne n'a déclarée.
           const cur = etapes[_liveEquipeFocusIdx];
           if (cur && (!cur.statut || cur.statut === "pending")) {
-            marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "ras");
+            marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "non-renseigne");
           } else if (cur && !cur.completedAt) {
             updateEtape(s.id, equipeId, _liveEquipeFocusIdx, { completedAt: _nowIso() });
           }
@@ -10650,8 +11072,9 @@
           updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
         }
         marquerEtapeStatut(s.id, equipeId, idx, statutId);
+        _recalerSurEtape(s.id, equipeId, idx, statutId);
         const info = _getStatutInfo(statutId);
-        _toast(info.emoji + " " + t("secours.toast.etapeStatut", { n: (idx + 1), statut: _statutLabel(statutId) }), "info");
+        _toast(info.emoji + " " + t("secours.toast.etapeStatut", { nom: _nomEtape(etapes[idx], idx), statut: _statutLabel(statutId) }), "info");
         _switchView("live");
       });
     });
@@ -11903,7 +12326,7 @@
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
         // 4.1 : réglages du SCÉNARIO (vitesse de fouille, pause par étape).
-        const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
+        const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length, { g: g, path: r.path, raccords: r.raccords }));
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
           distanceM:       distM,
@@ -11920,9 +12343,11 @@
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
           lignesCalc.push(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }));
         }
-        const IG = window.ItiGuidage;
-        const loin = (IG && typeof IG.alerteRaccord === "function") ? IG.alerteRaccord({ raccords: r.raccords }) : null;
-        if (loin) lignesCalc.push("⚠️ " + IG.texteAlerteRaccord(loin));
+        const loin = _texteEtapesLoin(_etapesLoin(r.raccords));   // toutes, plus seulement la pire
+        if (loin) lignesCalc.push("⚠️ " + loin);
+        const gMaj = (get(scenarioId).groupes || []).find(function(x) { return x.id === groupeId; });
+        const niv = _texteNiveauxNonParcourus(gMaj, _niveauxNonParcourus(gMaj));   // 8b
+        if (niv) lignesCalc.push("⚠️ " + niv);
         _toast(lignesCalc.join("\n"), lignesCalc.length > 1 ? "warn" : "info");
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
@@ -12221,7 +12646,7 @@
           const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                         ? window.APP_CONFIG.scale : 1;
           const distM = r.totalDistance / scale;
-          const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length));
+          const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length, { g: g, path: r.path, raccords: r.raccords }));
           updateGroupe(scenarioId, groupeId, {
             itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
             distanceM:       distM,

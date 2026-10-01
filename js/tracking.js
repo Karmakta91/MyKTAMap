@@ -841,9 +841,9 @@ function _basculerNiveauSiTraversee(m) {
 // passe par recalerTrackerSurPoint). Consommé par interfaceItineraire.js
 // (window._onTrackerRecale) pour replanifier l'itinéraire actif depuis la
 // nouvelle position et valider les étapes. source : "click" | "point".
-function _notifierRecalage(x, y, source) {
+function _notifierRecalage(x, y, source, opts) {
   if (typeof window._onTrackerRecale === "function") {
-    try { window._onTrackerRecale(x, y, source); }
+    try { window._onTrackerRecale(x, y, source, opts); }
     catch(e) { console.warn("[Tracking] hook recalage échoué :", e); }
   }
   // 🌀 v1.64.0 : 2e consommateur — « je suis ici » sur le point-portail de
@@ -1623,7 +1623,7 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (window.kta_vibrate) window.kta_vibrate.light();
   // 🆕 v1.61.0 : replanification d'itinéraire + validation d'étape (coords
   // exactes d'un point → peut matcher une étape de l'itinéraire actif)
-  _notifierRecalage(x, y, "point");
+  _notifierRecalage(x, y, "point", opts);   // opts.sansReplan : cf Mode Secours (étape validée)
 };
 
 // 🆕 v1.34.27 — Détection de proximité aux waypoints de l'itinéraire actif.

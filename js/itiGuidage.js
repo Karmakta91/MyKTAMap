@@ -360,8 +360,8 @@
     return pire;
   }
   // Le texte dépend du bout qui est loin (test terrain 30/09) : « vérifie ta position »
-  // ne vaut que pour le DÉPART. Une étape posée loin des galeries (POI « PA3 » à 68 m
-  // sur Pandemonium) accusait à tort la position de l'équipe, que l'app venait de poser.
+  // ne vaut que pour le DÉPART. Une étape posée loin des galeries (POI à 68 m d'une
+  // galerie) accusait à tort la position de l'équipe, que l'app venait de poser.
   function texteAlerteRaccord(a) {
     if (!a) return "";
     const dist = _fmtM(a.distM);

@@ -515,7 +515,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
 1. **🌍 Aplicación** — el **selector de idioma** de toda la app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). Es ahora el **único sitio** donde se cambia durante el uso: salió de ⚙️ Ajustes del modo mapa, donde daba a entender que solo afectaba al plano abierto — y donde proponía reiniciar la app en el peor momento, en plena cavidad. Sigue pudiendo elegirse en la pantalla de desbloqueo, antes de entrar.
 
-2. **🛰️ Opciones con sensor** — las opciones que se apoyan en un sensor del teléfono: **🔋 Nivel de batería** y **📳 Vibración háptica**. Cada una se desactiva, y una opción desactivada no muestra nada **y deja de escuchar el sensor**. Cuando el sistema rechaza el sensor — la vibración en iPhone, por ejemplo — la opción sigue **visible pero en gris, con el motivo**, en lugar de desaparecer sin explicación.
+2. **🧩 Funciones opcionales** — **🎬 Replay del tracker**, **🔥 Mapa de calor**, **🔋 Nivel de batería** y **📳 Vibración háptica**, todas **desactivadas por defecto** (ver el capítulo del mismo nombre). Cada una se desactiva, y una opción desactivada no muestra nada **y deja de escuchar el sensor**. Cuando el sistema rechaza el sensor — la vibración en iPhone, por ejemplo — la opción sigue **visible pero en gris, con el motivo**, en lugar de desaparecer sin explicación.
 
 > 🗺️ **La Vista OSM está activa por defecto**. Si tienes al menos un plano calibrado GPS, el inicio muestra tu mapa sobre un fondo OpenStreetMap — y **por tanto pide ese fondo a `tile.openstreetmap.org` en cuanto se carga**, sin clic. **Ningún dato de tus planos sale**: solo se piden las coordenadas de las teselas que miras, el resto se dibuja encima en tu dispositivo. Un aviso te lo dice la primera vez. Para desactivarla: la casilla de arriba. **Si ya la habías desmarcado, sigue desmarcada** — un rechazo nunca se sobrescribe. Y no sale nada en **modo sin conexión estricto**, en **incógnito**, o si ningún plano está calibrado.
 
@@ -1032,7 +1032,7 @@ La interfaz está organizada en **13 grupos** repartidos en las **dos barras lat
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
 | **Favoritos** | ⭐ | Tus puntos marcados como favoritos, a un clic |
-| **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
+| **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, leyenda de iconos |
 | **Ajustes** | ⚙️ | Ajustes, calibración de la escala, depuración *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar rápidamente un punto en el plano *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del plano |
@@ -1065,7 +1065,7 @@ Abre **≡ Leyenda** (grupo 📚 Ayuda / Documentación / Leyenda) y luego **✏
 - **Renombrar**: escribe tu propio nombre (p. ej. «Principal» → «Gran galería»). Se muestra en todas partes: leyenda, ventanas emergentes, estadísticas, filtros.
 - **🎨 Cambiar el color**: un cuadrado de color por línea — y para las **zonas y pilares/muros, dos cuadrados**: relleno y **borde independiente**. El color se aplica **en todas partes** — mapa, exportaciones de imagen/PDF, KMZ, estadísticas, informe de sesión — de inmediato, sin recargar. Un botón **↺** devuelve el relleno Y el borde originales. Detalles: si no eliges borde, una zona lo deriva automáticamente (versión más oscura) y un pilar/muro conserva su contorno negro (el valor histórico por defecto); la zona *Inaccesible* recoloreada pierde su trama (motivo fijo) a favor de un color liso. Las **entradas personalizadas** se modifican igual, en caliente.
 - **👁️ Ocultar**: la casilla retira la entrada **únicamente del recuadro de la leyenda** — no desaparece nada del mapa. Para ocultar objetos del mapa está el panel **🔍 Filtros**.
-- **➕ Añadir una entrada personalizada**: crea tus propios tipos (trazado, zona, estructura, icono) con su color. Pasan a ser dibujables desde la barra lateral, y un icono personalizado se propone en el editor de puntos.
+- **➕ Añadir una entrada personalizada**: crea tus propios tipos (trazado, zona, estructura, icono) con su color. Pasan a ser dibujables desde la barra lateral, y un icono personalizado se propone en el editor de puntos. **Atajo**: en el menú **Trazados**, **Zonas** o **Estructuras**, la línea **➕ Nuevo tipo…** abre la misma ventana; el tipo creado queda seleccionado al instante y puedes dibujar directamente.
 - **🗑️ Eliminar un tipo personalizado**: si todavía hay objetos dibujados que lo usan, la app te avisa con el recuento antes de confirmar.
 
 > 🧳 **Tu leyenda viaja con tus exportaciones**: una capa de datos exportada se lleva la definición de los tipos que utiliza, y el generador la recupera al importarla (lo que ya existe en el plano tiene prioridad). El JSON de sesión y el ZIP Avanzado también se la llevan.
@@ -1196,8 +1196,8 @@ El botón **🧭 Rastreador** abre un **modal a pantalla completa de fichas gran
 | **🗺️** | Calcular un itinerario |
 | **🗺️** | **Mapa orientado** — el mapa gira contigo durante el seguimiento |
 | **🪧** | **Guiado del itinerario** — Auto / Nunca (banner «En 40 m, girar a la izquierda») |
-| **🎬** | Repetición de la sesión del rastreador |
-| **🔥** | Mapa de calor — ver la sección dedicada |
+| **🎬** | Repetición de la sesión del rastreador — *opcional, ver 🧩 Funciones opcionales* |
+| **🔥** | Mapa de calor — *opcional, ver 🧩 Funciones opcionales* |
 | **⛑️** | Estoy perdido — **botón de fondo ROJO** (señal de peligro) |
 | **🚨** | Modo emergencia XL — **botón de fondo ROJO** (señal de peligro) |
 | **🚨** | Modo Rescate — planes de búsqueda (equipos + zonas), **fondo ROJO** |
@@ -1274,98 +1274,6 @@ La posición calculada deriva inevitablemente. En cuanto reconozcas un punto de 
 
 > Solo puede haber un modo activo a la vez: medición, adición de punto, trazado de vía o reajuste.
 
-### 🎬 Repetición de la sesión del rastreador
-
-El botón **🎬** del grupo **🧭 Rastreador** abre la ventana **Repetición**. Te permite **reproducir tu sesión de seguimiento** desde el principio, con una línea de tiempo interactiva y exportación a CSV.
-
-**Cómo funciona**:
-
-- Mientras haces seguimiento, la app registra internamente una **línea de tiempo**: para cada paso PDR aplicado, cada reajuste manual y el instante de inicio, guarda `(marca_de_tiempo_epoch_ms, x_plano, y_plano, tipo)`.
-- Al pulsar 🎬 se abre una ventana a pantalla completa con:
-  - **Deslizador de línea de tiempo** (izquierda → derecha = inicio → fin)
-  - Botones **⏮ Reiniciar · ▶️ Reproducir · ⏸ Pausa · ⏭ Fin**
-  - Selector de **velocidad**: 0,5× · 1× · 2× · 5× · 10×
-  - Botón **💾 Exportar CSV**
-  - Botón **⛶** para cambiar a modo compacto (panel inferior) que libera el mapa
-- Al pulsar **▶️ Reproducir**, la ventana **pasa automáticamente a modo compacto** — ves el mapa en grande mientras el marcador amarillo repite tus pasos. El rastro (línea) se alarga a medida que avanza.
-
-**Atajos de teclado**:
-
-| Tecla | Acción |
-|---|---|
-| Espacio | Reproducir / Pausa |
-| ← | Retroceder 1 s |
-| → | Avanzar 1 s |
-| Esc | Cerrar la ventana |
-
-El botón **💾 Exportar CSV** produce un archivo `.csv` de 5 columnas (o 6 en multinivel):
-
-```
-timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
-```
-
-- `type` = `start` (inicio del seguimiento), `pdr` (paso PDR aplicado), `recalage` (reajuste manual)
-- Se puede abrir con Excel / LibreOffice / Numbers / Python pandas / R / etc.
-
-**Caso de los reajustes**: un reajuste = teletransporte. Visualmente, el rastro salta (no hay línea entre el punto N y el N+1 si el tipo es «recalage») para no mostrar una línea recta que no tiene realidad geográfica.
-
-**Reinicio**: la línea de tiempo se pone a cero al cambiar de plano o al recargar (solo en memoria).
-
-### 🔥 Mapa de calor — densidad de paso
-
-El botón **🔥 Mapa de calor** del panel **🧭 Rastreador** abre una ventana que dibuja un **mapa de densidad** sobre tu plano. Práctico para visualizar de un vistazo las **zonas más frecuentadas** (pasos clave) frente a las poco utilizadas.
-
-> 📌 **Pertinencia**: el mapa de calor se apoya en una interpolación a lo largo de los segmentos + una normalización por histograma + filtros sobre la línea de tiempo del rastreador, para reflejar fielmente la frecuentación real.
-
-#### 🗂️ 6 fuentes seleccionables (combinables)
-
-Tú eliges qué contribuye al calor mostrado:
-
-| Fuente | Contenido |
-|---|---|
-| 🧭 **Línea de tiempo del rastreador** | Todos los puntos de tu sesión de seguimiento (filtrado: se omiten los reajustes = teletransportes, los inicios y los huecos > 5 min) |
-| 📍 **Puntos de sesión** | Tus puntos añadidos mediante el editor |
-| 🛣️ **Trazados de sesión** | Tus vías (Principal / Secundaria / Camino) trazadas en la sesión |
-| ⬛ **Zonas de sesión** | Tus zonas (agua / escombros / derrumbe / inaccesible) |
-| 🏛️ **Estructuras de sesión** | Tus pilares / muros / frentes |
-| 📊 **Capas de datos** | Todos los elementos incrustados en las capas de datos del plano (puntos + vías + zonas + estructuras + frentes) |
-
-#### 🎚️ Ajustes en vivo
-
-Dos deslizadores en la parte inferior de la ventana, con actualización en tiempo real:
-
-| Deslizador | Rango | Efecto |
-|---|---|---|
-| **Radio** | 10 - 120 px | Extensión de la «mancha» alrededor de cada punto. Pequeño = preciso a escala local, grande = visión general |
-| **Intensidad** | 0,2× - 3,0× | Multiplicador global. Si todo se ve demasiado pálido → súbelo. Si todo se satura de rojo → bájalo |
-
-#### 🏗️ Filtro por nivel (multinivel)
-
-Si tu plano es **multinivel** (cantera con varias plantas — planta baja, sótano, entreplanta, etc.), aparece una nueva sección **«🏗️ Niveles a incluir»** en la ventana del Mapa de calor.
-
-- **Fichas por nivel**: una pastilla pulsable por cada nivel disponible en el plano (`Niv. -2`, `Niv. -1`, `Niv. 0`, `Niv. 1`…)
-- **Preselección**: los niveles **actualmente visibles** en el mapa vienen premarcados automáticamente
-- **Botón ⇅ Todo**: marca o desmarca todo con un clic
-- **Efecto**: el mapa de calor limita la recogida a los elementos que pertenecen a los niveles seleccionados. Práctico para generar un mapa de calor dedicado únicamente a la planta baja (por ejemplo), o para comparar la densidad entre 2 plantas sin contaminación cruzada.
-
-> 💡 **Caso de uso**: quieres comparar la frecuentación de la planta baja con la del sótano → 2 mapas de calor sucesivos con el filtro correspondiente → captura de pantalla de cada uno → ves de inmediato la asimetría.
-
-> 📌 Si tu plano **no** es multinivel, esta sección no aparece en absoluto.
-
-#### 🎯 Algoritmos (por qué ahora resulta pertinente)
-
-- **Interpolación a lo largo de los segmentos**: para los trazados / zonas / estructuras polilínea / línea de tiempo del rastreador, la app distribuye puntos de calor **a lo largo del camino** en lugar de uno solo por vértice. Resultado: ves auténticas **estelas continuas**, no «perlas» espaciadas.
-- **Normalización por histograma**: el píxel más denso de la imagen = rojo puro, el menos denso = azul puro, con un degradado suavizado entre ambos. **Autoadaptativo**: no hace falta ajustar los umbrales a mano, funciona igual de bien en un plano de 20 puntos que en uno de 5000.
-- **Filtro de la línea de tiempo del rastreador**: se omiten los teletransportes (reajustes), los inicios y los huecos > 5 min (una pausa sin moverse no debe generar calor fantasma).
-
-#### 💡 Casos de uso
-
-- **Identificar los ejes principales** de una cantera: lo que sale en rojo = por dónde pasas de verdad, frente a lo que sale en azul = explorado una sola vez
-- **Auditoría de exhaustividad**: zonas azules = poco cartografiadas → próximo objetivo sobre el terreno
-- **Presentación visual** de una sesión: captura del mapa de calor + comentario para compartir una visión general del plano explorado
-
-> ⚠️ El mapa de calor es **puramente visual** (superposición en lienzo). No altera ni el plano, ni las anotaciones, ni las exportaciones. Cierra la ventana para ocultarlo.
-
 ### ≡ Ventana de Filtros unificada
 
 El botón **≡ de tres barras horizontales** de arriba a la derecha del mapa abre la **ventana de Filtros unificada**, que reúne **7 secciones** de filtrado:
@@ -1383,6 +1291,8 @@ El botón **≡ de tres barras horizontales** de arriba a la derecha del mapa ab
 > 🔄 **Corregir una capa de datos** — una capa incluida en el ZIP del plano es de **solo lectura**: puedes ocultarla, no editarla. Cada línea de la sección **📊 Capas de datos** tiene, pues, un botón **«🔄 Modificar»**: su contenido pasa a tu sesión, donde se aplican todas tus herramientas — en particular **🔄 Convertir este objeto**, para cambiar un frente de cantera en galería en un levantamiento importado. La capa original **se oculta sola** (su casilla muestra «en modificación — mostrar de todos modos», que puedes volver a marcar para comparar ambas). **«↩️ Restaurar»** lo anula todo; **«💾 Exportar»** te devuelve un archivo corregido que puedes volver a dar al plano mediante 🏗️ Generador → «Modificar un plano», pulsando **«Elegir» en la línea de esa capa** — SUSTITUYE el contenido antiguo, no puede haber duplicados.
 >
 > ⚠️ **Lo que la app te anuncia antes de actuar**: el peso que ocupará la copia en tu sesión (un levantamiento grande supera el megabyte, y el límite del navegador ronda los 5 MB para todos los planos) y el espacio ya ocupado. Al exportar, también te dice cuántos objetos **que has dibujado tú mismo** no se incluyen — no pertenecen a esa capa. Y «Borrar la sesión» **restaura** las capas abiertas para modificación: la copia y la ocultación desaparecen juntas.
+
+> 🧳 **Varias capas a la vez, y cambio de dispositivo**: cada objeto copiado conserva el nombre de su capa de origen. «💾 Exportar» en una capa solo saca **esa capa**, aunque haya otras abiertas al mismo tiempo. La exportación completa de la sesión se lo lleva todo; cuando la **vuelves a importar** (en el mismo plano, incluso en otro teléfono), la app vuelve a poner en modificación las capas cuya copia encuentra — te lo dice — y vuelve a mostrar las que ya no la tienen. Una sesión que viene de **otro plano** no tiene esas capas: sus objetos pasan a ser tuyos.
 
 **Cómo funciona:**
 
@@ -1679,6 +1589,10 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 > 🗺️ **En el mapa, durante la intervención**: al **lanzar el plan en modo equipo**, te **colocas en la entrada de tu equipo** — automáticamente si tu posición aún no estaba confirmada; si no, la app te lo propone («Colocarme en la entrada» / «Mantener mi posición»). Al lanzar, **un solo mensaje** lo resume todo (plan lanzado, colocado en la entrada, plano no disponible sin conexión) y ya no bloquea los botones de debajo; relanzar un escenario ya jugado empieza de cero (se acabaron los falsos retrasos heredados del día anterior). Cerrar la ventana del Modo Rescate ya no quita nada — tu zona y tu trazado siguen visibles (el miembro de equipo ve su equipo, el operador todos), incluso tras recargar. Abajo de la pantalla, una pastilla roja **«🚨 Rescate · Alpha · 3/8 ›»** recuerda que la intervención está en curso y cómo va: un toque te lleva **directamente a las etapas** por validar. Durante la preparación: los equipos se **pliegan** (▾/▸ o «Plegar todo»); al dibujar una zona, las de los demás equipos se muestran en punteado para ajustar los límites; tocar un POI para elegir la entrada, la salida o una etapa **lo toma como punto** (ya no abre su ficha); un punto sin nombre se muestra en **coordenadas GPS** si el plano está georreferenciado; «Auto: 1 equipo por nivel» omite los niveles vacíos, y las listas de niveles marcan «(vacío)» los que no tienen nada (siguen pudiendo elegirse).
 
+> 🚒 **Lo que el terreno ha cambiado (v1.98.24)**: **🚑 Evacuar** propone también los **accesos de tus equipos** («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado), ordenados por distancia real, y ya no solo las salidas etiquetadas del plano. El operador ve arriba **«X desplegados · Y bajo tierra · Z desaparecidos»** y recibe un aviso al lanzar sobre los equipos **sin efectivo**; al regresar, el número de **subidos ya no viene rellenado** (hay que contar). Cada equipo puede tener una **hora de regreso obligatoria** (ficha del equipo) que prevalece sobre la duración estimada, y el jefe se indica incluso sin lista de miembros. Las duraciones distinguen la **velocidad de aproximación** (fuera de la zona) de la **velocidad de búsqueda** (dentro de la zona) y cuentan los enlaces en línea recta. **Validar una etapa recalibra tu posición** sobre ella (sin preguntar a menos de 30 m, con una pregunta más allá; nunca para «Bloqueado» o «Media vuelta») y **«Seguir mi recorrido» inicia el seguimiento**. Una etapa tiene **un solo número** en todas partes (E, 1…N, S); pasar a la siguiente sin estado la anota **«Pasada, sin informar»** (ya no «Sin novedad»). Al calcular, **todas las etapas a más de 25 m de una galería** se listan y el recordatorio queda en la ficha. La **pantalla XL** muestra también los itinerarios largos. El briefing para bomberos dice **qué acceso es y si hay que abrirlo**, e imprime jefe, efectivo y regreso obligatorio.
+
+> 📊 **Cobertura honesta (v1.98.25)**: el bloque **📊 Cobertura** da, **por nivel**, la longitud de galerías, la parte **en una zona**, la parte **en un recorrido** (galerías que un itinerario de equipo recorre de verdad: lo que se buscará realmente) y la longitud asignada a dos equipos. En una red real, «86 % en una zona» puede ser solo «24 % en un recorrido». **🗺️ Resaltar las galerías fuera de recorrido** las muestra en rojo en el mapa (nivel mostrado) para preparar la fase siguiente; un segundo clic las quita. En un plano multinivel, una zona **vale en el nivel donde la dibujaste** (casilla «Zona en todos los niveles» en la ficha del equipo para ampliarla), y el cálculo del itinerario avisa cuando galerías de otro nivel pasan bajo la zona sin que ningún recorrido vaya allí.
+
 > 🚑 **Víctima, retrasos y llamada de vuelta**: una etapa marcada **«Víctima encontrada»** da una **posición** (la de la etapa, nivel incluido) — **📍 Precisar en el mapa** la ajusta, **🚑 Evacuar** abre la Salida de emergencia desde la víctima, y una **✚ roja** la marca en el mapa, para todos. El operador la ve en un aviso arriba de su vista, y el informe la imprime en primer lugar. Cada equipo tiene su **hora de salida** (**▶️ Salida**, si no el lanzamiento) y su **hora de regreso prevista** (salida + duración estimada): **naranja** pasada esa hora, **rojo** tras el margen (30 min por defecto, ajustable en ⏱️ Duraciones estimadas) — los equipos con retraso suben arriba, la pastilla de abajo cambia de color, un mensaje y una vibración avisan. **✅ De vuelta** detiene el cronómetro. **📢 Llamada general** (o 📢 Llamar, por equipo) marca los equipos aún bajo tierra como llamados de vuelta, con la hora. ⚠️ **La app no avisa a nadie** — no hay red bajo tierra: transmite la orden por radio o de viva voz. Salida, vuelta, llamada y posición precisada viajan en el informe de equipo.
 
 > 🧭 **Guiado paso a paso del recorrido**: en la vista de tu equipo, **🧭 Seguir mi recorrido** convierte el recorrido en el itinerario de la app — el aviso de guiado («En 40 m, gira a la izquierda»), la hoja de ruta y la pantalla XL te llevan de etapa en etapa (activa el seguimiento 🧭). Las etapas que validas quedan marcadas en el itinerario; si te desvías, **Recalcular** vuelve a salir desde aquí hacia la **siguiente etapa no hecha**, evitando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 te abre directamente esa etapa. El **PDF de briefing** imprime también, para cada equipo, su **hoja de ruta** cruce a cruce (cambios de nivel incluidos) — calcula el itinerario del equipo para obtenerla.
@@ -1798,6 +1712,8 @@ Si realmente no hay alternativa (paso único compartido), aparece el aviso `⚠�
 
 Nuevo bloque naranja «🔍 Herramientas de análisis» en la sección Contexto, con el botón **🔥 Mostrar el mapa de calor de actividad**. Visualiza las zonas donde el rastreador ha registrado paso → útil para identificar las zonas probables que hay que registrar con prioridad.
 
+> 🧩 Este bloque sigue disponible **aunque la opción 🔥 Mapa de calor esté desactivada**: esa opción solo retira la casilla del menú Tracker.
+
 Si la persona desaparecida usaba MyKTAMap y exportó su sesión con la línea de tiempo del rastreador, el mapa de calor muestra directamente dónde pasó tiempo.
 
 #### 🏗️ Creación automática de 1 equipo por nivel (multinivel)
@@ -1875,7 +1791,7 @@ Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescat
 
 #### 📤 Página «Briefing de superficie» en el informe posmisión
 
-El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «PA3» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
+El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «Pozo 2» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
 
 #### 🏷️ Filtro de etiquetas de la Vista OSM
 
@@ -2249,7 +2165,128 @@ Cada acción dispara un **aviso discreto** en la parte inferior: `↩ Deshecho: 
 
 ---
 
-## 🪫 Indicador de batería
+## 🧩 Funciones opcionales
+
+Cuatro funciones secundarias están **desactivadas por defecto**, para mantener la aplicación ligera: solo se activa lo que sirve. Se ajustan en **⚙️ Configuración** de la pantalla de inicio, grupo **🧩 Funciones opcionales** — o en **⚙️ Ajustes** con un plano abierto: es el mismo ajuste y vale para **todos los planos**.
+
+| Opción | Por defecto | Qué añade |
+|---|---|---|
+| **🎬 Replay del tracker** | desactivado | La casilla 🎬 en el menú 🧭 Tracker: volver a reproducir la sesión de seguimiento y exportar la línea de tiempo en CSV |
+| **🔥 Mapa de calor** | desactivado | La casilla 🔥 en el menú 🧭 Tracker: mapa de densidad de paso |
+| **🔋 Nivel de batería** | desactivado | La carga restante en la parte superior de la pantalla, y los avisos por debajo del 20 %, 10 % y 5 % |
+| **📳 Vibración háptica** | desactivado | Respuesta táctil en algunas acciones |
+
+> ⚡ **Replay y Mapa de calor actúan al instante**: la casilla aparece o desaparece la próxima vez que abras el menú 🧭 Tracker. **La batería, en cambio, surte efecto en el próximo arranque**: la escucha del sensor se establece al iniciar la app y no hay forma limpia de retirarla sobre la marcha — la app te lo dice en vez de disimular.
+
+> 🔋 **¿Usabas el indicador de batería?** Hasta ahora estaba activado por defecto; la actualización que creó este grupo lo **desactivó una vez** para todos. Vuelve a marcarlo: a partir de ahí se conserva tu elección.
+
+> 🚨 **El Modo Rescate conserva su mapa de calor de actividad** (contexto de un escenario) aunque la opción 🔥 Mapa de calor esté desmarcada: solo desaparece la casilla del menú Tracker.
+
+### ⛔ «Sensor rechazado»
+
+Si la batería o la vibración aparece **atenuada** con «Sensor rechazado por iOS» o «por este dispositivo», no es un fallo ni un olvido: **tu sistema no cede ese sensor a las páginas web**. Apple no ofrece ni la vibración ni el nivel de batería a un sitio, aunque esté instalado como aplicación.
+
+> 💡 Antes estas opciones simplemente se **ocultaban**: era imposible saber si no existían o si el teléfono las rechazaba. Ahora se muestran, con el motivo.
+
+### 🎬 Repetición de la sesión del rastreador
+
+> 🧩 **Función opcional** — actívala en ⚙️ Configuración › 🧩 Funciones opcionales.
+
+El botón **🎬** del grupo **🧭 Rastreador** abre la ventana **Repetición**. Te permite **reproducir tu sesión de seguimiento** desde el principio, con una línea de tiempo interactiva y exportación a CSV.
+
+**Cómo funciona**:
+
+- Mientras haces seguimiento, la app registra internamente una **línea de tiempo**: para cada paso PDR aplicado, cada reajuste manual y el instante de inicio, guarda `(marca_de_tiempo_epoch_ms, x_plano, y_plano, tipo)`.
+- Al pulsar 🎬 se abre una ventana a pantalla completa con:
+  - **Deslizador de línea de tiempo** (izquierda → derecha = inicio → fin)
+  - Botones **⏮ Reiniciar · ▶️ Reproducir · ⏸ Pausa · ⏭ Fin**
+  - Selector de **velocidad**: 0,5× · 1× · 2× · 5× · 10×
+  - Botón **💾 Exportar CSV**
+  - Botón **⛶** para cambiar a modo compacto (panel inferior) que libera el mapa
+- Al pulsar **▶️ Reproducir**, la ventana **pasa automáticamente a modo compacto** — ves el mapa en grande mientras el marcador amarillo repite tus pasos. El rastro (línea) se alarga a medida que avanza.
+
+**Atajos de teclado**:
+
+| Tecla | Acción |
+|---|---|
+| Espacio | Reproducir / Pausa |
+| ← | Retroceder 1 s |
+| → | Avanzar 1 s |
+| Esc | Cerrar la ventana |
+
+El botón **💾 Exportar CSV** produce un archivo `.csv` de 5 columnas (o 6 en multinivel):
+
+```
+timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
+```
+
+- `type` = `start` (inicio del seguimiento), `pdr` (paso PDR aplicado), `recalage` (reajuste manual)
+- Se puede abrir con Excel / LibreOffice / Numbers / Python pandas / R / etc.
+
+**Caso de los reajustes**: un reajuste = teletransporte. Visualmente, el rastro salta (no hay línea entre el punto N y el N+1 si el tipo es «recalage») para no mostrar una línea recta que no tiene realidad geográfica.
+
+**Reinicio**: la línea de tiempo se pone a cero al cambiar de plano o al recargar (solo en memoria).
+
+### 🔥 Mapa de calor — densidad de paso
+
+> 🧩 **Función opcional** — actívala en ⚙️ Configuración › 🧩 Funciones opcionales.
+
+El botón **🔥 Mapa de calor** del panel **🧭 Rastreador** abre una ventana que dibuja un **mapa de densidad** sobre tu plano. Práctico para visualizar de un vistazo las **zonas más frecuentadas** (pasos clave) frente a las poco utilizadas.
+
+> 📌 **Pertinencia**: el mapa de calor se apoya en una interpolación a lo largo de los segmentos + una normalización por histograma + filtros sobre la línea de tiempo del rastreador, para reflejar fielmente la frecuentación real.
+
+#### 🗂️ 6 fuentes seleccionables (combinables)
+
+Tú eliges qué contribuye al calor mostrado:
+
+| Fuente | Contenido |
+|---|---|
+| 🧭 **Línea de tiempo del rastreador** | Todos los puntos de tu sesión de seguimiento (filtrado: se omiten los reajustes = teletransportes, los inicios y los huecos > 5 min) |
+| 📍 **Puntos de sesión** | Tus puntos añadidos mediante el editor |
+| 🛣️ **Trazados de sesión** | Tus vías (Principal / Secundaria / Camino) trazadas en la sesión |
+| ⬛ **Zonas de sesión** | Tus zonas (agua / escombros / derrumbe / inaccesible) |
+| 🏛️ **Estructuras de sesión** | Tus pilares / muros / frentes |
+| 📊 **Capas de datos** | Todos los elementos incrustados en las capas de datos del plano (puntos + vías + zonas + estructuras + frentes) |
+
+#### 🎚️ Ajustes en vivo
+
+Dos deslizadores en la parte inferior de la ventana, con actualización en tiempo real:
+
+| Deslizador | Rango | Efecto |
+|---|---|---|
+| **Radio** | 10 - 120 px | Extensión de la «mancha» alrededor de cada punto. Pequeño = preciso a escala local, grande = visión general |
+| **Intensidad** | 0,2× - 3,0× | Multiplicador global. Si todo se ve demasiado pálido → súbelo. Si todo se satura de rojo → bájalo |
+
+#### 🏗️ Filtro por nivel (multinivel)
+
+Si tu plano es **multinivel** (cantera con varias plantas — planta baja, sótano, entreplanta, etc.), aparece una nueva sección **«🏗️ Niveles a incluir»** en la ventana del Mapa de calor.
+
+- **Fichas por nivel**: una pastilla pulsable por cada nivel disponible en el plano (`Niv. -2`, `Niv. -1`, `Niv. 0`, `Niv. 1`…)
+- **Preselección**: los niveles **actualmente visibles** en el mapa vienen premarcados automáticamente
+- **Botón ⇅ Todo**: marca o desmarca todo con un clic
+- **Efecto**: el mapa de calor limita la recogida a los elementos que pertenecen a los niveles seleccionados. Práctico para generar un mapa de calor dedicado únicamente a la planta baja (por ejemplo), o para comparar la densidad entre 2 plantas sin contaminación cruzada.
+
+> 💡 **Caso de uso**: quieres comparar la frecuentación de la planta baja con la del sótano → 2 mapas de calor sucesivos con el filtro correspondiente → captura de pantalla de cada uno → ves de inmediato la asimetría.
+
+> 📌 Si tu plano **no** es multinivel, esta sección no aparece en absoluto.
+
+#### 🎯 Algoritmos (por qué ahora resulta pertinente)
+
+- **Interpolación a lo largo de los segmentos**: para los trazados / zonas / estructuras polilínea / línea de tiempo del rastreador, la app distribuye puntos de calor **a lo largo del camino** en lugar de uno solo por vértice. Resultado: ves auténticas **estelas continuas**, no «perlas» espaciadas.
+- **Normalización por histograma**: el píxel más denso de la imagen = rojo puro, el menos denso = azul puro, con un degradado suavizado entre ambos. **Autoadaptativo**: no hace falta ajustar los umbrales a mano, funciona igual de bien en un plano de 20 puntos que en uno de 5000.
+- **Filtro de la línea de tiempo del rastreador**: se omiten los teletransportes (reajustes), los inicios y los huecos > 5 min (una pausa sin moverse no debe generar calor fantasma).
+
+#### 💡 Casos de uso
+
+- **Identificar los ejes principales** de una cantera: lo que sale en rojo = por dónde pasas de verdad, frente a lo que sale en azul = explorado una sola vez
+- **Auditoría de exhaustividad**: zonas azules = poco cartografiadas → próximo objetivo sobre el terreno
+- **Presentación visual** de una sesión: captura del mapa de calor + comentario para compartir una visión general del plano explorado
+
+> ⚠️ El mapa de calor es **puramente visual** (superposición en lienzo). No altera ni el plano, ni las anotaciones, ni las exportaciones. Cierra la ventana para ocultarlo.
+
+### 🪫 Indicador de batería
+
+> 🧩 **Función opcional** — actívala en ⚙️ Configuración › 🧩 Funciones opcionales.
 
 La app vigila en tiempo real el nivel de batería del teléfono (cuando el navegador expone esa información) y muestra un indicador compacto en 3 lugares:
 
@@ -2259,7 +2296,7 @@ La app vigila en tiempo real el nivel de batería del teléfono (cuando el naveg
 | **Pie** de la ventana 📋 Sesión activa | Línea `🔋 Estado · 🪫 23 % · Descargando` |
 | **Bloque 🔋 ESTADO** del modo emergencia 🚨 | Etiqueta larga `🪫 23 % · descarga` |
 
-### Niveles y colores
+#### Niveles y colores
 
 | % | Color | Comportamiento |
 |---|---|---|
@@ -2271,7 +2308,7 @@ La app vigila en tiempo real el nivel de batería del teléfono (cuando el naveg
 
 Cada umbral envía su aviso **una sola vez** por ciclo de descarga (nada de spam si oscilas entre el 10 %, el 12 %, el 9 %, etc.). El contador de umbrales se reinicia en cuanto vuelves a cargar o subes por encima del 50 %.
 
-### Compatibilidad con navegadores
+#### Compatibilidad con navegadores
 
 La app usa la **API Battery Status** estándar del navegador. Esta API **ya no está disponible en todas partes**:
 
@@ -2284,6 +2321,14 @@ La app usa la **API Battery Status** estándar del navegador. Esta API **ya no e
 | Firefox reciente | ❌ No (la API está desactivada por defecto) |
 
 > 🪫 **Si la API no está disponible** en tu teléfono, la ficha de batería **simplemente se oculta** — no se muestra ningún mensaje de error. Es normal en iOS. **El modo emergencia 🚨 tampoco lo muestra** (v1.97.11): sin sensor no hay nada que mostrar, y un « ? » en lugar de un nivel de batería, en la pantalla que abres justo cuando se agota, no tranquiliza a nadie. El resto del estado (rastreador, brújula) queda intacto. Lo mismo si desmarcas ⚙️ **🔋 Nivel de batería**.
+
+### 📳 Vibración háptica
+
+Una breve vibración confirma las acciones: etapa de itinerario alcanzada, reajuste, validación de una etapa, alertas del Modo Rescate (equipo con retraso, miembros que faltan).
+
+> 🚨 **Las alertas de supervivencia vibran siempre**, incluso con la opción desactivada: salida de emergencia encontrada o no encontrada, alerta crítica difundida. Todo lo demás — incluido el Modo Rescate — sigue tu ajuste.
+
+> 📵 **iOS no da este sensor a las páginas web**: en iPhone la opción aparece atenuada (ver «Sensor rechazado» más arriba).
 
 ---
 
@@ -2647,23 +2692,6 @@ El caso típico: en un levantamiento importado del SIG, un **frente de explotaci
 La ventana solo propone destinos **compatibles con la forma** del objeto: una **línea** (trazado, frente) solo puede convertirse en otra línea, y una **superficie cerrada** (zona, pilar, muro) en otra superficie cerrada. No se puede transformar una línea en un polígono: no hay con qué cerrarla.
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
-
-### 🛰️ Las opciones que usan un sensor
-
-⚙️ **Ajustes** → **🛰️ Opciones por sensor**. Estos ajustes dependen de un sensor del teléfono y **cada uno se puede apagar por completo**: una opción desactivada no muestra nada y no escucha nada.
-
-| Opción | Por defecto | Qué hace |
-|---|---|---|
-| **🔋 Nivel de batería** | activado | Muestra la carga restante arriba y avisa por debajo del 20 %, 10 % y 5 %. Desmarcada: sin icono **y** sin escucha del sensor |
-| **📳 Vibración háptica** | **desactivada** | Respuesta táctil en algunas acciones |
-
-> ℹ️ **Apagar la batería surte efecto en el próximo arranque.** La escucha se establece al iniciar la app y no hay forma limpia de retirarla sobre la marcha: la app te lo dice en vez de disimular.
-
-#### ⛔ «Sensor rechazado»
-
-Si una opción aparece **atenuada** con «Sensor rechazado por iOS» o «por este dispositivo», no es un fallo ni un olvido: **tu sistema no cede ese sensor a las páginas web**. Apple no ofrece ni la vibración ni el nivel de batería a un sitio, aunque esté instalado como aplicación.
-
-> 💡 Antes estas opciones simplemente se **ocultaban**: era imposible saber si no existían o si el teléfono las rechazaba. Ahora se muestran, con el motivo.
 
 ### 🏁 Tu distancia cuando el podómetro no vio nada
 
@@ -3104,14 +3132,17 @@ Tu calibrado de 2 puntos se guarda **por plano** (en este dispositivo). En la si
 
 > El grupo **⬇️ Cargar / Importar** de la barra lateral contiene las acciones de importación.
 
-### 📥 Importar una sesión
+### 📥 Importar un archivo (sesión o GPX)
 
-Pulsa **⬇️ → 📥 Importar**, tarjeta **Sesión MyKTAMap** para abrir la ventana de importación. Se muestra una ventana:
+Pulsa **⬇️ → 📥 Importar**: el selector de archivos se abre directamente y la app reconoce el tipo.
 
-1. **Arrastra y suelta** tu archivo `.json` (o `.zip` con fotos) en la zona, o púlsala para seleccionarlo
-2. Aparece una **vista previa**: número de puntos añadidos, de trazados, de zonas y de puntos de medición
-3. Una **advertencia** te avisa de que la importación reemplazará tu sesión en curso — acuérdate de exportarla antes si hace falta
-4. Pulsa **Importar** para validar, o **Cancelar** para cerrar sin cambiar nada
+**Sesión MyKTAMap** (`.json`, o `.zip` con fotos) — **reemplaza** tu sesión en curso:
+
+1. Aparece una **vista previa**: número de puntos añadidos, de trazados, de zonas y de puntos de medición
+2. Una **advertencia** te avisa de que la importación reemplazará tu sesión en curso — justo antes se hace una copia de seguridad automática
+3. Pulsa **Importar** para validar, o **Cancelar** para cerrar sin cambiar nada
+
+**Archivo GPX** (`.gpx` de TopoDroid, OsmAnd, Avenza, Strava, Garmin…) — **añade** sus waypoints (puntos) y tracks (trazados) a tu sesión. El mapa debe estar **calibrado GPS** (📡 Exportación externa). Una vista previa precede a la adición, y **Ctrl+Z** la deshace.
 
 ### 📊 Editor de datos del plano
 
@@ -3488,7 +3519,7 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 
 ### 🎓 Volver a ver el tutorial
 
-El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**: abre **📖 Documentación** y toca el botón **🎓** de la línea de título, junto a las banderas de idioma. No hay que reinstalar ni reiniciar nada.
+El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**: abre **📖 Documentación** y toca el botón **🎓** de la línea de título, junto al selector de idioma. No hay que reinstalar ni reiniciar nada.
 
 ### 🔎 Buscar en la documentación
 
@@ -3496,7 +3527,7 @@ Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar*
 
 ## 🤖 Ayuda con IA
 
-> Accesible mediante el grupo **📚 Ayuda / Documentación / Leyenda → 🤖 Ayuda con IA**.
+> Accesible desde **📖 Documentación**: botón **🤖** en la línea de título, junto al selector de idioma — por tanto también desde la pantalla de inicio.
 
 Descarga un archivo `.md` que resume todo lo que permite hacer la app (esta documentación + unas preguntas frecuentes + instrucciones para la IA). Dáselo a **cualquier IA conversacional** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — podrá responder a todas tus preguntas sobre MyKTAMap con un contexto preciso.
 
@@ -3561,8 +3592,8 @@ Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 t
 - **🚀 Modo ULTRA** aplica 7 optimizaciones de golpe, o una a una (simplificación de trazados, animaciones, círculos, ventanas emergentes, guardado lento, dibujo solo de lo visible, límite de alejamiento en móvil). Detalle en la sección Rendimiento más arriba.
 - En un plano **multinivel**: **🏗️ Mostrar todos los niveles al iniciar** (se aplica en la próxima carga del plano).
 
-### 🛰️ Opciones por sensor *(🌍 todos los planos)*
-- **🔋 Nivel de batería** y **📳 Vibración háptica**. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
+### 🧩 Funciones opcionales *(🌍 todos los planos)*
+- **🎬 Replay del tracker**, **🔥 Mapa de calor**, **🔋 Nivel de batería** y **📳 Vibración háptica**, desactivados por defecto. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
 
 ### 🔒 Privacidad y seguridad *(🌍 todos los planos)*
 - **🕵️ Modo incógnito**: abre una nueva ventana que no escribe nada en el dispositivo.

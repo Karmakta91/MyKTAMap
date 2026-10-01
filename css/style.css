@@ -3185,58 +3185,34 @@ html.kta-theme-light .kta-readme-tutorial-btn:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
 
-/* 🆕 v1.29.0 P0 i18n — Toggle FR/EN dans header modale Doc. Style miroir
-   du bouton 🎓 (tutorial) avec accent bleu pour bien différencier. */
-.kta-readme-lang-btn {
+/* 🧩 01/10/2026 — Langue de la doc : menu déroulant (remplace les drapeaux
+   v1.29.0/v1.45.0). Accent bleu d'interaction, hauteur alignée sur 🎓 / 🤖. */
+.kta-readme-lang-select {
   background: rgba(140, 180, 255, 0.10);
   border: 1px solid rgba(140, 180, 255, 0.40);
   color: #e8eaf0;
   border-radius: 6px;
-  width: 36px;
   height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 6px;
+  font-size: 13px;
   cursor: pointer;
-  font-size: 17px;
-  line-height: 1;
   margin-right: 6px;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
   flex-shrink: 0;
 }
-.kta-readme-lang-btn:hover {
+.kta-readme-lang-select:hover,
+.kta-readme-lang-select:focus {
   background: rgba(140, 180, 255, 0.25);
   border-color: rgba(140, 180, 255, 0.70);
-  transform: scale(1.05);
 }
-body.kta-theme-light .kta-readme-lang-btn,
-html.kta-theme-light .kta-readme-lang-btn {
+.kta-readme-lang-select option { background: #1a1f2e; color: #e8eaf0; }
+body.kta-theme-light .kta-readme-lang-select,
+html.kta-theme-light .kta-readme-lang-select {
   background: rgba(30, 95, 153, 0.10) !important;
   border-color: rgba(30, 95, 153, 0.45) !important;
-  color: #1e5f99 !important;
+  color: #0f3d66 !important;
 }
-body.kta-theme-light .kta-readme-lang-btn:hover,
-html.kta-theme-light .kta-readme-lang-btn:hover {
-  background: rgba(30, 95, 153, 0.22) !important;
-}
-
-/* 🆕 v1.45.0 — Onglets de langue de la doc (un drapeau par langue dispo).
-   La langue COURANTE est marquée .active (pleine opacité + accent renforcé),
-   les autres sont atténuées (= "clique pour basculer"). */
-.kta-readme-lang-tabs { display: inline-flex; }
-.kta-readme-lang-tabs .kta-readme-lang-btn { opacity: 0.5; }
-.kta-readme-lang-tabs .kta-readme-lang-btn:hover { opacity: 1; }
-.kta-readme-lang-tabs .kta-readme-lang-btn.active {
-  opacity: 1;
-  background: rgba(140, 180, 255, 0.30);
-  border-color: rgba(140, 180, 255, 0.85);
-}
-body.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active,
-html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
-  color: #0f3d66 !important;   /* (O4) 3,40 → lisible */
-  background: rgba(30, 95, 153, 0.26) !important;
-  border-color: rgba(30, 95, 153, 0.70) !important;
-}
+body.kta-theme-light .kta-readme-lang-select option,
+html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color: #0f3d66; }
 
 /* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
 .kta-readme-modal-layout {
@@ -5635,7 +5611,7 @@ html.kta-theme-light .kta-cfg-input option {
    est posé en INLINE avec color:#f4c542 (jaune charte) → illisible sur le fond
    crème du thème clair (~1.4:1, sous WCAG AA). On override la couleur en clair
    vers l'accent foncé (!important requis pour battre l'inline). Le dark garde le
-   jaune (lisible sur fond sombre). Cf docs/audits/2026-06-14_audit-i18n-langue-v1 (C1). */
+   jaune (lisible sur fond sombre). Cf docs/audits/2026-06-14_audit-i18n-langue-v1 (archivé : tag Git `archive-docs-2026-09-30`) (C1). */
 body.kta-theme-light .kta-cfg-group-titre,
 html.kta-theme-light .kta-cfg-group-titre {
   color: var(--kta-light-accent-text, #7a5a00) !important;

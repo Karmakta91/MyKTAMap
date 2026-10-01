@@ -2979,3 +2979,20 @@ body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-se
 /* B10 (vague 7b) : raccourcis de sécurité de la vue équipe */
 .kta-secours-raccourcis { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .kta-secours-raccourcis .kta-btn { flex: 1 1 30%; }
+
+/* Contre-audit IGC (30/09) : étapes loin des galeries, sur la fiche d'équipe */
+.kta-secours-groupe-loin { font-size: 12px; line-height: 1.4; margin: 4px 0 6px; }
+
+/* Contre-audit GRIMP (30/09) : bilan des engagés, en tête de la vue opérateur */
+.kta-secours-bilan { font-size: 13px; font-weight: 600; margin: 0 0 10px; padding: 6px 10px;
+  border-radius: 8px; background: rgba(140, 180, 255, 0.08); }
+
+/* Vague 8b : niveau de la zone, sur la fiche d'équipe */
+.kta-secours-zone-niv { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12.5px; }
+.kta-secours-zone-niv label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+/* Vague 8b : couverture par niveau */
+.kta-secours-couv-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 4px 0 8px; }
+.kta-secours-couv-table th, .kta-secours-couv-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid rgba(136, 146, 164, 0.25); }
+.kta-secours-couv-table th:first-child, .kta-secours-couv-table td:first-child { text-align: left; }
+.kta-secours-couv-total td { border-top: 1px solid rgba(136, 146, 164, 0.5); }

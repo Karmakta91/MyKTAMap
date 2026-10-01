@@ -568,21 +568,28 @@ function _ouvrirReadmeModal(html, opts) {
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
-  const btnLang = '<span class="kta-readme-lang-tabs">' +
+  // 🧩 01/10/2026 (KARMA) — un menu déroulant remplace les drapeaux : un
+  // seul contrôle quel que soit le nombre de langues, et la place libérée
+  // accueille le bouton 🤖 Aide IA (retiré du groupe 📚 Aide de la barre).
+  const btnLang = '<select class="kta-readme-lang-select" id="kta-readme-lang-select" ' +
+    'aria-label="' + _docTxt("docs.langSelect") + '" title="' + _docTxt("docs.langSelect") + '">' +
     DOC_AVAILABLE_LANGS.map(function(code) {
       const meta = _docLangMeta.filter(function(l){ return l.code === code; })[0] ||
                    { code: code, label: code.toUpperCase(), flag: code.toUpperCase() };
-      const isCur = (code === _docCurrentLang);
-      return '<button class="kta-readme-lang-btn' + (isCur ? ' active' : '') + '" type="button" ' +
-             'data-target-lang="' + code + '" aria-label="' + meta.label + '" title="' + meta.label + '"' +
-             (isCur ? ' aria-current="true"' : '') + '>' + meta.flag + '</button>';
-    }).join("") + '</span>';
+      return '<option value="' + code + '"' + (code === _docCurrentLang ? ' selected' : '') + '>' +
+             meta.flag + ' ' + code.toUpperCase() + '</option>';
+    }).join("") + '</select>';
+  const btnAiia = (typeof window.afficherModaleAideIA === "function")
+    ? '<button class="kta-readme-tutorial-btn" id="kta-readme-aiia-btn" type="button" ' +
+      'aria-label="' + _docTxt("docs.aiiaBtn") + '" title="' + _docTxt("docs.aiiaBtn") + '">🤖</button>'
+    : "";
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
-        <span class="kta-readme-modal-titre">📖 Documentation</span>
+        <span class="kta-readme-modal-titre">Documentation</span>
         ${btnLang}
+        ${btnAiia}
         ${btnOnboarding}
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
@@ -662,13 +669,26 @@ function _ouvrirReadmeModal(html, opts) {
     });
   }
 
-  // 🆕 v1.45.0 — Handler des onglets de langue (délégation sur tous les
-  // drapeaux). Clic sur une langue ≠ courante → persiste + rebuild la modale
+  // 🤖 Aide IA (01/10/2026) : s'ouvre PAR-DESSUS la doc, qui reste derrière.
+  // Devant le verrou (overLocker), elle hérite du même z-index relevé, sinon
+  // elle s'ouvrirait sous l'écran de verrouillage.
+  const _readmeAiiaBtn = document.getElementById("kta-readme-aiia-btn");
+  if (_readmeAiiaBtn) {
+    _readmeAiiaBtn.addEventListener("click", function() {
+      window.afficherModaleAideIA();
+      const ia = document.getElementById("kta-aide-ia-modal");
+      if (ia && modal.classList.contains("kta-readme-over-locker")) ia.classList.add("kta-readme-over-locker");
+    });
+  }
+
+  // 🆕 v1.45.0 — Choix de langue de la doc (menu déroulant depuis le
+  // 01/10/2026). Langue ≠ courante → persiste + rebuild la modale
   // (préserve TOC dépliable, smooth scroll… sans dupliquer le rendu). Scope
   // strictement LOCAL à la doc (ne touche pas la langue globale de l'app).
-  modal.querySelectorAll(".kta-readme-lang-btn").forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      const target = btn.getAttribute("data-target-lang");
+  const _readmeLangSel = document.getElementById("kta-readme-lang-select");
+  if (_readmeLangSel) {
+    _readmeLangSel.addEventListener("change", function() {
+      const target = _readmeLangSel.value;
       if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
       if (target === _getReadmeLang()) return; // déjà la langue courante
       _setReadmeLang(target);
@@ -682,7 +702,7 @@ function _ouvrirReadmeModal(html, opts) {
         hideOnboarding: wasHideOnboard
       });
     });
-  });
+  }
 }
 
 // =========================
@@ -918,7 +938,9 @@ const AIDE_SECTIONS = [
   // vivaient sans foyer documentaire (mesure, coordonnees de surface,
   // plans par etiquette, couleurs personnalisees, travail de session,
   // ecart de calage). Un ecran entier absent de l’aide.
-  "vue-osm"
+  "vue-osm",
+  // 🧩 01/10/2026 — fiches des fonctionnalités optionnelles qui n'en avaient pas.
+  "heatmap", "vibration"
 ];
 
 // 🩸 4ᵉ DÉFAUT DU MÉCANISME D'INDEX, découvert en migrant (01/09/2026) :
@@ -934,9 +956,11 @@ const AIDE_CATEGORIES = [
   { cle: "outils-carte",     slugs: ["mesure", "structures", "traces", "edition-points", "tracker",
                                      "enregistrer", "legende", "menu-tracker", "sortie-urgence",
                                      "depannage", "liaisons-inter-plan", "vue-osm"] },
-  { cle: "donnees-session",  slugs: ["replay-tracker", "charger-import", "bibliotheque-plans", "profil",
-                                     "favoris", "batterie", "inspecteur-memoire", "histoire",
+  { cle: "donnees-session",  slugs: ["charger-import", "bibliotheque-plans", "profil",
+                                     "favoris", "inspecteur-memoire", "histoire",
                                      "zones", "import-sig", "carnet"] },
+  // 🧩 01/10/2026 — désactivées par défaut, activables dans ⚙️ Configuration.
+  { cle: "optionnels",       slugs: ["replay-tracker", "heatmap", "batterie", "vibration"] },
   { cle: "recherche",        slugs: ["recherche"] },
   { cle: "secours",          slugs: ["mode-secours"] },
   { cle: "systeme",          slugs: ["parametres", "optimiser-plan", "historique-undo",

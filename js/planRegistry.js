@@ -22,7 +22,7 @@
 //   ]
 // }
 //
-// 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md) :
+// 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md (archivé : tag Git `archive-docs-2026-09-30`)) :
 //   folders:   [{ id, name, color, order, collapsed, src: "user"|"index" }]   ← absent tant qu'aucun dossier
 //   plansView: "all" | "folders"                                              ← absent = jamais choisi
 //   par plan : folderId (absent = Non classés), folderSrc: "user"|"index"

@@ -350,7 +350,7 @@ Toggle accessible depuis ⚙️ Réglages (mode carte) → groupe « 🎨 Affich
 | 3 | 📍 `config.group.navTracker` | 📍 ce plan | départ X/Y (+ pickers) · podomètre ×3 · nav intelligente ×3 |
 | 4 | 🎨 `config.group.affichage` | 📍/🌍 mixte (badge « selon la ligne », chaque ligne dit la sienne) | ronds (ce plan) · wake lock · vocal (tous plans) |
 | 5 | 🚀 `config.group.perf` | 📍 ce plan | toggles ULTRA + `tousNiveaux` (multi-niveau seulement, hors ULTRA) |
-| 6 | 🛰️ `config.group.capteurs` | 🌍 tous | batterie · vibration |
+| 6 | 🧩 `config.group.optionnels` | 🌍 tous | **Fonctionnalités optionnelles**, toutes OFF par défaut : replay · heatmap · batterie · vibration (même état que le groupe du même nom à l'accueil ; clés `APP_CONFIG.*Enabled`, lues en `=== true`) |
 | 7 | 🔒 `config.group.privacy` | 🌍 tous | incognito (le **carnet** s'est déplacé à l'accueil en v1.92.0 : `#loaderJournalCb`, câblé par `homeConfig.js`) |
 | 8 | 🛠️ `config.group.system` | 📍 ce plan (lecture seule) | preset perf en lecture seule |
 
@@ -1616,6 +1616,7 @@ KARMA : « refondre le menu déroulé de tracker par un modal full screen plus e
 - Nouvelle branche **`useModal`** dans `_creerGroupeAccordeon` (sœur de `useFlyout`) : le clic sur `btnPrincipal` appelle `_toggleTrackerModal(id)`. Le groupe tracker passe `useFlyout:true` → `useModal:true`. `sousActionsConfig` reste stocké (comme pour le flyout) → réutilisé tel quel.
 - `_ouvrirTrackerModal(groupId)` lit `_groupes[groupId].sousActionsConfig` (**zéro duplication**) et rend chaque sous-action en **tuile** (`_creerTuileTracker`) : `dynamicIcon()` (▶️/⏹️) + `isActive()` (→ `kta-actif`) **relus à l'ouverture**, exactement comme le flyout.
 - **Tap d'une tuile** = `_fermerTrackerModal()` PUIS `sub.onClick(tile)` — **même pattern « bouton détaché » que le flyout** (`_ouvrirFlyout` ferme avant d'exécuter, l.~1343). Conséquence assumée : le modal couvrant la carte/footer, **toute** action ferme le modal (recalage a besoin du clic carte, boussole/badge verrou sont sous le modal). L'état se reflète à la **réouverture**.
+- **Tuiles optionnelles** : une sous-action portant `optionnel: "<clé APP_CONFIG>"` (Replay `replayEnabled`, Heatmap `heatmapEnabled`) est filtrée **à chaque ouverture** si la clé n'est pas `=== true` → la case de ⚙️ agit sans recharger. Seule la tuile disparaît : `heatmap.js` reste chargé, le Mode Secours garde son bloc heatmap.
 - **Sections** (`_ajouterSectionTracker`) : champ `section` (`"suivi"`/`"outils"`) ajouté aux sous-actions ; **Urgence** auto-détectée via `cssClass === "kta-sous-action-urgence"` (fond rouge réutilisé). Tuile seule en fin de grille (compte impair) → `kta-tracker-modal-tile-wide` (pleine largeur). Fallback robustesse : sous-action sans section ni urgence → rangée en « outils ».
 - **Bande de statut** : `window.getTrackingActif()` (source de vérité moteur `tracking.js`, `tracking === true`) — ⚠️ **PAS** `isTracking`, qui est `let` **local à `initInterface()`** donc hors de portée des fonctions module-scope du modal (piège initial → « Suivi inactif » permanent ; même piège que `refonteInterface` cf `tracking.js:995`). + `getTrackingDistanceM` + `getStepCount`. Fermeture ✕ / clic-fond / Échap.
 

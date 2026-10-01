@@ -1251,9 +1251,15 @@ function _ouvrirTrackerModal(groupId) {
 
   const grp = _groupes[groupId];
   if (!grp) return;
-  const baseActions = (typeof grp.dynamicSousActions === "function")
+  // 🧩 01/10/2026 — une tuile marquée `optionnel: "<cléAPP_CONFIG>"` n'apparaît
+  // que si l'utilisateur a activé la fonctionnalité (⚙️ › Fonctionnalités
+  // optionnelles). Filtré à chaque ouverture : la case agit sans recharger.
+  const baseActions = ((typeof grp.dynamicSousActions === "function")
                         ? (grp.dynamicSousActions() || [])
-                        : (grp.sousActionsConfig || []).slice();
+                        : (grp.sousActionsConfig || []).slice())
+    .filter(function(a) {
+      return !a.optionnel || !!(window.APP_CONFIG && window.APP_CONFIG[a.optionnel] === true);
+    });
 
   const overlay = document.createElement("div");
   overlay.className = "kta-tracker-modal-overlay";
@@ -1524,6 +1530,24 @@ function _ouvrirFlyout(groupId) {
         };
       });
       allActions.splice(insertIdx, 0, ...customActions);
+    }
+    // ➕ Créer un type sans passer par ≡ Légende → ✏️ → ➕ (KARMA 30/09/2026) :
+    // même boîte, catégorie verrouillée ; le type créé est aussitôt
+    // sélectionné et l'outil armé. Dernier de la liste des types, avant ✅/🧹.
+    if (typeof window.LegendCustomization.ouvrirAddDialog === "function"
+        && typeof grp.customActivator === "function") {
+      const idxOutils = allActions.findIndex(function(a) { return !a.isTypeAction; });
+      allActions.splice(idxOutils >= 0 ? idxOutils : allActions.length, 0, {
+        icone:        "➕",
+        titre:        window.I18n.t("ui.subaction.nouveauType"),
+        isTypeAction: true,
+        onClick:      function() {
+          window.LegendCustomization.ouvrirAddDialog(function(id) {
+            // Bouton détaché : même situation qu'un clic de flyout (fermé avant l'action).
+            if (id) grp.customActivator(id, document.createElement("button"));
+          }, { category: grp.lcCat, titre: window.I18n.t("ui.subaction.nouveauTypeTitre") });
+        }
+      });
     }
   }
 
@@ -2133,11 +2157,9 @@ function initInterface() {
       // scope de interface.js après extraction.
       { icone: "❓", titre: window.I18n.t("ui.subaction.aide"),          onClick: function() { if (typeof window.afficherAide === "function") window.afficherAide(); } },
       { icone: "📖", titre: window.I18n.t("ui.subaction.documentation"), onClick: function() { if (typeof window.afficherReadme === "function") window.afficherReadme(); } },
-      { icone: "🤖", titre: window.I18n.t("ui.subaction.aideIA"),       onClick: function() {
-          if (typeof window.afficherModaleAideIA === "function") {
-            window.afficherModaleAideIA();
-          }
-        } },
+      // 🤖 Aide IA : retirée de ce menu le 01/10/2026 (KARMA), elle vit dans
+      // l'en-tête de la 📖 Documentation, à côté du choix de langue — et
+      // devient du même coup accessible depuis l'accueil.
       { icone: "🗺️", titre: window.I18n.t("ui.subaction.legende"),       onClick: afficherLegende }
       // 🆕 v1.21.0 — Rejouer le tutoriel premier-lancement à tout moment.
       // 🔄 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
@@ -2602,6 +2624,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         icone: "🎬",
         titre: window.I18n.t("ui.subaction.replay"),
         section: "outils",
+        optionnel: "replayEnabled",
         onClick: function() {
           if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
             window.MyKTAMapTrackerReplay.ouvrirModale();
@@ -2617,6 +2640,9 @@ _setGroupeModeActif("tracker", isTracking, null);
         icone: "🔥",
         titre: window.I18n.t("ui.subaction.heatmap"),
         section: "outils",
+        // ⚠️ Seule la TUILE est optionnelle : le module reste chargé, le Mode
+        // Secours garde son bloc « Heatmap d'activité » quel que soit ce réglage.
+        optionnel: "heatmapEnabled",
         onClick: function() {
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();

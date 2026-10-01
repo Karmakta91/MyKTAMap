@@ -532,7 +532,7 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 
 ## 📁 Dossiers de « Mes plans » (v1.95.0)
 
-Étude et décisions : `docs/audits/2026-09-16_etude-dossiers-mes-plans.md` (§8-9). Garde-fou `scripts/check-plan-folders.js` (exécute le registre dans un bac à sable), smoke `scripts/smoke/checkup-plan-folders.js` (hauteur au pixel, index, mobile).
+Étude et décisions : `docs/audits/2026-09-16_etude-dossiers-mes-plans.md` (archivé : tag Git `archive-docs-2026-09-30`) (§8-9). Garde-fou `scripts/check-plan-folders.js` (exécute le registre dans un bac à sable), smoke `scripts/smoke/checkup-plan-folders.js` (hauteur au pixel, index, mobile).
 
 **Données** (`js/planRegistry.js`, magasin `myktamap_plans`) : `folders: [{ id, name, color, order, collapsed, src: "user"|"index", rule?: { tags } }]`, `plansView: "all"|"folders"` (absent = jamais choisi), et par plan `folderId`, `folderSrc: "user"|"index"`, `folderExclude: [ids]`. Rien de ces clés n'existe tant qu'aucun dossier n'est créé : le mode Tout est l'écran d'avant. API : `getFolders / createFolder / renameFolder / setFolderColor / setFolderCollapsed / moveFolder / deleteFolder / setFolderRule / setPlanFolder / planFolderId / planFolderByRule / getPlansView / setPlansView / hasPlansViewChoice / applyIndexFolders / fusionnerDossiers`.
 

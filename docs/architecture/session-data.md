@@ -1477,6 +1477,8 @@ Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d
 1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre.
 2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
 
+3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.
+
 ### 💾 Le retour vers le ZIP
 
 `exporterCalque(id)` produit **UN** fichier de la forme du calque d'origine. *Le convertisseur « session → data layer » ne pouvait pas servir : il éclate la sortie en `points.json` + `roads.json` + `zones.json` + `structure.json`, voire un fichier par type — **quatre fichiers ne remplacent pas une ligne**.*
@@ -1498,7 +1500,7 @@ Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].fil
 
 Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
 
-**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 63 assertions, le vrai module chargé dans un `vm`.
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 97 assertions, le vrai module chargé dans un `vm`, câblage de l'import de session compris.
 
 ---
 

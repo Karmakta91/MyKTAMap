@@ -99,9 +99,13 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       else if (TEMOIN_EN.test(txt)) pb("Documentation en ANGLAIS — la résolution de langue ne prend pas 'es'");
       else pb("Documentation dans une langue non identifiée (aucun mot-témoin) — début : " + txt.slice(0, 90).replace(/\s+/g, " "));
 
-      const drapeaux = await page.locator("#kta-readme-modal .kta-readme-lang-btn").count();
-      if (drapeaux === 3) ok("Documentation : 3 drapeaux proposés (fr/en/es)");
-      else pb("Documentation : " + drapeaux + " drapeau(x) au lieu de 3");
+      // 🧩 01/10/2026 — les drapeaux sont devenus un menu déroulant, suivi du bouton 🤖 Aide IA.
+      const drapeaux = await page.locator("#kta-readme-modal #kta-readme-lang-select option").count();
+      if (drapeaux === 3) ok("Documentation : 3 langues proposées dans le menu (fr/en/es)");
+      else pb("Documentation : " + drapeaux + " langue(s) dans le menu au lieu de 3");
+      const btnIa = await page.locator("#kta-readme-modal #kta-readme-aiia-btn").count();
+      if (btnIa === 1) ok("Documentation : bouton 🤖 Aide IA présent dans l'en-tête");
+      else pb("Documentation : bouton 🤖 Aide IA absent de l'en-tête");
 
       await page.keyboard.press("Escape").catch(function () {});
       await page.waitForTimeout(400);

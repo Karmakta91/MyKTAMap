@@ -3,7 +3,7 @@
 // =====================================================================
 // 📁 checkup-plan-folders.js — le mode Dossiers de « Mes plans », au pixel
 // =====================================================================
-// Étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md. Ce que seul un
+// Étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md (archivé : tag Git `archive-docs-2026-09-30`). Ce que seul un
 // navigateur prouve :
 //   1. le mode TOUT reste l'écran d'avant (sélecteur dans la ligne de titre,
 //      aucune hauteur ajoutée à « Mes plans ») ;

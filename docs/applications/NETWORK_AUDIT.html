@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.98.23</strong> (30 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.99.0</strong> (1er octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -791,7 +791,7 @@
     Image/Data/Tags/show-all/hide-all (cohérence avec M-LVL déjà délégué en
     v1.43.26). <strong>Aucun changement de surface réseau</strong> : pur
     hardening client. Audit V2 complet sauvegardé dans
-    <code>docs/audits/2026-06-09_audit-modales-v2.md</code>.</li>
+    <code>docs/audits/2026-06-09_audit-modales-v2.md (archivé : tag Git archive-docs-2026-09-30)</code>.</li>
 
     <li><strong>v1.43.26</strong> — Sprint hardening modales (top 10 fixes de
     l'audit perf/UX modales, workflow adversarial verify) :
@@ -1127,6 +1127,14 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.99.0 (fonctionnalités optionnelles, Aide IA dans la Documentation)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. <strong>Un capteur de moins écouté par défaut</strong> : l’indicateur de batterie est désormais une option désactivée — tant qu’il l’est, l’app n’interroge pas le niveau de batterie du téléphone. L’Aide IA lit toujours <code>AI_CONTEXT.md</code> sur le même serveur, seulement quand on la demande.</p>
+  <h3>v1.98.26 (calques à l’import de session, import unifié, « Nouveau type… »)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Tout se passe sur l’appareil.</p>
+  <h3>v1.98.25 (Mode Secours, vague 8b)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. La couverture est calculée sur l'appareil.</p>
+  <h3>v1.98.24 (Mode Secours, vague 8a)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Évacuation, bilan des engagés, durées, recalage et PDF sont calculés sur l'appareil.</p>
   <h3>v1.98.23 (Mode Secours, retours KARMA)</h3>
   <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête (affichage de la vue équipe et textes d'aide seulement).</p>
   <h3>v1.98.22 (Mode Secours, test terrain)</h3>
@@ -1948,7 +1956,7 @@
     <strong>(v1.26.1)</strong> banner cohérence échelle px/m ↔ géoréf — calcul 100 % client-side (lecture <code>APP_CONFIG.scale</code> + calibrage localStorage existant), bouton « 📋 Copier » via Clipboard API (permission silencieuse HTTPS).
     <strong>(v1.26.2 / v1.26.3)</strong> consolidation + professionnalisation (renommage « Bourré » → « Blessé » avec micro-migration localStorage locale, ton lockout factuel) + nettoyage de ~395 lignes de code mort — purement cosmétique/structurel, réduit même la taille des assets cachés.
     <strong>(v1.26.3-hotfix4)</strong> 3 optimisations RAM (snapshots undo/redo ciblés, LRU des tuiles décodées via <code>URL.revokeObjectURL</code> local, débounce du calcul d'intersections) — purement intra-runtime, aucun réseau.
-    <strong>(v1.27.0)</strong> saisie assistée de la position initiale du tracker (boutons « 🔍 Choisir via un point » et « 📍 Cliquer sur la carte ») — réutilise la recherche de POI locale (<code>SearchPoints.findByQuery</code>) et le clic carte Leaflet local, aucun fetch ajouté ; + document de conception navigation intelligente (<code>docs/DESIGN_NAV_INTELLIGENTE.md</code>, aucun code applicatif).
+    <strong>(v1.27.0)</strong> saisie assistée de la position initiale du tracker (boutons « 🔍 Choisir via un point » et « 📍 Cliquer sur la carte ») — réutilise la recherche de POI locale (<code>SearchPoints.findByQuery</code>) et le clic carte Leaflet local, aucun fetch ajouté ; + document de conception navigation intelligente (<code>docs/DESIGN_NAV_INTELLIGENTE.md (archivé : tag Git archive-docs-2026-09-30)</code>, aucun code applicatif).
     Verdict : ✅ aucune régression réseau sur tout le cycle — fonctionnalités strictement locales (fichiers, calculs, recherche POI, clic carte), perf intra-runtime, conception sans code.
   </p>
 

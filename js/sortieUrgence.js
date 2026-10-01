@@ -166,9 +166,18 @@
   // ========== PIPELINE ==========
   // Trouve toutes les sorties, calcule leurs distances pathfinder, trie.
   // Retourne Promise<[{point, distPx, path, fallback}, ...]>.
-  function _calculerToutesSorties(origine) {
+  // `supp` (facultatif) : candidats en plus des POI tagués — Mode Secours (30/09) :
+  // les accès des équipes du scénario, que le plan ne tague pas forcément. Un
+  // candidat à moins de 10 m d'un POI de sortie ne s'ajoute pas (doublon).
+  function _calculerToutesSorties(origine, supp) {
     const points = _tousLesPoints();
     const sorties = points.filter(_estUneSortie);
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    (Array.isArray(supp) ? supp : []).forEach(function(c) {
+      if (!c || typeof c.x !== "number" || typeof c.y !== "number") return;
+      if (sorties.some(function(p) { return _distEucl(p, c) < 10 * pxParM; })) return;
+      sorties.push(c);
+    });
     if (sorties.length === 0) return Promise.resolve([]);
 
     // On limite à 15 sorties les plus proches en euclidien d'abord pour
@@ -233,6 +242,7 @@
   function _texteOrigine(meta) {
     const mode = meta && meta.mode;
     if (mode === "clic") return window.I18n.t("sortie.origine.clic");
+    if (mode === "victime") return window.I18n.t("sortie.origine.victime");   // Mode Secours, Évacuer
     if (mode === "confirmee") {
       const ts = meta.ts;
       if (typeof ts !== "number") return window.I18n.t("sortie.origine.confirmeeRecent");
@@ -419,14 +429,15 @@
   // commande vocale qui pourrait passer un POI de référence à l'avenir).
   // Mode Secours (A3, 29/09/2026) : l'évacuation part de la VICTIME, niveau compris —
   // sans lui, une victime au −1 était calée sur la galerie la plus proche, tous niveaux.
-  function declencherDepuis(x, y, level) {
+  // `opts.sortiesSupp` : [{ x, y, level?, nom }] — candidats en plus (Mode Secours).
+  function declencherDepuis(x, y, level, opts) {
     if (typeof x !== "number" || typeof y !== "number") {
       declencher();
       return;
     }
     const o = { x: x, y: y };
     if (Number.isInteger(level)) o.level = level;
-    _lancer(o, { mode: "clic" });
+    _lancer(o, { mode: (opts && opts.origine === "victime") ? "victime" : "clic", supp: opts && opts.sortiesSupp });
   }
 
   async function _lancer(origine, meta) {
@@ -441,7 +452,7 @@
     // spinner de la modale ne s'affiche pas et l'écran fige « sans rien
     // montrer » — même cause que l'overlay itinéraire (cf computeLoader.js).
     await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });
-    _calculerToutesSorties(origine).then(function(resultats) {
+    _calculerToutesSorties(origine, meta && meta.supp).then(function(resultats) {
       // On peut être interrompu si l'user ferme la modale entre temps
       if (!_modal) return;
       const corps = _modal.querySelector(".kta-sortie-urgence-corps");

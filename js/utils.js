@@ -566,6 +566,22 @@ window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   }
 };
 
+// 🧩 01/10/2026 — case d'une fonctionnalité optionnelle sans capteur (Replay,
+// Heatmap) : partagée par l'accueil et ⚙️ Réglages du plan, même état
+// (APP_CONFIG + app_user_prefs). `prefixe` porte les clés `.toastOn/.toastOff`.
+window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
+  if (!cb) return;
+  cb.checked = !!(window.APP_CONFIG && window.APP_CONFIG[cle] === true);
+  cb.addEventListener("change", function () {
+    if (!window.APP_CONFIG) window.APP_CONFIG = {};
+    window.APP_CONFIG[cle] = !!cb.checked;
+    if (typeof window.sauvegarderPrefsUtilisateur === "function") window.sauvegarderPrefsUtilisateur();
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function" && window.I18n) {
+      window.OOMGuard.showToast(window.I18n.t(prefixe + (cb.checked ? ".toastOn" : ".toastOff")), "info");
+    }
+  });
+};
+
 window.ktaConfirm = function(message, opts) {
   opts = opts || {};
   return new Promise(function(resolve) {

@@ -161,4 +161,4 @@ Les modales non-migrées **continuent de fonctionner sans rien faire** : le help
 
 - Helper : `js/modalLifecycle.js`
 - Pilotes : `js/memInspector.js`, `js/swInspector.js`
-- Audit V2 d'où sont issus les patterns : `docs/audits/2026-06-09_audit-modales-v2.md`
+- Audit V2 d'où sont issus les patterns : `docs/audits/2026-06-09_audit-modales-v2.md` (archivé : tag Git `archive-docs-2026-09-30`)
