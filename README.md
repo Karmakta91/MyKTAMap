@@ -12,15 +12,13 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.1` (01/10/2026)
+## 📦 Version courante — `v1.99.2` (01/10/2026)
+
+> 🌀 **v1.99.2 — Guidage inter-plans** : croisements annoncés et raccords comptés sur un trajet par portail (carrefours mesurés à l’échelle du plan cible) ; la feuille de route dit ce qui attend sur chaque plan suivant.
 
 > 🪧 **v1.99.1 — Guidage de plaque en plaque** : guidage sans suivi dès qu’une position est confirmée ; « 📍 Je suis ici » à ≤ 8 m du trajet coupe la partie déjà faite sans recalcul ni question ; la croix du bandeau coupe le guidage (tuile 🪧 pour le rallumer). Plus aucune donnée réelle de terrain citée dans le dépôt.
 
 > 🧩 **v1.99.0 — Fonctionnalités optionnelles** : Replay, Heatmap, batterie et vibration désactivés par défaut, regroupés dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles (la heatmap du Mode Secours reste) ; 🤖 Aide IA déplacée dans l’en-tête de la Documentation (menu de langue au lieu des drapeaux) ; vibration plus perdue à l’ouverture d’un plan.
-
-
-> 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
-
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -501,6 +499,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.2 (01/10/2026) — Guidage des itinéraires inter-plans
+
+- 🔍 **Origine** : backlog « Guidage, ce qui reste » — `interPlanRoute.js` perdait les `raccords` / `carrefours` que le pathfinder rend déjà ; sur un trajet par portail, le bandeau n’annonçait que l’arrivée. Puis question KARMA : « comment s’organise la feuille de route en inter-plans ? ».
+- 🌀 **Champs transportés** (`f010f7c`) : chaque étape de la chaîne garde raccords + carrefours, `_tracerItinerary(leg)` les pose ; deux morceaux bout à bout sur un même plan ne gardent que le départ du premier et l’arrivée du dernier. Distances d’étape avec raccords (décision K).
+- 📏 **Échelle du plan cible** : l’étape d’un autre plan est calculée depuis le plan ouvert ; la détection des carrefours lisait `APP_CONFIG.scale` (rayon de sortie 3 m, zone 5 m). Option `computeRouteOnRoads(…, { echelle })` portée jusqu’à `_carrefoursSurChemin` / `_zonesDeCarrefour`.
+- 🪧 **Feuille de route** (`df5a966`) : `road.suite` (une entrée par plan suivant : portail, plan, distance, croisements) → ligne « Puis 🌀 portail → plan : 350 m, 4 croisements » ; survit à la coupe et à la replanification.
+- 📋 **Backlog** : poids des jonctions de niveau d’un plan distant (même défaut d’échelle + profondeurs du plan ouvert), laissé hors lot.
+- ✅ **Tests** : `check-guidage` +10 (échelle cible vs plan ouvert, raccords, câblage, lignes de suite) ; `checkup-guidage` vert ; rendu de la feuille vérifié dans Chromium (chaîne simulée). ⚠️ Pas de vrai trajet par portail joué : un seul plan local.
 
 #### v1.99.1 (01/10/2026) — Guidage de plaque en plaque ; croix = tuile éteinte
 
