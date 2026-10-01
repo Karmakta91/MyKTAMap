@@ -1,5 +1,5 @@
 {
-  "version": "v1.99.3",
+  "version": "v1.99.4",
   "released": "2026-10-01",
   "notes": [
     "🧩 Replay, Heatmap, indicateur de batterie et vibration deviennent des options, désactivées par défaut : réactive celles qui te servent dans ⚙️ Configuration › Fonctionnalités optionnelles. L’Aide IA est maintenant dans la Documentation, à côté du choix de langue.",

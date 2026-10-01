@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.3` (01/10/2026)
+## 📦 Version courante — `v1.99.4` (01/10/2026)
+
+> 🌀 **v1.99.4 — Inter-plans : la suite ne passe que par le portail** : supprimer / remplacer l’itinéraire ou ouvrir le plan suivant autrement abandonne la suite (elle s’y traçait et s’enregistrait dans sa session).
 
 > 🗑️ **v1.99.3 — Supprimer l’itinéraire depuis la question de recalcul** : « Je suis ici » hors du trajet propose désormais Recalculer / Garder / **Supprimer l’itinéraire**.
 
@@ -501,6 +503,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.4 (01/10/2026) — Inter-plans : la suite de l’itinéraire ne passe que par le portail
+
+- 🔍 **Origine** : question KARMA après v1.99.3 — « l’itinéraire persiste sur l’autre plan alors que je ne prends pas le portail : une session se crée ? ». `_pendingChain` (RAM) n’était oubliée qu’au retour à l’accueil : ouvrir le plan suivant par le sélecteur y traçait l’étape, écrasait l’itinéraire de ce plan et l’enregistrait dans sa session.
+- 🐛 **Correctif** (`0fce8eb`) : suite abandonnée à la suppression (`_effacerItineraireActif` → `InterPlanRoute.abandonnerSuite`), et au changement de plan si ce n’est pas une traversée physique (`InterPlanLinks.traverseePhysiqueEnCours`) ou si l’itinéraire du plan quitté a été remplacé (présent sans `suite`). Absent = clôturé au portail : la suite continue.
+- ✅ **Tests** : check-guidage +3 (câblage) ; test Node chargeant le vrai `interPlanRoute.js` 7/7, et 4 échecs attendus contre le code d’avant (bug reproduit). ⚠️ Pas joué sur un vrai portail (un seul plan local). Un itinéraire déjà déposé par le bug sur un plan reste à effacer à la main.
 
 #### v1.99.3 (01/10/2026) — « 🗑️ Supprimer l’itinéraire » dans la question de recalcul
 
