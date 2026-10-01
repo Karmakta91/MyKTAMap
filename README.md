@@ -16,7 +16,7 @@
 
 > 🎛️ **v1.98.23 — Mode Secours, retours KARMA** : l'opérateur qui relaie une équipe n'a plus les raccourcis du terrain ; aide et tutoriel sans « État N — ».
 
-> 🚒 **v1.98.22 — Mode Secours, test terrain sur Pandemonium** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
+> 🚒 **v1.98.22 — Mode Secours, test terrain sur catacombe** : page « Accès surface » (briefing pompiers, rapport) ; relance sans faux retards ; un seul message au lancement ; étape loin des galeries nommée ; cartes d'équipe nettes avec « ENTRÉE / SORTIE ».
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
