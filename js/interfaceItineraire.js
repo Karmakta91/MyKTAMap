@@ -790,6 +790,10 @@ function _effacerItineraireActif() {
   if (window.setRoads) window.setRoads(roadsNow);
   _viderItineraire();
   _majLabelDistanceItineraire();
+  // Itinéraire inter-plans : la suite prévue sur les autres plans part avec lui.
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.abandonnerSuite === "function") {
+    window.InterPlanRoute.abandonnerSuite();
+  }
 }
 
 // Mini panneau flottant en bas d'écran pendant le mode clic, pour ne pas

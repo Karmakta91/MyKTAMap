@@ -906,10 +906,40 @@
   function onPlanExit(contexte) {
     _retirerProchainPortail();
     _currentPortalOut = null;
-    if (contexte === "home") _pendingChain = null;
+    if (contexte === "home") { _pendingChain = null; return; }
+    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée sur un
+    // switch : ouvrir le plan suivant par le sélecteur (sans prendre le
+    // portail) y traçait l'étape, écrasait l'itinéraire de ce plan et
+    // l'enregistrait dans sa session. On ne la poursuit plus que si :
+    //   • on part par une traversée PHYSIQUE (goTo recalerTracker) ;
+    //   • l'itinéraire du plan quitté n'a pas été REMPLACÉ par un autre — tant
+    //     que la chaîne court, le sien porte `suite` (gardée par la coupe et
+    //     la replanification). Absent, il a été clôturé au portail : normal.
+    if (_pendingChain && _pendingChain.length) {
+      const traverse = !!(window.InterPlanLinks &&
+        typeof window.InterPlanLinks.traverseePhysiqueEnCours === "function" &&
+        window.InterPlanLinks.traverseePhysiqueEnCours());
+      const iti = (window.getRoads ? window.getRoads() : [])
+        .find(function(r) { return r && r.type === "itinerary" && !r._preview; });
+      const remplace = !!(iti && !iti.suite);
+      if (!traverse || remplace) {
+        console.log("[InterPlanRoute] Suite abandonnée (" + (remplace ? "itinéraire remplacé" : "plan quitté sans le portail") + ")");
+        _pendingChain = null;
+      }
+    }
+  }
+
+  // L'utilisateur supprime l'itinéraire (« 🗑️ Supprimer » / « ❌ Effacer ») :
+  // la suite sur les autres plans part avec lui.
+  function abandonnerSuite() {
+    if (_pendingChain) console.log("[InterPlanRoute] Suite abandonnée (itinéraire supprimé)");
+    _pendingChain = null;
+    _currentPortalOut = null;
+    _retirerProchainPortail();
   }
 
   window.InterPlanRoute = {
+    abandonnerSuite:     abandonnerSuite,
     computeEtAfficher:   computeEtAfficher,
     onPlanLoaded:        onPlanLoaded,
     onTrackerRecale:     onTrackerRecale,

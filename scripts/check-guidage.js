@@ -501,6 +501,17 @@ async function bandeau() {
     const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
     t("câblage inter-plans : la suite survit à la coupe et à la replanification",
       (ii.match(/if \(road\.suite\) newRoad\.suite = road\.suite;/g) || []).length === 2);
+    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée : ouvrir
+    // le plan suivant par le sélecteur y traçait l'étape (et l'enregistrait dans
+    // sa session). Elle ne se poursuit que par une traversée PHYSIQUE, et part
+    // avec l'itinéraire supprimé ou remplacé.
+    const il = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
+    t("câblage inter-plans : la traversée physique est lisible au changement de plan",
+      il.includes("traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); }"));
+    t("câblage inter-plans : plan quitté sans le portail ou itinéraire remplacé → suite abandonnée",
+      ip.includes("if (!traverse || remplace) {") && ip.includes("const remplace = !!(iti && !iti.suite);"));
+    t("câblage inter-plans : supprimer l'itinéraire abandonne la suite",
+      ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
 
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal

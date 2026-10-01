@@ -1129,5 +1129,11 @@ demi-tours en 350 m sous 4 m de bruit).
   la replanification) ajoute une ligne par plan suivant : portail, plan, distance, nombre de croisements (carrefour
   isolé ou zone = 1). Pas de consignes détaillées d'avance : elles se calculent à l'échelle du plan suivant, une
   fois son étape tracée.
+  **Abandon de la suite** (`_pendingChain`, RAM) : au retour à l'accueil (comme avant), à la suppression de
+  l'itinéraire (`_effacerItineraireActif` → `InterPlanRoute.abandonnerSuite`), et au changement de plan
+  (`onPlanExit("switch")`) si ce n'est pas une traversée PHYSIQUE (`InterPlanLinks.traverseePhysiqueEnCours`,
+  goTo `recalerTracker`) ou si l'itinéraire du plan quitté a été remplacé (présent sans `suite`). Absent = clôturé
+  au portail (« Je suis ici » sur le point-portail) : la suite continue. Sans ça, ouvrir le plan suivant par le
+  sélecteur y traçait l'étape, écrasait son itinéraire et l'enregistrait dans sa session.
 - **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
   `carrefours`.
