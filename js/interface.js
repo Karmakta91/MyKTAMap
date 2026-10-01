@@ -1525,6 +1525,24 @@ function _ouvrirFlyout(groupId) {
       });
       allActions.splice(insertIdx, 0, ...customActions);
     }
+    // ➕ Créer un type sans passer par ≡ Légende → ✏️ → ➕ (KARMA 30/09/2026) :
+    // même boîte, catégorie verrouillée ; le type créé est aussitôt
+    // sélectionné et l'outil armé. Dernier de la liste des types, avant ✅/🧹.
+    if (typeof window.LegendCustomization.ouvrirAddDialog === "function"
+        && typeof grp.customActivator === "function") {
+      const idxOutils = allActions.findIndex(function(a) { return !a.isTypeAction; });
+      allActions.splice(idxOutils >= 0 ? idxOutils : allActions.length, 0, {
+        icone:        "➕",
+        titre:        window.I18n.t("ui.subaction.nouveauType"),
+        isTypeAction: true,
+        onClick:      function() {
+          window.LegendCustomization.ouvrirAddDialog(function(id) {
+            // Bouton détaché : même situation qu'un clic de flyout (fermé avant l'action).
+            if (id) grp.customActivator(id, document.createElement("button"));
+          }, { category: grp.lcCat, titre: window.I18n.t("ui.subaction.nouveauTypeTitre") });
+        }
+      });
+    }
   }
 
   // Détermine le type courant actif pour ce groupe (pour kta-actif visuel)

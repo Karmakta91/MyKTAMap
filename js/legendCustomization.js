@@ -1120,6 +1120,9 @@ window.LegendCustomization = (function() {
   // le mur rencontré par KARMA (recréer l'entrée à la main = nouvel id).
   // La catégorie est verrouillée (l'orphelin la connaît), l'id n'est jamais
   // montré ni saisi à la main.
+  // `prefill` sans id = création ordinaire, catégorie verrouillée (flyout
+  // ➕ Nouveau type de interface.js) ; `prefill.titre` remplace le titre.
+  // `onAdded(id)` reçoit l'id de l'entrée créée.
   function _ouvrirAddDialog(onAdded, prefill) {
     const wrap = document.createElement("div");
     wrap.className = "kta-readme-modal-overlay";
@@ -1127,7 +1130,8 @@ window.LegendCustomization = (function() {
     wrap.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
-          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' + window.I18n.t("legend.add.title") + '</h3>' +
+          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' +
+            ((prefill && prefill.titre) || window.I18n.t("legend.add.title")) + '</h3>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-lc-add-close" style="padding:2px 8px;">✕</button>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
@@ -1352,9 +1356,11 @@ window.LegendCustomization = (function() {
           return;
         }
       }
-      addCustomEntry(entry);
+      const newId = addCustomEntry(entry);
       fermerAdd();
-      if (typeof onAdded === "function") onAdded();
+      // L'id sert au flyout ➕ Nouveau type (interface.js) : il sélectionne le
+      // type créé et arme l'outil. Les autres appelants l'ignorent.
+      if (typeof onAdded === "function") onAdded(newId);
     });
   }
 

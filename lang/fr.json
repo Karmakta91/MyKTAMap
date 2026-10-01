@@ -5053,6 +5053,8 @@
   "ui.subaction.exportPdf": "Exporter en PDF imprimable",
   "ui.subaction.heatmap": "Heatmap — densité tracker + points",
   "ui.subaction.importer": "Importer un fichier (session ou GPX)",
+  "ui.subaction.nouveauType": "Nouveau type…",
+  "ui.subaction.nouveauTypeTitre": "➕ Nouveau type",
   "ui.subaction.itineraire": "Calculer un itinéraire",
   "ui.subaction.legende": "Légende",
   "ui.subaction.lost": "Je suis perdu — Mode urgence",
