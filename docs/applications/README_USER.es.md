@@ -90,7 +90,14 @@ Por haberte tomado 10 minutos para leer en lugar de pulsar a ciegas. Es exactame
 
 ### 🔐 Confidencialidad de los datos — leer en primer lugar
 
-Un plano puede revelar la **ubicación precisa de entradas, pozos, pasos y estructuras subterráneas.** Si se hace público, atrae a personas mal equipadas a lugares peligrosos, daña estos espacios frágiles por la masificación y puede exponer a sus autores a acciones legales.
+MyKTAMap es una herramienta de cartografía de campo que puede contener información sensible: **localización precisa de entradas, pozos, pasajes y estructuras subterráneas.**
+
+Estos datos, si se hicieran públicos, podrían:
+
+- Facilitar el acceso de personas no advertidas a lugares peligrosos
+- Provocar una sobrefrecuentación que degrade estos espacios frágiles
+- Exponer a los usuarios a acciones legales
+- Poner en peligro a personas sin equipamiento
 
 **Reglas que hay que respetar sin excepción:**
 

@@ -90,7 +90,14 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ### 🔐 Confidentialité des données — à lire en premier
 
-Un plan peut révéler l'**emplacement précis d'entrées, de puits, de passages, de structures souterraines.** Rendu public, il attire des personnes mal équipées dans des lieux dangereux, abîme ces espaces fragiles par la sur-fréquentation et peut exposer ses auteurs à des poursuites.
+MyKTAMap est un outil de cartographie de terrain qui peut contenir des informations sensibles : **localisation précise d'entrées, de puits, de passages, de structures souterraines.**
+
+Ces données, si elles étaient rendues publiques, pourraient :
+
+- Faciliter l'accès de personnes non averties à des lieux dangereux
+- Provoquer une sur-fréquentation qui dégrade ces espaces fragiles
+- Exposer les utilisateurs à des poursuites légales
+- Mettre en danger des personnes non équipées
 
 **Règles à respecter absolument :**
 

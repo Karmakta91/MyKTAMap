@@ -90,7 +90,14 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ### 🔐 Data confidentiality — read this first
 
-A map can reveal the **precise location of entrances, shafts, passages and underground structures.** Once public, it draws ill-equipped people into dangerous places, damages these fragile spaces through overcrowding and can expose its authors to legal action.
+MyKTAMap is a field mapping tool that may contain sensitive information: **precise location of entrances, shafts, passages, underground structures.**
+
+If this data were made public, it could:
+
+- Make it easier for unprepared people to access dangerous places
+- Cause overcrowding that damages these fragile spaces
+- Expose users to legal proceedings
+- Endanger ill-equipped people
 
 **Rules that must absolutely be respected:**
 
