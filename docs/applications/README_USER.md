@@ -198,24 +198,6 @@ Une fenêtre qui détaille :
 
 Un bouton 📄 te permet d'ouvrir la **documentation complète** (`docs/NETWORK_AUDIT.md`) dans un nouvel onglet.
 
-#### 🔒 Mode hors-ligne strict (opt-in)
-
-Coche cette case si tu veux une **garantie active** côté navigateur : toute requête sortante non whitelistée sera **bloquée AVANT d'atteindre le réseau** (le navigateur reçoit une exception, pas un timeout).
-
-Une fois activé :
-- Un badge orange `🔒 MODE HORS-LIGNE STRICT ACTIF` apparaît dans le footer de la page d'accueil
-- L'app continue de fonctionner normalement (annotations, calculs, exports PNG/KMZ, navigation, multi-niveau, itinéraire, tracker…)
-- Seuls les pings de mise à jour vers Internet sont coupés (mais l'app reste utilisable avec sa version actuelle)
-
-Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'à ce que tu le décoches ou que tu fasses un reset complet.
-
-> 🛡️ **Niveau de garantie** : c'est une **triple protection** :
-> 1. L'archi PWA rend la collecte techniquement impossible (pas de backend)
-> 2. Le module d'audit JS logue + peut bloquer côté client
-> 3. La Content Security Policy du serveur demande au navigateur lui-même de refuser toute connexion non autorisée
->
-> Tu n'es jamais obligé de croire l'auteur sur parole : tout est vérifiable.
-
 ---
 
 ## 🚀 Premiers pas
@@ -447,556 +429,6 @@ Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de 
 **⚠️ À ne pas faire** — Ne suis pas l'eau (diaclases dangereuses). Ne tente pas un passage inconnu juste parce qu'il "monte". Ne te fie pas au tracker téléphone (il dérive sous stress).
 
 > ⚠️ Ces conseils sont des **principes généraux** issus de la pratique cataphile. Ils ne remplacent pas la formation, l'équipement et le bon sens. La règle d'or reste : prévenir quelqu'un en surface AVANT la sortie, avec heure de retour estimée.
-
-### 🚨 Mode Secours
-
-Outil opérationnel pour **assigner méthodiquement des équipes de secours** à des zones de recherche d'un plan cataphile. Cas d'usage : une personne est portée disparue dans un réseau dense, plusieurs équipes arrivent en surface, le PC secours doit coordonner « qui ratisse quoi » avec un briefing clair et imprimable.
-
-> 💡 **Différent du ⛑️ Je suis perdu** : ⛑️ c'est *toi* qui es perdu, tu cherches à te retrouver. **🚨 Mode Secours** c'est *quelqu'un d'autre* qui est perdu, tu organises les équipes qui vont le chercher.
-
-#### Accès
-
-Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté de ⛑️ Je suis perdu et 🚨 Panique. Fond rouge urgence cohérent.
-
-#### Workflow
-
-1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours, celui que tu as ouvert, ni une intervention terminée dont aucun rapport n'est encore sorti de l'appareil).
-2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
-3. **Édition free-form** — 3 sections accordéon :
-   - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
-   - **🚨 Équipes** : ajoute autant d'équipes que nécessaire. Pour chaque équipe : nom (auto Alpha/Bravo/Charlie...), couleur (palette OTAN 10 couleurs fixe), membres (CSV), entrée/sortie (clic carte), zone (polygone OU sélection de tracés), itinéraire suggéré (calc auto via Pathfinder)
-   - **📤 Export** : PDF imprimable (1 page/équipe) + KMZ géolocalisé (cross-app)
-
-#### Modes interactifs map
-
-| Bouton | Action |
-|---|---|
-| 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
-| 🚪 Sortie | 1 clic carte = capture la position de sortie |
-| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic : la galerie la plus proche, parmi les niveaux affichés, est prise (re-clic = retirer, surlignée en rouge). Les galeries du plan sont retrouvées à l'identique sur tout téléphone qui a le même plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur celui-ci. Les calques masqués restent sélectionnables |
-| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée selon les réglages **⏱️ Durées estimées** du plan de secours (vitesse de fouille 1,5 km/h et pause 0 par défaut, modifiables) |
-
-> 🔁 **Pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu modifies l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a déjà été saisi (statut, observations, photos) reste sur la même étape, même si deux étapes portent le même nom. Retirer une étape déjà renseignée demande une confirmation, et c'est **refusé** si elle signale « Aide demandée » ou « Victime trouvée » : change d'abord son statut. Remise plus tard **dans la même phase**, l'étape retrouve ce qui y avait été saisi (après un changement de phase, elle repart vide ; ses saisies restent dans l'historique de la phase close). Si une équipe signale « Aide demandée » ou « Victime trouvée » sur une étape que tu avais retirée entre-temps, l'import de son rapport **remet le point dans son parcours**, à sa place, et te l'annonce en rouge ; si le point ne peut pas être remis (équipe qui n'est plus dans la phase en cours), l'alerte rouge s'affiche quand même. ⚠️ **Après une mise à jour de l'application, réimporte le plan sur chaque téléphone avant l'intervention** : un téléphone qui avait importé le plan avec une ancienne version (avant la v1.98.5) envoie des rapports que le PC ne peut pas fusionner. **Relancer** un plan terminé efface l'intervention précédente, photos comprises : une confirmation le rappelle, exporte son rapport avant. « Tous les POI de la zone » ajoute les étapes de proche en proche, pour éviter les allers-retours.
-
-> 🗺️ **Sur la carte, pendant l'intervention** : en **lançant le plan en mode équipe**, tu es **placé à l'entrée de ton équipe** — automatiquement si ta position n'était pas encore confirmée, sinon l'app te le propose (« Me placer à l'entrée » / « Garder ma position »). Au lancement, **un seul message** résume tout (plan lancé, placé à l'entrée, plan pas disponible hors-ligne) et ne bloque plus les boutons dessous ; relancer un scénario déjà joué repart de zéro (plus de faux retards hérités de la veille). Fermer la fenêtre du Mode Secours ne retire plus rien — ta zone et ton tracé restent affichés (l'équipier voit son équipe, l'opérateur toutes), même après un rechargement. En bas de l'écran, une pastille rouge **« 🚨 Secours · Alpha · 3/8 › »** rappelle que l'intervention tourne et où tu en es : un toucher te ramène **directement aux étapes** à valider. En préparation : les équipes se **replient** (▾/▸ ou « Tout replier ») ; en dessinant une zone, celles des autres équipes s'affichent en pointillé pour caler les limites ; toucher un POI pour choisir l'entrée, la sortie ou une étape **le prend comme point** (sa fiche ne s'ouvre plus) ; un point sans nom s'affiche en **coordonnées GPS** si le plan est géoréférencé ; « Auto : 1 équipe par niveau » ignore les niveaux vides, et les listes de niveaux marquent « (vide) » ceux où il n'y a rien (toujours choisissables).
-
-> 🚒 **Ce que le terrain a changé (v1.98.24)** : **🚑 Évacuer** propose aussi les **accès de tes équipes** (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé), classés par distance réelle, et plus seulement les sorties taguées du plan. L'opérateur voit en tête **« X engagés · Y sous terre · Z manquants »** et est prévenu au lancement des équipes **sans effectif** ; à la rentrée, le nombre de **remontés n'est plus prérempli** (il faut compter). Chaque équipe peut avoir une **heure de retour impérative** (fiche d'équipe) qui prime sur la durée estimée, et le chef se saisit même sans liste de membres. Les durées distinguent la **vitesse d'approche** (hors zone) de la **vitesse de fouille** (dans la zone) et comptent les raccords à vol d'oiseau. **Valider une étape recale ta position** sur elle (sans rien demander à moins de 30 m, avec une question au-delà ; jamais pour « Bloqué » ou « Demi-tour ») et **« Suivre mon parcours » démarre le suivi**. Une étape a **un seul numéro** partout (E, 1…N, S) ; passer à la suivante sans statut la note **« Passée, non renseignée »** (plus RAS). Au calcul, **toutes les étapes à plus de 25 m d'une galerie** sont listées, et le rappel reste sur la fiche. L'**écran XL** affiche aussi les longs itinéraires. Le briefing pompiers dit **quel accès c'est et s'il faut l'ouvrir**, et imprime chef, effectif et retour impératif.
-
-> 📊 **Couverture honnête (v1.98.25)** : le bloc **📊 Couverture** donne, **par niveau**, la longueur de galeries, la part **dans une zone**, la part **sur un parcours** (galeries qu'un itinéraire d'équipe emprunte vraiment : c'est ce qui sera fouillé) et la longueur affectée à deux équipes. Sur un réseau réel, « 86 % dans une zone » peut n'être que « 24 % sur un parcours ». **🗺️ Surligner les galeries hors parcours** les montre en rouge sur la carte (niveau affiché) pour préparer la phase suivante ; un second clic les retire. Sur un plan multiniveau, une zone **vaut au niveau où tu l'as dessinée** (case « Zone sur tous les niveaux » sur la fiche d'équipe pour l'étendre), et le calcul d'itinéraire prévient quand des galeries d'un autre niveau passent sous la zone sans qu'aucun parcours n'y aille.
-
-> 🚑 **Victime, retards et rappel** : une étape passée en **« Victime trouvée »** donne une **position** (celle de l'étape, niveau compris) — **📍 Préciser sur la carte** l'ajuste, **🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime, et un **✚ rouge** la marque sur la carte, pour tous. L'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier. Chaque équipe a son **heure de départ** (**▶️ Départ**, sinon le lancement) et son **heure de retour prévue** (départ + durée estimée) : **orange** passé l'heure, **rouge** après la marge (30 min par défaut, réglable dans ⏱️ Durées estimées) — les équipes en retard remontent en tête, la pastille du bas change de couleur, un message et une vibration préviennent. **✅ Rentrée** arrête le chrono. **📢 Rappel général** (ou 📢 Rappeler, par équipe) marque les équipes encore sous terre comme rappelées, avec l'heure. ⚠️ **L'app ne prévient personne** — il n'y a pas de réseau sous terre : transmets l'ordre par radio ou à la voix. Départ, rentrée, rappel et position précisée voyagent dans le rapport d'équipe.
-
-> 🧭 **Guidage pas à pas du parcours** : dans la vue de ton équipe, **🧭 Suivre mon parcours** transforme le parcours en itinéraire de l'app — le bandeau de guidage (« Dans 40 m, tourner à gauche »), la feuille de route et l'écran XL te mènent d'étape en étape (active le suivi 🧭). Les étapes que tu valides sont cochées sur l'itinéraire ; si tu t'écartes, **Recalculer** repart d'ici vers la **prochaine étape non faite**, en contournant toujours les zones des autres équipes. En arrivant sur une étape, un message et une vibration te préviennent, et la pastille 🚨 t'ouvre directement cette étape. Le **PDF de briefing** imprime aussi, pour chaque équipe, sa **feuille de route** carrefour par carrefour (changements de niveau compris) — calcule l'itinéraire de l'équipe pour l'obtenir.
-
-> 👥 **Chef, effectif, remontés et main courante** : chaque équipe a un **👤 chef** (choisi parmi ses membres) et un **effectif**. À **✅ Rentrée**, l'app demande **combien sont remontés** : en dessous de l'effectif, une **alerte rouge « N personne(s) manquante(s) »** reste affichée (et la pastille du bas passe au rouge) tant que le compte n'est pas corrigé. La **📜 main courante** (vue opérateur) note tout, heure par heure : lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes propres notes (appel radio, décision). Elle voyage dans les rapports d'équipe et s'imprime en annexe du rapport. Le **rapport du secouriste libre** s'importe désormais comme celui d'une équipe : ses notes rejoignent la main courante, à leur heure.
-
-> 🗂️ **Préparer et relancer** : à la clôture d'une phase, le **parcours prévu** de chaque équipe est gardé — replanifier la phase suivante ne l'efface plus, et le rapport affiche le parcours de chaque phase. Dans la vue édition, le bloc **📊 Couverture** (calculé à l'ouverture) donne la **part des galeries couvertes** par les zones, les **POI situés dans la zone d'une équipe mais hors de son parcours**, et les **POI visités par plusieurs équipes** — une aide à la lecture, rien n'est affecté automatiquement. Au lancement, l'app te **prévient si le plan n'est pas entièrement disponible hors-ligne** sur l'appareil (plan serveur non téléchargé). Dans la vue de l'équipe, trois raccourcis : **🚪 Sortie d'urgence**, **🆘 Écran XL**, **⛑️ Je suis perdu** — absents, comme « Suivre mon parcours », quand l'opérateur de surface **prend la main** pour relayer une équipe : ils agiraient sur son propre appareil.
-
-#### Visualisation carte
-
-Bouton **🗺️ Voir sur carte** dans le header de l'édit. Affiche pour chaque équipe (couleur dédiée) :
-- Zone polygone (fillOpacity 30 %) OU halo couleur sur les tracés sélectionnés
-- Marker 📍 Entrée (cercle border vert + fill couleur équipe)
-- Marker 🚪 Sortie (cercle border rouge + fill couleur équipe)
-- Itinéraire suggéré (polyline dashed couleur équipe)
-
-Auto-refresh à chaque modif. Re-cliquer le bouton pour masquer.
-
-#### Multi-scénarios par plan
-
-Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan : au-delà, le plus ancien est purgé automatiquement — sauf un scénario en cours, celui que tu as ouvert, le plus récent, ou une intervention terminée dont aucun rapport (PDF ou fichier) n'est encore sorti de l'appareil.
-
-#### Exports
-
-**📄 PDF imprimable** : 1 page A4 portrait par équipe (une 2e si la liste des étapes est longue) avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
-
-**🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
-
-Les sections ci-dessous détaillent les fonctionnalités avancées : intégrations cross-app (KML, Lost Mode, heatmap, etc.), exploitation terrain temps réel (vues Live par rôle, statuts, rapports), et consolidation cross-device (import de rapports d'équipiers).
-
-> 💡 **Transmettre aux équipes** : l'opérateur exporte le scénario (**📤 Export .mkmsec.json**) et l'envoie à chaque équipe, qui l'importe sur son téléphone. Au retour, chaque équipe renvoie son rapport (**`.mkmsec.report.json`**), que l'opérateur importe.
-
-> 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
-
-### 🚨 Mode Secours — Multi-phases
-
-Un scénario peut **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
-
-> 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique au comportement précédent. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
-
-**🔧 Créer et gérer les phases (vue Edit du scénario)** :
-
-- Section **📋 Phases (N)** sous la section Équipes
-- Bouton **➕ Ajouter une phase** → modale création :
-  - Saisis un nom (ex : *« Phase 2 — Chambres Est »*)
-  - Coche les **équipes participantes** à cette phase (modèle hybride : tes équipes sont définies une seule fois au scénario, puis tu coches case par case "participe à cette phase")
-- Bouton ✏️ pour renommer une phase ou modifier la sélection d'équipes
-- Bouton 🗑️ pour supprimer (refusé si c'est la dernière phase, si elle est active dans l'exécution, ou si elle a déjà été démarrée → l'historique est préservé)
-
-**🏷️ Badge sticky dans les 3 vues Live** : un badge ambré « **📋 Phase 1 1/N** » apparaît dans le header des vues Équipe / Opérateur / Secouriste libre dès qu'il y a 2 phases ou plus. Affiche le nom de la phase active + sa position.
-
-**✓ Terminer une phase + debrief (Opérateur uniquement)** :
-
-1. Pendant la phase active, le footer Live Op affiche un nouveau bouton **« ✓ Phase terminée »** ambré (visible seulement si multi-phase)
-2. **Auto-détection** : dès que **toutes les équipes participantes ont marqué leur étape Sortie comme terminée**, le bouton passe en **vert pulsant** + un toast assistant t'avertit (« ✅ Toutes les équipes sont sorties — la phase est prête à clore »). L'Op garde la décision finale.
-3. **Clic « ✓ Phase terminée »** → modale debrief : textarea libre (5000 caractères max) pour saisir les enseignements de la phase (équipes rentrées, points trouvés, zones à explorer en priorité, contraintes apparues). Ce debrief sera intercalé dans le rapport final entre les sections de chaque phase.
-4. **Valide « ✓ Terminer la phase »** → la phase actuelle est **archivée** (jamais d'écrasement, historique préservé)
-5. **Si une phase suivante existe** → enchaînement automatique sur modale **« 🚀 Démarrer phase X+1 ? »** avec récap des équipes participantes
-6. **Tu confirmes** → la nouvelle phase démarre, les étapes des équipes participantes sont **reconstruites depuis leur parcours ACTUEL** (donc si tu as modifié `entrée/sortie/intermédiaires` d'une équipe entre P1 et P2, les nouvelles étapes en tiennent compte)
-7. **Si aucune phase suivante** → une confirmation « Arrêter complètement le plan ? » (équivalent ⏹️ Terminer le plan)
-
-**🔍 Garde-fous historique** :
-
-- Clore une phase ne supprime **JAMAIS** d'étapes — elles sont archivées telles quelles
-- Une phase déjà démarrée ne peut plus être supprimée depuis l'UI (filet de sécurité)
-- Une phase active dans l'exécution ne peut pas être supprimée (passe par « ✓ Phase terminée » d'abord)
-- Le toast d'auto-détection ne se répète pas (un seul affichage par phase)
-
-> 💡 **Modèle hybride équipes ↔ phases** : tes équipes sont définies **une seule fois** au scénario (avec membres, couleur OTAN, parcours). La participation à chaque phase est gérée par checkbox dans la modale phase. Une même équipe peut participer à plusieurs phases successives — au passage de phase, ses étapes sont reset selon son parcours actuel (donc tu peux modifier le parcours entre P1 et P2 pour adapter à ce qui a été découvert).
-
-> 💡 **Bouton « ➕ Ajouter une phase » aussi disponible à chaud** depuis le footer Live Op (pendant l'exécution), pas seulement depuis la vue Edit. Pratique quand le debrief de P1 fait apparaître le besoin d'une P3 imprévue.
-
-### 🚨 Mode Secours — Intégrations cross-app
-
-Ces intégrations font du Mode Secours un outil de coordination opérationnelle complet :
-
-#### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
-
-Le KMZ exporté contient un Folder racine `🚨 Secours` parfaitement structuré pour les apps tierces :
-
-```
-📁 Secours — Recherche Marc 26/05
-   ├── 📁 🚨 Équipe Alpha
-   │ ├── 📁 📍 Points (5) ← toggle ON/OFF dans Google Earth
-   │ ├── 📁 ⬛ Zone de recherche
-   │ └── 📁 🗺️ Itinéraire
-   └── 📁 🚨 Équipe Bravo (idem)
-```
-
-- Plan d'arrière-plan en GroundOverlay 60% opacity (lecture simultanée plan + zones)
-- Auto-calc des itinéraires manquants AVANT l'export (1 clic = KMZ complet)
-- 43 styles couleur OTAN (10 équipes × 4 catégories + 3 styles fixes entrée/sortie/boucle)
-
-#### ⛑️→🚨 Workflow Lost Mode → Secours
-
-Dans la modale ⛑️ Mode urgence "Je suis perdu", nouveau bouton :
-
-```
-🚨 Lancer un plan de secours (équipes + zones)
-```
-
-Au clic, l'app **crée automatiquement un scénario Mode Secours** avec :
-- Nom auto `Recherche - 26/05/2026 14:32`
-- Heure d'incident calculée depuis le temps écoulé du Lost Mode
-- Dernière position connue + zone d'incertitude (rayon + cercle pointillé sur la carte)
-- Notes auto avec vitesse de marche, rayon, indices saisis
-
-→ Workflow naturel : tu cherches quelqu'un → tu lances Lost Mode → tu cliques 🚨 → tu coordonnes les équipes.
-
-#### 🚫 Anti-chevauchement entre équipes
-
-Quand tu calcules l'itinéraire d'une équipe, les **waypoints + zones des autres équipes** deviennent automatiquement des "préférences éviter" pour Pathfinder. Résultat : les itinéraires se contournent au lieu de se croiser, pas de relais involontaire.
-
-Si vraiment pas le choix (passage unique partagé), toast warn `⚠️ Itinéraire traverse N point(s) d'autres équipes — vérifie les chevauchements`.
-
-#### 🔥 Heatmap d'activité dans Mode Secours
-
-Nouveau bloc orange "🔍 Outils d'analyse" dans la section Contexte avec bouton **🔥 Afficher la heatmap d'activité**. Visualise les zones où le tracker a enregistré du passage → utile pour identifier les zones probables à fouiller en priorité.
-
-> 🧩 Ce bloc reste disponible **même si l'option 🔥 Heatmap est désactivée** : elle ne retire que la tuile du menu Tracker.
-
-Si le disparu utilisait MyKTAMap et a exporté sa session avec timeline tracker, la heatmap montre directement où il a passé du temps.
-
-#### 🏗️ Auto-création 1 équipe par niveau (M-LVL)
-
-Sur les plans multi-niveau, bouton conditionnel **🏗️ Auto : 1 équipe par niveau (N)** dans la section Équipes. Crée auto N équipes nommées `Niveau RDC / +1 / -1...` avec couleurs auto-cyclées. Tu poses ensuite zones + waypoints sur chaque niveau séparément en changeant le niveau actif via la pastille M-LVL topleft.
-
-#### ⭐ Favoris en accès rapide
-
-Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent en chips cliquables (max 8) AU-DESSUS de la recherche autocomplete. 1 clic = waypoint appliqué (skip search + clic carte).
-
-Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
-
-#### 🛑 Pause entre les arrêts (itinéraire)
-
-Nouvelle section dans la modale 🗺️ Itinéraire :
-
-```
-🛑 Pause entre les arrêts
-☑️ Inclure une pause entre chaque arrêt intermédiaire
-   Durée par pause : [15] min
-```
-
-Default checked + 15 min (= comportement préservé). ⚠️ Depuis la v1.98.11, cette pause ne concerne **plus** le Mode Secours : chaque plan de secours a ses propres réglages (bloc **⏱️ Durées estimées** : vitesse de fouille et pause par étape), transmis aux équipes avec le plan.
-
-> ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
-
-### 🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes
-
-Le Mode Secours est intégré avec la Vue OSM pour fournir aux **secours externes** (pompiers, GRIMP, SDIS) tout ce qu'il leur faut pour intervenir sur le site sans connaître les lieux.
-
-#### 🚪 Tag « Point d'entrée du plan »
-
-Nouveau tag built-in disponible dans la catégorie **🚨 Secours** de la légende et de l'éditeur de POI. Marque la (les) entrée(s) principale(s) du site pour les secours :
-
-- Icône SVG vectorielle (porte jaune sur fond noir)
-- Apparaît automatiquement dans le PDF Briefing pompiers (section « POI critiques »)
-- Visible sur la Vue OSM aussi (avec sa géoréférence GPS)
-
-> Pour taguer un POI : édite-le → menu Tag → catégorie « 🚨 Secours » → « 🚪 Point d'entrée du plan ». Tu peux avoir plusieurs entrées (entrée nord/sud/etc.).
-
-#### 📍 GPS surface des équipes
-
-Dans la fiche d'une équipe (Mode Secours → édition équipe), nouveau champ **📍 GPS surface** :
-
-```
-📍 GPS surface : [48.8566, 2.3522 ]
-                  ↑ format : lat, lng (décimal WGS84)
-```
-
-Renseigne la position GPS du PC secours, du lieu de rendez-vous avec les pompiers, ou tout point d'intérêt en surface lié à cette équipe. Optionnel.
-
-→ Cette donnée alimente le **PDF Briefing pompiers** (lien OSM clickable par équipe) et reste dans l'export `.mkmsec.json`.
-
-#### 🌍 Vue OSM accessible partout dans Mode Secours
-
-Le bouton **🌍 Vue OSM** est présent dans :
-- La vue Édition (bandeau scénario)
-- Les 3 vues Live : 👤 Opérateur surface, 🚨 Équipier, 🚑 Secouriste libre
-
-Plus besoin de revenir à l'édition pour montrer la position du plan sur OpenStreetMap aux pompiers qui débarquent en cours de mission.
-
-#### 🚒 Briefing pompiers PDF dédié
-
-Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. Génère un PDF dédié spécialement conçu pour les secours externes, contenant :
-
-| Section | Contenu |
-|---------|---------|
-| **ACCÈS SURFACE** | En tête : le plan **recadré sur les accès** des équipes (sans POI), un **repère numéroté** par accès, et un tableau N° · accès (entrée, sortie ou les deux) · équipes · **GPS + lien de carte cliquable**. Deux équipes qui partent du même accès n'ont qu'un numéro. Pense à **nommer tes entrées** (« Plaque rue X ») : sinon le tableau dit « Accès sans nom » |
-| **INFOS** | Nom scénario · nom plan · date génération |
-| **LOCALISATION** | Coordonnées GPS centre + bbox + **lien OpenStreetMap cliquable** + **lien Google Maps cliquable** |
-| **EQUIPES SUR PLACE** | Pour chaque équipe : nom + membres + GPS surface (si renseigné) + lien OSM individuel par équipe |
-| **POI CRITIQUES** | Les accès du plan, avec leur niveau : d'abord les **ouverts** (🚪 points d'entrée, cavages, puits à échelons, escaliers de service — les mêmes que la Sortie d'urgence), puis les **fermés** (que pompiers et IGC peuvent ouvrir). Liste tirée des points tagués du plan (jusqu'en v1.98.6, ce bloc restait vide) |
-
-> 💡 **Comment utiliser** : Le PDF s'imprime ou s'envoie par mail/Signal au chef de groupe pompiers AVANT son arrivée. Sur place, il clique les liens depuis son tél/PC pour ouvrir OSM ou Google Maps centrés sur ton site. Aucune installation MyKTAMap nécessaire chez lui.
-
-#### 📤 Page « Briefing surface » dans le rapport post-mission
-
-Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos, carte des accès en tête (la vue OpenStreetMap du plan entier, illisible sur un A4, n'y figure plus ; dans le briefing pompiers, elle reste en option, POI décochés par défaut). Sur les cartes d'équipe, une entrée et une sortie posées au même accès (à moins de 10 m) ne font plus qu'un repère « ENTRÉE / SORTIE ». Au calcul d'un itinéraire, une étape posée loin de toute galerie est nommée (« L'étape « Puits 2 » est à 68 m du tracé le plus proche ») : corrige-la avant de descendre. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
-
-#### 🏷️ Filtre tags Vue OSM
-
-Les chips de filtre par tag de la modale Vue OSM listent **tous les tags présents** dans le plan, alignés avec le widget Vue OSM Home.
-
-#### 💾 Save Offline — Vue OSM hors-ligne
-
-Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
-
-**À quoi ça sert** :
-
-- Tu ouvres la Vue OSM sur le terrain même sans réseau (sortie souterraine prolongée, Mode Secours en zone blanche, batterie qui force le mode avion data…)
-- Le fond de carte (rues, contours, repères de surface) reste affiché normalement → tu sais où tu es par rapport au plan sans dépendre de la 4G
-- Particulièrement utile **pour les pompiers / SDIS** auxquels tu présentes la Vue OSM à l'arrivée : la carte s'affiche immédiatement, pas d'attente de chargement
-
-**Comment l'activer** :
-
-Un bouton **💾 Save Offline** est disponible dans le bandeau de la Vue OSM. **Un clic suffit** :
-
-1. L'app télécharge les tuiles OpenStreetMap visibles autour de ton plan + quelques niveaux de zoom proches
-2. Le bandeau affiche après le téléchargement : **📦 N tuiles · X MB** (= ce qui est disponible sur ton appareil)
-3. Tu peux refaire un clic plus tard si tu zoomes sur une autre zone que tu veux aussi sauvegarder
-
-> 💡 **Max ~200 tuiles par clic** (~5-10 MB) : c'est une limite stricte pour respecter la politique d'usage OpenStreetMap (= service gratuit financé par les dons, donc pas d'abus). Si tu veux sauvegarder une zone très large, fais plusieurs clics en déplaçant la vue.
-
-**Où c'est dispo** :
-
-Le bouton 💾 Save Offline est présent dans **3 contextes** — et le cache est **partagé** entre les trois :
-
-| Contexte | Quand l'utiliser |
-|---|---|
-| **🌍 Vue OSM modale** (mode carte) | Tu prépares une sortie : tu ouvres la Vue OSM, tu cadres la zone, tu cliques 💾 |
-| **🌍 Widget OSM de l'accueil** | Tu prépares tes plans depuis la home sans avoir à charger un plan en mode carte |
-| **🚨 Mode Secours** (bandeaux Création + Live) | Tu déclenches une mission : un coup de 💾 et toute l'équipe a la zone sur l'appareil avant de descendre |
-
-> ✅ **Cache partagé** : tu télécharges UNE fois → c'est dispo partout, pas de doublon. Pas besoin de recommencer le téléchargement à chaque mode.
-
-**Comportement intelligent hors-ligne** :
-
-Quand l'app détecte que t'as pas d'Internet, elle adapte le comportement de l'icône 🌍 selon ce qui est dispo sur ton appareil :
-
-| Internet | Plan sauvegardé | Icône 🌍 | Action |
-|---|---|---|---|
-| ✅ | – | visible | ouverture normale |
-| ❌ | ✅ | visible | ouverture directe depuis ton appareil (pas de test ping) |
-| ❌ | ❌ | masqué | re-connexion nécessaire — message clair "Plan non disponible hors-ligne, clique 💾 quand connecté" |
-
-Concrètement : si t'as sauvegardé ton plan la veille au Wi-Fi, l'icône 🌍 reste visible le lendemain en cellular pourri et la modale s'ouvre **direct** sans tenter un test réseau qui ralentirait tout. Si t'as oublié de sauvegarder, l'app te le dit clairement plutôt que de te laisser tourner en rond.
-
-**🔒 Tout reste local et privé** :
-
-- Les tuiles téléchargées sont **stockées 100 % sur ton appareil** (ton navigateur / la PWA installée)
-- **Rien n'est jamais transmis** à un serveur tiers, ni à l'auteur, ni à OpenStreetMap après le téléchargement initial
-- Aucune trace de ce que tu sauvegardes n'est tracée
-- Au prochain reset complet (💥 Tout réinitialiser), les tuiles sauvegardées sont effacées avec le reste
-
-> 💡 **Astuce sortie cataphile** : la veille de la sortie, ouvre la Vue OSM sur ton tel à la maison (Wi-Fi), zoome sur la zone de l'entrée + les rues autour, clique **💾 Save Offline**. Le lendemain en surface au point de RDV, même en cellular faible, la carte s'affiche instantanément.
-
-### 🚨 Mode Secours — Exploitation terrain temps réel
-
-Le scénario a **2 états distincts** :
-
-1. 📝 **CRÉATION** — Vue Édition. Tu prépares tes équipes, leurs parcours, leurs zones, les itinéraires suggérés.
-2. 🚀 **EXÉCUTION** — Vue Live temps réel. L'équipe est PARTIE, tu suis ses observations étape par étape, tu commentes en live.
-
-Tu bascules d'un état à l'autre via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édition.
-
-#### 🚀 Lancement du plan + sélection du rôle
-
-Un nouveau bandeau dynamique apparaît en haut de la vue Édition :
-
-| État du bandeau | Quand | Boutons |
-|---|---|---|
-| Gris « Ajoute au moins une équipe… » | 0 équipe définie | Aucun |
-| **Jaune CTA « 🚀 Lancer »** | Au moins 1 équipe | 🚀 Lancer le plan de secours |
-| **Vert « 🟢 PLAN ACTIF — <Rôle> »** | Plan lancé en cours | ▶️ Reprendre vue Live · 📤 Rapport · ⏹️ Arrêter |
-| **Bleu « 📦 PLAN TERMINÉ »** | Plan arrêté (historique) | 📤 Voir rapport historique · 🚀 Relancer |
-
-Au clic « 🚀 Lancer », **modale sélection rôle** avec 3 choix :
-
-```
-◉ 👤 Opérateur de surface
-   Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en
-   parallèle, tu peux éditer leurs observations en supervision.
-
-○ 🚨 Équipe sur le terrain : [Alpha ▾]
-   Tu fais partie d'une équipe assignée. Tu suis ton parcours étape
-   par étape et tu commentes en live.
-
-○ 🚑 Secouriste libre
-   Tu interviens sans équipe pré-assignée (renfort ponctuel, recon).
-   Tu prends des notes libres avec timestamps.
-```
-
-> 💡 Tu pourras changer de rôle plus tard sans perdre les observations.
-
-#### 🚨 Vue Live — Mode ÉQUIPIER (step-by-step)
-
-Pour le secouriste sur le terrain qui suit son parcours :
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚨 Équipe Alpha · Étape 3/5 ⏱️ 14h 23min │
-├─────────────────────────────────────────────────────┤
-│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← stepper
-│ cliquable, couleur statut par étape │
-├─────────────────────────────────────────────────────┤
-│ 📍 ÉTAPE 3 — Puits aération Nord │
-│ Statut : 🟢 RAS │
-│ │
-│ 📝 Observations à cette étape : │
-│ [galerie centrale rien à signaler] │
-│ │
-│ ⚡ Saisie rapide : │
-│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
-│ [🟠 Aide demandée] [🟣 Demi-tour] [🚨 Victime !] │
-│ │
-│ [📸 Photo (0/5)] [🎯 Recentrer carte] │
-├─────────────────────────────────────────────────────┤
-│ [← Étape précédente] [Étape suivante →] │
-│ [⏸️ Pause] [📤 Rapport] [Voir édition] [⏹️ Terminer] │
-└─────────────────────────────────────────────────────┘
-```
-
-**8 statuts cliquables** (couleurs gravées dans la charte) :
-
-| Emoji | Label | Quand l'utiliser |
-|---|---|---|
-| • | Pending | (statut par défaut avant interaction) |
-| 🟢 | RAS | Rien à signaler |
-| 🟡 | Suspect | Traces / bruits / odeur inhabituels |
-| ⬛ | Bloqué | Passage impraticable (effondrement, eau) |
-| 🔵 | Indice | Objet / vestige trouvé |
-| 🟠 | Aide demandée | Renfort matériel / humain demandé |
-| 🟣 | Demi-tour forcé | Parcours abandonné, retour anticipé |
-| 🚨 | **Victime trouvée** | **Urgence absolue** — déclenche signal rouge clignotant côté PC |
-| ⚪ | Passée, non renseignée | Posé par l'app : étape passée sans statut choisi |
-
-**Photos** : appui « 📸 Photo (X/5) » → caméra arrière auto sur mobile OU galerie. Max 5 photos par étape, compression auto JPEG q85 max 1920px. Cliquer une miniature → viewer plein écran avec swipe + zoom.
-
-**Auto-save** : observations sauvées au blur du textarea ET au changement d'étape. Pas besoin de bouton « Sauver ».
-
-**Étape passée sans statut** : passer à l'étape suivante sans avoir choisi de statut la marque **« ⚪ Passée, non renseignée »**, jamais « RAS » : une étape sautée n'est pas une étape fouillée. Re-clic statut possible.
-
-#### 👤 Vue Live — Mode OPÉRATEUR SURFACE (vue d'ensemble)
-
-Pour le PC chef qui coordonne plusieurs équipes en parallèle :
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 👤 Opérateur surface · 3 équipes ⏱️ 02h 14min │
-├─────────────────────────────────────────────────────┤
-│ ┌──────────────────┐ ┌──────────────────┐ │
-│ │ 🔴 Alpha 3/5 │ │ 🔵 Bravo 1/4 │ │
-│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
-│ │ 🟢 RAS │ │ 🟠 Aide demandée │ │
-│ │ « RAS galerie │ │ « Eau au sol, │ │
-│ │ centrale » │ │ niveau monte » │ │
-│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
-│ │ [👁️ Détails] │ │ [👁️ Détails] │ │
-│ │ [🚨 Prendre main]│ │ [🚨 Prendre main]│ │
-│ └──────────────────┘ └──────────────────┘ │
-│ ┌──────────────────┐ │
-│ │ 🟢 Charlie ✓T │ ← équipe Terminée (grisée) │
-│ └──────────────────┘ │
-├─────────────────────────────────────────────────────┤
-│ [⏸️ Pause] [🗺️ Carte globale] [📤 Rapport global] │
-│ [Voir édition] [⏹️ Terminer le plan] │
-└─────────────────────────────────────────────────────┘
-```
-
-**Cards spéciales** avec signaux visuels forts :
-
-- 🚨 **Victime trouvée** → card **ROUGE CLIGNOTANTE** (animation 1.2s, urgence absolue, tu ne peux PAS la rater)
-- 🟠 **Aide demandée** → orange + lueur (renfort à envoyer)
-- ✓ **Terminée** → grisée opacity 0.75 (toutes étapes complétées)
-
-**Bouton « 👁️ Détails »** → mini-modale read-only avec liste chronologique des étapes de l'équipe (ts + statut emoji + obs).
-
-**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs). La vue s'ouvre sur la **première étape non terminée de cette équipe**, même si tu étais plus loin chez une autre.
-
-**Retour facile** : une fois en mode Équipier après « Prendre la main », un bouton **« 👤 Retour Opérateur »** apparaît dans le footer. Au clic → retour à la vue d'ensemble Opérateur intacte (le retour reste possible après un rechargement ou un changement de plan).
-
-**Bouton « 🗺️ Voir carte globale »** : masque la modale + render l'overlay carte avec toutes les zones + waypoints + itinéraires des équipes en couleurs OTAN.
-
-#### 🚑 Vue Live — Mode SECOURISTE LIBRE (notes en vrac)
-
-Pour le renfort ponctuel / la reconnaissance sans équipe pré-assignée :
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚑 Secouriste libre · 12 notes ⏱️ 01h 47min │
-├─────────────────────────────────────────────────────┤
-│ 📝 Ajouter une note │
-│ [galerie nord rien à signaler] │
-│ ⚡ Statut associé : │
-│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
-│ [🟠 Aide] [🟣 Demi-tour] [🚨 Victime !] │
-├─────────────────────────────────────────────────────┤
-│ 12. 🟢 RAS · ⏱️ 16:42:18 [✕] │
-│ « Croisement Est, RAS, on continue » │
-│ │
-│ 11. 🟡 Suspect · ⏱️ 16:38:05 [✕] │
-│ « Bruit d'eau qui coule, source ?? » │
-│ │
-│ ... (chronologique DESC) │
-└─────────────────────────────────────────────────────┘
-```
-
-Pas de stepper, pas d'étapes structurées. Juste un fil de notes horodatées avec statut. Pratique pour les missions où le parcours n'est pas planifié à l'avance (renfort qui arrive en cours, équipe de reconnaissance, etc.).
-
-#### 📤 Rapport au fil des étapes
-
-À tout moment pendant l'exécution ET après l'arrêt du plan, tu peux générer un rapport via le bouton **« 📤 Rapport »** présent dans :
-
-- Le footer de chaque vue Live (scope adapté au rôle courant)
-- Le bandeau vue Édition (si execution active OU terminée)
-
-3 formats au choix dans la modale unifiée :
-
-| Format | Cas d'usage |
-|---|---|
-| 📄 **PDF imprimable A4** | Briefing global page 1 + page texte étapes par équipe + page photos en grille 2 cols. Idéal pour rapport papier / impression / archivage / passation papier au pompier. |
-| 📦 **`.mkmsec.report.json`** | Data structuré autonome (photos en base64 si cochée). Re-importable sur le device opérateur surface (consolidation cross-device, voir section dédiée). |
-| 📋 **Texte plain** | Markdown-like copié au presse-papier. Pour partage Discord / SMS / mail rapide. |
-
-**3 scopes selon ton rôle** :
-
-- 👤 **Mode Opérateur** → « 📤 Rapport global » : TOUTES les équipes + leurs étapes + photos
-- 🚨 **Mode Équipier** → « 📤 Rapport » : SON équipe uniquement (parcours individuel)
-- 🚑 **Mode Secouriste libre** → « 📤 Rapport » : SES notes libres chronologiques
-
-**Aperçu compact** en haut de la modale : titre rôle + nombre étapes + % progression + durée. **Checkbox « 📸 Inclure les photos »** COCHÉE par défaut (avec hint dynamique compteur). Toast feedback à chaque action.
-
-**Rapport généré à l'instant** : reflète l'état COURANT du scénario. Réutilisable autant de fois que nécessaire. Idéal pour :
-- Briefing en cours de mission (snapshot intermédiaire à imprimer pour la relève)
-- Passation cross-device (export JSON → mail / clé USB → import sur PC opérateur)
-- Rapport final post-mission (PDF imprimable + archivage)
-
-#### ⏱️ Timer global avec pause juste
-
-Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le démarrage MOINS le temps de pause cumulé. Tu peux mettre en pause avec le bouton **« ⏸️ Pause »** (le timer fige) puis reprendre avec **« ▶️ Reprendre »** — la durée de pause n'est PAS comptabilisée.
-
-**Re-render 1×/seconde** sans flash visuel, sans perte de focus dans la textarea observations en cours de saisie. Permet de garder le rapport temps-réel précis pendant des missions longues (h+).
-
-#### 🎬 Cycle complet typique
-
-```
-1. 📝 Création scénario (vue Édition)
-   ├─ Ajout équipes Alpha/Bravo/Charlie (couleurs OTAN)
-   ├─ Pour chaque équipe : parcours entrée → étapes → sortie
-   ├─ Zones de recherche (polygone OU tracés sélectionnés)
-   ├─ Itinéraires auto-calc Pathfinder (avoidances cross-équipes)
-   └─ Export PDF / KMZ / .mkmsec.json pour briefing initial
-
-2. 🚀 Lancement (modale sélection rôle)
-   └─ Bascule en vue Live selon rôle choisi
-
-3. 🚨 Exécution (vue Live)
-   ├─ Mode Équipier : suit parcours step-by-step + observations + photos
-   ├─ Mode Opérateur : vue d'ensemble cards + supervision + prise main
-   └─ Mode Secouriste libre : notes en vrac chronologiques
-
-4. 📤 Rapport au fil des étapes (n fois)
-   ├─ PDF imprimable pour relève / passation papier
-   ├─ JSON pour consolidation cross-device
-   └─ Texte presse-papier pour Discord / mail rapide
-
-5. ⏹️ Arrêt du plan (bandeau « 📦 PLAN TERMINÉ »)
-   ├─ Observations conservées comme historique
-   ├─ Bouton « 📤 Voir le rapport historique » réutilisable
-   └─ Bouton « 🚀 Relancer » si re-mission
-```
-
-#### 📥 Consolidation cross-device
-
-Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérateur surface qui l'**importe et fusionne** ses observations dans le tableau de supervision.
-
-**Workflow type — opération avec 3 équipes** :
-
-1. **Côté Opérateur (surface, AVANT incident)** :
-   - Prépare le scénario (équipes Alpha / Bravo / Charlie + parcours + zones)
-   - Lance le plan (🚀) → vue Live Opérateur surface
-   - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
-
-2. **Côté chaque Équipier (terrain)** :
-   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts, observations et photos déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
-   - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
-   - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
-
-3. **Côté Opérateur (retour terrain)** :
-   - Récupère les 3 rapports `.mkmsec.report.json` (un par équipe) via le canal de son choix (AirDrop, mail, clé USB, Discord)
-   - Dans la vue Live Opérateur → bouton **« 📥 Importer rapport équipier »** dans le footer
-   - File picker → sélectionne le fichier → modale preview qui montre : nom équipe ciblée, nombre d'étapes à fusionner, photos, et **conflits détectés** (étapes côté op déjà renseignées qui vont être fusionnées)
-   - Confirme l'import → l'app fait un **snapshot AVANT** (backup d'urgence) puis fusionne :
-     - Observations **concaténées avec séparateur daté** (aucune perte)
-     - Statut **le plus grave retenu** ; à gravité égale, **le plus récent** — un « RAS » rapporté par l'équipe remplace « en attente », une victime n'est jamais rétrogradée
-     - Photos **importées avec déduplication**
-   - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
-   - Répète pour les 2 autres équipes
-   - ⚠️ **Rapport arrivé après un changement de phase** : s'il porte sur une phase déjà close, il est rangé dans **l'historique de cette phase** — jamais dans la phase en cours — et l'app le signale en orange (en rouge s'il contient « Aide demandée » ou « Victime trouvée »)
-   - 🧭 **Signalement sur une étape que tu as retirée** : il n'est pas perdu — il s'affiche en orange à l'import et figure dans la section **« Signalements hors parcours »** du rapport final
-   - 🗺️ **Plan modifié depuis l'envoi** : si le plan a changé de version (ou a été retracé) depuis l'export du scénario, l'aperçu d'import te prévient et compte les tracés de zone qu'il ne retrouve plus
-   - 📚 Le **rapport final** reprend aussi les étapes des **phases closes**, phase par phase
-
-4. **Visualisation post-fusion** :
-   - Sur la card de chaque équipe Op : chip bleu « 📥 importé » apparaît si au moins une étape a reçu de la consolidation
-   - Dans la modale « Détails équipe » (read-only) : chip « 📥 importé » sur chaque étape concernée + tooltip avec date import + version app source
-
-**Sécurité de l'import** : refuse si scope ≠ équipier (les rapports opérateur global ou secouriste libre ne sont pas fusionnables), si le scénario d'origine est différent, si l'équipe est absente du scénario actif, ou si aucune exécution n'est en cours côté op. **Plan différent côté équipier** → warning (pas erreur, on conserve les obs textuelles).
-
-**Undo** : un snapshot SessionBackups est créé **automatiquement AVANT** chaque import. En cas d'erreur, restaure depuis **📊 Détails de session → Backups récents** (titre : « Avant import rapport équipier <nom> »).
-
-> ⚠️ Important : **les équipes doivent être enregistrées côté Opérateur AVANT le lancement** du plan (pas de création silencieuse à l'import). Si tu prépares ton scénario avec Alpha / Bravo / Charlie mais qu'un équipier exporte sous le nom « Delta » créé localement, l'import sera rejeté — il fallait recevoir Delta dans le scénario initial.
 
 ---
 
@@ -1327,18 +759,6 @@ Appuyez sur **▶️** pour démarrer.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
-> #### 🧭 « Plan orienté » — la carte tourne avec toi
->
-> Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** change la façon dont la carte se comporte pendant le suivi : au lieu que l'icône pivote sur un plan fixe, **c'est la carte qui tourne**, pour que ta direction de marche pointe toujours vers le haut de l'écran (comme un GPS de voiture).
->
-> - **Désactivé par défaut**, et ton choix est retenu sur cet appareil.
-> - Ça ne tourne **que pendant le suivi** : à l'arrêt du tracker, la carte revient droite.
-> - La carte **te suit** : si tu la déplaces à la main pour regarder ailleurs, un bouton **🎯 Recentrer** apparaît pour revenir sur toi (il apparaît aussi sans ce mode, dès que ta position sort de l'écran).
-> - Les textes restent lisibles : les mesures et les fiches de points ne se retournent pas avec la carte.
-> - La carte se remet droite toute seule dès que tu prends un outil qui demande de cliquer (mesure, dessin, recalage) ou que tu ouvres un mode plein écran.
->
-> ⚠️ La rotation suit ta boussole : **près de grandes masses métalliques** (rails, ferraillage, structures), elle peut devenir approximative — comme le reste du tracker.
-
 > 🧭 **Icône directionnelle** : pendant le tracking actif, l'icône (cône bleu + dot blanc, style GPS) **tourne en temps réel pour pointer dans la direction de marche** — calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracker arrêté ou recalage seul), l'icône pointe Nord (pose neutre). Smoothing intégré pour éviter le tremblement.
 
 Appuyez sur **⏹️** pour arrêter.
@@ -1397,21 +817,6 @@ Accédez aux réglages via le bouton **⚙️ Réglages** de la barre latérale 
 > - **📍 Cliquer sur la carte** : la fenêtre de réglages se masque, vous cliquez l'endroit voulu sur le plan, et les coordonnées se remplissent automatiquement (bouton **Annuler** pour ressortir sans choisir).
 >
 > Même logique de saisie que le géoréférencement. Pensez à **💾 Sauvegarder** pour conserver le réglage.
-
-### 🧭 Navigation intelligente (caler la position sur les tracés)
-
-Sous terre, le GPS satellite ne fonctionne pas : le tracker estime votre position avec **vos pas + la boussole**, ce qui **dérive** avec le temps. Si votre plan contient un **réseau de tracés**, la **navigation intelligente** recale en continu votre position estimée **sur la galerie la plus proche** pour compenser cette imprécision.
-
-**Activation** : ⚙️ Configuration → **« 🧭 Navigation intelligente »** → cochez « Caler la position sur les tracés ». **Désactivée par défaut**, réversible à tout moment.
-
-- Quand vous **avancez**, la position suit la galerie ; aux **intersections**, la branche qui correspond à votre **cap** (direction de marche) est choisie.
-- Si vous **sortez des galeries tracées** (zone pas encore cartographiée), retour **automatique** au mode classique, puis recalage dès que vous revenez près d'un tracé.
-- **Sans réseau de tracés** sur le plan, l'option est **sans effet**.
-- Réglage fin possible (tolérance de calage) — demandez si vous voulez l'ajuster.
-
-> 💡 Le **recalage manuel (📍)** reste votre meilleur ami : dès que vous reconnaissez un repère, recalez — la navigation intelligente repart alors d'une base saine.
-
-> 🧭 **Votre tracé est conservé** : il est **redessiné au rechargement** de l'application (reconstruit depuis l'historique de la session), et le récap **📊 Statistiques** affiche votre **distance parcourue + nombre de pas**.
 
 ---
 
@@ -2677,46 +2082,6 @@ Appuyez sur **⬇️ → 📥 Importer** : le choix du fichier s'ouvre directeme
 
 **Fichier GPX** (`.gpx` de TopoDroid, OsmAnd, Avenza, Strava, Garmin…) — **ajoute** ses waypoints (points) et tracks (tracés) à votre session. Le plan doit être **calibré GPS** (📡 Export externe). Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
 
-### 📊 Éditeur de données du plan
-
-Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **ou** sur le bouton **📊 Éditeur de données** de l'accueil pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
-
-> ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
-
-#### Ouverture
-
-1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
-2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
-3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
-4. **🔁 Convertir la résolution** — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
-5. **🧹 Dédoublonner les données** — retire les **sommets identiques consécutifs** accumulés dans les tracés, zones, structures et mesures d'un fichier `.json` (calque de données ou session exportée) : un ancien bug du mode « clic carte » pouvait en empiler plusieurs par clic — invisibles à l'écran, mais ils gonflent les fichiers et les exports. Choisis un ou plusieurs fichiers, récupère-les nettoyés en `_dedup.json` avec le compte de ce qui a été retiré. Les points (POI) ne sont **jamais touchés** — deux points volontairement superposés restent distincts.
-
-Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
-
-#### Édition
-
-- **Cliquez sur une cellule** pour la modifier (sauf l'ID, en lecture seule)
-- **Tab** : passe à la cellule suivante · **Entrée** : ligne suivante (même colonne) · **Échap** : annule
-- **Coordonnées** : si X ou Y est hors du plan, la cellule devient rouge avec un avertissement ⚠
-- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes (création de tag à la volée possible)
-- **🔒 Tracés / zones / structures** : vous pouvez éditer la **note** (description), le **type** et le **niveau**, mais la **géométrie** (la colonne `points`) reste en **lecture seule** — pour la redessiner, utilisez les outils de tracé sur la carte.
-
-#### Actions *(points uniquement)*
-
-- **🔍 Recherche** filtre toutes les colonnes · **Trier** : clic en-tête (asc → desc → annulé) · **Sélection multiple** : checkbox + Maj+clic
-- **+ Ajouter ligne** · **📋 Dupliquer** · **🗑️ Supprimer** (confirmation) · **📍 Voir sur la carte** (points sélectionnés en orange clignotant)
-
-#### Sauvegarde *(jamais de chargement en direct pour les données du plan)*
-
-Bouton **💾 Sauvegarder** :
-
-| Cas | Effet |
-|---|---|
-| **Données du plan** (points / tracés / zones / structures) | **📥 Télécharger** le fichier `.json` modifié. ⚠️ Pour les **appliquer**, réimportez ce fichier dans le **Générateur** (🏗️) — l'éditeur ne modifie jamais le plan en direct sur la carte. |
-| **Session** (vos annotations en cours) | **📥 Télécharger** **ou** **✏️ Remplacer la session en cours** (mise à jour live de vos points de session). |
-
-> ⚠️ Si vous fermez la fenêtre avec des modifications non sauvegardées, une confirmation vous propose de sauvegarder, quitter sans sauvegarder, ou continuer l'édition.
-
 ### 🗂️ Changer de plan
 
 Ce bouton **n'est plus dans le menu ⬇️**. Pour changer de plan : touche la **rose des vents 🧭** (accueil) ou le **titre du plan** (fenêtre « Changer de plan », cf. plus haut) dans la barre du haut. Ta session est **sauvegardée automatiquement** avant le changement.
@@ -2921,582 +2286,6 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 
 > Plus tu calibres sur une longue distance, plus le résultat sera précis.
 
-### 🎚️ Découpage de l'image — l'app décide
-
-**Il n'y a plus rien à régler ici.** Le bandeau *« 🖼️ Tuilage pour ce chargement »*, qui vivait juste au-dessus
-du bouton **▶️ Charger ce plan**, **a été retiré** : l'app découpe automatiquement les plans trop grands pour
-être affichés d'un bloc, et c'était déjà ce qu'elle faisait pour la quasi-totalité d'entre eux.
-
-> 🩸 **Pourquoi il est parti.** Il ne servait qu'aux plans **non découpés à la génération** (« V1 ») et de très
-> grande taille. Sur un plan **déjà découpé** — le cas courant, et la méthode conseillée — « Désactivé »
-> **ne changeait rien** : le plan utilise toujours ses morceaux. Il occupait donc la place la plus visible de
-> l'écran de chargement pour un effet quasi nul. Et il n'était **pas mémorisé** : il repartait sur « Auto » à
-> chaque démarrage de l'app — un réglage qui s'oublie tout seul n'en est pas un.
-
-**Où il est passé** : dans **ℹ️ Infos** du plan, et **uniquement pour les plans que ça concerne** — s'il
-n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'aurait aucun effet. Là, il est
-**mémorisé pour ce plan** et s'applique à tous ses chargements suivants.
-
-| Choix | Ce qu'il fait |
-|---|---|
-| 🔄 **Auto** *(défaut)* | Découpe automatiquement les plans trop grands pour être affichés d'un bloc. **C'est le bon choix dans tous les cas.** |
-| 💤 **Désactivé** | Aucun découpage : l'image entière d'un coup. Qualité native sur PC, mais ⚠️ **peut faire planter le téléphone** sur un très grand plan — un message vous prévient si c'est le cas. |
-
-> 🩸 **Il y avait 5 boutons auparavant** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que
-> le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan
-> **déjà découpé à la génération**, ils ne changeaient **strictement rien**, alors que l'app affichait « Plus
-> net. Recommandé sur PC desktop. ». Ils ont été retirés.
-
-> 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le
-> **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100
-> millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur
-> iPhone. Corrigé : c'est désormais la taille en pixels qui décide.
-
-### 🔐 Code d'accès local (PIN / Face ID)
-
-Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
-
-> ⚠️ **C'est une barrière d'usage, pas un chiffrement des données.** Le verrouillage empêche l'ouverture normale de l'app, mais un attaquant motivé peut le contourner avec les outils de développement du navigateur. Les photos et sessions restent stockées en clair dans le navigateur. C'est exactement le même niveau de sécurité que le code d'accès communautaire existant — assumé honnêtement.
-
-#### Activer le PIN
-
-1. Depuis la page d'accueil (chargeur) → bouton **⚙️ Configuration** en haut à droite
-2. Descends à la section **🔐 Code d'accès local**
-3. Clique **🔐 Activer le code d'accès**
-4. Choisis ton code (4 à 6 chiffres) puis confirme-le une seconde fois
-5. Si ton appareil supporte la biométrie (iPhone Face ID, iPad Touch ID, Android empreinte, Windows Hello…) une demande "Activer aussi la biométrie ?" apparaît. Accepter = au prochain démarrage tu déverrouilles d'un coup d'œil ou d'un doigt (sans saisir le code)
-
-> 📝 **Note bien ton code** quelque part de sûr. Aucune récupération n'est possible en cas d'oubli — tu serais obligé de tout réinitialiser (perte session + plans non mémorisés).
-
-#### Au prochain démarrage de l'app
-
-L'écran de verrouillage apparaît automatiquement après le splash :
-
-- **Avec biométrie** : la demande Face ID / Touch ID apparaît immédiatement. Tu peux aussi annuler et saisir ton PIN à la place.
-- **Sans biométrie** : tu saisis directement ton PIN via le clavier numérique. Le dernier chiffre saisi est visible 0,5 s puis remplacé par ● (pattern iOS).
-
-#### Modifier le PIN
-
-⚙️ Configuration → 🔐 Code d'accès local → **✏️ Modifier le code**. Validation par biométrie OU code actuel, puis saisie du nouveau PIN 2 fois.
-
-#### Désactiver le PIN
-
-⚙️ Configuration → 🔐 Code d'accès local → **🔓 Désactiver**. Confirmation par biométrie OU code actuel. L'app ne demande plus de code au démarrage suivant.
-
-#### Verrou temporaire : 5 codes faux
-
-Après **5 codes incorrects à la suite**, l'app se verrouille **temporairement** : 10 min la première fois, puis 1 h, 6 h et 24 h à chaque nouvelle série de 5 erreurs. Un compte à rebours s'affiche et le pavé revient tout seul à la fin du délai ; un code juste remet tout à zéro. Il n'y a **aucun bouton de reset** sur cet écran et aucune récupération du code en cas d'oubli — si tu l'as vraiment perdu, il reste **💥 Tout réinitialiser** depuis l'écran d'accueil (perte de la session en cours et des plans non mémorisés). Le délai suit l'horloge du téléphone.
-
-> Les biométries ratées ne comptent **pas** dans les 5 tentatives — la spec WebAuthn gère son propre lockout natif côté device. Tu peux annuler un Face ID par erreur sans craindre d'épuiser tes essais.
-
----
-
-## 🧩 Fonctionnalités optionnelles
-
-Quatre fonctions secondaires sont **désactivées par défaut**, pour garder l'application légère : on n'active que ce qui sert. Elles se règlent dans **⚙️ Configuration** de l'accueil, groupe **🧩 Fonctionnalités optionnelles** — ou dans **⚙️ Réglages** une fois un plan ouvert : c'est le même réglage, il vaut pour **tous les plans**.
-
-| Option | Par défaut | Ce que ça ajoute |
-|---|---|---|
-| **🎬 Replay du tracker** | désactivé | La tuile 🎬 dans le menu 🧭 Tracker : rejouer sa session de suivi, exporter la timeline en CSV |
-| **🔥 Heatmap** | désactivé | La tuile 🔥 dans le menu 🧭 Tracker : carte de densité de passage |
-| **🔋 Niveau de batterie** | désactivé | La charge restante en haut de l'écran, et les alertes sous 20 %, 10 % et 5 % |
-| **📳 Vibration haptique** | désactivé | Un retour tactile sur certaines actions |
-
-> ⚡ **Replay et Heatmap agissent tout de suite** : la tuile apparaît ou disparaît à la prochaine ouverture du menu 🧭 Tracker. **La batterie, elle, prend effet au prochain lancement** : l'écoute du capteur se met en place au démarrage de l'app, et il n'existe aucun moyen propre de la retirer en cours de route — l'app te le dit plutôt que de faire semblant.
-
-> 🔋 **Tu utilisais l'indicateur de batterie ?** Il était actif par défaut jusqu'ici ; la mise à jour qui a créé ce groupe l'a **désactivé une fois** chez tout le monde. Recoche-le : ton choix est ensuite conservé.
-
-> 🚨 **Le Mode Secours garde sa heatmap d'activité** (contexte d'un scénario) même quand l'option 🔥 Heatmap est décochée : seule la tuile du menu Tracker disparaît.
-
-### ⛔ « Capteur refusé »
-
-Si la batterie ou la vibration s'affiche **grisée** avec « Capteur refusé par iOS » ou « par cet appareil », ce n'est ni un bug ni un oubli : **ton système ne donne pas ce capteur aux pages web**. Apple ne fournit ni la vibration ni le niveau de batterie à un site, même installé en application.
-
-> 💡 Avant, ces options étaient simplement **cachées** — impossible de savoir si elles n'existaient pas ou si le téléphone les refusait. Elles s'affichent maintenant, avec la raison.
-
-### 🎬 Replay de session tracker
-
-> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
-
-Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
-
-**Comment ça marche** :
-
-- Pendant que tu fais du tracking, l'app enregistre en interne une **timeline** : pour chaque pas PDR appliqué, chaque recalage manuel, et l'instant de démarrage, elle stocke `(timestamp_epoch_ms, x_plan, y_plan, type)`.
-- Au clic sur 🎬, une modale plein écran s'ouvre avec :
-  - **Slider timeline** (gauche → droite = début → fin)
-  - Boutons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
-  - Sélecteur de **vitesse** : 0.5× · 1× · 2× · 5× · 10×
-  - Bouton **💾 Export CSV**
-  - Bouton **⛶** pour basculer en mode compact (bottom sheet) qui libère la carte
-- À l'appui sur **▶️ Play**, la modale **bascule automatiquement en mode compact** — tu vois la carte en grand pendant que le marker jaune rejoue tes pas. Le trail (ligne) s'allonge au fur et à mesure.
-
-**Raccourcis clavier** :
-
-| Touche | Action |
-|---|---|
-| Espace | Play / Pause |
-| ← | Reculer de 1s |
-| → | Avancer de 1s |
-| Échap | Fermer la modale |
-
-**Bouton 💾 Export CSV** produit un fichier `.csv` à 5 colonnes (ou 6 en M-LVL) :
-
-```
-timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
-```
-
-- `type` = `start` (démarrage tracking), `pdr` (pas PDR appliqué), `recalage` (recalage manuel)
-- Ouvrable dans Excel / LibreOffice / Numbers / Python pandas / R / etc.
-
-**Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
-
-**Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
-
-### 🔥 Heatmap — densité de passage
-
-> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
-
-Le bouton **🔥 Heatmap** dans le menu **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
-
-> 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
-
-#### 🗂️ 6 sources cochables (combinables)
-
-Tu choisis ce qui contribue à la chaleur affichée :
-
-| Source | Contenu |
-|---|---|
-| 🧭 **Tracker timeline** | Tous les points de ta session de tracking (filtré : skip recalages = téléport, skip starts, skip gaps > 5 min) |
-| 📍 **Points session** | Tes points ajoutés via l'éditeur |
-| 🛣️ **Tracés session** | Tes routes (Principal / Secondaire / Chemin) tracées en session |
-| ⬛ **Zones session** | Tes zones (eau / remblais / effondrement / inaccessible) |
-| 🏛️ **Structures session** | Tes piliers / murs / fronts |
-| 📊 **Calques de données** | Tous les éléments embarqués dans les data layers du plan (points + roads + zones + structures + fronts) |
-
-#### 🎚️ Réglages live
-
-Deux sliders en bas de la modale, mise à jour temps réel :
-
-| Slider | Plage | Effet |
-|---|---|---|
-| **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
-| **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
-
-#### 🏗️ Filtre par niveau M-LVL
-
-Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
-
-- **Chips par niveau** : une pastille cliquable par niveau disponible dans le plan (`Niv -2`, `Niv -1`, `Niv 0`, `Niv 1`...)
-- **Pré-sélection** : les niveaux **actuellement visibles** sur la carte sont pré-cochés automatiquement
-- **Bouton ⇅ Tout** : (dé)coche tout d'un clic
-- **Effet** : la heatmap restreint la collecte aux items qui appartiennent aux niveaux sélectionnés. Pratique pour générer une heatmap dédiée au RDC uniquement (par exemple), ou pour comparer la densité entre 2 étages sans pollution croisée.
-
-> 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
-
-> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout.
-
-#### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
-
-- **Interpolation le long des segments** : pour les tracés / zones / structures polylines / timeline tracker, l'app distribue des points de chaleur **le long du chemin** au lieu d'un seul point par sommet. Résultat : tu vois de vraies **traînées continues**, pas des "perles" espacées.
-- **Normalisation par histogramme** : le pixel le plus dense de l'image = rouge pur, le moins dense = bleu pur, gradient lissé entre. **Auto-adaptatif** : pas besoin de régler manuellement les seuils, ça marche aussi bien sur un plan de 20 points que sur un plan de 5000.
-- **Filtre timeline tracker** : skip les téléportations (recalages), les starts, et les gaps > 5 min (pause sans bouger ne doit pas générer de chaleur fantôme).
-
-#### 💡 Cas d'usage
-
-- **Identifier les axes principaux** d'une carrière : ce qui ressort rouge = par où tu passes vraiment, vs ce qui ressort bleu = exploré une fois
-- **Audit de complétude** : zones bleues = sous-cartographiées → prochain objectif terrain
-- **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
-
-> ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
-
-### 🪫 Indicateur de batterie
-
-> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
-
-L'app surveille en temps réel le niveau de batterie du téléphone (quand le navigateur expose cette info) et affiche un indicateur compact à 3 endroits :
-
-| Endroit | Apparence |
-|---|---|
-| **En-tête** de l'interface (à côté des compteurs session) | Chip compact `⚡ 78%` (en charge, vert) ou `🪫 23%` (en décharge, couleur selon niveau) |
-| **Footer** de la modale 📋 Session active | Ligne `🔋 État · 🪫 23% · Discharging` |
-| **Bloc 🔋 ÉTAT** du mode urgence 🚨 | Label long `🪫 23% · décharge` |
-
-#### Niveaux et couleurs
-
-| % | Couleur | Comportement |
-|---|---|---|
-| ≥ 50 % | Vert / neutre | OK |
-| 20-49 % | Jaune-orange | Surveille |
-| 10-19 % | Orange foncé + toast `🪫 Batterie faible — pense à recharger` (1 fois) |
-| 5-9 % | Rouge + toast `🪫 Batterie critique — sortie recommandée` (1 fois) |
-| < 5 % | Rouge pulsant + toast `🚨 Batterie critique — moins de 5%` (1 fois) |
-
-Chaque seuil n'envoie son toast **qu'une seule fois** par cycle de décharge (pas de spam si tu oscilles autour de 10 %, 12 %, 9 %, etc.). Le compteur de seuils est reset dès que tu repasses en charge ou que tu remontes au-dessus de 50 %.
-
-#### Compatibilité navigateur
-
-L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est **plus disponible partout** :
-
-| Navigateur | Support |
-|---|---|
-| Chrome Android / PC | ✅ Oui |
-| Edge Android / PC | ✅ Oui |
-| Samsung Internet | ✅ Oui |
-| Safari iOS / macOS | ❌ Non (l'API a été retirée pour des raisons de privacy / fingerprinting) |
-| Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
-
-> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. **Le mode urgence 🚨 ne l'affiche pas non plus** (v1.97.11) : sans capteur il n'y a rien à montrer, et un « ? » à la place d'un niveau de batterie sur l'écran qu'on ouvre quand elle lâche ne rassure personne. Le reste de l'état (tracker, boussole) est intact. Même chose si tu décoches ⚙️ **🔋 Niveau de batterie**.
-
-### 📳 Vibration haptique
-
-Une petite vibration confirme les actions : étape d'itinéraire atteinte, recalage, validation d'une étape, alertes du Mode Secours (équipe en retard, membres manquants).
-
-> 🚨 **Les alertes de survie vibrent toujours**, même option coupée : sortie d'urgence trouvée ou introuvable, alerte critique diffusée. Tout le reste — y compris le Mode Secours — suit ton réglage.
-
-> 📵 **iOS ne donne pas ce capteur aux pages web** : sur iPhone, l'option s'affiche grisée (voir « Capteur refusé » plus haut).
-
----
-
-## 🏗️ Créer ou modifier un plan
-
-> Accessible directement via le bouton **🏗️** de la barre latérale (clic direct, pas de sous-menu).
-
-Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
-
-### 🧙 Générateur : assistant pas-à-pas
-
-Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
-
-### 📦 Importer plusieurs plans d'un coup
-
-Le bouton **📦 Importer plusieurs plans**, dans la section **🧰 Outils** de l'accueil, ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
-
-L'écran se lit en trois temps :
-
-1. **Tu choisis** tes fichiers.
-2. **Tu vois ce qui va se passer**, ligne par ligne : ce qui sera ajouté, ce qui est déjà dans ta liste, ce qui est refusé et pourquoi. Le résumé donne le poids total, ce qui sera copié dans l'app, et la place restante.
-3. **Tu lances.** Les plans entrent un par un, avec le nom en cours affiché, puis un bilan : ajoutés, ignorés, refusés.
-
-**Si un plan est déjà dans ta liste**, tu choisis une fois pour tout le lot : le laisser tel quel, le remplacer, ou garder les deux. Par défaut il est laissé tel quel — un import n'écrase rien sans que tu le demandes.
-
-> 💾 **La place est annoncée avant.** Le stockage d'un navigateur tient entre 50 et 200 Mo selon l'appareil. Si ton lot ne rentre pas, l'app refuse de commencer et te dit combien il manque. Si la place s'épuise en cours de route, elle **s'arrête net** : les plans déjà ajoutés sont gardés, et le bilan dit où ça s'est arrêté.
->
-> 📁 **« Ranger dans : »** — choisis le dossier de « Mes plans » qui recevra tout le lot (ou « ➕ Nouveau dossier… », nommé sur place). Par défaut, les plans arrivent en « Non classés ».
->
-> 💾 **« Précharger le ZIP » (case cochée par défaut, elle suit le réglage « Mémoriser le plan dans l'app au premier chargement » de ⚙️ Configuration de l'accueil)** : l'app garde le fichier, et chaque plan importé **s'ouvre depuis la liste sans que tu aies à resélectionner son ZIP**. Décoche-la si tu veux seulement remplir ta liste sans rien ranger : rien n'est copié, la place n'est plus un sujet, et le ZIP te sera demandé à la première ouverture de chaque plan (comme pour un plan restauré depuis un profil).
-
-> 🔒 **100 % local** : tout se lit et se range **dans ton navigateur**. Aucun octet n'est envoyé nulle part, et ça marche hors ligne.
-
-### 🗺️ Déposer un GeoTIFF
-
-Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tiff`) : l'image **et** son calage voyagent dans le même fichier. Choisis-le comme image de plan — dans le Générateur ou directement depuis l'écran d'accueil — et l'app fait le reste :
-
-- elle **lit le calage écrit dans le fichier** et remplit le **géoréférencement GPS** toute seule ;
-- elle en déduit l'**échelle** (px/m) et l'**emprise** du plan, affichées dans le message de confirmation ;
-- elle convertit l'image en PNG pour la suite (aucun navigateur de bureau n'affiche un TIFF), puis le tuilage et le ZIP se déroulent comme d'habitude.
-
-**Tu n'as plus à ressaisir les deux points GPS** que tu venais de poser dans QGIS.
-
-> ✅ **Ce qui est lu** : compression **LZW, Deflate ou aucune** · **8 bits par canal** · **gris, RVB ou RVBA** · image **en bandes** · calage **nord en haut, sans rotation** · coordonnées en **Lambert 93, Web Mercator ou WGS84**.
->
-> ❌ **Ce qui est refusé l'est toujours en clair**, avec ce qu'il faut changer à l'export : BigTIFF, image tuilée, canaux séparés, palette / CMJN / YCbCr, prédicteur inhabituel, calage tourné, système de coordonnées non géré. Un message te dit précisément quoi réexporter — l'app ne devine jamais à ta place.
-
-> 🔒 **100 % local** : le fichier est lu et converti **dans ton navigateur**. Aucun octet n'est envoyé nulle part.
-
-### 🗺️ Convertir un fichier SIG (QGIS…) en plan
-Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
-
-**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
-
-**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
-
-**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
-
-> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
-
-> 📐 **Lambert 93 converti automatiquement* — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
-
-> 🗺️ **Relevés de carrière : ce que l'import sait faire**
-> 
-> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
-> - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
-> - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
-> 
-> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avec une ancienne version de l'app** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
-
->
-> Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
-
-**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
-
-*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
-
-### 📄 Nouveau plan
-
-Formulaire vierge. Renseignez :
-
-- **Informations** : nom, version, auteur, **🏷️ étiquettes** (séparées par des virgules, 12 max de 24 caractères — même saisie que dans ℹ️ Infos). Elles voyagent dans le ZIP et sont **proposées** à qui l'importe : si tu as déjà posé tes propres étiquettes sur ce plan, elles restent les tiennes, même en réimportant une nouvelle version. Le champ existe aussi dans les conversions KMZ, GPX et SIG.
-- **Image principale** (obligatoire) — les **dimensions du plan sont auto-détectées** dès que vous choisissez votre fichier. Un encadré affiche les dimensions et la taille en Mo, avec des **avertissements rouges** si l'image dépasse 10 000 px de côté ou 30 Mo (risque de crash mémoire sur mobile / ZIP très lourd).
-- **Carte de collision** (optionnelle)
-
-- **Position initiale du tracker** (groupe 🧭 Tracking) — **auto-centrée** au milieu du plan (W/2 × H/2) dès que l'image principale est chargée. Vous pouvez modifier ces valeurs manuellement si vous voulez démarrer le tracker à un endroit précis. Bouton **🎯 Recentrer la position de départ** disponible pour réappliquer le centre à tout moment.
-- **Calques image** supplémentaires (légendes, annotations) — jusqu'à 10
-- **Calques de données** JSON — jusqu'à 10 (créés vides si non fournis)
-- **Paramètres de tracking** : position de départ, échelle, sensibilité
-- **Icônes & Tags** : gestionnaire dynamique
-  - Cliquez **↺ Charger défauts** pour pré-remplir avec les icônes standards
-  - Cliquez **+ Ajouter un tag** pour créer un type personnalisé
-  - Pour chaque tag, choisissez une icône personnalisée ou laissez le chemin par défaut
-  - Les tags `default` et `track` sont obligatoires (système)
-
-Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement.
-
-Cliquez sur **📦 Générer le ZIP** — l'archive est prête.
-
-### 📂 Modifier existant
-
-Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec sa configuration. Modifiez ce que vous voulez (ajouter des tags, changer les icônes, ajouter des calques, etc.) et cliquez sur **📦 Générer le ZIP** pour télécharger la version modifiée.
-
-> Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
-
-### 🎨 Image vierge
-
-Si tu veux créer un plan **from scratch** sans image source (par exemple pour dessiner uniquement des piliers / fronts de taille / tracés sur un canvas vide), tu peux générer une **image vierge**.
-
-Dans la section **🖼️ Images principales** du générateur, 2 modes radio :
-
-| Mode | Effet |
-|---|---|
-| **📷 Depuis une image** (par défaut) | Upload classique d'un PNG / JPG / WebP |
-| **🎨 Image vierge** | L'app génère un canvas vide aux dimensions et couleur que tu choisis |
-
-Quand tu sélectionnes **Image vierge** :
-
-- **Largeur** et **Hauteur** en pixels (500 min, 12 000 max — limites anti-crash mémoire mobile)
-- **Couleur de fond** :
-  - ⬜ **Blanc** : style papier — utile pour dessiner des plans architecturaux
-  - ▫️ **Gris clair** : neutre, écrit moins agressivement
-  - ⬛ **Noir** : style fond sombre (terrain dans l'obscurité, dessin trace blanche dessus)
-  - 🌫️ **Gris foncé** : entre neutre et sombre
-- Bouton **🎨 Générer l'image** : l'app crée le canvas + l'injecte automatiquement comme image principale. Les dimensions du plan se règlent en conséquence.
-
-Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **📦 Générer le ZIP** comme pour un plan normal. Une fois le plan chargé dans l'app, dessine ce que tu veux (piliers, fronts de taille, tracés, points) via les outils habituels.
-
-> 💡 **Cas typique** : un cartographe qui visite une carrière à explorer, sans plan papier existant, peut générer un plan vierge 4000×4000 noir à son arrivée, puis dessiner au fur et à mesure (avec le tracker comme repère). À la fin, le ZIP est partageable.
-
-### 📦 Importer un datalayer ZIP en un clic
-
-Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **📤 Exporter → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
-
-**Cas d'usage typique** :
-1. KARMA voit un copain qui a annoté un plan (points + tracés + zones + structures + photos) et qui exporte un `data_<plan>.zip` via la Conversion
-2. Tu copies ce ZIP sur ton appareil (Drive, AirDrop, USB…)
-3. Dans le générateur, mode **Modifier existant** OU **Nouveau plan**, tu cliques le bouton 📦 Choisir un ZIP datalayer
-4. Le ZIP est parsé → des **calques data layer sont créés automatiquement** : `points` (points du copain), `roads` (tracés), `zones` (zones), `structure` (piliers/fronts). Si le ZIP contenait des photos, elles sont **gardées en mémoire** pour être embarquées au moment de la génération.
-5. Message vert "✅ N calque(s) créé(s) : points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
-6. Tu **📦 Générer le ZIP** comme d'habitude → le plan final contient tes calques d'origine (si Modifier) + les calques importés + le dossier `data/photos/` avec les blobs
-7. Au chargement de ce plan par n'importe quel utilisateur, les photos sont restaurées automatiquement sur son appareil et apparaissent dans les popups des markers
-
-**Comportement** :
-- **Mode Nouveau** : les calques importés deviennent les calques data du plan (la liste UI est vidée et remplie avec les calques du ZIP)
-- **Mode Modifier** : les calques existants du plan source sont **préservés** ; les calques du ZIP importé s'ajoutent avec **suffixe `_imported_<N>`** si conflit d'id (= n'écrase jamais les calques d'origine). Photos IDB du plan courant **merge** avec photos du ZIP (déduplication par photoId).
-
-> 📸 **Format du ZIP datalayer** attendu : c'est exactement ce que produit la **Conversion session → data layer** quand tu coches "📸 Inclure les photos attachées" (granularité Basique ou Fine peu importe). Contient `points.json` + `roads.json` + `zones.json` + `structure.json` (selon ce qui était présent dans la session source) + `photos/_index.json` + `photos/<photoId>.jpg`.
-
-### 📸 Inclure les photos attachées au plan
-
-En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (enregistrées sur ton appareil par l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
-
-- **Cochée par défaut** : les photos IDB du plan sont embarquées dans le ZIP plan généré sous `data/photos/<photoId>.jpg`. Tu peux ainsi partager le plan complet (annotations + photos) à un autre appareil.
-- **Décochée** : le ZIP plan généré ne contient pas les photos. Plus léger en taille, mais l'utilisateur qui importe le ZIP ne récupèrera pas les photos.
-
-Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos sont **restaurées automatiquement** sur l'appareil, sous l'identifiant local du plan + un toast discret "📸 N photos restaurées depuis le plan" confirme.
-
-> ⚠️ Si tu décoches **ET** que tu as aussi importé un datalayer ZIP avec photos (cf. section précédente), seules les photos du datalayer importé seront embarquées. La case 📸 contrôle UNIQUEMENT les photos IDB du plan courant.
-
-### 🧱 Convertir en V2 tuile (performance)
-
-Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
-
-**Workflow** :
-
-La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploadé une image principale**, que tu sois en mode **Nouveau plan** OU en **Modifier existant** (pas besoin de passer par un ZIP V1 source).
-
-1. **Nouveau plan** : choisir une image principale → la case 🧱 apparaît<br>
-   OU **Modifier existant** : uploader ton ZIP V1 (la case 🧱 est dispo)
-2. Cocher la case **☑️ 🧱 Convertir en V2 tuile (performance)** (encadré violet)
-3. **Modal d'avertissement** : la conversion est lourde (CPU + RAM). Lis le message, clique **J'ai compris — Continuer** (ou **Annuler (décocher)** si tu veux y réfléchir). Voir section "PC vs mobile" plus bas.
-4. Remplir le reste du formulaire (nom, version, calques, tracking, etc.)
-5. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)"
-6. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
-7. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan)
-
-**Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
-
-**🫥 Transparence conservée** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
-
-**Trade-offs** :
-
-| ✅ Gains | ⚠️ Coûts |
-|---|---|
-| Conso mémoire massivement réduite (~16 MB max au lieu de l'image entière en RAM) | Conversion lente (1-5 min selon la taille de l'image) |
-| Idéal pour mobile (Safari iOS, gros plans qui crashent en V1) | Le ZIP final contient plus de fichiers (les tuiles) mais ~même poids total qu'un PNG/JPEG unique |
-| Navigation plus fluide au pan/zoom | Léger flash visuel au changement de niveau de zoom (swap des tuiles) |
-| Auto-crop des marges blanches | Black border visible quand on dezoome très très loin (au-delà des bords) |
-
-**Modifier un plan déjà V2** : la case est **pré-cochée** par défaut → les tuiles seront régénérées avec les nouvelles modifs. Si tu décoches, downgrade explicite V2 → V1 (les tuiles ne sont pas reportées dans le nouveau ZIP).
-
-#### 💻 PC vs 📱 Mobile pour la conversion
-
-> ⚠️ **Important** — c'est le sujet du modal d'avertissement qui apparaît quand tu coches la case.
-
-| Plateforme | Décodage image source | Recommandation |
-|---|---|---|
-| 💻 **Ordinateur** (Windows / macOS / Linux) | Aucune limite mémoire en pratique. Conversion 1-5 min selon taille. | ✅ **Recommandé** pour la génération |
-| 📱 **Mobile** (iOS / Android) | Plafonné à **~500 Mo de RAM** pour la PWA. Crash quasi-garanti sur image >50 Mo ou >8K px. | ❌ Éviter — **mais** le ZIP V2 généré sur PC s'importe sans coût sur mobile (c'est tout l'intérêt de V2) |
-
-> 💡 **Workflow recommandé** : génère le ZIP V2 une fois pour toutes sur ton PC, puis partage-le sur ton téléphone (Drive, AirDrop, etc.). Le téléphone l'importe en quelques secondes et tu profites du runtime tuilé sans coût mémoire au boot.
-
----
-
-## 🚀 Optimiser ton plan pour la performance
-
-Un plan léger se charge plus vite, navigue plus fluide et **réduit fortement le risque de crash mémoire sur mobile**. Voici les bonnes pratiques par ordre d'impact.
-
-### 1. 🖼️ Image principale — limiter les dimensions
-
-L'image base est le **plus gros consommateur mémoire**. Sur mobile, le navigateur alloue un canvas de la taille de l'image entière.
-
-| Dimensions | Comportement | Recommandation |
-|---|---|---|
-| ≤ 4 000 × 4 000 px | OK partout | ✅ Idéal |
-| 4 000 - 8 000 px | OK desktop, dézoom limité sur mobile | ⚠️ Acceptable |
-| 8 000 - 16 000 px | Risque de crash sur mobile bas/moyenne gamme | ⚠️ Découper le plan à la génération (V2 tuilé) |
-| > 16 000 px | Crash quasi-garanti sur mobile | ❌ À éviter |
-
-**Astuce** : si ton plan source est gigantesque, redimensionne à 6 000-8 000 px de côté max avec un éditeur d'image (GIMP, Photoshop, [Squoosh](https://squoosh.app/) en ligne). Tu perds un peu de détail au zoom maximum mais tu gagnes énormément en stabilité.
-
-### 2. 📦 Format de l'image — JPEG vs PNG
-
-| Format | Quand l'utiliser | Poids typique (8000×6000 px) |
-|---|---|---|
-| **JPEG** (qualité 80-90 %) | Photos, scans, plans avec dégradés | ~3-8 Mo ✅ |
-| **PNG** | Plans avec transparence ou aplats nets | ~15-50 Mo ⚠️ |
-| **WebP** | Compromis qualité/poids (Chrome/Firefox/Safari modernes) | ~2-5 Mo ✅✅ |
-
-> 💡 Pour un plan de carrière classique avec des routes dessinées par-dessus une couleur unie, le **JPEG qualité 85** divise le poids par 5 à 10 sans perte visuelle perceptible.
-
-### 3. 🗂️ Calques image — limiter le nombre
-
-Chaque calque image supplémentaire (légende, annotations, etc.) **multiplie la mémoire utilisée**. Le visiteur charge tous les calques même s'il en masque une partie.
-
-| Nombre de calques image | Recommandation |
-|---|---|
-| 1 (image base seule) | ✅ Optimal |
-| 2-3 | ⚠️ Acceptable si chacun est ≤ 2 Mo |
-| 4+ | ❌ À éviter — fusionne dans le PNG base |
-
-**Alternative** : si tu as des éléments décoratifs (légende, repères), **intègre-les directement dans l'image base** plutôt que d'en faire des calques séparés. Tu perds la possibilité de les masquer mais tu gagnes en perf.
-
-### 4. 🛣️ Routes — intégrer dans le PNG si nombreuses
-
-Les routes JSON (Principal/Secondaire/Chemin) sont rendues par Leaflet en surcouche vectorielle. Au-delà de **~50 routes**, le navigateur peut ramer au pan/zoom.
-
-**Stratégie pour les gros plans** :
-1. Trace les routes dans ton éditeur d'image (GIMP/Photoshop) **directement sur le PNG**
-2. Garde un calque JSON minimaliste avec les routes invisibles côté visuel mais utilisable par le module **🗺️ Itinéraire** (le pathfinder utilise toutes les routes du calque, **même masquées**)
-3. Dans le contrôle des couches Leaflet, **décoche le calque JSON des routes** → tu vois les routes via le PNG, l'app ne dessine pas les polylines vectorielles → gros gain perf
-4. L'itinéraire continue de fonctionner
-
-> 🎯 Cette technique permet d'avoir **des centaines de tronçons** sur le plan sans aucun impact perf au pan/zoom.
-
-### 5. 📍 Points — limiter les calques de données denses
-
-Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des markers Leaflet. Au-delà de **~500 markers visibles simultanément**, ça peut ralentir le rendu sur mobile.
-
-| Nombre de markers | Recommandation |
-|---|---|
-| ≤ 200 | ✅ OK |
-| 200-500 | ⚠️ OK desktop, prudence mobile |
-| 500-2000 | ⚠️ Sépare en plusieurs calques de données toggleables |
-| > 2000 | ❌ Considère un mode "regroupement" (clustering, future feature) |
-
-**Astuce** : sépare tes points en plusieurs calques de données (ex: `puits.json`, `passages.json`, `électricité.json`) pour que l'utilisateur puisse en masquer ceux qui l'intéressent moins.
-
-### 6. ⚡ Découpage de l'image — Auto, sauf raison contraire
-
-⚠️ **Ce réglage n'est plus sur l'écran de chargement.** Il vit dans **ℹ️ Infos** du plan,
-et **seulement pour un plan non découpé à la génération** — sur un plan V2 il n'aurait aucun effet, donc il ne
-s'affiche pas. Bonne nouvelle : il y est **mémorisé pour ce plan**, alors que l'ancien sélecteur repartait sur
-Auto à chaque démarrage.
-
-Deux choix :
-
-| Choix | Pour quel cas |
-|---|---|
-| **🔄 Auto** (défaut) | Découpe dès que l'image dépasse 4 096 × 4 096 px, ou que le fichier dépasse 60 Mo. ✅ **Le bon choix, sauf raison précise.** |
-| **💤 Désactivé** | Petit plan sur desktop puissant, quand tu veux la qualité native sans aucun ré-encodage. **⚠️ Risque de plantage sur Safari iOS au-delà de 8 000 px** — un message te prévient. **Sans effet sur un plan déjà découpé** (V2), qui utilise toujours ses morceaux. |
-
-> 🩸 **Ce qui a changé, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
-> Et « Auto » se décidait sur le **poids du fichier**, pas sur la taille en pixels : un plan de 100 Mpx bien compressé (~15 Mo) **n'était pas découpé** et pouvait faire planter l'iPhone, alors que « Qualité » l'aurait découpé. Le défaut était donc le mode le **moins** protecteur. Corrigé.
-
-> 💡 Le choix est mémorisé **par plan** : il vaut pour tous ses chargements suivants, jusqu'à ce que tu le changes. *(Auparavant, le sélecteur du chargeur ne l'était pas et repartait sur Auto à chaque démarrage.)*
-
-### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
-
-Si ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 7 optimisations agressives simultanément.
-
-> 🆕 **Trois choses à savoir** :
-> - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont pas impactés. Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
-> - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec l'option « Ne rendre que les éléments visibles » active — seul l'affichage des milliers de points des calques de données est allégé.
-> - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
-
-> ⚠️ Ces optims **ne touchent PAS à l'image** (gérée par le découpage, voir ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
-
-**Les 7 réglages individuels** (activables séparément si tu veux affiner) :
-
-| Toggle | Effet | Trade-off |
-|---|---|---|
-| 🪜 **Décimer les tracés au dézoom** | Simplifie les polylines au zoom out | Tracés moins lisses au dézoom |
-| ⚡ **Désactiver animations zoom/pan** | Transitions instantanées au lieu d'animées | Visuel plus abrupt — **reload requis** |
-| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 500) | Carrefours moins visibles |
-| 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
-| 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
-| 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
-| 🛡️ **Limiter le dézoom sur mobile** | Sur téléphone, plafonne le dézoom pour éviter un crash mémoire. **Coché par défaut** | Pas de vue d'ensemble complète sur mobile — **reload requis** |
-
-**Comment t'en servir** :
-
-- **Si l'app crashe encore** → coche **🚀 ULTRA** (active tout). Effet immédiat (sauf "animations" qui demande un reload).
-- **Si tu veux affiner** → garde ULTRA décoché et active manuellement les toggles selon ce que tu veux sacrifier. Par exemple : tu peux activer juste **🐢 Auto-save lent** et **👁️ Ne rendre que les éléments visibles** pour gagner pas mal sans rien perdre visuellement.
-- **Pour revenir au comportement normal** → décoche **🚀 ULTRA** (ça décoche tout) ou décoche individuellement.
-
-**Persistance** : les réglages sont mémorisés **pour ce plan**, sur cet appareil. Ils restent activés entre les sessions.
-
-> 💡 Combo recommandé pour les très gros plans : plan **découpé à la génération** (V2 tuilé) + 🚀 ULTRA + image source ≤ 8000 px / JPEG q85.
-
-### 7. 📱 Spécifique mobile
-
-- **iPhone PWA** (installé sur écran d'accueil) gère mieux les gros plans qu'iPhone Safari direct
-- **Android Chrome** est généralement plus tolérant qu'iOS pour la mémoire
-- En cas de crash : ⚙️ Configuration (accueil) → **🛠️ Mode Développeur** → logs détaillés pour diagnostiquer
-
-### 8. 💾 Sauvegarde régulière
-
-Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
-
-> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. La sauvegarde automatique sur cet appareil protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
-
-### Récap rapide
-
-✅ **Pour un plan optimal** :
-- Image base **JPEG qualité 85** ≤ 8 000 px de côté
-- 1 ou 2 calques image max
-- Routes **dessinées dans le PNG** + calque JSON masqué pour le pathfinder
-- Points répartis dans 2-3 calques de données toggleables
-- Gros plan : **découpé à la génération** (V2 tuilé) ; vieux mobile : **🚀 Mode ULTRA**
-
 ---
 
 ## 📚 Aide et documentation
@@ -3635,6 +2424,1211 @@ En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ Configura
 ## 🔭 Pour aller plus loin
 
 Des fonctions avancées ou réservées à des cas rares : héberger l'app sur ton propre serveur, l'édition pro, la révocation des plans, les journaux de diagnostic.
+
+### 🧩 Fonctionnalités optionnelles
+
+Quatre fonctions secondaires sont **désactivées par défaut**, pour garder l'application légère : on n'active que ce qui sert. Elles se règlent dans **⚙️ Configuration** de l'accueil, groupe **🧩 Fonctionnalités optionnelles** — ou dans **⚙️ Réglages** une fois un plan ouvert : c'est le même réglage, il vaut pour **tous les plans**.
+
+| Option | Par défaut | Ce que ça ajoute |
+|---|---|---|
+| **🎬 Replay du tracker** | désactivé | La tuile 🎬 dans le menu 🧭 Tracker : rejouer sa session de suivi, exporter la timeline en CSV |
+| **🔥 Heatmap** | désactivé | La tuile 🔥 dans le menu 🧭 Tracker : carte de densité de passage |
+| **🔋 Niveau de batterie** | désactivé | La charge restante en haut de l'écran, et les alertes sous 20 %, 10 % et 5 % |
+| **📳 Vibration haptique** | désactivé | Un retour tactile sur certaines actions |
+
+> ⚡ **Replay et Heatmap agissent tout de suite** : la tuile apparaît ou disparaît à la prochaine ouverture du menu 🧭 Tracker. **La batterie, elle, prend effet au prochain lancement** : l'écoute du capteur se met en place au démarrage de l'app, et il n'existe aucun moyen propre de la retirer en cours de route — l'app te le dit plutôt que de faire semblant.
+
+> 🔋 **Tu utilisais l'indicateur de batterie ?** Il était actif par défaut jusqu'ici ; la mise à jour qui a créé ce groupe l'a **désactivé une fois** chez tout le monde. Recoche-le : ton choix est ensuite conservé.
+
+> 🚨 **Le Mode Secours garde sa heatmap d'activité** (contexte d'un scénario) même quand l'option 🔥 Heatmap est décochée : seule la tuile du menu Tracker disparaît.
+
+#### ⛔ « Capteur refusé »
+
+Si la batterie ou la vibration s'affiche **grisée** avec « Capteur refusé par iOS » ou « par cet appareil », ce n'est ni un bug ni un oubli : **ton système ne donne pas ce capteur aux pages web**. Apple ne fournit ni la vibration ni le niveau de batterie à un site, même installé en application.
+
+> 💡 Avant, ces options étaient simplement **cachées** — impossible de savoir si elles n'existaient pas ou si le téléphone les refusait. Elles s'affichent maintenant, avec la raison.
+
+#### 🎬 Replay de session tracker
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
+
+Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
+
+**Comment ça marche** :
+
+- Pendant que tu fais du tracking, l'app enregistre en interne une **timeline** : pour chaque pas PDR appliqué, chaque recalage manuel, et l'instant de démarrage, elle stocke `(timestamp_epoch_ms, x_plan, y_plan, type)`.
+- Au clic sur 🎬, une modale plein écran s'ouvre avec :
+  - **Slider timeline** (gauche → droite = début → fin)
+  - Boutons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
+  - Sélecteur de **vitesse** : 0.5× · 1× · 2× · 5× · 10×
+  - Bouton **💾 Export CSV**
+  - Bouton **⛶** pour basculer en mode compact (bottom sheet) qui libère la carte
+- À l'appui sur **▶️ Play**, la modale **bascule automatiquement en mode compact** — tu vois la carte en grand pendant que le marker jaune rejoue tes pas. Le trail (ligne) s'allonge au fur et à mesure.
+
+**Raccourcis clavier** :
+
+| Touche | Action |
+|---|---|
+| Espace | Play / Pause |
+| ← | Reculer de 1s |
+| → | Avancer de 1s |
+| Échap | Fermer la modale |
+
+**Bouton 💾 Export CSV** produit un fichier `.csv` à 5 colonnes (ou 6 en M-LVL) :
+
+```
+timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
+```
+
+- `type` = `start` (démarrage tracking), `pdr` (pas PDR appliqué), `recalage` (recalage manuel)
+- Ouvrable dans Excel / LibreOffice / Numbers / Python pandas / R / etc.
+
+**Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
+
+**Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
+
+#### 🔥 Heatmap — densité de passage
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
+
+Le bouton **🔥 Heatmap** dans le menu **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
+
+> 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
+
+##### 🗂️ 6 sources cochables (combinables)
+
+Tu choisis ce qui contribue à la chaleur affichée :
+
+| Source | Contenu |
+|---|---|
+| 🧭 **Tracker timeline** | Tous les points de ta session de tracking (filtré : skip recalages = téléport, skip starts, skip gaps > 5 min) |
+| 📍 **Points session** | Tes points ajoutés via l'éditeur |
+| 🛣️ **Tracés session** | Tes routes (Principal / Secondaire / Chemin) tracées en session |
+| ⬛ **Zones session** | Tes zones (eau / remblais / effondrement / inaccessible) |
+| 🏛️ **Structures session** | Tes piliers / murs / fronts |
+| 📊 **Calques de données** | Tous les éléments embarqués dans les data layers du plan (points + roads + zones + structures + fronts) |
+
+##### 🎚️ Réglages live
+
+Deux sliders en bas de la modale, mise à jour temps réel :
+
+| Slider | Plage | Effet |
+|---|---|---|
+| **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
+| **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
+
+##### 🏗️ Filtre par niveau M-LVL
+
+Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
+
+- **Chips par niveau** : une pastille cliquable par niveau disponible dans le plan (`Niv -2`, `Niv -1`, `Niv 0`, `Niv 1`...)
+- **Pré-sélection** : les niveaux **actuellement visibles** sur la carte sont pré-cochés automatiquement
+- **Bouton ⇅ Tout** : (dé)coche tout d'un clic
+- **Effet** : la heatmap restreint la collecte aux items qui appartiennent aux niveaux sélectionnés. Pratique pour générer une heatmap dédiée au RDC uniquement (par exemple), ou pour comparer la densité entre 2 étages sans pollution croisée.
+
+> 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
+
+> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout.
+
+##### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
+
+- **Interpolation le long des segments** : pour les tracés / zones / structures polylines / timeline tracker, l'app distribue des points de chaleur **le long du chemin** au lieu d'un seul point par sommet. Résultat : tu vois de vraies **traînées continues**, pas des "perles" espacées.
+- **Normalisation par histogramme** : le pixel le plus dense de l'image = rouge pur, le moins dense = bleu pur, gradient lissé entre. **Auto-adaptatif** : pas besoin de régler manuellement les seuils, ça marche aussi bien sur un plan de 20 points que sur un plan de 5000.
+- **Filtre timeline tracker** : skip les téléportations (recalages), les starts, et les gaps > 5 min (pause sans bouger ne doit pas générer de chaleur fantôme).
+
+##### 💡 Cas d'usage
+
+- **Identifier les axes principaux** d'une carrière : ce qui ressort rouge = par où tu passes vraiment, vs ce qui ressort bleu = exploré une fois
+- **Audit de complétude** : zones bleues = sous-cartographiées → prochain objectif terrain
+- **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
+
+> ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
+
+#### 🪫 Indicateur de batterie
+
+> 🧩 **Fonctionnalité optionnelle** — à activer dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles.
+
+L'app surveille en temps réel le niveau de batterie du téléphone (quand le navigateur expose cette info) et affiche un indicateur compact à 3 endroits :
+
+| Endroit | Apparence |
+|---|---|
+| **En-tête** de l'interface (à côté des compteurs session) | Chip compact `⚡ 78%` (en charge, vert) ou `🪫 23%` (en décharge, couleur selon niveau) |
+| **Footer** de la modale 📋 Session active | Ligne `🔋 État · 🪫 23% · Discharging` |
+| **Bloc 🔋 ÉTAT** du mode urgence 🚨 | Label long `🪫 23% · décharge` |
+
+##### Niveaux et couleurs
+
+| % | Couleur | Comportement |
+|---|---|---|
+| ≥ 50 % | Vert / neutre | OK |
+| 20-49 % | Jaune-orange | Surveille |
+| 10-19 % | Orange foncé + toast `🪫 Batterie faible — pense à recharger` (1 fois) |
+| 5-9 % | Rouge + toast `🪫 Batterie critique — sortie recommandée` (1 fois) |
+| < 5 % | Rouge pulsant + toast `🚨 Batterie critique — moins de 5%` (1 fois) |
+
+Chaque seuil n'envoie son toast **qu'une seule fois** par cycle de décharge (pas de spam si tu oscilles autour de 10 %, 12 %, 9 %, etc.). Le compteur de seuils est reset dès que tu repasses en charge ou que tu remontes au-dessus de 50 %.
+
+##### Compatibilité navigateur
+
+L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est **plus disponible partout** :
+
+| Navigateur | Support |
+|---|---|
+| Chrome Android / PC | ✅ Oui |
+| Edge Android / PC | ✅ Oui |
+| Samsung Internet | ✅ Oui |
+| Safari iOS / macOS | ❌ Non (l'API a été retirée pour des raisons de privacy / fingerprinting) |
+| Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
+
+> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. **Le mode urgence 🚨 ne l'affiche pas non plus** (v1.97.11) : sans capteur il n'y a rien à montrer, et un « ? » à la place d'un niveau de batterie sur l'écran qu'on ouvre quand elle lâche ne rassure personne. Le reste de l'état (tracker, boussole) est intact. Même chose si tu décoches ⚙️ **🔋 Niveau de batterie**.
+
+#### 📳 Vibration haptique
+
+Une petite vibration confirme les actions : étape d'itinéraire atteinte, recalage, validation d'une étape, alertes du Mode Secours (équipe en retard, membres manquants).
+
+> 🚨 **Les alertes de survie vibrent toujours**, même option coupée : sortie d'urgence trouvée ou introuvable, alerte critique diffusée. Tout le reste — y compris le Mode Secours — suit ton réglage.
+
+> 📵 **iOS ne donne pas ce capteur aux pages web** : sur iPhone, l'option s'affiche grisée (voir « Capteur refusé » plus haut).
+
+### 🧭 Navigation intelligente (caler la position sur les tracés)
+
+Sous terre, le GPS satellite ne fonctionne pas : le tracker estime votre position avec **vos pas + la boussole**, ce qui **dérive** avec le temps. Si votre plan contient un **réseau de tracés**, la **navigation intelligente** recale en continu votre position estimée **sur la galerie la plus proche** pour compenser cette imprécision.
+
+**Activation** : ⚙️ Configuration → **« 🧭 Navigation intelligente »** → cochez « Caler la position sur les tracés ». **Désactivée par défaut**, réversible à tout moment.
+
+- Quand vous **avancez**, la position suit la galerie ; aux **intersections**, la branche qui correspond à votre **cap** (direction de marche) est choisie.
+- Si vous **sortez des galeries tracées** (zone pas encore cartographiée), retour **automatique** au mode classique, puis recalage dès que vous revenez près d'un tracé.
+- **Sans réseau de tracés** sur le plan, l'option est **sans effet**.
+- Réglage fin possible (tolérance de calage) — demandez si vous voulez l'ajuster.
+
+> 💡 Le **recalage manuel (📍)** reste votre meilleur ami : dès que vous reconnaissez un repère, recalez — la navigation intelligente repart alors d'une base saine.
+
+> 🧭 **Votre tracé est conservé** : il est **redessiné au rechargement** de l'application (reconstruit depuis l'historique de la session), et le récap **📊 Statistiques** affiche votre **distance parcourue + nombre de pas**.
+
+### 🧭 « Plan orienté » — la carte tourne avec toi
+
+Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** change la façon dont la carte se comporte pendant le suivi : au lieu que l'icône pivote sur un plan fixe, **c'est la carte qui tourne**, pour que ta direction de marche pointe toujours vers le haut de l'écran (comme un GPS de voiture).
+
+- **Désactivé par défaut**, et ton choix est retenu sur cet appareil.
+- Ça ne tourne **que pendant le suivi** : à l'arrêt du tracker, la carte revient droite.
+- La carte **te suit** : si tu la déplaces à la main pour regarder ailleurs, un bouton **🎯 Recentrer** apparaît pour revenir sur toi (il apparaît aussi sans ce mode, dès que ta position sort de l'écran).
+- Les textes restent lisibles : les mesures et les fiches de points ne se retournent pas avec la carte.
+- La carte se remet droite toute seule dès que tu prends un outil qui demande de cliquer (mesure, dessin, recalage) ou que tu ouvres un mode plein écran.
+
+⚠️ La rotation suit ta boussole : **près de grandes masses métalliques** (rails, ferraillage, structures), elle peut devenir approximative — comme le reste du tracker.
+
+### 🔐 Code d'accès local (PIN / Face ID)
+
+Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
+
+> ⚠️ **C'est une barrière d'usage, pas un chiffrement des données.** Le verrouillage empêche l'ouverture normale de l'app, mais un attaquant motivé peut le contourner avec les outils de développement du navigateur. Les photos et sessions restent stockées en clair dans le navigateur. C'est exactement le même niveau de sécurité que le code d'accès communautaire existant — assumé honnêtement.
+
+#### Activer le PIN
+
+1. Depuis la page d'accueil (chargeur) → bouton **⚙️ Configuration** en haut à droite
+2. Descends à la section **🔐 Code d'accès local**
+3. Clique **🔐 Activer le code d'accès**
+4. Choisis ton code (4 à 6 chiffres) puis confirme-le une seconde fois
+5. Si ton appareil supporte la biométrie (iPhone Face ID, iPad Touch ID, Android empreinte, Windows Hello…) une demande "Activer aussi la biométrie ?" apparaît. Accepter = au prochain démarrage tu déverrouilles d'un coup d'œil ou d'un doigt (sans saisir le code)
+
+> 📝 **Note bien ton code** quelque part de sûr. Aucune récupération n'est possible en cas d'oubli — tu serais obligé de tout réinitialiser (perte session + plans non mémorisés).
+
+#### Au prochain démarrage de l'app
+
+L'écran de verrouillage apparaît automatiquement après le splash :
+
+- **Avec biométrie** : la demande Face ID / Touch ID apparaît immédiatement. Tu peux aussi annuler et saisir ton PIN à la place.
+- **Sans biométrie** : tu saisis directement ton PIN via le clavier numérique. Le dernier chiffre saisi est visible 0,5 s puis remplacé par ● (pattern iOS).
+
+#### Modifier le PIN
+
+⚙️ Configuration → 🔐 Code d'accès local → **✏️ Modifier le code**. Validation par biométrie OU code actuel, puis saisie du nouveau PIN 2 fois.
+
+#### Désactiver le PIN
+
+⚙️ Configuration → 🔐 Code d'accès local → **🔓 Désactiver**. Confirmation par biométrie OU code actuel. L'app ne demande plus de code au démarrage suivant.
+
+#### Verrou temporaire : 5 codes faux
+
+Après **5 codes incorrects à la suite**, l'app se verrouille **temporairement** : 10 min la première fois, puis 1 h, 6 h et 24 h à chaque nouvelle série de 5 erreurs. Un compte à rebours s'affiche et le pavé revient tout seul à la fin du délai ; un code juste remet tout à zéro. Il n'y a **aucun bouton de reset** sur cet écran et aucune récupération du code en cas d'oubli — si tu l'as vraiment perdu, il reste **💥 Tout réinitialiser** depuis l'écran d'accueil (perte de la session en cours et des plans non mémorisés). Le délai suit l'horloge du téléphone.
+
+> Les biométries ratées ne comptent **pas** dans les 5 tentatives — la spec WebAuthn gère son propre lockout natif côté device. Tu peux annuler un Face ID par erreur sans craindre d'épuiser tes essais.
+
+### 🔒 Mode hors-ligne strict (opt-in)
+
+Coche cette case si tu veux une **garantie active** côté navigateur : toute requête sortante non whitelistée sera **bloquée AVANT d'atteindre le réseau** (le navigateur reçoit une exception, pas un timeout).
+
+Une fois activé :
+- Un badge orange `🔒 MODE HORS-LIGNE STRICT ACTIF` apparaît dans le footer de la page d'accueil
+- L'app continue de fonctionner normalement (annotations, calculs, exports PNG/KMZ, navigation, multi-niveau, itinéraire, tracker…)
+- Seuls les pings de mise à jour vers Internet sont coupés (mais l'app reste utilisable avec sa version actuelle)
+
+Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'à ce que tu le décoches ou que tu fasses un reset complet.
+
+> 🛡️ **Niveau de garantie** : c'est une **triple protection** :
+> 1. L'archi PWA rend la collecte techniquement impossible (pas de backend)
+> 2. Le module d'audit JS logue + peut bloquer côté client
+> 3. La Content Security Policy du serveur demande au navigateur lui-même de refuser toute connexion non autorisée
+>
+> Tu n'es jamais obligé de croire l'auteur sur parole : tout est vérifiable.
+
+### 🚨 Mode Secours
+
+Outil opérationnel pour **assigner méthodiquement des équipes de secours** à des zones de recherche d'un plan cataphile. Cas d'usage : une personne est portée disparue dans un réseau dense, plusieurs équipes arrivent en surface, le PC secours doit coordonner « qui ratisse quoi » avec un briefing clair et imprimable.
+
+> 💡 **Différent du ⛑️ Je suis perdu** : ⛑️ c'est *toi* qui es perdu, tu cherches à te retrouver. **🚨 Mode Secours** c'est *quelqu'un d'autre* qui est perdu, tu organises les équipes qui vont le chercher.
+
+#### Accès
+
+Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté de ⛑️ Je suis perdu et 🚨 Panique. Fond rouge urgence cohérent.
+
+#### Workflow
+
+1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, les plus anciens sont effacés — jamais un scénario en cours, celui que tu as ouvert, ni une intervention terminée dont aucun rapport n'est encore sorti de l'appareil).
+2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
+3. **Édition free-form** — 3 sections accordéon :
+   - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
+   - **🚨 Équipes** : ajoute autant d'équipes que nécessaire. Pour chaque équipe : nom (auto Alpha/Bravo/Charlie...), couleur (palette OTAN 10 couleurs fixe), membres (CSV), entrée/sortie (clic carte), zone (polygone OU sélection de tracés), itinéraire suggéré (calc auto via Pathfinder)
+   - **📤 Export** : PDF imprimable (1 page/équipe) + KMZ géolocalisé (cross-app)
+
+#### Modes interactifs map
+
+| Bouton | Action |
+|---|---|
+| 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
+| 🚪 Sortie | 1 clic carte = capture la position de sortie |
+| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic : la galerie la plus proche, parmi les niveaux affichés, est prise (re-clic = retirer, surlignée en rouge). Les galeries du plan sont retrouvées à l'identique sur tout téléphone qui a le même plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur celui-ci. Les calques masqués restent sélectionnables |
+| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée selon les réglages **⏱️ Durées estimées** du plan de secours (vitesse de fouille 1,5 km/h et pause 0 par défaut, modifiables) |
+
+> 🔁 **Pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu modifies l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a déjà été saisi (statut, observations, photos) reste sur la même étape, même si deux étapes portent le même nom. Retirer une étape déjà renseignée demande une confirmation, et c'est **refusé** si elle signale « Aide demandée » ou « Victime trouvée » : change d'abord son statut. Remise plus tard **dans la même phase**, l'étape retrouve ce qui y avait été saisi (après un changement de phase, elle repart vide ; ses saisies restent dans l'historique de la phase close). Si une équipe signale « Aide demandée » ou « Victime trouvée » sur une étape que tu avais retirée entre-temps, l'import de son rapport **remet le point dans son parcours**, à sa place, et te l'annonce en rouge ; si le point ne peut pas être remis (équipe qui n'est plus dans la phase en cours), l'alerte rouge s'affiche quand même. ⚠️ **Après une mise à jour de l'application, réimporte le plan sur chaque téléphone avant l'intervention** : un téléphone qui avait importé le plan avec une ancienne version (avant la v1.98.5) envoie des rapports que le PC ne peut pas fusionner. **Relancer** un plan terminé efface l'intervention précédente, photos comprises : une confirmation le rappelle, exporte son rapport avant. « Tous les POI de la zone » ajoute les étapes de proche en proche, pour éviter les allers-retours.
+
+> 🗺️ **Sur la carte, pendant l'intervention** : en **lançant le plan en mode équipe**, tu es **placé à l'entrée de ton équipe** — automatiquement si ta position n'était pas encore confirmée, sinon l'app te le propose (« Me placer à l'entrée » / « Garder ma position »). Au lancement, **un seul message** résume tout (plan lancé, placé à l'entrée, plan pas disponible hors-ligne) et ne bloque plus les boutons dessous ; relancer un scénario déjà joué repart de zéro (plus de faux retards hérités de la veille). Fermer la fenêtre du Mode Secours ne retire plus rien — ta zone et ton tracé restent affichés (l'équipier voit son équipe, l'opérateur toutes), même après un rechargement. En bas de l'écran, une pastille rouge **« 🚨 Secours · Alpha · 3/8 › »** rappelle que l'intervention tourne et où tu en es : un toucher te ramène **directement aux étapes** à valider. En préparation : les équipes se **replient** (▾/▸ ou « Tout replier ») ; en dessinant une zone, celles des autres équipes s'affichent en pointillé pour caler les limites ; toucher un POI pour choisir l'entrée, la sortie ou une étape **le prend comme point** (sa fiche ne s'ouvre plus) ; un point sans nom s'affiche en **coordonnées GPS** si le plan est géoréférencé ; « Auto : 1 équipe par niveau » ignore les niveaux vides, et les listes de niveaux marquent « (vide) » ceux où il n'y a rien (toujours choisissables).
+
+> 🚒 **Ce que le terrain a changé (v1.98.24)** : **🚑 Évacuer** propose aussi les **accès de tes équipes** (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé), classés par distance réelle, et plus seulement les sorties taguées du plan. L'opérateur voit en tête **« X engagés · Y sous terre · Z manquants »** et est prévenu au lancement des équipes **sans effectif** ; à la rentrée, le nombre de **remontés n'est plus prérempli** (il faut compter). Chaque équipe peut avoir une **heure de retour impérative** (fiche d'équipe) qui prime sur la durée estimée, et le chef se saisit même sans liste de membres. Les durées distinguent la **vitesse d'approche** (hors zone) de la **vitesse de fouille** (dans la zone) et comptent les raccords à vol d'oiseau. **Valider une étape recale ta position** sur elle (sans rien demander à moins de 30 m, avec une question au-delà ; jamais pour « Bloqué » ou « Demi-tour ») et **« Suivre mon parcours » démarre le suivi**. Une étape a **un seul numéro** partout (E, 1…N, S) ; passer à la suivante sans statut la note **« Passée, non renseignée »** (plus RAS). Au calcul, **toutes les étapes à plus de 25 m d'une galerie** sont listées, et le rappel reste sur la fiche. L'**écran XL** affiche aussi les longs itinéraires. Le briefing pompiers dit **quel accès c'est et s'il faut l'ouvrir**, et imprime chef, effectif et retour impératif.
+
+> 📊 **Couverture honnête (v1.98.25)** : le bloc **📊 Couverture** donne, **par niveau**, la longueur de galeries, la part **dans une zone**, la part **sur un parcours** (galeries qu'un itinéraire d'équipe emprunte vraiment : c'est ce qui sera fouillé) et la longueur affectée à deux équipes. Sur un réseau réel, « 86 % dans une zone » peut n'être que « 24 % sur un parcours ». **🗺️ Surligner les galeries hors parcours** les montre en rouge sur la carte (niveau affiché) pour préparer la phase suivante ; un second clic les retire. Sur un plan multiniveau, une zone **vaut au niveau où tu l'as dessinée** (case « Zone sur tous les niveaux » sur la fiche d'équipe pour l'étendre), et le calcul d'itinéraire prévient quand des galeries d'un autre niveau passent sous la zone sans qu'aucun parcours n'y aille.
+
+> 🚑 **Victime, retards et rappel** : une étape passée en **« Victime trouvée »** donne une **position** (celle de l'étape, niveau compris) — **📍 Préciser sur la carte** l'ajuste, **🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime, et un **✚ rouge** la marque sur la carte, pour tous. L'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier. Chaque équipe a son **heure de départ** (**▶️ Départ**, sinon le lancement) et son **heure de retour prévue** (départ + durée estimée) : **orange** passé l'heure, **rouge** après la marge (30 min par défaut, réglable dans ⏱️ Durées estimées) — les équipes en retard remontent en tête, la pastille du bas change de couleur, un message et une vibration préviennent. **✅ Rentrée** arrête le chrono. **📢 Rappel général** (ou 📢 Rappeler, par équipe) marque les équipes encore sous terre comme rappelées, avec l'heure. ⚠️ **L'app ne prévient personne** — il n'y a pas de réseau sous terre : transmets l'ordre par radio ou à la voix. Départ, rentrée, rappel et position précisée voyagent dans le rapport d'équipe.
+
+> 🧭 **Guidage pas à pas du parcours** : dans la vue de ton équipe, **🧭 Suivre mon parcours** transforme le parcours en itinéraire de l'app — le bandeau de guidage (« Dans 40 m, tourner à gauche »), la feuille de route et l'écran XL te mènent d'étape en étape (active le suivi 🧭). Les étapes que tu valides sont cochées sur l'itinéraire ; si tu t'écartes, **Recalculer** repart d'ici vers la **prochaine étape non faite**, en contournant toujours les zones des autres équipes. En arrivant sur une étape, un message et une vibration te préviennent, et la pastille 🚨 t'ouvre directement cette étape. Le **PDF de briefing** imprime aussi, pour chaque équipe, sa **feuille de route** carrefour par carrefour (changements de niveau compris) — calcule l'itinéraire de l'équipe pour l'obtenir.
+
+> 👥 **Chef, effectif, remontés et main courante** : chaque équipe a un **👤 chef** (choisi parmi ses membres) et un **effectif**. À **✅ Rentrée**, l'app demande **combien sont remontés** : en dessous de l'effectif, une **alerte rouge « N personne(s) manquante(s) »** reste affichée (et la pastille du bas passe au rouge) tant que le compte n'est pas corrigé. La **📜 main courante** (vue opérateur) note tout, heure par heure : lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes propres notes (appel radio, décision). Elle voyage dans les rapports d'équipe et s'imprime en annexe du rapport. Le **rapport du secouriste libre** s'importe désormais comme celui d'une équipe : ses notes rejoignent la main courante, à leur heure.
+
+> 🗂️ **Préparer et relancer** : à la clôture d'une phase, le **parcours prévu** de chaque équipe est gardé — replanifier la phase suivante ne l'efface plus, et le rapport affiche le parcours de chaque phase. Dans la vue édition, le bloc **📊 Couverture** (calculé à l'ouverture) donne la **part des galeries couvertes** par les zones, les **POI situés dans la zone d'une équipe mais hors de son parcours**, et les **POI visités par plusieurs équipes** — une aide à la lecture, rien n'est affecté automatiquement. Au lancement, l'app te **prévient si le plan n'est pas entièrement disponible hors-ligne** sur l'appareil (plan serveur non téléchargé). Dans la vue de l'équipe, trois raccourcis : **🚪 Sortie d'urgence**, **🆘 Écran XL**, **⛑️ Je suis perdu** — absents, comme « Suivre mon parcours », quand l'opérateur de surface **prend la main** pour relayer une équipe : ils agiraient sur son propre appareil.
+
+#### Visualisation carte
+
+Bouton **🗺️ Voir sur carte** dans le header de l'édit. Affiche pour chaque équipe (couleur dédiée) :
+- Zone polygone (fillOpacity 30 %) OU halo couleur sur les tracés sélectionnés
+- Marker 📍 Entrée (cercle border vert + fill couleur équipe)
+- Marker 🚪 Sortie (cercle border rouge + fill couleur équipe)
+- Itinéraire suggéré (polyline dashed couleur équipe)
+
+Auto-refresh à chaque modif. Re-cliquer le bouton pour masquer.
+
+#### Multi-scénarios par plan
+
+Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan : au-delà, le plus ancien est purgé automatiquement — sauf un scénario en cours, celui que tu as ouvert, le plus récent, ou une intervention terminée dont aucun rapport (PDF ou fichier) n'est encore sorti de l'appareil.
+
+#### Exports
+
+**📄 PDF imprimable** : 1 page A4 portrait par équipe (une 2e si la liste des étapes est longue) avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
+
+**🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
+
+Les sections ci-dessous détaillent les fonctionnalités avancées : intégrations cross-app (KML, Lost Mode, heatmap, etc.), exploitation terrain temps réel (vues Live par rôle, statuts, rapports), et consolidation cross-device (import de rapports d'équipiers).
+
+> 💡 **Transmettre aux équipes** : l'opérateur exporte le scénario (**📤 Export .mkmsec.json**) et l'envoie à chaque équipe, qui l'importe sur son téléphone. Au retour, chaque équipe renvoie son rapport (**`.mkmsec.report.json`**), que l'opérateur importe.
+
+> 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
+
+### 🚨 Mode Secours — Multi-phases
+
+Un scénario peut **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
+
+> 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique au comportement précédent. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
+
+**🔧 Créer et gérer les phases (vue Edit du scénario)** :
+
+- Section **📋 Phases (N)** sous la section Équipes
+- Bouton **➕ Ajouter une phase** → modale création :
+  - Saisis un nom (ex : *« Phase 2 — Chambres Est »*)
+  - Coche les **équipes participantes** à cette phase (modèle hybride : tes équipes sont définies une seule fois au scénario, puis tu coches case par case "participe à cette phase")
+- Bouton ✏️ pour renommer une phase ou modifier la sélection d'équipes
+- Bouton 🗑️ pour supprimer (refusé si c'est la dernière phase, si elle est active dans l'exécution, ou si elle a déjà été démarrée → l'historique est préservé)
+
+**🏷️ Badge sticky dans les 3 vues Live** : un badge ambré « **📋 Phase 1 1/N** » apparaît dans le header des vues Équipe / Opérateur / Secouriste libre dès qu'il y a 2 phases ou plus. Affiche le nom de la phase active + sa position.
+
+**✓ Terminer une phase + debrief (Opérateur uniquement)** :
+
+1. Pendant la phase active, le footer Live Op affiche un nouveau bouton **« ✓ Phase terminée »** ambré (visible seulement si multi-phase)
+2. **Auto-détection** : dès que **toutes les équipes participantes ont marqué leur étape Sortie comme terminée**, le bouton passe en **vert pulsant** + un toast assistant t'avertit (« ✅ Toutes les équipes sont sorties — la phase est prête à clore »). L'Op garde la décision finale.
+3. **Clic « ✓ Phase terminée »** → modale debrief : textarea libre (5000 caractères max) pour saisir les enseignements de la phase (équipes rentrées, points trouvés, zones à explorer en priorité, contraintes apparues). Ce debrief sera intercalé dans le rapport final entre les sections de chaque phase.
+4. **Valide « ✓ Terminer la phase »** → la phase actuelle est **archivée** (jamais d'écrasement, historique préservé)
+5. **Si une phase suivante existe** → enchaînement automatique sur modale **« 🚀 Démarrer phase X+1 ? »** avec récap des équipes participantes
+6. **Tu confirmes** → la nouvelle phase démarre, les étapes des équipes participantes sont **reconstruites depuis leur parcours ACTUEL** (donc si tu as modifié `entrée/sortie/intermédiaires` d'une équipe entre P1 et P2, les nouvelles étapes en tiennent compte)
+7. **Si aucune phase suivante** → une confirmation « Arrêter complètement le plan ? » (équivalent ⏹️ Terminer le plan)
+
+**🔍 Garde-fous historique** :
+
+- Clore une phase ne supprime **JAMAIS** d'étapes — elles sont archivées telles quelles
+- Une phase déjà démarrée ne peut plus être supprimée depuis l'UI (filet de sécurité)
+- Une phase active dans l'exécution ne peut pas être supprimée (passe par « ✓ Phase terminée » d'abord)
+- Le toast d'auto-détection ne se répète pas (un seul affichage par phase)
+
+> 💡 **Modèle hybride équipes ↔ phases** : tes équipes sont définies **une seule fois** au scénario (avec membres, couleur OTAN, parcours). La participation à chaque phase est gérée par checkbox dans la modale phase. Une même équipe peut participer à plusieurs phases successives — au passage de phase, ses étapes sont reset selon son parcours actuel (donc tu peux modifier le parcours entre P1 et P2 pour adapter à ce qui a été découvert).
+
+> 💡 **Bouton « ➕ Ajouter une phase » aussi disponible à chaud** depuis le footer Live Op (pendant l'exécution), pas seulement depuis la vue Edit. Pratique quand le debrief de P1 fait apparaître le besoin d'une P3 imprévue.
+
+### 🚨 Mode Secours — Intégrations cross-app
+
+Ces intégrations font du Mode Secours un outil de coordination opérationnelle complet :
+
+#### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
+
+Le KMZ exporté contient un Folder racine `🚨 Secours` parfaitement structuré pour les apps tierces :
+
+```
+📁 Secours — Recherche Marc 26/05
+   ├── 📁 🚨 Équipe Alpha
+   │ ├── 📁 📍 Points (5) ← toggle ON/OFF dans Google Earth
+   │ ├── 📁 ⬛ Zone de recherche
+   │ └── 📁 🗺️ Itinéraire
+   └── 📁 🚨 Équipe Bravo (idem)
+```
+
+- Plan d'arrière-plan en GroundOverlay 60% opacity (lecture simultanée plan + zones)
+- Auto-calc des itinéraires manquants AVANT l'export (1 clic = KMZ complet)
+- 43 styles couleur OTAN (10 équipes × 4 catégories + 3 styles fixes entrée/sortie/boucle)
+
+#### ⛑️→🚨 Workflow Lost Mode → Secours
+
+Dans la modale ⛑️ Mode urgence "Je suis perdu", nouveau bouton :
+
+```
+🚨 Lancer un plan de secours (équipes + zones)
+```
+
+Au clic, l'app **crée automatiquement un scénario Mode Secours** avec :
+- Nom auto `Recherche - 26/05/2026 14:32`
+- Heure d'incident calculée depuis le temps écoulé du Lost Mode
+- Dernière position connue + zone d'incertitude (rayon + cercle pointillé sur la carte)
+- Notes auto avec vitesse de marche, rayon, indices saisis
+
+→ Workflow naturel : tu cherches quelqu'un → tu lances Lost Mode → tu cliques 🚨 → tu coordonnes les équipes.
+
+#### 🚫 Anti-chevauchement entre équipes
+
+Quand tu calcules l'itinéraire d'une équipe, les **waypoints + zones des autres équipes** deviennent automatiquement des "préférences éviter" pour Pathfinder. Résultat : les itinéraires se contournent au lieu de se croiser, pas de relais involontaire.
+
+Si vraiment pas le choix (passage unique partagé), toast warn `⚠️ Itinéraire traverse N point(s) d'autres équipes — vérifie les chevauchements`.
+
+#### 🔥 Heatmap d'activité dans Mode Secours
+
+Nouveau bloc orange "🔍 Outils d'analyse" dans la section Contexte avec bouton **🔥 Afficher la heatmap d'activité**. Visualise les zones où le tracker a enregistré du passage → utile pour identifier les zones probables à fouiller en priorité.
+
+> 🧩 Ce bloc reste disponible **même si l'option 🔥 Heatmap est désactivée** : elle ne retire que la tuile du menu Tracker.
+
+Si le disparu utilisait MyKTAMap et a exporté sa session avec timeline tracker, la heatmap montre directement où il a passé du temps.
+
+#### 🏗️ Auto-création 1 équipe par niveau (M-LVL)
+
+Sur les plans multi-niveau, bouton conditionnel **🏗️ Auto : 1 équipe par niveau (N)** dans la section Équipes. Crée auto N équipes nommées `Niveau RDC / +1 / -1...` avec couleurs auto-cyclées. Tu poses ensuite zones + waypoints sur chaque niveau séparément en changeant le niveau actif via la pastille M-LVL topleft.
+
+#### ⭐ Favoris en accès rapide
+
+Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent en chips cliquables (max 8) AU-DESSUS de la recherche autocomplete. 1 clic = waypoint appliqué (skip search + clic carte).
+
+Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
+
+#### 🛑 Pause entre les arrêts (itinéraire)
+
+Nouvelle section dans la modale 🗺️ Itinéraire :
+
+```
+🛑 Pause entre les arrêts
+☑️ Inclure une pause entre chaque arrêt intermédiaire
+   Durée par pause : [15] min
+```
+
+Default checked + 15 min (= comportement préservé). ⚠️ Depuis la v1.98.11, cette pause ne concerne **plus** le Mode Secours : chaque plan de secours a ses propres réglages (bloc **⏱️ Durées estimées** : vitesse de fouille et pause par étape), transmis aux équipes avec le plan.
+
+> ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
+
+### 🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes
+
+Le Mode Secours est intégré avec la Vue OSM pour fournir aux **secours externes** (pompiers, GRIMP, SDIS) tout ce qu'il leur faut pour intervenir sur le site sans connaître les lieux.
+
+#### 🚪 Tag « Point d'entrée du plan »
+
+Nouveau tag built-in disponible dans la catégorie **🚨 Secours** de la légende et de l'éditeur de POI. Marque la (les) entrée(s) principale(s) du site pour les secours :
+
+- Icône SVG vectorielle (porte jaune sur fond noir)
+- Apparaît automatiquement dans le PDF Briefing pompiers (section « POI critiques »)
+- Visible sur la Vue OSM aussi (avec sa géoréférence GPS)
+
+> Pour taguer un POI : édite-le → menu Tag → catégorie « 🚨 Secours » → « 🚪 Point d'entrée du plan ». Tu peux avoir plusieurs entrées (entrée nord/sud/etc.).
+
+#### 📍 GPS surface des équipes
+
+Dans la fiche d'une équipe (Mode Secours → édition équipe), nouveau champ **📍 GPS surface** :
+
+```
+📍 GPS surface : [48.8566, 2.3522 ]
+                  ↑ format : lat, lng (décimal WGS84)
+```
+
+Renseigne la position GPS du PC secours, du lieu de rendez-vous avec les pompiers, ou tout point d'intérêt en surface lié à cette équipe. Optionnel.
+
+→ Cette donnée alimente le **PDF Briefing pompiers** (lien OSM clickable par équipe) et reste dans l'export `.mkmsec.json`.
+
+#### 🌍 Vue OSM accessible partout dans Mode Secours
+
+Le bouton **🌍 Vue OSM** est présent dans :
+- La vue Édition (bandeau scénario)
+- Les 3 vues Live : 👤 Opérateur surface, 🚨 Équipier, 🚑 Secouriste libre
+
+Plus besoin de revenir à l'édition pour montrer la position du plan sur OpenStreetMap aux pompiers qui débarquent en cours de mission.
+
+#### 🚒 Briefing pompiers PDF dédié
+
+Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. Génère un PDF dédié spécialement conçu pour les secours externes, contenant :
+
+| Section | Contenu |
+|---------|---------|
+| **ACCÈS SURFACE** | En tête : le plan **recadré sur les accès** des équipes (sans POI), un **repère numéroté** par accès, et un tableau N° · accès (entrée, sortie ou les deux) · équipes · **GPS + lien de carte cliquable**. Deux équipes qui partent du même accès n'ont qu'un numéro. Pense à **nommer tes entrées** (« Plaque rue X ») : sinon le tableau dit « Accès sans nom » |
+| **INFOS** | Nom scénario · nom plan · date génération |
+| **LOCALISATION** | Coordonnées GPS centre + bbox + **lien OpenStreetMap cliquable** + **lien Google Maps cliquable** |
+| **EQUIPES SUR PLACE** | Pour chaque équipe : nom + membres + GPS surface (si renseigné) + lien OSM individuel par équipe |
+| **POI CRITIQUES** | Les accès du plan, avec leur niveau : d'abord les **ouverts** (🚪 points d'entrée, cavages, puits à échelons, escaliers de service — les mêmes que la Sortie d'urgence), puis les **fermés** (que pompiers et IGC peuvent ouvrir). Liste tirée des points tagués du plan (jusqu'en v1.98.6, ce bloc restait vide) |
+
+> 💡 **Comment utiliser** : Le PDF s'imprime ou s'envoie par mail/Signal au chef de groupe pompiers AVANT son arrivée. Sur place, il clique les liens depuis son tél/PC pour ouvrir OSM ou Google Maps centrés sur ton site. Aucune installation MyKTAMap nécessaire chez lui.
+
+#### 📤 Page « Briefing surface » dans le rapport post-mission
+
+Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos, carte des accès en tête (la vue OpenStreetMap du plan entier, illisible sur un A4, n'y figure plus ; dans le briefing pompiers, elle reste en option, POI décochés par défaut). Sur les cartes d'équipe, une entrée et une sortie posées au même accès (à moins de 10 m) ne font plus qu'un repère « ENTRÉE / SORTIE ». Au calcul d'un itinéraire, une étape posée loin de toute galerie est nommée (« L'étape « Puits 2 » est à 68 m du tracé le plus proche ») : corrige-la avant de descendre. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
+
+#### 🏷️ Filtre tags Vue OSM
+
+Les chips de filtre par tag de la modale Vue OSM listent **tous les tags présents** dans le plan, alignés avec le widget Vue OSM Home.
+
+#### 💾 Save Offline — Vue OSM hors-ligne
+
+Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
+
+**À quoi ça sert** :
+
+- Tu ouvres la Vue OSM sur le terrain même sans réseau (sortie souterraine prolongée, Mode Secours en zone blanche, batterie qui force le mode avion data…)
+- Le fond de carte (rues, contours, repères de surface) reste affiché normalement → tu sais où tu es par rapport au plan sans dépendre de la 4G
+- Particulièrement utile **pour les pompiers / SDIS** auxquels tu présentes la Vue OSM à l'arrivée : la carte s'affiche immédiatement, pas d'attente de chargement
+
+**Comment l'activer** :
+
+Un bouton **💾 Save Offline** est disponible dans le bandeau de la Vue OSM. **Un clic suffit** :
+
+1. L'app télécharge les tuiles OpenStreetMap visibles autour de ton plan + quelques niveaux de zoom proches
+2. Le bandeau affiche après le téléchargement : **📦 N tuiles · X MB** (= ce qui est disponible sur ton appareil)
+3. Tu peux refaire un clic plus tard si tu zoomes sur une autre zone que tu veux aussi sauvegarder
+
+> 💡 **Max ~200 tuiles par clic** (~5-10 MB) : c'est une limite stricte pour respecter la politique d'usage OpenStreetMap (= service gratuit financé par les dons, donc pas d'abus). Si tu veux sauvegarder une zone très large, fais plusieurs clics en déplaçant la vue.
+
+**Où c'est dispo** :
+
+Le bouton 💾 Save Offline est présent dans **3 contextes** — et le cache est **partagé** entre les trois :
+
+| Contexte | Quand l'utiliser |
+|---|---|
+| **🌍 Vue OSM modale** (mode carte) | Tu prépares une sortie : tu ouvres la Vue OSM, tu cadres la zone, tu cliques 💾 |
+| **🌍 Widget OSM de l'accueil** | Tu prépares tes plans depuis la home sans avoir à charger un plan en mode carte |
+| **🚨 Mode Secours** (bandeaux Création + Live) | Tu déclenches une mission : un coup de 💾 et toute l'équipe a la zone sur l'appareil avant de descendre |
+
+> ✅ **Cache partagé** : tu télécharges UNE fois → c'est dispo partout, pas de doublon. Pas besoin de recommencer le téléchargement à chaque mode.
+
+**Comportement intelligent hors-ligne** :
+
+Quand l'app détecte que t'as pas d'Internet, elle adapte le comportement de l'icône 🌍 selon ce qui est dispo sur ton appareil :
+
+| Internet | Plan sauvegardé | Icône 🌍 | Action |
+|---|---|---|---|
+| ✅ | – | visible | ouverture normale |
+| ❌ | ✅ | visible | ouverture directe depuis ton appareil (pas de test ping) |
+| ❌ | ❌ | masqué | re-connexion nécessaire — message clair "Plan non disponible hors-ligne, clique 💾 quand connecté" |
+
+Concrètement : si t'as sauvegardé ton plan la veille au Wi-Fi, l'icône 🌍 reste visible le lendemain en cellular pourri et la modale s'ouvre **direct** sans tenter un test réseau qui ralentirait tout. Si t'as oublié de sauvegarder, l'app te le dit clairement plutôt que de te laisser tourner en rond.
+
+**🔒 Tout reste local et privé** :
+
+- Les tuiles téléchargées sont **stockées 100 % sur ton appareil** (ton navigateur / la PWA installée)
+- **Rien n'est jamais transmis** à un serveur tiers, ni à l'auteur, ni à OpenStreetMap après le téléchargement initial
+- Aucune trace de ce que tu sauvegardes n'est tracée
+- Au prochain reset complet (💥 Tout réinitialiser), les tuiles sauvegardées sont effacées avec le reste
+
+> 💡 **Astuce sortie cataphile** : la veille de la sortie, ouvre la Vue OSM sur ton tel à la maison (Wi-Fi), zoome sur la zone de l'entrée + les rues autour, clique **💾 Save Offline**. Le lendemain en surface au point de RDV, même en cellular faible, la carte s'affiche instantanément.
+
+### 🚨 Mode Secours — Exploitation terrain temps réel
+
+Le scénario a **2 états distincts** :
+
+1. 📝 **CRÉATION** — Vue Édition. Tu prépares tes équipes, leurs parcours, leurs zones, les itinéraires suggérés.
+2. 🚀 **EXÉCUTION** — Vue Live temps réel. L'équipe est PARTIE, tu suis ses observations étape par étape, tu commentes en live.
+
+Tu bascules d'un état à l'autre via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édition.
+
+#### 🚀 Lancement du plan + sélection du rôle
+
+Un nouveau bandeau dynamique apparaît en haut de la vue Édition :
+
+| État du bandeau | Quand | Boutons |
+|---|---|---|
+| Gris « Ajoute au moins une équipe… » | 0 équipe définie | Aucun |
+| **Jaune CTA « 🚀 Lancer »** | Au moins 1 équipe | 🚀 Lancer le plan de secours |
+| **Vert « 🟢 PLAN ACTIF — <Rôle> »** | Plan lancé en cours | ▶️ Reprendre vue Live · 📤 Rapport · ⏹️ Arrêter |
+| **Bleu « 📦 PLAN TERMINÉ »** | Plan arrêté (historique) | 📤 Voir rapport historique · 🚀 Relancer |
+
+Au clic « 🚀 Lancer », **modale sélection rôle** avec 3 choix :
+
+```
+◉ 👤 Opérateur de surface
+   Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en
+   parallèle, tu peux éditer leurs observations en supervision.
+
+○ 🚨 Équipe sur le terrain : [Alpha ▾]
+   Tu fais partie d'une équipe assignée. Tu suis ton parcours étape
+   par étape et tu commentes en live.
+
+○ 🚑 Secouriste libre
+   Tu interviens sans équipe pré-assignée (renfort ponctuel, recon).
+   Tu prends des notes libres avec timestamps.
+```
+
+> 💡 Tu pourras changer de rôle plus tard sans perdre les observations.
+
+#### 🚨 Vue Live — Mode ÉQUIPIER (step-by-step)
+
+Pour le secouriste sur le terrain qui suit son parcours :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚨 Équipe Alpha · Étape 3/5 ⏱️ 14h 23min │
+├─────────────────────────────────────────────────────┤
+│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← stepper
+│ cliquable, couleur statut par étape │
+├─────────────────────────────────────────────────────┤
+│ 📍 ÉTAPE 3 — Puits aération Nord │
+│ Statut : 🟢 RAS │
+│ │
+│ 📝 Observations à cette étape : │
+│ [galerie centrale rien à signaler] │
+│ │
+│ ⚡ Saisie rapide : │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
+│ [🟠 Aide demandée] [🟣 Demi-tour] [🚨 Victime !] │
+│ │
+│ [📸 Photo (0/5)] [🎯 Recentrer carte] │
+├─────────────────────────────────────────────────────┤
+│ [← Étape précédente] [Étape suivante →] │
+│ [⏸️ Pause] [📤 Rapport] [Voir édition] [⏹️ Terminer] │
+└─────────────────────────────────────────────────────┘
+```
+
+**8 statuts cliquables** (couleurs gravées dans la charte) :
+
+| Emoji | Label | Quand l'utiliser |
+|---|---|---|
+| • | Pending | (statut par défaut avant interaction) |
+| 🟢 | RAS | Rien à signaler |
+| 🟡 | Suspect | Traces / bruits / odeur inhabituels |
+| ⬛ | Bloqué | Passage impraticable (effondrement, eau) |
+| 🔵 | Indice | Objet / vestige trouvé |
+| 🟠 | Aide demandée | Renfort matériel / humain demandé |
+| 🟣 | Demi-tour forcé | Parcours abandonné, retour anticipé |
+| 🚨 | **Victime trouvée** | **Urgence absolue** — déclenche signal rouge clignotant côté PC |
+| ⚪ | Passée, non renseignée | Posé par l'app : étape passée sans statut choisi |
+
+**Photos** : appui « 📸 Photo (X/5) » → caméra arrière auto sur mobile OU galerie. Max 5 photos par étape, compression auto JPEG q85 max 1920px. Cliquer une miniature → viewer plein écran avec swipe + zoom.
+
+**Auto-save** : observations sauvées au blur du textarea ET au changement d'étape. Pas besoin de bouton « Sauver ».
+
+**Étape passée sans statut** : passer à l'étape suivante sans avoir choisi de statut la marque **« ⚪ Passée, non renseignée »**, jamais « RAS » : une étape sautée n'est pas une étape fouillée. Re-clic statut possible.
+
+#### 👤 Vue Live — Mode OPÉRATEUR SURFACE (vue d'ensemble)
+
+Pour le PC chef qui coordonne plusieurs équipes en parallèle :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 👤 Opérateur surface · 3 équipes ⏱️ 02h 14min │
+├─────────────────────────────────────────────────────┤
+│ ┌──────────────────┐ ┌──────────────────┐ │
+│ │ 🔴 Alpha 3/5 │ │ 🔵 Bravo 1/4 │ │
+│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
+│ │ 🟢 RAS │ │ 🟠 Aide demandée │ │
+│ │ « RAS galerie │ │ « Eau au sol, │ │
+│ │ centrale » │ │ niveau monte » │ │
+│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
+│ │ [👁️ Détails] │ │ [👁️ Détails] │ │
+│ │ [🚨 Prendre main]│ │ [🚨 Prendre main]│ │
+│ └──────────────────┘ └──────────────────┘ │
+│ ┌──────────────────┐ │
+│ │ 🟢 Charlie ✓T │ ← équipe Terminée (grisée) │
+│ └──────────────────┘ │
+├─────────────────────────────────────────────────────┤
+│ [⏸️ Pause] [🗺️ Carte globale] [📤 Rapport global] │
+│ [Voir édition] [⏹️ Terminer le plan] │
+└─────────────────────────────────────────────────────┘
+```
+
+**Cards spéciales** avec signaux visuels forts :
+
+- 🚨 **Victime trouvée** → card **ROUGE CLIGNOTANTE** (animation 1.2s, urgence absolue, tu ne peux PAS la rater)
+- 🟠 **Aide demandée** → orange + lueur (renfort à envoyer)
+- ✓ **Terminée** → grisée opacity 0.75 (toutes étapes complétées)
+
+**Bouton « 👁️ Détails »** → mini-modale read-only avec liste chronologique des étapes de l'équipe (ts + statut emoji + obs).
+
+**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs). La vue s'ouvre sur la **première étape non terminée de cette équipe**, même si tu étais plus loin chez une autre.
+
+**Retour facile** : une fois en mode Équipier après « Prendre la main », un bouton **« 👤 Retour Opérateur »** apparaît dans le footer. Au clic → retour à la vue d'ensemble Opérateur intacte (le retour reste possible après un rechargement ou un changement de plan).
+
+**Bouton « 🗺️ Voir carte globale »** : masque la modale + render l'overlay carte avec toutes les zones + waypoints + itinéraires des équipes en couleurs OTAN.
+
+#### 🚑 Vue Live — Mode SECOURISTE LIBRE (notes en vrac)
+
+Pour le renfort ponctuel / la reconnaissance sans équipe pré-assignée :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚑 Secouriste libre · 12 notes ⏱️ 01h 47min │
+├─────────────────────────────────────────────────────┤
+│ 📝 Ajouter une note │
+│ [galerie nord rien à signaler] │
+│ ⚡ Statut associé : │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
+│ [🟠 Aide] [🟣 Demi-tour] [🚨 Victime !] │
+├─────────────────────────────────────────────────────┤
+│ 12. 🟢 RAS · ⏱️ 16:42:18 [✕] │
+│ « Croisement Est, RAS, on continue » │
+│ │
+│ 11. 🟡 Suspect · ⏱️ 16:38:05 [✕] │
+│ « Bruit d'eau qui coule, source ?? » │
+│ │
+│ ... (chronologique DESC) │
+└─────────────────────────────────────────────────────┘
+```
+
+Pas de stepper, pas d'étapes structurées. Juste un fil de notes horodatées avec statut. Pratique pour les missions où le parcours n'est pas planifié à l'avance (renfort qui arrive en cours, équipe de reconnaissance, etc.).
+
+#### 📤 Rapport au fil des étapes
+
+À tout moment pendant l'exécution ET après l'arrêt du plan, tu peux générer un rapport via le bouton **« 📤 Rapport »** présent dans :
+
+- Le footer de chaque vue Live (scope adapté au rôle courant)
+- Le bandeau vue Édition (si execution active OU terminée)
+
+3 formats au choix dans la modale unifiée :
+
+| Format | Cas d'usage |
+|---|---|
+| 📄 **PDF imprimable A4** | Briefing global page 1 + page texte étapes par équipe + page photos en grille 2 cols. Idéal pour rapport papier / impression / archivage / passation papier au pompier. |
+| 📦 **`.mkmsec.report.json`** | Data structuré autonome (photos en base64 si cochée). Re-importable sur le device opérateur surface (consolidation cross-device, voir section dédiée). |
+| 📋 **Texte plain** | Markdown-like copié au presse-papier. Pour partage Discord / SMS / mail rapide. |
+
+**3 scopes selon ton rôle** :
+
+- 👤 **Mode Opérateur** → « 📤 Rapport global » : TOUTES les équipes + leurs étapes + photos
+- 🚨 **Mode Équipier** → « 📤 Rapport » : SON équipe uniquement (parcours individuel)
+- 🚑 **Mode Secouriste libre** → « 📤 Rapport » : SES notes libres chronologiques
+
+**Aperçu compact** en haut de la modale : titre rôle + nombre étapes + % progression + durée. **Checkbox « 📸 Inclure les photos »** COCHÉE par défaut (avec hint dynamique compteur). Toast feedback à chaque action.
+
+**Rapport généré à l'instant** : reflète l'état COURANT du scénario. Réutilisable autant de fois que nécessaire. Idéal pour :
+- Briefing en cours de mission (snapshot intermédiaire à imprimer pour la relève)
+- Passation cross-device (export JSON → mail / clé USB → import sur PC opérateur)
+- Rapport final post-mission (PDF imprimable + archivage)
+
+#### ⏱️ Timer global avec pause juste
+
+Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le démarrage MOINS le temps de pause cumulé. Tu peux mettre en pause avec le bouton **« ⏸️ Pause »** (le timer fige) puis reprendre avec **« ▶️ Reprendre »** — la durée de pause n'est PAS comptabilisée.
+
+**Re-render 1×/seconde** sans flash visuel, sans perte de focus dans la textarea observations en cours de saisie. Permet de garder le rapport temps-réel précis pendant des missions longues (h+).
+
+#### 🎬 Cycle complet typique
+
+```
+1. 📝 Création scénario (vue Édition)
+   ├─ Ajout équipes Alpha/Bravo/Charlie (couleurs OTAN)
+   ├─ Pour chaque équipe : parcours entrée → étapes → sortie
+   ├─ Zones de recherche (polygone OU tracés sélectionnés)
+   ├─ Itinéraires auto-calc Pathfinder (avoidances cross-équipes)
+   └─ Export PDF / KMZ / .mkmsec.json pour briefing initial
+
+2. 🚀 Lancement (modale sélection rôle)
+   └─ Bascule en vue Live selon rôle choisi
+
+3. 🚨 Exécution (vue Live)
+   ├─ Mode Équipier : suit parcours step-by-step + observations + photos
+   ├─ Mode Opérateur : vue d'ensemble cards + supervision + prise main
+   └─ Mode Secouriste libre : notes en vrac chronologiques
+
+4. 📤 Rapport au fil des étapes (n fois)
+   ├─ PDF imprimable pour relève / passation papier
+   ├─ JSON pour consolidation cross-device
+   └─ Texte presse-papier pour Discord / mail rapide
+
+5. ⏹️ Arrêt du plan (bandeau « 📦 PLAN TERMINÉ »)
+   ├─ Observations conservées comme historique
+   ├─ Bouton « 📤 Voir le rapport historique » réutilisable
+   └─ Bouton « 🚀 Relancer » si re-mission
+```
+
+#### 📥 Consolidation cross-device
+
+Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérateur surface qui l'**importe et fusionne** ses observations dans le tableau de supervision.
+
+**Workflow type — opération avec 3 équipes** :
+
+1. **Côté Opérateur (surface, AVANT incident)** :
+   - Prépare le scénario (équipes Alpha / Bravo / Charlie + parcours + zones)
+   - Lance le plan (🚀) → vue Live Opérateur surface
+   - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
+
+2. **Côté chaque Équipier (terrain)** :
+   - Importe le `.mkmsec.json` de l'opérateur : l'import garde les identifiants du PC, c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le plan est **déjà** sur le téléphone (plan mis à jour par l'opérateur), l'aperçu propose **« Remplacer »** (coché : garde le lien avec l'opérateur, mais efface les statuts, observations et photos déjà saisis sur ce téléphone) ou **« Importer comme copie »** (nouveau scénario, dont le rapport sera refusé par l'opérateur)
+   - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
+   - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
+
+3. **Côté Opérateur (retour terrain)** :
+   - Récupère les 3 rapports `.mkmsec.report.json` (un par équipe) via le canal de son choix (AirDrop, mail, clé USB, Discord)
+   - Dans la vue Live Opérateur → bouton **« 📥 Importer rapport équipier »** dans le footer
+   - File picker → sélectionne le fichier → modale preview qui montre : nom équipe ciblée, nombre d'étapes à fusionner, photos, et **conflits détectés** (étapes côté op déjà renseignées qui vont être fusionnées)
+   - Confirme l'import → l'app fait un **snapshot AVANT** (backup d'urgence) puis fusionne :
+     - Observations **concaténées avec séparateur daté** (aucune perte)
+     - Statut **le plus grave retenu** ; à gravité égale, **le plus récent** — un « RAS » rapporté par l'équipe remplace « en attente », une victime n'est jamais rétrogradée
+     - Photos **importées avec déduplication**
+   - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
+   - Répète pour les 2 autres équipes
+   - ⚠️ **Rapport arrivé après un changement de phase** : s'il porte sur une phase déjà close, il est rangé dans **l'historique de cette phase** — jamais dans la phase en cours — et l'app le signale en orange (en rouge s'il contient « Aide demandée » ou « Victime trouvée »)
+   - 🧭 **Signalement sur une étape que tu as retirée** : il n'est pas perdu — il s'affiche en orange à l'import et figure dans la section **« Signalements hors parcours »** du rapport final
+   - 🗺️ **Plan modifié depuis l'envoi** : si le plan a changé de version (ou a été retracé) depuis l'export du scénario, l'aperçu d'import te prévient et compte les tracés de zone qu'il ne retrouve plus
+   - 📚 Le **rapport final** reprend aussi les étapes des **phases closes**, phase par phase
+
+4. **Visualisation post-fusion** :
+   - Sur la card de chaque équipe Op : chip bleu « 📥 importé » apparaît si au moins une étape a reçu de la consolidation
+   - Dans la modale « Détails équipe » (read-only) : chip « 📥 importé » sur chaque étape concernée + tooltip avec date import + version app source
+
+**Sécurité de l'import** : refuse si scope ≠ équipier (les rapports opérateur global ou secouriste libre ne sont pas fusionnables), si le scénario d'origine est différent, si l'équipe est absente du scénario actif, ou si aucune exécution n'est en cours côté op. **Plan différent côté équipier** → warning (pas erreur, on conserve les obs textuelles).
+
+**Undo** : un snapshot SessionBackups est créé **automatiquement AVANT** chaque import. En cas d'erreur, restaure depuis **📊 Détails de session → Backups récents** (titre : « Avant import rapport équipier <nom> »).
+
+> ⚠️ Important : **les équipes doivent être enregistrées côté Opérateur AVANT le lancement** du plan (pas de création silencieuse à l'import). Si tu prépares ton scénario avec Alpha / Bravo / Charlie mais qu'un équipier exporte sous le nom « Delta » créé localement, l'import sera rejeté — il fallait recevoir Delta dans le scénario initial.
+
+### 🏗️ Créer ou modifier un plan
+
+> Accessible directement via le bouton **🏗️** de la barre latérale (clic direct, pas de sous-menu).
+
+Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
+
+#### 🧙 Générateur : assistant pas-à-pas
+
+Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
+
+#### 📦 Importer plusieurs plans d'un coup
+
+Le bouton **📦 Importer plusieurs plans**, dans la section **🧰 Outils** de l'accueil, ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
+
+L'écran se lit en trois temps :
+
+1. **Tu choisis** tes fichiers.
+2. **Tu vois ce qui va se passer**, ligne par ligne : ce qui sera ajouté, ce qui est déjà dans ta liste, ce qui est refusé et pourquoi. Le résumé donne le poids total, ce qui sera copié dans l'app, et la place restante.
+3. **Tu lances.** Les plans entrent un par un, avec le nom en cours affiché, puis un bilan : ajoutés, ignorés, refusés.
+
+**Si un plan est déjà dans ta liste**, tu choisis une fois pour tout le lot : le laisser tel quel, le remplacer, ou garder les deux. Par défaut il est laissé tel quel — un import n'écrase rien sans que tu le demandes.
+
+> 💾 **La place est annoncée avant.** Le stockage d'un navigateur tient entre 50 et 200 Mo selon l'appareil. Si ton lot ne rentre pas, l'app refuse de commencer et te dit combien il manque. Si la place s'épuise en cours de route, elle **s'arrête net** : les plans déjà ajoutés sont gardés, et le bilan dit où ça s'est arrêté.
+>
+> 📁 **« Ranger dans : »** — choisis le dossier de « Mes plans » qui recevra tout le lot (ou « ➕ Nouveau dossier… », nommé sur place). Par défaut, les plans arrivent en « Non classés ».
+>
+> 💾 **« Précharger le ZIP » (case cochée par défaut, elle suit le réglage « Mémoriser le plan dans l'app au premier chargement » de ⚙️ Configuration de l'accueil)** : l'app garde le fichier, et chaque plan importé **s'ouvre depuis la liste sans que tu aies à resélectionner son ZIP**. Décoche-la si tu veux seulement remplir ta liste sans rien ranger : rien n'est copié, la place n'est plus un sujet, et le ZIP te sera demandé à la première ouverture de chaque plan (comme pour un plan restauré depuis un profil).
+
+> 🔒 **100 % local** : tout se lit et se range **dans ton navigateur**. Aucun octet n'est envoyé nulle part, et ça marche hors ligne.
+
+#### 🗺️ Déposer un GeoTIFF
+
+Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tiff`) : l'image **et** son calage voyagent dans le même fichier. Choisis-le comme image de plan — dans le Générateur ou directement depuis l'écran d'accueil — et l'app fait le reste :
+
+- elle **lit le calage écrit dans le fichier** et remplit le **géoréférencement GPS** toute seule ;
+- elle en déduit l'**échelle** (px/m) et l'**emprise** du plan, affichées dans le message de confirmation ;
+- elle convertit l'image en PNG pour la suite (aucun navigateur de bureau n'affiche un TIFF), puis le tuilage et le ZIP se déroulent comme d'habitude.
+
+**Tu n'as plus à ressaisir les deux points GPS** que tu venais de poser dans QGIS.
+
+> ✅ **Ce qui est lu** : compression **LZW, Deflate ou aucune** · **8 bits par canal** · **gris, RVB ou RVBA** · image **en bandes** · calage **nord en haut, sans rotation** · coordonnées en **Lambert 93, Web Mercator ou WGS84**.
+>
+> ❌ **Ce qui est refusé l'est toujours en clair**, avec ce qu'il faut changer à l'export : BigTIFF, image tuilée, canaux séparés, palette / CMJN / YCbCr, prédicteur inhabituel, calage tourné, système de coordonnées non géré. Un message te dit précisément quoi réexporter — l'app ne devine jamais à ta place.
+
+> 🔒 **100 % local** : le fichier est lu et converti **dans ton navigateur**. Aucun octet n'est envoyé nulle part.
+
+#### 🗺️ Convertir un fichier SIG (QGIS…) en plan
+Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
+
+**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
+
+**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
+
+**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
+
+> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
+
+> 📐 **Lambert 93 converti automatiquement* — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
+
+> 🗺️ **Relevés de carrière : ce que l'import sait faire**
+> 
+> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
+> - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
+> - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
+> 
+> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avec une ancienne version de l'app** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
+
+>
+> Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
+
+**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
+
+*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
+
+#### 📄 Nouveau plan
+
+Formulaire vierge. Renseignez :
+
+- **Informations** : nom, version, auteur, **🏷️ étiquettes** (séparées par des virgules, 12 max de 24 caractères — même saisie que dans ℹ️ Infos). Elles voyagent dans le ZIP et sont **proposées** à qui l'importe : si tu as déjà posé tes propres étiquettes sur ce plan, elles restent les tiennes, même en réimportant une nouvelle version. Le champ existe aussi dans les conversions KMZ, GPX et SIG.
+- **Image principale** (obligatoire) — les **dimensions du plan sont auto-détectées** dès que vous choisissez votre fichier. Un encadré affiche les dimensions et la taille en Mo, avec des **avertissements rouges** si l'image dépasse 10 000 px de côté ou 30 Mo (risque de crash mémoire sur mobile / ZIP très lourd).
+- **Carte de collision** (optionnelle)
+
+- **Position initiale du tracker** (groupe 🧭 Tracking) — **auto-centrée** au milieu du plan (W/2 × H/2) dès que l'image principale est chargée. Vous pouvez modifier ces valeurs manuellement si vous voulez démarrer le tracker à un endroit précis. Bouton **🎯 Recentrer la position de départ** disponible pour réappliquer le centre à tout moment.
+- **Calques image** supplémentaires (légendes, annotations) — jusqu'à 10
+- **Calques de données** JSON — jusqu'à 10 (créés vides si non fournis)
+- **Paramètres de tracking** : position de départ, échelle, sensibilité
+- **Icônes & Tags** : gestionnaire dynamique
+  - Cliquez **↺ Charger défauts** pour pré-remplir avec les icônes standards
+  - Cliquez **+ Ajouter un tag** pour créer un type personnalisé
+  - Pour chaque tag, choisissez une icône personnalisée ou laissez le chemin par défaut
+  - Les tags `default` et `track` sont obligatoires (système)
+
+Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement.
+
+Cliquez sur **📦 Générer le ZIP** — l'archive est prête.
+
+#### 📂 Modifier existant
+
+Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec sa configuration. Modifiez ce que vous voulez (ajouter des tags, changer les icônes, ajouter des calques, etc.) et cliquez sur **📦 Générer le ZIP** pour télécharger la version modifiée.
+
+> Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
+
+#### 🎨 Image vierge
+
+Si tu veux créer un plan **from scratch** sans image source (par exemple pour dessiner uniquement des piliers / fronts de taille / tracés sur un canvas vide), tu peux générer une **image vierge**.
+
+Dans la section **🖼️ Images principales** du générateur, 2 modes radio :
+
+| Mode | Effet |
+|---|---|
+| **📷 Depuis une image** (par défaut) | Upload classique d'un PNG / JPG / WebP |
+| **🎨 Image vierge** | L'app génère un canvas vide aux dimensions et couleur que tu choisis |
+
+Quand tu sélectionnes **Image vierge** :
+
+- **Largeur** et **Hauteur** en pixels (500 min, 12 000 max — limites anti-crash mémoire mobile)
+- **Couleur de fond** :
+  - ⬜ **Blanc** : style papier — utile pour dessiner des plans architecturaux
+  - ▫️ **Gris clair** : neutre, écrit moins agressivement
+  - ⬛ **Noir** : style fond sombre (terrain dans l'obscurité, dessin trace blanche dessus)
+  - 🌫️ **Gris foncé** : entre neutre et sombre
+- Bouton **🎨 Générer l'image** : l'app crée le canvas + l'injecte automatiquement comme image principale. Les dimensions du plan se règlent en conséquence.
+
+Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **📦 Générer le ZIP** comme pour un plan normal. Une fois le plan chargé dans l'app, dessine ce que tu veux (piliers, fronts de taille, tracés, points) via les outils habituels.
+
+> 💡 **Cas typique** : un cartographe qui visite une carrière à explorer, sans plan papier existant, peut générer un plan vierge 4000×4000 noir à son arrivée, puis dessiner au fur et à mesure (avec le tracker comme repère). À la fin, le ZIP est partageable.
+
+#### 📦 Importer un datalayer ZIP en un clic
+
+Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **📤 Exporter → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
+
+**Cas d'usage typique** :
+1. KARMA voit un copain qui a annoté un plan (points + tracés + zones + structures + photos) et qui exporte un `data_<plan>.zip` via la Conversion
+2. Tu copies ce ZIP sur ton appareil (Drive, AirDrop, USB…)
+3. Dans le générateur, mode **Modifier existant** OU **Nouveau plan**, tu cliques le bouton 📦 Choisir un ZIP datalayer
+4. Le ZIP est parsé → des **calques data layer sont créés automatiquement** : `points` (points du copain), `roads` (tracés), `zones` (zones), `structure` (piliers/fronts). Si le ZIP contenait des photos, elles sont **gardées en mémoire** pour être embarquées au moment de la génération.
+5. Message vert "✅ N calque(s) créé(s) : points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
+6. Tu **📦 Générer le ZIP** comme d'habitude → le plan final contient tes calques d'origine (si Modifier) + les calques importés + le dossier `data/photos/` avec les blobs
+7. Au chargement de ce plan par n'importe quel utilisateur, les photos sont restaurées automatiquement sur son appareil et apparaissent dans les popups des markers
+
+**Comportement** :
+- **Mode Nouveau** : les calques importés deviennent les calques data du plan (la liste UI est vidée et remplie avec les calques du ZIP)
+- **Mode Modifier** : les calques existants du plan source sont **préservés** ; les calques du ZIP importé s'ajoutent avec **suffixe `_imported_<N>`** si conflit d'id (= n'écrase jamais les calques d'origine). Photos IDB du plan courant **merge** avec photos du ZIP (déduplication par photoId).
+
+> 📸 **Format du ZIP datalayer** attendu : c'est exactement ce que produit la **Conversion session → data layer** quand tu coches "📸 Inclure les photos attachées" (granularité Basique ou Fine peu importe). Contient `points.json` + `roads.json` + `zones.json` + `structure.json` (selon ce qui était présent dans la session source) + `photos/_index.json` + `photos/<photoId>.jpg`.
+
+#### 📸 Inclure les photos attachées au plan
+
+En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (enregistrées sur ton appareil par l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
+
+- **Cochée par défaut** : les photos IDB du plan sont embarquées dans le ZIP plan généré sous `data/photos/<photoId>.jpg`. Tu peux ainsi partager le plan complet (annotations + photos) à un autre appareil.
+- **Décochée** : le ZIP plan généré ne contient pas les photos. Plus léger en taille, mais l'utilisateur qui importe le ZIP ne récupèrera pas les photos.
+
+Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos sont **restaurées automatiquement** sur l'appareil, sous l'identifiant local du plan + un toast discret "📸 N photos restaurées depuis le plan" confirme.
+
+> ⚠️ Si tu décoches **ET** que tu as aussi importé un datalayer ZIP avec photos (cf. section précédente), seules les photos du datalayer importé seront embarquées. La case 📸 contrôle UNIQUEMENT les photos IDB du plan courant.
+
+#### 🧱 Convertir en V2 tuile (performance)
+
+Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
+
+**Workflow** :
+
+La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploadé une image principale**, que tu sois en mode **Nouveau plan** OU en **Modifier existant** (pas besoin de passer par un ZIP V1 source).
+
+1. **Nouveau plan** : choisir une image principale → la case 🧱 apparaît<br>
+   OU **Modifier existant** : uploader ton ZIP V1 (la case 🧱 est dispo)
+2. Cocher la case **☑️ 🧱 Convertir en V2 tuile (performance)** (encadré violet)
+3. **Modal d'avertissement** : la conversion est lourde (CPU + RAM). Lis le message, clique **J'ai compris — Continuer** (ou **Annuler (décocher)** si tu veux y réfléchir). Voir section "PC vs mobile" plus bas.
+4. Remplir le reste du formulaire (nom, version, calques, tracking, etc.)
+5. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)"
+6. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
+7. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan)
+
+**Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
+
+**🫥 Transparence conservée** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
+
+**Trade-offs** :
+
+| ✅ Gains | ⚠️ Coûts |
+|---|---|
+| Conso mémoire massivement réduite (~16 MB max au lieu de l'image entière en RAM) | Conversion lente (1-5 min selon la taille de l'image) |
+| Idéal pour mobile (Safari iOS, gros plans qui crashent en V1) | Le ZIP final contient plus de fichiers (les tuiles) mais ~même poids total qu'un PNG/JPEG unique |
+| Navigation plus fluide au pan/zoom | Léger flash visuel au changement de niveau de zoom (swap des tuiles) |
+| Auto-crop des marges blanches | Black border visible quand on dezoome très très loin (au-delà des bords) |
+
+**Modifier un plan déjà V2** : la case est **pré-cochée** par défaut → les tuiles seront régénérées avec les nouvelles modifs. Si tu décoches, downgrade explicite V2 → V1 (les tuiles ne sont pas reportées dans le nouveau ZIP).
+
+##### 💻 PC vs 📱 Mobile pour la conversion
+
+> ⚠️ **Important** — c'est le sujet du modal d'avertissement qui apparaît quand tu coches la case.
+
+| Plateforme | Décodage image source | Recommandation |
+|---|---|---|
+| 💻 **Ordinateur** (Windows / macOS / Linux) | Aucune limite mémoire en pratique. Conversion 1-5 min selon taille. | ✅ **Recommandé** pour la génération |
+| 📱 **Mobile** (iOS / Android) | Plafonné à **~500 Mo de RAM** pour la PWA. Crash quasi-garanti sur image >50 Mo ou >8K px. | ❌ Éviter — **mais** le ZIP V2 généré sur PC s'importe sans coût sur mobile (c'est tout l'intérêt de V2) |
+
+> 💡 **Workflow recommandé** : génère le ZIP V2 une fois pour toutes sur ton PC, puis partage-le sur ton téléphone (Drive, AirDrop, etc.). Le téléphone l'importe en quelques secondes et tu profites du runtime tuilé sans coût mémoire au boot.
+
+### 🚀 Optimiser ton plan pour la performance
+
+Un plan léger se charge plus vite, navigue plus fluide et **réduit fortement le risque de crash mémoire sur mobile**. Voici les bonnes pratiques par ordre d'impact.
+
+#### 1. 🖼️ Image principale — limiter les dimensions
+
+L'image base est le **plus gros consommateur mémoire**. Sur mobile, le navigateur alloue un canvas de la taille de l'image entière.
+
+| Dimensions | Comportement | Recommandation |
+|---|---|---|
+| ≤ 4 000 × 4 000 px | OK partout | ✅ Idéal |
+| 4 000 - 8 000 px | OK desktop, dézoom limité sur mobile | ⚠️ Acceptable |
+| 8 000 - 16 000 px | Risque de crash sur mobile bas/moyenne gamme | ⚠️ Découper le plan à la génération (V2 tuilé) |
+| > 16 000 px | Crash quasi-garanti sur mobile | ❌ À éviter |
+
+**Astuce** : si ton plan source est gigantesque, redimensionne à 6 000-8 000 px de côté max avec un éditeur d'image (GIMP, Photoshop, [Squoosh](https://squoosh.app/) en ligne). Tu perds un peu de détail au zoom maximum mais tu gagnes énormément en stabilité.
+
+#### 2. 📦 Format de l'image — JPEG vs PNG
+
+| Format | Quand l'utiliser | Poids typique (8000×6000 px) |
+|---|---|---|
+| **JPEG** (qualité 80-90 %) | Photos, scans, plans avec dégradés | ~3-8 Mo ✅ |
+| **PNG** | Plans avec transparence ou aplats nets | ~15-50 Mo ⚠️ |
+| **WebP** | Compromis qualité/poids (Chrome/Firefox/Safari modernes) | ~2-5 Mo ✅✅ |
+
+> 💡 Pour un plan de carrière classique avec des routes dessinées par-dessus une couleur unie, le **JPEG qualité 85** divise le poids par 5 à 10 sans perte visuelle perceptible.
+
+#### 3. 🗂️ Calques image — limiter le nombre
+
+Chaque calque image supplémentaire (légende, annotations, etc.) **multiplie la mémoire utilisée**. Le visiteur charge tous les calques même s'il en masque une partie.
+
+| Nombre de calques image | Recommandation |
+|---|---|
+| 1 (image base seule) | ✅ Optimal |
+| 2-3 | ⚠️ Acceptable si chacun est ≤ 2 Mo |
+| 4+ | ❌ À éviter — fusionne dans le PNG base |
+
+**Alternative** : si tu as des éléments décoratifs (légende, repères), **intègre-les directement dans l'image base** plutôt que d'en faire des calques séparés. Tu perds la possibilité de les masquer mais tu gagnes en perf.
+
+#### 4. 🛣️ Routes — intégrer dans le PNG si nombreuses
+
+Les routes JSON (Principal/Secondaire/Chemin) sont rendues par Leaflet en surcouche vectorielle. Au-delà de **~50 routes**, le navigateur peut ramer au pan/zoom.
+
+**Stratégie pour les gros plans** :
+1. Trace les routes dans ton éditeur d'image (GIMP/Photoshop) **directement sur le PNG**
+2. Garde un calque JSON minimaliste avec les routes invisibles côté visuel mais utilisable par le module **🗺️ Itinéraire** (le pathfinder utilise toutes les routes du calque, **même masquées**)
+3. Dans le contrôle des couches Leaflet, **décoche le calque JSON des routes** → tu vois les routes via le PNG, l'app ne dessine pas les polylines vectorielles → gros gain perf
+4. L'itinéraire continue de fonctionner
+
+> 🎯 Cette technique permet d'avoir **des centaines de tronçons** sur le plan sans aucun impact perf au pan/zoom.
+
+#### 5. 📍 Points — limiter les calques de données denses
+
+Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des markers Leaflet. Au-delà de **~500 markers visibles simultanément**, ça peut ralentir le rendu sur mobile.
+
+| Nombre de markers | Recommandation |
+|---|---|
+| ≤ 200 | ✅ OK |
+| 200-500 | ⚠️ OK desktop, prudence mobile |
+| 500-2000 | ⚠️ Sépare en plusieurs calques de données toggleables |
+| > 2000 | ❌ Considère un mode "regroupement" (clustering, future feature) |
+
+**Astuce** : sépare tes points en plusieurs calques de données (ex: `puits.json`, `passages.json`, `électricité.json`) pour que l'utilisateur puisse en masquer ceux qui l'intéressent moins.
+
+#### 6. ⚡ Découpage de l'image — Auto, sauf raison contraire
+
+⚠️ **Ce réglage n'est plus sur l'écran de chargement.** Il vit dans **ℹ️ Infos** du plan,
+et **seulement pour un plan non découpé à la génération** — sur un plan V2 il n'aurait aucun effet, donc il ne
+s'affiche pas. Bonne nouvelle : il y est **mémorisé pour ce plan**, alors que l'ancien sélecteur repartait sur
+Auto à chaque démarrage.
+
+Deux choix :
+
+| Choix | Pour quel cas |
+|---|---|
+| **🔄 Auto** (défaut) | Découpe dès que l'image dépasse 4 096 × 4 096 px, ou que le fichier dépasse 60 Mo. ✅ **Le bon choix, sauf raison précise.** |
+| **💤 Désactivé** | Petit plan sur desktop puissant, quand tu veux la qualité native sans aucun ré-encodage. **⚠️ Risque de plantage sur Safari iOS au-delà de 8 000 px** — un message te prévient. **Sans effet sur un plan déjà découpé** (V2), qui utilise toujours ses morceaux. |
+
+> 🩸 **Ce qui a changé, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
+> Et « Auto » se décidait sur le **poids du fichier**, pas sur la taille en pixels : un plan de 100 Mpx bien compressé (~15 Mo) **n'était pas découpé** et pouvait faire planter l'iPhone, alors que « Qualité » l'aurait découpé. Le défaut était donc le mode le **moins** protecteur. Corrigé.
+
+> 💡 Le choix est mémorisé **par plan** : il vaut pour tous ses chargements suivants, jusqu'à ce que tu le changes. *(Auparavant, le sélecteur du chargeur ne l'était pas et repartait sur Auto à chaque démarrage.)*
+
+#### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
+
+Si ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 7 optimisations agressives simultanément.
+
+> 🆕 **Trois choses à savoir** :
+> - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont pas impactés. Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
+> - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec l'option « Ne rendre que les éléments visibles » active — seul l'affichage des milliers de points des calques de données est allégé.
+> - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
+
+> ⚠️ Ces optims **ne touchent PAS à l'image** (gérée par le découpage, voir ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
+
+**Les 7 réglages individuels** (activables séparément si tu veux affiner) :
+
+| Toggle | Effet | Trade-off |
+|---|---|---|
+| 🪜 **Décimer les tracés au dézoom** | Simplifie les polylines au zoom out | Tracés moins lisses au dézoom |
+| ⚡ **Désactiver animations zoom/pan** | Transitions instantanées au lieu d'animées | Visuel plus abrupt — **reload requis** |
+| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 500) | Carrefours moins visibles |
+| 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
+| 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
+| 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
+| 🛡️ **Limiter le dézoom sur mobile** | Sur téléphone, plafonne le dézoom pour éviter un crash mémoire. **Coché par défaut** | Pas de vue d'ensemble complète sur mobile — **reload requis** |
+
+**Comment t'en servir** :
+
+- **Si l'app crashe encore** → coche **🚀 ULTRA** (active tout). Effet immédiat (sauf "animations" qui demande un reload).
+- **Si tu veux affiner** → garde ULTRA décoché et active manuellement les toggles selon ce que tu veux sacrifier. Par exemple : tu peux activer juste **🐢 Auto-save lent** et **👁️ Ne rendre que les éléments visibles** pour gagner pas mal sans rien perdre visuellement.
+- **Pour revenir au comportement normal** → décoche **🚀 ULTRA** (ça décoche tout) ou décoche individuellement.
+
+**Persistance** : les réglages sont mémorisés **pour ce plan**, sur cet appareil. Ils restent activés entre les sessions.
+
+> 💡 Combo recommandé pour les très gros plans : plan **découpé à la génération** (V2 tuilé) + 🚀 ULTRA + image source ≤ 8000 px / JPEG q85.
+
+#### 7. 📱 Spécifique mobile
+
+- **iPhone PWA** (installé sur écran d'accueil) gère mieux les gros plans qu'iPhone Safari direct
+- **Android Chrome** est généralement plus tolérant qu'iOS pour la mémoire
+- En cas de crash : ⚙️ Configuration (accueil) → **🛠️ Mode Développeur** → logs détaillés pour diagnostiquer
+
+#### 8. 💾 Sauvegarde régulière
+
+Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
+
+> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. La sauvegarde automatique sur cet appareil protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
+
+#### Récap rapide
+
+✅ **Pour un plan optimal** :
+- Image base **JPEG qualité 85** ≤ 8 000 px de côté
+- 1 ou 2 calques image max
+- Routes **dessinées dans le PNG** + calque JSON masqué pour le pathfinder
+- Points répartis dans 2-3 calques de données toggleables
+- Gros plan : **découpé à la génération** (V2 tuilé) ; vieux mobile : **🚀 Mode ULTRA**
+
+### 🎚️ Découpage de l'image — l'app décide
+
+**Il n'y a plus rien à régler ici.** Le bandeau *« 🖼️ Tuilage pour ce chargement »*, qui vivait juste au-dessus
+du bouton **▶️ Charger ce plan**, **a été retiré** : l'app découpe automatiquement les plans trop grands pour
+être affichés d'un bloc, et c'était déjà ce qu'elle faisait pour la quasi-totalité d'entre eux.
+
+> 🩸 **Pourquoi il est parti.** Il ne servait qu'aux plans **non découpés à la génération** (« V1 ») et de très
+> grande taille. Sur un plan **déjà découpé** — le cas courant, et la méthode conseillée — « Désactivé »
+> **ne changeait rien** : le plan utilise toujours ses morceaux. Il occupait donc la place la plus visible de
+> l'écran de chargement pour un effet quasi nul. Et il n'était **pas mémorisé** : il repartait sur « Auto » à
+> chaque démarrage de l'app — un réglage qui s'oublie tout seul n'en est pas un.
+
+**Où il est passé** : dans **ℹ️ Infos** du plan, et **uniquement pour les plans que ça concerne** — s'il
+n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'aurait aucun effet. Là, il est
+**mémorisé pour ce plan** et s'applique à tous ses chargements suivants.
+
+| Choix | Ce qu'il fait |
+|---|---|
+| 🔄 **Auto** *(défaut)* | Découpe automatiquement les plans trop grands pour être affichés d'un bloc. **C'est le bon choix dans tous les cas.** |
+| 💤 **Désactivé** | Aucun découpage : l'image entière d'un coup. Qualité native sur PC, mais ⚠️ **peut faire planter le téléphone** sur un très grand plan — un message vous prévient si c'est le cas. |
+
+> 🩸 **Il y avait 5 boutons auparavant** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que
+> le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan
+> **déjà découpé à la génération**, ils ne changeaient **strictement rien**, alors que l'app affichait « Plus
+> net. Recommandé sur PC desktop. ». Ils ont été retirés.
+
+> 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le
+> **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100
+> millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur
+> iPhone. Corrigé : c'est désormais la taille en pixels qui décide.
+
+### 📊 Éditeur de données du plan
+
+Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **ou** sur le bouton **📊 Éditeur de données** de l'accueil pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
+
+> ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
+
+#### Ouverture
+
+1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
+2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
+3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
+4. **🔁 Convertir la résolution** — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
+5. **🧹 Dédoublonner les données** — retire les **sommets identiques consécutifs** accumulés dans les tracés, zones, structures et mesures d'un fichier `.json` (calque de données ou session exportée) : un ancien bug du mode « clic carte » pouvait en empiler plusieurs par clic — invisibles à l'écran, mais ils gonflent les fichiers et les exports. Choisis un ou plusieurs fichiers, récupère-les nettoyés en `_dedup.json` avec le compte de ce qui a été retiré. Les points (POI) ne sont **jamais touchés** — deux points volontairement superposés restent distincts.
+
+Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
+
+#### Édition
+
+- **Cliquez sur une cellule** pour la modifier (sauf l'ID, en lecture seule)
+- **Tab** : passe à la cellule suivante · **Entrée** : ligne suivante (même colonne) · **Échap** : annule
+- **Coordonnées** : si X ou Y est hors du plan, la cellule devient rouge avec un avertissement ⚠
+- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes (création de tag à la volée possible)
+- **🔒 Tracés / zones / structures** : vous pouvez éditer la **note** (description), le **type** et le **niveau**, mais la **géométrie** (la colonne `points`) reste en **lecture seule** — pour la redessiner, utilisez les outils de tracé sur la carte.
+
+#### Actions *(points uniquement)*
+
+- **🔍 Recherche** filtre toutes les colonnes · **Trier** : clic en-tête (asc → desc → annulé) · **Sélection multiple** : checkbox + Maj+clic
+- **+ Ajouter ligne** · **📋 Dupliquer** · **🗑️ Supprimer** (confirmation) · **📍 Voir sur la carte** (points sélectionnés en orange clignotant)
+
+#### Sauvegarde *(jamais de chargement en direct pour les données du plan)*
+
+Bouton **💾 Sauvegarder** :
+
+| Cas | Effet |
+|---|---|
+| **Données du plan** (points / tracés / zones / structures) | **📥 Télécharger** le fichier `.json` modifié. ⚠️ Pour les **appliquer**, réimportez ce fichier dans le **Générateur** (🏗️) — l'éditeur ne modifie jamais le plan en direct sur la carte. |
+| **Session** (vos annotations en cours) | **📥 Télécharger** **ou** **✏️ Remplacer la session en cours** (mise à jour live de vos points de session). |
+
+> ⚠️ Si vous fermez la fenêtre avec des modifications non sauvegardées, une confirmation vous propose de sauvegarder, quitter sans sauvegarder, ou continuer l'édition.
 
 ### 🖥️ Héberger l'app sur ton serveur
 
