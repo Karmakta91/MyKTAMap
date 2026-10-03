@@ -219,16 +219,17 @@ Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, mêm
 
 ### 🚨 Mode urgence — Affichage XL
 
-Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, lire ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🚨 Mode urgence — Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
+Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, dicter ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🚨 Mode urgence — Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
 
-- 📍 **Ta position, énorme**, lisible à un mètre : les coordonnées **GPS** si ton plan est géoréférencé — celles qu'on dicte aux secours —, sinon la position **X / Y du plan**. Le titre du bloc dit laquelle tu lis ; la ligne en dessous précise s'il s'agit de ta position suivie, de ta dernière position connue, ou de la **position de départ du plan, jamais confirmée**.
-- 📋 **Copier ma position** — le bouton à droite des chiffres (ou les chiffres eux-mêmes). Plan géoréférencé : il copie les coordonnées seules (`48.856600, 2.352200`), prêtes à coller dans un SMS ou une app de cartes. Sinon : le nom du plan et ta position X/Y, utiles seulement à quelqu'un qui a le même plan. ⚠️ Si ta position n'a jamais été confirmée, l'écran le dit mais pas le message : dis-le aussi à qui tu écris.
-- 🧭 **Une boussole géante** qui indique ton cap en temps réel. La première fois, le navigateur demande l'accès aux capteurs d'orientation : accepte, sinon elle reste figée.
+- 🗺️ **Une mini-carte** qui occupe presque tout l'écran, très zoomée et centrée sur toi, aux **couleurs de ta légende**, avec ton itinéraire, **les points du plan et les tiens** (du niveau affiché), et la même orientation que la carte en mode « plan orienté ».
+- 🖐️ **Tu peux la déplacer et zoomer au doigt** pour regarder plus loin. Dès que tu la bouges, elle cesse de te suivre et se remet **Nord en haut** ; le bouton **🎯 Recentrer** la ramène sur toi, reprend le suivi et l'orientation.
+- 📍 **Tu reconnais un point ?** Touche-le : une bulle affiche son nom, son type et sa note. **📍 Je suis ici** recale ton suivi dessus, exactement comme la bulle d'un point sur la carte — le moyen de corriger une dérive sans quitter l'écran. La carte se recentre alors sur toi.
+- 🧭 **Une boussole géante** posée sur ta position, qui indique ton cap en temps réel. La première fois, le navigateur demande l'accès aux capteurs d'orientation : accepte, sinon elle reste figée.
 - 🪧 **La prochaine consigne du guidage en gros** (« Dans 40 m, tourner à gauche »), si un itinéraire est tracé et le suivi actif. En cas d'écart, **Voir les choix sur la carte** te ramène au bandeau.
-- 🗺️ **Une mini-carte** très zoomée, centrée sur toi, aux **couleurs de ta légende**, avec ton itinéraire et la même orientation que la carte en mode « plan orienté ».
 - 🔋 **Une ligne d'état** en haut à droite : ta batterie (si **🔋 Niveau de batterie** est activé dans ⚙️ Configuration), l'état du tracker et de la boussole. Le nom du plan est sous le titre.
+- 📋 **Tes coordonnées GPS, si ton plan est géoréférencé** : l'icône 📋 au bout de la ligne d'état ouvre une bulle qui les affiche **en très gros**, lisibles à un mètre — celles qu'on dicte aux secours —, avec une ligne qui précise s'il s'agit de ta position suivie, de ta dernière position connue, ou de la **position de départ du plan, jamais confirmée**. Son bouton **📋 Copier ma position** copie les coordonnées seules (`48.856600, 2.352200`), prêtes à coller dans un SMS ou une app de cartes. ⚠️ Si ta position n'a jamais été confirmée, la bulle le dit mais pas le message : dis-le aussi à qui tu écris. Plan non géoréférencé : pas d'icône, aucune coordonnée n'est affichée.
 
-L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et se réorganise en paysage (position à gauche, carte à droite). Pour en sortir : le gros bouton **↩️ SORTIR DU MODE URGENCE**, toujours en bas, ou **Échap** sur ordinateur.
+L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et tient aussi en paysage. Pour en sortir : le gros bouton **↩️ SORTIR DU MODE URGENCE**, toujours en bas, ou **Échap** sur ordinateur (si une bulle est ouverte, Échap ferme d'abord la bulle).
 
 ### ⛑️ Je suis perdu
 

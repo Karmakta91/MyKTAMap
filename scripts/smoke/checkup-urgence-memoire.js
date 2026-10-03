@@ -251,85 +251,80 @@ function inf(m) { console.log("  •  " + m); }
     if (u.miniTournee) ok("la minimap s'oriente quand le mode « plan orienté » est actif (" + u.miniTournee + ")");
     else pb("la minimap ne tourne pas alors que le mode est activé");
 
-    // ── P — copier sa position (26/09/2026) ───────────────────
+    // ── P — coordonnées et copie (26/09/2026, contrat du 03/10/2026) ──
     // KARMA : « on devrait avoir la possibilité de copier les coordonnées GPS de
-    // notre position, pour les envoyer si on trouve un point de réseau ». Ce qui
+    // notre position, pour les envoyer si on trouve un point de réseau ». Depuis
+    // le 03/10/2026 plus aucune coordonnée n'est affichée en permanence : plan
+    // géoréférencé → icône 📋 dans la ligne d'état, qui ouvre une bulle (chiffres
+    // en gros + Copier) ; plan non géoréférencé → pas d'icône du tout. Ce qui
     // compte n'est pas que le bouton dise « copié » : c'est ce qu'il y a DANS le
     // presse-papier, et que ce soit collable tel quel dans un SMS ou une carte.
-    console.log("— P : copier sa position —");
+    console.log("— P : coordonnées (bulle 📋) et copie —");
     const p1 = await page.evaluate(async function () {
       window.EmergencyMode.activer();
       await new Promise(function (r) { setTimeout(r, 1200); });
-      const btn = document.getElementById("kta-em-copier");
-      if (!btn) { window.EmergencyMode.desactiver(); return { absent: true }; }
-      const rb = btn.getBoundingClientRect();
-      const h = Math.round(rb.height);
-      // 📐 27/09/2026 — le bouton doit être un CARRÉ dans la ligne des
-      // chiffres, pas une barre sous eux : c'est tout l'objet de la v1.97.12,
-      // et ç ne se voit que géométriquement.
-      const val = document.getElementById("kta-em-pos-xy");
-      const rv = val ? val.getBoundingClientRect() : null;
-      const geo2 = {
-        largeur: Math.round(rb.width),
-        carre: Math.abs(rb.width - rb.height) <= 2,
-        memeLigne: rv ? Math.abs((rb.top + rb.height / 2) - (rv.top + rv.height / 2)) < 12 : null,
-        aDroite: rv ? (rb.left >= rv.right - 1) : null,
-        chiffresTronques: val ? (val.scrollWidth > val.clientWidth + 1) : null
+      const res = {
+        ancienBloc: !!(document.getElementById("kta-em-pos-xy") || document.getElementById("kta-em-copier")),
+        fenetre: window.innerHeight
       };
-      btn.click();
-      await new Promise(function (r) { setTimeout(r, 700); });
-      const etat = btn.textContent.trim();
+      const icone = document.getElementById("kta-em-coords-btn");
+      res.geo = !!(icone && !icone.hidden);
+      if (res.geo) {
+        const rb = icone.getBoundingClientRect();
+        res.icone = { l: Math.round(rb.width), h: Math.round(rb.height), haut: rb.top < window.innerHeight / 4 };
+        icone.click();
+        await new Promise(function (r) { setTimeout(r, 200); });
+        const bulle = document.getElementById("kta-em-coords-bulle");
+        res.bulleOuverte = !!(bulle && !bulle.hidden);
+        const lat = document.getElementById("kta-em-coords-lat");
+        res.taillePolice = lat ? parseFloat(getComputedStyle(lat).fontSize) : 0;
+        res.chiffresTronques = lat ? (lat.scrollWidth > lat.clientWidth + 1) : null;
+        const btn = document.getElementById("kta-em-coords-copier");
+        if (btn) btn.click();
+        await new Promise(function (r) { setTimeout(r, 700); });
+        res.etat = btn ? btn.textContent.trim() : "";
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await new Promise(function (r) { setTimeout(r, 100); });
+        res.echapFermeBulle = !!(bulle && bulle.hidden);
+        res.ecranToujoursLa = window.EmergencyMode.isActif();
+      }
       const exit = document.getElementById("kta-emergency-exit");
       const ov = document.querySelector(".kta-emergency-overlay");
-      const res = {
-        hauteur: h, etat: etat, geo2: geo2,
-        sortieBas: exit ? Math.round(exit.getBoundingClientRect().bottom) : null,
-        fenetre: window.innerHeight,
-        debord: ov ? Math.max(0, ov.scrollHeight - ov.clientHeight) : null,
-        geo: !!(document.getElementById("kta-em-pos-label") || {}).textContent.match(/GPS/)
-      };
+      res.sortieBas = exit ? Math.round(exit.getBoundingClientRect().bottom) : null;
+      res.debord = ov ? Math.max(0, ov.scrollHeight - ov.clientHeight) : null;
       window.EmergencyMode.desactiver();
       return res;
     });
-    if (p1.absent) pb("le bouton « copier ma position » n'existe pas");
-    else {
+    if (!p1.ancienBloc) ok("plus de bloc position permanent (ni X/Y, ni GPS)");
+    else pb("le bloc position permanent est encore là");
+    if (p1.geo) {
       const presse = await page.evaluate(function () {
         return navigator.clipboard.readText().catch(function () { return null; });
       });
-      inf("bouton de " + p1.hauteur + " px · après clic : « " + p1.etat + " » · presse-papier : " +
-          JSON.stringify(presse));
-      if (p1.hauteur >= 40) ok("la cible est assez grande pour un doigt ganté (" +
-                              p1.geo2.largeur + "×" + p1.hauteur + " px)");
-      else pb("bouton de copie trop petit (" + p1.geo2.largeur + "×" + p1.hauteur + " px)");
-      if (p1.geo2.carre && p1.geo2.memeLigne && p1.geo2.aDroite)
-        ok("c'est un carré posé à droite des chiffres, dans leur ligne — pas une barre sous eux");
-      else pb("le bouton n'est plus un carré aligné sur les chiffres : " + JSON.stringify(p1.geo2));
-      if (p1.geo2.chiffresTronques === false)
-        ok("les chiffres ne sont pas tronqués par le bouton");
-      else pb("le bouton tronque les chiffres de la position");
-      // Plan géoréférencé → « lat, lng » NU : tout ajout casserait le collage
-      // dans une app de carte. Sinon → nom du plan + X/Y, inutile à un tiers
-      // mais exact pour un binôme qui a le même plan.
-      if (p1.geo) {
-        if (presse && /^-?\d+\.\d{6}, -?\d+\.\d{6}$/.test(presse))
-          ok("le presse-papier contient des coordonnées NUES, collables dans un SMS ou une carte");
-        else pb("presse-papier inattendu pour un plan géoréférencé : " + JSON.stringify(presse));
-      } else {
-        if (presse && /X \d+ \/ Y \d+/.test(presse))
-          ok("plan non géoréférencé : le presse-papier porte le plan et le X/Y");
-        else pb("presse-papier inattendu pour un plan non géoréférencé : " + JSON.stringify(presse));
-      }
-      if (p1.sortieBas !== null && p1.sortieBas <= p1.fenetre && p1.debord === 0)
-        ok("le bouton de copie n'a pas repoussé la sortie hors de l'écran (" +
-           p1.sortieBas + " ≤ " + p1.fenetre + ", 0 px de débordement)");
-      else pb("l'ajout du bouton fait déborder l'écran (sortie " + p1.sortieBas + "/" +
-              p1.fenetre + ", débordement " + p1.debord + ")");
+      inf("icône 📋 " + p1.icone.l + "×" + p1.icone.h + " px · police des chiffres " + p1.taillePolice +
+          " px · après clic : « " + p1.etat + " » · presse-papier : " + JSON.stringify(presse));
+      if (p1.icone.h >= 44 && p1.icone.haut) ok("plan géoréférencé : l'icône 📋 est en haut, cible ≥ 44 px");
+      else pb("icône 📋 mal placée ou trop petite : " + JSON.stringify(p1.icone));
+      if (p1.bulleOuverte && p1.taillePolice >= 28 && p1.chiffresTronques === false)
+        ok("la bulle affiche les coordonnées en gros, sans les tronquer");
+      else pb("bulle des coordonnées : " + JSON.stringify(p1));
+      // « lat, lng » NU : tout ajout casserait le collage dans une app de carte.
+      if (presse && /^-?\d+\.\d{6}, -?\d+\.\d{6}$/.test(presse))
+        ok("le presse-papier contient des coordonnées NUES, collables dans un SMS ou une carte");
+      else pb("presse-papier inattendu pour un plan géoréférencé : " + JSON.stringify(presse));
+      if (p1.echapFermeBulle && p1.ecranToujoursLa) ok("Échap ferme la bulle sans fermer l'écran XL");
+      else pb("Échap : bulle fermée " + p1.echapFermeBulle + ", écran encore ouvert " + p1.ecranToujoursLa);
+    } else {
+      ok("plan non géoréférencé : pas d'icône 📋, aucune coordonnée affichée");
     }
+    if (p1.sortieBas !== null && p1.sortieBas <= p1.fenetre && p1.debord === 0)
+      ok("la sortie tient dans l'écran (" + p1.sortieBas + " ≤ " + p1.fenetre + ", 0 px de débordement)");
+    else pb("l'écran déborde (sortie " + p1.sortieBas + "/" + p1.fenetre + ", débordement " + p1.debord + ")");
 
     // Le repli quand `navigator.clipboard` est inaccessible : c'est le cas
     // d'une instance servie en HTTP (réseau isolé de secours), où l'API
     // sécurisée n'existe pas. Sans repli, pas de coordonnées à transmettre.
-    const p2 = await page.evaluate(async function () {
+    const p2 = p1.geo ? await page.evaluate(async function () {
       try {
         Object.defineProperty(navigator, "clipboard", {
           get: function () { throw new Error("bloqué"); }, configurable: true
@@ -337,14 +332,17 @@ function inf(m) { console.log("  •  " + m); }
       } catch (e) { return { impossible: true }; }
       window.EmergencyMode.activer();
       await new Promise(function (r) { setTimeout(r, 1000); });
-      const btn = document.getElementById("kta-em-copier");
+      const ic = document.getElementById("kta-em-coords-btn");
+      if (ic) ic.click();
+      const btn = document.getElementById("kta-em-coords-copier");
       if (btn) btn.click();
       await new Promise(function (r) { setTimeout(r, 600); });
       const t = btn ? btn.textContent.trim() : "";
       window.EmergencyMode.desactiver();
       return { etat: t };
-    });
-    if (p2.impossible) inf("navigator.clipboard non redéfinissable — repli non joué");
+    }) : { sansGeo: true };
+    if (p2.sansGeo) inf("plan non géoréférencé — repli de copie non joué");
+    else if (p2.impossible) inf("navigator.clipboard non redéfinissable — repli non joué");
     else if (/✅/.test(p2.etat)) ok("sans `navigator.clipboard`, le repli `execCommand` copie quand même");
     else pb("le repli de copie ne fonctionne pas (bouton : « " + p2.etat + " »)");
 

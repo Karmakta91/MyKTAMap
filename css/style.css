@@ -7352,8 +7352,9 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 /* =====================================================================
    🚨 MODE URGENCE — v1.10.1
-   Overlay plein écran avec position GPS + cap boussole en GROS, désactive
-   tout le superflu. 2 thèmes : sombre (visibilité nocturne) / clair
+   Overlay plein écran : minimap interactive + cap boussole en GROS (les
+   coordonnées GPS passent dans la bulle 📋), désactive tout le superflu.
+   2 thèmes : sombre (visibilité nocturne) / clair
    (lampe d'appoint).
    ===================================================================== */
 
@@ -7396,8 +7397,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
-.kta-emergency-dark .kta-emergency-copier-btn   { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.45); color: #e8eaf0; }
-.kta-emergency-dark .kta-emergency-copier-btn:hover { background: rgba(255,255,255,0.12); }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
 
@@ -7411,8 +7410,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
-.kta-emergency-light .kta-emergency-copier-btn   { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.5); color: #2c3848; }
-.kta-emergency-light .kta-emergency-copier-btn:hover { background: rgba(0,0,0,0.1); }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
 
@@ -7471,17 +7468,38 @@ html.kta-theme-light .kta-cfg-group-titre {
   min-width: 0;   /* sinon l'ellipsis du nom de plan ne peut pas s'appliquer */
 }
 
-/* Les puces d'état : échelle et état matériel, alignées à droite du titre.
-   Elles remplaçent le bloc « ÉCHELLE / PLAN / ÉTAT » qui mangeait une
-   pleine largeur de grille en bas de l'écran. */
+/* La ligne d'état (batterie, tracker, boussole), alignée à droite du titre,
+   suivie de l'icône 📋 des coordonnées sur un plan géoréférencé. */
 .kta-emergency-etats {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
   text-align: right;
 }
+
+/* 📋 03/10/2026 — icône des coordonnées (plan géoréférencé seulement).
+   44 px : minimum tactile, cet écran se touche avec des gants. */
+.kta-em-coords-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  border: 1.5px solid;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+}
+.kta-emergency-dark  .kta-em-coords-btn { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.55); }
+.kta-emergency-light .kta-em-coords-btn { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.6); }
+/* Les règles `display` des classes l'emportent sur l'attribut `hidden`. */
+.kta-emergency-overlay [hidden] { display: none !important; }
 
 .kta-emergency-chip {
   font-size: 11.5px;
@@ -7492,12 +7510,10 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-emergency-grid {
   display: grid;
-  /* Une colonne partout (la position en pleine largeur, la minimap sous
-     elle) : depuis que le bloc meta et le bloc GPS ont disparu, une
-     deuxième colonne ne laisserait qu'un trou à côté de la position.
-     La 2ème piste `1fr` donne à la minimap toute la hauteur restante. */
+  /* 03/10/2026 : le bloc position est parti — la minimap est seule et
+     prend toute la place, en portrait comme en paysage. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
@@ -7542,8 +7558,10 @@ html.kta-theme-light .kta-cfg-group-titre {
   pointer-events: none;  /* le minimap derrière ne reçoit pas de clics non plus */
   padding: 10px 14px 0 14px;  /* bottom 0 → degrés collés au bord */
 }
+/* 🖐️ 03/10/2026 : la minimap se manipule au doigt — le texte posé dessus
+   (CAP, degrés) laisse passer les gestes. */
 .kta-emergency-bloc-heading-overlay > * {
-  pointer-events: auto;  /* mais les enfants restent interactifs (clic compass futur) */
+  pointer-events: none;
 }
 
 /* TOP group : 🧭 CAP + cardinal (SE/S/N/...) empilés sans gap excessif */
@@ -7570,39 +7588,112 @@ html.kta-theme-light .kta-cfg-group-titre {
   line-height: 1.1;
 }
 
-.kta-emergency-pos-gps {
-  font-size: 22px;  /* GPS un peu plus petit (longs floats) */
-}
-
 .kta-emergency-sub {
   font-size: 12.5px;
   font-style: italic;
   margin-top: 2px;
 }
 
-/* 📋 Copier sa position pour l'envoyer dès qu'on capte.
-   🧹 27/09/2026 (KARMA « trop grand, prend une place inutile — profite de la
-   place restante dans l'alignement de la position, en mode carré ») : le bouton
-   était pleine largeur SOUS les chiffres et coûtait 48 px de hauteur à la
-   carte. Il partage maintenant leur ligne et occupe le vide à leur droite.
-   48 px de côté : au-dessus du minimum tactile (44 px), parce que cet écran se
-   touche avec des gants. Discret en couleur — le rouge et le jaune restent à la
-   donnée et à la sortie. */
-.kta-emergency-pos-ligne {
+/* 🎯 03/10/2026 — Recentrer : visible seulement quand l'utilisateur a bougé
+   la minimap (le suivi est alors en pause). En bas à droite du bloc, au-dessus
+   du texte posé sur la carte, cible ≥ 48 px. */
+.kta-em-recentrer-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-emergency-dark  .kta-em-recentrer-btn { background: #1a1f2e; color: #f4c542; border-color: #f4c542; }
+.kta-emergency-light .kta-em-recentrer-btn { background: #ffffff; color: #b8740b; border-color: #b8740b; }
+
+/* 📍 Points sur la minimap : l'icône du catalogue, sans le cadre blanc par
+   défaut des `divIcon` Leaflet, ni le `scale` de la carte principale. */
+.kta-em-mini-poi {
+  background: none !important;
+  border: none !important;
+  cursor: pointer;
+}
+.kta-em-mini-poi img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
+  user-select: none;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+}
+.kta-em-mini-poi-sans-icone::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: #8cb4ff;
+  border: 2px solid #ffffff;
+}
+
+/* 💬 Bulles (coordonnées / point) au-dessus de l'écran XL. Le fond capte
+   l'appui « à côté » qui ferme la bulle. */
+.kta-em-bulle-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+}
+.kta-em-bulle {
+  width: 100%;
+  max-width: 460px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border: 2px solid;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.kta-emergency-dark  .kta-em-bulle { background: #1a1f2e; color: #e8eaf0; border-color: #f4c542; }
+.kta-emergency-light .kta-em-bulle { background: #ffffff; color: #0a0d18; border-color: #b8740b; }
+.kta-em-bulle-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 10px;
 }
-.kta-emergency-pos-ligne .kta-emergency-value {
-  flex: 1;
-  min-width: 0;   /* sans ça, des chiffres longs poussent le bouton hors du bloc */
+.kta-em-bulle-titre {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.kta-emergency-copier-btn {
+.kta-emergency-dark  .kta-em-bulle-titre { color: #f4c542; }
+.kta-emergency-light .kta-em-bulle-titre { color: #b8740b; }
+.kta-em-bulle-fermer {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1;
   border: 1.5px solid;
   border-radius: 10px;
@@ -7610,8 +7701,54 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-family: inherit;
   background: transparent;
   color: inherit;
-  transition: background 0.12s;
 }
+.kta-emergency-dark  .kta-em-bulle-fermer { border-color: rgba(200, 208, 224, 0.4); }
+.kta-emergency-light .kta-em-bulle-fermer { border-color: rgba(44, 56, 72, 0.35); }
+/* Coordonnées : lisibles à un mètre, pour les dicter au téléphone. */
+.kta-em-coords-val {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: clamp(30px, 10.5vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+.kta-emergency-dark  .kta-em-coords-val { color: #f4c542; }
+.kta-emergency-light .kta-em-coords-val { color: #b8740b; }
+.kta-em-bulle-statut { text-align: center; }
+.kta-emergency-dark  .kta-em-bulle-statut { color: #c8d0e0; }
+.kta-emergency-light .kta-em-bulle-statut { color: #2c3848; }
+/* Nom du point : en gros, c'est ce qu'on cherche à reconnaître. */
+.kta-em-bulle-titre.kta-em-point-nom {
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  padding-top: 8px;
+}
+.kta-em-point-type { font-size: 14px; font-weight: 700; }
+.kta-emergency-dark  .kta-em-point-type { color: #8892a4; }
+.kta-emergency-light .kta-em-point-type { color: #4a5468; }
+.kta-em-point-note {
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.kta-em-bulle-action {
+  min-height: 52px;
+  padding: 12px 16px;
+  font-size: 17px;
+  font-weight: 800;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.kta-emergency-dark  .kta-em-bulle-action { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
+.kta-emergency-light .kta-em-bulle-action { background: #b8740b; color: #ffffff; border-color: #b8740b; }
 
 /* Heading bloc — texte par-dessus le minimap, donc halo prononcé pour lisibilité */
 .kta-emergency-heading-num {
@@ -7852,7 +7989,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 @media (max-width: 540px) {
   .kta-emergency-titre      { font-size: 19px; }
   .kta-emergency-value      { font-size: 26px; }
-  .kta-emergency-pos-gps    { font-size: 18px; }
   .kta-emergency-heading-num { font-size: 44px; }
   .kta-emergency-heading-card { font-size: 22px; }
   .kta-emergency-bloc-heading { min-height: 260px; }
@@ -7862,38 +7998,30 @@ html.kta-theme-light .kta-cfg-group-titre {
 /* 📱 27/09/2026 — TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
    tout téléphone en affichage zoomé). Mesuré avant cette règle : 50 px de
    défilement, dont l'essentiel vient du PLANCHER de la mini-carte (260 px) et
-   non du bouton de copie. Le bouton de sortie restait atteignable (il est
+   non du bouton de copie (retiré depuis). Le bouton de sortie restait atteignable (il est
    collant), mais un écran de panique ne devrait rien faire défiler du tout. */
 @media (max-width: 360px) {
   .kta-emergency-bloc-heading { min-height: 200px; }
-  .kta-emergency-copier-btn   { width: 44px; height: 44px; font-size: 19px; }
   .kta-emergency-value        { font-size: 23px; }
-  .kta-emergency-pos-gps      { font-size: 16.5px; }
 }
 
 /* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
-   landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape, on
-   force 2 colonnes (sinon scroll vertical bloqué) + tailles réduites
-   pour que tout rentre sans scroll. La minimap se redimensionne via
+   landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape :
+   tailles réduites pour que tout rentre sans scroll. La minimap se redimensionne via
    le listener orientationchange (cf emergencyMode.js > _orientationListener). */
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   .kta-emergency-box        { max-width: none; gap: 8px; }
-  /* 🗺️ 26/09/2026 : position à gauche, minimap à droite sur TOUTE la
-     hauteur — en paysage bas, l'empilement vertical ne laissait que
-     160 px de carte. */
-  .kta-emergency-grid       { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
-                              grid-template-rows: minmax(0, 1fr); gap: 8px; }
-  .kta-emergency-bloc-heading { grid-column: 2 / 3; grid-row: 1; }
+  /* 🗺️ 03/10/2026 : le bloc position est parti — la minimap occupe toute
+     la largeur ET toute la hauteur restante. */
+  .kta-emergency-grid       { gap: 8px; }
   .kta-emergency-titre      { font-size: 17px; }
   .kta-emergency-value      { font-size: 22px; }
-  .kta-emergency-pos-gps    { font-size: 16px; }
   .kta-emergency-heading-num { font-size: 32px; }
   .kta-emergency-heading-card { font-size: 18px; }
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
-  .kta-emergency-copier-btn { width: 40px; height: 40px; font-size: 18px; }
   .kta-emergency-mini-map   { min-height: 140px; }
   .kta-emergency-chip       { font-size: 10.5px; }
   .kta-emergency-plan-nom   { font-size: 12px; }

@@ -185,7 +185,7 @@ const t = KmzExport.buildTransform(calib.pointA.plan, calib.pointB.plan,
 const gps = KmzExport.planToGps(t, x, y);
 ```
 
-Pattern utilisé par `gpxIO.js` (export/import), `emergencyMode.js > _tick` (bloc GPS, fix v1.21.2), `utils.js > buildPointPopupHtml` (ligne 🌐 coords GPS popup POI, v1.21.2).
+Pattern utilisé par `gpxIO.js` (export/import), `emergencyMode.js > _transformCalib` (bulle 📋 des coordonnées, fix v1.21.2), `utils.js > buildPointPopupHtml` (ligne 🌐 coords GPS popup POI, v1.21.2).
 
 #### 32.8 Pour ajouter une nouvelle catégorie d'export KMZ (futur)
 

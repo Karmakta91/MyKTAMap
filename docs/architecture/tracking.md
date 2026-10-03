@@ -303,9 +303,9 @@ Skip silencieux si plan non calibré (= la ligne `🌐` n'apparaît pas du tout,
 
 #### 62.4 Fix mode urgence calibrage GPS
 
-`emergencyMode.js > _tick` : clone exact du fix v1.21.1 #1 (transform jamais persisté). Avant : `calib.transform` cherché directement → toujours `undefined` → bloc GPS toujours masqué. Après : `buildTransform` on-demand.
+`emergencyMode.js > _transformCalib` : clone exact du fix v1.21.1 #1 (transform jamais persisté). Avant : `calib.transform` cherché directement → toujours `undefined` → GPS jamais affiché. Après : transform construit à la demande (`buildTransformCalib`). Depuis le 03/10/2026, ce transform décide aussi si l'icône 📋 (bulle des coordonnées) existe — cf `secours.md` §52.0.
 
-⚠️ **Critique sécurité** : le bloc GPS du mode urgence est l'info principale pour qu'un utilisateur perdu puisse communiquer sa position à des secours externes (Google Maps, GPS standalone, etc.). Le bug le rendait inutilisable.
+⚠️ **Critique sécurité** : les coordonnées GPS du mode urgence sont l'info principale pour qu'un utilisateur perdu puisse communiquer sa position à des secours externes (Google Maps, GPS standalone, etc.). Le bug le rendait inutilisable.
 
 #### 62.5 Flyout sidebar étendu au Tracker
 
@@ -912,7 +912,7 @@ Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`
 - **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main.
 - `sortieUrgence.js` : `_lancer(origine, meta)` garde `meta.mode` (`suivi` / `confirmee` / `clic`) + `ts` pour la ligne d'état de la modale ; `_tracerIndex` passe `{ origine }` à `itineraireYAller`.
 - `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine ; sans elle, même règle (picker si jamais confirmée).
-- `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée ».
+- `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée » dans la bulle 📋 des coordonnées ; sa bulle de point propose « 📍 Je suis ici » (`recalerTrackerSurPoint`), qui confirme la position.
 
 🪤 **Piège** : tout nouveau chemin qui écrit `position` sans passer par le clic recalage ni `recalerTrackerSurPoint`
 doit appeler `_marquerPositionConfirmee()`, sinon le picker s'ouvrira alors que l'utilisateur s'est situé.

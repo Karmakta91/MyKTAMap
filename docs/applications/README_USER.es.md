@@ -219,16 +219,17 @@ Una vibración confirma la salida encontrada o te avisa si no hay ninguna, aunqu
 
 ### 🚨 Modo urgencia — Visualización XL
 
-Sabes dónde estás, pero te entra el pánico y necesitas lo esencial **en muy grande**: reorientarte, localizar un pozo cercano, comprobar tu rumbo, leerle tu posición a alguien. En el menú **🧭 Tracker**, el botón rojo **🚨 Modo urgencia — Visualización XL (posición + rumbo)** abre una pantalla completa que cabe sin desplazarse:
+Sabes dónde estás, pero te entra el pánico y necesitas lo esencial **en muy grande**: reorientarte, localizar un pozo cercano, comprobar tu rumbo, dictarle tu posición a alguien. En el menú **🧭 Tracker**, el botón rojo **🚨 Modo urgencia — Visualización XL (posición + rumbo)** abre una pantalla completa que cabe sin desplazarse:
 
-- 📍 **Tu posición, enorme**, legible a un metro: las coordenadas **GPS** si tu plano está georreferenciado — las que se dictan a los equipos de rescate —, si no, la posición **X / Y del plano**. El título del bloque dice cuál estás leyendo; la línea de debajo indica si es tu posición seguida, tu última posición conocida o la **posición de salida del plano, nunca confirmada**.
-- 📋 **Copiar mi posición** — el botón a la derecha de las cifras (o las propias cifras). Plano georreferenciado: copia solo las coordenadas (`48.856600, 2.352200`), listas para pegar en un SMS o una app de mapas. Si no: el nombre del plano y tu posición X/Y, útiles solo para alguien que tenga el mismo plano. ⚠️ Si tu posición nunca se confirmó, la pantalla lo dice pero el mensaje no: díselo también a quien escribas.
-- 🧭 **Una brújula gigante** que indica tu rumbo en tiempo real. La primera vez, el navegador pide acceso a los sensores de orientación: acepta, si no, se queda congelada.
+- 🗺️ **Un minimapa** que ocupa casi toda la pantalla, muy ampliado y centrado en ti, con los **colores de tu leyenda**, tu ruta, **los puntos del plano y los tuyos** (del nivel mostrado) y la misma orientación que el mapa en modo «mapa orientado».
+- 🖐️ **Puedes desplazarlo y hacer zoom con los dedos** para mirar más lejos. En cuanto lo mueves, deja de seguirte y vuelve a ponerse con el **Norte arriba**; el botón **🎯 Recentrar** lo devuelve a ti y reanuda el seguimiento y la orientación.
+- 📍 **¿Reconoces un punto?** Tócalo: una burbuja muestra su nombre, su tipo y su nota. **📍 Estoy aquí** reajusta tu seguimiento sobre él, exactamente como la burbuja de un punto en el mapa — la forma de corregir una deriva sin salir de la pantalla. El mapa se recentra entonces en ti.
+- 🧭 **Una brújula gigante** colocada sobre tu posición, que indica tu rumbo en tiempo real. La primera vez, el navegador pide acceso a los sensores de orientación: acepta, si no, se queda congelada.
 - 🪧 **La próxima indicación del guiado en grande** («En 40 m, girar a la izquierda»), si hay una ruta trazada y el seguimiento está activo. Ante un desvío, **Ver las opciones en el mapa** te devuelve al banner.
-- 🗺️ **Un minimapa** muy ampliado, centrado en ti, con los **colores de tu leyenda**, tu ruta y la misma orientación que el mapa en modo «mapa orientado».
 - 🔋 **Una línea de estado** arriba a la derecha: tu batería (si **🔋 Nivel de batería** está activado en ⚙️ Configuración), el estado del tracker y de la brújula. El nombre del plano está bajo el título.
+- 📋 **Tus coordenadas GPS, si tu plano está georreferenciado**: el icono 📋 al final de la línea de estado abre una burbuja que las muestra **en muy grande**, legibles a un metro — las que se dictan a los equipos de rescate —, con una línea que indica si es tu posición seguida, tu última posición conocida o la **posición de salida del plano, nunca confirmada**. Su botón **📋 Copiar mi posición** copia solo las coordenadas (`48.856600, 2.352200`), listas para pegar en un SMS o una app de mapas. ⚠️ Si tu posición nunca se confirmó, la burbuja lo dice pero el mensaje no: díselo también a quien escribas. Plano sin georreferenciar: sin icono, no se muestra ninguna coordenada.
 
-La pantalla sigue el tema de la app, no se apaga mientras está abierta y se reorganiza en horizontal (posición a la izquierda, mapa a la derecha). Para salir: el botón grande **↩️ SALIR DEL MODO EMERGENCIA**, siempre abajo, o **Esc** en ordenador.
+La pantalla sigue el tema de la app, no se apaga mientras está abierta y también cabe en horizontal. Para salir: el botón grande **↩️ SALIR DEL MODO EMERGENCIA**, siempre abajo, o **Esc** en ordenador (si hay una burbuja abierta, Esc cierra primero la burbuja).
 
 ### ⛑️ Estoy perdido
 

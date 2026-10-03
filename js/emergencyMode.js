@@ -10,15 +10,17 @@
 // =========================
 // Bouton "panique" qui affiche un écran simplifié plein écran avec les infos
 // VITALES en GROS :
-//   - Position tracker : GPS lat/lng si le plan est calibré KMZ, sinon px du
-//     plan — UN SEUL des deux depuis le 26/09/2026 (KARMA)
-//   - 📋 Bouton COPIER la position (26/09/2026, KARMA « pour les envoyer si on
-//     trouve un point de réseau ») : GPS → « lat, lng » NU, le format qu'un
-//     SMS, une app de carte ou une équipe de secours comprennent sans rien
-//     retirer. Plan non géoréférencé → nom du plan + X/Y, qui ne sert qu'à
-//     quelqu'un qui a le MÊME plan, et c'est dit tel quel.
+//   - Mini-carte interactive (déplacer / zoomer au doigt) centrée sur la
+//     position, avec la boussole posée dessus, les points du plan et ceux de
+//     l'utilisateur ; 🎯 Recentrer reprend le suivi (03/10/2026, KARMA)
+//   - Appui sur un point → bulle « 📍 Je suis ici » (même recalage que la
+//     bulle de la carte principale)
+//   - 📋 Plan géoréférencé SEULEMENT : icône dans la ligne d'état qui ouvre
+//     une bulle avec les coordonnées GPS en gros (à dicter) et un bouton
+//     Copier → « lat, lng » NU, le format qu'un SMS, une app de carte ou une
+//     équipe de secours comprennent sans rien retirer. Plus aucune
+//     coordonnée affichée en permanence (03/10/2026, KARMA).
 //   - Heading boussole en temps réel (gros chiffres + flèche compas)
-//   - Échelle plan
 //   - Bouton "Sortir" gros et visible
 //
 // Différent du ⛑️ "Je suis perdu" (sous-action existante du Tracker) qui
@@ -89,15 +91,28 @@
   // zones (polygons) + structures (polygons + polylines fronts).
   let _miniZoneLayers      = [];
   let _miniStructureLayers = [];
+  // 📍 03/10/2026 : marqueurs des points (plan + utilisateur) du niveau
+  // affiché. Posés UNE fois, reposés seulement si la signature des niveaux
+  // visibles change (cf `_signatureNiveaux`) — jamais à chaque tick.
+  let _miniPoiLayers       = [];
+  let _miniPoiSig          = null;
+
+  // 🖐️ 03/10/2026 (KARMA) — MINI-CARTE INTERACTIVE.
+  // `_suiviPause` : l'utilisateur a bougé la carte → plus de recentrage
+  // automatique, bouton 🎯 visible, rotation « plan orienté » retirée.
+  // `_vueAuto` : compteur > 0 pendant NOS changements de vue (setView,
+  // fitBounds, invalidateSize) — tout `movestart` hors de ce compteur vient
+  // d'un geste de l'utilisateur.
+  let _suiviPause = false;
+  let _vueAuto    = 0;
+  // Bulle ouverte au-dessus de l'écran : "coords" | "point" | null.
+  let _bulleOuverte = null;
+  let _bulleDeclencheur = null;   // élément qui reprend le focus à la fermeture
+  let _pointBulle   = null;       // point affiché dans la bulle point
 
   // ============================================================
   // FORMAT HELPERS
   // ============================================================
-  function _formatXY(pos) {
-    if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return null;
-    return Math.round(pos.x) + "  /  " + Math.round(pos.y);
-  }
-
   // 🌍 Transform de calibrage KMZ du plan courant, ou null.
   //
   // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
@@ -109,8 +124,8 @@
   // Fix : construire le transform à la demande via KmzExport.buildTransform
   // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
   //
-  // 📍 26/09/2026 : extrait de `_tick` sans changement de logique — le
-  // bloc position doit savoir s'il y a du GPS avant de choisir son label.
+  // 📋 03/10/2026 : c'est aussi ce qui décide si l'icône 📋 de la ligne
+  // d'état existe — pas de géoréférencement, pas d'icône.
   function _transformCalib() {
     const planId = window._currentLoadedPlanId || "default";
     const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
@@ -129,16 +144,19 @@
     }
   }
 
-  function _formatGPS(transform, pos) {
-    if (!transform || !pos) return null;
-    if (!window.KmzExport || typeof window.KmzExport.planToGps !== "function") return null;
+  // Coordonnées GPS de la position courante, ou null (plan non
+  // géoréférencé, pas de position, conversion impossible).
+  function _gpsCourant() {
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return null;
+    const t = _transformCalib();
+    if (!t || !window.KmzExport || typeof window.KmzExport.planToGps !== "function") return null;
     try {
-      const gps = window.KmzExport.planToGps(transform, pos.x, pos.y);
-      if (!gps || typeof gps.lat !== "number" || typeof gps.lng !== "number") return null;
-      // Format DD.dddddd (6 décimales = ~11 cm de précision, suffisant pour usage terrain)
-      return gps.lat.toFixed(6) + "  /  " + gps.lng.toFixed(6);
+      const gps = window.KmzExport.planToGps(t, pos.x, pos.y);
+      if (!gps || !Number.isFinite(gps.lat) || !Number.isFinite(gps.lng)) return null;
+      return { lat: gps.lat, lng: gps.lng };
     } catch(e) {
-      console.warn("[Emergency] _formatGPS :", e);
+      console.warn("[Emergency] conversion GPS :", e);
       return null;
     }
   }
@@ -159,70 +177,59 @@
   // coordonnées GPS de notre position, pour les envoyer si on trouve un point
   // de réseau ») — CE QU'ON MET DANS LE PRESSE-PAPIER.
   //
-  // ⚠️ Coordonnées NUES pour le GPS : « 48.823328, 2.322915 ». Pas d'heure, pas
-  // de cap, pas de nom de plan — c'est ce qui se colle tel quel dans un SMS,
-  // dans Google Maps ou dans Plans. Y ajouter du texte casse le collage dans
-  // une app de carte, et sur l'écran où on est perdu ce serait le pire moment
-  // pour découvrir qu'il faut nettoyer la chaîne à la main.
-  // Le doute sur la position (« jamais confirmée ») reste À L'ÉCRAN, sous les
-  // chiffres : il se dit à la personne, il ne se colle pas dans le message.
+  // ⚠️ Coordonnées NUES : « 48.823328, 2.322915 » (6 décimales ≈ 11 cm). Pas
+  // d'heure, pas de cap, pas de nom de plan — c'est ce qui se colle tel quel
+  // dans un SMS, dans Google Maps ou dans Plans. Y ajouter du texte casse le
+  // collage dans une app de carte, et sur l'écran où on est perdu ce serait le
+  // pire moment pour découvrir qu'il faut nettoyer la chaîne à la main.
+  // Le doute sur la position (« jamais confirmée ») reste À L'ÉCRAN, dans la
+  // bulle : il se dit à la personne, il ne se colle pas dans le message.
   //
-  // Plan NON géoréférencé : un X/Y ne veut rien dire pour un tiers, mais tout
-  // pour un binôme qui a le même plan — on préfixe donc par le nom du plan.
+  // 📋 03/10/2026 (KARMA) : plan NON géoréférencé → plus rien à copier ni à
+  // afficher (l'icône 📋 n'existe pas) : son X/Y ne servait à personne
+  // d'autre qu'à soi.
   function _texteACopier() {
-    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
-    if (!pos) return null;
-    const t = _transformCalib();
-    if (t) {
-      const gps = (window.KmzExport && typeof window.KmzExport.planToGps === "function")
-        ? window.KmzExport.planToGps(t, pos.x, pos.y) : null;
-      if (gps && typeof gps.lat === "number" && typeof gps.lng === "number"
-          && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)) {
-        return gps.lat.toFixed(6) + ", " + gps.lng.toFixed(6);
-      }
-    }
-    const xy = _formatXY(pos);
-    if (!xy) return null;
-    const nom = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
-    return (nom ? nom + " — " : "") + "X " + Math.round(pos.x) + " / Y " + Math.round(pos.y);
+    const g = _gpsCourant();
+    return g ? (g.lat.toFixed(6) + ", " + g.lng.toFixed(6)) : null;
   }
 
   // Le retour tient dans le bouton lui-même : pas de toast à chercher, pas de
   // modale à fermer. Deux secondes, puis il redevient ce qu'il était.
-  // 📋 27/09/2026 : le bouton est un CARRÉ, donc son contenu est un seul
-  // caractère — la phrase, elle, passe dans l'infobulle et dans `aria-label`,
-  // où un lecteur d'écran la lit. Un « ✅ Copié » complet ferait grandir le
-  // bouton, c'est-à-dire annulerait ce qu'on vient de gagner.
-  const _ICONE_COPIE = {
-    "emergency.copier":     "📋",
-    "emergency.copierOk":   "✅",
-    "emergency.copierKo":   "⚠️",
-    "emergency.copierRien": "—"
-  };
   let _timerCopie = null;
   function _copierPosition() {
-    const btn = document.getElementById("kta-em-copier");
+    const btn = document.getElementById("kta-em-coords-copier");
     const txt = _texteACopier();
     const dire = function (cle) {
       if (!btn) return;
-      btn.textContent = _ICONE_COPIE[cle] || _ICONE_COPIE["emergency.copier"];
-      btn.title = window.I18n.t(cle);
-      btn.setAttribute("aria-label", window.I18n.t(cle));
+      btn.textContent = window.I18n.t(cle);
       if (_timerCopie) clearTimeout(_timerCopie);
       _timerCopie = setTimeout(function () {
-        const b = document.getElementById("kta-em-copier");
-        if (!b) return;
-        b.textContent = _ICONE_COPIE["emergency.copier"];
-        b.title = window.I18n.t("emergency.copier");
-        b.setAttribute("aria-label", window.I18n.t("emergency.copier"));
+        const b = document.getElementById("kta-em-coords-copier");
+        if (b) b.textContent = window.I18n.t("emergency.copier");
       }, 2000);
     };
     if (!txt) { dire("emergency.copierRien"); return; }
     if (typeof window.ktaCopierTexte !== "function") { dire("emergency.copierKo"); return; }
     window.ktaCopierTexte(txt).then(function (ok) {
       dire(ok ? "emergency.copierOk" : "emergency.copierKo");
-      if (ok) console.log("[Emergency] position copiée : " + txt);
+      if (ok) console.log("[Emergency] position copiée");
     });
+  }
+
+  // Phrase d'état de la position (règle B1, audit 13/09/2026) : une position
+  // jamais confirmée est le DÉPART DU PLAN, pas « ta dernière position » —
+  // une coordonnée GPS calculée depuis elle doit le dire, c'est celle-là
+  // qu'on dicte au téléphone.
+  function _statutPosition(pos) {
+    if (!pos) return window.I18n.t("emergency.status.aucunePosition");
+    const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
+    const etat = (typeof window.getTrackingPositionEtat === "function")
+      ? window.getTrackingPositionEtat() : null;
+    return trackingActif
+      ? window.I18n.t("emergency.status.trackerActif")
+      : (etat && !etat.confirmee)
+        ? window.I18n.t("emergency.status.positionDefaut")
+        : window.I18n.t("emergency.status.dernierePosition");
   }
 
   // ============================================================
@@ -260,8 +267,14 @@
           // ⚙️ Réglages et ne sert à rien quand on cherche où l'on est. Les
           // distances de l'app en dépendent déjà sans qu'on ait à les convertir
           // à la main. Il ne reste que l'état du matériel, celui qui change.
+          // 📋 03/10/2026 (KARMA) — l'icône des coordonnées vit ici, à côté de
+          // l'état : visible SEULEMENT sur un plan géoréférencé (cf `_tick`).
           '<div class="kta-emergency-etats">' +
             '<span class="kta-emergency-chip" id="kta-em-etat">—</span>' +
+            '<button class="kta-em-coords-btn" id="kta-em-coords-btn" type="button" hidden ' +
+                    'aria-haspopup="dialog" ' +
+                    'title="' + t("emergency.coords.ouvrir") + '" ' +
+                    'aria-label="' + t("emergency.coords.ouvrir") + '">📋</button>' +
           '</div>' +
         '</div>' +
 
@@ -284,32 +297,12 @@
           '</button>' +
         '</div>' +
 
+        // 📍 03/10/2026 (KARMA « aller à l'essentiel, gagner de la place ») —
+        // le bloc POSITION permanent est RETIRÉ : ni X/Y du plan, ni GPS en
+        // continu. Les coordonnées ne servent qu'à être dictées ou envoyées :
+        // elles passent dans la bulle 📋 de la ligne d'état. Toute la grille
+        // revient à la mini-carte.
         '<div class="kta-emergency-grid">' +
-
-          // 📍 26/09/2026 (KARMA) — UNE SEULE POSITION, JAMAIS LES DEUX.
-          // Plan calibré → le bloc affiche le GPS (les seules coordonnées
-          // transmissibles à des secours) ; plan non calibré → le X/Y du
-          // plan. Le label suit la donnée (cf `_tick`). Deux couples de
-          // chiffres à lire sur un écran fait pour être compris d'un coup
-          // d'œil, quand on n'en a qu'un à donner, c'était un de trop.
-          '<div class="kta-emergency-bloc">' +
-            '<div class="kta-emergency-label" id="kta-em-pos-label">' + t("emergency.label.position") + '</div>' +
-            // 📋 27/09/2026 (KARMA « le bouton copier est trop grand et prend une
-            // place inutile, profite de la place restante dans l'alignement de la
-            // position GPS à droite, en mode carré ») — la valeur et le bouton
-            // partagent une ligne : le bouton occupe le vide à droite des
-            // chiffres au lieu de s'ajouter sous eux. Carré de 48 px — la cible
-            // reste au-dessus du minimum tactile (44 px), parce que cet écran se
-            // touche avec des gants, une main sale, parfois en tremblant.
-            '<div class="kta-emergency-pos-ligne">' +
-              '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy" ' +
-                   'title="' + t("emergency.copier.title") + '">— / —</div>' +
-              '<button class="kta-emergency-copier-btn" id="kta-em-copier" type="button" ' +
-                      'title="' + t("emergency.copier") + '" ' +
-                      'aria-label="' + t("emergency.copier") + '">📋</button>' +
-            '</div>' +
-            '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
-          '</div>' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
             // 🆕 v1.10.2-fix3 (KARMA "le minimap doit prendre tout le
@@ -337,6 +330,11 @@
               '</div>' +
               '<div class="kta-emergency-value kta-emergency-heading-num" id="kta-em-heading-num">—</div>' +
             '</div>' +
+            // 🎯 Visible seulement quand l'utilisateur a bougé la carte.
+            '<button class="kta-em-recentrer-btn" id="kta-em-recentrer" type="button" hidden ' +
+                    'title="' + t("emergency.recentrer.title") + '">' +
+              t("emergency.recentrer") +
+            '</button>' +
           '</div>' +
 
         '</div>' +
@@ -351,6 +349,46 @@
           t("emergency.exitBtn") +
         '</button>' +
 
+      '</div>' +
+
+      // 📋 BULLE COORDONNÉES — en gros, pour les DICTER (lisible à un mètre),
+      // + Copier. Le statut dit si la position n'a jamais été confirmée.
+      '<div class="kta-em-bulle-fond" id="kta-em-coords-bulle" hidden>' +
+        '<div class="kta-em-bulle" role="dialog" aria-modal="true" aria-labelledby="kta-em-coords-titre">' +
+          '<div class="kta-em-bulle-tete">' +
+            '<span class="kta-em-bulle-titre" id="kta-em-coords-titre">' + t("emergency.label.gps") + '</span>' +
+            '<button class="kta-em-bulle-fermer" type="button" data-kta-em-fermer="1" ' +
+                    'title="' + t("emergency.bulle.fermer") + '" ' +
+                    'aria-label="' + t("emergency.bulle.fermer") + '">✕</button>' +
+          '</div>' +
+          '<div class="kta-em-coords-val" id="kta-em-coords-lat">—</div>' +
+          '<div class="kta-em-coords-val" id="kta-em-coords-lng">—</div>' +
+          '<div class="kta-emergency-sub kta-em-bulle-statut" id="kta-em-coords-statut"></div>' +
+          '<button class="kta-em-bulle-action" id="kta-em-coords-copier" type="button" ' +
+                  'title="' + t("emergency.copier.title") + '">' +
+            t("emergency.copier") +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+
+      // 📍 BULLE POINT — volontairement pas la popup de la carte : nom, type,
+      // note, et une seule action, « Je suis ici ».
+      '<div class="kta-em-bulle-fond" id="kta-em-point-bulle" hidden>' +
+        '<div class="kta-em-bulle" role="dialog" aria-modal="true" ' +
+             'aria-label="' + t("emergency.point.aria") + '">' +
+          '<div class="kta-em-bulle-tete">' +
+            '<span class="kta-em-bulle-titre kta-em-point-nom" id="kta-em-point-nom"></span>' +
+            '<button class="kta-em-bulle-fermer" type="button" data-kta-em-fermer="1" ' +
+                    'title="' + t("emergency.bulle.fermer") + '" ' +
+                    'aria-label="' + t("emergency.bulle.fermer") + '">✕</button>' +
+          '</div>' +
+          '<div class="kta-em-point-type" id="kta-em-point-type"></div>' +
+          '<div class="kta-em-point-note" id="kta-em-point-note"></div>' +
+          '<button class="kta-em-bulle-action" id="kta-em-point-ici" type="button" ' +
+                  'title="' + t("poi.iAmHere") + '">' +
+            t("iti.wp.jeSuisIci") +
+          '</button>' +
+        '</div>' +
       '</div>';
     return overlay;
   }
@@ -358,13 +396,41 @@
   function _bindOverlay() {
     if (!_overlay) return;
     document.getElementById("kta-emergency-exit").addEventListener("click", desactiver);
-    const btnCopie = document.getElementById("kta-em-copier");
+
+    // 📋 Coordonnées
+    const btnCoords = document.getElementById("kta-em-coords-btn");
+    if (btnCoords) btnCoords.addEventListener("click", function () { _ouvrirBulle("coords", btnCoords); });
+    const btnCopie = document.getElementById("kta-em-coords-copier");
     if (btnCopie) btnCopie.addEventListener("click", _copierPosition);
-    // Les chiffres aussi : c'est là que le doigt va d'abord.
-    const valPos = document.getElementById("kta-em-pos-xy");
-    if (valPos) {
-      valPos.style.cursor = "pointer";
-      valPos.addEventListener("click", _copierPosition);
+
+    // 📍 Point
+    const btnIci = document.getElementById("kta-em-point-ici");
+    if (btnIci) btnIci.addEventListener("click", _jeSuisIciPoint);
+
+    // ✕ et appui à côté (sur le fond) ferment la bulle
+    _overlay.querySelectorAll(".kta-em-bulle-fond").forEach(function (fond) {
+      fond.addEventListener("click", function (ev) {
+        if (ev.target === fond || (ev.target.closest && ev.target.closest("[data-kta-em-fermer]"))) {
+          _fermerBulle();
+        }
+      });
+    });
+
+    // 🎯 Recentrer
+    const btnRec = document.getElementById("kta-em-recentrer");
+    if (btnRec) btnRec.addEventListener("click", _reprendreSuivi);
+
+    // 🖐️ Gestes qui doivent trouver la carte DÉJÀ remise Nord en haut : la
+    // rotation CSS fausse le point d'ancrage que Leaflet calcule au DÉBUT
+    // d'un pincement, d'une molette ou d'un double-clic. Phase de capture
+    // sur le bloc, donc avant les écouteurs Leaflet du conteneur.
+    const bloc = _overlay.querySelector(".kta-emergency-bloc-heading");
+    if (bloc) {
+      bloc.addEventListener("touchstart", function (ev) {
+        if (ev.touches && ev.touches.length >= 2) _pauseSuivi();
+      }, { capture: true, passive: true });
+      bloc.addEventListener("wheel", function () { _pauseSuivi(); }, { capture: true, passive: true });
+      bloc.addEventListener("dblclick", function () { _pauseSuivi(); }, true);
     }
 
     // 🪧 Guidage : les choix d'un écart sont sur la carte → on y retourne.
@@ -379,11 +445,107 @@
     document.addEventListener("keydown", _onKey);
   }
 
+  // Échap : UN SEUL gestionnaire pour l'écran et ses bulles, donc l'ordre est
+  // garanti — une bulle ouverte absorbe la touche, l'écran XL reste ouvert.
   function _onKey(ev) {
     if (ev.key === "Escape") {
       ev.preventDefault();
+      if (_bulleOuverte) {
+        ev.stopPropagation();
+        _fermerBulle();
+        return;
+      }
       desactiver();
     }
+  }
+
+  // ============================================================
+  // BULLES (coordonnées / point) — au-dessus de l'écran XL
+  // ============================================================
+  function _ouvrirBulle(quoi, declencheur) {
+    _fermerBulle();
+    const fond = document.getElementById(quoi === "coords" ? "kta-em-coords-bulle" : "kta-em-point-bulle");
+    if (!fond) return;
+    _bulleOuverte = quoi;
+    _bulleDeclencheur = declencheur || null;
+    if (quoi === "coords") _majBulleCoords();
+    fond.hidden = false;
+    const focus = fond.querySelector(quoi === "coords" ? "#kta-em-coords-copier" : "#kta-em-point-ici");
+    if (focus) { try { focus.focus({ preventScroll: true }); } catch(e) {} }
+  }
+
+  function _fermerBulle() {
+    if (!_overlay) return;
+    _overlay.querySelectorAll(".kta-em-bulle-fond").forEach(function (f) { f.hidden = true; });
+    const avait = _bulleOuverte;
+    _bulleOuverte = null;
+    _pointBulle = null;
+    if (avait && _bulleDeclencheur && document.contains(_bulleDeclencheur)) {
+      try { _bulleDeclencheur.focus({ preventScroll: true }); } catch(e) {}
+    }
+    _bulleDeclencheur = null;
+  }
+
+  // Rafraîchie à l'ouverture puis à chaque tick tant qu'elle est ouverte :
+  // la position bouge pendant le suivi, les chiffres dictés doivent suivre.
+  function _majBulleCoords() {
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    const g = _gpsCourant();
+    const lat = document.getElementById("kta-em-coords-lat");
+    const lng = document.getElementById("kta-em-coords-lng");
+    const st  = document.getElementById("kta-em-coords-statut");
+    if (lat) lat.textContent = g ? g.lat.toFixed(6) : "—";
+    if (lng) lng.textContent = g ? g.lng.toFixed(6) : "—";
+    if (st)  st.textContent  = _statutPosition(pos);
+  }
+
+  // Libellé du type d'un point : légende personnalisée si elle existe (elle
+  // connaît les icônes custom), sinon le dico, sinon le tag brut.
+  function _libelleType(tag) {
+    if (!tag) return "";
+    try {
+      const LC = window.LegendCustomization;
+      if (LC && typeof LC.getLabel === "function") {
+        const l = LC.getLabel("icones", tag);
+        if (l) return l;
+      }
+      if (window.I18n.has && window.I18n.has("legendui.label." + tag)) {
+        return window.I18n.t("legendui.label." + tag);
+      }
+    } catch(e) {}
+    return tag;
+  }
+
+  function _ouvrirBullePoint(p, declencheur) {
+    if (!p) return;
+    const nom  = document.getElementById("kta-em-point-nom");
+    const type = document.getElementById("kta-em-point-type");
+    const note = document.getElementById("kta-em-point-note");
+    const tag  = (Array.isArray(p.tags) && p.tags[0]) || "";
+    const desc = (typeof p.description === "string") ? p.description.trim() : "";
+    if (nom)  nom.textContent  = p.nom || window.I18n.t("emergency.point.sansNom");
+    if (type) { type.textContent = _libelleType(tag); type.hidden = !tag; }
+    if (note) { note.textContent = desc; note.hidden = !desc; }
+    _ouvrirBulle("point", declencheur);
+    _pointBulle = p;
+  }
+
+  // 📍 Même chemin que la bulle de la carte principale (utils.js >
+  // buildPointPopupHtml → `recalerTrackerSurPoint`) : position confirmée,
+  // ancre du journal, validation d'étape d'itinéraire, replanification,
+  // vibration. On lui passe en plus le NIVEAU du point : la mini-carte peut
+  // montrer plusieurs niveaux visibles, et le niveau actif par défaut ne
+  // serait pas forcément le sien (la fonction l'ignore hors multi-niveau).
+  function _jeSuisIciPoint() {
+    const p = _pointBulle;
+    _fermerBulle();
+    if (!p || typeof window.recalerTrackerSurPoint !== "function") return;
+    try {
+      window.recalerTrackerSurPoint(p.x, p.y, Number.isInteger(p.level) ? p.level : undefined);
+    } catch(e) {
+      console.warn("[Emergency] « Je suis ici » échoué :", e);
+    }
+    _reprendreSuivi();
   }
 
   // ============================================================
@@ -392,45 +554,22 @@
   function _tick() {
     if (!_overlay) return;
 
-    // 📍 Position : GPS si le plan est calibré, X/Y du plan sinon.
-    // JAMAIS LES DEUX (26/09/2026, KARMA) — le label du bloc suit la donnée,
-    // et le sous-titre d'état (« position de départ », « tracker actif »…)
-    // reste sous les chiffres dans les deux cas : une coordonnée GPS calculée
-    // depuis une position jamais confirmée doit le dire, c'est celle-là qu'on
-    // dicte au téléphone.
     const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
-    const posEl    = document.getElementById("kta-em-pos-xy");
-    const labelEl  = document.getElementById("kta-em-pos-label");
-    const statusEl = document.getElementById("kta-em-pos-status");
-    const gpsTxt   = pos ? _formatGPS(_transformCalib(), pos) : null;
-    if (labelEl) {
-      labelEl.textContent = window.I18n.t(gpsTxt ? "emergency.label.gps" : "emergency.label.position");
+
+    // 📋 L'icône des coordonnées n'existe que sur un plan géoréférencé.
+    const geo = !!_transformCalib();
+    const btnCoords = document.getElementById("kta-em-coords-btn");
+    if (btnCoords && btnCoords.hidden === geo) btnCoords.hidden = !geo;
+    if (_bulleOuverte === "coords") {
+      if (geo) _majBulleCoords(); else _fermerBulle();
     }
-    // Les floats GPS sont plus longs que deux entiers : même bloc, taille adaptée.
-    if (posEl) posEl.classList.toggle("kta-emergency-pos-gps", !!gpsTxt);
+
     if (pos) {
-      // `_formatXY` peut rendre null (position non numérique) : sans ce repli
-      // le bloc affichait le texte « null ».
-      if (posEl) posEl.textContent = gpsTxt || _formatXY(pos) || "—  /  —";
-      if (statusEl) {
-        const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
-        // 📍 B1 (audit 13/09/2026) : une position jamais confirmée est le
-        // DÉPART DU PLAN, pas « ta dernière position » — cet écran est un
-        // afficheur, il le dit au lieu de demander.
-        const etat = (typeof window.getTrackingPositionEtat === "function")
-          ? window.getTrackingPositionEtat() : null;
-        statusEl.textContent = trackingActif
-          ? window.I18n.t("emergency.status.trackerActif")
-          : (etat && !etat.confirmee)
-            ? window.I18n.t("emergency.status.positionDefaut")
-            : window.I18n.t("emergency.status.dernierePosition");
-      }
-      // 🆕 v1.10.2 : auto-focus du minimap sur la position
+      // 🆕 v1.10.2 : auto-focus du minimap sur la position (en pause si
+      // l'utilisateur explore la carte — cf `_updateMiniMap`)
       _updateMiniMap(pos);
-    } else {
-      if (posEl) posEl.textContent = "—  /  —";
-      if (statusEl) statusEl.textContent = window.I18n.t("emergency.status.aucunePosition");
     }
+    _majPointsSiNiveauChange();
 
     // 🧭 Heading (boussole)
     // 🧭 v1.37.0 — Bascule de getCurrentHeading() (Nord vrai) vers
@@ -486,8 +625,10 @@
         // à 9h). Etc. Cohérent boussole physique tenue dans la main.
         // Minimap tournée : elle porte elle-même l'orientation, le point
         // Nord n'a plus à contre-tourner (sinon il compenserait deux fois).
+        // Pendant l'exploration (suivi en pause) la carte est Nord en haut :
+        // le point Nord reprend sa contre-rotation.
         const okNord = _updateTrackerNorthRotor(
-          _minimapTourne() ? 0 : -_compassUnwrapped);
+          _minimapTourneeActive() ? 0 : -_compassUnwrapped);
         // 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la
         // direction où on va, comme icône tracker") : rotation +heading
         // pour que la pointe du triangle pointe la direction de marche
@@ -661,9 +802,13 @@
       // 3 invalidations échelonnées : iOS Safari met 100-500ms à finaliser
       // sa nouvelle viewport après rotation. Cascade pour garantir le sync.
       function _retry() {
-        try {
+        if (!_miniMap) return;
+        _vueAutomatique(function () {
           _miniMap.invalidateSize({ animate: false });
-          // Re-fitBounds aussi pour recadrer correctement après rotation
+          // Re-fitBounds aussi pour recadrer correctement après rotation —
+          // SAUF si l'utilisateur explore la carte : on garderait sa vue
+          // (le prochain tick recentre de toute façon quand le suivi est actif).
+          if (_suiviPause) return;
           const pc = window.PLAN_CONFIG;
           if (pc && pc.plan) {
             const imgW = pc.plan.imageWidth || 0;
@@ -672,7 +817,7 @@
               _miniMap.fitBounds([[0, 0], [imgH, imgW]]);
             }
           }
-        } catch(e) {}
+        });
       }
       setTimeout(_retry, 80);
       setTimeout(_retry, 300);
@@ -699,9 +844,14 @@
       _orientationListener = null;
     }
     // 🆕 v1.10.2 : destroy minimap pour libérer les ressources Leaflet
+    _fermerBulle();
     _destroyMiniMap();
     try { _overlay.remove(); } catch(e) {}
     _overlay = null;
+    // La prochaine ouverture repart en suivi (carte centrée sur la position).
+    _suiviPause = false;
+    _vueAuto    = 0;
+    if (_timerCopie) { clearTimeout(_timerCopie); _timerCopie = null; }
     _lastHeadingShown = null;
     _compassUnwrapped = null;
     _compassLastRaw   = null;
@@ -1177,22 +1327,32 @@
   // a choisi "continuer sans image").
   function _initMiniMapAvecSource(container, source, imgW, imgH) {
     try {
+      // 🖐️ 03/10/2026 (KARMA) : déplacement et zoom au doigt / à la souris.
+      // `keyboard` reste coupé (Échap et les flèches appartiennent à l'écran),
+      // `trackResize` aussi : le redimensionnement passe par
+      // `_orientationListener`, qui marque SES changements de vue comme
+      // automatiques — celui de Leaflet passerait pour un geste et mettrait
+      // le suivi en pause à chaque rotation de l'écran.
       _miniMap = L.map(container, {
         crs:             L.CRS.Simple,
         attributionControl: false,
         zoomControl:     false,
-        scrollWheelZoom: false,
-        dragging:        false,
+        scrollWheelZoom: true,
+        dragging:        true,
         keyboard:        false,
-        doubleClickZoom: false,
-        touchZoom:       false,
+        doubleClickZoom: true,
+        touchZoom:       true,
         boxZoom:         false,
-        tap:             false,
+        trackResize:     false,
         zoomAnimation:   false,
         fadeAnimation:   false,
         minZoom:        -10,        // permet de dézoomer suffisamment
         maxZoom:         10,        // permet de zoomer fort autour du tracker
         preferCanvas:    true       // perf : canvas pour les polylines roads
+      });
+      // Tout début de déplacement qui n'est pas le nôtre = geste utilisateur.
+      _miniMap.on("movestart zoomstart", function () {
+        if (_vueAuto === 0) _pauseSuivi();
       });
       const bounds = [[0, 0], [imgH, imgW]];
       // 🔧 v1.12.0-fix : pose des imageOverlays selon le type de source
@@ -1204,7 +1364,7 @@
       if (source.type === "none") {
         container.classList.add("kta-em-mini-map-noimg");
       }
-      _miniMap.fitBounds(bounds);
+      _vueAutomatique(function () { _miniMap.fitBounds(bounds); });
 
       // 🆕 v1.10.2-fix4/5 : ajoute zones (eau / remblais / effondrement /
       // inaccessible) + structures (piliers + murs + fronts) + roads sur
@@ -1215,6 +1375,8 @@
       _addZonesToMiniMap(imgH);
       _addStructuresToMiniMap(imgH);
       _addRoadsToMiniMap(imgH);
+      // 📍 03/10/2026 : les points par-dessus tout (volet marqueurs Leaflet).
+      _addPointsToMiniMap(imgH);
 
       // 🔧 v1.10.2-fix3 : multiple invalidateSize en cascade pour gérer
       // le cas où le container avait des dims 0×0 au moment du L.map().
@@ -1224,14 +1386,22 @@
       // (sécurité ultime).
       setTimeout(function() {
         if (_miniMap) {
-          try { _miniMap.invalidateSize({ animate: false }); _miniMap.fitBounds(bounds); }
-          catch(e) {}
+          try {
+            _vueAutomatique(function () {
+              _miniMap.invalidateSize({ animate: false });
+              if (!_suiviPause) _miniMap.fitBounds(bounds);
+            });
+          } catch(e) {}
         }
       }, 50);
       setTimeout(function() {
         if (_miniMap) {
-          try { _miniMap.invalidateSize({ animate: false }); _miniMap.fitBounds(bounds); }
-          catch(e) {}
+          try {
+            _vueAutomatique(function () {
+              _miniMap.invalidateSize({ animate: false });
+              if (!_suiviPause) _miniMap.fitBounds(bounds);
+            });
+          } catch(e) {}
         }
       }, 200);
 
@@ -1581,6 +1751,94 @@
     }
   }
 
+  // 📍 03/10/2026 (KARMA) — LES POINTS SUR LA MINI-CARTE.
+  // Points de l'utilisateur (`getEditorPoints`) + points du plan
+  // (`getAllEmbeddedPoints`), même filtre de niveau que zones/structures/
+  // tracés ci-dessus (`passeFiltreNiveau`). Les filtres ≡ par type ne
+  // s'appliquent PAS, pas plus qu'aux autres couches de cette carte : sur
+  // l'écran qu'on ouvre perdu, un repère masqué pour alléger la carte
+  // principale reste un repère.
+  // Icône : résolution canonique `getIconUrlForPoint` (jamais de catalogue
+  // local) ; l'<img> porte `kta-marker-img` + `data-kta-tag` pour profiter du
+  // repli d'icône morte de map.js. Appui → bulle « Je suis ici ».
+  const MINIMAP_POI_PX  = 40;     // cible tactile confortable (≥ 44 avec l'aura de Leaflet)
+  const MINIMAP_POI_MAX = 2000;   // garde-fou DOM : au-delà, on s'arrête et on le dit
+  function _addPointsToMiniMap(imgH) {
+    if (!_miniMap || typeof L === "undefined") return;
+    _miniPoiSig = _signatureNiveaux();
+    const session  = (typeof window.getEditorPoints === "function" ? window.getEditorPoints() : []) || [];
+    const embedded = (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []) || [];
+    const all = session.concat(embedded);
+    if (all.length === 0) return;
+    const filter = (typeof window.passeFiltreNiveau === "function")
+                   ? window.passeFiltreNiveau
+                   : function() { return true; };
+    const esc = function (v) {
+      return String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    };
+    const demi = MINIMAP_POI_PX / 2;
+    let added = 0, ignores = 0;
+    all.forEach(function (p) {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+      if (!filter(p)) return;
+      if (added >= MINIMAP_POI_MAX) { ignores++; return; }
+      let url = null;
+      try { url = (typeof window.getIconUrlForPoint === "function") ? window.getIconUrlForPoint(p) : null; }
+      catch(e) {}
+      const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
+      const icon = url
+        ? L.divIcon({
+            className: "kta-em-mini-poi",
+            html: '<img src="' + esc(url) + '" alt="" draggable="false" class="kta-marker-img"' +
+                  (tag ? ' data-kta-tag="' + esc(tag) + '"' : "") + '>',
+            iconSize:   [MINIMAP_POI_PX, MINIMAP_POI_PX],
+            iconAnchor: [demi, demi]
+          })
+        : L.divIcon({
+            className: "kta-em-mini-poi kta-em-mini-poi-sans-icone",
+            html: "",
+            iconSize:   [MINIMAP_POI_PX, MINIMAP_POI_PX],
+            iconAnchor: [demi, demi]
+          });
+      try {
+        // convertCoord : [imageHeight - y, x]
+        const m = L.marker([imgH - p.y, p.x], { icon: icon, keyboard: false, title: p.nom || "" });
+        m.on("click", function (ev) {
+          if (ev && ev.originalEvent) L.DomEvent.stopPropagation(ev.originalEvent);
+          _ouvrirBullePoint(p, null);
+        });
+        m.addTo(_miniMap);
+        _miniPoiLayers.push(m);
+        added++;
+      } catch(e) { console.warn("[Emergency] minimap point skip :", e); }
+    });
+    if (added > 0) console.log("[Emergency] minimap : " + added + " point(s) affiché(s)");
+    if (ignores > 0) console.warn("[Emergency] minimap : " + ignores + " point(s) au-delà du plafond de " +
+                                  MINIMAP_POI_MAX + " — non affichés");
+  }
+
+  function _retirerPointsMiniMap() {
+    _miniPoiLayers.forEach(function (m) { try { m.remove(); } catch(e) {} });
+    _miniPoiLayers = [];
+  }
+
+  // Signature des niveaux affichés : quand elle change, on repose les points
+  // (rien d'autre ne les recrée — pas de travail au tick).
+  function _signatureNiveaux() {
+    const c = window.APP_CONFIG || {};
+    if (c.multiLevel !== true) return "mono";
+    return "ml:" + (Array.isArray(c.visibleLevels) ? c.visibleLevels.join(",") : "0");
+  }
+  function _majPointsSiNiveauChange() {
+    if (!_miniMap || _miniPoiSig === null) return;
+    if (_signatureNiveaux() === _miniPoiSig) return;
+    const pc = window.PLAN_CONFIG;
+    const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+    if (imgH <= 0) return;
+    _retirerPointsMiniMap();
+    _addPointsToMiniMap(imgH);
+  }
+
   function _destroyMiniMap() {
     if (!_miniMap) return;
     // Cleanup tous les overlays (roads + zones + structures)
@@ -1592,6 +1850,8 @@
     _cleanLayers(_miniRoadLayers);      _miniRoadLayers = [];
     _cleanLayers(_miniZoneLayers);      _miniZoneLayers = [];
     _cleanLayers(_miniStructureLayers); _miniStructureLayers = [];
+    _retirerPointsMiniMap();
+    _miniPoiSig = null;
 
     // 🆕 v1.12.0-fix2 : cleanup du loader V2 viewport-aware
     if (_miniV2State) {
@@ -1657,12 +1917,17 @@
   //
   // On ne passe PAS par `mapBearing` : il est câblé sur `window.map` d'un
   // bout à l'autre, et c'est le module où une erreur n'affiche rien
-  // d'anormal, juste du faux. Ici le cas est beaucoup plus simple — la
-  // minimap se recentre sur la position à chaque tick, donc **le centre de
-  // rotation coïncide toujours avec l'utilisateur** ; elle n'a aucune
-  // interaction (`dragging:false`, couches non interactives) et personne n'y
-  // convertit un clic. Une rotation du CONTENEUR suffit donc, sans toucher
-  // à la moindre géométrie Leaflet.
+  // d'anormal, juste du faux. Ici le cas est plus simple — tant que le suivi
+  // est actif, la minimap se recentre sur la position à chaque tick, donc
+  // **le centre de rotation coïncide toujours avec l'utilisateur**. Une
+  // rotation du CONTENEUR suffit donc, sans toucher à la géométrie Leaflet.
+  //
+  // 🖐️ 03/10/2026 — la minimap est devenue interactive, et une rotation CSS
+  // que Leaflet ignore fausse ses gestes (le doigt part à droite, la carte
+  // part en biais). Décision KARMA : PENDANT L'EXPLORATION (suivi en pause)
+  // la carte revient Nord en haut ; 🎯 Recentrer relance la rotation. Le
+  // conteneur garde sa taille agrandie (`.kta-em-mini-map-tournee`) pendant la
+  // pause : seule la rotation tombe, sans redimensionner Leaflet en plein geste.
   //
   // Même interrupteur que la carte principale (`MapBearing.isEnabled`) : qui
   // ne veut pas de carte qui tourne n'en veut nulle part, et il n'y a pas
@@ -1670,6 +1935,10 @@
   function _minimapTourne() {
     try { return !!(window.MapBearing && window.MapBearing.isEnabled()); }
     catch(e) { return false; }
+  }
+  // La carte est-elle RÉELLEMENT tournée en ce moment ?
+  function _minimapTourneeActive() {
+    return _minimapTourne() && !_suiviPause;
   }
   function _appliquerRotationMinimap(cap) {
     const el = document.getElementById("kta-em-mini-map");
@@ -1680,7 +1949,57 @@
       return;
     }
     el.classList.add("kta-em-mini-map-tournee");
-    el.style.transform = "rotate(" + (-cap) + "deg)";
+    el.style.transform = _suiviPause ? "" : "rotate(" + (-cap) + "deg)";
+  }
+  // Repose l'orientation (carte + point Nord) hors du rythme de la boussole :
+  // à la mise en pause et à la reprise du suivi.
+  function _reappliquerOrientation() {
+    if (typeof _compassUnwrapped !== "number" || isNaN(_compassUnwrapped)) return;
+    _updateTrackerNorthRotor(_minimapTourneeActive() ? 0 : -_compassUnwrapped);
+    _appliquerRotationMinimap(_compassUnwrapped);
+  }
+
+  // Exécute un changement de vue VOULU par ce module (recentrage, recadrage,
+  // redimensionnement) sans qu'il passe pour un geste de l'utilisateur.
+  function _vueAutomatique(fn) {
+    _vueAuto++;
+    try { fn(); }
+    finally { _vueAuto--; }
+  }
+
+  // 🖐️ L'utilisateur a bougé la carte : plus de recentrage, 🎯 visible,
+  // Nord en haut. Idempotent (appelé à chaque début de geste).
+  function _pauseSuivi() {
+    if (_suiviPause || !_overlay) return;
+    _suiviPause = true;
+    const btn = document.getElementById("kta-em-recentrer");
+    if (btn) btn.hidden = false;
+    const etaitTournee = _minimapTourne();
+    _reappliquerOrientation();
+    // Leaflet a mémorisé l'échelle apparente du conteneur au DÉBUT du
+    // glisser (`Draggable._parentScale`, boîte englobante d'un conteneur
+    // tourné = plus grande) : sans recalcul, la carte suivrait le doigt
+    // moins vite pendant tout ce premier geste.
+    if (etaitTournee && _miniMap) {
+      try {
+        const d = _miniMap.dragging && _miniMap.dragging._draggable;
+        if (d && d._parentScale && L.DomUtil.getScale) {
+          d._parentScale = L.DomUtil.getScale(_miniMap.getContainer());
+        }
+      } catch(e) {}
+    }
+  }
+
+  // 🎯 Recentrer : la carte revient sur la position, au zoom du suivi, et
+  // la rotation « plan orienté » reprend.
+  function _reprendreSuivi() {
+    _suiviPause = false;
+    const btn = document.getElementById("kta-em-recentrer");
+    if (btn) btn.hidden = true;
+    if (_miniMap) { try { _miniMap.stop(); } catch(e) {} }
+    _reappliquerOrientation();
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    if (pos) _updateMiniMap(pos);
   }
 
   function _updateMiniMap(pos) {
@@ -1693,23 +2012,29 @@
     if (imgW <= 0 || imgH <= 0) return;
     // convertCoord du projet : [imageHeight - y, x] (CRS Leaflet Simple)
     const latlng = [imgH - pos.y, pos.x];
-    // 🔧 v1.10.3-fix2 (KARMA "dezoom un peu, ça bug à fond") : on
-    // retombe sur la formule baseZ + offset clamped à maxZoom. À
-    // maxZoom=10 sur image L.CRS.Simple, Leaflet bug visuellement
-    // (image étirée bien au-delà de sa résolution native).
-    const maxZ  = _miniMap.getMaxZoom();
-    const baseZ = _miniMap.getBoundsZoom([[0, 0], [imgH, imgW]], true) || 0;
-    const targetZ = Math.min(maxZ, baseZ + MINIMAP_ZOOM_OFFSET);
-    // 🔋 29/09/2026 — ce tick tourne 4 fois par seconde, et recentrait la
-    // minimap à CHAQUE fois, même immobile : 40 setView en 10 s, chacun
-    // relançant un parcours de toute la grille de tuiles (~35 000 itérations
-    // pour rien), sur l'écran qu'on ouvre justement quand la batterie baisse.
-    // On compare à la vue RÉELLE (pas à une valeur mémorisée) : si autre chose
-    // l'a bougée — le recadrage après rotation de l'écran —, on recentre.
-    const centre = _miniMap.getCenter();
-    const dejaCentree = centre && _miniMap.getZoom() === targetZ &&
-      Math.abs(centre.lat - latlng[0]) < 0.5 && Math.abs(centre.lng - latlng[1]) < 0.5;
-    if (!dejaCentree) _miniMap.setView(latlng, targetZ, { animate: false });
+    // 🖐️ Suivi en pause (l'utilisateur explore) : on ne touche PAS à la vue,
+    // seul le marqueur de position avance.
+    if (!_suiviPause) {
+      // 🔧 v1.10.3-fix2 (KARMA "dezoom un peu, ça bug à fond") : on
+      // retombe sur la formule baseZ + offset clamped à maxZoom. À
+      // maxZoom=10 sur image L.CRS.Simple, Leaflet bug visuellement
+      // (image étirée bien au-delà de sa résolution native).
+      const maxZ  = _miniMap.getMaxZoom();
+      const baseZ = _miniMap.getBoundsZoom([[0, 0], [imgH, imgW]], true) || 0;
+      const targetZ = Math.min(maxZ, baseZ + MINIMAP_ZOOM_OFFSET);
+      // 🔋 29/09/2026 — ce tick tourne 4 fois par seconde, et recentrait la
+      // minimap à CHAQUE fois, même immobile : 40 setView en 10 s, chacun
+      // relançant un parcours de toute la grille de tuiles (~35 000 itérations
+      // pour rien), sur l'écran qu'on ouvre justement quand la batterie baisse.
+      // On compare à la vue RÉELLE (pas à une valeur mémorisée) : si autre chose
+      // l'a bougée — le recadrage après rotation de l'écran —, on recentre.
+      const centre = _miniMap.getCenter();
+      const dejaCentree = centre && _miniMap.getZoom() === targetZ &&
+        Math.abs(centre.lat - latlng[0]) < 0.5 && Math.abs(centre.lng - latlng[1]) < 0.5;
+      if (!dejaCentree) {
+        _vueAutomatique(function () { _miniMap.setView(latlng, targetZ, { animate: false }); });
+      }
+    }
 
     // Add ou move le marker tracker
     if (_miniTrackerMark) {

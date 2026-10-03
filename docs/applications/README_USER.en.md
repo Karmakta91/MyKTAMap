@@ -221,14 +221,15 @@ A vibration confirms the exit found or alerts you if there is none, even when **
 
 You know where you are, but you are panicking and need the essentials **in very large print**: re-orient yourself, spot a nearby shaft, check your heading, read your position out to someone. In the **🧭 Tracker** menu, the red **🚨 Emergency mode — XL display (position + heading)** button opens a full-screen view that fits without scrolling:
 
-- 📍 **Your position, huge**, readable from a metre away: **GPS** coordinates if your map is georeferenced — the ones you read out to rescuers —, otherwise the **X / Y position on the map**. The block title tells you which one you are reading; the line below says whether it is your tracked position, your last known position, or the **map's starting position, never confirmed**.
-- 📋 **Copy my position** — the button to the right of the figures (or the figures themselves). Georeferenced map: it copies the coordinates alone (`48.856600, 2.352200`), ready to paste into a text message or a maps app. Otherwise: the map name and your X/Y position, useful only to someone with the same map. ⚠️ If your position was never confirmed, the screen says so but the message does not: tell whoever you write to as well.
-- 🧭 **A giant compass** showing your heading in real time. The first time, the browser asks for access to the orientation sensors: accept, otherwise it stays frozen.
+- 🗺️ **A mini-map** filling almost the whole screen, tightly zoomed and centred on you, in **your legend's colours**, with your route, **the map's points and your own** (on the level shown), and the same orientation as the map in "oriented map" mode.
+- 🖐️ **You can drag and pinch it** to look further. As soon as you move it, it stops following you and turns back **North up**; the **🎯 Recenter** button brings it back to you and resumes following and orientation.
+- 📍 **Recognise a point?** Tap it: a bubble shows its name, type and note. **📍 I am here** realigns your tracking on it, exactly like a point's bubble on the map — the way to correct a drift without leaving the screen. The map then recentres on you.
+- 🧭 **A giant compass** sitting on your position, showing your heading in real time. The first time, the browser asks for access to the orientation sensors: accept, otherwise it stays frozen.
 - 🪧 **The next guidance instruction in large print** ("In 40 m, turn left"), if a route is drawn and tracking is on. On a deviation, **See the options on the map** takes you back to the banner.
-- 🗺️ **A mini-map**, tightly zoomed and centred on you, in **your legend's colours**, with your route and the same orientation as the map in "oriented map" mode.
 - 🔋 **A status line** at the top right: your battery (if **🔋 Battery level** is enabled in ⚙️ Configuration), the tracker and compass state. The map name sits under the title.
+- 📋 **Your GPS coordinates, if your map is georeferenced**: the 📋 icon at the end of the status line opens a bubble that shows them **in very large print**, readable from a metre away — the ones you read out to rescuers —, with a line saying whether it is your tracked position, your last known position, or the **map's starting position, never confirmed**. Its **📋 Copy my position** button copies the coordinates alone (`48.856600, 2.352200`), ready to paste into a text message or a maps app. ⚠️ If your position was never confirmed, the bubble says so but the message does not: tell whoever you write to as well. Map not georeferenced: no icon, no coordinates are shown.
 
-The screen follows the app's theme, does not go to sleep while open and rearranges itself in landscape (position on the left, map on the right). To leave: the big **↩️ EXIT EMERGENCY MODE** button, always at the bottom, or **Esc** on a computer.
+The screen follows the app's theme, does not go to sleep while open and also fits in landscape. To leave: the big **↩️ EXIT EMERGENCY MODE** button, always at the bottom, or **Esc** on a computer (if a bubble is open, Esc closes the bubble first).
 
 ### ⛑️ I'm lost
 
