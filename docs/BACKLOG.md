@@ -152,6 +152,11 @@ KARMA le juge peu pertinent et contraire à « éviter l'indigestion ». L'audit
   À trancher : 1. option (reco c = suppression + discours OSM) · 2. clé chez les utilisateurs (reco : l'ignorer, une phrase
   dans les notes) · 3. retirer la clé de l'export de profil (reco : oui) · 4. bug incognito avant ce lot (reco : oui) ·
   5. `check-osm-defaut.js` §5 exécute la garde au lieu de chercher un texte — c'est lui qui a laissé passer le code mort (reco : oui).
+- 💡 **Variante KARMA (03/10) si le mode est gardé** : remplacer le gros badge « 🔒 MODE HORS-LIGNE STRICT ACTIF » de l'accueil
+  (`#loaderParanoiaBadge`, au-dessus du pied de page) par un 🔒 discret dans le pied de page, idéalement accolé à la pastille
+  hors-ligne du badge de version (lot B de « 🧰 Configuration »). ⚠️ N'a de sens qu'avec l'option « d » (réparer :
+  définir `isStrictOfflineEnabled`, puis **tester** le blocage OSM, qui n'a jamais tourné) — sinon le 🔒 afficherait une
+  promesse non tenue. **S** (badge) + **S-M** (réparation et test).
 
 ## 🧰 Configuration › Système & maintenance — désencombrer (audit du 03/10/2026, lecture seule)
 
