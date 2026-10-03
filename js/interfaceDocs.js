@@ -738,9 +738,9 @@ function _ouvrirReadmeModal(html, opts) {
 
 const AIDE_CTX_LS = "myktamap_aide_contextuelle";   // "0" = coupée
 
-// id de la modale → slug de section d'aide. Les modales absentes n'ont pas de
-// section dédiée (itinéraire, niveaux, conversion…) : pas de bouton, plutôt
-// qu'un ❓ qui ouvrirait une page à côté du sujet.
+// id de la modale → slug de section d'aide. Une modale absente n'a pas de
+// section dédiée : pas de bouton, plutôt qu'un ❓ qui ouvrirait une page à
+// côté du sujet.
 //
 // 🩸 DEUX ERREURS CORRIGÉES LE JOUR MÊME, et ce qu'elles apprennent :
 //   • 🔥 Heatmap pointait vers l'aide « Tracker » (KARMA : « pas logique, il
@@ -766,7 +766,13 @@ const AIDE_PAR_MODALE = {
   "kta-jrn-modal":            "carnet",
   "kta-osm-filters-modal":    "vue-osm",
   "kta-profile-details-modal": "profil",
-  "kta-plan-infos-modal":     "bibliotheque-plans"
+  "kta-plan-infos-modal":     "bibliotheque-plans",
+  "kta-itinerary-modal":      "itineraire",
+  "kta-sortie-urgence-modal": "sortie-urgence",
+  "kta-lost-modal":           "je-suis-perdu",
+  "kta-convert-modal":        "corriger",
+  "kta-niv-modal":            "multi-niveau",
+  "kta-jct-modal":            "multi-niveau"
 };
 
 function ktaAideContextuelleActive() {
@@ -943,7 +949,10 @@ const AIDE_SECTIONS = [
   // ecart de calage). Un ecran entier absent de l’aide.
   "vue-osm",
   // 🧩 01/10/2026 — fiches des fonctionnalités optionnelles qui n'en avaient pas.
-  "heatmap", "vibration"
+  "heatmap", "vibration",
+  // ❓ 03/10/2026 (audit de l'aide) — fonctions qui n'avaient pas de fiche à
+  // elles : noyées dans « tracker » ou « mesure », ou répétées dans trois fiches.
+  "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau"
 ];
 
 // 🩸 4ᵉ DÉFAUT DU MÉCANISME D'INDEX, découvert en migrant (01/09/2026) :
@@ -954,20 +963,21 @@ const AIDE_SECTIONS = [
 // précisément ce que cette migration achète.
 // (Les 3 autres défauts — conteneur oublié, section absente en EN, « Mon
 // carnet » orpheline — ont été corrigés au lot 0.)
+// ❓ 03/10/2026 — les catégories suivent les chapitres du guide, dans l'ordre
+// où l'on en a besoin. « Pour aller plus loin » reçoit ce qui est désactivé par
+// défaut, le Mode Secours et les outils des créateurs de plans.
 const AIDE_CATEGORIES = [
-  { cle: "prise-en-main",    slugs: ["aide-doc-legende", "code-acces", "astuces"] },
-  { cle: "outils-carte",     slugs: ["mesure", "structures", "traces", "edition-points", "tracker",
-                                     "enregistrer", "legende", "menu-tracker", "sortie-urgence",
-                                     "depannage", "liaisons-inter-plan", "vue-osm"] },
-  { cle: "donnees-session",  slugs: ["charger-import", "bibliotheque-plans", "profil",
-                                     "favoris", "inspecteur-memoire", "histoire",
-                                     "zones", "import-sig", "carnet"] },
-  // 🧩 01/10/2026 — désactivées par défaut, activables dans ⚙️ Configuration.
-  { cle: "optionnels",       slugs: ["replay-tracker", "heatmap", "batterie", "vibration"] },
-  { cle: "recherche",        slugs: ["recherche"] },
-  { cle: "secours",          slugs: ["mode-secours"] },
-  { cle: "systeme",          slugs: ["parametres", "optimiser-plan", "historique-undo",
-                                     "stats-session", "creer-modifier-plan"] }
+  { cle: "prise-en-main", slugs: ["aide-doc-legende", "astuces"] },
+  { cle: "urgence",       slugs: ["sortie-urgence", "urgence-xl", "je-suis-perdu"] },
+  { cle: "carte",         slugs: ["legende", "recherche", "vue-osm", "histoire", "liaisons-inter-plan"] },
+  { cle: "reperer",       slugs: ["menu-tracker", "tracker", "itineraire", "mesure", "multi-niveau"] },
+  { cle: "annoter",       slugs: ["edition-points", "traces", "zones", "structures", "corriger",
+                                  "historique-undo"] },
+  { cle: "donnees",       slugs: ["carnet", "stats-session", "favoris", "profil", "enregistrer",
+                                  "charger-import", "import-sig", "bibliotheque-plans"] },
+  { cle: "reglages",      slugs: ["parametres", "inspecteur-memoire", "depannage"] },
+  { cle: "plus-loin",     slugs: ["replay-tracker", "heatmap", "batterie", "vibration", "code-acces",
+                                  "mode-secours", "creer-modifier-plan", "optimiser-plan"] }
 ];
 
 // Une ligne cliquable du hub (titre + chevron).

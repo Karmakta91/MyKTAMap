@@ -74,7 +74,12 @@ let table = {};
     Object.keys(table).forEach(function (id) {
       if (JS.indexOf('"' + id + '"') < 0 && IDX.indexOf('"' + id + '"') < 0) idsMorts.push(id);
       if (sections.indexOf(table[id]) < 0) slugsMorts.push(id + " → " + table[id]);
-      const src = fichiers.filter(function (f) { return f.txt.indexOf('"' + id + '"') >= 0; })[0];
+      // Le fichier qui CRÉE la modale (`x.id = "…"`), pas le premier qui la
+      // nomme : `kta-itinerary-modal` est cité par copyright.js, qui n'a
+      // évidemment pas son en-tête (03/10/2026).
+      const cite = fichiers.filter(function (f) { return f.txt.indexOf('"' + id + '"') >= 0; });
+      const cree = new RegExp("\\.id\\s*=\\s*\"" + id + "\"|id=\\\\?\"" + id + "\\\\?\"");
+      const src = cite.filter(function (f) { return cree.test(f.txt); })[0] || cite[0];
       if (src && !ENTETES.some(function (h) { return src.txt.indexOf(h) >= 0; })) {
         sansEntete.push(id + " (" + src.nom + ")");
       }
