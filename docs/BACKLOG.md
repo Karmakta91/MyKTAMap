@@ -126,7 +126,8 @@ Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-1
 - 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
 - 🟡 **« 💾 Sauver la note »** écrit en dur en français dans la bulle d'un objet (`utils.js` ~l.962) : EN/ES l'affichent en français.
 - 🟡 **ES** : `lost.modal.titre` dit « Modo emergencia » quand `ui.subaction.*` dit « Modo urgencia ».
-- 🟡 **Aide intégrée** (❓) : non auditée section par section — seules les erreurs croisées pendant la réécriture ont été corrigées.
+- 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
+- ⚪ **Code d'accès oublié** : le guide dit maintenant que seul l'effacement des données du site lève le verrou (le démarrage attend le code, `main.js`). Pas de voie de secours dans l'app — décision de produit, à confirmer.
 - ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
 
 ## 📝 Stratégie doc — à trancher par KARMA

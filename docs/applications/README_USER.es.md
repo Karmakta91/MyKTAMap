@@ -327,7 +327,7 @@ Un clic en los contadores de arriba abre el **panel de control** del plano:
 - en cabecera, **✅ Guardado hace N s** (en rojo si el guardado falla);
 - los totales (y el reparto por nivel en un plano multinivel), y luego todos tus puntos, trazados, zonas, estructuras y fotos;
 - las otras medidas: 📐 medición, 🗺️ itinerario y sus etapas, 🧭 seguimiento;
-- **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno. Si no hay ninguna salida en curso, el botón **📔 Iniciar una salida** abre una en este plano — incluso cuando «Llevar un cuaderno de mis salidas» está desmarcado en ⚙️ Ajustes (entonces es la única forma de registrar una). Una sola salida a la vez;
+- **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno. Si no hay ninguna salida en curso, el botón **📔 Iniciar una salida** abre una en este plano — incluso cuando «Llevar un cuaderno de mis salidas» está desmarcado en ⚙️ Configuración (entonces es la única forma de registrar una). Una sola salida a la vez;
 - **⭐ Favoritos**: exportar los de este plano o todos, importar;
 - **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación;
 - el botón **📊 Estadísticas globales** (informe copiable, CSV, PDF).
@@ -590,7 +590,7 @@ Desde la ventana del itinerario (**Destino en otro plano**) o un resultado de la
 La Vista OSM coloca tus planos **georreferenciados** sobre el mapa de OpenStreetMap, con sus puntos, trazados, zonas y estructuras, en tus colores de leyenda. Está **activa por defecto**: el fondo de mapa procede de OpenStreetMap, que por tanto ve las zonas que miras; ningún dato de tus planos sale del dispositivo. Para desactivarla: ⚙️ Configuración.
 
 - **En la pantalla de inicio**, el widget **🌍 Vista OSM**; su botón **⛶** abre el modo OSM a pantalla completa.
-- **En un plano**, el botón **🌍** de la barra de arriba (planos georreferenciados y divididos en teselas).
+- **En un plano**, el botón **🌍** de la barra de arriba (planos georreferenciados).
 - Un plano solo aparece una vez que se ha **abierto al menos una vez**: es al abrirlo cuando la app lee su georreferenciación.
 - **Sin conexión**: **💾 Guardar sin conexión** descarga con antelación las teselas de la zona visible.
 - Al acercar el zoom sobre un plano se muestran imágenes más detalladas, leídas del archivo del plano que ya está en tu dispositivo. Las capas incluidas ocultas se muestran y se filtran como las demás.
@@ -738,7 +738,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Todo el plano**: cuando vuelves a abrir un plano, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups).
 
-> ℹ️ Solo se borran **tus** objetos. Los del plano o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde 🔍 **Filtros** y exporta después la capa corregida.
+> ℹ️ Solo se borran **tus** objetos. Los del plano o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 
 ---
 
@@ -1248,7 +1248,7 @@ El mosaico **🎬** del menú **🧭 Tracker** abre una ventana a pantalla compl
 
 - **Controles**: barra de tiempo, ⏮ ▶️ ⏸ ⏭, velocidad de 0.5× a 10×. Al pulsar ▶️, la ventana se reduce a la parte inferior de la pantalla para dejar ver el mapa (el botón **⛶** alterna entre ambos).
 - **Teclado**: Espacio = reproducir / pausar · ← → = retroceder / avanzar un segundo · Esc = cerrar.
-- **💾 Exportar CSV**: una tabla con fecha y hora de las posiciones (inicio, cada paso, cada recalibración, y el nivel en un plano multinivel), legible en una hoja de cálculo.
+- **📤 Exportar CSV**: una tabla con fecha y hora de las posiciones (inicio, cada paso, cada recalibración, y el nivel en un plano multinivel), legible en una hoja de cálculo.
 - Una recalibración es un salto: no se dibuja ninguna línea entre la posición antigua y la nueva.
 - La sesión reproducida **no se conserva**: vuelve a cero al recargar la app o al cambiar de plano.
 
@@ -1324,7 +1324,7 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 
 **Cambiar o desactivar**: misma sección, **✏️ Cambiar código** o **🔓 Desactivar**, tras validar con la biometría o con el código actual.
 
-**5 códigos erróneos seguidos** bloquean la app **temporalmente**: 10 min, luego 1 h, 6 h y 24 h con cada nueva serie. Se muestra una cuenta atrás y el teclado vuelve solo al final del plazo; un código correcto lo pone todo a cero. Los fallos de biometría no cuentan. Si de verdad has perdido tu código, queda **💥 Reiniciar todo** desde la pantalla de inicio, a costa de tu sesión en curso y de los planos no memorizados.
+**5 códigos erróneos seguidos** bloquean la app **temporalmente**: 10 min, luego 1 h, 6 h y 24 h con cada nueva serie. Se muestra una cuenta atrás y el teclado vuelve solo al final del plazo; un código correcto lo pone todo a cero. Los fallos de biometría no cuentan. Un código olvidado no se recupera: solo borrar los datos del sitio en los ajustes del navegador levanta el bloqueo, y lo borra todo (planos, sesiones, cuaderno).
 
 ### 🔒 Modo sin conexión estricto
 
@@ -1558,7 +1558,7 @@ Si has georreferenciado tu plano en **QGIS**, expórtalo en **GeoTIFF** (`.tif`)
 
 #### 🗺️ Convertir un archivo SIG (QGIS…)
 
-Suelta tu exportación **en la zona «📦 Cargar un plano nuevo» de la pantalla de inicio** o en el Generador: la app abre **🗺️ Convertir desde SIG**. Formatos: `.geojson`, `.json`, `.kml`, `.kmz`. Se recuperan puntos, trazados y zonas.
+Suelta tu exportación **en la zona «📦 Añadir un mapa» de la pantalla de inicio** o en el Generador: la app abre **🗺️ Convertir desde SIG**. Formatos: `.geojson`, `.json`, `.kml`, `.kmz`. Se recuperan puntos, trazados y zonas.
 
 - **No hace falta imagen**: la app crea un fondo en blanco ajustado a las coordenadas del archivo. Podrás sustituirlo por una imagen real más adelante.
 - **Se respetan tus denominaciones**: una pantalla de correspondencia te hace elegir la columna que lleva el tipo y luego a qué corresponde cada valor (`CANALISATION`, `galerie_tech`…). Los valores evidentes vienen rellenados, y cada uno puede apuntar a cualquier familia: un polígono puede ser una zona, un pilar, un muro o un frente de cantera.

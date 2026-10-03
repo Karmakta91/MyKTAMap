@@ -62,3 +62,14 @@ puis « → 📖 Documentation » pour le détail.
 | **A2** | Rangement : 8 catégories, 5 fiches nouvelles (squelette), ❓ contextuel étendu |
 | **A3** | Réécriture des 40 fiches fr/en/es (corrections de §1 comprises, règles d'écriture de l'audit du guide §2) |
 | **Contrôle final** | Hub ouvert dans un navigateur (3 langues) : chaque fiche s'ouvre, recherche, ❓ contextuels, aucune erreur JS |
+
+## 4. État (03/10/2026) — lots appliqués
+
+| Lot | Commit | Résultat |
+|---|---|---|
+| A1 | `f51e63d` | Exemples neutres (aide, dictionnaires, SELFHOST, AI_CONTEXT, NETWORK_AUDIT, tracking.md) ; 4 erreurs du guide corrigées |
+| A2 | `fbce47a` | 8 catégories, 5 fiches nouvelles, ❓ contextuel sur 20 fenêtres ; `check-aide-contextuelle` cherche l'en-tête dans le fichier qui crée la modale |
+| A3 | `31d8dec` | 35 fiches réécrites fr/en/es (4 agents, faits vérifiés dans le code) : texte FR des 40 fiches 71 k → 36 k |
+| Contrôle final | (ce commit) | Navigateur fr/en/es : titre, 8 catégories, 41 lignes, chaque fiche rendue, recherche, ❓ Itinéraire et Je suis perdu, aucune erreur JS ; pré-commit vert. Erreurs relevées en relisant le code, corrigées : guide (PIN oublié : l'accueil reste inaccessible derrière le verrou ; « 📤 Exporter CSV » ; « 📦 Ajouter un plan » ; réglage du carnet dans ⚙️ Configuration ; 🌍 sans condition de tuiles ; ≡ Filtres) et dictionnaires (tutoriel carte 6, import de profil, pied d'export de profil qui niait les archives, exemple d'étiquettes localisant, infobulle de l'éditeur de légende) |
+
+Cible de ~30 k non atteinte (36 k) : plusieurs fiches à 1-1,3 k gardent un parcours complet plutôt qu'un renvoi. Reliquats : `docs/BACKLOG.md`.

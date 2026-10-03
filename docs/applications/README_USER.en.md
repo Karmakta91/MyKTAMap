@@ -327,7 +327,7 @@ A click on the top counters opens the map's **dashboard**:
 - at the top, **✅ Saved N s ago** (in red if saving fails);
 - the totals (and the per-level breakdown on a multi-level map), then all your points, paths, zones, structures and photos;
 - the other measurements: 📐 measurement, 🗺️ route and its stops, 🧭 tracking;
-- **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. If no outing is running, the **📔 Start an outing** button opens one on this map — even when “Keep a logbook of my outings” is unticked in ⚙️ Settings (it is then the only way to record one). One outing at a time;
+- **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. If no outing is running, the **📔 Start an outing** button opens one on this map — even when “Keep a logbook of my outings” is unticked in ⚙️ Configuration (it is then the only way to record one). One outing at a time;
 - **⭐ Favorites**: export this map's or all of them, import;
 - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
@@ -590,7 +590,7 @@ From the Route window (**Destination on another plan**) or a multi-map search re
 The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
 - **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar (maps that are georeferenced and split into tiles).
+- **On a map**, the **🌍** button in the top bar (georeferenced maps).
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
@@ -738,7 +738,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups).
 
-> ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from 🔍 **Filters**, then export the corrected layer.
+> ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
 ---
 
@@ -1248,7 +1248,7 @@ The **🎬** tile in the **🧭 Tracker** menu opens a full-screen window that *
 
 - **Controls**: time slider, ⏮ ▶️ ⏸ ⏭, speed from 0.5× to 10×. On ▶️, the window shrinks to the bottom of the screen so you can see the map (the **⛶** button switches back).
 - **Keyboard**: Space = play / pause · ← → = back / forward one second · Esc = close.
-- **💾 Export CSV**: a time-stamped table of positions (start, every step, every recalibration, and the level on a multi-level map), readable in a spreadsheet.
+- **📤 Export CSV**: a time-stamped table of positions (start, every step, every recalibration, and the level on a multi-level map), readable in a spreadsheet.
 - A recalibration is a jump: no line is drawn between the old and the new position.
 - The replayed session is **not kept**: it starts from zero when you reload the app or change map.
 
@@ -1324,7 +1324,7 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 
 **Changing or disabling**: same section, **✏️ Change code** or **🔓 Disable**, after confirming with biometrics or the current code.
 
-**5 wrong codes in a row** lock the app **temporarily**: 10 min, then 1 h, 6 h and 24 h with each new series. A countdown is shown and the keypad comes back by itself when the delay is over; a correct code resets everything. Failed biometric attempts do not count. If you have really lost your code, **💥 Reset everything** from the home screen remains, at the cost of your current session and of the maps not stored in the app.
+**5 wrong codes in a row** lock the app **temporarily**: 10 min, then 1 h, 6 h and 24 h with each new series. A countdown is shown and the keypad comes back by itself when the delay is over; a correct code resets everything. Failed biometric attempts do not count. A forgotten code cannot be recovered: only clearing the site's data in the browser settings lifts the lock, and it erases everything (maps, sessions, logbook).
 
 ### 🔒 Strict offline mode
 
@@ -1558,7 +1558,7 @@ If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif`): 
 
 #### 🗺️ Convert a GIS file (QGIS…)
 
-Drop your export **on the "📦 Load a new map" area of the home screen** or into the Generator: the app opens **🗺️ Convert from GIS**. Formats: `.geojson`, `.json`, `.kml`, `.kmz`. Points, paths and zones are carried over.
+Drop your export **on the "📦 Add a map" area of the home screen** or into the Generator: the app opens **🗺️ Convert from GIS**. Formats: `.geojson`, `.json`, `.kml`, `.kmz`. Points, paths and zones are carried over.
 
 - **No image needed**: the app creates a blank background aligned on the file's coordinates. You can replace it with a real image later.
 - **Your naming is respected**: a matching screen asks you which column holds the type, then what each value corresponds to (`CANALISATION`, `galerie_tech`…). Obvious values are pre-filled, and each one can target any family: a polygon can be a zone, a pillar, a wall or a working face.

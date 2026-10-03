@@ -327,7 +327,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 - en tête, **✅ Enregistré il y a N s** (en rouge si la sauvegarde échoue) ;
 - les totaux (et la répartition par niveau sur un plan multi-niveau), puis tous tes points, tracés, zones, structures et photos ;
 - les autres mesures : 📐 mesure, 🗺️ itinéraire et ses étapes, 🧭 suivi ;
-- **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet. Si aucune sortie n'est en cours, le bouton **📔 Démarrer une sortie** en ouvre une sur ce plan — y compris quand « Tenir un carnet de mes sorties » est décoché dans ⚙️ Réglages (c'est alors le seul moyen d'en enregistrer une). Une seule sortie à la fois ;
+- **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet. Si aucune sortie n'est en cours, le bouton **📔 Démarrer une sortie** en ouvre une sur ce plan — y compris quand « Tenir un carnet de mes sorties » est décoché dans ⚙️ Configuration (c'est alors le seul moyen d'en enregistrer une). Une seule sortie à la fois ;
 - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer ;
 - **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation ;
 - le bouton **📊 Stats globales** (rapport copiable, CSV, PDF).
@@ -590,7 +590,7 @@ Depuis la fenêtre Itinéraire (**Destination sur un autre plan**) ou un résult
 La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec leurs points, tracés, zones et structures, dans tes couleurs de légende. Elle est **active par défaut** : le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu regardes ; aucune donnée de tes plans ne sort. Pour la couper : ⚙️ Configuration.
 
 - **Sur l'accueil**, le widget **🌍 Vue OSM** ; son bouton **⛶** ouvre le mode OSM en plein écran.
-- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés et découpés en tuiles).
+- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés).
 - Un plan n'y apparaît qu'une fois **ouvert au moins une fois** : c'est à l'ouverture que l'app lit son géoréférencement.
 - **Hors connexion** : **💾 Sauvegarder hors-ligne** télécharge à l'avance les tuiles de la zone visible.
 - Zoomer sur un plan affiche des images plus détaillées, lues dans le fichier du plan déjà sur ton appareil. Les calques livrés masqués s'y affichent et se filtrent comme les autres.
@@ -738,7 +738,7 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 **Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups).
 
-> ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis 🔍 **Filtres**, puis exporte le calque corrigé.
+> ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis ≡ **Filtres**, puis exporte le calque corrigé.
 
 ---
 
@@ -1248,7 +1248,7 @@ La tuile **🎬** du menu **🧭 Tracker** ouvre une fenêtre plein écran qui *
 
 - **Commandes** : curseur de temps, ⏮ ▶️ ⏸ ⏭, vitesse de 0.5× à 10×. Au ▶️, la fenêtre se réduit en bas de l'écran pour laisser voir la carte (bouton **⛶** pour basculer).
 - **Clavier** : Espace = lecture / pause · ← → = reculer / avancer d'une seconde · Échap = fermer.
-- **💾 Export CSV** : un tableau horodaté des positions (démarrage, chaque pas, chaque recalage, et le niveau sur un plan multi-niveau), lisible dans un tableur.
+- **📤 Exporter CSV** : un tableau horodaté des positions (démarrage, chaque pas, chaque recalage, et le niveau sur un plan multi-niveau), lisible dans un tableur.
 - Un recalage est un saut : aucune ligne n'est dessinée entre l'ancienne et la nouvelle position.
 - La session rejouée n'est **pas conservée** : elle repart à zéro au rechargement de l'app ou au changement de plan.
 
@@ -1324,7 +1324,7 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 
 **Modifier ou désactiver** : même section, **✏️ Modifier le code** ou **🔓 Désactiver**, après validation par biométrie ou par le code actuel.
 
-**5 codes faux à la suite** verrouillent l'app **temporairement** : 10 min, puis 1 h, 6 h et 24 h à chaque nouvelle série. Un compte à rebours s'affiche et le pavé revient seul à la fin du délai ; un code juste remet tout à zéro. Les échecs de biométrie ne comptent pas. Si tu as vraiment perdu ton code, il reste **💥 Tout réinitialiser** depuis l'accueil, au prix de ta session en cours et des plans non mémorisés.
+**5 codes faux à la suite** verrouillent l'app **temporairement** : 10 min, puis 1 h, 6 h et 24 h à chaque nouvelle série. Un compte à rebours s'affiche et le pavé revient seul à la fin du délai ; un code juste remet tout à zéro. Les échecs de biométrie ne comptent pas. Un code oublié ne se récupère pas : seul l'effacement des données du site dans les réglages du navigateur lève le verrou, et il efface tout (plans, sessions, carnet).
 
 ### 🔒 Mode hors-ligne strict
 
@@ -1558,7 +1558,7 @@ Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif`) : l'im
 
 #### 🗺️ Convertir un fichier SIG (QGIS…)
 
-Dépose ton export **sur la zone « 📦 Charger un nouveau plan » de l'accueil** ou dans le Générateur : l'app ouvre **🗺️ Convertir depuis un SIG**. Formats : `.geojson`, `.json`, `.kml`, `.kmz`. Points, tracés et zones sont repris.
+Dépose ton export **sur la zone « 📦 Ajouter un plan » de l'accueil** ou dans le Générateur : l'app ouvre **🗺️ Convertir depuis un SIG**. Formats : `.geojson`, `.json`, `.kml`, `.kmz`. Points, tracés et zones sont repris.
 
 - **Pas besoin d'image** : l'app crée un fond vierge calé sur les coordonnées du fichier. Tu pourras le remplacer par une vraie image plus tard.
 - **Tes appellations sont respectées** : un écran de correspondance te fait choisir la colonne qui porte le type, puis à quoi correspond chaque valeur (`CANALISATION`, `galerie_tech`…). Les valeurs évidentes sont pré-remplies, et chacune peut viser n'importe quelle famille : un polygone peut être une zone, un pilier, un mur ou un front de taille.
