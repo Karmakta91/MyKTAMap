@@ -133,58 +133,21 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
-## 🔒 Mode hors-ligne strict — à supprimer (audit du 03/10/2026, lecture seule)
+## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
-KARMA le juge peu pertinent et contraire à « éviter l'indigestion ». L'audit montre qu'il ne fait déjà presque rien.
+Livré : bug incognito (`67846d5`), suppression du mode hors-ligne strict (`6a85b5b`), 🆘 Dépannage (`c923dcb`),
+pastille hors-ligne + inspecteur SW dans le mode dev (`4049614`).
 
-- 🔴 **Bug d'abord, indépendant de la décision : l'incognito ne coupe pas la Vue OSM.** `osmView.js:305`,
-  `osmHomePreview.js:495`, `secoursMode.js:5354`, `swInspector.js:599` appellent `IncognitoMode.isActive()`, qui n'existe
-  pas (l'API expose `.active`) : la coupure promise par la doc n'a pas lieu. Correctif **S**, commit séparé. ✅ vérifié (code lu).
-- 🟠 **Supprimer le mode** (case « 🔒 Mode hors-ligne strict », clé `myktamap_network_paranoia_v1`, `networkAudit.js`) :
-  il ne bloque que les `fetch`/XHR externes — en pratique le seul pré-cache des tuiles OSM. Tout le reste est de même origine
-  (version, alertes, révocations), et les tuiles Leaflet passent par `<img>`, hors interception. Les blocages Vue OSM / widget
-  / Secours / auto-réparation SW appellent `NetworkAudit.isStrictOfflineEnabled()`, **jamais définie** : code mort depuis
-  v1.39 — guide, Aide ❓ et NETWORK_AUDIT promettent une coupure qui n'a pas lieu. ✅ vérifié (grep : aucun définisseur).
-  Cible (option « c ») : retirer réglage, badge, blocages morts, clés i18n ×3, § guide ×3 ; garder le journal réseau et la
-  classe CSS `.kta-net-paranoia-toggle` (réutilisée par une dizaine d'autres cases) ; réécrire NETWORK_AUDIT autour de
-  « aucune donnée envoyée, un seul tiers (OpenStreetMap), coupable par la case 🗺️ Vue OSM, vérifiable au journal réseau ».
-  Assumer dans le texte le retrait d'une promesse publique (elle était déjà fausse). Taille **M** (~10 fichiers + ~14 docs).
-  À trancher : 1. option (reco c = suppression + discours OSM) · 2. clé chez les utilisateurs (reco : l'ignorer, une phrase
-  dans les notes) · 3. retirer la clé de l'export de profil (reco : oui) · 4. bug incognito avant ce lot (reco : oui) ·
-  5. `check-osm-defaut.js` §5 exécute la garde au lieu de chercher un texte — c'est lui qui a laissé passer le code mort (reco : oui).
-- 💡 **Variante KARMA (03/10) si le mode est gardé** : remplacer le gros badge « 🔒 MODE HORS-LIGNE STRICT ACTIF » de l'accueil
-  (`#loaderParanoiaBadge`, au-dessus du pied de page) par un 🔒 discret dans le pied de page, idéalement accolé à la pastille
-  hors-ligne du badge de version (lot B de « 🧰 Configuration »). ⚠️ N'a de sens qu'avec l'option « d » (réparer :
-  définir `isStrictOfflineEnabled`, puis **tester** le blocage OSM, qui n'a jamais tourné) — sinon le 🔒 afficherait une
-  promesse non tenue. **S** (badge) + **S-M** (réparation et test).
-
-## 🧰 Configuration › Système & maintenance — désencombrer (audit du 03/10/2026, lecture seule)
-
-Demande KARMA : sortir de l'interface courante ce qui est technique, rendre visible l'état hors-ligne. ⚠️ Le **mode dev
-existe** (`devMode.js`, verrouillé par un mot de passe non distribué) : y ranger un outil = le retirer à tous les
-utilisateurs. ⚠️ Une **réparation silencieuse** du cache tourne déjà ~5 s après l'accueil (`SwInspector.autoHealIfNeeded`,
-jusqu'à 100 fichiers retéléchargés) : le bouton hors-ligne n'invente rien, il **montre** ce qui existe.
-
-- 🟠 **A — 🆘 Dépannage, un seul bouton visible** à la place des sections Mise à jour / Kill SW / Réinitialisation : fenêtre
-  graduée 🔄 Forcer la mise à jour → 🆘 Kill SW → 💥 Tout réinitialiser, une phrase « quand l'utiliser » chacun, plus une ligne
-  vers la page de secours `killsw.html` (« l'app ne s'ouvre plus »). Réutilise `loaderSwModals.js`
-  (`_afficherConfirmForceUpdate`, `_afficherConfirmKillSw`, `_afficherKillSwOfflineRefus`) et `viderCacheAppli` ; extraire les
-  3 écouteurs de `homeConfig.js` ; garder les ids (aucun smoke ne les cible). Renvois : guide fr/en/es (liste Configuration +
-  « 🔄 L'app ne se met pas à jour »), Aide `depannage` / `parametres` ×3, `alert.json`. **S-M.** ✅ vérifié (code lu).
-- 🟠 **B — Pastille « hors-ligne »** sur le badge de version de l'accueil : 🟢 tout enregistré + version · 🔴 fichiers manquants
-  → clic = tout récupérer avec progression · 🟠 en cours / hors réseau · ⚪ pas de service worker. Rouge seulement remonté dans
-  l'en-tête de l'accueil ; rien en mode carte. Exposer `SwInspector.etat()` / `recuperer()` (aujourd'hui privées :
-  `_computeDiff`, `_refetchMissing`), vérifier au résultat de l'auto-réparation, au `controllerchange` et après un clic.
-  Remplacer le toast `swinsp.toast.incomplete` (il renvoie vers l'inspecteur) ; retirer de `alert.json` l'alerte
-  `offline-precache-2026-06` et l'étape 📥 de `doc-refonte-2026-10`. Aucune nouvelle requête (même origine). **M.**
-  ✅ vérifié (code lu) ; 🔬 coût de la vérification sur un vieux téléphone non mesuré (estimé 50-300 ms).
-- 🟡 **C — Inspecteur Service Worker → mode dev**, *après* B (sinon toast et alertes pointent vers un bouton invisible).
-  Étendre `check-devmode-docs.js`. **S.**
-- ⚪ **D — État mémoire : reste visible** (« 📊 État de l'app », à côté de 🆘 Dépannage) — il porte le nettoyage des données
-  orphelines et le rapport à joindre au contact (guide, fiche Aide `inspecteur-memoire`). Désaccord consigné si KARMA le
-  passe en mode dev : fiche Aide et renvoi du guide morts, orphelins jamais nettoyés.
-- À trancher : 1. dépannage (reco : bouton unique A) · 2. ordre (reco : B puis C) · 3. état mémoire (reco : visible) ·
-  4. pastille (reco : pied de page, en-tête seulement si rouge) · 5. récupération (reco : auto + clic manuel si rouge).
+- 🟠 **La fenêtre « Que fait l'app sur le réseau ? » dit « liste exhaustive » sans citer OpenStreetMap** : ajouter une
+  entrée `netaudit.whitelist.osm` ×3 (la puce `home.netdoc.verify3` le dit déjà). **S.**
+- 🟡 **CSP décrite de travers** : `security-legal.md` §40.7 cite `connect-src 'self' https://www.gstatic.com`, NETWORK_AUDIT
+  « la directive clé est `connect-src 'self'` » — la conf réelle autorise aussi `blob:` et `tile.openstreetmap.org`. **S.**
+- 🟡 `security-legal.md` ~l.350 décrit encore un écran PIN bloquant qui renvoie à « Tout réinitialiser » (le verrou est
+  temporaire depuis le 13/09). **S.**
+- ⚪ Thème clair : `#loaderResetBtn` (règle par id `!important`) écrase le style « danger » du bouton reset de 🆘 Dépannage.
+- 🔬 Pastille hors-ligne : coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange
+  (hors réseau) et thème clair non testés en navigateur ; la progression avance par paquets de 10.
+- ⚪ Un vieil export de profil réécrit la clé `myktamap_network_paranoia_v1` (inerte) ; purge possible en 1 ligne si gênant.
 
 ## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
 
