@@ -17,9 +17,11 @@
     {
       "id": "doc-refonte-2026-10",
       "level": "info",
-      "title": "📖 Documentation remise à neuf — 3 octobre 2026",
-      "message": "La documentation et l'aide ont été réécrites pour être plus faciles à lire et pour t'aider à prendre l'application en main : deux fois plus courtes, rangées dans l'ordre où tu en as besoin.",
+      "title": "📖 Documentation remise à neuf — version v1.99.6 (3 octobre 2026)",
+      "message": "La documentation et l'aide ont été réécrites pour être plus faciles à lire et pour t'aider à prendre l'application en main : deux fois plus courtes, rangées dans l'ordre où tu en as besoin. Elles arrivent avec la version v1.99.6 : si ton application affiche une version plus ancienne, fais d'abord la mise à jour.",
       "details": [
+        "🔢 Ta version est affichée en bas de l'accueil. Avant v1.99.6, tu vois encore l'ancienne documentation",
+        "🔔 Pour mettre à jour : accepte la fenêtre « Mise à jour disponible » quand elle s'affiche, ou ⚙️ Configuration → 🔄 Forcer la mise à jour (connexion nécessaire ; tes plans, sessions et réglages sont conservés)",
         "📖 Documentation : le guide complet, de la prise en main jusqu'à « 🔭 Pour aller plus loin » — avec un chapitre « 🆘 En cas d'urgence sous terre » en tête",
         "❓ Aide : une fiche courte par fonction, rangée comme le guide, dont de nouvelles fiches « Je suis perdu », « Affichage XL », « Itinéraire » et « Multi-niveau »",
         "❓ Dans une fenêtre, le bouton ❓ de l'en-tête ouvre directement la fiche qui la concerne",
