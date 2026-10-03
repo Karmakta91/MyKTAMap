@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.6` (03/10/2026)
+## 📦 Version courante — `v1.99.8` (03/10/2026)
+
+> 🎓 **v1.99.8 — Tutoriel d’accueil refondu** : 27 → 11 cartes dans l’ordre du guide, une carte « Avant de descendre » ; plus de jargon ni d’affirmation fausse.
 
 > 📖 **v1.99.6 — Guide et Aide réécrits** : documentation fr/en/es restructurée par parcours et divisée par deux, Aide ❓ rangée comme le guide avec 5 fiches nouvelles ; faits faux et données réelles retirés.
 
@@ -507,6 +509,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.8 (03/10/2026) — Tutoriel d’accueil refondu (v1.99.7 non publiée)
+
+- 🔍 **Origine** : demande KARMA — même philosophie que le guide et l’Aide pour l’onboarding ; audit par agent (pertinence carte par carte, erreurs prouvées dans le code).
+- 🎓 **Tutoriel** (`0d5752e`) : 27 → 11 cartes, 34 k → 4,2 k caractères FR — Bienvenue (données sur le téléphone) · Avant de descendre (installer, charger avec du réseau) · Charger un plan · Urgence · Se repérer · Chercher · Suivre sa position · Itinéraire et guidage · Annoter · Tes données · Réglages et aide. Retirés : carte « 100 % hors-ligne, 100 % privé », création de plan, légende, Mode Secours, multi-niveau, stats/heatmap. Erreurs disparues : « Mode panique », Sortie d’urgence « dans le menu Tracker », champ « État » inexistant, croisements « automatiques », commande vocale toujours présente et « aucun audio ne quitte ton appareil » (faux : service du navigateur), touche Espace.
+- 🧱 **Mécanique** : clés nommées `tutorial.card.<cle>.*` (le rang ne fait plus la clé) ; les 64 clés `tutorial.cardNN.*` supprimées des 3 dicos ; `check-doc-vocabulaire` §3 ne lit plus une carte par son numéro.
+- 📖 **Guide** (`258e7e7`, `d52e241`, `a65f9ef`) : deux phrases retirées du topo ; confidentialité : retour à l’introduction d’origine et à sa liste de risques.
+- ✅ **Tests** : pré-commit vert ; navigateur fr/en/es — 11 cartes rendues dans l’ordre, aucun défilement sur mobile 390×844, aucune erreur JS.
 
 #### v1.99.6 (03/10/2026) — Guide utilisateur et Aide intégrée réécrits
 

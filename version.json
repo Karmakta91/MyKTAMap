@@ -1,8 +1,8 @@
 {
-  "version": "v1.99.6",
+  "version": "v1.99.8",
   "released": "2026-10-03",
   "notes": [
-    "🧩 Replay, Heatmap, indicateur de batterie et vibration deviennent des options, désactivées par défaut : réactive celles qui te servent dans ⚙️ Configuration › Fonctionnalités optionnelles. 📖 La Documentation et l’Aide ❓ sont réécrites, deux fois plus courtes et rangées par usage ; l’Aide IA est à côté du choix de langue.",
+    "🧩 Replay, Heatmap, indicateur de batterie et vibration deviennent des options, désactivées par défaut : réactive celles qui te servent dans ⚙️ Configuration › Fonctionnalités optionnelles. 📖 La Documentation, l’Aide ❓ et le tutoriel d’accueil sont réécrits, plus courts et rangés par usage ; l’Aide IA est à côté du choix de langue.",
     "🪧 Le guidage marche aussi sans le suivi : touche « 📍 Je suis ici » sur une plaque proche de l’itinéraire, la partie déjà faite disparaît sans recalcul. Il suit aussi un trajet qui passe par un portail. La croix du bandeau coupe le guidage ; la tuile 🪧 du menu Tracker le rallume."
   ]
 }
