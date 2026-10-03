@@ -2669,555 +2669,167 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 >
 > You never have to take the author's word for it: everything is verifiable.
 
-### 🚨 Rescue Mode
+### 🚑 Rescue mode — coordinating a search
 
-Operational tool to **methodically assign rescue teams** to search areas on a cataphile map. Use case: someone is reported missing in a dense network, several teams arrive at the surface, the rescue command center must coordinate "who sweeps what" with a clear, printable briefing.
+> **Who it's for**: whoever organizes the search for a person missing underground, and the teams who go down to look for them.
+>
+> **When**: someone else is lost. If *you* are the one who's lost, use ⛑️ I'm lost.
+>
+> **Prerequisites**: the **same map** on every phone, available **offline** — there is no network underground.
+>
+> **Prepare it in advance**: set up one or two scenarios on your usual maps before any incident. On the day, the app has to be ready in 30 seconds.
 
-> 💡 **Different from ⛑️ I'm lost**: ⛑️ is *you* who are lost, you are trying to find yourself. **🚨 Rescue Mode** is *someone else* who is lost, you organize the teams who will look for them.
+To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚨 Rescue mode — Search plans (teams + zones)**.
 
-#### Access
+#### 🧭 How it's organized
 
-🚨 button in the **🧭 Tracker** menu (emergency section, at the bottom), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
+Three roles, each on their own phone:
 
-#### Workflow
-
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped — never a running scenario, the one you have open, nor a finished intervention whose report has not yet left the device).
-2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
-3. **Free-form editing** — 3 accordion sections:
-   - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
-   - **🚨 Teams**: add as many teams as needed. For each team: name (auto Alpha/Bravo/Charlie...), color (fixed 10-color NATO palette), members (CSV), entry/exit (map click), zone (polygon OR path selection), suggested route (auto-calc via Pathfinder)
-   - **📤 Export**: printable PDF (1 page/team) + geolocated KMZ (cross-app)
-
-#### Interactive map modes
-
-| Button | Action |
-|---|---|
-| 📍 Entry | 1 map click = captures the team's entry position |
-| 🚪 Exit | 1 map click = captures the exit position |
-| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click: the nearest gallery, among the displayed levels, is taken (re-click = remove, highlighted in red). The map's galleries are found identically on any phone that has the same map; a path drawn by hand on a single device only exists on that one. Hidden layers remain selectable |
-| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration according to the rescue plan's **⏱️ Estimated durations** settings (search speed 1.5 km/h and pause 0 by default, adjustable) |
-
-> 🔁 **During the intervention**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps right away. What has already been entered (status, observations, photos) stays on the same step, even when two steps share the same name. Removing a step that already has entries asks for confirmation, and is **refused** if it reports "Help requested" or "Victim found": change its status first. Put back later **in the same phase**, the step recovers what had been entered (after a phase change it starts empty; its entries stay in the closed phase's history). If a team reports "Help requested" or "Victim found" on a step you removed in the meantime, importing its report **puts the point back in its route**, in its place, and tells you in red; if the point cannot be put back (team no longer in the current phase), the red alert is shown anyway. ⚠️ **After an app update, re-import the plan on every phone before the intervention**: a phone that imported the plan with an older version (before v1.98.5) sends reports the PC cannot merge. **Relaunching** a finished plan erases the previous intervention, photos included: a confirmation reminds you, export its report first. "All POIs in the zone" adds the steps from nearest to nearest, to avoid back-and-forth.
-
-> 🗺️ **On the map, during the intervention**: when you **launch the plan in team mode**, you are **placed at your team's entry** — automatically if your position was not confirmed yet, otherwise the app offers it ("Place me at the entry" / "Keep my position"). At launch, **a single message** sums everything up (plan launched, placed at the entry, map not available offline) and no longer blocks the buttons below it; relaunching a scenario already played starts from scratch (no more false delays carried over from the day before). Closing the Rescue Mode window no longer removes anything — your zone and your route stay displayed (a team member sees their team, the operator all of them), even after a reload. At the bottom of the screen, a red badge **"🚨 Rescue · Alpha · 3/8 ›"** reminds you the intervention is running and where you stand: one tap takes you **straight to the steps** to validate. While preparing: teams **collapse** (▾/▸ or "Collapse all"); while drawing a zone, the other teams' zones show dashed so you can line up the edges; tapping a POI to choose the entry, the exit or a step **takes it as the point** (its sheet no longer opens); an unnamed point shows as **GPS coordinates** if the plan is georeferenced; "Auto: 1 team per level" skips empty levels, and level lists mark the ones with nothing on them "(empty)" (still selectable).
-
-> 🚒 **What the field changed (v1.98.24)**: **🚑 Evacuate** also offers **your teams' access points** ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed), ranked by real distance, not only the map's tagged exits. The operator sees **"X deployed · Y underground · Z missing"** at the top and is warned at launch about teams **without a headcount**; at return, the number of people **back up is no longer pre-filled** (someone has to count). Each team can have a **mandatory return time** (team card) that overrides the estimated duration, and the leader can be entered even without a member list. Durations tell the **approach speed** (outside the zone) from the **search speed** (inside the zone) and count crow-flies links. **Validating a step resets your position** to it (silently under 30 m, with a question beyond; never for "Blocked" or "Forced U-turn") and **"Follow my route" starts tracking**. A step has **a single number** everywhere (E, 1…N, S); moving on without a status records it as **"Passed, not reported"** (no longer "All clear"). When a route is computed, **every step more than 25 m from a gallery** is listed, and the reminder stays on the card. The **XL screen** also shows long routes. The firefighter briefing says **which access it is and whether it must be opened**, and prints leader, headcount and mandatory return.
-
-> 📊 **Honest coverage (v1.98.25)**: the **📊 Coverage** block gives, **per level**, the length of galleries, the share **in a zone**, the share **on a route** (galleries a team route actually uses: what will really be searched) and the length assigned to two teams. On a real network, “86 % in a zone” can be only “24 % on a route”. **🗺️ Highlight galleries off every route** shows them in red on the map (displayed level) to prepare the next phase; a second click removes them. On a multi-level map, a zone **applies at the level where you drew it** (“Zone on all levels” box on the team card to extend it), and route computation warns when galleries of another level run under the zone with no route going there.
-
-> 🚑 **Victim, delays and recall**: a step set to **"Victim found"** gives a **position** (the step's, level included) — **📍 Refine on the map** adjusts it, **🚑 Evacuate** opens the Emergency exit from the victim, and a **red ✚** marks it on the map, for everyone. The operator sees it as a banner at the top of their view, and the report prints it first. Each team has its **departure time** (**▶️ Departure**, otherwise the launch) and its **expected return time** (departure + estimated duration): **orange** once that time has passed, **red** after the margin (30 min by default, adjustable in ⏱️ Estimated durations) — late teams move to the top, the bottom badge changes colour, a message and a vibration warn you. **✅ Back** stops the clock. **📢 General recall** (or 📢 Recall, per team) marks the teams still underground as recalled, with the time. ⚠️ **The app notifies nobody** — there is no network underground: pass the order on by radio or by voice. Departure, return, recall and refined position travel in the team report.
-
-> 🧭 **Step-by-step route guidance**: in your team's view, **🧭 Follow my route** turns the route into the app's itinerary — the guidance banner ("In 40 m, turn left"), the road book and the XL screen take you from step to step (turn tracking 🧭 on). The steps you validate are ticked on the itinerary; if you stray, **Recompute** starts again from here towards the **next step not done**, still avoiding the other teams' zones. When you reach a step, a message and a vibration warn you, and the 🚨 badge opens that step directly. The **briefing PDF** also prints, for each team, its **road book** junction by junction (level changes included) — compute the team's route to get it.
-
-> 👥 **Leader, headcount, people back up and log**: each team has a **👤 leader** (chosen among its members) and a **headcount**. At **✅ Back**, the app asks **how many came back up**: below the headcount, a **red alert "N person(s) missing"** stays on screen (and the bottom badge turns red) until the count is corrected. The **📜 log** (operator view) records everything, time by time: launch, statuses, victim, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It travels in team reports and is printed as an annex of the report. The **free rescuer's report** can now be imported like a team's: their notes join the log, at their time.
-
-> 🗂️ **Preparing and relaunching**: when a phase is closed, each team's **planned route** is kept — replanning the next phase no longer erases it, and the report shows each phase's route. In the edit view, the **📊 Coverage** block (computed when opened) gives the **share of galleries covered** by the zones, the **POIs inside a team's zone but off its route**, and the **POIs visited by several teams** — a reading aid, nothing is assigned automatically. At launch, the app **warns you if the map is not fully available offline** on the device (server map not downloaded). In the team view, three shortcuts: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost** — hidden, like "Follow my route", when the surface operator **takes over** to relay a team: they would act on the operator's own device.
-
-#### Map visualization
-
-**🗺️ View on map** button in the edit header. Displays for each team (dedicated color):
-- Polygon zone (fillOpacity 30%) OR colored halo on the selected paths
-- 📍 Entry marker (green border circle + team color fill)
-- 🚪 Exit marker (red border circle + team color fill)
-- Suggested route (dashed polyline team color)
-
-Auto-refresh on each modification. Re-click the button to hide.
-
-#### Multi-scenarios per map
-
-You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map: beyond that, the oldest is automatically purged — except a running scenario, the one you have open, the most recent one, or a finished intervention whose report (PDF or file) has not yet left the device.
-
-#### Exports
-
-**📄 Printable PDF**: 1 A4 portrait page per team (a 2nd one if the step list is long) with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
-
-**🌍 Geolocated KMZ**: embeds the complete scenario in a KMZ annex file (`myktamap-extras.json > secoursPlan`). Prerequisite: map already KMZ-calibrated (see Export sessions modal 🌍 KMZ tab). MyKTAMap can re-import the KMZ and reload the scenario as-is. Filename `Rescue_<scenario_name>_<date>.kmz`.
-
-The sections below detail the advanced features: cross-app integrations (KML, Lost Mode, heatmap, etc.), real-time field exploitation (Live views by role, statuses, reports), and cross-device consolidation (import of teammate reports).
-
-> 💡 **Sending to the teams**: the operator exports the scenario (**📤 Export .mkmsec.json**) and sends it to each team, which imports it on its phone. Back up, each team sends its report (**`.mkmsec.report.json`**), which the operator imports.
-
-> 💡 **Field recommendation**: prepare one or two scenarios **BEFORE** an incident on your favorite maps to identify workflow frictions (where are the accesses, how to divide the network, which levels by team). During a real incident, you will be in emergency mode and the app must be ready to draw in 30 seconds.
-
-### 🚨 Rescue Mode — Multi-phases
-
-A scenario can **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
-
-> 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to previous behavior. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
-
-**🔧 Create and manage phases (scenario Edit view)**:
-
-- **📋 Phases (N)** section below the Teams section
-- **➕ Add a phase** button → creation modal:
-  - Enter a name (e.g.: *"Phase 2 — East Chambers"*)
-  - Check the **participating teams** for this phase (hybrid model: your teams are defined only once at the scenario level, then you check box by box "participates in this phase")
-- ✏️ button to rename a phase or modify the team selection
-- 🗑️ button to delete (refused if it's the last phase, if it's active in the execution, or if it has already been started → history is preserved)
-
-**🏷️ Sticky badge in the 3 Live views**: an amber badge "**📋 Phase 1 1/N**" appears in the header of the Team / Operator / Free Rescuer views as soon as there are 2+ phases. Displays the name of the active phase + its position.
-
-**✓ End a phase + debrief (Operator only)**:
-
-1. During the active phase, the Op Live footer displays a new **"✓ Phase ended"** amber button (visible only if multi-phase)
-2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as done**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
-3. **Click "✓ Phase ended"** → debrief modal: free textarea (5000 chars max) to capture the lessons from the phase (teams returned, points found, priority zones to explore, constraints encountered). This debrief will be intercalated in the final report between each phase section.
-4. **Validate "✓ End the phase"** → the current phase is **archived** (never overwritten, history preserved)
-5. **If a next phase exists** → automatic chaining to **"🚀 Start phase X+1?"** modal with summary of participating teams
-6. **You confirm** → the new phase starts, the steps of participating teams are **rebuilt from their CURRENT route** (so if you modified `entry/exit/intermediate` of a team between P1 and P2, the new steps take this into account)
-7. **If no next phase** → a confirmation "Stop the plan completely?" (equivalent to ⏹️ End the plan)
-
-**🔍 History safeguards**:
-
-- Closing a phase **NEVER** deletes steps — they are archived as they are
-- A phase already started can no longer be deleted from the UI (safety net)
-- An active phase in the execution cannot be deleted (go through "✓ Phase ended" first)
-- The auto-detection toast does not repeat (single display per phase)
-
-> 💡 **Hybrid teams ↔ phases model**: your teams are defined **only once** at the scenario level (with members, NATO color, route). Participation in each phase is managed by checkbox in the phase modal. The same team can participate in several successive phases — at the phase transition, its steps are reset based on its current route (so you can modify the route between P1 and P2 to adapt to what was discovered).
-
-> 💡 **"➕ Add a phase" button also available on-the-fly** from the Op Live footer (during execution), not just from the Edit view. Useful when the P1 debrief reveals the need for an unplanned P3.
-
-### 🚨 Rescue Mode — Cross-app integrations
-
-These integrations make Rescue Mode a complete operational coordination tool:
-
-#### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
-
-The exported KMZ now contains a root `🚨 Rescue` folder perfectly structured for third-party apps:
-
-```
-📁 Rescue — Marc search 26/05
-   ├── 📁 🚨 Alpha team
-   │ ├── 📁 📍 Points (5) ← toggle ON/OFF in Google Earth
-   │ ├── 📁 ⬛ Search zone
-   │ └── 📁 🗺️ Route
-   └── 📁 🚨 Bravo team (idem)
-```
-
-- Background map as GroundOverlay 60% opacity (simultaneous reading of map + zones)
-- Auto-calc of missing routes BEFORE export (1 click = complete KMZ)
-- 43 NATO color styles (10 teams × 4 categories + 3 fixed entry/exit/loop styles)
-
-#### ⛑️→🚨 Lost Mode → Rescue workflow
-
-In the ⛑️ "I'm lost" emergency modal, a new button:
-
-```
-🚨 Launch a rescue plan (teams + zones)
-```
-
-On click, the app **automatically creates a Rescue Mode scenario** with:
-- Auto name `Search - 26/05/2026 14:32`
-- Incident time calculated from the elapsed time of Lost Mode
-- Last known position + uncertainty zone (radius + dashed circle on the map)
-- Auto notes with walking speed, radius, entered clues
-
-→ Natural workflow: you are searching for someone → you launch Lost Mode → you click 🚨 → you coordinate the teams.
-
-#### 🚫 Anti-overlap between teams
-
-When you calculate a team's route, the **waypoints + zones of the other teams** automatically become "avoid preferences" for Pathfinder. Result: the routes go around each other instead of crossing, no involuntary relay.
-
-If really no choice (shared unique passage), warn toast `⚠️ Route crosses N point(s) of other teams — check overlaps`.
-
-#### 🔥 Activity heatmap in Rescue Mode
-
-New orange "🔍 Analysis tools" block in the Context section with **🔥 Show activity heatmap** button. Visualizes the zones where the tracker has recorded passage → useful for identifying probable zones to search in priority.
-
-> 🧩 This block stays available **even when the 🔥 Heatmap option is off**: that option only removes the Tracker menu tile.
-
-If the missing person was using MyKTAMap and exported their session with tracker timeline, the heatmap directly shows where they spent time.
-
-#### 🏗️ Auto-create 1 team per level (M-LVL)
-
-On multi-level maps, conditional button **🏗️ Auto: 1 team per level (N)** in the Teams section. Auto-creates N teams named `Level GF / +1 / -1...` with auto-cycled colors. You then place zones + waypoints on each level separately by changing the active level via the top-left M-LVL pill.
-
-#### ⭐ Favorites in quick access
-
-In the mini-modal "📍 Choose a point", your map favorites appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
-
-Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
-
-#### 🛑 Pause between stops (route)
-
-New section in the 🗺️ Route modal:
-
-```
-🛑 Pause between stops
-☑️ Include a pause between each intermediate stop
-   Duration per pause: [15] min
-```
-
-Default checked + 15 min (= preserved behavior). ⚠️ Since v1.98.11 this pause **no longer** applies to Rescue Mode: each rescue plan has its own settings (**⏱️ Estimated durations** block: search speed and pause per step), sent to the teams with the plan.
-
-> ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
-
-### 🚨 Rescue Mode × 🌍 OSM View — External rescue coordination
-
-Rescue Mode is integrated with the OSM View to provide **external rescue teams** (firefighters, GRIMP, SDIS) with everything they need to intervene on site without knowing the place.
-
-#### 🚪 "Plan entry point" tag
-
-New built-in tag available in the **🚨 Rescue** category of the legend and POI editor. Marks the main entrance(s) for rescue teams:
-
-- Vector SVG icon (yellow door on black background)
-- Automatically appears in the Firefighter Briefing PDF ("critical POIs" section)
-- Visible on the OSM View too (with its GPS georeference)
-
-> To tag a POI: edit it → Tag menu → "🚨 Rescue" category → "🚪 Plan entry point". You can have multiple entries (north/south/etc.).
-
-#### 📍 Team surface GPS
-
-In the team form (Rescue Mode → team edit), new **📍 Surface GPS** field:
-
-```
-📍 Surface GPS: [48.8566, 2.3522 ]
-                 ↑ format: lat, lng (decimal WGS84)
-```
-
-Enter the GPS position of the rescue HQ, firefighter rendezvous point, or any surface point of interest related to this team. Optional.
-
-→ This data feeds the **Firefighter Briefing PDF** (clickable OSM link per team) and stays in the `.mkmsec.json` export.
-
-#### 🌍 OSM View accessible everywhere in Rescue Mode
-
-The **🌍 OSM View** button is present in:
-- The Edit view (scenario banner)
-- All 3 Live views: 👤 Surface Operator, 🚨 Field Team, 🚑 Free Rescuer
-
-No need to return to edit view to show the plan's location on OpenStreetMap to firefighters arriving mid-mission.
-
-#### 🚒 Dedicated Firefighter Briefing PDF
-
-New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a dedicated PDF specially designed for external rescue teams, containing:
-
-| Section | Content |
-|---------|---------|
-| **SURFACE ACCESS POINTS** | At the top: the map **cropped to the teams' access points** (no POIs), a **numbered marker** per access, and a table No. · access (entry, exit or both) · teams · **GPS + clickable map link**. Two teams leaving from the same access share one number. Remember to **name your entries** ("Manhole, X street"): otherwise the table says "Unnamed access" |
-| **INFO** | Scenario name · plan name · generation date |
-| **LOCATION** | GPS center coordinates + bbox + **clickable OpenStreetMap link** + **clickable Google Maps link** |
-| **TEAMS ON SITE** | For each team: name + members + surface GPS (if set) + individual OSM link per team |
-| **CRITICAL POIs** | The map's accesses, with their level: first the **open** ones (🚪 entry points, cavages, rung shafts, service staircases — the same as the Emergency exit), then the **closed** ones (which firefighters and the IGC can open). List taken from the map's tagged points (up to v1.98.6 this block stayed empty) |
-
-> 💡 **How to use**: Print the PDF or send it by email/Signal to the firefighter group leader BEFORE arrival. On site, they click the links from their phone/PC to open OSM or Google Maps centered on your site. No MyKTAMap installation needed on their side.
-
-#### 📤 "Surface briefing" page in post-mission report
-
-The post-mission PDF report (generated via 📤 Report button) includes a "SURFACE BRIEFING" page with the same info, access map at the top (the OpenStreetMap view of the whole map, unreadable on an A4 page, is no longer in it; in the firefighter briefing it stays optional, POIs unticked by default). On team maps, an entry and an exit set at the same access (less than 10 m apart) now make a single "ENTRY / EXIT" marker. When a route is computed, a step placed far from any gallery is named ("Step "Shaft 2" is 68 m from the nearest trace"): fix it before going down. Useful for geographic debrief with firefighters or archiving the intervention file.
-
-#### 🏷️ OSM View tag filter
-
-The tag filter chips in the OSM View modal list **all tags present** in the plan, aligned with the OSM View Home widget.
-
-#### 💾 Save Offline — OSM View without Internet
-
-Heading out on a cataphile trip, or prepping for a Rescue Mode in an area with terrible cellular? You can now **download the OpenStreetMap tiles around your plan ahead of time**, and view them **with no Internet** once you're on site.
-
-**What it's for**:
-
-- You open the OSM View in the field even without network (long underground trip, Rescue Mode in a dead zone, low battery forcing data-saver mode…)
-- The basemap (streets, surface landmarks, contours) stays visible normally → you know where you are relative to the plan without depending on 4G
-- Especially useful **for firefighters / rescue teams** you show the OSM View to upon arrival: the map shows up instantly, no loading wait
-
-**How to enable it**:
-
-A **💾 Save Offline** button is available in the OSM View top bar. **One click is all it takes**:
-
-1. The app downloads the visible OpenStreetMap tiles around your plan + a few zoom levels close in
-2. After download, the bar shows: **📦 N tiles · X MB** (= what's now stored on your device)
-3. You can click again later if you zoom on another area you also want saved
-
-> 💡 **Max ~200 tiles per click** (~5-10 MB): this is a strict cap to respect the OpenStreetMap usage policy (= a free service funded by donations, so no abuse). To save a very wide area, do several clicks while moving the view around.
-
-**Where it's available**:
-
-The 💾 Save Offline button shows up in **3 contexts** — and the cache is **shared** across all three:
-
-| Context | When to use it |
-|---|---|
-| **🌍 OSM View modal** (map mode) | You're prepping a trip: open the OSM View, frame the zone, click 💾 |
-| **🌍 OSM widget on the home screen** | You're prepping your plans from home without having to load a plan in map mode |
-| **🚨 Rescue Mode** (Creation + Live banners) | You're triggering a mission: one 💾 click and the whole team has the zone on the device before going down |
-
-> ✅ **Shared cache**: you download ONCE → it's available everywhere, no duplicates. No need to redo the download per mode.
-
-**Smart offline behavior**:
-
-When the app detects you have no Internet, it adapts the 🌍 icon behavior based on what's stored on your device:
-
-| Internet | Plan saved | 🌍 icon | Action |
-|---|---|---|---|
-| ✅ | – | visible | normal opening |
-| ❌ | ✅ | visible | direct opening from your device (no ping test) |
-| ❌ | ❌ | hidden | reconnection required — clear message "Plan not available offline, click 💾 when connected" |
-
-In practice: if you saved your plan the night before on Wi-Fi, the 🌍 icon stays visible the next day on weak cellular and the modal opens **directly** without a network test that would slow everything down. If you forgot to save, the app tells you clearly instead of leaving you spinning in circles.
-
-**🔒 Everything stays local and private**:
-
-- The downloaded tiles are **stored 100% on your device** (your browser / the installed PWA)
-- **Nothing is ever transmitted** to a third-party server, nor to the author, nor to OpenStreetMap after the initial download
-- No trace of what you save is ever tracked
-- On the next full reset (💥 Reset everything), saved tiles are erased along with the rest
-
-> 💡 **Cataphile trip tip**: the day before your trip, open the OSM View on your phone at home (Wi-Fi), zoom on the entrance area + nearby streets, click **💾 Save Offline**. The next day at the surface meeting point, even with weak cellular, the map shows up instantly.
-
-### 🚨 Rescue Mode — Real-time field exploitation
-
-The scenario has **2 distinct states**:
-
-1. 📝 **CREATION** — Edit view. You prepare your teams, their routes, their zones, the suggested itineraries.
-2. 🚀 **EXECUTION** — Live real-time view. The team has LEFT, you follow their observations step by step, you comment live.
-
-You toggle from one state to another via the **"🚀 Launch the rescue plan"** button in the Edit view.
-
-#### 🚀 Launching the plan + role selection
-
-A new dynamic banner appears at the top of the Edit view:
-
-| Banner state | When | Buttons |
+| Role | Who | What they do |
 |---|---|---|
-| Gray "Add at least one team…" | 0 team defined | None |
-| **Yellow CTA "🚀 Launch"** | At least 1 team | 🚀 Launch the rescue plan |
-| **Green "🟢 PLAN ACTIVE — <Role>"** | Plan launched in progress | ▶️ Resume Live view · 📤 Report · ⏹️ Stop |
-| **Blue "📦 PLAN ENDED"** | Plan stopped (history) | 📤 View historical report · 🚀 Relaunch |
+| 👤 **Surface operator** | the command post, on the surface | prepares the scenario, follows every team, logs everything, gathers the reports |
+| 🚨 **Field team** | each team that goes down | follows its route step by step, notes what it sees |
+| 🚑 **Free rescuer** | a reinforcement with no assigned team | takes timestamped notes, without a route |
 
-On click "🚀 Launch", **role selection modal** with 3 choices:
+The cycle: **prepare** the scenario → **hand it over** to the teams before going down → **follow** the operation → **close** it and write the report.
 
-```
-◉ 👤 Surface operator
-   You coordinate from the command post. You see all teams in
-   parallel, you can edit their observations in supervision.
+#### 🧰 1. Preparing a scenario
 
-○ 🚨 Team on the field: [Alpha ▾]
-   You are part of an assigned team. You follow your route step
-   by step and comment live.
+##### 📝 Creating a scenario
 
-○ 🚑 Free rescuer
-   You intervene without a pre-assigned team (occasional reinforcement, recon).
-   You take free notes with timestamps.
-```
+- **➕ New scenario**: a name, the time of the incident and context notes (optional).
+- **From ⛑️ I'm lost**: the **🚨 Start a rescue plan (teams + zones)** button creates a ready-made scenario — last known position, uncertainty zone (circle on the map), incident time and inferred notes. You must first have set a last known position there.
+- **🗐 Duplicate** clones a scenario so you can test another hypothesis ("went east" / "went south") without touching the original.
+- **10 scenarios per map** at most: beyond that, the oldest one is deleted. Never a scenario in progress, the one you have open, the most recent one, or a finished operation whose report has not yet left the phone.
 
-> 💡 You will be able to change role later without losing the observations.
+A scenario is edited in three blocks: **📝 Incident context**, **🚨 Teams**, **📤 Export this scenario**. In the context block, **🔍 Analysis tools → 🔥 Show the activity heatmap** shows where activity has been recorded (tracking, points, paths): if the missing person used MyKTAMap and sent you their session, you can see where they went.
 
-#### 🚨 Live view — TEAM MEMBER mode (step-by-step)
+##### 👥 Teams
 
-For the rescuer on the field who follows their route:
+**➕ Add a team**, then on its card:
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚨 Alpha team · Step 3/5 ⏱️ 14h 23min │
-├─────────────────────────────────────────────────────┤
-│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← stepper
-│ clickable, status color per step │
-├─────────────────────────────────────────────────────┤
-│ 📍 STEP 3 — North ventilation shaft │
-│ Status: 🟢 NTR │
-│ │
-│ 📝 Observations at this step: │
-│ [central gallery nothing to report] │
-│ │
-│ ⚡ Quick input: │
-│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue] │
-│ [🟠 Help requested] [🟣 U-turn] [🚨 Victim!] │
-│ │
-│ [📸 Photo (0/5)] [🎯 Recenter map] │
-├─────────────────────────────────────────────────────┤
-│ [← Previous step] [Next step →] │
-│ [⏸️ Pause] [📤 Report] [View edit] [⏹️ End] │
-└─────────────────────────────────────────────────────┘
-```
+- **Name** (leave empty: Alpha, Bravo, Charlie…) and **🎨 Colour**, from 10 fixed colours;
+- **👥 Members** (separated by commas), **👤 Leader**, **Headcount** — the headcount is what lets you count who is back at the return;
+- **Mandatory return**: a time set by the leader (light autonomy, shift change); it takes precedence over the estimated duration for late alerts;
+- reference **Level** on a multi-level map (or "No level" if the team changes floors);
+- **📍 Surface GPS** (optional, see § 4).
 
-**8 clickable statuses** (colors engraved in the chart):
+On a multi-level map, **🏗️ Auto: 1 team per level** creates one team for each level that contains something. Teams can be collapsed (▾/▸, "▸ Collapse all") to keep the list readable.
 
-| Emoji | Label | When to use |
-|---|---|---|
-| • | Pending | (default status before interaction) |
-| 🟢 | NTR | Nothing to report |
-| 🟡 | Suspect | Unusual traces / noises / smell |
-| ⬛ | Blocked | Impassable passage (collapse, water) |
-| 🔵 | Clue | Object / remains found |
-| 🟠 | Help requested | Material / human reinforcement requested |
-| 🟣 | Forced u-turn | Abandoned route, early return |
-| 🚨 | **Victim found** | **Absolute emergency** — triggers flashing red signal on the operator side |
-| ⚪ | Passed, not reported | Set by the app: step passed without choosing a status |
+##### 🗺️ Route, zone and itinerary
 
-**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
+- **🗺️ Route**: tap **Entry**, **➕ Add an intermediate step**, then **Exit**. For each point: your map's **⭐ favorites** in one tap, the search, or **📍 Click on the map** (the point snaps to the nearest POI). Tapping a POI takes it as the point, without opening its card. Same entry and same exit = loop. From the app's search, the 📌 button assigns a point to a team in two taps.
+- **⬛ Define zone**: either a **polygon** (one tap per vertex, double-tap to close), or a **selection of paths** (tap each gallery, tap again to remove it). The other teams' zones are shown dotted so you can align the boundaries. A gallery from the map is found identically on every phone that has this map; a path added by hand on a single device exists only on that device. On a multi-level map, the zone applies **to the level where you drew it** — tick "Zone on all levels" to extend it.
+- **✨ Zone POIs** adds every point in the zone as steps, from nearest to farthest from the entry.
+- **🗺️ Calc. route** computes the path through the galleries, from entry to exit via the steps, with distance and duration. It **avoids the other teams' steps and zones**; if it can't, it says so. It also lists **the steps more than 25 m from a gallery**: fix them before going down. Finally, it warns you when galleries on another level run under the zone without any route going down to them.
+- **⏱️ Estimated durations** (settings specific to the scenario, sent along with it): **approach speed** outside the zone (3 km/h by default), **search speed** inside the zone (1.5 km/h), **pause per step** (0) and **red alert after** (30 min late).
+- **🗺️ Show on map** displays the zones, entries, exits and routes of every team, each in its own colour.
 
-**Auto-save**: observations saved on textarea blur AND on step change. No need for "Save" button.
+##### 📊 Checking coverage
 
-**Step passed without a status**: moving to the next step without choosing a status marks it **"⚪ Passed, not reported"**, never "NTR": a skipped step is not a searched step. You can still set a status afterwards.
+The **📊 Coverage** block gives, per level: the length of galleries, the share **in a zone**, the share **on a route** and the length assigned to two teams. Only the "on a route" share will actually be searched: 86 % of galleries in a zone can mean only 24 % on a route. It also lists the POIs inside a team's zone but off its route, and those visited by several teams. **🗺️ Highlight galleries off every route** shows them in red on the displayed level, to prepare the next phase. It is a reading aid: nothing is assigned automatically.
 
-#### 👤 Live view — SURFACE OPERATOR mode (overview)
+##### 📋 Several phases
 
-For the command center coordinating several teams in parallel:
+An operation can run in phases, with a debrief between each — for example, phase 1: one team sweeps the main passages; phase 2: several teams search the chambers that were reported. If you don't need them, ignore them: a scenario always has one phase, and the phase buttons only appear once there are two.
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 👤 Surface operator · 3 teams ⏱️ 02h 14min │
-├─────────────────────────────────────────────────────┤
-│ ┌──────────────────┐ ┌──────────────────┐ │
-│ │ 🔴 Alpha 3/5 │ │ 🔵 Bravo 1/4 │ │
-│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
-│ │ 🟢 NTR │ │ 🟠 Help requested │ │
-│ │ « NTR central │ │ « Water on floor,│ │
-│ │ gallery » │ │ level rising » │ │
-│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
-│ │ [👁️ Details] │ │ [👁️ Details] │ │
-│ │ [🚨 Take over] │ │ [🚨 Take over] │ │
-│ └──────────────────┘ └──────────────────┘ │
-│ ┌──────────────────┐ │
-│ │ 🟢 Charlie ✓D │ ← team Done (grayed) │
-│ └──────────────────┘ │
-├─────────────────────────────────────────────────────┤
-│ [⏸️ Pause] [🗺️ Global map] [📤 Global report] │
-│ [View edit] [⏹️ End the plan] │
-└─────────────────────────────────────────────────────┘
-```
+In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating teams**. Teams are defined once for the whole scenario; the same team can take part in several phases. ✏️ renames or changes the teams; 🗑️ deletes, except the last phase, the active phase or a phase that has already started. During the operation, an amber badge at the top of the views shows the active phase and its rank.
 
-**Special cards** with strong visual signals:
+#### 📤 2. Handing over before going down
 
-- 🚨 **Victim found** → **FLASHING RED** card (1.2s animation, absolute emergency, you can't miss it)
-- 🟠 **Help requested** → orange + glow (reinforcement to send)
-- ✓ **Done** → grayed opacity 0.75 (all steps completed)
+- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario**. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
+- ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
+- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
+- **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone, steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
+- **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (🌍 KMZ tab of the session export).
 
-**"👁️ Details" button** → read-only mini-modal with chronological list of the team's steps (ts + emoji status + obs).
+#### 🔦 3. In the field
 
-**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you). The view opens on **this team's first unfinished step**, even if you were further along with another team.
+##### 🚀 Launching and choosing your role
 
-**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (going back stays possible after a reload or a map switch).
+**🚀 Launch the rescue plan** (banner at the top of the scenario), then choose your role: 👤 Surface operator, 🚨 Field team (and which one), or 🚑 Free rescuer. You can change role later without losing what has been entered.
 
-**"🗺️ View global map" button**: hides the modal + renders the map overlay with all the zones + waypoints + routes of the teams in NATO colors.
+In the team role, you are **placed at your team's entry** — automatically if your position had not been confirmed yet, otherwise the app offers it ("Place me at the entry" / "Keep my position"). A single message sums up the launch.
 
-#### 🚑 Live view — FREE RESCUER mode (loose notes)
+Closing the window removes nothing: your zone and your route stay on the map (a team sees its own, the operator sees all of them), even after a reload. At the bottom of the screen, the **🚨 Rescue · Alpha · 3/8 ›** badge reminds you that the operation is running; tapping it takes you back to the steps to validate. **⏸️ Pause** freezes the timer, **▶️ Resume** restarts it: paused time is not counted.
 
-For the occasional reinforcement / reconnaissance without a pre-assigned team:
+##### 🚨 Team side
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚑 Free rescuer · 12 notes ⏱️ 01h 47min │
-├─────────────────────────────────────────────────────┤
-│ 📝 Add a note │
-│ [north gallery nothing to report] │
-│ ⚡ Associated status: │
-│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue] │
-│ [🟠 Help] [🟣 U-turn] [🚨 Victim!] │
-├─────────────────────────────────────────────────────┤
-│ 12. 🟢 NTR · ⏱️ 16:42:18 [✕] │
-│ « East crossing, NTR, we continue » │
-│ │
-│ 11. 🟡 Suspect · ⏱️ 16:38:05 [✕] │
-│ « Sound of running water, source?? » │
-│ │
-│ ... (chronological DESC) │
-└─────────────────────────────────────────────────────┘
-```
+The view shows your route step by step (Entry, 1…N, Exit — the same number everywhere). At each step, **📝 observations** (saved automatically) and a **status**:
 
-No stepper, no structured steps. Just a timestamped notes feed with status. Handy for missions where the route isn't planned in advance (reinforcement arriving mid-mission, reconnaissance team, etc.).
-
-#### 📤 Reports along the steps
-
-At any time during execution AND after the plan stops, you can generate a report via the **"📤 Report"** button present in:
-
-- The footer of each Live view (scope adapted to the current role)
-- The Edit view banner (if execution active OR ended)
-
-3 formats to choose from in the unified modal:
-
-| Format | Use case |
+| Status | When |
 |---|---|
-| 📄 **Printable A4 PDF** | Global briefing page 1 + steps text page per team + photos page in 2-col grid. Ideal for paper report / printing / archiving / paper handover to firefighters. |
-| 📦 **`.mkmsec.report.json`** | Autonomous structured data (photos in base64 if checked). Re-importable on the surface operator device (cross-device consolidation, see dedicated section). |
-| 📋 **Plain text** | Markdown-like copied to clipboard. For Discord / SMS / quick mail sharing. |
+| • Pending | not dealt with yet |
+| 🟢 All clear | nothing to report |
+| 🟡 Suspicious | unusual traces, noise or smell |
+| ⬛ Blocked | passage impassable (collapse, water) |
+| 🔵 Clue | object or trace found |
+| 🟠 Help requested | people or equipment needed |
+| 🟣 Forced turnaround | route abandoned, early return |
+| 🚨 **Casualty found** | absolute emergency: flashing red card on the operator's side |
+| ⚪ Passed, not reported | set by the app when you move on to the next step without choosing a status — a skipped step is not a searched step |
 
-**3 scopes depending on your role**:
+- **📸 Photo**: up to 5 per step, camera or gallery; tap a thumbnail to enlarge it.
+- **Validating a step resets your position onto it** (with All clear, Suspicious, Clue, Help requested or Casualty found): without asking under 30 m, with a question beyond that. Never with Blocked or Forced turnaround: you didn't get there.
+- **🧭 Follow my route (step-by-step guidance)** turns the route into a guided itinerary: the "In 40 m, turn left" banner, the route sheet and the XL screen lead you from step to step, and 🧭 tracking starts. Validated steps are ticked off; if you stray, **Recalculate** sets off again towards the next unfinished step, still avoiding the other teams' zones. When you reach a step, a message and a vibration alert you, and the 🚨 badge opens that step. The team's route must have been computed.
+- Three shortcuts if something goes wrong: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost**.
+- **▶️ Departure** records your departure time (otherwise, the launch time); **✅ Back** stops the clock when you come up.
 
-- 👤 **Operator mode** → "📤 Global report": ALL teams + their steps + photos
-- 🚨 **Team Member mode** → "📤 Report": HIS team only (individual route)
-- 🚑 **Free Rescuer mode** → "📤 Report": HIS chronological free notes
+##### 👤 Operator side
 
-**Compact preview** at the top of the modal: role title + step count + progress % + duration. **"📸 Include photos" checkbox** CHECKED by default (with dynamic hint counter). Toast feedback on each action.
+- At the top: **"X deployed · Y underground · Z missing at return"**. At launch, the app flags teams with no headcount: when they come back, nobody would be counted.
+- One card per team: progress, latest status, latest observation. **🚨 Casualty found** → flashing red card; **🟠 Help requested** → orange; finished team → greyed out. **👁️ Details** shows all its steps.
+- **Late teams**: each team has an expected return time (departure + estimated duration, or its mandatory return). Past that time, its card turns **orange**; after the margin, **red**. Late teams move to the top, the badge at the bottom changes colour, and a message and a vibration alert you.
+- **✅ Back**: the app asks **how many came back up** (nothing is prefilled: count them). Below the headcount, the red alert **"N PERSON(S) MISSING"** stays on screen, badge included, until the count is corrected (**Correct the count**).
+- **📢 General recall** (or **📢 Recall** for one team) marks the teams still underground as recalled, with the time. ⚠️ **The app does not alert anyone** — there is no network underground: pass the order on yourself, by radio or by voice.
+- **🚨 Take over**: a team radios in? You switch to its view, on its first unfinished step, to enter things on its behalf; **👤 Back to Operator** brings you back. In that case, Follow my route, Emergency exit, XL screen and I'm lost are missing: they would act on your own phone.
+- **📜 Log**: everything is recorded there with the time — launch, statuses, casualty, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It is printed as an appendix to the report.
+- **Editing during the operation**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps immediately. What has been entered stays on the same step. Removing a step that already has entries asks for confirmation, and is refused if it reports Help requested or Casualty found: change its status first. Put back within the same phase, the step gets its entries back.
 
-**Report generated on the fly**: reflects the CURRENT state of the scenario. Reusable as many times as needed. Ideal for:
-- Briefing during mission (intermediate snapshot to print for the relief)
-- Cross-device handover (JSON export → mail / USB stick → import on operator PC)
-- Post-mission final report (printable PDF + archiving)
+The 🚑 **free rescuer** has neither route nor steps: they add notes, each with a status and the time. Their report is imported like a team's, and their notes join the log.
 
-#### ⏱️ Global timer with fair pause
+##### 🚑 Casualty found
 
-The ⏱️ timer displayed at the top of each Live view is calculated from the start time MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
+A step set to **Casualty found** gives a position: the step's position, level included. **📍 Refine on the map** adjusts it. A **red ✚** marks it on the map, for everyone; the operator sees it in a banner at the top of their view, and the report prints it first.
 
-**Re-render 1×/second** without visual flash, without focus loss in the textarea observations during input. Allows keeping the real-time report accurate during long missions (h+).
+**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed).
 
-#### 🎬 Typical complete cycle
+#### 🚒 4. External rescue services
 
-```
-1. 📝 Scenario creation (Edit view)
-   ├─ Add Alpha/Bravo/Charlie teams (NATO colors)
-   ├─ For each team: route entry → steps → exit
-   ├─ Search zones (polygon OR selected paths)
-   ├─ Pathfinder auto-calc routes (cross-team avoidances)
-   └─ Export PDF / KMZ / .mkmsec.json for initial briefing
+- **🚒 Firefighter briefing** (in every Rescue mode banner) produces a PDF for the fire service, to print or send to them before they arrive — they don't need to install anything:
+  - **SURFACE ACCESS POINTS**: the map framed on the teams' access points, a numbered marker per access, and a table No. · access (entry, exit or both) · teams · GPS and clickable map link. It says which access must be opened from the surface. **Name your entries** ("Manhole on X street"), otherwise the table says "Unnamed access";
+  - **LOCATION ON THE MAP**: coordinates of the map's centre, OpenStreetMap and Google Maps links;
+  - **TEAMS ON SITE**: members, leader, headcount, mandatory return, surface GPS;
+  - **CRITICAL POIs**: the map's access points with their level, open ones first, then closed ones (which firefighters and the relevant services can open).
+  
+  You choose the layers of the PDF's OSM map; the text sections are always included.
+- **📍 Surface GPS** (team card): the position of the command post, the meeting point or any surface location linked to the team, as "latitude, longitude" (e.g. 48.856600, 2.352200). It appears in the briefing with a map link.
+- **🚪 Plan entry point**: this tag (🚨 Rescue category of the POI editor) marks the main entrances; they appear in the critical POIs and on the OSM view.
+- **🌍 OSM view**, available in the scenario banner and in all three views, shows the map on OpenStreetMap to the rescuers who arrive. The map must be georeferenced.
 
-2. 🚀 Launch (role selection modal)
-   └─ Switch to Live view according to chosen role
+#### 📦 5. Closing and writing the report
 
-3. 🚨 Execution (Live view)
-   ├─ Team Member mode: follows route step-by-step + observations + photos
-   ├─ Operator mode: cards overview + supervision + take over
-   └─ Free Rescuer mode: chronological loose notes
+##### 🏁 Closing a phase
 
-4. 📤 Reports along the steps (n times)
-   ├─ Printable PDF for relief / paper handover
-   ├─ JSON for cross-device consolidation
-   └─ Clipboard text for Discord / quick mail
+In the operator view, **✓ Phase ended** (shown as soon as there are 2 phases). When every team in the phase has validated its exit, the button turns green and a message alerts you; the decision remains yours. Enter the **debrief** (teams back, points found, zones to explore first), then **✓ End the phase**: the phase is archived, nothing is erased, and its planned route is kept. If there is a next phase, the app offers to start it: its teams' steps are rebuilt from their **current** route — so you can adjust it during the debrief. Otherwise, it offers to stop the plan. **➕ Add a phase** is also available during the operation.
 
-5. ⏹️ Plan stop (banner "📦 PLAN ENDED")
-   ├─ Observations kept as history
-   ├─ "📤 View historical report" button reusable
-   └─ "🚀 Relaunch" button if re-mission
-```
+##### 📥 Importing the teams' reports
 
-#### 📥 Cross-device consolidation
+1. Back on the surface, each team taps **📤 Report** → a **.mkmsec.report.json** file, and sends it to the operator.
+2. The operator, with the plan launched, taps **📥 Import team report**: the preview shows the team, the number of steps and photos, and the conflicts with what has already been entered.
+3. **✓ Import and merge**: observations are appended with the date (nothing is lost), the most serious status is kept (if equal, the most recent; a casualty is never downgraded), photos are added without duplicates. The team's card shows "📥 imported".
 
-On field return, each team member can **share their report** with the surface operator who **imports and merges** their observations in the supervision dashboard.
+The import is refused if the team did not exist in the operator's scenario at launch, if the file comes from another scenario, or if it is an operator's global report. A report about a phase that is already closed is filed in that phase's history, and the app tells you so. A Help requested or Casualty found report on a step you had removed puts the point back into the team's route and shows in red; otherwise, it appears under "Reports outside the route" in the report.
 
-**Typical workflow — operation with 3 teams**:
+**Undoing an import**: a backup is made just before; restore it from **📊 Session details → 📦 Recent backups** ("Before importing team report …").
 
-1. **Operator side (surface, BEFORE incident)**:
-   - Prepares the scenario (Alpha / Bravo / Charlie teams + routes + zones)
-   - Launches the plan (🚀) → Surface Operator Live view
-   - Transmits the scenario to team members via classic `.mkmsec.json` export (mail / USB stick / AirDrop)
+##### 📄 Final report
 
-2. **Each Team Member side (field)**:
-   - Imports the operator's `.mkmsec.json`: the import keeps the command post's identifiers, which is what lets the operator accept their report. If the plan is **already** on the phone (plan updated by the operator), the preview offers **"Replace"** (checked: keeps the link with the operator, but erases the statuses, observations and photos already entered on this phone) or **"Import as a copy"** (a new scenario, whose report the operator will refuse)
-   - Launches the plan → Team Live view → fills in obs + statuses + photos per step
-   - **On surface return**: generates their report via "📤 Report" in the Team Live footer → **`.mkmsec.report.json`** format → exports the file (local download)
+**📤 Report** (each view, and the scenario banner) generates the current state at any time, in three formats: **Printable PDF** (photos in an appendix), a **.mkmsec.report.json** file (photos if "📸 Include photos" is ticked), or **Copy text** for a quick message. The operator gets every team, a team gets its route, the free rescuer gets their notes.
 
-3. **Operator side (field return)**:
-   - Retrieves the 3 `.mkmsec.report.json` reports (one per team) via the channel of their choice (AirDrop, mail, USB stick, Discord)
-   - In the Operator Live view → **"📥 Import team member report"** button in the footer
-   - File picker → selects the file → preview modal showing: targeted team name, number of steps to merge, photos, and **detected conflicts** (steps on the op side already filled that will be merged)
-   - Confirms the import → the app does a **snapshot BEFORE** (emergency backup) then merges:
-     - Observations **concatenated with dated separator** (no loss)
-     - **Most serious status retained**; at equal seriousness, **the most recent** — an "All clear" reported by the team replaces "Pending", a victim is never downgraded
-     - Photos **imported with deduplication**
-   - Result modal with detailed stats (X steps merged, Y photos imported, Z possible warnings)
-   - Repeat for the 2 other teams
-   - ⚠️ **Report arriving after a phase change**: if it concerns a phase already closed, it is filed in **that phase's history** — never in the current phase — and the app flags it in orange (in red if it contains "Help requested" or "Victim found")
-   - 🧭 **Report on a step you removed**: it is not lost — it shows in orange on import and appears in the **"Reports outside the route"** section of the final report
-   - 🗺️ **Plan changed since sending**: if the plan changed version (or was redrawn) since the scenario was exported, the import preview warns you and counts the zone traces it can no longer find
-   - 📚 The **final report** also includes the steps of **closed phases**, phase by phase
+The operator's PDF opens with the casualties, then covers each phase (planned route, steps, debrief), the reports outside the route, a "SURFACE BRIEFING" page with the map of access points, and the log as an appendix.
 
-4. **Post-merge visualization**:
-   - On each Op team card: blue "📥 imported" chip appears if at least one step received consolidation
-   - In the "Team details" modal (read-only): "📥 imported" chip on each step concerned + tooltip with import date + source app version
-
-**Import safety**: refuses if scope ≠ team member (global operator reports or free rescuer reports are not mergeable), if the source scenario is different, if the team is absent from the active scenario, or if no execution is in progress on the op side. **Different plan on the team member side** → warning (not error, we keep the text obs).
-
-**Undo**: a SessionBackups snapshot is automatically created **BEFORE** each import. In case of error, restore from **📊 Session details → Recent backups** (title: "Before team member report import <name>").
-
-> ⚠️ Important: **teams must be registered on the Operator side BEFORE the plan launch** (no silent creation on import). If you prepare your scenario with Alpha / Bravo / Charlie but a team member exports under a "Delta" name created locally, the import will be rejected — Delta should have been received in the initial scenario.
+**⏹️ End the plan** stops the operation; the banner switches to **📦 PLAN ENDED** with **📤 View the historical report** and **🚀 Relaunch**. ⚠️ Relaunching erases the previous operation, including photos and received reports: export its report first.
 
 ### 🏗️ Create or modify a map
 

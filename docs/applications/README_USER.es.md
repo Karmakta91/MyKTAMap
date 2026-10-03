@@ -2666,555 +2666,167 @@ El interruptor es **persistente** (sobrevive a las recargas y al cierre de pesta
 >
 > Nunca estás obligado a creer al autor bajo palabra: todo es verificable.
 
-### 🚨 Modo Rescate
+### 🚑 Modo Rescate — coordinar una búsqueda
 
-Herramienta operativa para **asignar metódicamente equipos de rescate** a zonas de búsqueda de un plano. Caso de uso: una persona está desaparecida en una red densa, varios equipos llegan a la superficie y el puesto de mando debe coordinar «quién peina qué» con un briefing claro e imprimible.
+> **Para quién**: quien organiza la búsqueda de una persona desaparecida bajo tierra, y los equipos que bajan a buscarla.
+>
+> **Cuándo**: otra persona está perdida. Si eres *tú* quien está perdido, usa ⛑️ Estoy perdido.
+>
+> **Requisitos**: el **mismo plano** en cada teléfono, disponible **sin conexión** — bajo tierra no hay red.
+>
+> **Prepáralo en frío**: monta uno o dos escenarios en tus planos habituales antes de cualquier incidente. El día D, la app tiene que estar lista en 30 segundos.
 
-> 💡 **Distinto del ⛑️ Estoy perdido**: en ⛑️ eres *tú* quien está perdido y buscas orientarte. El **🚨 Modo Rescate** es para cuando es *otra persona* la que está perdida y tú organizas los equipos que van a buscarla.
+Para abrirlo: menú **🧭 Tracker** → abajo, sobre fondo rojo, **🚨 Modo Rescate — Mapas de búsqueda (equipos + zonas)**.
 
-#### Acceso
+#### 🧭 Cómo se organiza
 
-Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️ Estoy perdido y 🚨 Pánico. Fondo rojo de emergencia coherente.
+Tres roles, cada uno en su teléfono:
 
-#### Flujo de trabajo
-
-1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan — nunca un escenario en curso, el que tienes abierto, ni una intervención terminada cuyo informe aún no ha salido del dispositivo).
-2. **➕ Nuevo escenario** — Asistente ligero: Nombre + Notas de contexto + Hora del incidente.
-3. **Edición libre** — 3 secciones plegables:
-   - **📝 Contexto**: nombre, hora del incidente, notas (p. ej. «Marc salió sobre las 14 h para comprobar la galería Este…»)
-   - **🚨 Equipos**: añade tantos equipos como haga falta. Para cada equipo: nombre (automático Alfa/Bravo/Charlie…), color (paleta OTAN de 10 colores fija), miembros (CSV), entrada/salida (clic en el mapa), zona (polígono O selección de trazados), itinerario sugerido (cálculo automático mediante el buscador de rutas)
-   - **📤 Exportación**: PDF imprimible (1 página por equipo) + KMZ geolocalizado (entre aplicaciones)
-
-#### Modos interactivos del mapa
-
-| Botón | Acción |
-|---|---|
-| 📍 Entrada | 1 clic en el mapa = captura la posición de entrada del equipo |
-| 🚪 Salida | 1 clic en el mapa = captura la posición de salida |
-| ⬛ Definir zona | A elegir: (a) polígono con varios clics + doble clic para cerrarlo, O (b) selección de trazados con un clic: se toma la galería más cercana, entre los niveles visibles (volver a pulsar = quitar, resaltada en rojo). Las galerías del plano se recuperan idénticas en cualquier teléfono que tenga el mismo plano; un trazado dibujado a mano en un solo dispositivo solo existe en ese. Las capas ocultas siguen siendo seleccionables |
-| 🗺️ Calc. itinerario | Calcula automáticamente el camino más corto entre la entrada y la salida siguiendo las galerías existentes (mediante el buscador de rutas), y muestra la distancia + la duración estimada según los ajustes **⏱️ Duraciones estimadas** del plan de rescate (velocidad de búsqueda 1,5 km/h y pausa 0 por defecto, modificables) |
-> 🔁 **Durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas modificas, recibe sus etapas de inmediato. Lo ya introducido (estado, observaciones, fotos) se queda en la misma etapa, aunque dos etapas tengan el mismo nombre. Quitar una etapa que ya tiene datos pide confirmación, y se **rechaza** si indica «Ayuda solicitada» o «Víctima encontrada»: cambia primero su estado. Si se vuelve a poner **en la misma fase**, la etapa recupera lo que se había introducido (tras un cambio de fase empieza vacía; sus datos quedan en el historial de la fase cerrada). Si un equipo señala «Ayuda solicitada» o «Víctima encontrada» en una etapa que habías quitado mientras tanto, importar su informe **vuelve a poner el punto en su recorrido**, en su sitio, y te lo avisa en rojo; si el punto no puede volver a ponerse (equipo que ya no está en la fase actual), la alerta roja se muestra igualmente. ⚠️ **Tras una actualización de la aplicación, vuelve a importar el plan en cada teléfono antes de la intervención**: un teléfono que importó el plan con una versión anterior (antes de la v1.98.5) envía informes que el PC no puede fusionar. **Relanzar** un plan terminado borra la intervención anterior, fotos incluidas: una confirmación lo recuerda, exporta su informe antes. «Todos los POI de la zona» añade las etapas de la más cercana a la más cercana, para evitar idas y vueltas.
-
-> 🗺️ **En el mapa, durante la intervención**: al **lanzar el plan en modo equipo**, te **colocas en la entrada de tu equipo** — automáticamente si tu posición aún no estaba confirmada; si no, la app te lo propone («Colocarme en la entrada» / «Mantener mi posición»). Al lanzar, **un solo mensaje** lo resume todo (plan lanzado, colocado en la entrada, plano no disponible sin conexión) y ya no bloquea los botones de debajo; relanzar un escenario ya jugado empieza de cero (se acabaron los falsos retrasos heredados del día anterior). Cerrar la ventana del Modo Rescate ya no quita nada — tu zona y tu trazado siguen visibles (el miembro de equipo ve su equipo, el operador todos), incluso tras recargar. Abajo de la pantalla, una pastilla roja **«🚨 Rescate · Alpha · 3/8 ›»** recuerda que la intervención está en curso y cómo va: un toque te lleva **directamente a las etapas** por validar. Durante la preparación: los equipos se **pliegan** (▾/▸ o «Plegar todo»); al dibujar una zona, las de los demás equipos se muestran en punteado para ajustar los límites; tocar un POI para elegir la entrada, la salida o una etapa **lo toma como punto** (ya no abre su ficha); un punto sin nombre se muestra en **coordenadas GPS** si el plano está georreferenciado; «Auto: 1 equipo por nivel» omite los niveles vacíos, y las listas de niveles marcan «(vacío)» los que no tienen nada (siguen pudiendo elegirse).
-
-> 🚒 **Lo que el terreno ha cambiado (v1.98.24)**: **🚑 Evacuar** propone también los **accesos de tus equipos** («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado), ordenados por distancia real, y ya no solo las salidas etiquetadas del plano. El operador ve arriba **«X desplegados · Y bajo tierra · Z desaparecidos»** y recibe un aviso al lanzar sobre los equipos **sin efectivo**; al regresar, el número de **subidos ya no viene rellenado** (hay que contar). Cada equipo puede tener una **hora de regreso obligatoria** (ficha del equipo) que prevalece sobre la duración estimada, y el jefe se indica incluso sin lista de miembros. Las duraciones distinguen la **velocidad de aproximación** (fuera de la zona) de la **velocidad de búsqueda** (dentro de la zona) y cuentan los enlaces en línea recta. **Validar una etapa recalibra tu posición** sobre ella (sin preguntar a menos de 30 m, con una pregunta más allá; nunca para «Bloqueado» o «Media vuelta») y **«Seguir mi recorrido» inicia el seguimiento**. Una etapa tiene **un solo número** en todas partes (E, 1…N, S); pasar a la siguiente sin estado la anota **«Pasada, sin informar»** (ya no «Sin novedad»). Al calcular, **todas las etapas a más de 25 m de una galería** se listan y el recordatorio queda en la ficha. La **pantalla XL** muestra también los itinerarios largos. El briefing para bomberos dice **qué acceso es y si hay que abrirlo**, e imprime jefe, efectivo y regreso obligatorio.
-
-> 📊 **Cobertura honesta (v1.98.25)**: el bloque **📊 Cobertura** da, **por nivel**, la longitud de galerías, la parte **en una zona**, la parte **en un recorrido** (galerías que un itinerario de equipo recorre de verdad: lo que se buscará realmente) y la longitud asignada a dos equipos. En una red real, «86 % en una zona» puede ser solo «24 % en un recorrido». **🗺️ Resaltar las galerías fuera de recorrido** las muestra en rojo en el mapa (nivel mostrado) para preparar la fase siguiente; un segundo clic las quita. En un plano multinivel, una zona **vale en el nivel donde la dibujaste** (casilla «Zona en todos los niveles» en la ficha del equipo para ampliarla), y el cálculo del itinerario avisa cuando galerías de otro nivel pasan bajo la zona sin que ningún recorrido vaya allí.
-
-> 🚑 **Víctima, retrasos y llamada de vuelta**: una etapa marcada **«Víctima encontrada»** da una **posición** (la de la etapa, nivel incluido) — **📍 Precisar en el mapa** la ajusta, **🚑 Evacuar** abre la Salida de emergencia desde la víctima, y una **✚ roja** la marca en el mapa, para todos. El operador la ve en un aviso arriba de su vista, y el informe la imprime en primer lugar. Cada equipo tiene su **hora de salida** (**▶️ Salida**, si no el lanzamiento) y su **hora de regreso prevista** (salida + duración estimada): **naranja** pasada esa hora, **rojo** tras el margen (30 min por defecto, ajustable en ⏱️ Duraciones estimadas) — los equipos con retraso suben arriba, la pastilla de abajo cambia de color, un mensaje y una vibración avisan. **✅ De vuelta** detiene el cronómetro. **📢 Llamada general** (o 📢 Llamar, por equipo) marca los equipos aún bajo tierra como llamados de vuelta, con la hora. ⚠️ **La app no avisa a nadie** — no hay red bajo tierra: transmite la orden por radio o de viva voz. Salida, vuelta, llamada y posición precisada viajan en el informe de equipo.
-
-> 🧭 **Guiado paso a paso del recorrido**: en la vista de tu equipo, **🧭 Seguir mi recorrido** convierte el recorrido en el itinerario de la app — el aviso de guiado («En 40 m, gira a la izquierda»), la hoja de ruta y la pantalla XL te llevan de etapa en etapa (activa el seguimiento 🧭). Las etapas que validas quedan marcadas en el itinerario; si te desvías, **Recalcular** vuelve a salir desde aquí hacia la **siguiente etapa no hecha**, evitando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 te abre directamente esa etapa. El **PDF de briefing** imprime también, para cada equipo, su **hoja de ruta** cruce a cruce (cambios de nivel incluidos) — calcula el itinerario del equipo para obtenerla.
-
-> 👥 **Jefe, efectivo, subidos y diario de operaciones**: cada equipo tiene un **👤 jefe** (elegido entre sus miembros) y un **efectivo**. En **✅ De vuelta**, la app pregunta **cuántos han subido**: por debajo del efectivo, una **alerta roja «N persona(s) desaparecida(s)»** sigue visible (y la pastilla de abajo pasa a rojo) hasta corregir el recuento. El **📜 diario de operaciones** (vista del operador) lo anota todo, hora a hora: lanzamiento, estados, víctima, salidas, vueltas, llamadas, importaciones, fases — más tus propias notas (llamada de radio, decisión). Viaja en los informes de equipo y se imprime como anexo del informe. El **informe del socorrista libre** se importa ahora como el de un equipo: sus notas se suman al diario, a su hora.
-
-> 🗂️ **Preparar y relanzar**: al cerrar una fase, se guarda el **recorrido previsto** de cada equipo — replanificar la fase siguiente ya no lo borra, y el informe muestra el recorrido de cada fase. En la vista de edición, el bloque **📊 Cobertura** (calculado al abrirlo) da la **parte de galerías cubiertas** por las zonas, los **POI dentro de la zona de un equipo pero fuera de su recorrido** y los **POI visitados por varios equipos** — una ayuda de lectura, no se asigna nada automáticamente. Al lanzar, la app te **avisa si el plano no está totalmente disponible sin conexión** en el dispositivo (plano de servidor no descargado). En la vista del equipo, tres atajos: **🚪 Salida de emergencia**, **🆘 Pantalla XL**, **⛑️ Estoy perdido** — ocultos, como «Seguir mi recorrido», cuando el operador de superficie **toma el control** para relevar a un equipo: actuarían sobre su propio dispositivo.
-
-#### Visualización en el mapa
-
-Botón **🗺️ Ver en el mapa** en la cabecera de la edición. Muestra, para cada equipo (con su color dedicado):
-- Zona de polígono (opacidad de relleno del 30 %) O halo de color sobre los trazados seleccionados
-- Marcador 📍 Entrada (círculo con borde verde + relleno del color del equipo)
-- Marcador 🚪 Salida (círculo con borde rojo + relleno del color del equipo)
-- Itinerario sugerido (polilínea discontinua del color del equipo)
-
-Actualización automática en cada modificación. Vuelve a pulsar el botón para ocultarlo.
-
-#### Varios escenarios por plano
-
-Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este» frente a «si salió por el Sur»). Botón 🗐 Duplicar para clonar un escenario y probar una variante sin perder el original. Tope de 10 escenarios por plano: por encima, el más antiguo se purga automáticamente — salvo un escenario en curso, el que tienes abierto, el más reciente, o una intervención terminada cuyo informe (PDF o archivo) aún no ha salido del dispositivo.
-
-#### Exportaciones
-
-**📄 PDF imprimible**: 1 página A4 vertical por equipo (una 2.ª si la lista de etapas es larga), con banda de color + secciones Contexto/Miembros/Misión/Itinerario + un recuadro de Observaciones vacío de 60 mm (para rellenar a bolígrafo al volver del terreno). Nombre de archivo `Secours_<nombre_escenario>_<fecha>.pdf`.
-
-**🌍 KMZ geolocalizado**: incluye el escenario completo en un archivo anexo del KMZ (`myktamap-extras.json > secoursPlan`). Requisito previo: plano ya calibrado para KMZ (ver la ventana de Exportación de sesiones, pestaña 🌍 KMZ). MyKTAMap puede reimportar el KMZ y recargar el escenario tal cual. Nombre de archivo `Secours_<nombre_escenario>_<fecha>.kmz`.
-
-Las secciones siguientes detallan las funciones avanzadas: integraciones entre aplicaciones (KML, Modo perdido, mapa de calor, etc.), explotación sobre el terreno en tiempo real (vistas en directo por rol, estados, informes) y consolidación entre dispositivos (importación de informes de los miembros del equipo).
-
-> 💡 **Enviar a los equipos**: el operador exporta el escenario (**📤 Export .mkmsec.json**) y lo envía a cada equipo, que lo importa en su teléfono. A la vuelta, cada equipo devuelve su informe (**`.mkmsec.report.json`**), que el operador importa.
-
-> 💡 **Recomendación de campo**: prepara uno o dos escenarios **ANTES** de que haya un incidente en tus planos favoritos, para identificar las fricciones del flujo de trabajo (dónde están los accesos, cómo dividir la red, qué niveles por equipo). Durante un incidente real estarás en modo urgencia y la app debe estar lista para usarse en 30 segundos.
-
-### 🚨 Modo Rescate — Multifase
-
-Un escenario puede **secuenciar varias fases** con un debriefing intercalado entre cada una. Caso de uso típico sobre el terreno: *Fase 1 = un equipo barre TODAS las galerías de rodadura principales sin entrar en las cámaras de explotación → regreso del equipo → debriefing en el puesto de mando → Fase 2 = X equipos se centran en las cámaras de explotación con la información obtenida en la Fase 1.*
-
-> 💡 **Si no usas el modo multifase**, no cambies nada: tu escenario se queda con **una sola fase implícita** y el comportamiento es estrictamente idéntico al anterior. Ninguna contaminación visual (los distintivos y botones de multifase aparecen SOLO si creas efectivamente 2 fases o más).
-
-**🔧 Crear y gestionar las fases (vista de edición del escenario)**:
-
-- Sección **📋 Fases (N)** bajo la sección de Equipos
-- Botón **➕ Añadir una fase** → ventana de creación:
-  - Escribe un nombre (p. ej. *«Fase 2 — Cámaras Este»*)
-  - Marca los **equipos participantes** en esa fase (modelo híbrido: tus equipos se definen una sola vez en el escenario y luego marcas casilla por casilla «participa en esta fase»)
-- Botón ✏️ para renombrar una fase o modificar la selección de equipos
-- Botón 🗑️ para eliminar (se rechaza si es la última fase, si está activa en la ejecución o si ya ha sido iniciada → el historial se preserva)
-
-**🏷️ Distintivo fijo en las 3 vistas en directo**: un distintivo ámbar «**📋 Fase 1 1/N**» aparece en la cabecera de las vistas Equipo / Operador / Rescatador libre en cuanto hay 2 fases o más. Muestra el nombre de la fase activa + su posición.
-
-**✓ Terminar una fase + debriefing (solo Operador)**:
-
-1. Durante la fase activa, el pie de la vista en directo del operador muestra un nuevo botón **«✓ Fase terminada»** en ámbar (visible solo si hay varias fases)
-2. **Detección automática**: en cuanto **todos los equipos participantes han marcado su etapa de Salida como terminada**, el botón pasa a **verde pulsante** + un aviso asistente te informa («✅ Todos los equipos han salido — la fase está lista para cerrarse»). El operador conserva la decisión final.
-3. **Clic en «✓ Fase terminada»** → ventana de debriefing: área de texto libre (5000 caracteres máx.) para anotar las conclusiones de la fase (equipos que han vuelto, puntos encontrados, zonas a explorar con prioridad, restricciones que han aparecido). Este debriefing se intercalará en el informe final entre las secciones de cada fase.
-4. **Valida «✓ Terminar la fase»** → la fase actual se **archiva** (nunca se sobrescribe, historial preservado)
-5. **Si existe una fase siguiente** → encadenamiento automático con la ventana **«🚀 ¿Iniciar la fase X+1?»** con un resumen de los equipos participantes
-6. **Confirmas** → la nueva fase empieza y las etapas de los equipos participantes se **reconstruyen a partir de su recorrido ACTUAL** (así que si has modificado la `entrada/salida/intermedios` de un equipo entre F1 y F2, las nuevas etapas lo tienen en cuenta)
-7. **Si no hay fase siguiente** → una confirmación «¿Detener el plan por completo?» (equivalente a ⏹️ Terminar el plan)
-
-**🔍 Salvaguardas del historial**:
-
-- Cerrar una fase **NUNCA** elimina etapas — se archivan tal cual
-- Una fase ya iniciada no puede eliminarse desde la interfaz (red de seguridad)
-- Una fase activa en la ejecución no puede eliminarse (pasa antes por «✓ Fase terminada»)
-- El aviso de detección automática no se repite (una sola vez por fase)
-
-> 💡 **Modelo híbrido equipos ↔ fases**: tus equipos se definen **una sola vez** en el escenario (con miembros, color OTAN y recorrido). La participación en cada fase se gestiona con casillas en la ventana de la fase. Un mismo equipo puede participar en varias fases sucesivas — al pasar de fase, sus etapas se reinician según su recorrido actual (así que puedes modificar el recorrido entre F1 y F2 para adaptarlo a lo descubierto).
-
-> 💡 **El botón «➕ Añadir una fase» también está disponible en caliente** desde el pie de la vista en directo del operador (durante la ejecución), no solo desde la vista de edición. Práctico cuando el debriefing de F1 revela la necesidad de una F3 imprevista.
-
-### 🚨 Modo Rescate — Integraciones entre aplicaciones
-
-Estas integraciones convierten el Modo Rescate en una herramienta completa de coordinación operativa:
-
-#### 🌍 KML entre aplicaciones (Google Earth, OsmAnd, Avenza…)
-
-El KMZ exportado contiene una carpeta raíz `🚨 Secours` perfectamente estructurada para las aplicaciones de terceros:
-
-```
-📁 Rescate — Búsqueda de Marc 26/05
-   ├── 📁 🚨 Equipo Alfa
-   │ ├── 📁 📍 Puntos (5) ← activable en Google Earth
-   │ ├── 📁 ⬛ Zona de búsqueda
-   │ └── 📁 🗺️ Itinerario
-   └── 📁 🚨 Equipo Bravo (ídem)
-```
-
-- Plano de fondo como GroundOverlay al 60 % de opacidad (lectura simultánea del plano y las zonas)
-- Cálculo automático de los itinerarios que falten ANTES de la exportación (1 clic = KMZ completo)
-- 43 estilos de color OTAN (10 equipos × 4 categorías + 3 estilos fijos de entrada/salida/circuito)
-
-#### ⛑️→🚨 Flujo Modo perdido → Rescate
-
-En la ventana ⛑️ Modo emergencia «Estoy perdido», nuevo botón:
-
-```
-🚨 Lanzar un plan de rescate (equipos + zonas)
-```
-
-Al pulsarlo, la app **crea automáticamente un escenario de Modo Rescate** con:
-- Nombre automático `Búsqueda - 26/05/2026 14:32`
-- Hora del incidente calculada a partir del tiempo transcurrido del Modo perdido
-- Última posición conocida + zona de incertidumbre (radio + círculo discontinuo en el mapa)
-- Notas automáticas con la velocidad de marcha, el radio y los indicios introducidos
-
-→ Flujo natural: buscas a alguien → lanzas el Modo perdido → pulsas 🚨 → coordinas los equipos.
-
-#### 🚫 Anticruce entre equipos
-
-Cuando calculas el itinerario de un equipo, los **puntos de paso + zonas de los demás equipos** se convierten automáticamente en «preferencias de evitación» para el buscador de rutas. Resultado: los itinerarios se rodean en lugar de cruzarse, sin relevos involuntarios.
-
-Si realmente no hay alternativa (paso único compartido), aparece el aviso `⚠️ El itinerario atraviesa N punto(s) de otros equipos — comprueba los solapamientos`.
-
-#### 🔥 Mapa de calor de actividad en el Modo Rescate
-
-Nuevo bloque naranja «🔍 Herramientas de análisis» en la sección Contexto, con el botón **🔥 Mostrar el mapa de calor de actividad**. Visualiza las zonas donde el rastreador ha registrado paso → útil para identificar las zonas probables que hay que registrar con prioridad.
-
-> 🧩 Este bloque sigue disponible **aunque la opción 🔥 Mapa de calor esté desactivada**: esa opción solo retira la casilla del menú Tracker.
-
-Si la persona desaparecida usaba MyKTAMap y exportó su sesión con la línea de tiempo del rastreador, el mapa de calor muestra directamente dónde pasó tiempo.
-
-#### 🏗️ Creación automática de 1 equipo por nivel (multinivel)
-
-En los planos multinivel, botón condicional **🏗️ Automático: 1 equipo por nivel (N)** en la sección de Equipos. Crea automáticamente N equipos llamados `Nivel planta baja / +1 / -1…` con colores asignados cíclicamente. Después colocas las zonas y los puntos de paso en cada nivel por separado, cambiando el nivel activo mediante la pastilla multinivel de arriba a la izquierda.
-
-#### ⭐ Favoritos de acceso rápido
-
-En la miniventana «📍 Elegir un punto», tus favoritos del plano aparecen ahora como fichas pulsables (máx. 8) POR ENCIMA de la búsqueda con autocompletado. 1 clic = punto de paso aplicado (sin pasar por la búsqueda ni el clic en el mapa).
-
-Especialmente útil en los escenarios de emergencia en los que quieres crear rápidamente varios equipos con los mismos 3 o 4 pozos de acceso conocidos.
-
-#### 🛑 Pausa entre paradas (itinerario)
-
-Nueva sección en la ventana 🗺️ Itinerario:
-
-```
-🛑 Pausa entre las paradas
-☑️ Incluir una pausa entre cada parada intermedia
-   Duración por pausa: [15] min
-```
-
-Marcada por defecto + 15 min (= comportamiento preservado). ⚠️ Desde la v1.98.11 esta pausa **ya no** se aplica al Modo Rescate: cada plan de rescate tiene sus propios ajustes (bloque **⏱️ Duraciones estimadas**: velocidad de búsqueda y pausa por etapa), enviados a los equipos con el plan.
-
-> ⚠️ Como con todas las herramientas digitales bajo tierra: **lleva una brújula física** y un mapa de papel en el bolsillo. El teléfono puede averiarse, el magnetómetro puede falsearse por el metal cercano, el rastreador puede derivar. El 🚨 es una ayuda para leer información rápidamente, no un sustituto de la preparación.
-
-### 🚨 Modo Rescate × 🌍 Vista OSM — Coordinación con servicios de rescate externos
-
-El Modo Rescate está integrado con la Vista OSM para proporcionar a los **servicios de rescate externos** (bomberos, equipos de rescate especializados) todo lo que necesitan para intervenir en el lugar sin conocerlo.
-
-#### 🚪 Etiqueta «Punto de entrada del plano»
-
-Nueva etiqueta predefinida disponible en la categoría **🚨 Rescate** de la leyenda y del editor de POI. Marca la(s) entrada(s) principal(es) del sitio para los servicios de rescate:
-
-- Icono SVG vectorial (puerta amarilla sobre fondo negro)
-- Aparece automáticamente en el PDF de Briefing para bomberos (sección «POI críticos»)
-- Visible también en la Vista OSM (con su georreferencia GPS)
-
-> Para etiquetar un POI: edítalo → menú Etiqueta → categoría «🚨 Rescate» → «🚪 Punto de entrada del plano». Puedes tener varias entradas (entrada norte/sur/etc.).
-
-#### 📍 GPS de superficie de los equipos
-
-En la ficha de un equipo (Modo Rescate → edición de equipo), nuevo campo **📍 GPS de superficie**:
-
-```
-📍 GPS de superficie: [48.8566, 2.3522 ]
-                       ↑ formato: lat, lng (decimal WGS84)
-```
-
-Indica la posición GPS del puesto de mando, del lugar de encuentro con los bomberos, o de cualquier punto de interés en superficie vinculado a ese equipo. Opcional.
-
-→ Este dato alimenta el **PDF de Briefing para bomberos** (enlace OSM pulsable por equipo) y se conserva en la exportación `.mkmsec.json`.
-
-#### 🌍 Vista OSM accesible en todo el Modo Rescate
-
-El botón **🌍 Vista OSM** está presente en:
-- La vista de Edición (barra del escenario)
-- Las 3 vistas en directo: 👤 Operador de superficie, 🚨 Miembro de equipo, 🚑 Rescatador libre
-
-Ya no hace falta volver a la edición para mostrar la posición del plano en OpenStreetMap a los bomberos que llegan a mitad de la misión.
-
-#### 🚒 PDF de Briefing para bomberos
-
-Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescate. Genera un PDF diseñado específicamente para los servicios de rescate externos, que contiene:
-
-| Sección | Contenido |
-|---------|---------|
-| **ACCESOS EN SUPERFICIE** | Arriba: el plano **recortado sobre los accesos** de los equipos (sin POI), un **marcador numerado** por acceso y una tabla N.º · acceso (entrada, salida o ambas) · equipos · **GPS + enlace de mapa pulsable**. Dos equipos que salen del mismo acceso comparten un número. Acuérdate de **nombrar tus entradas** («Tapa, calle X»): si no, la tabla dice «Acceso sin nombre» |
-| **INFORMACIÓN** | Nombre del escenario · nombre del plano · fecha de generación |
-| **LOCALIZACIÓN** | Coordenadas GPS del centro + rectángulo delimitador + **enlace pulsable a OpenStreetMap** + **enlace pulsable a Google Maps** |
-| **EQUIPOS SOBRE EL TERRENO** | Para cada equipo: nombre + miembros + GPS de superficie (si se ha indicado) + enlace OSM individual por equipo |
-| **POI CRÍTICOS** | Los accesos del plano, con su nivel: primero los **abiertos** (🚪 puntos de entrada, cavidades, pozos de peldaños, escaleras de servicio — los mismos que la Salida de emergencia), luego los **cerrados** (que bomberos e IGC pueden abrir). Lista sacada de los puntos etiquetados del plano (hasta la v1.98.6 este bloque quedaba vacío) |
-
-> 💡 **Cómo usarlo**: el PDF se imprime o se envía por correo/Signal al jefe del grupo de bomberos ANTES de su llegada. Sobre el terreno, pulsa los enlaces desde su teléfono o PC para abrir OSM o Google Maps centrados en tu sitio. No necesita instalar MyKTAMap.
-
-#### 📤 Página «Briefing de superficie» en el informe posmisión
-
-El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información, con el mapa de accesos arriba (la vista OpenStreetMap del plano entero, ilegible en un A4, ya no aparece; en el briefing para bomberos sigue siendo opcional, POI desmarcados por defecto). En los mapas de equipo, una entrada y una salida puestas en el mismo acceso (a menos de 10 m) forman un solo marcador «ENTRADA / SALIDA». Al calcular un itinerario, una etapa colocada lejos de cualquier galería se nombra («La etapa «Pozo 2» está a 68 m del trazado más cercano»): corrígela antes de bajar. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
-
-#### 🏷️ Filtro de etiquetas de la Vista OSM
-
-Las fichas de filtro por etiqueta de la ventana de Vista OSM enumeran **todas las etiquetas presentes** en el plano, en línea con el widget de Vista OSM de la pantalla de inicio.
-
-#### 💾 Guardar sin conexión — Vista OSM sin Internet
-
-¿Te vas de salida subterránea, o te preparas para un Modo Rescate en una zona con pésima cobertura? Ahora puedes **descargar el mapa de OpenStreetMap alrededor de tu plano por adelantado** y consultarlo **sin Internet** una vez allí.
-
-**Para qué sirve**:
-
-- Abres la Vista OSM sobre el terreno incluso sin red (salida subterránea prolongada, Modo Rescate en zona sin cobertura, batería que obliga al modo avión…)
-- El mapa de fondo (calles, contornos, referencias de superficie) sigue mostrándose con normalidad → sabes dónde estás respecto al plano sin depender del 4G
-- Especialmente útil **para los bomberos** a quienes presentas la Vista OSM a su llegada: el mapa aparece de inmediato, sin esperas de carga
-
-**Cómo activarlo**:
-
-Hay un botón **💾 Guardar sin conexión** en la barra de la Vista OSM. **Basta un clic**:
-
-1. La app descarga las teselas de OpenStreetMap visibles alrededor de tu plano + algunos niveles de zoom próximos
-2. Tras la descarga, la barra muestra: **📦 N teselas · X MB** (= lo que está ya disponible en tu dispositivo)
-3. Puedes volver a pulsar más tarde si amplías sobre otra zona que también quieras guardar
-
-> 💡 **Máximo ~200 teselas por clic** (~5-10 MB): es un límite estricto para respetar la política de uso de OpenStreetMap (= servicio gratuito financiado con donaciones, así que nada de abusos). Si quieres guardar una zona muy amplia, haz varios clics desplazando la vista.
-
-**Dónde está disponible**:
-
-El botón 💾 Guardar sin conexión está presente en **3 contextos** — y la caché es **compartida** entre los tres:
-
-| Contexto | Cuándo usarlo |
-|---|---|
-| **🌍 Ventana de Vista OSM** (modo mapa) | Preparas una salida: abres la Vista OSM, encuadras la zona y pulsas 💾 |
-| **🌍 Widget OSM de la pantalla de inicio** | Preparas tus planos desde la pantalla de inicio sin tener que cargar un plano en modo mapa |
-| **🚨 Modo Rescate** (barras de Creación y de Directo) | Lanzas una misión: un toque de 💾 y todo el equipo tiene la zona en su dispositivo antes de bajar |
-
-> ✅ **Caché compartida**: descargas UNA vez → está disponible en todas partes, sin duplicados. No hace falta repetir la descarga en cada modo.
-
-**Comportamiento inteligente sin conexión**:
-
-Cuando la app detecta que no tienes Internet, adapta el comportamiento del icono 🌍 según lo que haya disponible en tu dispositivo:
-
-| Internet | Plano guardado | Icono 🌍 | Acción |
-|---|---|---|---|
-| ✅ | – | visible | apertura normal |
-| ❌ | ✅ | visible | apertura directa desde tu dispositivo (sin prueba de ping) |
-| ❌ | ❌ | oculto | se necesita reconexión — mensaje claro «Plano no disponible sin conexión, pulsa 💾 cuando tengas red» |
-
-En concreto: si guardaste tu plano la víspera con wifi, el icono 🌍 sigue visible al día siguiente con mala cobertura y la ventana se abre **directamente**, sin intentar una prueba de red que lo ralentizaría todo. Si olvidaste guardarlo, la app te lo dice claramente en lugar de dejarte dando vueltas.
-
-**🔒 Todo permanece local y privado**:
-
-- Las teselas descargadas se **almacenan 100 % en tu dispositivo** (tu navegador / la PWA instalada)
-- **Nunca se transmite nada** a un servidor de terceros, ni al autor, ni a OpenStreetMap después de la descarga inicial
-- No se registra ningún rastro de lo que guardas
-- En el siguiente reinicio completo (💥 Reiniciarlo todo), las teselas guardadas se borran junto con el resto
-
-> 💡 **Truco para una salida**: la víspera, abre la Vista OSM en tu teléfono en casa (wifi), amplía sobre la zona de la entrada y las calles de alrededor, y pulsa **💾 Guardar sin conexión**. Al día siguiente en superficie, en el punto de encuentro, incluso con cobertura débil, el mapa aparecerá al instante.
-
-### 🚨 Modo Rescate — Explotación sobre el terreno en tiempo real
-
-El escenario tiene **2 estados distintos**:
-
-1. 📝 **CREACIÓN** — Vista de Edición. Preparas tus equipos, sus recorridos, sus zonas y los itinerarios sugeridos.
-2. 🚀 **EJECUCIÓN** — Vista en directo en tiempo real. El equipo YA HA SALIDO, sigues sus observaciones etapa por etapa y comentas en vivo.
-
-Cambias de un estado a otro mediante el **botón «🚀 Lanzar el plan de rescate»** de la vista de Edición.
-#### 🚀 Lanzamiento del plan + selección del rol
-
-Aparece una nueva barra dinámica en la parte superior de la vista de Edición:
-
-| Estado de la barra | Cuándo | Botones |
+| Rol | Quién | Qué hace |
 |---|---|---|
-| Gris «Añade al menos un equipo…» | 0 equipos definidos | Ninguno |
-| **Amarillo «🚀 Lanzar»** | Al menos 1 equipo | 🚀 Lanzar el plan de rescate |
-| **Verde «🟢 PLAN ACTIVO — <Rol>»** | Plan lanzado y en curso | ▶️ Reanudar la vista en directo · 📤 Informe · ⏹️ Detener |
-| **Azul «📦 PLAN TERMINADO»** | Plan detenido (histórico) | 📤 Ver informe histórico · 🚀 Relanzar |
+| 👤 **Operador de superficie** | el puesto de mando, en superficie | prepara el escenario, sigue a todos los equipos, lo anota todo, reúne los informes |
+| 🚨 **Equipo sobre el terreno** | cada equipo que baja | sigue su recorrido etapa por etapa, anota lo que ve |
+| 🚑 **Socorrista libre** | un refuerzo sin equipo asignado | toma notas con hora, sin recorrido |
 
-Al pulsar «🚀 Lanzar», se abre una **ventana de selección de rol** con 3 opciones:
+El ciclo: **preparar** el escenario → **transmitirlo** a los equipos antes de bajar → **seguir** la intervención → **cerrar** y hacer el informe.
 
-```
-◉ 👤 Operador de superficie
-   Coordinas desde el puesto de mando. Ves todos los equipos en
-   paralelo y puedes editar sus observaciones en supervisión.
+#### 🧰 1. Preparar un escenario
 
-○ 🚨 Equipo sobre el terreno: [Alfa ▾]
-   Formas parte de un equipo asignado. Sigues tu recorrido etapa
-   por etapa y comentas en directo.
+##### 📝 Crear un escenario
 
-○ 🚑 Rescatador libre
-   Intervienes sin equipo preasignado (refuerzo puntual, reconocimiento).
-   Tomas notas libres con marcas de tiempo.
-```
+- **➕ Nuevo escenario**: un nombre, la hora del incidente y notas de contexto (opcionales).
+- **Desde ⛑️ Estoy perdido**: el botón **🚨 Lanzar un plan de rescate (equipos + zonas)** crea el escenario ya listo — última posición conocida, zona de incertidumbre (círculo en el mapa), hora del incidente y notas deducidas. Antes hay que haber definido allí una última posición conocida.
+- **🗐 Duplicar** clona un escenario para probar otra hipótesis («se fue por el este» / «se fue por el sur») sin tocar el original.
+- **10 escenarios por plano** como máximo: por encima, se borra el más antiguo. Nunca un escenario en curso, el que tienes abierto, el más reciente, ni una intervención terminada cuyo informe aún no ha salido del teléfono.
 
-> 💡 Podrás cambiar de rol más adelante sin perder las observaciones.
+El escenario se edita en tres bloques: **📝 Contexto del incidente**, **🚨 Equipos**, **📤 Exportar este escenario**. En el contexto, **🔍 Herramientas de análisis → 🔥 Mostrar el mapa de calor de actividad** muestra dónde se ha registrado actividad (seguimiento, puntos, trazados): si la persona desaparecida usaba MyKTAMap y te pasó su sesión, ves por dónde pasó.
 
-#### 🚨 Vista en directo — Modo MIEMBRO DE EQUIPO (paso a paso)
+##### 👥 Los equipos
 
-Para el rescatador sobre el terreno que sigue su recorrido:
+**➕ Añadir un equipo**, y luego en su ficha:
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚨 Equipo Alfa · Etapa 3/5 ⏱️ 14 h 23 min │
-├─────────────────────────────────────────────────────┤
-│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← indicador
-│ pulsable, color de estado por etapa │
-├─────────────────────────────────────────────────────┤
-│ 📍 ETAPA 3 — Pozo de ventilación Norte │
-│ Estado: 🟢 Sin novedad │
-│ │
-│ 📝 Observaciones en esta etapa: │
-│ [galería central sin novedad] │
-│ │
-│ ⚡ Entrada rápida: │
-│ [🟢 Sin nov.] [🟡 Sospechoso] [⬛ Bloqueado] │
-│ [🔵 Indicio] [🟠 Ayuda] [🟣 Media vuelta] │
-│ [🚨 ¡Víctima!] │
-│ │
-│ [📸 Foto (0/5)] [🎯 Recentrar mapa] │
-├─────────────────────────────────────────────────────┤
-│ [← Etapa anterior] [Etapa siguiente →] │
-│ [⏸️ Pausa] [📤 Informe] [Ver edición] [⏹️ Terminar] │
-└─────────────────────────────────────────────────────┘
-```
+- **Nombre** (déjalo vacío: Alpha, Bravo, Charlie…) y **🎨 Color**, entre 10 colores fijos;
+- **👥 Miembros** (separados por comas), **👤 Jefe**, **Efectivo** — el efectivo es lo que permite contar a los presentes al regresar;
+- **Regreso obligatorio**: hora fijada por el jefe (autonomía de las luces, relevo); prevalece sobre la duración estimada para las alertas de retraso;
+- **Nivel** de referencia en un plano multinivel (o «Sin nivel» si el equipo cambia de planta);
+- **📍 GPS superficie** (opcional, ver § 4).
 
-**8 estados pulsables** (colores fijados en la línea gráfica):
+En un plano multinivel, **🏗️ Auto: 1 equipo por nivel** crea un equipo por cada nivel que contiene algo. Los equipos se pliegan (▾/▸, «▸ Plegar todo») para que la lista siga siendo legible.
 
-| Emoji | Etiqueta | Cuándo usarlo |
-|---|---|---|
-| • | Pendiente | (estado por defecto antes de interactuar) |
-| 🟢 | Sin novedad | Nada que señalar |
-| 🟡 | Sospechoso | Rastros / ruidos / olores inhabituales |
-| ⬛ | Bloqueado | Paso impracticable (derrumbe, agua) |
-| 🔵 | Indicio | Objeto / vestigio encontrado |
-| 🟠 | Ayuda solicitada | Se pide refuerzo material o humano |
-| 🟣 | Media vuelta forzada | Recorrido abandonado, regreso anticipado |
-| 🚨 | **Víctima encontrada** | **Urgencia absoluta** — dispara una señal roja intermitente en el puesto de mando |
-| ⚪ | Pasada, sin informar | La pone la app: etapa pasada sin elegir estado |
+##### 🗺️ Recorrido, zona e itinerario
 
-**Fotos**: pulsa «📸 Foto (X/5)» → cámara trasera automática en móvil O galería. Máximo 5 fotos por etapa, compresión automática JPEG q85 con un máximo de 1920 px. Pulsa una miniatura → visor a pantalla completa con deslizamiento y zoom.
+- **🗺️ Recorrido**: toca **Entrada**, **➕ Añadir una etapa intermedia** y luego **Salida**. Para cada punto: tus **⭐ favoritos** del plano en un toque, la búsqueda, o **📍 Hacer clic en el mapa** (el punto se ajusta al POI más cercano). Tocar un POI lo toma como punto, sin abrir su ficha. Misma entrada y misma salida = bucle. Desde la búsqueda de la app, el botón 📌 asigna un punto a un equipo en dos toques.
+- **⬛ Definir zona**: o bien un **polígono** (un toque por vértice, doble toque para cerrar), o bien una **selección de trazados** (toca cada galería, vuelve a tocarla para quitarla). Las zonas de los demás equipos se muestran en punteado para ajustar los límites. Una galería del plano se encuentra idéntica en todos los teléfonos que tienen ese plano; un trazado añadido a mano en un solo dispositivo solo existe en él. En un plano multinivel, la zona vale **en el nivel donde la dibujaste** — marca «Zona en todos los niveles» para extenderla.
+- **✨ POI de la zona** añade todos los puntos de la zona como etapas, de cerca a lejos desde la entrada.
+- **🗺️ Calc. ruta** calcula el camino por las galerías, de la entrada a la salida pasando por las etapas, con distancia y duración. **Rodea las etapas y las zonas de los demás equipos**; si no puede, lo avisa. También enumera **las etapas a más de 25 m de una galería**: corrígelas antes de bajar. Por último, avisa cuando galerías de otro nivel pasan bajo la zona sin que ningún recorrido baje hasta ellas.
+- **⏱️ Duraciones estimadas** (ajustes propios del escenario, que viajan con él): **velocidad de aproximación** fuera de la zona (3 km/h por defecto), **velocidad de búsqueda** dentro de la zona (1,5 km/h), **pausa por etapa** (0) y **alerta roja tras** (30 min de retraso).
+- **🗺️ Ver en el mapa** muestra zonas, entradas, salidas e itinerarios de todos los equipos, cada uno con su color.
 
-**Guardado automático**: las observaciones se guardan al salir del área de texto Y al cambiar de etapa. No hace falta ningún botón de «Guardar».
+##### 📊 Comprobar la cobertura
 
-**Etapa pasada sin estado**: pasar a la etapa siguiente sin haber elegido estado la marca **«⚪ Pasada, sin informar»**, nunca «Sin novedad»: una etapa saltada no es una etapa registrada. Puedes ponerle un estado después.
+El bloque **📊 Cobertura** da, por nivel: la longitud de galerías, la parte **en una zona**, la parte **en un recorrido** y la longitud asignada a dos equipos. Solo la parte «en un recorrido» se buscará de verdad: un 86 % de galerías en una zona puede quedarse en un 24 % en un recorrido. También enumera los POI situados en la zona de un equipo pero fuera de su recorrido, y los visitados por varios equipos. **🗺️ Resaltar las galerías fuera de recorrido** las muestra en rojo en el nivel mostrado, para preparar la fase siguiente. Es una ayuda a la lectura: nada se asigna automáticamente.
 
-#### 👤 Vista en directo — Modo OPERADOR DE SUPERFICIE (visión de conjunto)
+##### 📋 Varias fases
 
-Para el puesto de mando que coordina varios equipos en paralelo:
+Una intervención puede encadenarse en fases, con un debrief entre cada una — por ejemplo, fase 1: un equipo barre los ejes principales; fase 2: varios equipos registran las salas señaladas. Si no las necesitas, ignóralas: un escenario siempre tiene una fase, y los botones de fase solo aparecen a partir de dos.
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 👤 Operador de superficie · 3 equipos ⏱️ 02 h 14 min │
-├─────────────────────────────────────────────────────┤
-│ ┌──────────────────┐ ┌──────────────────┐ │
-│ │ 🔴 Alfa 3/5 │ │ 🔵 Bravo 1/4 │ │
-│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
-│ │ 🟢 Sin novedad │ │ 🟠 Ayuda │ │
-│ │ «Sin novedad │ │ «Agua en el │ │
-│ │ galería central» │ │ suelo, sube» │ │
-│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
-│ │ [👁️ Detalles] │ │ [👁️ Detalles] │ │
-│ │ [🚨 Tomar mando] │ │ [🚨 Tomar mando] │ │
-│ └──────────────────┘ └──────────────────┘ │
-│ ┌──────────────────┐ │
-│ │ 🟢 Charlie ✓T │ ← equipo Terminado (atenuado) │
-│ └──────────────────┘ │
-├─────────────────────────────────────────────────────┤
-│ [⏸️ Pausa] [🗺️ Mapa global] [📤 Informe global] │
-│ [Ver edición] [⏹️ Terminar el plan] │
-└─────────────────────────────────────────────────────┘
-```
+En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equipos participantes**. Los equipos se definen una sola vez para todo el escenario; un mismo equipo puede participar en varias fases. ✏️ renombra o cambia los equipos; 🗑️ elimina, salvo la última fase, la fase activa o una fase ya iniciada. Durante la intervención, una pastilla ámbar en la cabecera de las vistas recuerda la fase activa y su posición.
 
-**Tarjetas especiales** con señales visuales potentes:
+#### 📤 2. Transmitir antes de bajar
 
-- 🚨 **Víctima encontrada** → tarjeta **ROJA INTERMITENTE** (animación de 1,2 s, urgencia absoluta, NO puedes pasarla por alto)
-- 🟠 **Ayuda solicitada** → naranja + resplandor (hay que enviar refuerzo)
-- ✓ **Terminado** → atenuado con opacidad 0,75 (todas las etapas completadas)
+- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario**. La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
+- ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
+- **Sin conexión**: al lanzar, la app avisa si el plano no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del plano** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
+- **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona, etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
+- **🌍 Exportar KMZ geolocalizado**: el escenario para Google Earth, OsmAnd o Avenza — una carpeta por equipo (puntos, zona, itinerario) sobre el plano de fondo. Los itinerarios que faltan se calculan antes de exportar, y MyKTAMap vuelve a leer ese KMZ con el escenario. Hace falta un plano calibrado con dos puntos GPS (pestaña 🌍 KMZ de la exportación de sesión).
 
-**Botón «👁️ Detalles»** → miniventana de solo lectura con la lista cronológica de las etapas del equipo (marca de tiempo + emoji de estado + observaciones).
+#### 🔦 3. Sobre el terreno
 
-**Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones). La vista se abre en el **primer paso sin terminar de ese equipo**, aunque estuvieras más adelante con otro equipo.
+##### 🚀 Lanzar y elegir tu rol
 
-**Vuelta fácil**: una vez en modo Miembro de equipo tras «Tomar el mando», aparece un botón **«👤 Volver a Operador»** en el pie. Al pulsarlo → vuelta a la visión de conjunto del Operador intacta (la vuelta sigue siendo posible tras una recarga o un cambio de plano).
+**🚀 Lanzar el plan de rescate** (banda en la cabecera del escenario), y luego elige tu rol: 👤 Operador de superficie, 🚨 Equipo sobre el terreno (y cuál), o 🚑 Socorrista libre. Puedes cambiar de rol más tarde sin perder lo introducido.
 
-**Botón «🗺️ Ver mapa global»**: oculta la ventana y dibuja la superposición del mapa con todas las zonas + puntos de paso + itinerarios de los equipos en colores OTAN.
+En el rol de equipo, quedas **colocado en la entrada de tu equipo** — de oficio si tu posición aún no estaba confirmada; si no, la app te lo propone («Colocarme en la entrada» / «Mantener mi posición»). Un único mensaje resume el lanzamiento.
 
-#### 🚑 Vista en directo — Modo RESCATADOR LIBRE (notas sueltas)
+Cerrar la ventana no quita nada: tu zona y tu recorrido siguen en el mapa (el equipo ve el suyo, el operador todos), incluso tras recargar. Abajo de la pantalla, la pastilla **🚨 Rescate · Alpha · 3/8 ›** recuerda que la intervención está en marcha; al tocarla vuelves a las etapas por validar. **⏸️ Pausa** congela el cronómetro, **▶️ Retomar** lo reanuda: el tiempo de pausa no se cuenta.
 
-Para el refuerzo puntual o el reconocimiento sin equipo preasignado:
+##### 🚨 Lado del equipo
 
-```
-┌─────────────────────────────────────────────────────┐
-│ 🚑 Rescatador libre · 12 notas ⏱️ 01 h 47 min │
-├─────────────────────────────────────────────────────┤
-│ 📝 Añadir una nota │
-│ [galería norte sin novedad] │
-│ ⚡ Estado asociado: │
-│ [🟢 Sin nov.] [🟡 Sospechoso] [⬛ Bloqueado] │
-│ [🔵 Indicio] [🟠 Ayuda] [🟣 Media vuelta] │
-│ [🚨 ¡Víctima!] │
-├─────────────────────────────────────────────────────┤
-│ 12. 🟢 Sin novedad · ⏱️ 16:42:18 [✕] │
-│ «Cruce Este, sin novedad, continuamos» │
-│ │
-│ 11. 🟡 Sospechoso · ⏱️ 16:38:05 [✕] │
-│ «Ruido de agua corriendo, ¿origen?» │
-│ │
-│ ... (cronológico DESC) │
-└─────────────────────────────────────────────────────┘
-```
+La vista muestra tu recorrido etapa por etapa (Entrada, 1…N, Salida — el mismo número en todas partes). En cada etapa, **📝 observaciones** (se guardan solas) y un **estado**:
 
-Sin indicador de pasos ni etapas estructuradas. Solo un hilo de notas con hora y estado. Práctico para las misiones en las que el recorrido no está planificado de antemano (refuerzo que llega a mitad, equipo de reconocimiento, etc.).
-
-#### 📤 Informe sobre la marcha
-
-En cualquier momento durante la ejecución Y tras la detención del plan, puedes generar un informe mediante el botón **«📤 Informe»**, presente en:
-
-- El pie de cada vista en directo (con el alcance adaptado al rol actual)
-- La barra de la vista de Edición (si la ejecución está activa O terminada)
-
-3 formatos a elegir en la ventana unificada:
-
-| Formato | Caso de uso |
+| Estado | Cuándo |
 |---|---|
-| 📄 **PDF imprimible A4** | Briefing global en la página 1 + página de texto con las etapas por equipo + página de fotos en cuadrícula de 2 columnas. Ideal para informe en papel / impresión / archivo / entrega en papel a los bomberos. |
-| 📦 **`.mkmsec.report.json`** | Datos estructurados autónomos (fotos en base64 si se marca). Reimportable en el dispositivo del operador de superficie (consolidación entre dispositivos, ver la sección dedicada). |
-| 📋 **Texto plano** | Estilo Markdown copiado al portapapeles. Para compartir por Discord / SMS / correo rápido. |
+| • En espera | aún no tratada |
+| 🟢 Sin novedad | nada que señalar |
+| 🟡 Sospechoso | huellas, ruido u olor inusuales |
+| ⬛ Bloqueado | paso impracticable (derrumbe, agua) |
+| 🔵 Indicio | objeto o huella encontrado |
+| 🟠 Ayuda solicitada | refuerzo humano o material |
+| 🟣 Media vuelta forzada | recorrido abandonado, regreso anticipado |
+| 🚨 **Víctima encontrada** | urgencia absoluta: tarjeta roja parpadeante en el lado del operador |
+| ⚪ Pasada, sin informar | la pone la app cuando pasas a la etapa siguiente sin elegir estado — una etapa saltada no es una etapa registrada |
 
-**3 alcances según tu rol**:
+- **📸 Foto**: hasta 5 por etapa, cámara o galería; toca una miniatura para ampliarla.
+- **Validar una etapa te recalibra en ella** (con Sin novedad, Sospechoso, Indicio, Ayuda solicitada o Víctima encontrada): sin preguntar a menos de 30 m, con una pregunta más allá. Nunca con Bloqueado o Media vuelta forzada: no llegaste allí.
+- **🧭 Seguir mi recorrido (guiado paso a paso)** convierte el recorrido en un itinerario guiado: la banda «En 40 m, gira a la izquierda», la hoja de ruta y la pantalla XL te llevan de etapa en etapa, y el seguimiento 🧭 arranca. Las etapas validadas se marcan; si te desvías, **Recalcular** vuelve a salir hacia la siguiente etapa sin hacer, rodeando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 abre esa etapa. Hace falta que el itinerario del equipo esté calculado.
+- Tres atajos si algo va mal: **🚪 Salida de emergencia**, **🆘 Pantalla XL**, **⛑️ Estoy perdido**.
+- **▶️ Salida** anota tu hora de salida (si no, la del lanzamiento); **✅ De vuelta** detiene el cronómetro al subir.
 
-- 👤 **Modo Operador** → «📤 Informe global»: TODOS los equipos + sus etapas + fotos
-- 🚨 **Modo Miembro de equipo** → «📤 Informe»: SU equipo únicamente (recorrido individual)
-- 🚑 **Modo Rescatador libre** → «📤 Informe»: SUS notas libres cronológicas
+##### 👤 Lado del operador
 
-**Vista previa compacta** en la parte superior de la ventana: título del rol + número de etapas + % de progreso + duración. **Casilla «📸 Incluir las fotos»** MARCADA por defecto (con indicación dinámica del contador). Aviso de confirmación en cada acción.
+- En cabecera: **«X desplegado(s) · Y bajo tierra · Z desaparecido(s) al regresar»**. Al lanzar, la app señala los equipos sin efectivo: a su regreso, no se contaría a nadie.
+- Una tarjeta por equipo: progreso, último estado, última observación. **🚨 Víctima encontrada** → tarjeta roja parpadeante; **🟠 Ayuda solicitada** → naranja; equipo terminado → en gris. **👁️ Detalles** muestra todas sus etapas.
+- **Retrasos**: cada equipo tiene una hora de regreso prevista (salida + duración estimada, o su regreso obligatorio). Pasada esa hora, su tarjeta pasa a **naranja**; tras el margen, a **rojo**. Los equipos con retraso suben arriba, la pastilla de abajo cambia de color, y un mensaje y una vibración avisan.
+- **✅ De vuelta**: la app pregunta **cuántos han subido** (nada viene prerrellenado: cuenta). Por debajo del efectivo, la alerta roja **«N PERSONA(S) DESAPARECIDA(S)»** sigue en pantalla, pastilla incluida, hasta que se corrija el recuento (**Corregir el recuento**).
+- **📢 Llamada general** (o **📢 Llamar** para un equipo) marca los equipos que siguen bajo tierra como llamados, con la hora. ⚠️ **La app no avisa a nadie** — bajo tierra no hay red: transmite la orden tú mismo, por radio o de viva voz.
+- **🚨 Tomar el control**: ¿un equipo llama por radio? Pasas a su vista, en su primera etapa sin terminar, para introducir datos en su lugar; **👤 Volver a Operador** te devuelve. En ese caso, Seguir mi recorrido, Salida de emergencia, Pantalla XL y Estoy perdido no aparecen: actuarían sobre tu propio teléfono.
+- **📜 Diario de operaciones**: todo queda anotado con la hora — lanzamiento, estados, víctima, salidas, regresos, llamadas, importaciones, fases — más tus propias notas (llamada por radio, decisión). Se imprime como anexo del informe.
+- **Modificar durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas cambias, recibe enseguida sus etapas. Lo introducido se queda en la misma etapa. Quitar una etapa ya rellenada pide confirmación, y se rechaza si señala Ayuda solicitada o Víctima encontrada: cambia antes su estado. Si la vuelves a poner en la misma fase, la etapa recupera lo introducido.
 
-**Informe generado al instante**: refleja el estado ACTUAL del escenario. Reutilizable tantas veces como haga falta. Ideal para:
-- Briefing en plena misión (instantánea intermedia para imprimir para el relevo)
-- Traspaso entre dispositivos (exportación JSON → correo / memoria USB → importación en el PC del operador)
-- Informe final posmisión (PDF imprimible + archivo)
+El 🚑 **socorrista libre** no tiene recorrido ni etapas: añade notas, cada una con un estado y la hora. Su informe se importa como el de un equipo, y sus notas se suman al diario de operaciones.
 
-#### ⏱️ Cronómetro global con pausa justa
+##### 🚑 Víctima encontrada
 
-El cronómetro ⏱️ que aparece en la parte superior de cada vista en directo se calcula desde el inicio MENOS el tiempo de pausa acumulado. Puedes pausar con el botón **«⏸️ Pausa»** (el cronómetro se congela) y luego reanudar con **«▶️ Reanudar»** — la duración de la pausa NO se contabiliza.
+Una etapa marcada como **Víctima encontrada** da una posición: la de la etapa, nivel incluido. **📍 Precisar en el mapa** la ajusta. Un **✚ rojo** la marca en el mapa, para todos; el operador la ve en una banda en la cabecera de su vista, y el informe la imprime en primer lugar.
 
-**Redibujado 1×/segundo** sin parpadeo visual y sin pérdida de foco en el área de texto de observaciones que estés escribiendo. Permite mantener el informe en tiempo real preciso durante misiones largas (de horas).
+**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del plano y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado).
 
-#### 🎬 Ciclo completo típico
+#### 🚒 4. Rescate exterior
 
-```
-1. 📝 Creación del escenario (vista de Edición)
-   ├─ Añadir equipos Alfa/Bravo/Charlie (colores OTAN)
-   ├─ Para cada equipo: recorrido entrada → etapas → salida
-   ├─ Zonas de búsqueda (polígono O trazados seleccionados)
-   ├─ Itinerarios calculados automáticamente (evitaciones entre equipos)
-   └─ Exportación PDF / KMZ / .mkmsec.json para el briefing inicial
+- **🚒 Briefing bomberos** (en todas las bandas del Modo Rescate) genera un PDF para los bomberos, para imprimir o enviárselo antes de que lleguen — no necesitan instalar nada:
+  - **ACCESOS EN SUPERFICIE**: el plano encuadrado en los accesos de los equipos, un marcador numerado por acceso, y una tabla N.º · acceso (entrada, salida o ambas) · equipos · GPS y enlace de mapa clicable. Indica qué acceso hay que abrir desde la superficie. **Pon nombre a tus entradas** («Tapa calle X»); si no, la tabla dice «Acceso sin nombre»;
+  - **LOCALIZACIÓN EN EL MAPA**: coordenadas del centro del plano, enlaces OpenStreetMap y Google Maps;
+  - **EQUIPOS EN EL LUGAR**: miembros, jefe, efectivo, regreso obligatorio, GPS superficie;
+  - **POI CRÍTICOS**: los accesos del plano con su nivel, primero los abiertos y luego los cerrados (que los bomberos y los servicios competentes pueden abrir).
+  
+  Eliges las capas del mapa OSM del PDF; las secciones de texto siempre se incluyen.
+- **📍 GPS superficie** (ficha del equipo): la posición del puesto de mando, del punto de encuentro o de cualquier lugar de superficie ligado al equipo, en formato «latitud, longitud» (p. ej. 48.856600, 2.352200). Figura en el briefing con un enlace de mapa.
+- **🚪 Punto de entrada del mapa**: esta etiqueta (categoría 🚨 Rescate del editor de POI) marca las entradas principales; aparecen en los POI críticos y en la Vista OSM.
+- **🌍 Vista OSM**, presente en la banda del escenario y en las tres vistas, muestra el plano sobre OpenStreetMap a los equipos de rescate que llegan. Hace falta un plano georreferenciado.
 
-2. 🚀 Lanzamiento (ventana de selección de rol)
-   └─ Cambio a la vista en directo según el rol elegido
+#### 📦 5. Cerrar y hacer el informe
 
-3. 🚨 Ejecución (vista en directo)
-   ├─ Modo Miembro: sigue el recorrido paso a paso + observaciones + fotos
-   ├─ Modo Operador: visión de conjunto en tarjetas + supervisión + tomar el mando
-   └─ Modo Rescatador libre: notas sueltas cronológicas
+##### 🏁 Cerrar una fase
 
-4. 📤 Informe sobre la marcha (n veces)
-   ├─ PDF imprimible para el relevo / entrega en papel
-   ├─ JSON para la consolidación entre dispositivos
-   └─ Texto al portapapeles para Discord / correo rápido
+En la vista del operador, **✓ Fase finalizada** (visible en cuanto hay 2 fases). Cuando todos los equipos de la fase han validado su salida, el botón se pone verde y un mensaje te avisa; la decisión sigue siendo tuya. Escribe el **debrief** (equipos de vuelta, puntos encontrados, zonas a explorar con prioridad) y luego **✓ Finalizar la fase**: la fase queda archivada, no se borra nada y se conserva su recorrido previsto. Si existe una fase siguiente, la app propone iniciarla: las etapas de sus equipos se rehacen a partir de su recorrido **actual** — así que puedes ajustarlo durante el debrief. Si no, propone detener el plan. **➕ Añadir una fase** también está disponible durante la intervención.
 
-5. ⏹️ Detención del plan (barra «📦 PLAN TERMINADO»)
-   ├─ Observaciones conservadas como histórico
-   ├─ Botón «📤 Ver el informe histórico» reutilizable
-   └─ Botón «🚀 Relanzar» si hay nueva misión
-```
+##### 📥 Importar los informes de los equipos
 
-#### 📥 Consolidación entre dispositivos
+1. Al volver, cada equipo toca **📤 Informe** → archivo **.mkmsec.report.json**, y lo envía al operador.
+2. El operador, con el plan lanzado, toca **📥 Importar informe de equipo**: la vista previa muestra el equipo, el número de etapas y de fotos, y los conflictos con lo que ya ha introducido.
+3. **✓ Importar y fusionar**: las observaciones se juntan con la fecha (no se pierde nada), se conserva el estado más grave (a igualdad, el más reciente; una víctima nunca se rebaja), las fotos se añaden sin duplicados. La tarjeta del equipo muestra «📥 importado».
 
-Al volver del terreno, cada miembro de equipo puede **compartir su informe** con el operador de superficie, que lo **importa y fusiona** con sus observaciones en el cuadro de supervisión.
+La importación se rechaza si el equipo no existía en el escenario del operador al lanzar, si el archivo viene de otro escenario, o si es un informe global de operador. Un informe sobre una fase ya cerrada se guarda en el historial de esa fase, y la app lo indica. Un aviso de Ayuda solicitada o Víctima encontrada en una etapa que habías quitado vuelve a poner el punto en el recorrido del equipo y se muestra en rojo; si no, figura en «Avisos fuera del recorrido» del informe.
 
-**Flujo tipo — operación con 3 equipos**:
+**Deshacer una importación**: se hace una copia justo antes; restáurala desde **📊 Detalles de la sesión → 📦 Backups recientes** («Antes de importar informe de equipo …»).
 
-1. **Lado Operador (superficie, ANTES del incidente)**:
-   - Prepara el escenario (equipos Alfa / Bravo / Charlie + recorridos + zonas)
-   - Lanza el plan (🚀) → vista en directo de Operador de superficie
-   - Transmite el escenario a los miembros mediante la exportación `.mkmsec.json` clásica (correo / memoria USB / AirDrop)
+##### 📄 Informe final
 
-2. **Lado de cada Miembro (terreno)**:
-   - Importa el `.mkmsec.json` del operador: la importación conserva los identificadores del puesto de mando, que es lo que permitirá al operador aceptar su informe. Si el plan **ya** está en el teléfono (plan actualizado por el operador), la vista previa ofrece **«Reemplazar»** (marcado: conserva el vínculo con el operador, pero borra los estados, observaciones y fotos ya introducidos en este teléfono) o **«Importar como copia»** (un escenario nuevo, cuyo informe el operador rechazará)
-   - Lanza el plan → vista en directo de Equipo → introduce observaciones + estados + fotos por etapa
-   - **Al volver a superficie**: genera su informe mediante «📤 Informe» en el pie de la vista en directo de Equipo → formato **`.mkmsec.report.json`** → exporta el archivo (descarga local)
+**📤 Informe** (cada vista, y la banda del escenario) genera en cualquier momento el estado actual, en tres formatos: **PDF imprimible** (fotos en anexo), archivo **.mkmsec.report.json** (fotos si «📸 Incluir las fotos» está marcado), o **Copiar texto** para un mensaje rápido. El operador obtiene todos los equipos, un equipo su recorrido, el socorrista sus notas.
 
-3. **Lado Operador (regreso del terreno)**:
-   - Recupera los 3 informes `.mkmsec.report.json` (uno por equipo) por el canal que prefiera (AirDrop, correo, memoria USB, Discord)
-   - En la vista en directo de Operador → botón **«📥 Importar informe de miembro»** en el pie
-   - Selector de archivos → selecciona el archivo → ventana de vista previa que muestra: nombre del equipo afectado, número de etapas a fusionar, fotos y **conflictos detectados** (etapas ya rellenadas del lado del operador que van a fusionarse)
-   - Confirma la importación → la app hace una **instantánea PREVIA** (copia de seguridad de emergencia) y después fusiona:
-     - Observaciones **concatenadas con un separador fechado** (sin ninguna pérdida)
-     - Se conserva el estado **más grave**; a igual gravedad, **el más reciente** — un «Sin novedad» informado por el equipo sustituye a «En espera», una víctima nunca se rebaja
-     - Fotos **importadas con deduplicación**
-   - Ventana de resultado con estadísticas detalladas (X etapas fusionadas, Y fotos importadas, Z advertencias eventuales)
-   - Repite con los otros 2 equipos
-   - ⚠️ **Informe que llega tras un cambio de fase**: si trata de una fase ya cerrada, se guarda en **el historial de esa fase** — nunca en la fase en curso — y la app lo señala en naranja (en rojo si contiene «Ayuda solicitada» o «Víctima encontrada»)
-   - 🧭 **Aviso sobre una etapa que quitaste**: no se pierde — aparece en naranja al importar y en la sección **«Avisos fuera del recorrido»** del informe final
-   - 🗺️ **Plano modificado desde el envío**: si el plano cambió de versión (o se redibujó) desde la exportación del escenario, la vista previa de importación te avisa y cuenta los trazados de zona que ya no encuentra
-   - 📚 El **informe final** incluye también las etapas de las **fases cerradas**, fase por fase
+El PDF del operador empieza por las víctimas, luego recorre cada fase (recorrido previsto, etapas, debrief), los avisos fuera del recorrido, una página «BRIEFING SUPERFICIE» con el mapa de accesos, y el diario de operaciones en anexo.
 
-4. **Visualización tras la fusión**:
-   - En la tarjeta de cada equipo del Operador: aparece una ficha azul «📥 importado» si al menos una etapa ha recibido consolidación
-   - En la ventana «Detalles del equipo» (solo lectura): ficha «📥 importado» en cada etapa afectada + descripción emergente con la fecha de importación y la versión de la app de origen
-
-**Seguridad de la importación**: se rechaza si el alcance no es el de miembro de equipo (los informes de operador global o de rescatador libre no son fusionables), si el escenario de origen es distinto, si el equipo no está en el escenario activo, o si no hay ninguna ejecución en curso del lado del operador. **Plano distinto del lado del miembro** → advertencia (no error: se conservan las observaciones de texto).
-
-**Deshacer**: se crea automáticamente una instantánea de SessionBackups **ANTES** de cada importación. En caso de error, restaura desde **📊 Detalles de sesión → Copias recientes** (título: «Antes de importar el informe del miembro <nombre>»).
-
-> ⚠️ Importante: **los equipos deben estar registrados del lado del Operador ANTES del lanzamiento** del plan (no hay creación silenciosa en la importación). Si preparas tu escenario con Alfa / Bravo / Charlie pero un miembro exporta con el nombre «Delta» creado localmente, la importación será rechazada — Delta tenía que estar en el escenario inicial.
+**⏹️ Finalizar el plan** detiene la intervención; la banda pasa a **📦 PLAN FINALIZADO** con **📤 Ver el informe histórico** y **🚀 Relanzar**. ⚠️ Relanzar borra la intervención anterior, fotos e informes recibidos incluidos: exporta antes su informe.
 
 ### 🏗️ Crear o modificar un plano
 
