@@ -160,12 +160,10 @@ The home screen offers:
 - **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list.
 - **🏗️ Generate a map** — creates a map from scratch.
 
-> 🔄 **Re-importing a regenerated map** — if your ZIP has the **same name and same author** as a map in your list but **another version**, the app asks what to do instead of stacking a duplicate:
+> 🔄 **Re-importing a regenerated map** — if your ZIP has the **same name** as a map in your list (whatever the author and version), the app asks what to do instead of overwriting it or stacking a duplicate:
 > - **🔄 Update** — replaces the existing entry. Your session, notes and links between maps are kept; photos are only replaced if the new ZIP contains some.
 > - **➕ Keep both** — both versions live side by side in the list.
 > - **Cancel** (or ✕, Esc, tap outside) — nothing is touched. This is the default choice.
->
-> Same name and same version: direct update, no question asked.
 
 ### 📡 Offline use
 
@@ -201,7 +199,7 @@ When a new version exists and you have a connection, the app offers to update.
 
 ### 🚨 Emergency exit — find the nearest exit
 
-To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (between 📖 Story Mode and the battery 🔋), or say "**sortie**" to the 🎤 voice command (it only understands French).
+To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (on the right, next to 📖 Story Mode), or say "**sortie**" to the 🎤 voice command (it only understands French).
 
 **What the app looks for**: points marked as an open exit — **Open quarry access** (`cao`), **Open rung shaft** (`peo`), **Open service stairs** (`eso`) — as well as those tagged `entrée` and the built-in "🚪 Map entry point" tag. **Closed** variants (`caf`, `pef`, `esf`) are ignored: a point marked closed will never be suggested to you. If the map has no recognised exit, a message reminds you of these tags.
 
@@ -212,7 +210,7 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 **Where the computation starts**: from your current position, as soon as tracking is on or you have located yourself once since opening the map ("📍 I am here", realignment, portal, restored session); the window tells you which. If you have **never** located yourself, the app asks **Where are you?**: tap your position on the map. That tap also realigns tracking, so the route and the XL display start from the same spot.
 
-If you have enabled **📳 Haptic vibration** in ⚙️ Configuration, a vibration confirms the exit found or alerts you if there is none. Everything is computed on your device, without network.
+A vibration confirms the exit found or alerts you if there is none, even when **📳 Haptic vibration** is off. Everything is computed on your device, without network.
 
 ### 🚨 Emergency mode — XL display
 
@@ -613,7 +611,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 ## 📖 Story Mode
 
-The **📖** button in the top bar (left of the battery) opens your **exploration notebook**, specific to each map, in two tabs.
+The **📖** button in the top bar (on the right, next to 🚨) opens your **exploration notebook**, specific to each map, in two tabs.
 
 ### 📝 Free note
 
@@ -1269,7 +1267,7 @@ The heatmap is **purely visual**: it changes neither the map, nor your annotatio
 
 #### 🔋 Battery level
 
-The indicator appears in three places: at the top of the screen (`⚡ 78%` while charging, `🪫 23%` while discharging, colour depending on level), at the bottom of the **📋 Active session** window, and in the **XL emergency display**.
+The indicator appears at the top of the screen (`⚡ 78%` while charging, `🪫 23%` while discharging, colour depending on level) and in the **XL emergency display**.
 
 | Level | Alert |
 |---|---|

@@ -160,12 +160,10 @@ L'écran d'accueil propose :
 - **📦 Ajouter un plan** — glisse ton fichier ZIP sur la zone (ou appuie dessus pour le choisir), puis **▶️ Charger ce plan**. Le plan rejoint ta liste.
 - **🏗️ Générer un plan** — crée un plan à partir de zéro.
 
-> 🔄 **Réimporter un plan regénéré** — si ton ZIP porte le **même nom et le même auteur** qu'un plan de ta liste mais une **autre version**, l'app te demande quoi faire au lieu d'empiler un doublon :
+> 🔄 **Réimporter un plan regénéré** — si ton ZIP porte le **même nom** qu'un plan de ta liste (quels que soient l'auteur et la version), l'app te demande quoi faire au lieu d'écraser ou d'empiler un doublon :
 > - **🔄 Mettre à jour** — remplace l'entrée existante. Ta session, tes notes et tes liaisons entre plans sont conservées ; les photos ne sont remplacées que si le nouveau ZIP en contient.
 > - **➕ Garder les deux** — les deux versions cohabitent dans la liste.
 > - **Annuler** (ou ✕, Échap, appui à côté) — rien n'est touché. C'est le choix par défaut.
->
-> Même nom et même version : mise à jour directe, sans question.
 
 ### 📡 Utilisation hors connexion
 
@@ -201,7 +199,7 @@ Quand une nouvelle version existe et que tu as du réseau, l'app te propose de l
 
 ### 🚨 Sortie d'urgence — trouver la sortie la plus proche
 
-Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, panne de lumière. Tape **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batterie 🔋), ou dis « **sortie** », « **où est la sortie** » ou « **comment sortir** » à la commande vocale 🎤.
+Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, panne de lumière. Tape **🚨** dans la barre du haut (à droite, à côté de 📖 Mode Histoire), ou dis « **sortie** », « **où est la sortie** » ou « **comment sortir** » à la commande vocale 🎤.
 
 **Ce que l'app cherche** : les points marqués comme sortie ouverte — **Cavage ouvert** (`cao`), **Puits à échelon ouvert** (`peo`), **Escalier service ouvert** (`eso`) — ainsi que ceux marqués `entrée` et le tag intégré « 🚪 Point d'entrée du plan ». Les versions **fermées** (`caf`, `pef`, `esf`) sont ignorées : un point marqué fermé ne te sera jamais proposé. Si le plan n'a aucune sortie reconnue, un message te rappelle ces tags.
 
@@ -212,7 +210,7 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 **D'où part le calcul** : de ta position actuelle, dès que le suivi est actif ou que tu t'es situé une fois depuis l'ouverture du plan (« 📍 Je suis ici », recalage, portail, session restaurée) ; la fenêtre précise laquelle. Si tu ne t'es **jamais** situé, l'app demande **Où es-tu ?** : tape ta position sur la carte. Ce tap recale aussi le suivi, pour que l'itinéraire et l'Affichage XL partent du même endroit.
 
-Si tu as activé **📳 Vibration haptique** dans ⚙️ Configuration, une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune. Tout se calcule sur ton appareil, sans réseau.
+Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, même si **📳 Vibration haptique** est désactivée. Tout se calcule sur ton appareil, sans réseau.
 
 ### 🚨 Mode urgence — Affichage XL
 
@@ -613,7 +611,7 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 ## 📖 Mode Histoire
 
-Le bouton **📖** de la barre du haut (à gauche de la batterie) ouvre ton **carnet d'exploration** propre à chaque plan, en deux onglets.
+Le bouton **📖** de la barre du haut (à droite, à côté de 🚨) ouvre ton **carnet d'exploration** propre à chaque plan, en deux onglets.
 
 ### 📝 Note libre
 
@@ -1269,7 +1267,7 @@ La heatmap est **purement visuelle** : elle ne modifie ni le plan, ni tes annota
 
 #### 🔋 Niveau de batterie
 
-L'indicateur apparaît à trois endroits : en haut de l'écran (`⚡ 78%` en charge, `🪫 23%` en décharge, couleur selon le niveau), en bas de la fenêtre **📋 Session active**, et dans l'**affichage XL d'urgence**.
+L'indicateur apparaît en haut de l'écran (`⚡ 78%` en charge, `🪫 23%` en décharge, couleur selon le niveau) et dans l'**affichage XL d'urgence**.
 
 | Niveau | Alerte |
 |---|---|

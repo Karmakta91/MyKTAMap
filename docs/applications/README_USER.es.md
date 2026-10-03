@@ -160,12 +160,10 @@ La pantalla de inicio ofrece:
 - **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El plano se suma a tu lista.
 - **🏗️ Generar un mapa** — crea un plano desde cero.
 
-> 🔄 **Volver a importar un plano regenerado** — si tu ZIP tiene el **mismo nombre y el mismo autor** que un plano de tu lista pero **otra versión**, la app te pregunta qué hacer en lugar de apilar un duplicado:
+> 🔄 **Volver a importar un plano regenerado** — si tu ZIP tiene el **mismo nombre** que un plano de tu lista (sean cuales sean el autor y la versión), la app te pregunta qué hacer en lugar de sobrescribirlo o apilar un duplicado:
 > - **🔄 Actualizar** — sustituye la entrada existente. Tu sesión, tus notas y tus enlaces entre planos se conservan; las fotos solo se sustituyen si el nuevo ZIP las contiene.
 > - **➕ Conservar ambos** — las dos versiones conviven en la lista.
 > - **Cancelar** (o ✕, Esc, pulsar fuera) — no se toca nada. Es la opción por defecto.
->
-> Mismo nombre y misma versión: actualización directa, sin preguntar.
 
 ### 📡 Uso sin conexión
 
@@ -201,7 +199,7 @@ Cuando existe una versión nueva y tienes conexión, la app te propone actualiza
 
 ### 🚨 Salida de emergencia — encontrar la salida más cercana
 
-Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨** en la barra superior (entre 📖 Modo Historia y la batería 🔋), o di «**sortie**» al comando de voz 🎤 (solo entiende francés).
+Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨** en la barra superior (a la derecha, junto a 📖 Modo Historia), o di «**sortie**» al comando de voz 🎤 (solo entiende francés).
 
 **Lo que busca la app**: los puntos marcados como salida abierta — **Acceso a cantera abierto** (`cao`), **Pozo de peldaños abierto** (`peo`), **Escalera de servicio abierta** (`eso`) — además de los etiquetados `entrée` y la etiqueta integrada «🚪 Punto de entrada del mapa». Las variantes **cerradas** (`caf`, `pef`, `esf`) se ignoran: un punto marcado como cerrado nunca se te propondrá. Si el plano no tiene ninguna salida reconocida, un mensaje te recuerda estas etiquetas.
 
@@ -212,7 +210,7 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 **Desde dónde parte el cálculo**: desde tu posición actual, en cuanto el seguimiento está activo o te has situado una vez desde que abriste el plano («📍 Estoy aquí», recolocación, portal, sesión restaurada); la ventana indica cuál. Si **nunca** te has situado, la app pregunta **¿Dónde estás?**: toca tu posición en el mapa. Ese toque también recoloca el seguimiento, para que la ruta y la visualización XL partan del mismo lugar.
 
-Si has activado **📳 Vibración háptica** en ⚙️ Configuración, una vibración confirma la salida encontrada o te avisa si no hay ninguna. Todo se calcula en tu dispositivo, sin red.
+Una vibración confirma la salida encontrada o te avisa si no hay ninguna, aunque **📳 Vibración háptica** esté desactivada. Todo se calcula en tu dispositivo, sin red.
 
 ### 🚨 Modo urgencia — Visualización XL
 
@@ -613,7 +611,7 @@ La Vista OSM coloca tus planos **georreferenciados** sobre el mapa de OpenStreet
 
 ## 📖 Modo Historia
 
-El botón **📖** de la barra de arriba (a la izquierda de la batería) abre tu **cuaderno de exploración**, propio de cada plano, en dos pestañas.
+El botón **📖** de la barra de arriba (a la derecha, junto a 🚨) abre tu **cuaderno de exploración**, propio de cada plano, en dos pestañas.
 
 ### 📝 Nota libre
 
@@ -1269,7 +1267,7 @@ El mapa de calor es **puramente visual**: no modifica ni el plano, ni tus anotac
 
 #### 🔋 Nivel de batería
 
-El indicador aparece en tres lugares: en la parte superior de la pantalla (`⚡ 78%` cargando, `🪫 23%` descargando, color según el nivel), en la parte inferior de la ventana **📋 Sesión activa**, y en la **visualización XL de emergencia**.
+El indicador aparece en la parte superior de la pantalla (`⚡ 78%` cargando, `🪫 23%` descargando, color según el nivel) y en la **visualización XL de emergencia**.
 
 | Nivel | Aviso |
 |---|---|

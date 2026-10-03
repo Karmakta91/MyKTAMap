@@ -213,7 +213,7 @@ sous 3 conditions strictes simultanément réunies** :
   reçu, si la position est **très loin** de la bbox du plan georef sélectionné
   (>50% au-delà des bords), le marker n'est **pas affiché** + toast warn avec
   la distance approximative au centre du plan. Garantit qu'un user à Paris ne
-  voit pas son fix s'afficher sur un plan des Catacombes de Lyon par erreur.
+  voit pas son fix s'afficher sur un plan situé à Lyon par erreur.
   Marge ×1.5 (= `bounds.pad(0.5)`) choisie permissive pour ne pas rejeter les
   fix légitimes en bordure de plan. Si la bbox plan n'est pas calculable (dims
   manquantes, georef absente), fallback safe : on autorise (comportement

@@ -361,12 +361,12 @@ Wraps `navigator.wakeLock.request("screen")` :
 
 ### 70. Recherche par coordonnées GPS + input combiné Maps cross-app (depuis hotfix18, refactor input combiné hotfix21 — 2026-05-27)
 
-Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte des **coordonnées GPS au format Google Maps** (`48.680831, 2.158843`) et localise la position sur le plan.
+Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte des **coordonnées GPS au format Google Maps** (`48.856600, 2.352200`) et localise la position sur le plan.
 
 En complément (hotfix21), les **3 modales de saisie de géoréférencement** ont leur ancien duo `lat / lng` (2 champs séparés) fusionné en un seul input combiné `GPS (lat, lng)`. Le format collable est identique à celui de Ctrl+K, donc copier-coller depuis Google Maps marche partout uniformément.
 
 KARMA quote (hotfix18) :
-> « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.680831, 2.158843 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
+> « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.856600, 2.352200 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
 
 KARMA quote (hotfix21) :
 > « modifie l'interface parametre et kmz pour saisir les coordonée d'un coup comme on a fait pour recherche »
@@ -385,7 +385,7 @@ KARMA quote (hotfix21) :
 
 **Sujet B — Input combiné `lat, lng` (hotfix21)** :
 - 1 seul input texte (au lieu de 2 inputs number lat + lng) dans les 3 modales de calibrage
-- Accepte le format Google Maps natif `48.680831, 2.158843`
+- Accepte le format Google Maps natif `48.856600, 2.352200`
 - Validation live (au blur) : border rouge + message inline `.kta-gps-coords-error` si format invalide
 - Au submit/save : parse via `parseGpsCoords`, abort avec message d'erreur si invalide
 - Pré-remplissage : `formatGpsCoords(lat, lng)` recompose `"lat, lng"` depuis les valeurs FLAT stockées (rétrocompat absolue — le format de stockage `pointA: {x, y, lat, lng}` n'a PAS changé)
@@ -398,7 +398,7 @@ KARMA quote (hotfix21) :
 window.parseGpsCoords(str)
   → { lat, lng } | null
   // Regex stricte + validation plage géographique
-  // "48.680831, 2.158843" → {lat: 48.680831, lng: 2.158843}
+  // "48.856600, 2.352200" → {lat: 48.8566, lng: 2.3522}
   // "200, 2.15"           → null (lat hors plage)
   // "abc, 2.15"           → null
 
@@ -444,7 +444,7 @@ Hint visible UNIQUEMENT si plan calibré :
 ```html
 <div class="kta-search-gps-hint" id="kta-search-gps-hint" style="display:none;">
   🌐 Tu peux coller des coordonnées GPS au format
-  <code>48.680831, 2.158843</code> (depuis Google Maps)...
+  <code>48.856600, 2.352200</code> (depuis Google Maps)...
 </div>
 ```
 
@@ -462,7 +462,7 @@ Quand aucun POI dans 50 px, le bouton :
 
 L'user a ainsi 3 saisies seulement après scan GPS d'une coord depuis Maps :
 1. Ctrl+K
-2. Coller `48.680831, 2.158843`
+2. Coller `48.856600, 2.352200`
 3. Clic "➕ Créer un point ici" → formulaire de saisie POI s'ouvre
 
 #### 70.6 Rétrocompatibilité plans existants

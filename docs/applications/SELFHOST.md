@@ -12,7 +12,7 @@
   (mutualisé FTP, GitHub Pages, nginx, Docker — cf. section Docker du README utilisateur).
 - Vos plans visibles dès l'ouverture dans « 📚 Mes plans » (badge 🌐), chargés en 1 clic.
 - Vos **liaisons inter-plan** (portails) livrées d'office à tous les visiteurs.
-- Un **sous-titre à vous** (ex. « Gironde ») sur l'écran de démarrage et l'accueil — et sur les PDF exportés.
+- Un **sous-titre à vous** (ex. « Club spéléo du Nord ») sur l'écran de démarrage et l'accueil — et sur les PDF exportés.
 - Optionnel : masquer l'import de plans et/ou le Générateur pour une interface « consultation ».
 - Les visiteurs gardent TOUTES leurs données en local (sessions, carnet, notes, photos) : rien ne transite par votre serveur.
 
@@ -42,7 +42,7 @@
 ```json
 {
   "config": {
-    "subtitle": "Gironde",
+    "subtitle": "Club spéléo du Nord",
     "serverPlansOnly": true,
     "disableGenerator": true,
     "accessHash": "89e39e…（SHA-256 du mot de passe, 64 caractères hexadécimaux）"
@@ -50,7 +50,7 @@
   "plans": [
     { "id": "carrieres-nord", "path": "data/carrieres-nord", "name": "Carrières Nord",
       "version": "V2.1", "author": "Asso X", "multiLevel": true, "tiledV2": true,
-      "tags": ["gironde", "carrière"] }
+      "tags": ["calcaire", "carrière"] }
   ],
   "liaisons": { "version": 1, "links": [ /* généré par confadmin — ne pas écrire à la main */ ] }
 }
