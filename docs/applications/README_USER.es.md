@@ -6,8 +6,6 @@
 
 ## 📖 El porqué
 
-> *Un mapa nunca ha sustituido a la salida. Solo ayuda a no perderse.*
-
 ### De dónde viene
 
 MyKTAMap nació de una necesidad sencilla: tener, **en el bolsillo**, un mapa subterráneo **fiable, sin conexión y que no se filtre**. No una tienda de aplicaciones que pide acceso a tus contactos para mostrar un plano. No un sitio que te rastrea en cuanto pulsas. No una nube que mañana decide enviarte un boletín o revender tus rastros.

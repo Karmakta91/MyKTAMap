@@ -6,8 +6,6 @@
 
 ## 📖 The story
 
-> *A map has never replaced going out. It just helps you not get lost.*
-
 ### Where it comes from
 
 MyKTAMap was born from a simple need: having, **in your pocket**, a cataphile map that is **reliable, offline, and doesn't leak**. Not an app store that asks for access to your contacts to display a map. Not a website that tracks you the moment you click. Not a cloud that decides tomorrow to send you a newsletter or resell your traces.

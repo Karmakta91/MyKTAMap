@@ -6,8 +6,6 @@
 
 ## 📖 Le topo
 
-> *Une carte n'a jamais remplacé la sortie. Elle aide juste à ne pas se perdre.*
-
 ### D'où ça vient
 
 MyKTAMap est née d'un besoin simple : avoir, **dans la poche**, une carte cataphile **fiable, hors-ligne, et qui ne fuite pas**. Pas un app store qui demande l'accès à tes contacts pour afficher un plan. Pas un site qui te traque dès que tu cliques. Pas un cloud qui décide demain de t'envoyer une newsletter ou de revendre tes traces.
