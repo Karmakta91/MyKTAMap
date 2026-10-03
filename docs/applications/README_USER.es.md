@@ -1098,7 +1098,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **💾 Memorizar el plano en la app en la primera carga** (activado);
   - **🕵️ Modo incógnito**: abre una ventana nueva donde no se guarda nada;
   - **🔐 Código de acceso local** (PIN, Face ID): ver «🔭 Para ir más lejos»;
-  - **🔒 Privacidad y Auditoría**: **📋 Ver el registro de red**, **📖 ¿Qué hace la app en la red?**, el **modo sin conexión estricto** y la casilla **🗺️ Vista OSM** (ver «🔴 Advertencias importantes»);
+  - **🔒 Privacidad y Auditoría**: **📋 Ver el registro de red**, **📖 ¿Qué hace la app en la red?** y la casilla **🗺️ Vista OSM** (ver «🔴 Advertencias importantes») — la app no envía ninguno de tus datos; el único sitio externo que contacta es OpenStreetMap (fondo de mapa de la Vista OSM), que esta casilla desactiva, y el registro de red te lo muestra;
   - **📚 Mapas de servidor**: **🚫 No cargar los mapas de servidor al arrancar**, si solo usas tus propios planos (tras recargar, desaparecen de la lista y de las estadísticas).
 - **🛠️ Sistema y mantenimiento**:
   - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
@@ -1328,17 +1328,6 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 **Cambiar o desactivar**: misma sección, **✏️ Cambiar código** o **🔓 Desactivar**, tras validar con la biometría o con el código actual.
 
 **5 códigos erróneos seguidos** bloquean la app **temporalmente**: 10 min, luego 1 h, 6 h y 24 h con cada nueva serie. Se muestra una cuenta atrás y el teclado vuelve solo al final del plazo; un código correcto lo pone todo a cero. Los fallos de biometría no cuentan. Un código olvidado no se recupera: solo borrar los datos del sitio en los ajustes del navegador levanta el bloqueo, y lo borra todo (planos, sesiones, cuaderno).
-
-### 🔒 Modo sin conexión estricto
-
-En **⚙️ Configuración** de la pantalla de inicio → **🔒 Privacidad y Auditoría**, la casilla **🔒 Modo sin conexión estricto** hace que **el navegador bloquee** toda petición hacia un sitio distinto del de la app, antes de que llegue a la red.
-
-- Aparece un distintivo **🔒 MODO SIN CONEXIÓN ESTRICTO ACTIVO** en la parte inferior de la pantalla de inicio; al pulsarlo se abre la configuración para desactivarlo.
-- La app funciona con normalidad: anotaciones, tracker, itinerario, exportaciones, multinivel…
-- Lo que depende de un servicio exterior queda cortado: la **Vista OSM** (mapa de OpenStreetMap) y el botón de posición GPS que la acompaña.
-- La elección se conserva hasta que la desmarques o hagas un reinicio completo.
-
-Incluso sin este modo, la app no envía ninguno de tus datos a un servidor; el modo estricto añade un **bloqueo activo** por parte del navegador. Para comprobarlo tú mismo, **📋 Ver el registro de red** en la misma sección lista cada petición emitida.
 
 ### 🚑 Modo Rescate — coordinar una búsqueda
 

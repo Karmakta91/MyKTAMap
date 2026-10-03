@@ -176,8 +176,8 @@
   <p class="meta">
     Page de transparence technique. À jour pour la version <strong>v1.99.8</strong> (3 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
-    <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
-    le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+    <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
+    le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
   </p>
 
 
@@ -400,8 +400,9 @@
   répond autre chose (404, 500, body différent), le ping est traité comme
   "indispo" et l'app refuse de tenter la mise à jour douce.</p>
 
-  <p>Si tu préfères ne pas faire ce ping du tout, <strong>active le mode hors-ligne
-  strict</strong> (cf. plus bas) : il sera bloqué comme tout autre appel non local.</p>
+  <p>Ce ping vise <strong>le serveur de l'app lui-même</strong> (même origine) : il ne
+  contacte aucun tiers et n'envoie rien. Il n'a lieu que sur ton action (reset,
+  Force update, ouverture de la Vue OSM).</p>
 
   <h3>À propos des tuiles OSM <code>tile.openstreetmap.org</code> (depuis v1.39.0)</h3>
 
@@ -435,9 +436,7 @@
 
   <p><strong>Garanties supplémentaires</strong> :</p>
   <ul>
-    <li>Le bouton modale et la colonne widget sont aussi masqués si « Mode hors-ligne
-    strict » OU « Mode incognito » sont actifs (extension automatique de ces deux
-    modes).</li>
+    <li>La modale et le widget sont aussi bloqués en <strong>Mode incognito</strong>.</li>
     <li>Modale et widget : masqués si <code>navigator.onLine === false</code>
     (hors-ligne détecté par le navigateur).</li>
     <li>Un ping <code>/ping.html</code> est effectué juste avant l'ouverture de la modale
@@ -485,17 +484,12 @@
     (<code>docs/nginx-csp-config.conf</code> et <code>docker/nginx-docker.conf</code>) a été
     mise à jour. Restriction <code>(self)</code> choisie volontairement : seule notre origine
     peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).</li>
-    <li><strong>Gating Mode hors-ligne strict + Mode incognito (depuis v1.40.19)</strong> :
-    la Vue OSM (modale ET widget HOME) respecte les modes vie privée :
+    <li><strong>Mode incognito</strong> : la Vue OSM (modale ET widget HOME) est coupée —
+    modale bloquée à l'ouverture (toast warn), widget HOME remplacé par le message
+    <em>"🕶️ Mode incognito actif"</em> au lieu de la mini-carte.
     <ul>
-      <li><strong>Mode hors-ligne strict</strong> activé → modale bloquée à l'ouverture
-      (toast warn) + widget HOME affiche un message dédié <em>"🛡️ Hors-ligne strict
-      actif"</em> au lieu de la mini-carte (parité ajoutée v1.40.19, le widget avait un trou
-      v1.40.0-18).</li>
-      <li><strong>Mode incognito</strong> activé → idem (message <em>"🕶️ Mode incognito
-      actif"</em> dans le widget HOME, modale bloquée).</li>
-      <li><strong>Bouton « 📍 Ma position »</strong> : si l'user active strict offline ou
-      incognito PENDANT que la modale est ouverte (edge case toggle pendant session), le
+      <li><strong>Bouton « 📍 Ma position »</strong> : si l'user passe en incognito
+      PENDANT que la modale est ouverte (edge case toggle pendant session), le
       bouton est désactivé visuellement (au build initial) ET le clic est neutralisé
       runtime (toast warn + early return, jamais de fix GPS). Note :
       <code>navigator.onLine === false</code> (Wi-Fi/4G coupé) n'empêche <strong>pas</strong>
@@ -575,14 +569,13 @@
     sont remplies, l'auto-heal appelle automatiquement la même logique que le
     bouton « Récupérer fichiers manquants » de l'Inspecteur SW. Conditions
     cumulatives : (1) <code>navigator.onLine === true</code>, (2) Service Worker
-    controller actif, (3) <strong>pas en Mode hors-ligne strict</strong>,
-    (4) <strong>pas en Mode incognito</strong>, (5) pas déjà tiré cette session
-    (<code>sessionStorage</code> anti-spam), (6) cap à 100 fetches max
+    controller actif, (3) <strong>pas en Mode incognito</strong>, (4) pas déjà tiré
+    cette session (<code>sessionStorage</code> anti-spam), (5) cap à 100 fetches max
     (anti-DDoS sur cache cassé). Output en console uniquement (pas de toast UI).
     Toutes les requêtes sont des <code>cache.add</code> des assets
     <code>ASSETS_TO_CACHE</code> — donc 100&nbsp;% self-origin sur la whitelist
-    existante. <strong>Respect intégral des modes privacy</strong> : strict
-    offline + incognito désactivent l'auto-heal.</li>
+    existante. <strong>Respect du mode incognito</strong> : il désactive
+    l'auto-heal.</li>
     <li><strong>v1.43.14</strong> — UX : ajout d'un bouton 🔼/🔽 dans le header
     de la modale Vue OSM pour réduire/afficher les contrôles (opacité, actions,
     toggles, niveaux M-LVL, tags). État persisté en localStorage
@@ -663,9 +656,8 @@
       100&nbsp;% self-origin sur les URLs déjà déclarées dans
       <code>ASSETS_TO_CACHE</code>. <strong>Aucun impact privacy</strong> :
       le log IDB reste 100&nbsp;% local (jamais transmis), le toast s'affiche
-      uniquement côté client. <strong>Respect intégral des modes privacy</strong> :
-      strict offline + incognito désactivent déjà l'auto-heal qui produirait
-      le log.</li>
+      uniquement côté client. <strong>Respect du mode incognito</strong> :
+      il désactive déjà l'auto-heal qui produirait le log.</li>
   </ul>
 
     <li><strong>v1.43.23</strong> — Auto-heal plus persistant : garde-fou
@@ -893,10 +885,10 @@
     inspectable via F12 → Application → IndexedDB → <code>myktamap_osm_tiles</code> → store
     <code>tiles</code>. Effaçable manuellement, ou via le bouton « 💥 Tout réinitialiser »
     de ⚙️ Configuration, ou via le <code>OsmTilesCache.clear()</code> exposé en console.</li>
-    <li><strong>Respect des modes vie privée</strong> : le bouton « 💾 Cacher pour offline »
-    est masqué/désactivé si Mode hors-ligne strict OU Mode incognito sont actifs (héritage
-    automatique des gates <code>osmView.js</code> / <code>osmHomePreview.js</code>
-    v1.40.19).</li>
+    <li><strong>Respect des réglages vie privée</strong> : le bouton « 💾 Cacher pour offline »
+    vit dans la carte Vue OSM — case 🗺️ Vue OSM décochée ou Mode incognito actif, la carte
+    ne s'ouvre pas, donc aucun préchargement n'est possible (gates <code>osmView.js</code> /
+    <code>osmHomePreview.js</code>).</li>
   </ul>
 
   <p><strong>Verdict réseau v1.44.7</strong> : ✅ aucune nouvelle URL ajoutée à la liste
@@ -940,8 +932,13 @@
     <li>La catégorie (<code>app-script</code>, <code>plan-data</code>, <code>ping</code>, <code>local-blob</code>…)</li>
     <li>Si la requête envoyait des données (<code>hasBody: true/false</code>)</li>
     <li>Le statut HTTP de la réponse</li>
-    <li>Si elle a été bloquée par le mode hors-ligne strict</li>
   </ul>
+
+  <p>⚠️ Le journal voit les appels faits par le code de l'app (<code>fetch</code>,
+  <code>XMLHttpRequest</code>, <code>sendBeacon</code>, <code>WebSocket</code>,
+  <code>EventSource</code>). Les <strong>tuiles de la Vue OSM</strong> sont des images posées
+  par la carte : elles n'y figurent pas. Pour les voir — et vérifier qu'elles ne partent
+  que vers <code>tile.openstreetmap.org</code> — utilise la Méthode 2 (F12).</p>
 
   <p>Tu peux <strong>copier</strong> le journal au format texte ou <strong>exporter en JSON</strong>
   (bouton 📥) pour le partager / l'archiver / le faire auditer par un tiers.</p>
@@ -986,39 +983,46 @@
   toutes les API réseau et est le code source qui alimente le journal de la
   Méthode 1. Tu peux le lire en intégralité pour comprendre la mécanique.</p>
 
-  <h2>🛡️ Le mode hors-ligne strict (paranoia opt-in)</h2>
+  <h2>🗺️ Couper le seul site extérieur : la case Vue OSM</h2>
 
-  <p>Si la liste blanche te suffit pas et que tu veux une <strong>garantie active
-  côté navigateur</strong>, active le <strong>Mode hors-ligne strict</strong> :</p>
+  <p>L'app n'envoie <strong>aucune</strong> de tes données. Toutes ses requêtes vont vers
+  <strong>son propre serveur</strong> — sauf une : le <strong>fond de carte OpenStreetMap</strong>
+  de la Vue OSM (<code>tile.openstreetmap.org</code>). C'est le seul tiers que l'app
+  contacte, et une case suffit à le couper :</p>
 
   <ol>
     <li><strong>Page d'accueil → ⚙️ Configuration</strong></li>
     <li>Section <strong>🔒 Confidentialité &amp; Audit</strong></li>
-    <li>Coche <strong>🔒 Mode hors-ligne strict</strong></li>
+    <li>Décoche <strong>🗺️ Vue OSM (OpenStreetMap)</strong></li>
   </ol>
 
-  <p>Une fois activé :</p>
-  <ul>
-    <li><strong>Toute requête sortante non-whitelistée est interceptée et bloquée
-       AVANT même d'atteindre le réseau</strong> (le navigateur reçoit une exception,
-       pas un timeout).</li>
-    <li>Un badge orange <code>🔒 PARANOIA</code> apparaît dans le footer de la page d'accueil
-       pour te rappeler que le mode est actif.</li>
-    <li>L'app continue de fonctionner normalement (annotations, calculs, exports
-       PNG/KMZ, navigation, multi-niveau, itinéraire, tracker…).</li>
-  </ul>
+  <p>Décochée, la case coupe tout ce qui touche OpenStreetMap : ni le widget de l'accueil
+  ni la modale Vue OSM ne chargent de tuile, et le préchargement « 💾 Save Offline » n'est
+  plus accessible. Ton refus est mémorisé et <strong>aucune mise à jour ne revient
+  dessus</strong>. Le <strong>mode incognito</strong> coupe lui aussi la Vue OSM.</p>
 
-  <p>Le toggle est <strong>persistant</strong> : il survit aux reloads et aux fermetures
-  d'onglet, jusqu'à ce que tu le décoches manuellement (ou que tu fasses
-  un reset complet via 💥 Tout réinitialiser).</p>
+  <p>Pour le vérifier : <strong>📋 Voir le journal réseau</strong> (requêtes de l'app) et
+  <strong>F12 → Réseau</strong> (tout, y compris les images de carte) — tu ne dois plus
+  voir que ton domaine.</p>
 
-  <h3>Différence avec le mode « Avion » de ton OS</h3>
+  <h3>Pourquoi il n'y a plus de « mode hors-ligne strict »</h3>
 
-  <p>Le mode Avion coupe le WiFi/4G/5G entièrement. Le mode hors-ligne strict
-  de MyKTAMap, lui, <strong>te laisse une connexion fonctionnelle</strong> pour le reste
-  de ton appareil (autres apps, navigateur) mais bloque uniquement les
-  appels que MyKTAMap pourrait faire. Tu peux donc faire des recherches
-  web en parallèle pendant que MyKTAMap reste isolée.</p>
+  <p>L'app proposait une case <strong>🔒 Mode hors-ligne strict</strong>, censée bloquer
+  toute requête vers un autre site. Elle a été <strong>retirée</strong>, parce qu'elle ne
+  tenait pas sa promesse : en pratique, elle ne bloquait que le <strong>préchargement des
+  tuiles OSM</strong> (« 💾 Save Offline »). Ses autres blocages annoncés — Vue OSM, widget
+  de l'accueil, Mode Secours, réparation automatique du cache — <strong>ne fonctionnaient
+  pas</strong>, et l'affichage des tuiles OSM, fait par des images, lui échappait de toute
+  façon. Comme tout le reste du trafic de l'app va vers son propre serveur, la case
+  🗺️ Vue OSM fait déjà ce travail — et elle, fonctionne. Mieux vaut une case qui coupe
+  vraiment qu'un mode qui rassure à tort.</p>
+
+  <h3>Et le mode « Avion » de ton OS ?</h3>
+
+  <p>Le mode Avion coupe tout le réseau de l'appareil. L'app continue de fonctionner
+  (plans mémorisés, annotations, tracker, itinéraire, exports) ; seuls la Vue OSM (sans
+  tuiles en cache), la détection de mise à jour et le chargement de plans serveur non
+  mémorisés attendent le retour du réseau.</p>
 
   <h2>🔐 La Content Security Policy (CSP)</h2>
 
@@ -1052,7 +1056,7 @@
     <tbody>
       <tr>
         <td><strong>localStorage</strong></td>
-        <td>Préférences (debugMode, perfPreset, unlock gate, alertes acquittées, paranoia…)</td>
+        <td>Préférences (debugMode, perfPreset, unlock gate, alertes acquittées…)</td>
         <td>F12 → Application → Local Storage</td>
       </tr>
       <tr>

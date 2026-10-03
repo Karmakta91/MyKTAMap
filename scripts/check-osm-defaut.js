@@ -138,20 +138,18 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
   /\.kta-osm-defaut-txt"\)\.textContent = t\("osm_home\.defautOn\.corps"\)/.test(HOME));
 
 // ═════════ 5. LES BLOQUANTS RESTENT PRIORITAIRES ═════════
-// 🩸 Hors-ligne strict et incognito sont des PROMESSES : un défaut ON ne doit
-// pas passer devant. Ils sont testés APRÈS l'opt-in dans mount(), donc leur
-// ordre relatif est ce qui compte.
+// 🩸 L'incognito est une PROMESSE : un défaut ON ne doit pas passer devant.
+// Il est testé APRÈS l'opt-in dans mount(), donc l'ordre relatif est ce qui
+// compte.
 {
-  // 🩸 Chercher `_isStrictOfflineOn()` dans TOUT le fichier trouvait sa
-  // DÉFINITION (ligne 465), toujours placée avant `mount()` : l'assertion
-  // était vraie par construction, quel que soit l'ordre réel des tests. On
-  // borne donc la recherche au corps de mount(), après le test d'opt-in.
+  // 🩸 Chercher la garde dans TOUT le fichier trouvait sa DÉFINITION,
+  // toujours placée avant `mount()` : l'assertion était vraie par
+  // construction, quel que soit l'ordre réel des tests. On borne donc la
+  // recherche au corps de mount(), après le test d'opt-in.
   const iOpt = HOME.indexOf("if (!_isOptedIn()) {");
   const corps = iOpt > 0 ? HOME.slice(iOpt) : "";
   t("le test d'opt-in est trouvable dans mount()", iOpt > 0);
-  t("🔒 le mode hors-ligne strict bloque toujours le widget, APRÈS l'opt-in",
-    corps.indexOf("if (_isStrictOfflineOn()) {") > 0);
-  t("🔒 le mode incognito aussi",
+  t("🔒 le mode incognito bloque toujours le widget, APRÈS l'opt-in",
     corps.indexOf("if (_isIncognitoOn()) {") > 0);
 }
 
@@ -310,9 +308,8 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
 // VÉCU (KARMA, une heure après la mise en place) : « le panneau que tu as
 // rajouté ne s'affiche qu'une fois qu'il a fait un premier affichage — pas
 // dans le cas “aucun plan géoréférencé” ».
-// 🩸 Exact : il n'était posé que dans le dernier cas de `mount()`. Les quatre
-// chemins qui sortent AVANT (hors-ligne strict, incognito, hors-ligne, aucun
-// plan géoréférencé) écrivaient leur message et rentraient — le défaut n'était
+// 🩸 Exact : il n'était posé que dans le dernier cas de `mount()`. Les
+// chemins qui sortent AVANT (incognito, hors-ligne, aucun plan géoréférencé) écrivaient leur message et rentraient — le défaut n'était
 // donc annoncé qu'à ceux qui voyaient déjà la carte. Or il est ACTIF dans tous
 // ces états : il attend seulement que la condition tombe.
 //

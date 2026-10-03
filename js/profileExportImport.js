@@ -12,7 +12,7 @@
 // Remplace l'ancien "export liste de plans" (myktamap-plans-list) par un
 // vrai export de PROFIL UTILISATEUR comprenant :
 //   - Liste des plans (registry, méta seulement — pas les ZIPs binaires)
-//   - Préférences utilisateur (app_user_prefs + theme + paranoia + ...)
+//   - Préférences utilisateur (app_user_prefs + theme + ...)
 //   - Favoris (toutes les listes par plan)
 //   - Sessions actives (slots `myktamap_session_v1_<planId>`)
 //   - 📔 Le Carnet (IDB `myktamap_journal` > `sorties`) — 🆕 v1.74.0, coché
@@ -69,7 +69,6 @@
   const PREF_KEYS = [
     "app_user_prefs",
     "myktamap_theme_v1",
-    "myktamap_network_paranoia_v1",
     "myktamap_planner_mode",
     "myktamap_freehand_prefs_v1",
     "myktamap_loader_show_server_plans",

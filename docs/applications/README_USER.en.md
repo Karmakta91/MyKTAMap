@@ -1098,7 +1098,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **💾 Store the map in the app on first load** (on);
   - **🕵️ Incognito mode**: opens a new window where nothing is saved;
   - **🔐 Local access code** (PIN, Face ID): see “🔭 Going further”;
-  - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?**, **strict offline mode** and the **🗺️ OSM view** box (see “🔴 Important warnings”);
+  - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Server maps**: **🚫 Don't load server maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
@@ -1328,17 +1328,6 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 **Changing or disabling**: same section, **✏️ Change code** or **🔓 Disable**, after confirming with biometrics or the current code.
 
 **5 wrong codes in a row** lock the app **temporarily**: 10 min, then 1 h, 6 h and 24 h with each new series. A countdown is shown and the keypad comes back by itself when the delay is over; a correct code resets everything. Failed biometric attempts do not count. A forgotten code cannot be recovered: only clearing the site's data in the browser settings lifts the lock, and it erases everything (maps, sessions, logbook).
-
-### 🔒 Strict offline mode
-
-In the home screen's **⚙️ Configuration** → **🔒 Privacy & Audit**, the **🔒 Strict offline mode** box makes **the browser block** any request to a site other than the app's own, before it reaches the network.
-
-- A **🔒 STRICT OFFLINE MODE ACTIVE** badge appears at the bottom of the home screen; clicking it opens the configuration so you can turn it off.
-- The app works normally: annotations, tracker, itinerary, exports, multi-level…
-- What depends on an outside service is cut off: the **OSM View** (OpenStreetMap map) and the GPS position button that goes with it.
-- The choice is kept until you untick it or do a full reset.
-
-Even without this mode, the app sends none of your data to a server; strict mode adds **active blocking** by the browser. To check it yourself, **📋 View the network log** in the same section lists every request made.
 
 ### 🚑 Rescue mode — coordinating a search
 

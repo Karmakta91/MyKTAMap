@@ -893,7 +893,7 @@ window.StatsGlobales.renderPieChart(data, category, size)
 2. **Home `refreshPlansList`** : le toggle "Afficher les plans serveur" est masqué (`display: none`) ET son state forcé à `false` (filtre l'affichage si le registre contient des plans serveur résiduels d'une session précédente)
 3. **Stats agrégées Profil** : la boucle `for (const p of plans)` skip les `p.type === "server"`
 
-**Use case** : utilisateurs offline-only ou paranoia totale (cf §40) qui ne veulent JAMAIS de fetch automatique au boot. La pref est lue très tôt (avant `decouvrirPlansServeur`), donc aucun fetch parasite même au tout premier boot après activation.
+**Use case** : utilisateurs offline-only ou soucieux de leur trafic (cf security-legal §40) qui ne veulent JAMAIS de fetch automatique au boot. La pref est lue très tôt (avant `decouvrirPlansServeur`), donc aucun fetch parasite même au tout premier boot après activation.
 
 **À NE PAS faire** : lire `_loaderSkipServerPlans()` après `decouvrirPlansServeur` a déjà tourné — c'est trop tard, le registre est rempli. Toujours check AVANT d'appeler la découverte.
 

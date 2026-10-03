@@ -11718,9 +11718,10 @@ body.kta-multilevel-active .kta-compass-widget {
    🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
    ================================================================== */
 
-/* Toggle "Mode hors-ligne strict" dans la section Confidentialité de
-   la modale Configuration du loader. Pattern label+checkbox cohérent
-   avec les autres toggles (debug, perfPreset, etc.). */
+/* Case à cocher générique de la modale Configuration du loader (label +
+   checkbox + texte) : Vue OSM, plans serveur, rejeu, heatmap, batterie,
+   vibration, import/export… Le nom historique est conservé : la classe est
+   réutilisée par une dizaine de cases (index.html, interfaceImportExport.js). */
 .kta-net-paranoia-toggle {
   display: flex;
   align-items: flex-start;
@@ -11762,41 +11763,6 @@ body.kta-multilevel-active .kta-compass-widget {
   word-break: break-word;
 }
 
-/* Badge "MODE HORS-LIGNE STRICT" dans le footer du loader (visible
-   seulement quand paranoia ON). Cliquable → ouvre Configuration.
-
-   🆕 v1.8.0 fix : ajout box-sizing:border-box. Sans ça, `<div>` est en
-   content-box par défaut (les `<button>` héritent border-box du user-agent
-   stylesheet mais pas les `<div>`), donc width:100% + padding 10/14 +
-   border 1px = 100% + 30px → débordement de 30px à droite hors du
-   #planLoaderBox parent. */
-.kta-net-paranoia-badge {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 8px 0 12px 0;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(255, 149, 0, 0.18), rgba(255, 149, 0, 0.08));
-  border: 1px solid rgba(255, 149, 0, 0.5);
-  border-radius: 8px;
-  color: #ffb380;
-  font-weight: 600;
-  font-size: 13px;
-  text-align: center;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  user-select: none;
-  animation: kta-paranoia-pulse 2.4s ease-in-out infinite;
-}
-.kta-net-paranoia-badge:hover {
-  background: linear-gradient(135deg, rgba(255, 149, 0, 0.28), rgba(255, 149, 0, 0.14));
-  border-color: rgba(255, 149, 0, 0.75);
-  color: #ffc89a;
-}
-@keyframes kta-paranoia-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.4); }
-  50%      { box-shadow: 0 0 8px 2px rgba(255, 149, 0, 0.22); }
-}
 
 /* ─────────────────────────────────────────────────────────────────
    Modale 📋 Journal réseau (live) — #loaderNetLogModal
@@ -11896,7 +11862,6 @@ body.kta-multilevel-active .kta-compass-widget {
 .kta-net-status-ok      { color: #a8d4a8; }
 .kta-net-status-err     { color: #ff8c8c; }
 .kta-net-status-pending { color: #8892a4; }
-.kta-net-status-blocked { color: #ff9500; }
 
 .kta-net-body-yes {
   display: inline-block;
@@ -11917,13 +11882,6 @@ body.kta-multilevel-active .kta-compass-widget {
   border-radius: 4px;
   font-weight: 500;
   font-size: 10px;
-}
-
-.kta-net-row-blocked {
-  background: rgba(255, 149, 0, 0.08) !important;
-}
-.kta-net-row-blocked td {
-  border-left: 3px solid #ff9500;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -15215,7 +15173,7 @@ body.kta-theme-light .kta-legende-modal-boite {
  * Lève la restriction "mode carte uniquement" → le thème clair s'applique
  * désormais à : body, loader plein écran (#planLoaderOverlay + Box), home
  * cards (Mes plans, Récents, Reprendre), boutons home, modale Config home,
- * modale Audit réseau (NetDoc + NetLog), drawer perf, toggles paranoia,
+ * modale Audit réseau (NetDoc + NetLog), drawer perf, cases .kta-net-paranoia-toggle,
  * inputs file, status messages.
  *
  * Le splash KARMA animé est volontairement laissé en dark (cinématique de
@@ -15376,7 +15334,7 @@ body.kta-theme-light .kta-aide-section-titre {
 body.kta-theme-light .kta-loader-perf-hint {
   color: var(--kta-light-text-muted);
 }
-/* === Toggles checkbox (paranoia / legacy / showInter / themeLight) === */
+/* === Cases à cocher de la Configuration (.kta-net-paranoia-toggle) === */
 body.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
@@ -15439,11 +15397,6 @@ body.kta-theme-light #loaderNetDocWhitelist {
 }
 body.kta-theme-light #loaderNetLogMeta {
   color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light #loaderParanoiaBadge {
-  background: rgba(220, 50, 50, 0.15) !important;
-  color: #b02020 !important;
-  border: 1px solid rgba(220, 50, 50, 0.4) !important;
 }
 
 /* === Petites modales système (Force update / plan introuvable / yes-no) === */
@@ -16904,11 +16857,6 @@ html.kta-theme-light #loaderNetDocWhitelist {
 }
 html.kta-theme-light #loaderNetLogMeta {
   color: #6b6354 !important;
-}
-html.kta-theme-light #loaderParanoiaBadge {
-  background: rgba(220, 50, 50, 0.15) !important;
-  color: #b02020 !important;
-  border: 1px solid rgba(220, 50, 50, 0.4) !important;
 }
 
 /* === Modale Choix suppression (apparaît sur clic ❌ Mesure, ❌ Tracé, etc.) === */

@@ -678,7 +678,6 @@ chargement (badge clignotant en bas de la home).
 | L'app ne détecte pas les nouvelles versions | `version.json` est caché par un proxy ou par le SW lui-même | Vérifier la directive `location ~ ^/(version|alert|Licence-pro)\.json$` de §5.1 |
 | Erreur 404 sur `/sw.js` | Le SW est à la **racine** du site (volontaire), vérifier que `/var/www/myktamap/sw.js` existe | `ls -l /var/www/myktamap/sw.js` |
 | Tuiles de plan ne s'affichent pas | Blob URLs bloquées par la CSP | `img-src 'self' data: blob:` et `worker-src 'self' blob:` (déjà dans la conf fournie) |
-| Le mode hors-ligne strict bloque tout | Désactivable depuis ⚙️ Configuration loader → 🔒 Mode hors-ligne strict | C'est un opt-in user, pas la conf serveur |
 
 ---
 

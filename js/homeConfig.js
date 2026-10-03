@@ -987,7 +987,7 @@
 
       // 🆕 v1.43.13 — Auto-heal silencieux du cache SW. Tire ~5s après le
       // boot pour laisser le SW finir son install. Garde-fous internes
-      // (online, SW ready, pas incognito/strict-offline, 1x par session,
+      // (online, SW ready, pas incognito, 1x par session,
       // cap 100 fetches). Output en console uniquement, pas de toast user.
       // Concept : si l'install initial a foiré sur 44 assets, l'user n'a
       // plus à le savoir — le cache se répare tout seul au prochain boot.
@@ -1316,46 +1316,13 @@
       // ═══════════════════════════════════════════════════════════════
       // 🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
       // ═══════════════════════════════════════════════════════════════
-      // 3 boutons + 1 toggle dans la section "🔒 Confidentialité & Audit"
-      // de la modale Configuration :
+      // Section "🔒 Confidentialité & Audit" de la modale Configuration :
       //   - 📋 Voir le journal réseau → ouvre #loaderNetLogModal (live)
       //   - 📖 Que fait l'app sur le réseau ? → ouvre #loaderNetDocModal
-      //   - 🔒 Mode hors-ligne strict → toggle window.NetworkAudit
-      //
-      // Le badge "MODE HORS-LIGNE STRICT" dans le footer est mis à jour via
-      // window._kta_majBadgeParanoia (appelé par NetworkAudit.setParanoia).
+      //   - 🗺️ Vue OSM → OsmView.setOptedIn (seul accès à un tiers :
+      //     le fond de carte OpenStreetMap)
 
-      // ── Helper : maj du badge paranoia + sync checkbox ──────────────
-      window._kta_majBadgeParanoia = function() {
-        const isOn = !!(window.NetworkAudit && window.NetworkAudit.isParanoia());
-        const badge = document.getElementById("loaderParanoiaBadge");
-        if (badge) badge.style.display = isOn ? "block" : "none";
-        const cb = document.getElementById("loaderNetParanoiaCb");
-        if (cb) cb.checked = isOn;
-      };
-
-      // ── Init : sync checkbox + badge depuis l'état actuel ───────────
-      try { window._kta_majBadgeParanoia(); } catch(e) {}
-
-      // ── Badge cliquable → ouvre la modale Configuration ─────────────
-      const paranoiaBadge = document.getElementById("loaderParanoiaBadge");
-      if (paranoiaBadge) {
-        paranoiaBadge.addEventListener("click", function() {
-          _ouvrirLoaderConfig();
-        });
-      }
-
-      // ── Toggle "🔒 Mode hors-ligne strict" ──────────────────────────
-      const paranoiaCb = document.getElementById("loaderNetParanoiaCb");
-      if (paranoiaCb) {
-        paranoiaCb.addEventListener("change", function() {
-          if (window.NetworkAudit) {
-            window.NetworkAudit.setParanoia(paranoiaCb.checked);
-          }
-        });
-      }
-
-      // 🆕 v1.39.0 — Toggle "🗺️ Autoriser la Vue OSM"
+      // Toggle "🗺️ Autoriser la Vue OSM"
       const osmOptInCb = document.getElementById("loaderOsmOptInCb");
       if (osmOptInCb && window.OsmView) {
         osmOptInCb.checked = window.OsmView.isOptedIn();
@@ -1459,8 +1426,7 @@
           // sur le .md et qu'il n'est pas (encore) dans le cache, le SW
           // servirait le splash index.html à la place → confusion totale
           // pour l'user. Le .html est dans ASSETS_TO_CACHE depuis v1.8.0
-          // donc toujours dispo offline. Path same-origin → passe la CSP
-          // et le mode paranoia.
+          // donc toujours dispo offline. Path same-origin → passe la CSP.
           window.open("docs/applications/NETWORK_AUDIT.html", "_blank", "noopener,noreferrer");
         });
       }

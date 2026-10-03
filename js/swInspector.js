@@ -500,10 +500,9 @@
   // Conditions cumulatives requises :
   //   1. navigator.onLine === true (pas en mode avion)
   //   2. Service Worker controller actif (= app contrôlée)
-  //   3. Pas en Mode hors-ligne strict (NetworkAudit)
-  //   4. Pas en Mode incognito
-  //   5. Pas déjà tiré cette session (sessionStorage anti-spam)
-  //   6. Cap à 100 fetches max pour ne pas DDoS-er le serveur sur cache cassé
+  //   3. Pas en Mode incognito
+  //   4. Pas déjà tiré cette session (sessionStorage anti-spam)
+  //   5. Cap à 100 fetches max pour ne pas DDoS-er le serveur sur cache cassé
   //
   // Output : console only (pas de toast user-visible). Si tu veux voir le
   // résultat, ouvre la console ou la modale Inspecteur SW.
@@ -586,14 +585,6 @@
       console.log("[SwInspector] auto-heal skipped : offline");
       return { skipped: true, reason: "offline" };
     }
-    // Garde-fous : pas en mode strict offline (paranoia user)
-    try {
-      if (window.NetworkAudit && window.NetworkAudit.isStrictOfflineEnabled
-          && window.NetworkAudit.isStrictOfflineEnabled()) {
-        console.log("[SwInspector] auto-heal skipped : strict offline actif");
-        return { skipped: true, reason: "strict_offline" };
-      }
-    } catch(e) {}
     // Garde-fous : pas en incognito (= aucun fetch sortant)
     try {
       if (window.IncognitoMode && window.IncognitoMode.isActive

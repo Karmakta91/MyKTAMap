@@ -5308,8 +5308,8 @@
   // 🆕 v1.40.33 (Synergie A v1) ─────────────────────────────────
   // Ouverture de la Vue OSM depuis le Mode Secours (bouton "🌍 Vue OSM"
   // dans les bandeaux PLAN ACTIF et PLAN TERMINÉ). Réutilise complètement
-  // window.OsmView (osmView.js) : gating natif (opt-in, strict offline,
-  // incognito, navigateur online), modale plein écran, POI/roads/zones du
+  // window.OsmView (osmView.js) : gating natif (opt-in, incognito,
+  // navigateur online), modale plein écran, POI/roads/zones du
   // plan automatiquement projetés sur OpenStreetMap.
   //
   // En cas d'indisponibilité : toast diagnostique précis pour guider l'user
@@ -5338,17 +5338,12 @@
       // on tag la raison explicitement.
       if (!hasInline && (!window.OsmView.isAvailable || !window.OsmView.isAvailable())) {
         // On laisse OsmView.isAvailable trancher pour les autres cas (opt-in,
-        // strict, incognito, online). Ce branch couvre juste "pas georef du tout".
+        // incognito, online). Ce branch couvre juste "pas georef du tout".
         reasons.push(t("secours.osm.raisonGeoref"));
       }
       if (window.OsmView.isOptedIn && typeof window.OsmView.isOptedIn === "function"
           && !window.OsmView.isOptedIn()) {
         reasons.push(t("secours.osm.raisonOptin"));
-      }
-      if (window.NetworkAudit
-          && typeof window.NetworkAudit.isStrictOfflineEnabled === "function"
-          && window.NetworkAudit.isStrictOfflineEnabled()) {
-        reasons.push(t("secours.osm.raisonStrict"));
       }
       if (window.IncognitoMode
           && window.IncognitoMode.isActive
@@ -9091,7 +9086,7 @@
                  // Mode Secours actif. Au clic : ouvre la modale Vue OSM existante
                  // (osmView.js) avec le plan georef projeté sur OpenStreetMap.
                  // Utile pour briefer un secours externe qui ne connaît pas le site.
-                 // Gating natif (opt-in, strict offline, incognito, online) géré par
+                 // Gating natif (opt-in, incognito, online) géré par
                  // OsmView.isAvailable() — voir _ouvrirVueOsmDepuisSecours.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitle")) + '">' +
                    t("secours.bandeau.vueOsm") +
@@ -10983,7 +10978,7 @@
     });
     // 🆕 v1.41.1 — Bouton "🌍 Vue OSM" (commun aux 3 vues Live).
     //    Réutilise _ouvrirVueOsmDepuisSecours qui gère le gating natif
-    //    (opt-in, strict offline, incognito, online, georef présent...).
+    //    (opt-in, incognito, online, georef présent...).
     corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
       btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
     });

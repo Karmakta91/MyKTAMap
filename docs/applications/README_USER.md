@@ -1098,7 +1098,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **💾 Mémoriser le plan dans l'app au premier chargement** (activé) ;
   - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre où rien n'est enregistré ;
   - **🔐 Code d'accès local** (PIN, Face ID) : voir « 🔭 Pour aller plus loin » ;
-  - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?**, le **mode hors-ligne strict** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») ;
+  - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
   - **📚 Plans serveur** : **🚫 Ne pas charger les plans serveur au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
@@ -1328,17 +1328,6 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 **Modifier ou désactiver** : même section, **✏️ Modifier le code** ou **🔓 Désactiver**, après validation par biométrie ou par le code actuel.
 
 **5 codes faux à la suite** verrouillent l'app **temporairement** : 10 min, puis 1 h, 6 h et 24 h à chaque nouvelle série. Un compte à rebours s'affiche et le pavé revient seul à la fin du délai ; un code juste remet tout à zéro. Les échecs de biométrie ne comptent pas. Un code oublié ne se récupère pas : seul l'effacement des données du site dans les réglages du navigateur lève le verrou, et il efface tout (plans, sessions, carnet).
-
-### 🔒 Mode hors-ligne strict
-
-Dans **⚙️ Configuration** de l'accueil → **🔒 Confidentialité & Audit**, la case **🔒 Mode hors-ligne strict** fait **bloquer par le navigateur** toute requête vers un autre site que celui de l'app, avant qu'elle n'atteigne le réseau.
-
-- Un badge **🔒 MODE HORS-LIGNE STRICT ACTIF** s'affiche en bas de l'accueil ; un clic dessus ouvre la configuration pour le désactiver.
-- L'app fonctionne normalement : annotations, tracker, itinéraire, exports, multi-niveau…
-- Ce qui dépend d'un service extérieur est coupé : la **Vue OSM** (carte OpenStreetMap) et le bouton de position GPS qui l'accompagne.
-- Le choix est conservé jusqu'à ce que tu le décoches ou fasses un reset complet.
-
-Sans ce mode, l'app n'envoie déjà aucune de tes données à un serveur ; le mode strict ajoute un **blocage actif** par le navigateur. Pour le vérifier toi-même, **📋 Voir le journal réseau** dans la même section liste chaque requête émise.
 
 ### 🚑 Mode Secours — coordonner une recherche
 

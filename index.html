@@ -553,14 +553,6 @@
 
       <div id="loaderStatus"></div>
 
-      <!-- 🆕 v1.8.0 : badge "MODE HORS-LIGNE STRICT" visible seulement quand
-           NetworkAudit.isParanoia() === true. Rappel persistant à l'user que
-           toute requête sortante non whitelistée est bloquée. Cliquable →
-           ouvre ⚙️ Configuration pour aller décocher le toggle. -->
-      <div id="loaderParanoiaBadge" class="kta-net-paranoia-badge" style="display:none;" data-i18n-title="home.privacy.badgeTitle" title="Cliquer pour ouvrir la configuration et désactiver" data-i18n="home.privacy.badge">
-        🔒 MODE HORS-LIGNE STRICT ACTIF
-      </div>
-
       <!-- Mention copyright + licence (visible côté utilisateur).
            v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
            retirée — elle reste présente dans les headers copyright des
@@ -915,12 +907,12 @@
              Trois actions :
                1. 📋 Voir le journal réseau live (modale buffer)
                2. 📖 Que fait l'app sur le réseau ? (modale doc + lien doc/NETWORK_AUDIT.md)
-               3. 🔒 Mode hors-ligne strict (toggle paranoia opt-in)
+               3. 🗺️ Vue OSM (seul accès à un tiers : le fond de carte OpenStreetMap)
              Cf. docs/NETWORK_AUDIT.md pour la doc complète.
 
              ⚠️ Ordre v1.8.0 (suite KARMA) : Confidentialité avant Force update
              et avant Reset. Logique narrative : actions douces / informatives
-             d'abord (audit, mode strict), puis actions de purge progressive
+             d'abord (audit, Vue OSM), puis actions de purge progressive
              (Force update = cache PWA uniquement, Reset = tout). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
@@ -933,15 +925,11 @@
           <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" data-i18n="home.privacy.netDocBtn">
             📖 Que fait l'app sur le réseau ?
           </button>
+          <!-- Case "Vue OSM" (autorise tile.openstreetmap.org, seul tiers que
+               l'app contacte). Cochée par défaut depuis v1.90.2 ; décochée,
+               ni le widget de l'accueil ni la modale Vue OSM ne chargent de
+               tuile (cf js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
-            <input type="checkbox" id="loaderNetParanoiaCb">
-            <span data-i18n-html="home.privacy.strictToggle"><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
-          </label>
-          <!-- 🆕 v1.39.0 — Toggle opt-in "Vue OSM" (autorise tile.openstreetmap.org).
-               Par défaut OFF (philosophie 100% offline préservée). Si activé,
-               un bouton "🌍 Vue OSM" apparaît dans la status bar des plans
-               georef-calibrés (cf js/osmView.js). -->
-          <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
             <input type="checkbox" id="loaderOsmOptInCb">
             <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — affiche tes plans calibrés GPS au-dessus d'une carte du monde. Contacte <code>tile.openstreetmap.org</code> dès que le widget de l'accueil ou la modale Vue OSM s'affiche. <strong>Activé par défaut</strong> depuis la v1.90.2 ; décoché, il le reste (aucune mise à jour ne revient dessus).</span>
           </label>
@@ -1119,7 +1107,7 @@
 
   <!-- 🆕 v1.8.0 : Modale "📖 Que fait l'app sur le réseau ?" — doc inline
        qui explique le modèle PWA, liste la whitelist, explique comment
-       vérifier soi-même (F12 + paranoia). Pointe aussi vers
+       vérifier soi-même (journal + F12). Pointe aussi vers
        docs/NETWORK_AUDIT.md pour la version longue. -->
   <div id="loaderNetDocModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-doc-boite">
@@ -1148,7 +1136,7 @@
           <ol class="kta-net-doc-ol">
             <li data-i18n-html="home.netdoc.verify1"><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
             <li data-i18n-html="home.netdoc.verify2"><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
-            <li data-i18n-html="home.netdoc.verify3"><strong>Mode hors-ligne strict</strong> : coche le toggle dans la même section. Le navigateur refusera activement toute requête non-whitelistée — l'app reste 100% fonctionnelle.</li>
+            <li data-i18n-html="home.netdoc.verify3"><strong>Un seul site extérieur</strong> : le fond de carte OpenStreetMap de la Vue OSM (<code>tile.openstreetmap.org</code>). Décoche la case « 🗺️ Vue OSM » dans la même section (ou passe en mode incognito) : l'app ne contacte plus que son propre serveur — le journal et F12 te le montrent.</li>
             <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée : seuls le site lui-même et le fond de carte OpenStreetMap sont autorisés.</li>
           </ol>
         </div>

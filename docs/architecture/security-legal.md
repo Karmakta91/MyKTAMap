@@ -152,7 +152,7 @@ Module de transparence + vérifiabilité construit pour répondre à la méfianc
 
 #### 40.1 Architecture
 
-Module IIFE `js/networkAudit.js` (~350 lignes) chargé **EN DEUXIÈME** dans l'ordre des scripts (juste après `copyright.js` qui ne fait que `console.log`, et **avant tout module qui fait du fetch**). Ordre critique : si on inverse avec `debug.js` ou plus, les premiers `fetch()` passent sous le radar.
+Module IIFE `js/networkAudit.js` (~400 lignes) chargé **EN DEUXIÈME** dans l'ordre des scripts (juste après `copyright.js` qui ne fait que `console.log`, et **avant tout module qui fait du fetch**). Ordre critique : si on inverse avec `debug.js` ou plus, les premiers `fetch()` passent sous le radar.
 
 Mécanisme : monkey-patch des 5 API réseau du navigateur AVANT que tout autre code ne puisse les appeler :
 - `window.fetch`
@@ -161,26 +161,26 @@ Mécanisme : monkey-patch des 5 API réseau du navigateur AVANT que tout autre c
 - `WebSocket` (constructor wrapper)
 - `EventSource` (constructor wrapper)
 
-Chaque appel est :
-1. Loggué dans un **buffer circulaire de 500 entries** (RAM uniquement, pas localStorage)
-2. Vérifié contre une **whitelist hardcodée**
-3. Si paranoia ON + non-whitelisté → **bloqué AVANT d'atteindre le réseau** (Promise reject pour fetch, throw pour XHR/WS/SSE, return false pour sendBeacon)
+Chaque appel est **loggué** dans un **buffer circulaire de 500 entries** (RAM uniquement, pas localStorage), puis part normalement. **Le module observe, il ne bloque rien.**
 
-#### 40.2 Whitelist (visible côté UI)
+⚠️ Angle mort assumé : les images posées par Leaflet (`<img>` des tuiles OSM de la Vue OSM) ne passent par aucune de ces API — elles n'apparaissent pas dans le journal, seulement dans F12 → Réseau. La doc utilisateur (NETWORK_AUDIT) le dit.
 
-2 entrées hardcodées dans `WHITELIST_PATTERNS` (array de fonctions `(url) => boolean`) :
+**Pas de mode de blocage côté client.** Le seul tiers que l'app contacte est `tile.openstreetmap.org` (Vue OSM) ; il se coupe par la case 🗺️ Vue OSM (`OsmView.isOptedIn`, clé `myktamap_osm_view_opt_in`) et par le mode incognito (`IncognitoMode.isActive()`). Un ancien « mode hors-ligne strict » (interception + rejet des requêtes non same-origin) a été retiré : il ne coupait en pratique que le préchargement des tuiles OSM (`osmTilesCache.js`, seul `fetch` cross-origin), ses autres gardes appelaient une fonction jamais définie. Ne pas le réintroduire sans un besoin qu'un `<img>` ne contourne pas.
 
-1. **Same-origin** : `new URL(url, location.origin).origin === location.origin` → autorise toute requête vers le domaine de l'app (asset HTTP, version.json, alert.json, data/*, docs/*, …)
-2. **`https://www.gstatic.com/generate_204`** (literal exact) → ping connectivité no-cors, aucune donnée envoyée
+#### 40.2 Origines attendues (visibles côté UI)
 
-`WHITELIST_HUMAN` exposé en string-array lisible affiché dans la modale 📖 Doc audit pour l'user.
+`WHITELIST_HUMAN` (getter, reconstruit dans la langue courante, clés `netaudit.whitelist.*`) liste ce que la modale 📖 Doc audit présente comme origines attendues :
+
+1. **Même origine** : le domaine de l'app (assets, `version.json`, `alert.json`, `data/*`, `docs/*`, `lang/*`), dont le ping santé `<origin>/ping.html`
+2. **`blob:`** : tuiles V2 servies depuis le ZIP en mémoire
+3. **`data:`** : icônes SVG inline, exports
+
+Ce n'est qu'une description : aucune requête n'est filtrée sur cette liste. (Elle ne cite pas OpenStreetMap ; la modale le fait dans la puce `home.netdoc.verify3`.)
 
 #### 40.3 API publique `window.NetworkAudit`
 
 - `getLog()` → `Array<Entry>` (copie immutable du buffer)
 - `clear()` → vide le buffer
-- `setParanoia(boolean)` → toggle + persistance `localStorage["myktamap_network_paranoia_v1"]` + hook `window._kta_majBadgeParanoia` pour le badge footer
-- `isParanoia()` → état actuel
 - `onLog(callback)` → subscribe live, retourne unsubscribe (utilisé par la modale 📋 Journal)
 - `WHITELIST_HUMAN` → array readonly de descriptions
 - `exportJson()` → string JSON formaté (utilisé par bouton 📥 Exporter)
@@ -194,8 +194,7 @@ Chaque appel est :
   method:    "GET",           // ou POST, WS, SSE, etc.
   hasBody:   false,           // true si payload envoyé
   category:  "plan-data",     // ou app-script, ping, external, etc. (cf. _classify)
-  status:    200,             // HTTP status OU "BLOCKED", "FAIL", "OPEN", "SENT"
-  blocked:   false            // true si bloqué par paranoia
+  status:    200              // HTTP status OU "FAIL", "OPEN", "SENT"
 }
 ```
 
@@ -204,9 +203,9 @@ Chaque appel est :
 Section "🔒 Confidentialité & Audit" dans `#loaderConfigModal` avec :
 - Bouton 📋 Voir le journal réseau → modale `#loaderNetLogModal` (tableau live + sticky header + scroll body + boutons 📋 Copier / 📥 Exporter / 🗑️ Vider)
 - Bouton 📖 Que fait l'app sur le réseau ? → modale `#loaderNetDocModal` (lead + whitelist + comment vérifier + CSP + bouton 📄 Ouvrir doc complète → `docs/NETWORK_AUDIT.md`)
-- Toggle 🔒 Mode hors-ligne strict (`label.kta-net-paranoia-toggle` avec accent orange)
+- Case 🗺️ Vue OSM (`#loaderOsmOptInCb` → `OsmView.setOptedIn`) — seul accès à un tiers
 
-**Badge `kta-net-paranoia-badge`** dans le footer du loader (`#loaderParanoiaBadge`) : visible uniquement quand paranoia ON, animation pulse douce, cliquable → ouvre la modale Configuration. Helper `window._kta_majBadgeParanoia()` sync le badge + la checkbox depuis l'état NetworkAudit.
+La classe `.kta-net-paranoia-toggle` (nom historique) est la case à cocher générique de toute la modale Configuration, pas seulement de cette section.
 
 ⚠️ **Pas de section dans la modale ⚙️ Réglages in-app (map mode)** — décision KARMA : tout réglage sensible reste dans le loader. Cohérent avec la refonte v1.7.3 (cf. §39).
 
@@ -225,22 +224,15 @@ Section "🔒 Confidentialité & Audit" dans `#loaderConfigModal` avec :
 | `version-check` | `/version.json` | jaune |
 | `alert-check` | `/alert.json` | orange |
 | `doc` | `.md` | gris clair |
-| `ping` | `gstatic.com/generate_204` | gris |
+| `ping` | `<origin>/ping.html` | gris |
 | `external` | autre origine | rouge |
 | `same-origin` | autre same-origin | bleu clair |
+| `local-blob` / `local-data` | `blob:` / `data:` | gris |
 | `unknown` | erreur de parsing URL | gris |
 
-Aide visuelle pour repérer rapidement les anomalies dans le journal (toute catégorie `external` autre que `ping` devrait alarmer).
+Aide visuelle pour repérer rapidement les anomalies dans le journal (toute catégorie `external` devrait alarmer — seul le préchargement « 💾 Save Offline » de tuiles OSM en produit légitimement).
 
-#### 40.6 Mode paranoia — comportements précis
-
-- **fetch** : reject avec `Error("[NetworkAudit] Bloqué par le mode hors-ligne strict : <url>")`
-- **XHR** : throw même erreur dans `.send()` (le caller reçoit une exception synchrone)
-- **sendBeacon** : retourne `false` (compat API native)
-- **WebSocket** : throw dans le constructor wrapper
-- **EventSource** : throw dans le constructor wrapper
-
-Persistance : `localStorage["myktamap_network_paranoia_v1"] = "1"` quand actif. Pas de fallback si localStorage indisponible (incognito strict) → paranoia OFF par défaut.
+#### 40.6 Nouvelles API réseau
 
 ⚠️ Si on ajoute un nouveau type d'API réseau (genre WebTransport, RTCPeerConnection) **il faut l'instrumenter** dans `networkAudit.js`, sinon il passe sous le radar.
 
@@ -294,20 +286,20 @@ Page de transparence détaillée (~300 lignes) servie en static depuis le SW (aj
 - Modèle technique (PWA pure)
 - Liste blanche commentée
 - Comment vérifier toi-même (3 méthodes : journal interne / F12 / lecture source)
-- Mode paranoia détaillé
+- Couper le seul tiers (case 🗺️ Vue OSM) + pourquoi il n'y a plus de « mode hors-ligne strict »
 - CSP expliqué
 - Position de l'auteur
 
-Accessible via le bouton 📄 dans la modale 📖 Doc audit (s'ouvre dans un nouvel onglet `noopener,noreferrer`, path same-origin donc OK même en mode paranoia).
+Accessible via le bouton 📄 dans la modale 📖 Doc audit (s'ouvre dans un nouvel onglet `noopener,noreferrer`, path same-origin, passe la CSP).
 
 #### 40.9 Pour ajouter une nouvelle URL à la whitelist (futur)
 
 Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Inter, un service de tuiles cartographiques) :
 
-1. Ajouter le pattern dans `WHITELIST_PATTERNS` (tableau de fonctions)
-2. Ajouter une ligne dans `WHITELIST_HUMAN` (description lisible)
-3. Ajouter dans `docs/NETWORK_AUDIT.md` (tableau de la liste blanche complète)
-4. Ajouter dans `docs/nginx-csp-config.conf` (directive `connect-src`)
+1. Ajouter une ligne dans `WHITELIST_HUMAN` (description lisible, clés `netaudit.whitelist.*` ×3 langues)
+2. Ajouter dans `docs/applications/NETWORK_AUDIT.md` + `.html` (tableau de la liste blanche complète)
+3. Ajouter dans `docs/nginx-csp-config.conf` (directive `connect-src`, et `img-src` si chargé en image)
+4. Prévoir une case qui le coupe (modèle : 🗺️ Vue OSM) et le couper en incognito
 5. **Bumper la version** (transparence : un changement de liste blanche = changement de surface réseau, l'user doit pouvoir comparer avant/après)
 
 ⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
@@ -1002,8 +994,6 @@ intercepte de toute façon les écritures.
     trace pré-incognito lue". Pas de whitelist défensive "au cas où".
 - ❌ **Service Worker fetch handler** n'est pas affecté. Les assets statiques
   cachés sont servis depuis le cache → c'est OK, pas des données utilisateur.
-  Mais si un mode "Hors-ligne strict paranoia" était combiné avec incognito, il
-  faudrait vérifier l'interaction.
 - ❌ **Crashes IDB silencieux** : un module qui attend une vraie écriture (ex:
   Mode Secours qui sauvegarde une photo opérationnelle) verra l'opération
   "réussir" mais la photo aura disparu au reload. UX potentiellement piégeuse →
