@@ -183,14 +183,14 @@ When a new version exists and you have a connection, the app offers to update.
 
 ## 🆘 In an emergency underground
 
-> 🧭 **Where to start, depending on your situation:**
->
-> | Your situation | The tool | Where to find it |
-> |---|---|---|
-> | I want to **get out as fast as possible** | 🚨 Emergency exit | 🚨 button in the top bar |
-> | I know where I am, but I am panicking: I need **my position and heading in very large print** | 🚨 Emergency mode — XL display | 🧭 Tracker menu, red button |
-> | **I no longer know where I am** | ⛑️ I'm lost | 🧭 Tracker menu, orange button |
-> | **Someone else is lost**, I am coordinating teams | 🚑 Rescue Mode | 🔭 Going further › 🚑 Rescue Mode |
+🧭 **Where to start, depending on your situation:**
+
+| Your situation | The tool | Where to find it |
+|---|---|---|
+| I want to **get out as fast as possible** | 🚨 Emergency exit | 🚨 button in the top bar |
+| I know where I am, but I am panicking: I need **my position and heading in very large print** | 🚨 Emergency mode — XL display | 🧭 Tracker menu, red button |
+| **I no longer know where I am** | ⛑️ I'm lost | 🧭 Tracker menu, orange button |
+| **Someone else is lost**, I am coordinating teams | 🚑 Rescue Mode | 🔭 Going further › 🚑 Rescue Mode |
 
 ### 🎒 The reflexes, before any tool
 
@@ -250,12 +250,12 @@ These general principles replace neither training nor equipment.
 2. **⏱️ Elapsed time** — from 1 to 90 minutes. Beyond that, the area gets too wide: better to raise the alarm.
 3. **🏃 Assumed walking speed** — the area's radius is speed × time. These speeds are the same as the route's, and your choice is kept on this device.
 
-   | Choice | Speed | Radius for 10 min |
-   |---|---|---|
-   | 🤕 **Injured** — hampered progress | 2 km/h | ~333 m |
-   | 🐌 **Slow** — tight squeezes, exploration | 3 km/h | ~500 m |
-   | 🚶 **Normal** *(default)* | 5 km/h | ~833 m |
-   | 🏃 **Fast** — familiar route | 7 km/h | ~1167 m |
+| Choice | Speed | Radius for 10 min |
+|---|---|---|
+| 🤕 **Injured** — hampered progress | 2 km/h | ~333 m |
+| 🐌 **Slow** — tight squeezes, exploration | 3 km/h | ~500 m |
+| 🚶 **Normal** *(default)* | 5 km/h | ~833 m |
+| 🏃 **Fast** — familiar route | 7 km/h | ~1167 m |
 
 4. **🔮 Visual clues** (optional but very useful) — what you see, separated by commas: *water jug, ram marking, broken shaft*. The app looks for them in the name, description and tags of every point on the map.
 5. Tap **🎯 Compute the zone**.
@@ -1203,7 +1203,7 @@ If the app is provided to you by an installation with its own password (associat
 In this order, keeping your data:
 1. **⚙️ Configuration → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
 2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🆘 Open the Kill SW tool**.
-3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html**. It resets the app and offers **🚀 Reload the app**.
+3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html**. It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 

@@ -183,14 +183,14 @@ Quand une nouvelle version existe et que tu as du réseau, l'app te propose de l
 
 ## 🆘 En cas d'urgence sous terre
 
-> 🧭 **Par où commencer, selon ta situation :**
->
-> | Ta situation | L'outil | Où le trouver |
-> |---|---|---|
-> | Je veux **sortir au plus vite** | 🚨 Sortie d'urgence | bouton 🚨 de la barre du haut |
-> | Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🚨 Mode urgence — Affichage XL | menu 🧭 Tracker, bouton rouge |
-> | **Je ne sais plus où je suis** | ⛑️ Je suis perdu | menu 🧭 Tracker, bouton orange |
-> | **Quelqu'un d'autre est perdu**, je coordonne des équipes | 🚑 Mode Secours | 🔭 Pour aller plus loin › 🚑 Mode Secours |
+🧭 **Par où commencer, selon ta situation :**
+
+| Ta situation | L'outil | Où le trouver |
+|---|---|---|
+| Je veux **sortir au plus vite** | 🚨 Sortie d'urgence | bouton 🚨 de la barre du haut |
+| Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🚨 Mode urgence — Affichage XL | menu 🧭 Tracker, bouton rouge |
+| **Je ne sais plus où je suis** | ⛑️ Je suis perdu | menu 🧭 Tracker, bouton orange |
+| **Quelqu'un d'autre est perdu**, je coordonne des équipes | 🚑 Mode Secours | 🔭 Pour aller plus loin › 🚑 Mode Secours |
 
 ### 🎒 Les réflexes, avant tout outil
 
@@ -250,12 +250,12 @@ Ces principes généraux ne remplacent ni la formation ni l'équipement.
 2. **⏱️ Temps écoulé** — de 1 à 90 minutes. Au-delà, la zone devient trop large : mieux vaut donner l'alerte.
 3. **🏃 Vitesse de marche présumée** — le rayon de la zone vaut vitesse × temps. Ces vitesses sont les mêmes que celles de l'itinéraire, et ton choix est gardé sur cet appareil.
 
-   | Choix | Vitesse | Rayon pour 10 min |
-   |---|---|---|
-   | 🤕 **Blessé** — progression entravée | 2 km/h | ~333 m |
-   | 🐌 **Lente** — étroitures, exploration | 3 km/h | ~500 m |
-   | 🚶 **Normale** *(défaut)* | 5 km/h | ~833 m |
-   | 🏃 **Rapide** — parcours connu | 7 km/h | ~1167 m |
+| Choix | Vitesse | Rayon pour 10 min |
+|---|---|---|
+| 🤕 **Blessé** — progression entravée | 2 km/h | ~333 m |
+| 🐌 **Lente** — étroitures, exploration | 3 km/h | ~500 m |
+| 🚶 **Normale** *(défaut)* | 5 km/h | ~833 m |
+| 🏃 **Rapide** — parcours connu | 7 km/h | ~1167 m |
 
 4. **🔮 Indices visuels** (facultatif mais très utile) — ce que tu vois, séparé par des virgules : *bidon d'eau, épure bélier, puits cassé*. L'app les cherche dans le nom, la description et les tags de tous les points du plan.
 5. Appuie sur **🎯 Calculer la zone**.
@@ -1203,7 +1203,7 @@ Si l'app t'est fournie par une installation qui a son propre mot de passe (assoc
 Dans l'ordre, en gardant tes données :
 1. **⚙️ Configuration → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
 2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🆘 Ouvrir l'outil Kill SW**.
-3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html**. Elle remet l'app à neuf et propose **🚀 Recharger l'app**.
+3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html**. Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
 
 Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos, carnet, préférences). Par précaution, **📤 Exporter mon profil** avant.
 

@@ -167,3 +167,17 @@ Partent ailleurs : enregistrement hors-ligne de la carte OSM et filtre des tags 
 | **L4** | Passe « bruit » (§1, §2) et condensation section par section, doublons (§6) | L |
 
 Chaque lot : FR + EN + ES dans le même commit (règle CLAUDE.md), check-doc-langues vert, smoke `checkup-langues`.
+
+## 9. État (03/10/2026) — lots appliqués
+
+| Lot | Commit | Résultat |
+|---|---|---|
+| L0 | `670b0b0` | F1-F11 corrigées (guide ×3, tutoriel, page « Vérifier toi-même », aide de recherche et « Optimiser », AI_CONTEXT) |
+| L1 | `96dce51` | Restructuration par parcours, déplacements seuls (couverture vérifiée ligne à ligne) |
+| L2 | `f1da7f8` | « Pour aller plus loin » : optionnel (OFF par défaut), Mode Secours, créateurs de plans |
+| L3 | `276b946` | Mode Secours réécrit selon le parcours de l'opérateur (48 k → 19,6 k FR) |
+| L4 | `067f59b` | Passe bruit et condensation, topo et remerciements intacts : FR 241 k → 122 k car. hors blancs |
+| L5 | `c16e3ff` | Trois commentaires de code périmés |
+| Contrôle final | (ce commit) | Affichage vérifié dans un navigateur (fr/en/es) : titres de niveau 5 rendus, tableau de tri et tableau des vitesses sortis de l'encadré / de la liste (le moteur ne les rendait pas — défaut antérieur) ; page de secours décrite justement ; Vue OSM « Default OFF » corrigée dans NETWORK_AUDIT ; erreurs de dictionnaires (coordonnées réelles, « toujours respectées », « 1 PDF », « vs 200 », aide Secours, tutoriel carte 18) |
+
+Ce qui reste ouvert est reporté dans `docs/BACKLOG.md` (« 📚 Guide utilisateur — reliquats »).

@@ -482,8 +482,11 @@ function _renderMarkdown(md) {
   md = md.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
   md = md.replace(/(<\/blockquote>\n?<blockquote>)/g, "<br>");
 
-  // 8. Titres
+  // 8. Titres — jusqu'au niveau 5 : le Mode Secours, rangé sous « Pour aller
+  //    plus loin » (##), descend à ##### (03/10/2026). Sans cette ligne, ses
+  //    titres s'affichaient en brut (« ##### 📝 … »).
   md = md
+    .replace(/^##### (.+)$/gm, "<h5>$1</h5>")
     .replace(/^#### (.+)$/gm, "<h4>$1</h4>")
     .replace(/^### (.+)$/gm,  "<h3>$1</h3>")
     .replace(/^## (.+)$/gm,   "<h2>$1</h2>")

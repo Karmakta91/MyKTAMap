@@ -118,6 +118,17 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
+## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
+
+Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
+
+- 🟠 **Commande vocale : français seulement** — `voiceCommand.js` force `fr-FR` et ses motifs sont en français ; les guides EN/ES le disent désormais. À trancher : la traduire ou l'annoncer comme telle dans l'interface. ✅ vérifié (code lu).
+- 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
+- 🟡 **« 💾 Sauver la note »** écrit en dur en français dans la bulle d'un objet (`utils.js` ~l.962) : EN/ES l'affichent en français.
+- 🟡 **ES** : `lost.modal.titre` dit « Modo emergencia » quand `ui.subaction.*` dit « Modo urgencia ».
+- 🟡 **Aide intégrée** (❓) : non auditée section par section — seules les erreurs croisées pendant la réécriture ont été corrigées.
+- ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
+
 ## 📝 Stratégie doc — à trancher par KARMA
 
 Une source / trois rendus (guide utilisateur, Aide intégrée, contexte IA) + garde-fou pré-commit sur les libellés

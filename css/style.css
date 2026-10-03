@@ -3422,6 +3422,12 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   margin: 14px 0 6px;
 }
 
+.kta-readme-corps h5 {
+  font-size: 13px;
+  color: #c8d0e0;
+  margin: 12px 0 4px;
+}
+
 /* HR — séparateur en dégradé (5:b) */
 .kta-readme-corps hr {
   border: none;
@@ -15533,7 +15539,8 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
-html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h5 {
   color: #1a1612 !important;
 }
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,
@@ -17021,7 +17028,8 @@ body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
-body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h5 {
   color: #1a1612 !important;
 }
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,

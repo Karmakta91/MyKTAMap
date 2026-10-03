@@ -183,14 +183,14 @@ Cuando existe una versión nueva y tienes conexión, la app te propone actualiza
 
 ## 🆘 En caso de emergencia bajo tierra
 
-> 🧭 **Por dónde empezar, según tu situación:**
->
-> | Tu situación | La herramienta | Dónde encontrarla |
-> |---|---|---|
-> | Quiero **salir lo antes posible** | 🚨 Salida de emergencia | botón 🚨 de la barra superior |
-> | Sé dónde estoy, pero me entra el pánico: necesito **mi posición y mi rumbo en muy grande** | 🚨 Modo urgencia — Visualización XL | menú 🧭 Tracker, botón rojo |
-> | **Ya no sé dónde estoy** | ⛑️ Estoy perdido | menú 🧭 Tracker, botón naranja |
-> | **Otra persona está perdida**, coordino equipos | 🚑 Modo Rescate | 🔭 Para ir más lejos › 🚑 Modo Rescate |
+🧭 **Por dónde empezar, según tu situación:**
+
+| Tu situación | La herramienta | Dónde encontrarla |
+|---|---|---|
+| Quiero **salir lo antes posible** | 🚨 Salida de emergencia | botón 🚨 de la barra superior |
+| Sé dónde estoy, pero me entra el pánico: necesito **mi posición y mi rumbo en muy grande** | 🚨 Modo urgencia — Visualización XL | menú 🧭 Tracker, botón rojo |
+| **Ya no sé dónde estoy** | ⛑️ Estoy perdido | menú 🧭 Tracker, botón naranja |
+| **Otra persona está perdida**, coordino equipos | 🚑 Modo Rescate | 🔭 Para ir más lejos › 🚑 Modo Rescate |
 
 ### 🎒 Los reflejos, antes que cualquier herramienta
 
@@ -250,12 +250,12 @@ Estos principios generales no sustituyen ni la formación ni el equipo.
 2. **⏱️ Tiempo transcurrido** — de 1 a 90 minutos. Más allá, la zona se vuelve demasiado amplia: mejor dar la alerta.
 3. **🏃 Velocidad de marcha supuesta** — el radio de la zona es velocidad × tiempo. Son las mismas velocidades que las del itinerario, y tu elección se guarda en este dispositivo.
 
-   | Opción | Velocidad | Radio para 10 min |
-   |---|---|---|
-   | 🤕 **Herido** — progresión dificultada | 2 km/h | ~333 m |
-   | 🐌 **Lenta** — estrechamientos, exploración | 3 km/h | ~500 m |
-   | 🚶 **Normal** *(por defecto)* | 5 km/h | ~833 m |
-   | 🏃 **Rápida** — recorrido conocido | 7 km/h | ~1167 m |
+| Opción | Velocidad | Radio para 10 min |
+|---|---|---|
+| 🤕 **Herido** — progresión dificultada | 2 km/h | ~333 m |
+| 🐌 **Lenta** — estrechamientos, exploración | 3 km/h | ~500 m |
+| 🚶 **Normal** *(por defecto)* | 5 km/h | ~833 m |
+| 🏃 **Rápida** — recorrido conocido | 7 km/h | ~1167 m |
 
 4. **🔮 Indicios visuales** (opcional pero muy útil) — lo que ves, separado por comas: *bidón de agua, boceto de ariete, pozo roto*. La app los busca en el nombre, la descripción y las etiquetas de todos los puntos del plano.
 5. Pulsa **🎯 Calcular la zona**.
@@ -1203,7 +1203,7 @@ Si la app te la proporciona una instalación con su propia contraseña (asociaci
 Por este orden, conservando tus datos:
 1. **⚙️ Configuración → 🔄 Forzar la actualización**: vuelve a descargar la app sin tocar tus planos, sesiones, preferencias ni códigos. Hace falta conexión.
 2. Si la app sigue bloqueada (página en blanco, inicio sin formato): comprueba tu conexión (desactiva tu VPN, cambia de red), y luego **⚙️ Configuración → 🆘 Abrir la herramienta Kill SW**.
-3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html**. Deja la app como nueva y propone **🚀 Recargar la app**.
+3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html**. Vacía la caché de la app **sin tocar tus datos** (planos, sesiones, fotos) y propone **🚀 Recargar la app**.
 
 Estas herramientas no borran **ningún** dato (planos memorizados, sesiones, fotos, cuaderno, preferencias). Por precaución, **📤 Exportar mi perfil** antes.
 

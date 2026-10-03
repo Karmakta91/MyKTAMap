@@ -92,7 +92,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (v1.45.0+, espagnol v1.46.1+) | **Aucune** (fichiers statiques same-origin, **network-first depuis v1.46.5** + **cache-buster `?v=<build>` depuis v1.46.6** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
-| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | **Uniquement** quand la modale **Vue OSM** est ouverte (cf v1.39.0, opt-in strict requis) | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -158,10 +158,10 @@ sous 3 conditions strictes simultanément réunies** :
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
    map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
    masqué côté UI et l'appel n'a aucun moyen de se déclencher.
-2. **L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »** dans
-   ⚙️ Configuration home. **Default OFF**, persisté en `localStorage`
-   sous la clé `myktamap_osm_view_opt_in`. L'utilisateur peut le
-   désactiver à tout moment.
+2. **L'utilisateur n'a pas désactivé la Vue OSM** dans ⚙️ Configuration
+   home. **Active par défaut** (un bandeau le signale au premier usage),
+   persisté en `localStorage` sous la clé `myktamap_osm_view_opt_in` :
+   un refus (« 0 ») est mémorisé et n'est jamais réécrasé.
 3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
    possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
    - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️

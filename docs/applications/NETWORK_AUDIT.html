@@ -336,7 +336,7 @@
       <tr>
         <td><code>https://tile.openstreetmap.org/{z}/{x}/{y}.png</code></td>
         <td><code>GET</code></td>
-        <td><strong>Uniquement</strong> quand la modale <strong>Vue OSM</strong> est ouverte (v1.39.0+, opt-in strict requis)</td>
+        <td>Quand la <strong>Vue OSM</strong> s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. <strong>Active par défaut</strong>, désactivable dans ⚙️ Configuration</td>
         <td>Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS</td>
         <td><strong>Aucune</strong> (cookies omis, juste les coordonnées géographiques <code>{z}/{x}/{y}</code> de la tuile, anonymisé par CDN OSM)</td>
       </tr>
@@ -414,10 +414,10 @@
     <li><strong>Le plan a un georef GPS</strong> (saisi via générateur avancé OU via
     Réglages map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
     masqué côté UI et l'appel n'a aucun moyen de se déclencher.</li>
-    <li><strong>L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »</strong>
-    dans ⚙️ Configuration home. <strong>Default OFF</strong>, persisté en
-    <code>localStorage</code> sous la clé <code>myktamap_osm_view_opt_in</code>.
-    L'utilisateur peut le désactiver à tout moment.</li>
+    <li><strong>L'utilisateur n'a pas désactivé la Vue OSM</strong> dans ⚙️ Configuration
+    home. <strong>Active par défaut</strong> (un bandeau le signale au premier usage),
+    persisté en <code>localStorage</code> sous la clé <code>myktamap_osm_view_opt_in</code> :
+    un refus (« 0 ») est mémorisé et n'est jamais réécrasé.</li>
     <li><strong>L'utilisateur charge effectivement la Vue OSM</strong>. Deux contextes
     possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
     <ul>
