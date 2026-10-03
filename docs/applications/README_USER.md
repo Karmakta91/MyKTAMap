@@ -408,7 +408,7 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 
 > 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil). À la re-sélection, si vous fournissez un ZIP dans un autre mode (ex: vous aviez ce plan en V2 mais le ZIP est un V1), un message d'avertissement vous le signale clairement avant de continuer.
 
-### ⚙️ Modale "Configuration" (chargeur)
+### ⚙️ Modale "Configuration"
 
 Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe tous les réglages du chargeur (tiling, performance, debug, mise à jour, reset) :
 

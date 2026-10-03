@@ -413,7 +413,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 > 📐 **Point C (optional) — for distorted maps**: if your map is an **assembly** that projects poorly (stretched one way, different X/Y scales), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the global distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Pick C **far from the A-B line** (an aligned C adds nothing and is refused). Note: this corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your map already projects well: nothing changes.
 
-### ⚙️ "Configuration" modal (loader)
+### ⚙️ "Configuration" modal
 
 On the home page, a **⚙️ Configuration button** in the loader header (next to 📖 Documentation and 🚨 Alerts) opens a single modal that groups all loader settings (tiling, performance, debug, update, reset):
 

@@ -405,7 +405,7 @@ Abre la ficha **ℹ️ Información** de un plano de servidor: una sección **�
 
 > 💡 **Truco** — Si cambias de PC o de teléfono, exporta tu lista en el dispositivo antiguo y luego impórtala en el nuevo para recuperar todos tus planos con un clic. Nota: los permisos de acceso a los archivos no son portables (tendrás que volver a seleccionar los ZIP locales la primera vez en el dispositivo nuevo). Al reseleccionarlos, si proporcionas un ZIP en otro modo (p. ej. tenías este plano en V2 pero el ZIP es un V1), un mensaje de advertencia te lo indica claramente antes de continuar.
 
-### ⚙️ Ventana «Configuración» (cargador)
+### ⚙️ Ventana «Configuración»
 
 En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del cargador (junto a 📖 Documentación y 🚨 Alertas) abre una única ventana que reúne los ajustes generales de la app (idioma, sensores, desarrollador, confidencialidad, visualización):
 
