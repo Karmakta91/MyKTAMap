@@ -13,6 +13,19 @@
         "✅ Si rien n'apparaît comme manquant, tout est déjà en cache — rien à faire"
       ],
       "released": "2026-06-13T12:00:00Z"
+    },
+    {
+      "id": "doc-refonte-2026-10",
+      "level": "info",
+      "title": "📖 Documentation remise à neuf — 3 octobre 2026",
+      "message": "La documentation et l'aide ont été réécrites pour être plus faciles à lire et pour t'aider à prendre l'application en main : deux fois plus courtes, rangées dans l'ordre où tu en as besoin.",
+      "details": [
+        "📖 Documentation : le guide complet, de la prise en main jusqu'à « 🔭 Pour aller plus loin » — avec un chapitre « 🆘 En cas d'urgence sous terre » en tête",
+        "❓ Aide : une fiche courte par fonction, rangée comme le guide, dont de nouvelles fiches « Je suis perdu », « Affichage XL », « Itinéraire » et « Multi-niveau »",
+        "❓ Dans une fenêtre, le bouton ❓ de l'en-tête ouvre directement la fiche qui la concerne",
+        "🌍 Disponible en français, en anglais et en espagnol"
+      ],
+      "released": "2026-10-03T12:00:00Z"
     }
   ]
 }
