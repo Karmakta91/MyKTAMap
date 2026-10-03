@@ -968,7 +968,9 @@
     // État interne — Map<key, L.imageOverlay> pour O(1) lookup et update incrémental.
     const state = {
       overlays:     new Map(),   // key = "z<z>_x<col>_y<-k>" → L.imageOverlay
-      blobUrls:     [],          // pour cleanup au destroy
+      ownUrls:      new Map(),   // path → blob URL PROPRE à la minimap (révoquée au destroy)
+      enCours:      new Set(),   // paths en cours d'extraction depuis le ZIP
+      ferme:        false,       // posé au destroy : une extraction tardive ne redessine rien
       listenerRef:  null,        // ref de _refresh pour map.off()
       currentLevel: null
     };
@@ -993,13 +995,30 @@
           ? (_racineSrv + "/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt)
           : null;
       }
-      if (!asset.url && asset.file) {
+      // 🩸 03/10/2026 — SUR UN PLAN IMPORTÉ EN ZIP, DES TUILES MANQUAIENT (vu
+      // sur mobile). La minimap partageait `asset.url` avec la carte
+      // principale ; celle-ci, pour tenir en mémoire, révoque l'URL des
+      // niveaux qu'elle quitte et libère même le fichier des ZIP lus à la
+      // demande (`file = null`, `_trimLevelsLRU`). La minimap ne savait pas
+      // le réextraire : tuile sautée, sans un mot. Elle a donc désormais ses
+      // PROPRES URL (révoquées à sa fermeture), et réextrait du ZIP ce qui a
+      // été libéré, comme la Vue OSM — puis se redessine.
+      if (state.ownUrls.has(path)) return state.ownUrls.get(path);
+      if (asset.file) {
         try {
-          asset.url = URL.createObjectURL(asset.file);
-          state.blobUrls.push(asset.url);
+          const u = URL.createObjectURL(asset.file);
+          state.ownUrls.set(path, u);
+          return u;
         } catch(e) { return null; }
       }
-      return asset.url || null;
+      if (asset._zipPath && typeof window._extractLazyAsset === "function" && !state.enCours.has(path)) {
+        state.enCours.add(path);
+        window._extractLazyAsset(path).then(function(f) {
+          state.enCours.delete(path);
+          if (f && !state.ferme) _refresh();
+        }).catch(function() { state.enCours.delete(path); });
+      }
+      return null;
     }
 
     function _refresh() {
@@ -1586,10 +1605,11 @@
       // Supprime tous les imageOverlays de tuiles V2 actifs
       _miniV2State.overlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
       _miniV2State.overlays.clear();
-      // Note : on ne révoque PAS les blob URLs ici car elles sont partagées
-      // avec le main map (RUNTIME_ASSETS[path].url est cached et réutilisé
-      // par _chargerImageV2OptionB). Les blob URLs sont révoquées au plan
-      // switch via main.js > _libererRessourcesPlanPrecedent.
+      // Les URL de tuiles sont PROPRES à la minimap (cf `_resolveTileUrl`) :
+      // on les révoque ici, la carte principale a les siennes.
+      _miniV2State.ownUrls.forEach(function(u) { try { URL.revokeObjectURL(u); } catch(e) {} });
+      _miniV2State.ownUrls.clear();
+      _miniV2State.ferme = true;   // une extraction encore en vol ne redessine plus rien
       _miniV2State = null;
     }
 
