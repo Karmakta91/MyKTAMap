@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.5` (01/10/2026)
+## 📦 Version courante — `v1.99.6` (03/10/2026)
+
+> 📖 **v1.99.6 — Guide et Aide réécrits** : documentation fr/en/es restructurée par parcours et divisée par deux, Aide ❓ rangée comme le guide avec 5 fiches nouvelles ; faits faux et données réelles retirés.
 
 > 🪧 **v1.99.5 — Plus de consigne fantôme** : après « Supprimer l’itinéraire », le bandeau de guidage disparaît aussitôt (il réapparaissait un instant).
 
@@ -505,6 +507,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.99.6 (03/10/2026) — Guide utilisateur et Aide intégrée réécrits
+
+- 🔍 **Origine** : demande KARMA — « éviter l’indigestion de l’user » ; deux audits : `docs/audits/2026-10-03_audit-guide-utilisateur-v1.md` et `2026-10-03_audit-aide-integree-v1.md`.
+- 📖 **Guide fr/en/es** (lots L0-L5, `670b0b0` → `fc26afc`) : 11 erreurs factuelles corrigées (dont 2 données réelles) ; restructuration par parcours (topo et remerciements en tête, 🆘 urgence avant la carte) ; chapitre « 🔭 Pour aller plus loin » (optionnel, Mode Secours réécrit selon le parcours de l’opérateur, créateurs de plans) ; passe bruit : 241 k → 122 k caractères FR. Le moteur Markdown rend les titres de niveau 5.
+- ❓ **Aide intégrée** (lots A1-A3, `f51e63d` → `dc88d36`) : 8 catégories alignées sur le guide, 5 fiches nouvelles (Je suis perdu, Affichage XL, Itinéraire et guidage, Corriger, Multi-niveau), ❓ contextuel sur 20 fenêtres, 35 fiches réécrites (une vingtaine de faits faux, preuves dans le code) : 71 k → 36 k caractères FR.
+- 🛡️ **Contrôles** : `check-aide-contextuelle` cherche l’en-tête dans le fichier qui crée la modale ; `checkup-langues` lit les titres des fiches dans les dicos.
+- ✅ **Tests** : pré-commit vert ; navigateur fr/en/es (Documentation : titres, recherche, aucun Markdown brut ; Aide : chaque fiche rendue, recherche, ❓ contextuels) ; checkup-langues vert.
 
 #### v1.99.5 (01/10/2026) — Plus de consigne fantôme à la suppression de l’itinéraire
 
