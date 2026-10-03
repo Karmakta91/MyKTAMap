@@ -153,6 +153,34 @@ KARMA le juge peu pertinent et contraire à « éviter l'indigestion ». L'audit
   dans les notes) · 3. retirer la clé de l'export de profil (reco : oui) · 4. bug incognito avant ce lot (reco : oui) ·
   5. `check-osm-defaut.js` §5 exécute la garde au lieu de chercher un texte — c'est lui qui a laissé passer le code mort (reco : oui).
 
+## 🧰 Configuration › Système & maintenance — désencombrer (audit du 03/10/2026, lecture seule)
+
+Demande KARMA : sortir de l'interface courante ce qui est technique, rendre visible l'état hors-ligne. ⚠️ Le **mode dev
+existe** (`devMode.js`, verrouillé par un mot de passe non distribué) : y ranger un outil = le retirer à tous les
+utilisateurs. ⚠️ Une **réparation silencieuse** du cache tourne déjà ~5 s après l'accueil (`SwInspector.autoHealIfNeeded`,
+jusqu'à 100 fichiers retéléchargés) : le bouton hors-ligne n'invente rien, il **montre** ce qui existe.
+
+- 🟠 **A — 🆘 Dépannage, un seul bouton visible** à la place des sections Mise à jour / Kill SW / Réinitialisation : fenêtre
+  graduée 🔄 Forcer la mise à jour → 🆘 Kill SW → 💥 Tout réinitialiser, une phrase « quand l'utiliser » chacun, plus une ligne
+  vers la page de secours `killsw.html` (« l'app ne s'ouvre plus »). Réutilise `loaderSwModals.js`
+  (`_afficherConfirmForceUpdate`, `_afficherConfirmKillSw`, `_afficherKillSwOfflineRefus`) et `viderCacheAppli` ; extraire les
+  3 écouteurs de `homeConfig.js` ; garder les ids (aucun smoke ne les cible). Renvois : guide fr/en/es (liste Configuration +
+  « 🔄 L'app ne se met pas à jour »), Aide `depannage` / `parametres` ×3, `alert.json`. **S-M.** ✅ vérifié (code lu).
+- 🟠 **B — Pastille « hors-ligne »** sur le badge de version de l'accueil : 🟢 tout enregistré + version · 🔴 fichiers manquants
+  → clic = tout récupérer avec progression · 🟠 en cours / hors réseau · ⚪ pas de service worker. Rouge seulement remonté dans
+  l'en-tête de l'accueil ; rien en mode carte. Exposer `SwInspector.etat()` / `recuperer()` (aujourd'hui privées :
+  `_computeDiff`, `_refetchMissing`), vérifier au résultat de l'auto-réparation, au `controllerchange` et après un clic.
+  Remplacer le toast `swinsp.toast.incomplete` (il renvoie vers l'inspecteur) ; retirer de `alert.json` l'alerte
+  `offline-precache-2026-06` et l'étape 📥 de `doc-refonte-2026-10`. Aucune nouvelle requête (même origine). **M.**
+  ✅ vérifié (code lu) ; 🔬 coût de la vérification sur un vieux téléphone non mesuré (estimé 50-300 ms).
+- 🟡 **C — Inspecteur Service Worker → mode dev**, *après* B (sinon toast et alertes pointent vers un bouton invisible).
+  Étendre `check-devmode-docs.js`. **S.**
+- ⚪ **D — État mémoire : reste visible** (« 📊 État de l'app », à côté de 🆘 Dépannage) — il porte le nettoyage des données
+  orphelines et le rapport à joindre au contact (guide, fiche Aide `inspecteur-memoire`). Désaccord consigné si KARMA le
+  passe en mode dev : fiche Aide et renvoi du guide morts, orphelins jamais nettoyés.
+- À trancher : 1. dépannage (reco : bouton unique A) · 2. ordre (reco : B puis C) · 3. état mémoire (reco : visible) ·
+  4. pastille (reco : pied de page, en-tête seulement si rouge) · 5. récupération (reco : auto + clic manuel si rouge).
+
 ## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
 
 Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
