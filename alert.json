@@ -22,6 +22,7 @@
       "details": [
         "🔢 Ta version est affichée en bas de l'accueil. Avant v1.99.6, tu vois encore l'ancienne documentation",
         "🔔 Pour mettre à jour : accepte la fenêtre « Mise à jour disponible » quand elle s'affiche, ou ⚙️ Configuration → 🔄 Forcer la mise à jour (connexion nécessaire ; tes plans, sessions et réglages sont conservés)",
+        "📥 Une fois à jour, enregistre tout dans l'application pour avoir la nouvelle documentation hors-ligne (même procédure que l'alerte « Accès hors-ligne ») : ⚙️ Configuration → 🛠️ Système & maintenance → « 🔧 Voir l'état du cache (Service Worker) » → « 🔄 Récupérer les fichiers manquants », et laisse charger jusqu'au bout. Si rien n'est manquant, tout est déjà enregistré",
         "📖 Documentation : le guide complet, de la prise en main jusqu'à « 🔭 Pour aller plus loin » — avec un chapitre « 🆘 En cas d'urgence sous terre » en tête",
         "❓ Aide : une fiche courte par fonction, rangée comme le guide, dont de nouvelles fiches « Je suis perdu », « Affichage XL », « Itinéraire » et « Multi-niveau »",
         "❓ Dans une fenêtre, le bouton ❓ de l'en-tête ouvre directement la fiche qui la concerne",
