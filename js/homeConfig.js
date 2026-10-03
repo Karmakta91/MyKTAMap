@@ -496,6 +496,173 @@
         }
       })();
 
+      // === 📡 PASTILLE « HORS-LIGNE » (lot B, 03/10/2026) ===
+      // Un point coloré accolé au badge de version (#loaderOfflineDot) MONTRE
+      // l'état du cache hors-ligne, que l'auto-réparation (SwInspector.
+      // autoHealIfNeeded, ~5 s après l'accueil) répare en silence :
+      //   🟢 ok · 🔴 manquants (clic = tout récupérer) · 🟠 récupération en
+      //   cours, ou manquants hors réseau · ⚪ pas de service worker.
+      // Le rouge seul remonte dans l'en-tête (#loaderOfflineHdrBtn). Le badge de
+      // version garde son clic et son état « mise à jour disponible » : la
+      // pastille est un élément À CÔTÉ, jamais dedans (le badge réécrit son
+      // textContent). Vérifications : au résultat de l'auto-réparation
+      // (événement kta-sw-autoheal), au controllerchange, après un clic.
+      // Aucune boucle, aucune minuterie. Accueil seulement : en mode carte, le
+      // pied de page et l'en-tête de l'accueil sont masqués avec lui.
+      (function _initPastilleHorsLigne() {
+        const dot = document.getElementById("loaderOfflineDot");
+        const hdr = document.getElementById("loaderOfflineHdrBtn");
+        if (!dot) return;
+        const _t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+        const CLASSES = ["kta-offline-ok", "kta-offline-ko", "kta-offline-wait", "kta-offline-off"];
+        let _dernier = null;        // dernier résultat de SwInspector.etat()
+        let _enCours = false;       // récupération (auto ou clic) en cours
+        let _progres = null;        // { faits, total } pendant un clic
+
+        function _peindre() {
+          // Dicos en cours de rechargement (I18n.reload() au controllerchange,
+          // main.js) : on ne peint pas de clé humanisée, onChange repeindra.
+          if (window.I18n && typeof window.I18n.has === "function" && !window.I18n.has("home.offline.dot.ok")) return;
+          const e = _dernier;
+          let cls, titre;
+          if (_enCours) {
+            cls = "kta-offline-wait";
+            titre = _progres
+              ? _t("home.offline.progres", { n: _progres.faits, total: _progres.total })
+              : _t("home.offline.dot.encours");
+          } else if (!e || e.etat === "indisponible") {
+            cls = "kta-offline-off";
+            titre = _t(e && e.raison === "incognito" ? "home.offline.dot.incognito" : "home.offline.dot.sansSw");
+          } else if (e.etat === "ok") {
+            cls = "kta-offline-ok";
+            titre = _t("home.offline.dot.ok", { v: e.version });
+          } else if (navigator.onLine === false) {
+            cls = "kta-offline-wait";
+            titre = _t("home.offline.dot.horsReseau", { count: e.manquants });
+          } else {
+            cls = "kta-offline-ko";
+            titre = _t("home.offline.dot.manquants", { count: e.manquants });
+          }
+          CLASSES.forEach(function(c) { dot.classList.remove(c); });
+          dot.classList.add(cls);
+          dot.title = titre;
+          dot.setAttribute("aria-label", titre);
+          dot.hidden = false;
+          if (hdr) {
+            const rouge = cls === "kta-offline-ko";
+            hdr.hidden = !rouge;
+            if (rouge) {
+              hdr.title = titre;
+              hdr.setAttribute("aria-label", titre);
+            }
+          }
+        }
+
+        function _verifier() {
+          if (!window.SwInspector || typeof window.SwInspector.etat !== "function") return Promise.resolve();
+          // Les titres sont traduits au rendu : on attend les dicos (un
+          // controllerchange du tout premier chargement peut les devancer).
+          const dicos = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : null;
+          return Promise.all([window.SwInspector.etat(), dicos]).then(function(r) {
+            _dernier = r[0];
+            _peindre();
+          });
+        }
+
+        // Petit message court au-dessus de tout, visible depuis l'en-tête comme
+        // depuis le pied de page (les toasts d'OOMGuard attendent la fin du
+        // splash de la carte et « info » est tu par défaut : pas adaptés ici).
+        let _msgTimer = null;
+        function _message(texte, cls, garder) {
+          let m = document.getElementById("kta-offline-msg");
+          if (!m) {
+            m = document.createElement("div");
+            m.id = "kta-offline-msg";
+            m.className = "kta-offline-msg";
+            m.setAttribute("role", "status");
+            m.setAttribute("aria-live", "polite");
+            m.addEventListener("click", function() { m.hidden = true; });
+            document.body.appendChild(m);
+          }
+          m.textContent = texte;
+          m.classList.remove("kta-offline-msg-ok", "kta-offline-msg-ko");
+          if (cls) m.classList.add(cls);
+          m.hidden = false;
+          clearTimeout(_msgTimer);
+          _msgTimer = null;
+          if (!garder) _msgTimer = setTimeout(function() { m.hidden = true; }, 6000);
+        }
+
+        function _recuperer() {
+          if (_enCours || !window.SwInspector || typeof window.SwInspector.recuperer !== "function") return;
+          _enCours = true;
+          _progres = null;
+          _peindre();
+          window.SwInspector.recuperer(function(faits, total) {
+            _progres = { faits: faits, total: total };
+            _peindre();
+            _message(_t("home.offline.progres", { n: faits, total: total }), null, true);
+          }).then(function(r) {
+            _enCours = false;
+            _progres = null;
+            if (r.echecs > 0) {
+              _message(_t("home.offline.msg.echecs", { count: r.echecs }), "kta-offline-msg-ko");
+            } else {
+              _message(_t("home.offline.msg.ok"), "kta-offline-msg-ok");
+            }
+            return _verifier();
+          }).catch(function(err) {
+            console.warn("[HomeConfig] récupération hors-ligne :", err && err.message);
+            _enCours = false;
+            _progres = null;
+            _message(_t("home.offline.msg.erreur"), "kta-offline-msg-ko");
+            return _verifier();
+          });
+        }
+
+        function _clic() {
+          const e = _dernier;
+          if (_enCours) {
+            _message(_t("home.offline.dot.encours"));
+          } else if (!e || e.etat === "indisponible") {
+            _message(dot.title);
+          } else if (e.etat === "ok") {
+            // Vert : comportement du badge de version (notes / mise à jour).
+            const ver = document.getElementById("loaderCopyrightVersion");
+            if (ver) ver.click();
+          } else if (navigator.onLine === false) {
+            _message(dot.title);
+          } else {
+            _recuperer();
+          }
+        }
+
+        dot.addEventListener("click", _clic);
+        if (hdr) hdr.addEventListener("click", _recuperer);
+
+        window.addEventListener("kta-sw-autoheal", function(ev) {
+          const d = ev.detail || {};
+          if (d.phase === "debut") {
+            _enCours = true;
+            _peindre();
+            return;
+          }
+          _enCours = false;
+          _verifier();
+        });
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.addEventListener("controllerchange", function() { _verifier(); });
+        }
+        // Langue changée ou dicos rechargés : les titres suivent.
+        if (window.I18n && typeof window.I18n.onChange === "function") {
+          window.I18n.onChange(function() { if (_dernier || _enCours) _peindre(); });
+        }
+        // Le réseau revient ou tombe : on ne fait que repeindre (aucune
+        // vérification, l'état du cache n'a pas changé).
+        window.addEventListener("online", function() { if (_dernier) _peindre(); });
+        window.addEventListener("offline", function() { if (_dernier) _peindre(); });
+      })();
+
       // v1.7.3 : section "Plus d'options" retirée du loader (boutons
       // déplacés dans la modale ⚙️ Configuration). Les IDs #advancedHead,
       // #advancedBox, #advancedChevron n'existent plus dans le DOM.
@@ -1033,27 +1200,15 @@
         });
       }
 
-      // 🆕 v1.43.12 — 🔧 Inspecteur Service Worker. Ouvre la modale de
-      // diagnostic du cache PWA : compare ASSETS_TO_CACHE (attendus) avec
-      // le contenu réel du cache. Verdict + bouton récupération manuels.
-      // Module js/swInspector.js chargé à proximité de memInspector.
-      const swInspectBtn = document.getElementById("loaderSwInspectorBtn");
-      if (swInspectBtn) {
-        swInspectBtn.addEventListener("click", function() {
-          if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") {
-            window.SwInspector.ouvrir();
-          } else {
-            setStatus("Module SwInspector indisponible — recharge la page", true);
-          }
-        });
-      }
+      // 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) est rendu et
+      // branché par js/devMode.js (mode développeur actif seulement).
 
       // 🆕 v1.43.13 — Auto-heal silencieux du cache SW. Tire ~5s après le
       // boot pour laisser le SW finir son install. Garde-fous internes
       // (online, SW ready, pas incognito, 1x par session,
-      // cap 100 fetches). Output en console uniquement, pas de toast user.
-      // Concept : si l'install initial a foiré sur 44 assets, l'user n'a
-      // plus à le savoir — le cache se répare tout seul au prochain boot.
+      // cap 100 fetches). La réparation reste silencieuse ; son résultat
+      // (événement kta-sw-autoheal) repeint la pastille « hors-ligne » du
+      // pied de page (cf. _initPastilleHorsLigne plus haut).
       setTimeout(function() {
         if (window.SwInspector && typeof window.SwInspector.autoHealIfNeeded === "function") {
           window.SwInspector.autoHealIfNeeded();

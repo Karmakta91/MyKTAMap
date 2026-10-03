@@ -2,19 +2,6 @@
   "active": true,
   "alerts": [
     {
-      "id": "offline-precache-2026-06",
-      "level": "info",
-      "title": "🛠️ Accès hors-ligne — petite vérification",
-      "message": "Suite à un petit bug temporaire, pour être sûr d'avoir l'application entièrement disponible hors-ligne, tu peux forcer le préchargement de tous les fichiers. Dans la majorité des cas, si tu as déjà utilisé l'app avant, ce n'est pas nécessaire.",
-      "details": [
-        "⚙️ Ouvre la Configuration (icône ⚙️ en haut de l'accueil)",
-        "🔧 Descends jusqu'à « Inspecteur Service Worker »",
-        "🔄 Clique sur « Récupérer les fichiers manquants » et laisse charger jusqu'au bout",
-        "✅ Si rien n'apparaît comme manquant, tout est déjà en cache — rien à faire"
-      ],
-      "released": "2026-06-13T12:00:00Z"
-    },
-    {
       "id": "doc-refonte-2026-10",
       "level": "info",
       "title": "📖 Documentation remise à neuf — version v1.99.6 (3 octobre 2026)",
@@ -22,7 +9,7 @@
       "details": [
         "🔢 Ta version est affichée en bas de l'accueil. Avant v1.99.6, tu vois encore l'ancienne documentation",
         "🔔 Pour mettre à jour : accepte la fenêtre « Mise à jour disponible » quand elle s'affiche, ou ⚙️ Configuration → 🔄 Forcer la mise à jour — rangé dans 🆘 Dépannage sur les versions les plus récentes (connexion nécessaire ; tes plans, sessions et réglages sont conservés)",
-        "📥 Une fois à jour, enregistre tout dans l'application pour avoir la nouvelle documentation hors-ligne (même procédure que l'alerte « Accès hors-ligne ») : ⚙️ Configuration → 🛠️ Système & maintenance → « 🔧 Voir l'état du cache (Service Worker) » → « 🔄 Récupérer les fichiers manquants », et laisse charger jusqu'au bout. Si rien n'est manquant, tout est déjà enregistré",
+        "📥 Une fois à jour, regarde la pastille à côté du numéro de version, en bas de l'accueil : verte, tout est enregistré pour le hors-ligne ; rouge, touche-la pour tout enregistrer (avec du réseau).",
         "📖 Documentation : le guide complet, de la prise en main jusqu'à « 🔭 Pour aller plus loin » — avec un chapitre « 🆘 En cas d'urgence sous terre » en tête",
         "❓ Aide : une fiche courte par fonction, rangée comme le guide, dont de nouvelles fiches « Je suis perdu », « Affichage XL », « Itinéraire » et « Multi-niveau »",
         "❓ Dans une fenêtre, le bouton ❓ de l'en-tête ouvre directement la fiche qui la concerne",

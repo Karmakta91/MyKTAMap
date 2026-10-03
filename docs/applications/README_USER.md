@@ -178,6 +178,8 @@ Une fois ouvert avec du réseau, MyKTAMap fonctionne **entièrement hors connexi
 2. Charge ton plan. Il est mémorisé dans l'app au premier chargement (réglage **💾 Mémoriser le plan dans l'app au premier chargement** de ⚙️ Configuration, actif par défaut) : tu le rouvriras depuis **📚 Mes plans** sans re-sélectionner le fichier.
 3. Parcours le plan quelques secondes, puis tu peux couper le réseau : l'app reste fonctionnelle.
 
+La **pastille** à côté du numéro de version, en bas de l'accueil, te dit si l'app est prête : **verte**, tout est enregistré pour le hors-ligne ; **rouge**, des fichiers manquent — touche-la avec du réseau pour tout enregistrer (un **📥** rouge le rappelle aussi en haut de l'accueil). **Orange** : enregistrement en cours, ou pas de réseau pour le terminer ; **grise** : l'état ne peut pas être vérifié (navigation privée, mode incognito, tout premier chargement).
+
 Quand une nouvelle version existe et que tu as du réseau, l'app te propose de la mettre à jour.
 
 ---
@@ -1747,6 +1749,6 @@ Il n'y a rien d'autre à faire.
 
 ### 🐛 Logs détaillés
 
-Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut.
+Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 
 ---

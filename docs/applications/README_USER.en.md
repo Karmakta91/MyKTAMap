@@ -178,6 +178,8 @@ Once opened with a connection, MyKTAMap works **entirely offline**: the app keep
 2. Load your map. It is stored in the app on first load (the **💾 Store the map in the app on first load** setting in ⚙️ Configuration, on by default): you will reopen it from **📚 My maps** without re-selecting the file.
 3. Browse the map for a few seconds, then you can cut the network: the app keeps working.
 
+The **dot** next to the version number, at the bottom of the home screen, tells you whether the app is ready: **green**, everything is saved for offline use; **red**, some files are missing — tap it with a connection to save everything (a red **📥** at the top of the home screen also reminds you). **Orange**: saving in progress, or no connection to finish it; **grey**: the status can't be checked (private browsing, incognito mode, very first load).
+
 When a new version exists and you have a connection, the app offers to update.
 
 ---
@@ -1747,6 +1749,6 @@ There is nothing else to do.
 
 ### 🐛 Detailed logs
 
-In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
+In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
 ---

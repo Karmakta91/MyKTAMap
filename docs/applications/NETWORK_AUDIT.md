@@ -84,7 +84,7 @@ envoyé** (réponse : rien, jamais).
 
 | Endpoint | Méthode | Quand | Pourquoi | Données envoyées |
 |---|---|---|---|---|
-| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA | Charger l'app | **Aucune** |
+| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA ; fichiers manquants retéléchargés par la réparation automatique (~5 s après l'accueil) ou d'un appui sur la pastille hors-ligne rouge | Charger l'app | **Aucune** |
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur (v1.42.0+) | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |

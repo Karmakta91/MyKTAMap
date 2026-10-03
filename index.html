@@ -347,6 +347,9 @@
           <!-- 🌍 v1.46.0 (KARMA) — Le sélecteur de langue GLOBALE a été déplacé
                du header vers la modale Configuration (après Incognito) : header
                trop chargé sur mobile. Cf #loaderLangSection plus bas + js/main.js. -->
+          <!-- 📡 Fichiers hors-ligne manquants (lot B) : visible SEULEMENT quand la
+               pastille du pied de page est rouge ; clic = tout récupérer. -->
+          <button class="loader-btn-help kta-offline-hdr" id="loaderOfflineHdrBtn" type="button" hidden>📥</button>
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" data-i18n-title="home.header.alert" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" data-i18n-title="home.header.help" title="Documentation utilisateur">📖</button>
           <button class="loader-btn-help" id="loaderConfigBtn" type="button" data-i18n-title="home.header.config" title="Configuration (perf, debug, reset)">⚙️</button>
@@ -596,7 +599,11 @@
             <span class="kta-loader-copyright-pro-badge" data-i18n="home.footer.proBadge">✓ Licence professionnelle active</span>
           </span>
           <span class="kta-loader-copyright-sep">·</span>
-          <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span>
+          <!-- 📡 Pastille « hors-ligne » (lot B, 03/10/2026) : état du cache hors-ligne,
+               peinte par js/homeConfig.js > _initPastilleHorsLigne (title/aria au rendu).
+               Élément FRÈRE du badge (celui-ci réécrit son propre texte), soudé à lui
+               par .kta-offline-groupe (nowrap) pour ne pas partir seul à la ligne. -->
+          <span class="kta-offline-groupe"><span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span><button type="button" class="kta-offline-dot" id="loaderOfflineDot" hidden></button></span>
         </span>
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
              nouvelles citations") : mention des libs + algo majeurs du
@@ -993,13 +1000,9 @@
           <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
             📊 Voir l'état mémoire
           </button>
-          <!-- 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
-               Diagnostic du cache PWA : compare la liste ASSETS_TO_CACHE
-               attendue avec ce qui est réellement en cache. Verdict +
-               bouton pour récupérer les manquants. -->
-          <button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;" data-i18n="home.inspector.swBtn">
-            🔧 Voir l'état du cache (Service Worker)
-          </button>
+          <!-- 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) vit dans le
+               🛠️ Mode Développeur (js/devMode.js, mode actif seulement). L'état
+               du cache hors-ligne est montré à tous par la pastille du pied de page. -->
         </div>
 
         <!-- 🆘 Dépannage (lot A, 03/10/2026) — UN seul bouton visible.

@@ -178,6 +178,8 @@ Una vez abierto con conexión, MyKTAMap funciona **totalmente sin conexión**: l
 2. Carga tu plano. Se memoriza en la app en la primera carga (ajuste **💾 Memorizar el plano en la app en la primera carga** de ⚙️ Configuración, activo por defecto): lo volverás a abrir desde **📚 Mis mapas** sin seleccionar de nuevo el archivo.
 3. Recorre el plano unos segundos y después ya puedes cortar la red: la app sigue funcionando.
 
+La **pastilla** junto al número de versión, abajo en la pantalla de inicio, te dice si la app está lista: **verde**, todo está guardado para usar sin conexión; **rojo**, faltan archivos — tócala con conexión para guardarlo todo (un **📥** rojo arriba en la pantalla de inicio también te lo recuerda). **Naranja**: guardado en curso, o sin red para terminarlo; **gris**: el estado no se puede comprobar (navegación privada, modo incógnito, primerísima carga).
+
 Cuando existe una versión nueva y tienes conexión, la app te propone actualizarla.
 
 ---
@@ -1747,6 +1749,6 @@ No hay nada más que hacer.
 
 ### 🐛 Registros detallados
 
-En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto.
+En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto. El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 
 ---

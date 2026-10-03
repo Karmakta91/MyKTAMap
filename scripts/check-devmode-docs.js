@@ -107,5 +107,27 @@ t("hash du mdp au format SHA-256 (64 hex)", !!h && h[1].length === 64);
     src.indexOf('id="kta-devmode-confadmin"') < iSinon);
 }
 
+// ───────── 🔧 lot C (03/10/2026) — inspecteur Service Worker (mode dev uniquement) ─────────
+// Retiré de ⚙️ Configuration › Système & maintenance : la pastille « hors-ligne »
+// de l'accueil montre l'état du cache à tous. L'inspecteur détaillé vit derrière
+// le mot de passe développeur — même règle que ConfAdmin.
+{
+  const ID = 'id="loaderSwInspectorBtn"';
+  const html = fs.readFileSync("index.html", "utf8");
+  t("🔧 un bouton inspecteur SW est rendu par devMode.js", src.indexOf(ID) >= 0);
+  t("🔧 il ouvre SwInspector.ouvrir()",
+    /getElementById\("loaderSwInspectorBtn"\)[\s\S]{0,200}SwInspector\.ouvrir\(\)/.test(src));
+  const iActif = src.indexOf("(actif ? (");
+  const iSinon = src.indexOf("        ) : (", iActif);
+  t("🩸 le bouton inspecteur SW n'est rendu QUE si le mode dev est actif",
+    iActif > 0 && iSinon > iActif && src.indexOf(ID) > iActif && src.indexOf(ID) < iSinon);
+  // Son écouteur aussi : dans le bloc `if (actif) {`, sinon getElementById
+  // plante sur un bouton absent quand le mode est éteint.
+  const iIf = src.indexOf("if (actif) {");
+  const iEcoute = src.indexOf('getElementById("loaderSwInspectorBtn")');
+  t("🩸 son écouteur n'est posé que si le mode dev est actif", iIf > 0 && iEcoute > iIf);
+  t("🩸 le bouton n'est plus dans le gabarit de ⚙️ Configuration (index.html)", html.indexOf(ID) === -1);
+}
+
 console.log(ko === 0 ? "\n🎉 bibliothèque devMode : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);

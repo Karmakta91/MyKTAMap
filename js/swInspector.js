@@ -17,8 +17,10 @@
 //   - Vérifier qu'un update du SW a bien pré-caché tous les assets critiques.
 //   - Récupérer manuellement les assets manquants (bouton retry).
 //
-// Accessible depuis le loader home : ⚙️ Configuration → 📊 Inspecteur →
-// 🔧 Voir l'état du cache SW (bouton ajouté juste après "État mémoire").
+// Modale accessible depuis ⚙️ Configuration → 🛠️ Mode Développeur (mode
+// actif seulement, js/devMode.js). Pour tous les utilisateurs, l'état du
+// cache est montré par la pastille « hors-ligne » du pied de page de
+// l'accueil (homeConfig.js), via etat() / recuperer() exposées ci-dessous.
 //
 // Lecture seule pour l'essentiel + 1 action explicite : "Récupérer les
 // fichiers manquants". Aucune écriture destructive.
@@ -504,61 +506,32 @@
   //   4. Pas déjà tiré cette session (sessionStorage anti-spam)
   //   5. Cap à 100 fetches max pour ne pas DDoS-er le serveur sur cache cassé
   //
-  // Output : console only (pas de toast user-visible). Si tu veux voir le
-  // résultat, ouvre la console ou la modale Inspecteur SW.
+  // Output : console + événement `kta-sw-autoheal` sur window (cf. plus bas) :
+  // la pastille « hors-ligne » du pied de page de l'accueil (homeConfig.js)
+  // s'y branche pour MONTRER l'état. L'ancien toast rouge « cache incomplet »
+  // (qui renvoyait vers cet inspecteur, réservé au mode développeur) a été
+  // retiré : la pastille rouge et son indicateur d'en-tête le remplacent.
 
   const SS_AUTOHEAL_KEY = "kta_sw_autoheal_done";
   // 🆕 v1.43.23 — Mémorise le résultat du dernier check pour décider si
   // on doit re-tirer au reload (échecs non résolus = retry) ou pas (tout OK).
   const SS_AUTOHEAL_LAST_FAILED = "kta_sw_autoheal_last_failed";
 
-  // 🆕 v1.43.22 — Toast non-bloquant si le cache est gravement incomplet
-  // après l'auto-heal au boot. Clic = ouvrir l'Inspecteur SW direct.
-  // Un seul affichage par session (anti-spam).
-  const SS_INCOMPLET_TOAST_KEY = "kta_sw_incomplet_toast_done";
-
-  function _showCacheIncompletToast(failCount) {
+  // Signale le début de la réparation et son résultat (y compris les sorties
+  // « skipped »). Aucune logique de réparation n'en dépend.
+  function _signalerAutoHeal(phase, resultat) {
     try {
-      if (sessionStorage.getItem(SS_INCOMPLET_TOAST_KEY) === "1") return;
-      sessionStorage.setItem(SS_INCOMPLET_TOAST_KEY, "1");
+      window.dispatchEvent(new CustomEvent("kta-sw-autoheal", { detail: { phase: phase, resultat: resultat } }));
     } catch(e) {}
-    try {
-      // Pas de dépendance dure à OOMGuard — on construit un toast minimaliste
-      // pour rester self-contained et fonctionner même si OOMGuard absent.
-      const t = document.createElement("div");
-      t.id = "kta-sw-incomplet-toast";
-      t.style.cssText =
-        "position:fixed; top:14px; left:50%; transform:translateX(-50%);" +
-        "background:rgba(244,107,107,0.95); color:#1a1f2e; padding:10px 18px;" +
-        "border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.35);" +
-        "font-size:13px; font-weight:600; z-index:100200; cursor:pointer;" +
-        "max-width:90vw; text-align:center; line-height:1.45;" +
-        "border:1px solid rgba(244,107,107,1);";
-      t.innerHTML = _t("toast.incomplete", { count: failCount }) +
-                    "<br><span style='font-size:11.5px; font-weight:400; opacity:0.92;'>" +
-                    _t("toast.incomplete.action") + "</span>";
-      t.addEventListener("click", function() { // lint-ok-modal-lifecycle (toast standalone hors modale)
-        try { t.remove(); } catch(e) {}
-        if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") {
-          window.SwInspector.ouvrir();
-        }
-      });
-      document.documentElement.appendChild(t);
-      // Auto-dismiss après 12s si pas cliqué (id stocké pour cohérence avec les
-      // autres setTimeout du module + permet un éventuel clearTimeout futur si
-      // on ajoute une action « ne plus afficher ce tour-ci »).
-      const _autoDismissId = setTimeout(function() { // lint-ok-modal-lifecycle (toast standalone hors modale)
-        try { if (t.parentNode) t.parentNode.removeChild(t); } catch(e) {}
-      }, 12000);
-      // Si l'user clique avant le 12s, on cancel l'auto-dismiss (le toast est
-      // déjà retiré par le handler ligne 509, mais on libère le timer).
-      t.addEventListener("click", function() { clearTimeout(_autoDismissId); }); // lint-ok-modal-lifecycle (toast standalone hors modale)
-    } catch(e) {
-      console.warn("[SwInspector] Toast cache incomplet échec :", e.message || e);
-    }
   }
 
   async function autoHealIfNeeded(opts) {
+    const resultat = await _autoHeal(opts);
+    _signalerAutoHeal("fin", resultat);
+    return resultat;
+  }
+
+  async function _autoHeal(opts) {
     opts = opts || {};
     const maxRefetch = (typeof opts.maxRefetch === "number") ? opts.maxRefetch : 100;
 
@@ -636,6 +609,7 @@
         "Refetch silencieux de " + toRefetch.length + (capped ? " (cap " + maxRefetch + ")" : "") + "…"
       );
 
+      _signalerAutoHeal("debut", { missing: diff.missing.length });
       const result   = await _refetchMissing(toRefetch);
       const okCount  = (result.results || []).filter(function(r) { return r.ok; }).length;
       const failCount = (result.results || []).length - okCount;
@@ -645,15 +619,9 @@
       if (failCount > 0) {
         console.warn(
           "[SwInspector] auto-heal terminé : ✅ " + okCount + " récupérés, ❌ " + failCount + " échecs " +
-          "(probablement absents du serveur). Ouvre 🔧 Inspecteur Service Worker pour diagnostiquer."
+          "(probablement absents du serveur). Pastille rouge sur l'accueil ; détail : 🔧 Inspecteur (mode dev)."
         );
         console.warn("[SwInspector] Échecs :", failedAssets);
-        // 🆕 v1.43.22 — Toast non-bloquant si beaucoup d'échecs résiduels
-        // après l'auto-heal. Seuil > 10 pour ne pas spammer sur un blip
-        // ponctuel. L'user peut cliquer pour ouvrir directement l'inspecteur.
-        if (failCount > 10) {
-          _showCacheIncompletToast(failCount);
-        }
       } else {
         console.log("[SwInspector] auto-heal terminé : ✅ " + okCount + " récupérés, cache complet.");
       }
@@ -683,12 +651,88 @@
   }
 
   // ============================================================
+  // ÉTAT HORS-LIGNE (pastille de l'accueil, lot B 03/10/2026)
+  // ============================================================
+  // etat() : COMPARAISON SEULE — un message au SW (liste attendue) + une
+  // lecture de la Cache API. Zéro requête réseau.
+  // → { etat: "ok"|"manquants"|"indisponible", manquants, attendus, version,
+  //     raison? ("incognito"|"sw"|"erreur") }
+  function _version() {
+    return (window.__MKM__ && window.__MKM__.build) || "";
+  }
+  function _incognito() {
+    try {
+      return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive());
+    } catch(e) { return false; }
+  }
+  function _indisponible(raison) {
+    return { etat: "indisponible", raison: raison, manquants: 0, attendus: 0, version: _version() };
+  }
+  async function _diffCourant() {
+    const expected = await _querySwExpectedAssets();
+    const actual   = await _queryActualAssets(expected.cacheName);
+    return { cacheName: expected.cacheName, diff: _computeDiff(expected.assets, actual) };
+  }
+  async function etat() {
+    if (_incognito()) return _indisponible("incognito");
+    if (!navigator.serviceWorker || !navigator.serviceWorker.controller || !("caches" in window)) {
+      return _indisponible("sw");
+    }
+    try {
+      const r = await _diffCourant();
+      const n = r.diff.missing.length;
+      return {
+        etat:      n === 0 ? "ok" : "manquants",
+        manquants: n,
+        attendus:  r.diff.present.length + n,
+        version:   _version() || r.cacheName || ""
+      };
+    } catch(e) {
+      console.warn("[SwInspector] etat() :", e.message || e);
+      return _indisponible("erreur");
+    }
+  }
+
+  // recuperer(onProgress) : retélécharge les fichiers manquants par paquets de
+  // 10 (la taille de lot du SW) pour pouvoir annoncer la progression —
+  // onProgress(faits, total). → { recuperes, echecs }. Mêmes URL, même
+  // origine que l'auto-réparation. Un seul appel à la fois.
+  const LOT_RECUP = 10;
+  let _recupEnCours = null;
+  function recuperer(onProgress) {
+    if (_recupEnCours) return _recupEnCours;
+    _recupEnCours = (async function() {
+      if (_incognito()) throw new Error("incognito");
+      const r = await _diffCourant();
+      const manquants = r.diff.missing;
+      const total = manquants.length;
+      let recuperes = 0, echecs = 0;
+      if (typeof onProgress === "function") onProgress(0, total);
+      for (let i = 0; i < total; i += LOT_RECUP) {
+        const res = await _refetchMissing(manquants.slice(i, i + LOT_RECUP));
+        const lot = Math.min(LOT_RECUP, total - i);
+        const ok = (res.results || []).filter(function(x) { return x.ok; }).length;
+        recuperes += ok;
+        echecs    += lot - ok;
+        if (typeof onProgress === "function") onProgress(i + lot, total);
+      }
+      console.log("[SwInspector] récupération : ✅ " + recuperes + " · ❌ " + echecs);
+      return { recuperes: recuperes, echecs: echecs };
+    })();
+    const p = _recupEnCours;
+    p.then(function() { _recupEnCours = null; }, function() { _recupEnCours = null; });
+    return p;
+  }
+
+  // ============================================================
   // EXPORTS
   // ============================================================
   window.SwInspector = {
     ouvrir:            ouvrir,
     fermer:            fermer,
-    autoHealIfNeeded:  autoHealIfNeeded
+    autoHealIfNeeded:  autoHealIfNeeded,
+    etat:              etat,
+    recuperer:         recuperer
   };
 
   console.log("[SwInspector] Module chargé (v1.43.24).");

@@ -10793,6 +10793,106 @@ body.kta-theme-light .kta-profile-pro-hint {
   }
 }
 
+/* 📡 Pastille « hors-ligne » (lot B, 03/10/2026) — point accolé au badge de
+   version, peint par homeConfig.js > _initPastilleHorsLigne. Le bouton fait
+   20 px de zone tactile, le point 9 px. Couleurs = celles de .kta-tx-ok/err/
+   warn/muted (variantes claires comprises). [hidden] doit gagner sur display. */
+.kta-offline-groupe { white-space: nowrap; }
+.kta-offline-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 1px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.kta-offline-dot[hidden],
+.kta-offline-hdr[hidden],
+.kta-offline-msg[hidden] { display: none !important; }
+.kta-offline-dot::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #8892a4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.kta-offline-dot.kta-offline-ok::before   { background: #6ee287; }
+.kta-offline-dot.kta-offline-ko::before   { background: #ff8c8c; box-shadow: 0 0 6px rgba(255, 140, 140, 0.7); }
+.kta-offline-dot.kta-offline-wait::before {
+  background: #ffb380;
+  animation: kta-offline-wait-pulse 1.4s ease-in-out infinite;
+}
+.kta-offline-dot.kta-offline-off::before  { background: #8892a4; }
+.kta-offline-dot:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+@keyframes kta-offline-wait-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+html.kta-theme-light .kta-offline-dot.kta-offline-ok::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-ok::before   { background: #1e7a3a; }
+html.kta-theme-light .kta-offline-dot.kta-offline-ko::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-ko::before   { background: #a01818; box-shadow: none; }
+html.kta-theme-light .kta-offline-dot.kta-offline-wait::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-wait::before { background: #8b3a00; }
+html.kta-theme-light .kta-offline-dot.kta-offline-off::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-off::before  { background: #6b6354; }
+
+/* Indicateur d'en-tête : même rouge que l'alerte 🚨 « emergency », sans pulsation. */
+.loader-btn-help.kta-offline-hdr {
+  background: rgba(220, 53, 69, 0.22);
+  border-color: rgba(255, 107, 107, 0.55);
+  color: #ffe4d4;
+}
+.loader-btn-help.kta-offline-hdr:hover {
+  background: rgba(255, 53, 69, 0.40);
+  border-color: rgba(255, 107, 107, 0.85);
+}
+body.kta-theme-light .loader-btn-help.kta-offline-hdr {
+  background: #fde3e3 !important;
+  border: 1px solid #a01818 !important;
+}
+
+/* Message court (progression / résultat) au-dessus de l'accueil. */
+.kta-offline-msg {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  max-width: calc(100vw - 32px);
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  background: #1a1f2e;
+  color: #e8eaf0;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.kta-offline-msg.kta-offline-msg-ok { border-color: #6ee287; }
+.kta-offline-msg.kta-offline-msg-ko { border-color: #ff8c8c; }
+html.kta-theme-light .kta-offline-msg,
+body.kta-theme-light .kta-offline-msg {
+  background: #ffffff;
+  color: #2a2620;
+}
+html.kta-theme-light .kta-offline-msg.kta-offline-msg-ok,
+body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a; }
+html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
+body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
+
 /* Signature manuscrite KARMA dans le footer copyright. Depuis v1.7.3, sert
    d'identité visible au copyright (avant : "© 2026 Flavien VIDAL [signature]"
    → maintenant : "© 2026 [signature]"). Le nom civil reste dans les headers
