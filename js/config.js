@@ -103,7 +103,8 @@ let DEFAULT_CONFIG = {
   showRoadIntersections: false,
 
   // 🧭 Nav Intelligente (C2) : caler la position tracker sur le réseau de
-  // tracés (map-matching). Pref GLOBALE, défaut OFF (rétrocompat stricte).
+  // tracés (map-matching). Défaut OFF. Réglée PAR PLAN depuis v1.85.3 (getPlanSmartNav) :
+  // la valeur globale ne sert plus que de repli de migration.
   // Lue à chaud par tracking.js > avancer(). Sans effet si le plan n'a pas de
   // réseau (garde-fou runtime via RoadGraph.isReady()).
   smartNav: false,
