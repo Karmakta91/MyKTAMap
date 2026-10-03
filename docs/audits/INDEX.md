@@ -26,6 +26,7 @@ Règle : un audit reste ici tant qu'il a des lots ouverts ; soldé, il part en a
 
 | Date | Scope | Version auditée | Raw → Confirmés | Lien |
 |---|---|---|---|---|
+| 2026-10-03 | **Aide intégrée** (hub ❓, 35 fiches fr/en/es) : faits faux dans plus de 20 fiches, 1 donnée réelle + 1 indice de localisation, rangement incohérent, 5 fiches manquantes, 4 erreurs résiduelles du guide | v1.99.5 + guide réécrit | 3 agents de lecture, pas de `.raw.json` | [`2026-10-03_audit-aide-integree-v1.md`](./2026-10-03_audit-aide-integree-v1.md) |
 | 2026-10-03 | **Guide utilisateur** (`README_USER` fr/en/es) : pertinence et agencement des rubriques, bruit (historique, défensif, jargon), fonctions désactivées par défaut → « Pour aller plus loin », Mode Secours — 11 erreurs factuelles (dont 2 données réelles), plan cible, 5 lots | v1.99.5 | 6 agents de lecture (5 tranches + inventaire des défauts dans le code), pas de `.raw.json` | [`2026-10-03_audit-guide-utilisateur-v1.md`](./2026-10-03_audit-guide-utilisateur-v1.md) |
 | 2026-09-29 | **Mode Secours** (jeu de rôle GRIMP × IGC) : planifier le balayage d'un réseau réel en 5-8 équipes puis exécuter jusqu'à la victime — fusion inter-téléphones cassée, mode « tracés » inerte, victime sans position, guidage absent | v1.98.4 | 5 bloquants (2 vérifiés à la main) · 10 lots B · 3 lots C (pas de `.raw.json` : agents de lecture + harnais Node hors dépôt ; rapports bruts non versionnés car ils nomment le relevé réel) | [`2026-09-29_audit-secours-v1.md`](./2026-09-29_audit-secours-v1.md) |
 
