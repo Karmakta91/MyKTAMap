@@ -33,6 +33,7 @@
 // API publique :
 //   window.IncognitoMode = {
 //     active:  true | false,    // état au boot, lecture seule
+//     isActive: function() { ... } // le même état, pour les appelants
 //     launch: function() { ... } // ouvre nouvelle fenêtre ?incognito=1
 //   }
 //
@@ -63,6 +64,10 @@
   // -----------------------------------------------------------------------
   window.IncognitoMode = {
     active: ACTIVE,
+    // 🩸 03/10/2026 — la Vue OSM, son widget, le Mode Secours et la réparation
+    // du cache appelaient `isActive()`, qui n'existait pas : l'incognito ne les
+    // coupait PAS, contrairement à la doc. La fonction rend l'état du boot.
+    isActive: function() { return ACTIVE; },
     // Ouvre une nouvelle fenêtre dans le même origin avec ?incognito=1.
     // Conserve les autres params (ex: ?selfhost=…) pour le workflow combiné.
     //

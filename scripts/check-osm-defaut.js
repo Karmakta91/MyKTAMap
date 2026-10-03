@@ -155,6 +155,65 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     corps.indexOf("if (_isIncognitoOn()) {") > 0);
 }
 
+// ═════════ 5 bis. LA GARDE INCOGNITO, EXÉCUTÉE ═════════
+// 🩸 03/10/2026 — le contrôle ci-dessus cherchait un TEXTE : il est resté vert
+// pendant que `_isIncognitoOn()` appelait `IncognitoMode.isActive()`, une
+// fonction qui n'existait pas. L'incognito ne coupait donc pas la Vue OSM.
+// On charge le VRAI module incognito, on extrait la VRAIE garde des deux
+// fichiers, et on l'exécute dans les deux états.
+{
+  const vm = require("vm");
+  const INC = fs.readFileSync("js/incognitoMode.js", "utf8");
+  const garde = function (src) {
+    const i = src.indexOf("function _isIncognitoOn()");
+    const j = src.indexOf("\n  }", i);
+    return (i >= 0 && j > i) ? src.slice(i, j + 4) : "";
+  };
+  // Actif, le module détourne le stockage (document, Storage, indexedDB…) :
+  // des bouchons qui acceptent tout suffisent, seul l'état rendu nous importe.
+  const n_importe = function () {
+    return new Proxy(function () {}, {
+      get: function (c, k) { return k === Symbol.toPrimitive ? function () { return ""; } : n_importe(); },
+      apply: function () { return n_importe(); }, construct: function () { return n_importe(); },
+      set: function () { return true; }
+    });
+  };
+  const bac = function (actif) {
+    const win = { _kta_incognito: actif, location: { search: "" } };
+    win.window = win;
+    const sb = { window: win, URLSearchParams: URLSearchParams, console: { log: function () {}, warn: function () {}, info: function () {} },
+                 document: n_importe(), Storage: n_importe(), localStorage: n_importe(), sessionStorage: n_importe(),
+                 indexedDB: n_importe(), IDBObjectStore: n_importe(), IDBFactory: n_importe(), navigator: n_importe(),
+                 setTimeout: function () {}, out: null };
+    vm.runInNewContext(INC, sb, { filename: "incognitoMode.js" });
+    return sb;
+  };
+  const jouer = function (src, actif) {
+    const sb = bac(actif);
+    vm.runInNewContext(garde(src) + "\nout = _isIncognitoOn();", sb, { filename: "garde.js" });
+    return sb.out;
+  };
+  [["osmView.js (modale)", VUE], ["osmHomePreview.js (widget)", HOME]].forEach(function (f) {
+    t("la garde incognito est extractible de " + f[0], garde(f[1]).length > 0);
+    let ok = false;
+    try { ok = jouer(f[1], true) === true && jouer(f[1], false) === false; } catch (e) {}
+    t("🩸 " + f[0] + " : incognito actif → OSM coupée ; inactif → non", ok);
+  });
+  // Toute propriété d'IncognitoMode appelée dans js/ doit exister dans l'API.
+  const api = {};
+  Object.keys(bac(false).window.IncognitoMode || {}).forEach(function (k) { api[k] = true; });
+  const manquantes = [];
+  // Le module lui-même pose des membres privés (`_…`) en mode actif : hors champ.
+  fs.readdirSync("js").filter(function (f) { return f.endsWith(".js") && f !== "incognitoMode.js"; }).forEach(function (f) {
+    const re = /IncognitoMode\.([A-Za-z_]+)/g;
+    let m;
+    const src = fs.readFileSync("js/" + f, "utf8");
+    while ((m = re.exec(src))) if (!api[m[1]]) manquantes.push(f + " → ." + m[1]);
+  });
+  t("🩸 toute propriété d'IncognitoMode utilisée dans js/ existe dans son API" +
+    (manquantes.length ? " — absentes : " + manquantes.slice(0, 5).join(", ") : ""), manquantes.length === 0);
+}
+
 // ═════════ 6. CE QUE L'UTILISATEUR LIT DOIT ÊTRE VRAI ═════════
 // 🩸 La case annonçait « default OFF » — faux désormais — et « quand la modale
 // Vue OSM est ouverte », qui était DÉJÀ faux : le widget du HOME contacte le
