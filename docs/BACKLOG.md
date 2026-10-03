@@ -133,6 +133,26 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
+## 🔒 Mode hors-ligne strict — à supprimer (audit du 03/10/2026, lecture seule)
+
+KARMA le juge peu pertinent et contraire à « éviter l'indigestion ». L'audit montre qu'il ne fait déjà presque rien.
+
+- 🔴 **Bug d'abord, indépendant de la décision : l'incognito ne coupe pas la Vue OSM.** `osmView.js:305`,
+  `osmHomePreview.js:495`, `secoursMode.js:5354`, `swInspector.js:599` appellent `IncognitoMode.isActive()`, qui n'existe
+  pas (l'API expose `.active`) : la coupure promise par la doc n'a pas lieu. Correctif **S**, commit séparé. ✅ vérifié (code lu).
+- 🟠 **Supprimer le mode** (case « 🔒 Mode hors-ligne strict », clé `myktamap_network_paranoia_v1`, `networkAudit.js`) :
+  il ne bloque que les `fetch`/XHR externes — en pratique le seul pré-cache des tuiles OSM. Tout le reste est de même origine
+  (version, alertes, révocations), et les tuiles Leaflet passent par `<img>`, hors interception. Les blocages Vue OSM / widget
+  / Secours / auto-réparation SW appellent `NetworkAudit.isStrictOfflineEnabled()`, **jamais définie** : code mort depuis
+  v1.39 — guide, Aide ❓ et NETWORK_AUDIT promettent une coupure qui n'a pas lieu. ✅ vérifié (grep : aucun définisseur).
+  Cible (option « c ») : retirer réglage, badge, blocages morts, clés i18n ×3, § guide ×3 ; garder le journal réseau et la
+  classe CSS `.kta-net-paranoia-toggle` (réutilisée par une dizaine d'autres cases) ; réécrire NETWORK_AUDIT autour de
+  « aucune donnée envoyée, un seul tiers (OpenStreetMap), coupable par la case 🗺️ Vue OSM, vérifiable au journal réseau ».
+  Assumer dans le texte le retrait d'une promesse publique (elle était déjà fausse). Taille **M** (~10 fichiers + ~14 docs).
+  À trancher : 1. option (reco c = suppression + discours OSM) · 2. clé chez les utilisateurs (reco : l'ignorer, une phrase
+  dans les notes) · 3. retirer la clé de l'export de profil (reco : oui) · 4. bug incognito avant ce lot (reco : oui) ·
+  5. `check-osm-defaut.js` §5 exécute la garde au lieu de chercher un texte — c'est lui qui a laissé passer le code mort (reco : oui).
+
 ## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
 
 Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
