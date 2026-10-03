@@ -4,19 +4,93 @@
 
 ---
 
-## 🔴 Important warnings
+## 📖 The story
 
-### ⚖️ Terms of use & legal notice
+> *A map has never replaced going out. It just helps you not get lost.*
 
-On **first launch**, a **terms of use** page reminds you that MyKTAMap is a **mapping and orientation tool**, not an encouragement to enter forbidden places. It must be **read and accepted once** (checkbox + "I accept").
+### Where it comes from
 
-- Access to many underground sites — notably the **former quarry network of Paris** — is **forbidden** (Paris prefectural order of 2 November 1955) and **punishable by a fine** (€135 to €375).
-- Any intrusion into a private or forbidden place is **your sole responsibility**.
-- The **full text** (order of 2 November 1955 + French Senate written reply no. 03710 of 05/06/2025) is available from the page — reproduced in French only, as they are French official acts — and at any time via the **⚖️ Terms of use** link in the home footer.
+MyKTAMap was born from a simple need: having, **in your pocket**, a cataphile map that is **reliable, offline, and doesn't leak**. Not an app store that asks for access to your contacts to display a map. Not a website that tracks you the moment you click. Not a cloud that decides tomorrow to send you a newsletter or resell your traces.
 
-> Clandestine exploration is dangerous (getting lost, collapses, falls into pits) and illegal. Respect the law, site owners and your own safety.
+Just a `.zip` file containing the map, opened in a browser tab, that works **without a network**, and that gives you **full control** over what you do with it.
+
+### Who it's for
+
+For those who go down. Parisian cataphiles, amateur cavers, prudent urban explorers, rescuers trained for underground environments, heritage researchers — in short, anyone with a **legitimate and respectful** use of these places who wants a tool that doesn't put anyone in danger (neither people nor places).
+
+The app has **no ambition to replace** old annotated paper maps, outings guided by elders, oral transmission, collective memory. It comes **as a complement**, like a digital layer superimposed on this knowledge — not a substitute.
+
+### The philosophy
+
+- 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
+- 🔒 **Zero telemetry** — no third-party service is called to track you. The only possible external fetch is the update of the app code (and you can disable it). The auditor can verify in `🔒 Network audit`.
+- 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`📤 Export`) and erase everything in 2 clicks (`💥 Reset everything`).
+- 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
+- ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
+
+### What the app is not
+
+- ❌ **Not an underground GPS** — native geolocation doesn't work under rock. The app's "tracker" is a **pedometer + heading** that drifts quickly; you need to recalibrate regularly.
+- ❌ **Not a safety guarantee** — the map gives the path, not the oxygen. You remain the sole judge of the risks (collapses, water, gas, fatigue).
+- ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
+- ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
+
+> If you're looking for a turnkey consumer app with reviews and stars, this isn't it. If you're looking for a tool that keeps you in control of your data and your anonymity underground, **welcome**.
 
 ---
+
+## 🙏 Acknowledgements
+
+MyKTAMap would not exist without the work, knowledge and patience of many people. This project is carried by **one person** on the development side (KARMA), but it relies on **communities**, **open-source tools**, and **people** who took the time to pass things on.
+
+### To the cataphile community
+
+To the elders who surveyed the galleries with a pencil, map in hand, generation after generation. To the enthusiasts who compiled, digitized, cross-checked, verified. To those who pass it on — on outings, during initiations, whispering to a beginner "no, this way, not that way". MyKTAMap is just **one more tool** in this long chain. Without your maps, without your stories, without your vigilance, this app would have nothing to display.
+
+### To the beta-testers in the field
+
+To those who agreed to go down with an unstable `1.x.y-beta` version, to come back up with screenshots of bugs, to report UX friction, to propose features impossible to imagine from a desk. To the few comrades who tested every release underground, in the dark, in the cold, and who took the trouble to tell what was wrong. Your feedback shaped every hotfix — without you, the app would have remained a comfortable prototype from a couch.
+
+### To the open-source tools
+
+MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
+
+- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — interactive map engine. Heart of the map display. Thanks to **Vladimir Agafonkin** and the many contributors of the project.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers and for the projection of MyKTAMap plans **onto the OSM View**. Thanks to **Iván Sánchez Ortega** for this elegant plugin.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
+- 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
+- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
+
+> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
+
+### To the PWA ecosystem
+
+To the browsers (Chromium, Firefox, Safari, their mobile forks) that implement modern web standards and allow a simple page to function like a native app without depending on a store.
+
+### To the development assistant
+
+A good part of the code in this version was co-written with **Claude (Anthropic)**, an AI assistant that accompanied development over dozens of sessions. It's a tool just like Leaflet or JSZip — useful, honestly documented, and one that does not replace the vision or the final decisions (always on the human side).
+
+### To you reading this guide
+
+For taking 10 minutes to read instead of clicking blindly. This is exactly the state of mind these places require — **taking the time, understanding before acting, respecting what we don't yet master**.
+
+> If you want to contribute — a bug report, a suggestion, a hand with the docs — go through the repo issue tracker or the usual community channels.
+
+---
+
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+
+*MyKTAMap — User Guide*
+*These places are fragile. Discretion is a form of respect.*
+
+---
+
+## 🔴 Important warnings
 
 ### 🔐 Data confidentiality — read this first
 
@@ -101,68 +175,9 @@ When clicked, the 🚨 button forces the re-display of ALL active alerts in casc
 
 > ⚠️ This system is intended for alerts **important for community safety**. It is not used for commercial or promotional messages.
 
-### 🛡️ Revoked plans (anti-leak kill-switch)
-
-If a plan ZIP **leaks massively** (= it's been distributed outside its trusted group — public Telegram, forum, warez site…), the author can **revoke** it: its fingerprint is added to a public server-side list (`denylist.json`). The application will then automatically refuse to open it for **all users**.
-
-**What happens if you download a revoked plan by mistake**:
-
-1. You import the ZIP into the app (main loader OR generator "Modify existing plan")
-2. **Before** opening the ZIP, the app computes its **SHA-256 fingerprint** (locally, on your device)
-3. If the fingerprint matches a revoked plan, a **red blocking modal** appears:
-   - Title: "⛔ Plan revoked"
-   - **Reason**: text given by the author (e.g., "Public leak observed on 05/06/2026 on Telegram")
-   - **Date added** to the blocklist
-   - **SHA-256 fingerprint** (first 12 + last 8 chars, anti-doxxing)
-   - "Got it, delete this plan" button → the plan is automatically removed from your list, the page reloads
-4. The plan **is never opened** on your device
-
-**Strict privacy**:
-- ✅ **No fingerprint is sent to the server**. Only the public list of revoked plans is downloaded, and comparison happens 100% on your device.
-- ✅ The author doesn't know which plans you own (= zero tracking).
-- ✅ The `denylist.json` list is public: you can audit it yourself at `https://myktamap.fr/denylist.json` (same for pro instances).
-
-**Cache & propagation**:
-- The revocation list is refreshed at app boot then cached for 24h.
-- For urgent additions by the author, propagation is **immediate** for users reopening the app, max 24h for others.
-- When **offline**, the app uses the last known list (= mechanism stays active offline).
-
-**Assumed limitation**: only **byte-perfect** leaks are blocked (= the exact ZIP). If an attacker re-packs the ZIP with another tool or modifies 1 byte, the fingerprint changes. This is enough to block **accidental redistribution** of a circulating ZIP, but not an intentional active derivation (= acceptable max friction).
-
-> 💡 **For plan authors who want to revoke a ZIP**: contact KARMA (app author) with your ZIP's SHA-256 fingerprint (command: `sha256sum your-plan.zip`) + a short reason. Revocation is applied server-side within a few days.
-
-#### 🔄 Automatic boot audit
-
-If a plan **you have already imported** is revoked by the author AFTER your import (between 2 sessions), the app detects it automatically at next startup:
-
-- ~2 seconds after boot, in the background, the app computes the SHA-256 fingerprint of each of your local plans and compares against the public list
-- If a match → plan is **automatically removed** from your list
-- An **orange modal** appears listing the revoked plans (name + reason + date + truncated fingerprint) + "Got it" button
-- The fingerprint is cached in your plan list → next boots are near-instant (no re-calc)
-
-> ✅ **Privacy**: everything stays local, like at import. No fingerprint is ever sent to the server.
-
-
 ---
 
 ## 🚀 Getting started
-
-### 🗝️ Restricted access — Community code
-
-The application is protected by a **single shared password** for all authorized users. The code will be communicated to you by the author (forum, direct message, etc.).
-
-> 🌍 At the top of this screen, a **FR · EN · ES** selector lets you pick your language **from the very first launch** (pre-selected from your browser's) — the screen translates immediately and the whole app follows, tutorial included.
-
-**On first installation** (or after a complete reset):
-1. The splash displays normally (3.5 seconds)
-2. A **🗝️ Restricted access** screen appears with an input field
-3. Enter the code → click **🔓 Unlock**
-4. If correct → the app loads normally and you don't need to re-enter it
-5. If incorrect → red message, you have 4 remaining attempts
-
-**Before doing a complete reset**: the confirmation modal displays the code in clear so you can re-enter it at the next startup. **Note it down or copy it before clicking "Reset"**, otherwise you won't be able to log in again.
-
-> 🛡️ **Security level**: this is a **community barrier**, not real authentication. The app's source code is public on GitHub. This gate is used to discourage passers-by and frame a circle of informed users, not to protect sensitive data.
 
 ### 📱 Install the application on Mobile (iPhone/Android)
 
@@ -176,6 +191,17 @@ MyKTAMap can be installed as a native application on Mobile — without going th
 
 > The application thus runs in full screen mode, without the browser bar.
 
+> ⚠️ **Storage limits**:
+> - **iPhone (classic Safari)**: ~50 MB, may be erased after prolonged inactivity
+> - **iPhone (installed PWA)**: up to 1 GB, persistent
+> - **Android Chrome**: several GB available
+> - **PC**: very large
+>
+> For maximum persistence on iPhone, **install the application as a PWA** before storing your maps.
+
+> ⚠️ If the quota is exceeded, a warning is displayed and the map remains usable but will require re-selection on each opening.
+
+
 ### 📥 Install the application on PC
 
 MyKTAMap can also be installed as a native application on PC — without installing an executable.
@@ -184,20 +210,6 @@ MyKTAMap can also be installed as a native application on PC — without install
 2. Click the "Install" button next to the URL
 3. Confirm — an icon appears on your desktop
 4. Always launch the application from this icon
-
-
-### 🎬 Startup animation
-
-When the application launches (PWA app opening, page refresh, first access), a **welcome animation** is displayed for about 3.5 seconds:
-
-- MyKTAMap **logo** (yellow compass rose)
-- **Title** and subtitle
-- Golden **loading bar**
-- **Author signature** and license mention
-
-This animation **only appears once per session**. If you change maps via 🗂️ or ▶️ Resume, it will not be re-displayed — you stay in your active session.
-
-> To see it again, close the application then relaunch it from your home icon (PWA) or refresh the page (F5 on PC).
 
 ### 📦 Load a map
 
@@ -221,35 +233,6 @@ At startup, the application displays a **home screen** that groups together:
 >
 > Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking. No question either for server maps, or when you re-select the file of a specific map from your list.
 
-### 🗺️ Convert a GIS file (QGIS…) into a map
-Got data in a GIS package you want to use in MyKTAMap? Drop your export **straight onto the "📦 Load a new map" area of the home screen** — the same one you already use for ZIPs: the app recognises the format and opens **"Convert from GIS"**. It also works from the **🏗️ Generator** import area.
-
-**Accepted formats**: `.geojson`, `.json`, `.kml`, `.kmz` (vector). Points, paths and zones are imported.
-
-**No map image needed**: if all you have is vector data, the app **generates a blank background automatically aligned** on your file's coordinates — your annotations land in the right place. You can replace that background with a real image later via 🏗️ **Edit a map**.
-
-**Your own naming is respected.** A GIS file has its own vocabulary (`CANALISATION`, `galerie_tech`, `ZH`…). A **mapping screen** lets you pick the column holding the type, then say what each value means in MyKTAMap. Obvious values are pre-filled — check them, nothing is forced. Listed values are **split by family**: those found on polygons offer zone types, never path types.
-
-> ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
-
-> 📐 **Lambert 93 converted automatically* — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
-
-> 🗺️ **Quarry surveys: what the import can do**
-> 
-> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen. Everything you change there is **kept in the generated plan** — including types you rename, hide, recolour or add yourself. ⚠️ If the screen says the legend has been reset, a change in the mapping has invalidated your names: reopen 🏷️ before generating.
-> - **Every type goes where you want.** An object's shape in the file does not say what it is: a polygon may be a zone, a pillar, a wall — or a **working face**, if whoever drew it closed the outline. Each value can target any family in the dropdown.
-> - **The plan's height is computed**, you only give the width. That is what keeps the plan inside the frame: with free proportions, content overflowed. Past a certain size a warning appears (possible empty background on iPhone, or heavy generation) — it is **advice**, not a block.
-> 
-> ⚠️ **If you created a plan from a GPX or SIG file with an older version of the app**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
-
-
->
-> A file in **another** projection (UTM, Web Mercator…) will be **refused**, with the number of offending coordinates and what to do. This is deliberate: silently accepting coordinates we cannot interpret would place your site thousands of kilometres away, without the slightest warning. *(Lambert 93 itself is recognised and converted — see just above.)*
-
-**Good to know**: polygon holes (inner rings) are ignored — MyKTAMap has no zone with holes. Beyond 20,000 objects the import is refused: filter your layer in QGIS before exporting.
-
-*Not supported*: Shapefile and GeoPackage. They would require heavy libraries, incompatible with the "100% offline, no install" promise. Re-export as GeoJSON from QGIS, it's two clicks.
-
 ### 👤 User profile
 
 A **profile banner** is displayed at the top of the home screen, just below the header. It groups your visual identity and configurable statistics on your use of the app.
@@ -258,37 +241,11 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 - **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
 - **Nickname**: your alias (editable). Default "Cataphile" on first launch.
-- **🏅 Rank**: a **badge** (from *Tourist* to *Grandmaster*) computed from your **time spent** in the app, the **number of maps** explored and the **km of gallery** mapped. It shows as a **colored ring** around the photo + a **medal** in the corner + the **rank name under your nickname**. The breakdown (the 3 metrics + progress "X left for the next rank" + a score) is in the profile card. *(100% local and fun — it unlocks nothing, it's just for the joy of it.)*
-- **🏆 Achievements**: **38 achievements** to unlock. **8 families × 4 tiers** (🥉🥈🥇👑) — *Cartographer* (maps), *Surveyor* (georeferenced maps), *Deep walker* (km), *Cellar rat* (time), *Pin master* (POIs), *Tracer* (paths), *Zoner* (zones), *Builder* (structures) — **+ 6 one-shot « 🎉 Special »**: *Jack of all trades*, *Centurion* (score ≥ 100), *Mole* (used the tracker), *Multi-level caver*, *Underground marathon* (tracker session > 4 h), *Completionist* (all the rest). A **toast** notifies you on unlock, the **N/38** grid lives in the profile card. You can also show your **score** and your **number of achievements** in the home banner stats (🎨 *Banner stats* section).
 - **Compact stats** *(visible as soon as the screen is ≥ 380 px wide)* — now **configurable** from the Profile modal (see below). By default:
   - ⏱️ **Session time**: time elapsed since the app started in this session
   - 💾 **Save**: actual size of MyKTAMap data stored locally (see below)
 
 > 💡 **Light theme chart**: in light mode, the profile banner background aligns with the "My maps" cards for clean visual integration.
-
-#### 🖼️ Home wallpaper
-
-In the **Profile** modal (click the banner), at the very bottom before the export buttons, you can set **your own image as the home screen background** instead of the theme colour.
-
-Three settings, and they matter:
-
-- **🖼️ Choose an image** — any photo. It is resized and re-encoded on add, which also **strips its metadata**, including where the photo was taken.
-- **Veil** — darkens (or lightens, in light theme) the image so text stays readable on top. At 0% the image is bare, at 100% you get the plain background back. Default 55%.
-- **Framing ↔ / ↕** — the screen **never shows the whole photo**: it is scaled up to cover, the rest is cropped. In portrait on a phone, a landscape photo only shows about a quarter of its width. These sliders pick **which part stays visible**. Only the one for the overflowing axis has an effect — the other does nothing, that's expected.
-
-**🗑️ Remove** goes back to the theme colour.
-
-> 💡 The image stays **on your device**, in the same storage as your avatar. It disappears if you reset your profile.
->
-> ⚠️ It **does not travel yet** with the profile export: on a new device you will need to set it again.
-
-**Edit your profile**:
-
-Click on the profile banner → **👤 My profile** modal:
-
-- **✏️ Nickname**: type whatever you want (letters / numbers / space). Used only to personalize local display.
-- **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before saving it on your device, to avoid saturating your browser quota.
-- **🗑️ Reset profile**: reset button (with confirmation). Empties nickname + photo + counters.
 
 #### 📊 Stats grid
 
@@ -389,24 +346,6 @@ The profile export can now **bundle the ZIP archives of maps stored in the app**
 
 > 🔒 **100% local**: your nickname and photo remain in your browser. Nothing is sent to a server. The profile export is explicit and controlled by you.
 
-#### 💼 Pro edition — import a license
-
-If the author has provided you with a **`Licence-pro.json`** file (by mail, private channel, etc.) following a professional license request, you can **import it directly** into your browser from the profile modal to activate pro edition **on this device only**.
-
-**Dedicated section in the My Profile modal**:
-
-- **If you are in community mode** (default state): a **📂 Import a pro license** button appears. On click, `.json` file picker → you select your file → immediate validation → confirmation toast. Pro mode is activated: the loader footer switches (✓ Pro license active), the splash displays "Professional edition", the gate screens remove the "Pro license" link (now redundant).
-- **If a local license is active**: a **🗑️ Remove local license** button allows you to return to community mode. The license remains available in the original file if you want to re-import it later.
-- **If a server license is active** (instance deployed by an admin with `Licence-pro.json` at the server root): ✓ badge only, no button — it's the server administrator who decides.
-
-**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict format `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
-
-**🆕 Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
-
-> 🔒 **100% local**: the license file is read by the browser then kept in your local storage. It is **never sent to a server**, never transmitted. No network connection is added.
-
-> ⚖️ **Legal value**: the `MKTM-LIC-...` hash that appears in the file is **nominative** — linked to a specific contract between the author and the license holder. **Its reproduction or sharing with an unauthorized third party constitutes a contractual breach** (the author can enforce their rights). The browser-side mechanism remains cosmetic: it does not cryptographically verify the hash, the contract signature is what matters legally.
-
 ### 📚 Managing your map list
 
 The application remembers all the maps you load, whether they come from the server or your local disk.
@@ -474,43 +413,6 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 > 📐 **Point C (optional) — for distorted maps**: if your map is an **assembly** that projects poorly (stretched one way, different X/Y scales), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the global distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Pick C **far from the A-B line** (an aligned C adds nothing and is refused). Note: this corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your map already projects well: nothing changes.
 
-### 🔐 Avoid re-selecting the ZIP at each opening
-
-By default the app **stores each map on first load**: the ZIP is copied into the browser's local storage area, nothing to tick on the home screen. The setting lives in **⚙️ Home configuration → "💾 Store the map in the app on first load"** (on by default; when off, the ZIP is asked for at every opening). On subsequent openings:
-
-- **0 clicks**, the map loads directly
-- Works **offline** (the ZIP is in the browser, no need to find the file)
-- Recommended on **mobile**
-
-> ℹ️ **The "🔐 Grant permanent access to the file" button (Chrome/Edge) was removed on 15/09/2026.** It was redundant: the ZIP was copied into the app anyway, and the file reference was never used. Maps that had it still open; at their next re-selection they become "stored".
-
-> ⚠️ **Storage limits**:
-> - **iPhone (classic Safari)**: ~50 MB, may be erased after prolonged inactivity
-> - **iPhone (installed PWA)**: up to 1 GB, persistent
-> - **Android Chrome**: several GB available
-> - **PC**: very large
->
-> For maximum persistence on iPhone, **install the application as a PWA** (see 📱 section) before storing your maps.
-
-> ⚠️ If the quota is exceeded, a warning is displayed and the map remains usable but will require re-selection on each opening.
-
-### 🗂️ Automatic discovery of server maps
-
-If the application is hosted on a server with multiple maps in `data/` (for example `data/test1/`, `data/test2/`...), it can detect them automatically via a `data/index.json` file:
-
-**Minimal format**:
-```json
-{ "plans": ["test1", "test2"] }
-**Detailed format** (recommended to display names right away):
-```json
-{
-  "plans": [
-    { "id": "test1", "path": "data/test1", "name": "Test Map 1", "version": "V1" },
-    { "id": "test2", "path": "data/test2", "name": "Test Map 2", "version": "V1" }
-  ]
-}
-On startup, these maps appear in **My maps** marked as "discovered" and can be loaded with one click.
-
 ### ⚙️ "Configuration" modal (loader)
 
 On the home page, a **⚙️ Configuration button** in the loader header (next to 📖 Documentation and 🚨 Alerts) opens a single modal that groups all loader settings (tiling, performance, debug, update, reset):
@@ -563,6 +465,15 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 9. **💥 Reset everything (full reset)** — total purge: the cache, everything saved in your browser, and your maps. Resets the community access code **AND** the local PIN if configured. **Double confirmation required.** Irreversible action.
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
+
+#### 🪟 Where tool panels open
+
+The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.
+
+> 🐛 **Why this changed** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
+
+If you prefer the old behaviour, tick **🪟 Anchor tool panels to their button** in ⚙️ **Settings**. It is comfortable on a large screen, where space is not an issue — not advised on a phone.
+
 
 ### 🎚️ Image splitting — the app decides
 
@@ -705,23 +616,73 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - Beyond **500 trips**, the oldest ones are removed automatically.
 - The logbook **is part of the profile export**: switching devices via the profile export does carry your outing history over.
 
+#### 🏁 Your distance when the pedometer saw nothing
+
+With the phone in your pocket the pedometer counts almost nothing. But every **📍 I am here** you place on a point of the plan leaves a **timestamped marker**. The app links those markers **following your galleries** — the same computation as a route — and derives the distance actually walked between them.
+
+In practice: a marker at 12:00, one at 12:30, one at 13:00 → the app computes A→B→C through the galleries, not as the crow flies.
+
+##### 🏁 The last leg, the one that was lost
+
+A leg is only computed when the **next** marker arrives. So everything you walk **after your last marker** was counted by nobody.
+
+When you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
+
+##### What the record tells you about the number
+
+| What it says | What it means |
+|---|---|
+| *including 900 m computed through the galleries between 6 markers* | The path was rebuilt on your drawn paths — trustworthy |
+| *including 900 m as the crow flies between 6 markers (not refined)* | Straight lines between markers — **underestimated**, sometimes badly |
+
+> ⚠️ **What this computation cannot do**: it takes the **shortest** path between two markers, not necessarily yours. Back-and-forth, dead ends explored, hesitations — all underestimated. And with no “I am here” at all there is nothing to link: the distance stays the pedometer's.
+
+#### ⏱️ How an outing's duration is counted
+
+A **field** outing is counted **from start to end**, not from the time the app was open. That is what you mean by “we were down there 3 hours”: the phone in your pocket counts, and so does the app going to sleep.
+
+The record also shows the **time the app was open**, right below. It is not a duplicate: it tells you what the measurement is worth. *3 hours of outing for 12 minutes of app* means a pedometer that saw almost nothing — treat the distance with caution.
+
+> ℹ️ A **desk work** session keeps the usage time: you leave a plan open all evening without looking at it, so the real duration would mean nothing.
+
+##### ✏️ Fixing a forgotten end
+
+If you did not tap **🏁 Close my outing** on the way out, the app does not know when you left: it takes the last moment it was alive — often when the phone put it to sleep. The duration is then underestimated.
+
+Open the outing's record → **✏️ Fix the end**, and enter the real time. The duration is recomputed at once.
+
+> ℹ️ The **app-open time** is never changed: it is a measurement, not a statement. And an end before the start is refused.
+
+#### 🔁 An outing split in several — resume and merge
+
+If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Previously, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
+
+**It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
+
+**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. For a field outing, the time spent on the other plan **counts** in its duration (measured from start to finish): you were still underground. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
+
+> ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
+
+##### 🔗 Re-joining outings that were already split
+
+For older ones, or if the delay was exceeded: 📔 **My logbook** → **🔗 Merge outings** → tick the ones to join (at least 2) → **Merge**.
+
+| What gets joined | How |
+|---|---|
+| Duration, distance, steps, additions | Summed |
+| Total duration | From the **start of the first to the end of the last**, gaps included |
+| Notes | Stacked, separated by a rule |
+| Photos, tracks, levels | Joined |
+| Field / desk | If **a single** piece was field work, the whole thing is |
+
+> ⚠️ **Irreversible**: the original outings disappear from the logbook. The app asks for confirmation — it is the only action in the logbook that erases anything.
+
+
 ---
 
 ### 🧙 Generator: step-by-step wizard
 
 The **Generator** (🏗️) now guides you **step by step**, like an installer: each page shows one thing (name, image, layers…), optional steps can be **skipped** in one click, and a **final summary** shows what's filled, skipped or missing — with useful warnings (e.g. no GPS georeferencing = no OSM view or KMZ export) **before** generating. An imported ZIP pre-fills every step: you just review. Power users can switch back to the old full view via **🗒️ Show all** (choice remembered).
-
-### 🔽 Collapsible footer
-
-The small **arrow** under the home screen collapses the footer (copyright, links, credits) to free up space — only a minimal « © MyKTAMap · version » line remains. Click again to expand. Your choice is remembered and travels with the profile export.
-
-### 🐛 Detailed logs (debug mode)
-
-The **🐛 Detailed logs** button in the **⚙️ Configuration** modal of the loader enables verbose mode:
-- Additional console logs (tracker sensors, tiling steps)
-- Display of **technical figures** under the Performance mode selector (tile sizes, JPEG quality, trigger threshold)
-
-Useful to report a problem or understand what's happening under the hood. Disabled by default. Setting also accessible from ⚙️ Settings > Detailed logs.
 
 ### ⚠️ If the application stops abruptly
 
@@ -766,6 +727,9 @@ The window offers you 3 actions:
 
 > 💡 **Tip**: regularly export your list via 💾 (icon at the top right of **📚 My maps**) so you can restore it in case of trouble.
 
+> 🛡️ A map may also have been **revoked** by its author: it then disappears from your list. See **🔭 Going further → 🛡️ Revoked plans (anti-leak kill-switch)**.
+
+
 ### 💥 Reset everything
 
 If you want to return the application **to its initial state** (like a first launch), a **💥 Reset everything** button is available in two places:
@@ -784,6 +748,9 @@ The application requests **two confirmations** before executing the reset, and r
 > 📡 **Connection check**: before the first confirmation, the application quickly tests your Internet connection (max 5 seconds). If you are **offline**, an **additional red window** warns you that the application will be **unusable** after the reset (the empty cache cannot be refilled without network). Reconnect to Wi-Fi or mobile data before restarting the reset, or click "Continue anyway" if you know what you're doing.
 
 > Useful in case of persistent trouble, or to test the application "as a new user" when you publish or share your work.
+
+**Before doing a complete reset**: the confirmation modal displays the code in clear so you can re-enter it at the next startup. **Note it down or copy it before clicking "Reset"**, otherwise you won't be able to log in again.
+
 
 ### 🔒 Privacy & Network audit
 
@@ -2698,75 +2665,6 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
-### 🏁 Your distance when the pedometer saw nothing
-
-With the phone in your pocket the pedometer counts almost nothing. But every **📍 I am here** you place on a point of the plan leaves a **timestamped marker**. The app links those markers **following your galleries** — the same computation as a route — and derives the distance actually walked between them.
-
-In practice: a marker at 12:00, one at 12:30, one at 13:00 → the app computes A→B→C through the galleries, not as the crow flies.
-
-#### 🏁 The last leg, the one that was lost
-
-A leg is only computed when the **next** marker arrives. So everything you walk **after your last marker** was counted by nobody.
-
-When you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
-
-#### What the record tells you about the number
-
-| What it says | What it means |
-|---|---|
-| *including 900 m computed through the galleries between 6 markers* | The path was rebuilt on your drawn paths — trustworthy |
-| *including 900 m as the crow flies between 6 markers (not refined)* | Straight lines between markers — **underestimated**, sometimes badly |
-
-> ⚠️ **What this computation cannot do**: it takes the **shortest** path between two markers, not necessarily yours. Back-and-forth, dead ends explored, hesitations — all underestimated. And with no “I am here” at all there is nothing to link: the distance stays the pedometer's.
-
-### ⏱️ How an outing's duration is counted
-
-A **field** outing is counted **from start to end**, not from the time the app was open. That is what you mean by “we were down there 3 hours”: the phone in your pocket counts, and so does the app going to sleep.
-
-The record also shows the **time the app was open**, right below. It is not a duplicate: it tells you what the measurement is worth. *3 hours of outing for 12 minutes of app* means a pedometer that saw almost nothing — treat the distance with caution.
-
-> ℹ️ A **desk work** session keeps the usage time: you leave a plan open all evening without looking at it, so the real duration would mean nothing.
-
-#### ✏️ Fixing a forgotten end
-
-If you did not tap **🏁 Close my outing** on the way out, the app does not know when you left: it takes the last moment it was alive — often when the phone put it to sleep. The duration is then underestimated.
-
-Open the outing's record → **✏️ Fix the end**, and enter the real time. The duration is recomputed at once.
-
-> ℹ️ The **app-open time** is never changed: it is a measurement, not a statement. And an end before the start is refused.
-
-### 🔁 An outing split in several — resume and merge
-
-If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Previously, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
-
-**It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
-
-**And if you open another plan along the way** — to show it to someone, to check a passage — your outing is **paused**, not ended. Come back to your outing's plan within **2 hours**: it **resumes** where it was, counters and track included. Beyond that, it is filed in the logbook as usual. For a field outing, the time spent on the other plan **counts** in its duration (measured from start to finish): you were still underground. ⚠️ **Tracking**, however, stops when you switch plans: when a field outing resumes, the app offers **"▶️ Restart tracking"** — one tap is enough.
-
-> ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
-
-#### 🔗 Re-joining outings that were already split
-
-For older ones, or if the delay was exceeded: 📔 **My logbook** → **🔗 Merge outings** → tick the ones to join (at least 2) → **Merge**.
-
-| What gets joined | How |
-|---|---|
-| Duration, distance, steps, additions | Summed |
-| Total duration | From the **start of the first to the end of the last**, gaps included |
-| Notes | Stacked, separated by a rule |
-| Photos, tracks, levels | Joined |
-| Field / desk | If **a single** piece was field work, the whole thing is |
-
-> ⚠️ **Irreversible**: the original outings disappear from the logbook. The app asks for confirmation — it is the only action in the logbook that erases anything.
-
-### 🪟 Where tool panels open
-
-The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.
-
-> 🐛 **Why this changed** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
-
-If you prefer the old behaviour, tick **🪟 Anchor tool panels to their button** in ⚙️ **Settings**. It is comfortable on a large screen, where space is not an issue — not advised on a phone.
-
 ### 🎯 Convert several objects at once
 
 On an imported survey it is common to have **dozens** of mis-typed objects — every working face on a level that is in fact a gallery, for instance. Redoing them one by one would take forever.
@@ -3245,6 +3143,36 @@ If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / 
 
 > 🔒 **100 % local**: the file is read and converted **in your browser**. Not one byte is sent anywhere.
 
+### 🗺️ Convert a GIS file (QGIS…) into a map
+Got data in a GIS package you want to use in MyKTAMap? Drop your export **straight onto the "📦 Load a new map" area of the home screen** — the same one you already use for ZIPs: the app recognises the format and opens **"Convert from GIS"**. It also works from the **🏗️ Generator** import area.
+
+**Accepted formats**: `.geojson`, `.json`, `.kml`, `.kmz` (vector). Points, paths and zones are imported.
+
+**No map image needed**: if all you have is vector data, the app **generates a blank background automatically aligned** on your file's coordinates — your annotations land in the right place. You can replace that background with a real image later via 🏗️ **Edit a map**.
+
+**Your own naming is respected.** A GIS file has its own vocabulary (`CANALISATION`, `galerie_tech`, `ZH`…). A **mapping screen** lets you pick the column holding the type, then say what each value means in MyKTAMap. Obvious values are pre-filled — check them, nothing is forced. Listed values are **split by family**: those found on polygons offer zone types, never path types.
+
+> ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
+
+> 📐 **Lambert 93 converted automatically* — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
+
+> 🗺️ **Quarry surveys: what the import can do**
+> 
+> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen. Everything you change there is **kept in the generated plan** — including types you rename, hide, recolour or add yourself. ⚠️ If the screen says the legend has been reset, a change in the mapping has invalidated your names: reopen 🏷️ before generating.
+> - **Every type goes where you want.** An object's shape in the file does not say what it is: a polygon may be a zone, a pillar, a wall — or a **working face**, if whoever drew it closed the outline. Each value can target any family in the dropdown.
+> - **The plan's height is computed**, you only give the width. That is what keeps the plan inside the frame: with free proportions, content overflowed. Past a certain size a warning appears (possible empty background on iPhone, or heavy generation) — it is **advice**, not a block.
+> 
+> ⚠️ **If you created a plan from a GPX or SIG file with an older version of the app**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
+
+
+>
+> A file in **another** projection (UTM, Web Mercator…) will be **refused**, with the number of offending coordinates and what to do. This is deliberate: silently accepting coordinates we cannot interpret would place your site thousands of kilometres away, without the slightest warning. *(Lambert 93 itself is recognised and converted — see just above.)*
+
+**Good to know**: polygon holes (inner rings) are ignored — MyKTAMap has no zone with holes. Beyond 20,000 objects the import is refused: filter your layer in QGIS before exporting.
+
+*Not supported*: Shapefile and GeoPackage. They would require heavy libraries, incompatible with the "100% offline, no install" promise. Re-export as GeoJSON from QGIS, it's two clicks.
+
+
 ### 📄 New map
 
 Blank form. Fill in:
@@ -3522,6 +3450,10 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 
 ---
 
+## 📚 Help and documentation
+
+Replay the tutorial, search this guide, or ask an AI your questions.
+
 ### 🎓 Replaying the tutorial
 
 The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Documentation** and tap the **🎓** button in the title row, next to the language selector. Nothing to reinstall or reset.
@@ -3530,7 +3462,7 @@ The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Doc
 
 This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “cafe” finds “café”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
 
-## 🤖 AI Help
+### 🤖 AI Help
 
 > Accessible from **📖 Documentation**: the **🤖** button in the title row, next to the language selector — so also from the home screen.
 
@@ -3546,8 +3478,6 @@ Downloads a `.md` file that summarizes everything the app allows you to do (this
 > 🔒 **Confidentiality**: the file contains ONLY the documentation — no personal data (none of your maps, points, sessions, etc.). You can share it without risk.
 
 > 💰 **Note**: the AI used may be paid or have quotas depending on the service. MyKTAMap remains free — AI help is just a way to leverage an external AI.
-
----
 
 ## 🗺️ Legend
 
@@ -3626,25 +3556,6 @@ If the app gives you a distance different from reality (for example 100 m displa
 
 ---
 
-## 🏷️ Version badge in the footer (loader)
-
-At the bottom of the loader, next to the license mention, a small **version badge** shows the current installed version of the app.
-
-**Two visual states:**
-
-| State | Display | Action on click |
-|---|---|---|
-| **You are up to date** | version number in subtle grey | "✅ Already up to date" modal — shows the installed version + release date + **release notes** (changelog) |
-| **Update available** | `installed version → new version` in **flashing blue** | "🔔 Update available" modal — offers a soft update (preserves maps and sessions) or a full reset |
-
-When a new version is available, the badge **flashes blue** to catch your attention without being visually aggressive. On click, you can choose to act immediately (soft update or full reset) or postpone it (24h snooze).
-
-> 💡 The badge bypasses the 24h snooze: if you clicked "Later" a few minutes ago but change your mind, click the badge to relaunch the update modal.
-
-> 💡 If you are already up to date, clicking the badge still shows the notes of the latest version — handy to re-read what changed in the update you installed.
-
----
-
 ## 🔐 Local access code (PIN / Face ID)
 
 Lock the app at every startup with a 4-6 digit PIN, **Face ID** or **Touch ID** if your device supports it. 100% local — no password is sent over the Internet, no recovery possible if forgotten.
@@ -3692,11 +3603,19 @@ In case of a problem or to force an update, use **⚙️ Configuration (home pag
 
 ---
 
-## 🐳 Self-host with Docker
+## 🔭 Going further
+
+Advanced features, or ones for rare cases: hosting the app on your own server, the pro edition, map revocation, diagnostic logs.
+
+### 🖥️ Hosting the app on your server
+
+For those who install MyKTAMap on their own machine or server (club, association, kiosk). On a site that is already online, there is nothing to do here.
+
+#### 🐳 Self-host with Docker
 
 If you want to run MyKTAMap **on your own hardware** (PC, Raspberry Pi, NAS, dedicated server) — to have it available on your local network, guarantee 100% offline operation, or just out of curiosity — a **ready-to-run Docker image** is now available.
 
-### In one command
+##### In one command
 
 ```bash
 docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
@@ -3704,7 +3623,7 @@ docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
 
 Then open **`https://localhost:8443/`** in your browser. On the first access, your browser will warn about an **untrusted certificate** (this is normal, the image generates a self-signed certificate at startup). Click **"Advanced" → "Continue to localhost"** to accept, and the app appears.
 
-### Multi-platform
+##### Multi-platform
 
 The image is built for 2 architectures:
 - **amd64** (Intel/AMD desktop or server PC)
@@ -3712,7 +3631,7 @@ The image is built for 2 architectures:
 
 Docker automatically detects the correct version on `pull`.
 
-### Bonus: your own maps
+##### Bonus: your own maps
 
 To persist your maps across container restarts:
 
@@ -3723,7 +3642,7 @@ docker run -d --name myktamap \
   ghcr.io/karmakta91/myktamap:latest
 ```
 
-### Bonus: your own TLS certificate
+##### Bonus: your own TLS certificate
 
 If you have a valid certificate (Let's Encrypt with a local domain, internal CA, etc.), you can mount it as a volume instead of using the self-signed one:
 
@@ -3736,7 +3655,7 @@ docker run -d --name myktamap \
 
 The volume must contain `server.crt` + `server.key`.
 
-### Bonus: access via local hostname
+##### Bonus: access via local hostname
 
 ```bash
 docker run -d --name myktamap \
@@ -3747,7 +3666,7 @@ docker run -d --name myktamap \
 
 The self-signed certificate will include `myktamap.local` in the allowed names. Handy if you have a local DNS (Pi-hole, AdGuard Home) resolving that name to your host.
 
-### Updates
+##### Updates
 
 To upgrade to a new version:
 
@@ -3762,7 +3681,7 @@ You can also **pin** a specific version instead of `latest`:
 - `ghcr.io/karmakta91/myktamap:1.36` — latest patch in 1.36.x
 - `ghcr.io/karmakta91/myktamap:1` — latest minor in 1.x
 
-### Limits
+##### Limits
 
 - **Service Worker + self-signed certificate**: some browsers (Chromium, Safari) refuse to install the Service Worker if the certificate isn't trusted. If the app works but seems "not to cache" for offline mode, accept the security warning first, then reload.
 - **Port conflict**: if you already have another service on `8443` on the host, change the mapping: `-p 9443:8443` for example.
@@ -3773,6 +3692,90 @@ You can also **pin** a specific version instead of `latest`:
 > 📖 **Never used Docker?** A dedicated step-by-step guide exists: **[`docs/applications/DOCKER_INSTALL.en.md`](DOCKER_INSTALL.en.md)** — Docker Desktop install (Windows/Mac/Linux), daemon startup, troubleshooting common errors (self-signed cert, port conflicts, WSL 2), Docker-free alternatives.
 
 > 📚 **Technical details**: see `docs/architecture/docker-selfhost.md` in the GitHub repo.
+
+#### 🗂️ Automatic discovery of server maps
+
+If the application is hosted on a server with multiple maps in `data/` (for example `data/test1/`, `data/test2/`...), it can detect them automatically via a `data/index.json` file:
+
+**Minimal format**:
+```json
+{ "plans": ["test1", "test2"] }
+**Detailed format** (recommended to display names right away):
+```json
+{
+  "plans": [
+    { "id": "test1", "path": "data/test1", "name": "Test Map 1", "version": "V1" },
+    { "id": "test2", "path": "data/test2", "name": "Test Map 2", "version": "V1" }
+  ]
+}
+On startup, these maps appear in **My maps** marked as "discovered" and can be loaded with one click.
+
+### 💼 Pro edition — import a license
+
+If the author has provided you with a **`Licence-pro.json`** file (by mail, private channel, etc.) following a professional license request, you can **import it directly** into your browser from the profile modal to activate pro edition **on this device only**.
+
+**Dedicated section in the My Profile modal**:
+
+- **If you are in community mode** (default state): a **📂 Import a pro license** button appears. On click, `.json` file picker → you select your file → immediate validation → confirmation toast. Pro mode is activated: the loader footer switches (✓ Pro license active), the splash displays "Professional edition", the gate screens remove the "Pro license" link (now redundant).
+- **If a local license is active**: a **🗑️ Remove local license** button allows you to return to community mode. The license remains available in the original file if you want to re-import it later.
+- **If a server license is active** (instance deployed by an admin with `Licence-pro.json` at the server root): ✓ badge only, no button — it's the server administrator who decides.
+
+**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict format `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
+
+**🆕 Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
+
+> 🔒 **100% local**: the license file is read by the browser then kept in your local storage. It is **never sent to a server**, never transmitted. No network connection is added.
+
+> ⚖️ **Legal value**: the `MKTM-LIC-...` hash that appears in the file is **nominative** — linked to a specific contract between the author and the license holder. **Its reproduction or sharing with an unauthorized third party constitutes a contractual breach** (the author can enforce their rights). The browser-side mechanism remains cosmetic: it does not cryptographically verify the hash, the contract signature is what matters legally.
+
+### 🛡️ Revoked plans (anti-leak kill-switch)
+
+If a plan ZIP **leaks massively** (= it's been distributed outside its trusted group — public Telegram, forum, warez site…), the author can **revoke** it: its fingerprint is added to a public server-side list (`denylist.json`). The application will then automatically refuse to open it for **all users**.
+
+**What happens if you download a revoked plan by mistake**:
+
+1. You import the ZIP into the app (main loader OR generator "Modify existing plan")
+2. **Before** opening the ZIP, the app computes its **SHA-256 fingerprint** (locally, on your device)
+3. If the fingerprint matches a revoked plan, a **red blocking modal** appears:
+   - Title: "⛔ Plan revoked"
+   - **Reason**: text given by the author (e.g., "Public leak observed on 05/06/2026 on Telegram")
+   - **Date added** to the blocklist
+   - **SHA-256 fingerprint** (first 12 + last 8 chars, anti-doxxing)
+   - "Got it, delete this plan" button → the plan is automatically removed from your list, the page reloads
+4. The plan **is never opened** on your device
+
+**Strict privacy**:
+- ✅ **No fingerprint is sent to the server**. Only the public list of revoked plans is downloaded, and comparison happens 100% on your device.
+- ✅ The author doesn't know which plans you own (= zero tracking).
+- ✅ The `denylist.json` list is public: you can audit it yourself at `https://myktamap.fr/denylist.json` (same for pro instances).
+
+**Cache & propagation**:
+- The revocation list is refreshed at app boot then cached for 24h.
+- For urgent additions by the author, propagation is **immediate** for users reopening the app, max 24h for others.
+- When **offline**, the app uses the last known list (= mechanism stays active offline).
+
+**Assumed limitation**: only **byte-perfect** leaks are blocked (= the exact ZIP). If an attacker re-packs the ZIP with another tool or modifies 1 byte, the fingerprint changes. This is enough to block **accidental redistribution** of a circulating ZIP, but not an intentional active derivation (= acceptable max friction).
+
+> 💡 **For plan authors who want to revoke a ZIP**: contact KARMA (app author) with your ZIP's SHA-256 fingerprint (command: `sha256sum your-plan.zip`) + a short reason. Revocation is applied server-side within a few days.
+
+#### 🔄 Automatic boot audit
+
+If a plan **you have already imported** is revoked by the author AFTER your import (between 2 sessions), the app detects it automatically at next startup:
+
+- ~2 seconds after boot, in the background, the app computes the SHA-256 fingerprint of each of your local plans and compares against the public list
+- If a match → plan is **automatically removed** from your list
+- An **orange modal** appears listing the revoked plans (name + reason + date + truncated fingerprint) + "Got it" button
+- The fingerprint is cached in your plan list → next boots are near-instant (no re-calc)
+
+> ✅ **Privacy**: everything stays local, like at import. No fingerprint is ever sent to the server.
+
+### 🐛 Detailed logs (debug mode)
+
+The **🐛 Detailed logs** button in the **⚙️ Configuration** modal of the loader enables verbose mode:
+- Additional console logs (tracker sensors, tiling steps)
+- Display of **technical figures** under the Performance mode selector (tile sizes, JPEG quality, trigger threshold)
+
+Useful to report a problem or understand what's happening under the hood. Disabled by default. Setting also accessible from ⚙️ Settings > Detailed logs.
 
 ---
 
@@ -3820,87 +3823,3 @@ If the app is completely stuck even after changing networks, two options that pr
 Open **⚙️ → 🐛 Logs**, copy the journals and pass them on to the technical team.
 
 ---
-
-## 📖 The story
-
-> *A map has never replaced going out. It just helps you not get lost.*
-
-### Where it comes from
-
-MyKTAMap was born from a simple need: having, **in your pocket**, a cataphile map that is **reliable, offline, and doesn't leak**. Not an app store that asks for access to your contacts to display a map. Not a website that tracks you the moment you click. Not a cloud that decides tomorrow to send you a newsletter or resell your traces.
-
-Just a `.zip` file containing the map, opened in a browser tab, that works **without a network**, and that gives you **full control** over what you do with it.
-
-### Who it's for
-
-For those who go down. Parisian cataphiles, amateur cavers, prudent urban explorers, rescuers trained for underground environments, heritage researchers — in short, anyone with a **legitimate and respectful** use of these places who wants a tool that doesn't put anyone in danger (neither people nor places).
-
-The app has **no ambition to replace** old annotated paper maps, outings guided by elders, oral transmission, collective memory. It comes **as a complement**, like a digital layer superimposed on this knowledge — not a substitute.
-
-### The philosophy
-
-- 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
-- 🔒 **Zero telemetry** — no third-party service is called to track you. The only possible external fetch is the update of the app code (and you can disable it). The auditor can verify in `🔒 Network audit`.
-- 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`📤 Export`) and erase everything in 2 clicks (`💥 Reset everything`).
-- 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
-- ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
-
-### What the app is not
-
-- ❌ **Not an underground GPS** — native geolocation doesn't work under rock. The app's "tracker" is a **pedometer + heading** that drifts quickly; you need to recalibrate regularly.
-- ❌ **Not a safety guarantee** — the map gives the path, not the oxygen. You remain the sole judge of the risks (collapses, water, gas, fatigue).
-- ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
-- ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
-
-> If you're looking for a turnkey consumer app with reviews and stars, this isn't it. If you're looking for a tool that keeps you in control of your data and your anonymity underground, **welcome**.
-
----
-
-## 🙏 Acknowledgements
-
-MyKTAMap would not exist without the work, knowledge and patience of many people. This project is carried by **one person** on the development side (KARMA), but it relies on **communities**, **open-source tools**, and **people** who took the time to pass things on.
-
-### To the cataphile community
-
-To the elders who surveyed the galleries with a pencil, map in hand, generation after generation. To the enthusiasts who compiled, digitized, cross-checked, verified. To those who pass it on — on outings, during initiations, whispering to a beginner "no, this way, not that way". MyKTAMap is just **one more tool** in this long chain. Without your maps, without your stories, without your vigilance, this app would have nothing to display.
-
-### To the beta-testers in the field
-
-To those who agreed to go down with an unstable `1.x.y-beta` version, to come back up with screenshots of bugs, to report UX friction, to propose features impossible to imagine from a desk. To the few comrades who tested every release underground, in the dark, in the cold, and who took the trouble to tell what was wrong. Your feedback shaped every hotfix — without you, the app would have remained a comfortable prototype from a couch.
-
-### To the open-source tools
-
-MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
-
-- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — interactive map engine. Heart of the map display. Thanks to **Vladimir Agafonkin** and the many contributors of the project.
-- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers and for the projection of MyKTAMap plans **onto the OSM View**. Thanks to **Iván Sánchez Ortega** for this elegant plugin.
-- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
-- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
-- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
-- 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
-- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
-- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
-
-> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
-
-### To the PWA ecosystem
-
-To the browsers (Chromium, Firefox, Safari, their mobile forks) that implement modern web standards and allow a simple page to function like a native app without depending on a store.
-
-### To the development assistant
-
-A good part of the code in this version was co-written with **Claude (Anthropic)**, an AI assistant that accompanied development over dozens of sessions. It's a tool just like Leaflet or JSZip — useful, honestly documented, and one that does not replace the vision or the final decisions (always on the human side).
-
-### To you reading this guide
-
-For taking 10 minutes to read instead of clicking blindly. This is exactly the state of mind these places require — **taking the time, understanding before acting, respecting what we don't yet master**.
-
-> If you want to contribute — a bug report, a suggestion, a hand with the docs — go through the repo issue tracker or the usual community channels.
-
----
-
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
-
-*MyKTAMap — User Guide*
-*These places are fragile. Discretion is a form of respect.*

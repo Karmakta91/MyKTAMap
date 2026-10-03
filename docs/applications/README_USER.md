@@ -4,19 +4,93 @@
 
 ---
 
-## 🔴 Avertissements importants
+## 📖 Le topo
 
-### ⚖️ Conditions d'utilisation & avertissement légal
+> *Une carte n'a jamais remplacé la sortie. Elle aide juste à ne pas se perdre.*
 
-Au **premier lancement**, une page de **conditions d'utilisation** rappelle que MyKTAMap est un **outil de repérage et de cartographie**, pas une incitation à pénétrer dans des lieux interdits. Elle doit être **lue et acceptée une fois** (case à cocher + « J'accepte »).
+### D'où ça vient
 
-- L'accès à de nombreux sites souterrains — notamment le **réseau des anciennes carrières de Paris** — est **interdit** (arrêté préfectoral du 2 novembre 1955) et **passible d'amende** (135 € à 375 €).
-- Toute intrusion dans un lieu privé ou interdit engage votre **seule responsabilité**.
-- Le **texte intégral** (arrêté du 2 novembre 1955 + réponse ministérielle Sénat n° 03710 du 05/06/2025) est consultable depuis la page, et à tout moment via le lien **⚖️ Conditions d'utilisation** dans le pied de page de l'accueil.
+MyKTAMap est née d'un besoin simple : avoir, **dans la poche**, une carte cataphile **fiable, hors-ligne, et qui ne fuite pas**. Pas un app store qui demande l'accès à tes contacts pour afficher un plan. Pas un site qui te traque dès que tu cliques. Pas un cloud qui décide demain de t'envoyer une newsletter ou de revendre tes traces.
 
-> Les explorations clandestines sont dangereuses (égarement, éboulement, chute dans des puits) et illégales. Respectez la loi, les propriétaires et votre sécurité.
+Juste un fichier `.zip` qui contient le plan, ouvert dans un onglet de navigateur, qui marche **sans réseau**, et qui te laisse **entièrement le contrôle** sur ce que tu fais avec.
+
+### À qui ça s'adresse
+
+À celles et ceux qui descendent. Cataphiles parisiens, spéléos amateurs, urbexeurs prudents, secouristes formés au milieu souterrain, chercheurs en patrimoine — bref, à toute personne qui a un usage **légitime et respectueux** de ces lieux et qui veut un outil qui ne mette personne en danger (ni les gens ni les lieux).
+
+L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les sorties guidées par les anciens, la transmission orale, la mémoire collective. Elle vient **en complément**, comme un calque numérique qu'on superpose à ces savoirs — pas un substitut.
+
+### La philosophie
+
+- 🌐 **100 % hors-ligne par défaut** — l'app fonctionne sans réseau une fois le plan chargé. Tu peux la lancer en avion, dans le métro, ou à 30 m sous terre.
+- 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Le seul fetch externe possible est la mise à jour du code de l'app (et tu peux le couper). L'auditeur peut vérifier dans `🔒 Audit réseau`.
+- 📦 **Propriété des données** — tes annotations, tes photos, tes mesures sont stockées **localement**, dans le navigateur. Personne d'autre que toi n'y a accès. Tu peux tout exporter à tout moment (`💾 Enregistrer session`) et tout effacer en 2 clics (`💥 Tout réinitialiser`).
+- 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, l'auditer. Pas de boîte noire, pas de marketing.
+- ⚖️ **Discrétion = respect** — un plan partagé n'importe comment, c'est un lieu fragilisé. L'app ne contient aucun plan par défaut ; c'est à chaque utilisateur de charger les siens, et de **ne pas les diffuser** au-delà du cercle de confiance.
+
+### Ce que l'app n'est pas
+
+- ❌ **Pas un GPS sous terre** — la géolocalisation native ne marche pas sous roche. Le « tracker » de l'app est un **podomètre + direction** qui dérive vite ; il faut recaler régulièrement.
+- ❌ **Pas une garantie de sécurité** — la carte donne le chemin, pas l'oxygène. Tu restes seul·e juge des risques (effondrements, eau, gaz, fatigue).
+- ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
+- ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
+
+> Si tu cherches une appli grand public clé-en-main avec des avis et des étoiles, ce n'est pas ici. Si tu cherches un outil qui te laisse maître de tes données et de ton anonymat sous terre, **bienvenue**.
 
 ---
+
+## 🙏 Remerciements
+
+MyKTAMap n'existerait pas sans le travail, le savoir et la patience de beaucoup de monde. Ce projet est porté par **une seule personne** côté développement (KARMA), mais il s'appuie sur des **communautés**, des **outils libres**, et des **gens** qui ont pris le temps de transmettre.
+
+### À la communauté cataphile
+
+Aux anciens qui ont relevé les galeries au crayon, plan en main, génération après génération. Aux passionnés qui ont compilé, numérisé, recoupé, vérifié. À celles et ceux qui transmettent — en sortie, en cours d'initiation, en chuchotant à un débutant « non, par là, pas par là ». MyKTAMap n'est qu'un **outil de plus** dans cette longue chaîne. Sans vos plans, sans vos histoires, sans votre vigilance, cette app n'aurait rien à afficher.
+
+### Aux beta-testeurs et testeuses terrain
+
+À celles et ceux qui ont accepté de descendre avec une version `1.x.y-beta` instable, de remonter avec des screenshots de bugs, de signaler les frictions UX, de proposer des features impossibles à imaginer depuis un bureau. Aux quelques camarades qui ont testé chaque release sous terre, dans le noir, dans le froid, et qui ont pris la peine de raconter ce qui clochait. Vos retours ont façonné chaque hotfix — sans vous, l'app serait restée un prototype confortable depuis un canapé.
+
+### Aux outils libres
+
+MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, l'app n'existerait simplement pas :
+
+- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — moteur cartographique interactif. Cœur de l'affichage des plans. Merci à **Vladimir Agafonkin** et aux nombreux contributeurs du projet.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image et pour la projection des plans MyKTAMap **sur la Vue OSM**. Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
+- 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
+- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
+
+> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
+
+### À l'écosystème PWA
+
+Aux navigateurs (Chromium, Firefox, Safari, leur fork mobile) qui implémentent les standards modernes du web et permettent à une simple page de fonctionner comme une app native sans dépendance à un store.
+
+### À l'assistant de développement
+
+Une bonne partie du code de cette version a été co-écrite avec **Claude (Anthropic)**, assistant IA qui a accompagné le développement sur des dizaines de sessions. C'est un outil au même titre que Leaflet ou JSZip — utile, documenté honnêtement, et qui ne remplace ni la vision ni les décisions finales (toujours côté humain).
+
+### À toi qui lis ce guide
+
+Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exactement l'état d'esprit que ces lieux demandent — **prendre le temps, comprendre avant d'agir, respecter ce qu'on ne maîtrise pas encore**.
+
+> Si tu veux contribuer — un retour bug, une suggestion, un coup de main sur la doc — passe par l'issue tracker du repo ou les canaux habituels de la communauté.
+
+---
+
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+
+*MyKTAMap — Guide Utilisateur*
+*Ces lieux sont fragiles. La discrétion est une forme de respect.*
+
+---
+
+## 🔴 Avertissements importants
 
 ### 🔐 Confidentialité des données — à lire en premier
 
@@ -101,68 +175,9 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 > ⚠️ Ce système est destiné à des alertes **importantes pour la sécurité de la communauté**. Il ne sert pas à des messages commerciaux ou promotionnels.
 
-### 🛡️ Plans révoqués (kill-switch anti-fuite)
-
-Si un plan ZIP **fuite massivement** (= il a été diffusé hors de son groupe de confiance — Telegram public, forum, site warez…), l'auteur peut le **révoquer** : son empreinte est ajoutée à une liste publique côté serveur (`denylist.json`). L'application refusera alors automatiquement de l'ouvrir chez **tous les utilisateurs**.
-
-**Comment ça se passe pour toi si tu télécharges un plan révoqué par erreur** :
-
-1. Tu importes le ZIP dans l'app (loader principal OU générateur « Modifier un plan existant »)
-2. **Avant** d'ouvrir le ZIP, l'app calcule son **empreinte SHA-256** (localement, sur ton appareil)
-3. Si l'empreinte matche un plan révoqué, une **modale rouge bloquante** s'affiche :
-   - Titre : « ⛔ Plan révoqué »
-   - **Motif** : raison textuelle donnée par l'auteur (ex: « Fuite publique constatée le 05/06/2026 sur Telegram »)
-   - **Date d'ajout** à la liste de blocage
-   - **Empreinte SHA-256** (12 premiers + 8 derniers chars, anti-doxxing)
-   - Bouton « Compris, supprimer ce plan » → le plan est retiré automatiquement de ta liste, la page se recharge
-4. Le plan **n'est jamais ouvert** sur ton appareil
-
-**Privacy stricte** :
-- ✅ **Aucune empreinte n'est envoyée au serveur**. Seule la liste publique des plans révoqués est téléchargée, et la comparaison se fait 100% sur ton appareil.
-- ✅ L'auteur ne sait pas quels plans tu possèdes (= zéro tracking).
-- ✅ La liste `denylist.json` est publique : tu peux l'auditer toi-même à `https://myktamap.fr/denylist.json` (idem instance pro).
-
-**Cache & propagation** :
-- La liste de révocations est rafraîchie au boot de l'app puis mise en cache 24h.
-- En cas d'ajout urgent par l'auteur, la propagation est **immédiate** pour tous les users qui rouvrent l'app, et max 24h pour les autres.
-- En cas d'**absence de réseau**, l'app utilise la dernière liste connue (= le mécanisme reste actif offline).
-
-**Limitation assumée** : seules les fuites **byte-perfect** sont bloquées (= le ZIP exact). Si un attaquant ré-emballe le ZIP avec un autre outil ou modifie 1 byte, l'empreinte change. C'est suffisant pour bloquer la **diffusion accidentelle** d'un ZIP qui circule, mais pas une dérivation active intentionnelle (= friction max acceptable).
-
-> 💡 **Pour les auteurs de plans qui veulent révoquer un ZIP** : contacte KARMA (auteur de l'app) avec l'empreinte SHA-256 de ton ZIP (commande : `sha256sum ton-plan.zip`) + un motif court. La révocation est appliquée côté serveur sous quelques jours.
-
-#### 🔄 Audit automatique au démarrage
-
-Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS ton import (entre 2 sessions), l'app le détecte automatiquement au prochain démarrage :
-
-- ~2 secondes après le boot, en arrière-plan, l'app calcule l'empreinte SHA-256 de chacun de tes plans locaux et compare à la liste publique
-- Si un match → le plan est **automatiquement supprimé** de ta liste
-- Une **modale orange** s'affiche listant les plans révoqués (nom + motif + date + empreinte tronquée) + bouton « Compris »
-- L'empreinte est mise en cache dans ta liste de plans → les boots suivants sont quasi-instantanés (pas de re-calcul)
-
-> ✅ **Privacy** : tout reste local, comme à l'import. Aucune empreinte n'est envoyée au serveur.
-
-
 ---
 
 ## 🚀 Premiers pas
-
-### 🗝️ Accès restreint — Code communautaire
-
-L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
-
-> 🌍 En haut de cet écran, un sélecteur **FR · EN · ES** te permet de choisir ta langue **dès le premier lancement** (pré-sélectionnée d'après celle de ton navigateur) — l'écran se traduit immédiatement et toute l'app suit, tutoriel compris.
-
-**À la première installation** (ou après un reset complet) :
-1. Le splash s'affiche normalement (3,5 secondes)
-2. Un écran **🗝️ Accès restreint** apparaît avec un champ de saisie
-3. Saisis le code → clique **🔓 Déverrouiller**
-4. Si correct → l'app se charge normalement et tu n'as plus besoin de re-saisir
-5. Si incorrect → message rouge, tu as 4 tentatives restantes
-
-**Avant de faire un reset complet** : la modale de confirmation affiche le code en clair pour que tu puisses le re-saisir au prochain démarrage. **Note-le ou copie-le avant de cliquer "Réinitialiser"**, sinon tu ne pourras plus rentrer.
-
-> 🛡️ **Niveau de sécurité** : c'est une **barrière communautaire**, pas une vraie authentification. Le code source de l'app est public sur GitHub. Cette gate sert à décourager les passants et cadrer un cercle d'utilisateurs avertis, pas à protéger des données sensibles.
 
 ### 📱 Installer l'application sur Mobile (Iphone/Android)
 
@@ -176,6 +191,17 @@ MyKTAMap peut être installée comme application native sur Mobile — sans pass
 
 > L'application fonctionne ainsi en mode plein écran, sans la barre du navigateur.
 
+> ⚠️ **Limites de stockage** :
+> - **iPhone (Safari classique)** : ~50 Mo, peut être effacé après inactivité prolongée
+> - **iPhone (PWA installée)** : jusqu'à 1 Go, persistant
+> - **Android Chrome** : plusieurs Go disponibles
+> - **PC** : très large
+>
+> Pour une persistance maximale sur iPhone, **installez l'application en PWA** avant de mémoriser vos plans.
+
+> ⚠️ Si le quota est dépassé, un avertissement s'affiche et le plan reste utilisable mais demandera une re-sélection à chaque ouverture.
+
+
 ### 📥 Installer l'application sur PC
 
 MyKTAMap peut être installée comme application native sur PC egalement — sans installer un exécutable.
@@ -184,20 +210,6 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 2. Appuyez sur le bouton "Installer" à coté de l'URL
 3. Confirmez — une icône apparaît sur votre bureau
 4. Lancez toujours l'application depuis cette icône
-
-
-### 🎬 Animation au démarrage
-
-Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 3,5 secondes :
-
-- **Logo** MyKTAMap (rose des vents jaune)
-- **Titre** et sous-titre
-- **Barre de chargement** dorée
-- **Signature de l'auteur** et mention de licence
-
-Cette animation **n'apparaît qu'une seule fois par session**. Si vous changez de plan via 🗂️ ou ▶️ Reprendre, elle ne se ré-affiche pas — vous restez dans votre session active.
-
-> Pour la revoir, fermez l'application puis relancez-la depuis votre icône d'accueil (PWA) ou rafraîchissez la page (F5 sur PC).
 
 ### 📦 Charger un plan
 
@@ -221,35 +233,6 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 >
 > À savoir : si le ZIP a **exactement le même nom ET la même version**, il met à jour l'entrée existante sans rien demander. Aucune question non plus pour les plans serveur ni quand tu re-sélectionnes le fichier d'un plan précis depuis ta liste.
 
-### 🗺️ Convertir un fichier SIG (QGIS…) en plan
-Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
-
-**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
-
-**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
-
-**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
-
-> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
-
-> 📐 **Lambert 93 converti automatiquement* — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
-
-> 🗺️ **Relevés de carrière : ce que l'import sait faire**
-> 
-> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
-> - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
-> - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
-> 
-> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avec une ancienne version de l'app** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
-
-
->
-> Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
-
-**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
-
-*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
-
 ### 👤 Profil utilisateur
 
 Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
@@ -258,37 +241,11 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
 
 - **Avatar** : photo perso (carrée, ~64 px) OU initiale colorée auto-générée si pas de photo. La couleur de l'initiale est choisie déterministiquement parmi une palette de 10 couleurs de la charte — ton avatar reste donc visuellement stable d'une session à l'autre tant que tu ne changes pas de surnom.
 - **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
-- **🏅 Rang** : un **badge** (de *Touriste* à *Grand Maître*) calculé selon ton **temps passé** dans l'app, le **nombre de plans** explorés et les **km de galerie** cartographiés. Il se matérialise par un **anneau coloré** autour de la photo + une **médaille** en coin + le **nom du rang sous ton pseudo**. Le détail (les 3 métriques + la progression « Encore X pour le rang suivant » + un score) est dans la fiche profil. *(100 % local et fun — ça ne débloque rien, c'est juste pour le plaisir.)*
-- **🏆 Hauts faits** : **38 succès** à débloquer. **8 familles × 4 paliers** (🥉🥈🥇👑) — *Cartographe* (plans), *Géomètre* (plans géoréférencés), *Marcheur des profondeurs* (km), *Rat de cave* (temps), *Pointilleux* (POIs), *Traceur* (tracés), *Zoneur* (zones), *Bâtisseur* (structures) — **+ 6 « 🎉 Spéciaux » one-shot** : *Touche-à-tout* (un peu de tout), *Centurion* (score ≥ 100), *Taupe* (utilisé le tracker), *Spéléo multi-niveaux*, *Marathon souterrain* (session tracker > 4 h), *Complétiste* (tout le reste). Un **toast** te prévient au déblocage, la grille **N/38** est dans la fiche profil. Tu peux aussi afficher ton **score** et ton **nombre de hauts faits** dans les stats du bandeau d'accueil (section 🎨 *Stats du bandeau*).
 - **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* — désormais **configurables** depuis la modale Profil (voir plus bas). Par défaut :
   - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
   - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)
 
 > 💡 **Charte light theme** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
-
-#### 🖼️ Fond d'écran de l'accueil
-
-Dans la modale **Profil** (clique le bandeau), tout en bas avant les boutons d'export, tu peux mettre **ta propre image en fond de l'écran d'accueil** à la place de la couleur du thème.
-
-Trois réglages, et ils comptent :
-
-- **🖼️ Choisir une image** — n'importe quelle photo. Elle est réduite et ré-encodée à l'ajout, ce qui **supprime au passage ses métadonnées**, dont le lieu de prise de vue.
-- **Voile** — assombrit (ou éclaircit, en thème clair) l'image pour que les textes restent lisibles par-dessus. À 0 % l'image est nue, à 100 % tu retrouves le fond uni d'avant. Par défaut 55 %.
-- **Cadrage ↔ / ↕** — l'écran ne montre **jamais toute la photo** : elle est agrandie pour couvrir, le reste est coupé. En portrait sur un téléphone, une photo paysage ne laisse voir qu'environ un quart de sa largeur. Ces curseurs choisissent **quelle partie reste visible**. Seul celui de l'axe qui dépasse a un effet — l'autre ne fait rien, c'est normal.
-
-**🗑️ Retirer** revient à la couleur du thème.
-
-> 💡 L'image reste **sur ton appareil**, dans le même stockage que ton avatar. Elle disparaît si tu réinitialises ton profil.
->
-> ⚠️ Elle **ne voyage pas encore** avec l'export de profil : sur un nouvel appareil, il faudra la remettre.
-
-**Modifier ton profil** :
-
-Clic sur le bandeau profil → modale **👤 Mon profil** :
-
-- **✏️ Surnom** : tape ce que tu veux (lettres / chiffres / espace). Sert uniquement à personnaliser l'affichage local.
-- **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant de l'enregistrer sur ton appareil, pour ne pas saturer ton quota navigateur.
-- **🗑️ Reset profil** : bouton de remise à zéro (avec confirmation). Vide le surnom + photo + compteurs.
 
 #### 📊 Grid stats
 
@@ -388,24 +345,6 @@ L'export de profil peut désormais **embarquer les archives ZIP des plans mémor
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur. Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
-#### 💼 Édition pro — importer une licence
-
-Si l'auteur t'a remis un fichier **`Licence-pro.json`** (par mail, canal privé, etc.) suite à une demande de licence professionnelle, tu peux l'**importer directement** dans ton navigateur depuis la modale profil pour activer l'édition pro **sur cet appareil uniquement**.
-
-**Section dédiée dans la modale Mon profil** :
-
-- **Si tu es en mode communautaire** (état par défaut) : un bouton **📂 Importer une licence pro** apparaît. Au clic, file picker `.json` → tu sélectionnes ton fichier → validation immédiate → toast de confirmation. Le mode pro est activé : le footer du loader bascule (✓ Licence pro active), le splash affiche « Édition professionnelle », les écrans gates retirent le lien « Licence pro » (redondant désormais).
-- **Si une licence locale est active** : un bouton **🗑️ Retirer la licence locale** permet de revenir au mode communautaire. La licence reste disponible dans le fichier original si tu veux la ré-importer plus tard.
-- **Si une licence serveur est active** (instance déployée par un admin avec `Licence-pro.json` à la racine du serveur) : badge ✓ seul, pas de bouton — c'est l'administrateur du serveur qui décide.
-
-**Format du fichier** : JSON minimum `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si le hash est manquant ou mal formé (format strict `MKTM-LIC-` + 32 caractères hexadécimaux), le fichier est refusé avec message d'erreur.
-
-**🆕 Voie d'accès au premier chargement** : si tu installes MyKTAMap pour la première fois sur un nouvel appareil (= écran de saisie du **code communautaire** au boot), sous le formulaire du code tu trouveras désormais un second bloc séparé par « ou » avec un bouton **📂 Importer ma licence pro**. Au clic, file picker `.json` → tu sélectionnes ton fichier → si OK l'app entre **direct en mode pro** (pas besoin de saisir le code communautaire). Pratique pour les utilisateurs pro qui découvrent l'app : pas besoin de demander le code communautaire à un tiers, la licence pro est un canal d'accès légitime en soi.
-
-> 🔒 **100 % local** : le fichier de licence est lu par le navigateur puis conservé dans ton stockage local. Il n'est **jamais envoyé à un serveur**, jamais transmis. Aucune connexion réseau n'est ajoutée.
-
-> ⚖️ **Valeur juridique** : le hash `MKTM-LIC-...` qui figure dans le fichier est **nominatif** — lié à un contrat précis entre l'auteur et le titulaire de la licence. **Sa reproduction ou son partage à un tiers non autorisé constitue une infraction contractuelle** (l'auteur peut faire valoir ses droits). Le mécanisme côté navigateur reste cosmétique : il ne vérifie pas cryptographiquement le hash, c'est la signature du contrat qui fait foi.
-
 ### 📚 Gestion de votre liste de plans
 
 L'application mémorise tous les plans que vous chargez, qu'ils viennent du serveur ou de votre disque local.
@@ -469,47 +408,6 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 
 > 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil). À la re-sélection, si vous fournissez un ZIP dans un autre mode (ex: vous aviez ce plan en V2 mais le ZIP est un V1), un message d'avertissement vous le signale clairement avant de continuer.
 
-### 🔐 Éviter de re-sélectionner le ZIP à chaque ouverture
-
-Par défaut, l'app **mémorise chaque plan au premier chargement** : le ZIP est copié dans l'espace local du navigateur, rien à cocher sur l'accueil. Le réglage vit dans **⚙️ Configuration de l'accueil → « 💾 Mémoriser le plan dans l'app au premier chargement »** (activé par défaut ; désactivé, le ZIP est redemandé à chaque ouverture). Aux prochaines ouvertures :
-
-- **0 clic**, le plan se charge directement
-- Fonctionne **hors-ligne** (le ZIP est dans le navigateur, pas besoin de retrouver le fichier)
-- Recommandé sur **mobile**
-
-> ℹ️ **Le bouton « 🔐 Autoriser l'accès permanent au fichier » (Chrome/Edge) a été retiré le 15/09/2026.** Il faisait doublon : le ZIP était de toute façon copié dans l'app, et la référence vers le fichier n'était jamais utilisée. Les plans qui l'avaient continuent de s'ouvrir ; à leur prochaine re-sélection, ils passent en « mémorisé ».
-
-> ⚠️ **Limites de stockage** :
-> - **iPhone (Safari classique)** : ~50 Mo, peut être effacé après inactivité prolongée
-> - **iPhone (PWA installée)** : jusqu'à 1 Go, persistant
-> - **Android Chrome** : plusieurs Go disponibles
-> - **PC** : très large
->
-> Pour une persistance maximale sur iPhone, **installez l'application en PWA** (voir section 📱) avant de mémoriser vos plans.
-
-> ⚠️ Si le quota est dépassé, un avertissement s'affiche et le plan reste utilisable mais demandera une re-sélection à chaque ouverture.
-
-### 🗂️ Découverte automatique des plans serveur
-
-Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/` (par exemple `data/test1/`, `data/test2/`...), elle peut les détecter automatiquement via un fichier `data/index.json` :
-
-**Format minimal** :
-```json
-{ "plans": ["test1", "test2"] }
-```
-
-**Format détaillé** (recommandé pour afficher les noms tout de suite) :
-```json
-{
-  "plans": [
-    { "id": "test1", "path": "data/test1", "name": "Plan Test 1", "version": "V1" },
-    { "id": "test2", "path": "data/test2", "name": "Plan Test 2", "version": "V1" }
-  ]
-}
-```
-
-Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
-
 ### ⚙️ Modale "Configuration" (chargeur)
 
 Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe tous les réglages du chargeur (tiling, performance, debug, mise à jour, reset) :
@@ -562,6 +460,15 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 9. **💥 Tout réinitialiser (reset complet)** — purge totale : le cache, tout ce qui est enregistré dans ton navigateur, et tes plans. Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
 
 **Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
+
+#### 🪟 Où s'ouvrent les panneaux d'outils
+
+Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres.
+
+> 🐛 **Pourquoi ça a changé** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
+
+Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Configuration** (page d'accueil). C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
+
 
 ### 🎚️ Découpage de l'image — l'app décide
 
@@ -703,21 +610,71 @@ Le **Mode Histoire** (note libre + PDF) vit dans l'écran d'un plan : pour relir
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
 - Le carnet **est inclus dans l'export de profil** : changer d'appareil via l'export de profil transporte votre historique de sorties.
 
+#### 🏁 Ta distance quand le podomètre n'a rien vu
+
+Téléphone en poche, le podomètre ne compte presque rien. Mais chaque **📍 Je suis ici** que tu poses sur un point du plan laisse un **repère daté**. L'app relie ces repères **en suivant tes galeries** — le même calcul que pour un itinéraire — et en tire la distance réellement parcourue entre eux.
+
+Concrètement : repère à 12 h, repère à 12 h 30, repère à 13 h → l'app calcule A→B→C dans les galeries, pas à vol d'oiseau.
+
+##### 🏁 Le dernier trajet, celui qu'on oubliait
+
+Un tronçon n'est calculé qu'au moment où le repère **suivant** arrive. Donc tout ce que tu marches **après ton dernier repère** n'était compté par personne.
+
+Quand tu appuies sur **🏁 Clôturer ma sortie**, l'app te demande **où tu es ressorti**. Un clic sur la carte, et le dernier trajet entre dans le total. Tu peux **Passer** si tu clôtures depuis chez toi.
+
+##### Ce que la fiche te dit du chiffre
+
+| Ce qui est écrit | Ce que ça veut dire |
+|---|---|
+| *dont 900 m calculés dans les galeries entre 6 repères* | Le trajet a été reconstitué sur tes tracés — c'est fiable |
+| *dont 900 m à vol d'oiseau entre 6 repères (non affinés)* | Ligne droite entre les repères — **sous-estimé**, parfois de beaucoup |
+
+> ⚠️ **Ce que ce calcul ne sait pas faire** : il prend le chemin **le plus court** entre deux repères, pas forcément le tien. Allers-retours, culs-de-sac explorés, hésitations — tout ça est sous-estimé. Et sans aucun « Je suis ici », il n'y a rien à relier : la distance restera celle du podomètre.
+
+#### ⏱️ La durée d'une sortie
+
+Une sortie **terrain** est comptée **du départ à la fin**, pas au temps où l'app était ouverte. C'est ce que tu veux dire quand tu dis « on est restés 3 h » : le téléphone rangé dans la poche compte, l'app mise en veille aussi.
+
+La fiche te donne aussi le **temps où l'app était ouverte**, juste en dessous. Ce n'est pas un doublon : il dit ce que vaut la mesure. *3 h de sortie pour 12 min d'app*, c'est un podomètre qui n'a presque rien vu — la distance affichée est donc à prendre avec des pincettes.
+
+> ℹ️ Une session de **travail sur plan** garde le temps d'usage : on laisse un plan ouvert toute une soirée sans le regarder, la durée réelle n'y voudrait rien dire.
+
+##### ✏️ Corriger une fin oubliée
+
+Si tu n'as pas cliqué sur **🏁 Clôturer ma sortie** en ressortant, l'app ne sait pas quand tu es sorti : elle prend le dernier moment où elle était vivante — souvent celui où le téléphone l'a mise en veille. La durée est alors sous-évaluée.
+
+Ouvre la fiche de la sortie → **✏️ Corriger la fin**, et saisis l'heure réelle. La durée est recalculée aussitôt.
+
+> ℹ️ Le **temps d'app ouverte** n'est jamais modifié : c'est une mesure, pas une déclaration. Et une fin antérieure au départ est refusée.
+
+#### 🔁 Une sortie coupée en plusieurs — reprise et fusion
+
+Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Auparavant, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
+
+**Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
+
+**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Pour une sortie de terrain, le temps passé sur l'autre plan **compte** dans sa durée (mesurée du départ à la fin) : tu étais toujours sous terre. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
+
+> ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
+
+##### 🔗 Recoller des sorties déjà coupées
+
+Pour celles d'avant, ou si le délai a été dépassé : 📔 **Mon carnet** → **🔗 Fusionner des sorties** → coche celles à réunir (au moins 2) → **Fusionner**.
+
+| Ce qui est réuni | Comment |
+|---|---|
+| Durée, distance, pas, ajouts | Additionnés |
+| Durée totale | Du **début de la première à la fin de la dernière**, trous compris |
+| Notes | Empilées, séparées par un trait |
+| Photos, tracés, niveaux | Réunis |
+| Terrain / bureau | Si **un seul** morceau était du terrain, l'ensemble l'est |
+
+> ⚠️ **Irréversible** : les sorties d'origine disparaissent du carnet. L'app demande confirmation — c'est le seul geste du carnet qui efface quelque chose.
+
+
 ### 🧙 Générateur : assistant pas-à-pas
 
 Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
-
-### 🔽 Pied de page repliable
-
-La petite **flèche** sous l'écran d'accueil replie le pied de page (copyright, liens, crédits) pour gagner de la place — il n'en reste qu'une ligne minimale « © MyKTAMap · version ». Re-cliquez pour le déplier. Votre choix est mémorisé et voyage avec l'export de profil.
-
-### 🐛 Logs détaillés (mode debug)
-
-Le bouton **🐛 Logs détaillés** dans la modale **⚙️ Configuration** du chargeur active un mode verbose :
-- Logs supplémentaires dans la console (capteurs du tracker, étapes du tiling)
-- Affichage des **chiffres techniques** sous le sélecteur Mode performance (tailles de tuile, qualité JPEG, seuil de déclenchement)
-
-Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut. Réglage aussi accessible depuis ⚙️ Réglages > Logs détaillés.
 
 ### ⚠️ Si l'application s'arrête brusquement
 
@@ -762,6 +719,9 @@ La fenêtre vous propose 3 actions :
 
 > 💡 **Conseil** : exportez régulièrement votre liste via 💾 (icône en haut à droite de **📚 Mes plans**) pour pouvoir la restaurer en cas de souci.
 
+> 🛡️ Un plan peut aussi avoir été **révoqué** par son auteur : il disparaît alors de ta liste. Voir **🔭 Pour aller plus loin → 🛡️ Plans révoqués (kill-switch anti-fuite)**.
+
+
 ### 💥 Tout réinitialiser
 
 Si vous voulez remettre l'application **à l'état initial** (comme un premier lancement), un bouton **💥 Tout réinitialiser** est disponible à deux endroits :
@@ -780,6 +740,9 @@ L'application demande **deux confirmations** avant d'exécuter le reset, et vous
 > 📡 **Vérification connexion** : avant la première confirmation, l'application teste rapidement votre connexion Internet (max 5 secondes). Si vous êtes **hors ligne**, une **fenêtre rouge supplémentaire** vous prévient que l'application sera **inutilisable** après le reset (le cache vide ne pourra pas être rerempli sans réseau). Reconnectez-vous au Wi-Fi ou aux données mobiles avant de relancer le reset, ou cliquez "Continuer quand même" si vous savez ce que vous faites.
 
 > Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
+
+**Avant de faire un reset complet** : la modale de confirmation affiche le code en clair pour que tu puisses le re-saisir au prochain démarrage. **Note-le ou copie-le avant de cliquer "Réinitialiser"**, sinon tu ne pourras plus rentrer.
+
 
 ### 🔒 Confidentialité & Audit réseau
 
@@ -2699,75 +2662,6 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
-### 🏁 Ta distance quand le podomètre n'a rien vu
-
-Téléphone en poche, le podomètre ne compte presque rien. Mais chaque **📍 Je suis ici** que tu poses sur un point du plan laisse un **repère daté**. L'app relie ces repères **en suivant tes galeries** — le même calcul que pour un itinéraire — et en tire la distance réellement parcourue entre eux.
-
-Concrètement : repère à 12 h, repère à 12 h 30, repère à 13 h → l'app calcule A→B→C dans les galeries, pas à vol d'oiseau.
-
-#### 🏁 Le dernier trajet, celui qu'on oubliait
-
-Un tronçon n'est calculé qu'au moment où le repère **suivant** arrive. Donc tout ce que tu marches **après ton dernier repère** n'était compté par personne.
-
-Quand tu appuies sur **🏁 Clôturer ma sortie**, l'app te demande **où tu es ressorti**. Un clic sur la carte, et le dernier trajet entre dans le total. Tu peux **Passer** si tu clôtures depuis chez toi.
-
-#### Ce que la fiche te dit du chiffre
-
-| Ce qui est écrit | Ce que ça veut dire |
-|---|---|
-| *dont 900 m calculés dans les galeries entre 6 repères* | Le trajet a été reconstitué sur tes tracés — c'est fiable |
-| *dont 900 m à vol d'oiseau entre 6 repères (non affinés)* | Ligne droite entre les repères — **sous-estimé**, parfois de beaucoup |
-
-> ⚠️ **Ce que ce calcul ne sait pas faire** : il prend le chemin **le plus court** entre deux repères, pas forcément le tien. Allers-retours, culs-de-sac explorés, hésitations — tout ça est sous-estimé. Et sans aucun « Je suis ici », il n'y a rien à relier : la distance restera celle du podomètre.
-
-### ⏱️ La durée d'une sortie
-
-Une sortie **terrain** est comptée **du départ à la fin**, pas au temps où l'app était ouverte. C'est ce que tu veux dire quand tu dis « on est restés 3 h » : le téléphone rangé dans la poche compte, l'app mise en veille aussi.
-
-La fiche te donne aussi le **temps où l'app était ouverte**, juste en dessous. Ce n'est pas un doublon : il dit ce que vaut la mesure. *3 h de sortie pour 12 min d'app*, c'est un podomètre qui n'a presque rien vu — la distance affichée est donc à prendre avec des pincettes.
-
-> ℹ️ Une session de **travail sur plan** garde le temps d'usage : on laisse un plan ouvert toute une soirée sans le regarder, la durée réelle n'y voudrait rien dire.
-
-#### ✏️ Corriger une fin oubliée
-
-Si tu n'as pas cliqué sur **🏁 Clôturer ma sortie** en ressortant, l'app ne sait pas quand tu es sorti : elle prend le dernier moment où elle était vivante — souvent celui où le téléphone l'a mise en veille. La durée est alors sous-évaluée.
-
-Ouvre la fiche de la sortie → **✏️ Corriger la fin**, et saisis l'heure réelle. La durée est recalculée aussitôt.
-
-> ℹ️ Le **temps d'app ouverte** n'est jamais modifié : c'est une mesure, pas une déclaration. Et une fin antérieure au départ est refusée.
-
-### 🔁 Une sortie coupée en plusieurs — reprise et fusion
-
-Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Auparavant, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
-
-**Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
-
-**Et si tu ouvres un autre plan en route** — pour le montrer à quelqu'un, vérifier un passage — ta sortie est **mise en pause**, pas terminée. Reviens sur le plan de ta sortie dans les **2 heures** : elle **reprend** là où elle en était, compteurs et tracé compris. Au-delà, elle est rangée au carnet comme d'habitude. Pour une sortie de terrain, le temps passé sur l'autre plan **compte** dans sa durée (mesurée du départ à la fin) : tu étais toujours sous terre. ⚠️ Le **suivi**, lui, s'arrête quand tu changes de plan : à la reprise d'une sortie de terrain, l'app te propose **« ▶️ Relancer le suivi »** — un toucher suffit.
-
-> ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
-
-#### 🔗 Recoller des sorties déjà coupées
-
-Pour celles d'avant, ou si le délai a été dépassé : 📔 **Mon carnet** → **🔗 Fusionner des sorties** → coche celles à réunir (au moins 2) → **Fusionner**.
-
-| Ce qui est réuni | Comment |
-|---|---|
-| Durée, distance, pas, ajouts | Additionnés |
-| Durée totale | Du **début de la première à la fin de la dernière**, trous compris |
-| Notes | Empilées, séparées par un trait |
-| Photos, tracés, niveaux | Réunis |
-| Terrain / bureau | Si **un seul** morceau était du terrain, l'ensemble l'est |
-
-> ⚠️ **Irréversible** : les sorties d'origine disparaissent du carnet. L'app demande confirmation — c'est le seul geste du carnet qui efface quelque chose.
-
-### 🪟 Où s'ouvrent les panneaux d'outils
-
-Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres.
-
-> 🐛 **Pourquoi ça a changé** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
-
-Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Configuration** (page d'accueil). C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
-
 ### 🎯 Convertir plusieurs objets d'un coup
 
 Sur un relevé importé, il est fréquent d'avoir **des dizaines** d'objets mal typés — tous les fronts de taille d'un niveau qui sont en fait des galeries, par exemple. Les reprendre un par un serait interminable.
@@ -3247,6 +3141,36 @@ Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tif
 
 > 🔒 **100 % local** : le fichier est lu et converti **dans ton navigateur**. Aucun octet n'est envoyé nulle part.
 
+### 🗺️ Convertir un fichier SIG (QGIS…) en plan
+Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
+
+**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
+
+**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
+
+**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
+
+> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
+
+> 📐 **Lambert 93 converti automatiquement* — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
+
+> 🗺️ **Relevés de carrière : ce que l'import sait faire**
+> 
+> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
+> - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
+> - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
+> 
+> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avec une ancienne version de l'app** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
+
+
+>
+> Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
+
+**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
+
+*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
+
+
 ### 📄 Nouveau plan
 
 Formulaire vierge. Renseignez :
@@ -3525,6 +3449,10 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 
 ---
 
+## 📚 Aide et documentation
+
+Revoir le tutoriel, chercher dans ce guide, ou poser tes questions à une IA.
+
 ### 🎓 Revoir le tutoriel
 
 Le tutoriel d'accueil (27 cartes) **se rejoue à tout moment** : ouvre **📖 Documentation** et touche le bouton **🎓** dans la ligne de titre, à côté du choix de langue. Il n'y a rien à réinstaller ni à réinitialiser.
@@ -3533,7 +3461,7 @@ Le tutoriel d'accueil (27 cartes) **se rejoue à tout moment** : ouvre **📖 Do
 
 Cette documentation est longue. En haut de la modale 📖, un champ **🔎 Chercher** cherche dans **tout le texte** : les occurrences sont surlignées, **Entrée** ou ↓ passe à la suivante, le compteur indique « i / n », et les entrées du sommaire sans résultat s'estompent. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche du hub ❓ Aide, elle, cherche dans les titres **et** le contenu des sections.
 
-## 🤖 Aide IA
+### 🤖 Aide IA
 
 > Accessible depuis **📖 Documentation** : bouton **🤖** dans la ligne de titre, à côté du choix de langue — donc aussi depuis l'accueil.
 
@@ -3549,8 +3477,6 @@ Télécharge un fichier `.md` qui résume tout ce que l'app permet de faire (cet
 > 🔒 **Confidentialité** : le fichier ne contient QUE la documentation — aucune donnée personnelle (pas de tes plans, points, sessions, etc.). Tu peux le partager sans risque.
 
 > 💰 **Note** : l'IA utilisée peut être payante ou avoir des quotas selon le service. MyKTAMap reste gratuit — l'aide IA est juste une façon de tirer parti d'une IA externe.
-
----
 
 ## 🗺️ Légende
 
@@ -3629,25 +3555,6 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 
 ---
 
-## 🏷️ Badge version dans le footer (chargeur)
-
-Au bas du chargeur, à côté de la mention de licence, un petit **badge version** affiche la version actuelle de l'application installée.
-
-**Deux états visuels** :
-
-| État | Affichage | Action au clic |
-|---|---|---|
-| **Vous êtes à jour** | numéro de version en gris discret | Modale "✅ Déjà à jour" — affiche la version installée + date de publication + **notes de cette version** (changelog) |
-| **Mise à jour disponible** | `version installée → nouvelle version` en **bleu clignotant** | Modale "🔔 Mise à jour disponible" — propose une mise à jour douce (préserve plans et sessions) ou un reset complet |
-
-Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer l'attention sans agresser visuellement. Au clic, vous pouvez choisir d'agir immédiatement (mise à jour douce ou reset complet) ou de remettre à plus tard (snooze 24h).
-
-> 💡 Le badge bypasse le snooze 24h : si vous avez cliqué "Plus tard" il y a quelques minutes mais que vous changez d'avis, cliquez le badge pour relancer la modale de mise à jour.
-
-> 💡 Si vous êtes déjà à jour, cliquer le badge affiche tout de même les notes de la dernière version — pratique pour relire ce qui a été changé dans la mise à jour que vous avez installée.
-
----
-
 ## 🔐 Code d'accès local (PIN / Face ID)
 
 Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
@@ -3695,11 +3602,19 @@ En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ Configura
 
 ---
 
-## 🐳 Self-host avec Docker
+## 🔭 Pour aller plus loin
+
+Des fonctions avancées ou réservées à des cas rares : héberger l'app sur ton propre serveur, l'édition pro, la révocation des plans, les journaux de diagnostic.
+
+### 🖥️ Héberger l'app sur ton serveur
+
+Pour qui installe MyKTAMap sur sa propre machine ou son serveur (club, association, borne). Sur un site déjà en ligne, il n'y a rien à faire ici.
+
+#### 🐳 Self-host avec Docker
 
 Si tu veux faire tourner MyKTAMap **sur ton propre matériel** (PC, Raspberry Pi, NAS, serveur dédié) — pour l'avoir disponible sur ton réseau local, garantir le 100 % offline, ou simplement par curiosité — il existe désormais une **image Docker prête à l'emploi**.
 
-### En une commande
+##### En une commande
 
 ```bash
 docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
@@ -3707,7 +3622,7 @@ docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
 
 Puis ouvre **`https://localhost:8443/`** dans ton navigateur. Au premier accès, ton navigateur va t'avertir d'un **certificat non reconnu** (c'est normal, l'image génère un certificat auto-signé au démarrage). Clique sur **« Paramètres avancés » → « Continuer vers localhost »** pour accepter, et l'app s'affiche.
 
-### Multi-plateforme
+##### Multi-plateforme
 
 L'image est buildée pour 2 architectures :
 - **amd64** (PC Intel/AMD desktop ou serveur)
@@ -3715,7 +3630,7 @@ L'image est buildée pour 2 architectures :
 
 Docker détecte automatiquement la bonne version au `pull`.
 
-### Bonus : tes propres plans
+##### Bonus : tes propres plans
 
 Pour persister tes plans entre les redémarrages du conteneur :
 
@@ -3726,7 +3641,7 @@ docker run -d --name myktamap \
   ghcr.io/karmakta91/myktamap:latest
 ```
 
-### Bonus : ton propre certificat TLS
+##### Bonus : ton propre certificat TLS
 
 Si tu as un certificat valide (Let's Encrypt avec un domaine local, autorité interne, etc.), tu peux le monter en volume au lieu d'utiliser celui auto-signé :
 
@@ -3739,7 +3654,7 @@ docker run -d --name myktamap \
 
 Le volume doit contenir `server.crt` + `server.key`.
 
-### Bonus : accès via un nom de domaine local
+##### Bonus : accès via un nom de domaine local
 
 ```bash
 docker run -d --name myktamap \
@@ -3750,7 +3665,7 @@ docker run -d --name myktamap \
 
 Le certificat auto-signé inclura `myktamap.local` dans les noms autorisés. Pratique si tu as un DNS local (Pi-hole, AdGuard Home) qui résout ce nom vers ton hôte.
 
-### Mises à jour
+##### Mises à jour
 
 Pour passer à une nouvelle version :
 
@@ -3765,7 +3680,7 @@ Tu peux aussi **pinner** une version exacte au lieu de `latest` :
 - `ghcr.io/karmakta91/myktamap:1.36` — dernier patch de la 1.36.x
 - `ghcr.io/karmakta91/myktamap:1` — dernier minor de la 1.x
 
-### Limites
+##### Limites
 
 - **Service Worker + certificat auto-signé** : certains navigateurs (Chromium, Safari) refusent d'installer le Service Worker si le certificat n'est pas reconnu. Si l'app fonctionne mais semble "ne pas se cacher" pour le mode offline, accepte l'avertissement de sécurité d'abord, puis recharge.
 - **Conflit de ports** : si tu as déjà un autre service sur `8443` côté hôte, change le mapping : `-p 9443:8443` par exemple.
@@ -3776,6 +3691,94 @@ Tu peux aussi **pinner** une version exacte au lieu de `latest` :
 > 📖 **Tu n'as jamais utilisé Docker ?** Un guide pas-à-pas dédié existe : **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — installation Docker Desktop (Windows/Mac/Linux), démarrage du daemon, troubleshooting des erreurs courantes (cert auto-signé, conflits de port, WSL 2), alternatives sans Docker.
 
 > 📚 **Détails techniques** : voir `docs/architecture/docker-selfhost.md` dans le dépôt GitHub.
+
+#### 🗂️ Découverte automatique des plans serveur
+
+Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/` (par exemple `data/test1/`, `data/test2/`...), elle peut les détecter automatiquement via un fichier `data/index.json` :
+
+**Format minimal** :
+```json
+{ "plans": ["test1", "test2"] }
+```
+
+**Format détaillé** (recommandé pour afficher les noms tout de suite) :
+```json
+{
+  "plans": [
+    { "id": "test1", "path": "data/test1", "name": "Plan Test 1", "version": "V1" },
+    { "id": "test2", "path": "data/test2", "name": "Plan Test 2", "version": "V1" }
+  ]
+}
+```
+
+Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
+
+### 💼 Édition pro — importer une licence
+
+Si l'auteur t'a remis un fichier **`Licence-pro.json`** (par mail, canal privé, etc.) suite à une demande de licence professionnelle, tu peux l'**importer directement** dans ton navigateur depuis la modale profil pour activer l'édition pro **sur cet appareil uniquement**.
+
+**Section dédiée dans la modale Mon profil** :
+
+- **Si tu es en mode communautaire** (état par défaut) : un bouton **📂 Importer une licence pro** apparaît. Au clic, file picker `.json` → tu sélectionnes ton fichier → validation immédiate → toast de confirmation. Le mode pro est activé : le footer du loader bascule (✓ Licence pro active), le splash affiche « Édition professionnelle », les écrans gates retirent le lien « Licence pro » (redondant désormais).
+- **Si une licence locale est active** : un bouton **🗑️ Retirer la licence locale** permet de revenir au mode communautaire. La licence reste disponible dans le fichier original si tu veux la ré-importer plus tard.
+- **Si une licence serveur est active** (instance déployée par un admin avec `Licence-pro.json` à la racine du serveur) : badge ✓ seul, pas de bouton — c'est l'administrateur du serveur qui décide.
+
+**Format du fichier** : JSON minimum `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si le hash est manquant ou mal formé (format strict `MKTM-LIC-` + 32 caractères hexadécimaux), le fichier est refusé avec message d'erreur.
+
+**🆕 Voie d'accès au premier chargement** : si tu installes MyKTAMap pour la première fois sur un nouvel appareil (= écran de saisie du **code communautaire** au boot), sous le formulaire du code tu trouveras désormais un second bloc séparé par « ou » avec un bouton **📂 Importer ma licence pro**. Au clic, file picker `.json` → tu sélectionnes ton fichier → si OK l'app entre **direct en mode pro** (pas besoin de saisir le code communautaire). Pratique pour les utilisateurs pro qui découvrent l'app : pas besoin de demander le code communautaire à un tiers, la licence pro est un canal d'accès légitime en soi.
+
+> 🔒 **100 % local** : le fichier de licence est lu par le navigateur puis conservé dans ton stockage local. Il n'est **jamais envoyé à un serveur**, jamais transmis. Aucune connexion réseau n'est ajoutée.
+
+> ⚖️ **Valeur juridique** : le hash `MKTM-LIC-...` qui figure dans le fichier est **nominatif** — lié à un contrat précis entre l'auteur et le titulaire de la licence. **Sa reproduction ou son partage à un tiers non autorisé constitue une infraction contractuelle** (l'auteur peut faire valoir ses droits). Le mécanisme côté navigateur reste cosmétique : il ne vérifie pas cryptographiquement le hash, c'est la signature du contrat qui fait foi.
+
+### 🛡️ Plans révoqués (kill-switch anti-fuite)
+
+Si un plan ZIP **fuite massivement** (= il a été diffusé hors de son groupe de confiance — Telegram public, forum, site warez…), l'auteur peut le **révoquer** : son empreinte est ajoutée à une liste publique côté serveur (`denylist.json`). L'application refusera alors automatiquement de l'ouvrir chez **tous les utilisateurs**.
+
+**Comment ça se passe pour toi si tu télécharges un plan révoqué par erreur** :
+
+1. Tu importes le ZIP dans l'app (loader principal OU générateur « Modifier un plan existant »)
+2. **Avant** d'ouvrir le ZIP, l'app calcule son **empreinte SHA-256** (localement, sur ton appareil)
+3. Si l'empreinte matche un plan révoqué, une **modale rouge bloquante** s'affiche :
+   - Titre : « ⛔ Plan révoqué »
+   - **Motif** : raison textuelle donnée par l'auteur (ex: « Fuite publique constatée le 05/06/2026 sur Telegram »)
+   - **Date d'ajout** à la liste de blocage
+   - **Empreinte SHA-256** (12 premiers + 8 derniers chars, anti-doxxing)
+   - Bouton « Compris, supprimer ce plan » → le plan est retiré automatiquement de ta liste, la page se recharge
+4. Le plan **n'est jamais ouvert** sur ton appareil
+
+**Privacy stricte** :
+- ✅ **Aucune empreinte n'est envoyée au serveur**. Seule la liste publique des plans révoqués est téléchargée, et la comparaison se fait 100% sur ton appareil.
+- ✅ L'auteur ne sait pas quels plans tu possèdes (= zéro tracking).
+- ✅ La liste `denylist.json` est publique : tu peux l'auditer toi-même à `https://myktamap.fr/denylist.json` (idem instance pro).
+
+**Cache & propagation** :
+- La liste de révocations est rafraîchie au boot de l'app puis mise en cache 24h.
+- En cas d'ajout urgent par l'auteur, la propagation est **immédiate** pour tous les users qui rouvrent l'app, et max 24h pour les autres.
+- En cas d'**absence de réseau**, l'app utilise la dernière liste connue (= le mécanisme reste actif offline).
+
+**Limitation assumée** : seules les fuites **byte-perfect** sont bloquées (= le ZIP exact). Si un attaquant ré-emballe le ZIP avec un autre outil ou modifie 1 byte, l'empreinte change. C'est suffisant pour bloquer la **diffusion accidentelle** d'un ZIP qui circule, mais pas une dérivation active intentionnelle (= friction max acceptable).
+
+> 💡 **Pour les auteurs de plans qui veulent révoquer un ZIP** : contacte KARMA (auteur de l'app) avec l'empreinte SHA-256 de ton ZIP (commande : `sha256sum ton-plan.zip`) + un motif court. La révocation est appliquée côté serveur sous quelques jours.
+
+#### 🔄 Audit automatique au démarrage
+
+Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS ton import (entre 2 sessions), l'app le détecte automatiquement au prochain démarrage :
+
+- ~2 secondes après le boot, en arrière-plan, l'app calcule l'empreinte SHA-256 de chacun de tes plans locaux et compare à la liste publique
+- Si un match → le plan est **automatiquement supprimé** de ta liste
+- Une **modale orange** s'affiche listant les plans révoqués (nom + motif + date + empreinte tronquée) + bouton « Compris »
+- L'empreinte est mise en cache dans ta liste de plans → les boots suivants sont quasi-instantanés (pas de re-calcul)
+
+> ✅ **Privacy** : tout reste local, comme à l'import. Aucune empreinte n'est envoyée au serveur.
+
+### 🐛 Logs détaillés (mode debug)
+
+Le bouton **🐛 Logs détaillés** dans la modale **⚙️ Configuration** du chargeur active un mode verbose :
+- Logs supplémentaires dans la console (capteurs du tracker, étapes du tiling)
+- Affichage des **chiffres techniques** sous le sélecteur Mode performance (tailles de tuile, qualité JPEG, seuil de déclenchement)
+
+Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut. Réglage aussi accessible depuis ⚙️ Réglages > Logs détaillés.
 
 ---
 
@@ -3823,87 +3826,3 @@ Si l'app est totalement coincée même après changement de réseau, deux option
 Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'équipe technique.
 
 ---
-
-## 📖 Le topo
-
-> *Une carte n'a jamais remplacé la sortie. Elle aide juste à ne pas se perdre.*
-
-### D'où ça vient
-
-MyKTAMap est née d'un besoin simple : avoir, **dans la poche**, une carte cataphile **fiable, hors-ligne, et qui ne fuite pas**. Pas un app store qui demande l'accès à tes contacts pour afficher un plan. Pas un site qui te traque dès que tu cliques. Pas un cloud qui décide demain de t'envoyer une newsletter ou de revendre tes traces.
-
-Juste un fichier `.zip` qui contient le plan, ouvert dans un onglet de navigateur, qui marche **sans réseau**, et qui te laisse **entièrement le contrôle** sur ce que tu fais avec.
-
-### À qui ça s'adresse
-
-À celles et ceux qui descendent. Cataphiles parisiens, spéléos amateurs, urbexeurs prudents, secouristes formés au milieu souterrain, chercheurs en patrimoine — bref, à toute personne qui a un usage **légitime et respectueux** de ces lieux et qui veut un outil qui ne mette personne en danger (ni les gens ni les lieux).
-
-L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les sorties guidées par les anciens, la transmission orale, la mémoire collective. Elle vient **en complément**, comme un calque numérique qu'on superpose à ces savoirs — pas un substitut.
-
-### La philosophie
-
-- 🌐 **100 % hors-ligne par défaut** — l'app fonctionne sans réseau une fois le plan chargé. Tu peux la lancer en avion, dans le métro, ou à 30 m sous terre.
-- 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Le seul fetch externe possible est la mise à jour du code de l'app (et tu peux le couper). L'auditeur peut vérifier dans `🔒 Audit réseau`.
-- 📦 **Propriété des données** — tes annotations, tes photos, tes mesures sont stockées **localement**, dans le navigateur. Personne d'autre que toi n'y a accès. Tu peux tout exporter à tout moment (`💾 Enregistrer session`) et tout effacer en 2 clics (`💥 Tout réinitialiser`).
-- 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, l'auditer. Pas de boîte noire, pas de marketing.
-- ⚖️ **Discrétion = respect** — un plan partagé n'importe comment, c'est un lieu fragilisé. L'app ne contient aucun plan par défaut ; c'est à chaque utilisateur de charger les siens, et de **ne pas les diffuser** au-delà du cercle de confiance.
-
-### Ce que l'app n'est pas
-
-- ❌ **Pas un GPS sous terre** — la géolocalisation native ne marche pas sous roche. Le « tracker » de l'app est un **podomètre + direction** qui dérive vite ; il faut recaler régulièrement.
-- ❌ **Pas une garantie de sécurité** — la carte donne le chemin, pas l'oxygène. Tu restes seul·e juge des risques (effondrements, eau, gaz, fatigue).
-- ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
-- ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
-
-> Si tu cherches une appli grand public clé-en-main avec des avis et des étoiles, ce n'est pas ici. Si tu cherches un outil qui te laisse maître de tes données et de ton anonymat sous terre, **bienvenue**.
-
----
-
-## 🙏 Remerciements
-
-MyKTAMap n'existerait pas sans le travail, le savoir et la patience de beaucoup de monde. Ce projet est porté par **une seule personne** côté développement (KARMA), mais il s'appuie sur des **communautés**, des **outils libres**, et des **gens** qui ont pris le temps de transmettre.
-
-### À la communauté cataphile
-
-Aux anciens qui ont relevé les galeries au crayon, plan en main, génération après génération. Aux passionnés qui ont compilé, numérisé, recoupé, vérifié. À celles et ceux qui transmettent — en sortie, en cours d'initiation, en chuchotant à un débutant « non, par là, pas par là ». MyKTAMap n'est qu'un **outil de plus** dans cette longue chaîne. Sans vos plans, sans vos histoires, sans votre vigilance, cette app n'aurait rien à afficher.
-
-### Aux beta-testeurs et testeuses terrain
-
-À celles et ceux qui ont accepté de descendre avec une version `1.x.y-beta` instable, de remonter avec des screenshots de bugs, de signaler les frictions UX, de proposer des features impossibles à imaginer depuis un bureau. Aux quelques camarades qui ont testé chaque release sous terre, dans le noir, dans le froid, et qui ont pris la peine de raconter ce qui clochait. Vos retours ont façonné chaque hotfix — sans vous, l'app serait restée un prototype confortable depuis un canapé.
-
-### Aux outils libres
-
-MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, l'app n'existerait simplement pas :
-
-- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — moteur cartographique interactif. Cœur de l'affichage des plans. Merci à **Vladimir Agafonkin** et aux nombreux contributeurs du projet.
-- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image et pour la projection des plans MyKTAMap **sur la Vue OSM**. Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
-- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
-- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
-- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
-- 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
-- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
-- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
-
-> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
-
-### À l'écosystème PWA
-
-Aux navigateurs (Chromium, Firefox, Safari, leur fork mobile) qui implémentent les standards modernes du web et permettent à une simple page de fonctionner comme une app native sans dépendance à un store.
-
-### À l'assistant de développement
-
-Une bonne partie du code de cette version a été co-écrite avec **Claude (Anthropic)**, assistant IA qui a accompagné le développement sur des dizaines de sessions. C'est un outil au même titre que Leaflet ou JSZip — utile, documenté honnêtement, et qui ne remplace ni la vision ni les décisions finales (toujours côté humain).
-
-### À toi qui lis ce guide
-
-Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exactement l'état d'esprit que ces lieux demandent — **prendre le temps, comprendre avant d'agir, respecter ce qu'on ne maîtrise pas encore**.
-
-> Si tu veux contribuer — un retour bug, une suggestion, un coup de main sur la doc — passe par l'issue tracker du repo ou les canaux habituels de la communauté.
-
----
-
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
-
-*MyKTAMap — Guide Utilisateur*
-*Ces lieux sont fragiles. La discrétion est une forme de respect.*
