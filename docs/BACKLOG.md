@@ -69,6 +69,21 @@ natives).
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
   exercices le réclament **M**.
+- **Ouvrir un plan de secours depuis l'accueil** (demande KARMA, 03/10 ; audit par agent, lecture seule) : l'équipier qui reçoit
+  un `.mkmsec.json` doit aujourd'hui ouvrir le bon plan à la main, puis 🧭 Tracker → 🚨 Mode Secours → 📥 Importer → aperçu →
+  « Ouvrir le scénario » → 🚀 Lancer → rôle (~8 gestes). Pire : déposé sur « 📦 Ajouter un plan », le fichier part à la
+  conversion SIG (`homeLoader.js` `_estFichierSig` attrape tout `.json`). Cible : l'accueil lit le contenu
+  (`type: "myktamap-secours-scenario"`, pas l'extension — les messageries renomment), retrouve le plan dans `PlanRegistry`
+  (id, puis nom + version : l'id diffère entre `local_…` et `server_…`), le charge par `chargerPlanDuRegistre`, puis au
+  `SecoursMode.init()` qui suit enchaîne aperçu, import (identifiants d'origine gardés : sinon l'opérateur refuse le rapport)
+  et choix du rôle. Plan absent : arrêt avec un message qui nomme plan et version attendus, jamais « le plus proche ».
+  Homonymes : choix par l'utilisateur. Pièges : attendre la fin du splash et la restauration de session (motif « cible en
+  attente » d'`InterPlanLinks.goTo`) ; plan local sans copie dans l'app → passer par la fenêtre « Plan introuvable » (iOS
+  bloque un sélecteur de fichier ouvert par programme). Lots : L1 reconnaître et aiguiller (y compris le rapport d'équipe)
+  **S** · L2 enchaînement complet **M** · L3 reprise après arrêt brutal (`sessionStorage`, facultatif) **S**. À trancher :
+  1. plan d'une autre version (reco : demander) · 2. garder l'aperçu (reco : oui) · 3. rôle « Équipe » présélectionné
+  (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
+  depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
 
 ⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
 `entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
