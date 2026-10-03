@@ -33,8 +33,6 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 - ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
 - ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
 
-> If you're looking for a turnkey consumer app with reviews and stars, this isn't it. If you're looking for a tool that keeps you in control of your data and your anonymity underground, **welcome**.
-
 ---
 
 ## 🙏 Acknowledgements

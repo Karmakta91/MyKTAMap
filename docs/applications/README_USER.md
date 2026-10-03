@@ -33,8 +33,6 @@ L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les 
 - ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
 - ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
 
-> Si tu cherches une appli grand public clé-en-main avec des avis et des étoiles, ce n'est pas ici. Si tu cherches un outil qui te laisse maître de tes données et de ton anonymat sous terre, **bienvenue**.
-
 ---
 
 ## 🙏 Remerciements

@@ -33,8 +33,6 @@ La app **no tiene ninguna pretensión de sustituir** a los viejos planos de pape
 - ❌ **No es un directorio** — la app no cataloga lugares. Muestra lo que tú le das, y punto.
 - ❌ **No es una red social** — sin cuenta, sin perfil, sin compartir con un clic. Tú eliges a quién envías tu `.zip`, y cómo.
 
-> Si buscas una aplicación para el gran público, llave en mano, con reseñas y estrellas, no es esta. Si buscas una herramienta que te deje dueño de tus datos y de tu anonimato bajo tierra, **bienvenido**.
-
 ---
 
 ## 🙏 Agradecimientos
