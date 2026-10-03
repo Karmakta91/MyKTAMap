@@ -1103,7 +1103,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
 - **🛠️ Sistema y mantenimiento**:
   - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
   - **📊 Ver el estado de memoria**: lo que ocupa la app en tu dispositivo, con **📋 Copiar el informe** para señalar un problema;
-  - **🔄 Forzar la actualización**, **🆘 Abrir la herramienta Kill SW** y **💥 Reiniciar todo**: ver «🆘 En caso de problema».
+  - **🆘 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🆘 Abrir la herramienta Kill SW** y **💥 Reiniciar todo** — ver «🆘 En caso de problema».
 
 ### ⚙️ Ajustes (en modo mapa) — este plano
 
@@ -1202,15 +1202,15 @@ Si la app te la proporciona una instalación con su propia contraseña (asociaci
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
 Por este orden, conservando tus datos:
-1. **⚙️ Configuración → 🔄 Forzar la actualización**: vuelve a descargar la app sin tocar tus planos, sesiones, preferencias ni códigos. Hace falta conexión.
-2. Si la app sigue bloqueada (página en blanco, inicio sin formato): comprueba tu conexión (desactiva tu VPN, cambia de red), y luego **⚙️ Configuración → 🆘 Abrir la herramienta Kill SW**.
-3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html**. Vacía la caché de la app **sin tocar tus datos** (planos, sesiones, fotos) y propone **🚀 Recargar la app**.
+1. **⚙️ Configuración → 🆘 Resolución de problemas → 🔄 Forzar la actualización**: vuelve a descargar la app sin tocar tus planos, sesiones, preferencias ni códigos. Hace falta conexión.
+2. Si la app sigue bloqueada (página en blanco, inicio sin formato): comprueba tu conexión (desactiva tu VPN, cambia de red), y luego **⚙️ Configuración → 🆘 Resolución de problemas → 🆘 Abrir la herramienta Kill SW**.
+3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html** (su dirección también aparece al pie de la ventana 🆘 Resolución de problemas). Vacía la caché de la app **sin tocar tus datos** (planos, sesiones, fotos) y propone **🚀 Recargar la app**.
 
 Estas herramientas no borran **ningún** dato (planos memorizados, sesiones, fotos, cuaderno, preferencias). Por precaución, **📤 Exportar mi perfil** antes.
 
 ### 💥 Reiniciar todo
 
-**⚙️ Configuración → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de planos y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
+**⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de planos y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
 - También muestra el **código de acceso comunitario**, que se vuelve a pedir al reiniciar: **anótalo antes de confirmar**, o no podrás volver a entrar.

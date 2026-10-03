@@ -5988,6 +5988,32 @@ html.kta-theme-light .kta-cfg-group-titre {
   color: #ffd0d0;
 }
 
+/* 🆘 Fenêtre Dépannage (⚙️ Configuration › 🆘 Dépannage, js/homeConfig.js) :
+   trois actions du plus doux au plus radical + l'adresse de la page de secours.
+   Fenêtre courte : hauteur au contenu, comme les confirmations. */
+.kta-readme-modal-boite.kta-depannage-boite {
+  max-width: 480px;
+  height: auto;
+  max-height: 92vh;
+}
+.kta-depannage-item {
+  margin-bottom: 14px;
+}
+.kta-depannage-item .kta-loader-perf-hint {
+  margin: 0 0 6px 0;
+}
+.kta-depannage-item .loader-btn-secondary {
+  width: 100%;
+}
+.kta-depannage-secours {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.kta-depannage-secours code {
+  word-break: break-all;
+}
+
 #loaderStatus {
   margin-top: 14px;
   font-size: 13px;
@@ -15308,6 +15334,7 @@ body.kta-theme-light #exportListBtn,
 body.kta-theme-light #loaderPlannerBtn,
 body.kta-theme-light #loaderResetBtn,
 body.kta-theme-light #loaderForceUpdateBtn,
+body.kta-theme-light #loaderDepannageBtn,
 body.kta-theme-light #loaderAlertBtn,
 body.kta-theme-light #loaderHelpBtn,
 body.kta-theme-light #loaderConfigBtn,

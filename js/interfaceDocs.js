@@ -772,7 +772,8 @@ const AIDE_PAR_MODALE = {
   "kta-lost-modal":           "je-suis-perdu",
   "kta-convert-modal":        "corriger",
   "kta-niv-modal":            "multi-niveau",
-  "kta-jct-modal":            "multi-niveau"
+  "kta-jct-modal":            "multi-niveau",
+  "kta-depannage-modal":      "depannage"
 };
 
 function ktaAideContextuelleActive() {

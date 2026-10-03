@@ -1103,7 +1103,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
-  - **🔄 Force the update**, **🆘 Open the Kill SW tool** and **💥 Reset everything**: see “🆘 Troubleshooting”.
+  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** and **💥 Reset everything** — see “🆘 Troubleshooting”.
 
 ### ⚙️ Settings (in map mode) — this map
 
@@ -1202,15 +1202,15 @@ If the app is provided to you by an installation with its own password (associat
 ### 🔄 The app does not update, or stays stuck
 
 In this order, keeping your data:
-1. **⚙️ Configuration → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
-2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🆘 Open the Kill SW tool**.
-3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html**. It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
+1. **⚙️ Configuration → 🆘 Troubleshooting → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
+2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🆘 Troubleshooting → 🆘 Open the Kill SW tool**.
+3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html** (its address is also shown at the bottom of the 🆘 Troubleshooting window). It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 
 ### 💥 Reset everything
 
-**⚙️ Configuration → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
+**⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
 - It also shows the **community access code**, asked again at restart: **write it down before confirming**, or you will not be able to get in.

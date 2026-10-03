@@ -1002,63 +1002,19 @@
           </button>
         </div>
 
-        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
-             Purge uniquement le cache Service Worker (assets HTTP) puis
-             reload → l'app récupère la dernière version sans toucher aux
-             données utilisateur (session, plans mémorisés, préférences,
-             code d'accès). Utile pour forcer une update même sans popup
-             ou si la détection version a foiré.
-
-             ⚠️ Position v1.8.1-refonte-17 (suite KARMA) : placé JUSTE
-             AVANT Reset pour que la gradation "purge cache → purge tout"
-             se lise d'un coup d'œil sans rupture (avant, le toggle
-             Affichage les séparait visuellement). -->
+        <!-- 🆘 Dépannage (lot A, 03/10/2026) — UN seul bouton visible.
+             Les trois outils de dépannage (🔄 Forcer la mise à jour, 🆘 Kill SW,
+             💥 Tout réinitialiser) vivent dans la fenêtre #kta-depannage-modal,
+             construite à l'ouverture par js/homeConfig.js > _ouvrirDepannage(),
+             rangés du plus doux au plus radical. Leurs ids historiques
+             (#loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn) sont
+             portés par les boutons de la fenêtre. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.updateTitle">🔄 Mise à jour</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.updateHint">
-            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
-            re-télécharge la dernière version depuis le serveur. <strong>Tes données
-            sont préservées</strong> (plans mémorisés, sessions, préférences, code
-            d'accès). Nécessite une connexion Internet active.
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n="home.cfg.depannage.hint">
+            L'app ne se met pas à jour, reste bloquée ou plante ? Les outils de réparation sont ici.
           </p>
-          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;" data-i18n="home.cfg.forceUpdateBtn">
-            🔄 Forcer la mise à jour
-          </button>
-        </div>
-
-        <!-- 🆘 v1.37.0 — Kill SW (option intermédiaire entre la mise à jour
-             douce ci-dessus et le reset complet ci-dessous). Ouvre killsw.html
-             dans le même onglet : page autonome qui désinscrit proprement le
-             Service Worker, purge les caches PWA, mais préserve TOUTES les
-             données utilisateur (localStorage, IndexedDB, sessions, plans,
-             prefs). À utiliser si la "mise à jour douce" ne propage pas la
-             nouvelle version (badge footer reste sur "ancienne → nouvelle"
-             même après reload). Évite d'avoir à faire un Reset complet
-             irréversible juste pour débloquer un SW coincé. -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.killSwTitle">🆘 Désinscrire le Service Worker</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.killSwHint">
-            À essayer si la mise à jour douce ci-dessus n'a pas suffi (badge
-            footer toujours sur « ancienne → nouvelle » après reload). Désinscrit
-            le SW et purge les caches PWA — au prochain chargement, un SW tout
-            neuf prend le relais. <strong>Tes données restent intactes</strong>
-            (plans, sessions, préférences, code d'accès). Moins destructif que
-            le Reset complet ci-dessous.
-          </p>
-          <button class="loader-btn-secondary" type="button" id="loaderKillSwBtn" style="width:100%;" data-i18n="home.cfg.killSwBtn">
-            🆘 Ouvrir l'outil Kill SW
-          </button>
-        </div>
-
-        <!-- 💥 Reset complet -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.resetTitle">💥 Réinitialisation</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.resetHint">
-            Vide TOUT le stockage de l'app (cache, plans mémorisés, sessions, préférences).
-            Cette action est <strong>irréversible</strong> et nécessite une connexion Internet pour re-télécharger les assets.
-          </p>
-          <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn" style="width:100%;" data-i18n="home.cfg.resetBtn">
-            💥 Tout réinitialiser
+          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn">
+            🆘 Dépannage
           </button>
         </div>
 

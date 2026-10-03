@@ -164,8 +164,7 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
   1. 🖼️ Tiling (segmented 5 presets)
   2. 🚀 ULTRA (7 toggles)
   3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
-  4. 🔄 **Force update douce** *(nouveau)*
-  5. 💥 Tout réinitialiser
+  4. 🆘 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🆘 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
 - `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
 - `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
 
@@ -173,12 +172,12 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
 - Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
 - Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
 - Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
-- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser
 - Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
 
 #### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
 
-Nouveau bouton 🔄 dans la modale Configuration. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+Bouton 🔄 de la fenêtre ⚙️ Configuration → 🆘 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
 
 Différences fondamentales avec `viderCacheAppli()` :
 
@@ -191,7 +190,7 @@ Différences fondamentales avec `viderCacheAppli()` :
 | Confirmation | ✅ Modale simple (1 étape) | ✅ Double confirm |
 | Ping internet | ✅ (interne à `mettreAJourCodeSeul`) | ✅ (avant la double confirm) |
 
-**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, index.html) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
+**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, `js/loaderSwModals.js`) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
 - Ce qui va se passer : purge cache des assets + reload + re-download
 - Ce qui est préservé : plans, sessions, prefs, unlock gate
 - Conditions : connexion Internet active (vérifiée juste après par `mettreAJourCodeSeul`), reload immédiat
@@ -202,11 +201,12 @@ Use case : user signale "l'app n'a pas la dernière feature" → un Force update
 
 #### 39.3 Pattern HTML/CSS
 
-Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Boutons handlers dans `index.html` (inline) :
+Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Handlers dans `js/homeConfig.js` :
 
 - `loaderConfigBtn` → `_ouvrirLoaderConfig()` (set `display:flex`)
 - `loaderConfigClose` + backdrop click + Escape → `_fermerLoaderConfig()`
-- `loaderForceUpdateBtn` → `window.mettreAJourCodeSeul()`
+- `loaderDepannageBtn` → `_ouvrirDepannage()` : construit `#kta-depannage-modal` (✕, clic-fond, Échap ; ❓ → fiche « depannage » via `AIDE_PAR_MODALE`). Elle s'empile au-dessus de la Configuration et sous les confirmations ; Échap ne la ferme que si elle est au premier plan, et l'Échap de la Configuration s'abstient tant qu'elle existe.
+- Dans cette fenêtre, les ids historiques : `loaderForceUpdateBtn` → `_depannageForceUpdate()` (confirmation puis `window.mettreAJourCodeSeul()`) · `loaderKillSwBtn` → `_depannageKillSw()` (ping Internet, confirmation, puis `killsw.html`) · `loaderResetBtn` → `_depannageReset()` (`window.viderCacheAppli()`, double confirmation)
 
 Les handlers existants pour Tiling segmented / ULTRA toggles / 🐛 Logs / 💥 Reset sont conservés et juste **déplacés** dans le DOM. Pas de changement de logique.
 

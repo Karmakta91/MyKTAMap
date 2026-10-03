@@ -1103,7 +1103,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
-  - **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** et **💥 Tout réinitialiser** : voir « 🆘 En cas de problème ».
+  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
 
 ### ⚙️ Réglages (en mode carte) — ce plan
 
@@ -1202,15 +1202,15 @@ Si l'app t'est fournie par une installation qui a son propre mot de passe (assoc
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
 Dans l'ordre, en gardant tes données :
-1. **⚙️ Configuration → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
-2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🆘 Ouvrir l'outil Kill SW**.
-3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html**. Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
+1. **⚙️ Configuration → 🆘 Dépannage → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
+2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🆘 Dépannage → 🆘 Ouvrir l'outil Kill SW**.
+3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html** (son adresse est aussi rappelée en bas de la fenêtre 🆘 Dépannage). Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
 
 Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos, carnet, préférences). Par précaution, **📤 Exporter mon profil** avant.
 
 ### 💥 Tout réinitialiser
 
-**⚙️ Configuration → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
+**⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
 - Elle affiche aussi le **code d'accès communautaire**, redemandé au redémarrage : **note-le avant de confirmer**, sinon tu ne pourras plus entrer.

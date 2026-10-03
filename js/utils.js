@@ -3351,7 +3351,12 @@ window.telechargerPlan = telechargerPlan;
         if (cs.display === "none" || cs.visibility === "hidden") continue;
         var z = parseInt(cs.zIndex, 10);
         if (isNaN(z)) z = 0;
-        if (z > topZ) {
+        // `>=` : à z-index ÉGAL, le DERNIER dans le DOM gagne — c'est lui qui
+        // est peint au-dessus. Avec `>`, une fenêtre empilée sur ⚙️ Configuration
+        // (même z-index 99999, ajoutée après) laissait Échap fermer la
+        // Configuration dessous au lieu d'elle (03/10/2026, fenêtre 🆘 Dépannage
+        // et ses confirmations).
+        if (z >= topZ) {
           topZ = z;
           top = el;
         }

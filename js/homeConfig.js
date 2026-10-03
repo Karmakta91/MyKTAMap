@@ -59,7 +59,8 @@
         });
         // Escape ferme la modale (cohérent avec autres modales projet)
         document.addEventListener("keydown", function(e) {
-          if (e.key === "Escape" && configModal.style.display !== "none") {
+          if (e.key === "Escape" && configModal.style.display !== "none" &&
+              !document.getElementById("kta-depannage-modal")) {
             _fermerLoaderConfig();
           }
         });
@@ -500,101 +501,163 @@
       // #advancedBox, #advancedChevron n'existent plus dans le DOM.
       // Le bloc collapse handler est retiré aussi (devenu inutile).
 
-      // === BOUTON "💥 TOUT RÉINITIALISER" ===
-      const resetBtn = document.getElementById("loaderResetBtn");
-      if (resetBtn) {
-        resetBtn.addEventListener("click", function() {
-          if (typeof window.viderCacheAppli === "function") {
-            window.viderCacheAppli();
+      // === 🆘 DÉPANNAGE (lot A, 03/10/2026) ===
+      // Les trois outils de dépannage ne sont plus affichés en vrac dans
+      // ⚙️ Configuration : un seul bouton « 🆘 Dépannage » ouvre une fenêtre
+      // qui les range du plus doux au plus radical. Les trois parcours
+      // ci-dessous sont les anciens écouteurs de clic, extraits TELS QUELS en
+      // fonctions nommées (confirmations comprises) — aucune logique changée.
+
+      // 💥 TOUT RÉINITIALISER — double confirmation portée par viderCacheAppli
+      // (js/interfaceMaintenance.js).
+      function _depannageReset() {
+        if (typeof window.viderCacheAppli === "function") {
+          window.viderCacheAppli();
+        } else {
+          setStatus(window.I18n ? window.I18n.t("home.reset.indispo") : "Fonction de réinitialisation indisponible", true);
+        }
+      }
+
+      // 🔄 FORCER LA MISE À JOUR (v1.7.3) — « reset lite » : purge cache SW +
+      // reload, préserve TOUTES les données user. Garde-fou : modale de
+      // confirmation (js/loaderSwModals.js). Le ping internet n'est PAS
+      // répliqué ici : il vit dans `mettreAJourCodeSeul()`, qui affiche
+      // `_softUpdateOfflineWarning()` si offline.
+      function _depannageForceUpdate() {
+        _afficherConfirmForceUpdate().then(function(ok) {
+          if (!ok) return;
+          if (typeof window.mettreAJourCodeSeul === "function") {
+            window.mettreAJourCodeSeul();
           } else {
-            setStatus(window.I18n ? window.I18n.t("home.reset.indispo") : "Fonction de réinitialisation indisponible", true);
+            setStatus(window.I18n ? window.I18n.t("home.maj.indispo") : "Fonction de mise à jour indisponible", true);
           }
         });
       }
 
-      // === BOUTON "🔄 FORCER LA MISE À JOUR" (v1.7.3) ===
-      // "Reset lite" : purge cache SW + reload → récupère la dernière
-      // version. Préserve TOUTES les données user (localStorage,
-      // IndexedDB, sessions). Helper window.mettreAJourCodeSeul existe
-      // déjà depuis l'UpdateChecker — on le réutilise tel quel.
-      //
-      // 🆕 v1.7.3 (fix KARMA) : garde-fou de confirmation. Avant : un seul
-      // clic déclenchait le pipeline (ping → purge cache → reload). Trop
-      // facile à déclencher par erreur, et l'action implique un reload
-      // immédiat. Maintenant : modale custom (pattern `kta-readme-modal-
-      // overlay`) qui explique ce qui se passe + ce qui est préservé,
-      // demande confirmation explicite. Reste plus léger que le double
-      // confirm du Reset complet — c'est cohérent avec la sémantique
-      // "douce" de l'action (rien n'est supprimé).
-      //
-      // Note : on ne réplique PAS le ping internet ici — il existe déjà
-      // dans `mettreAJourCodeSeul()` (cf. js/interface.js ligne 1859)
-      // qui affiche `_softUpdateOfflineWarning()` si offline.
-      const forceUpdateBtn = document.getElementById("loaderForceUpdateBtn");
-      if (forceUpdateBtn) {
-        forceUpdateBtn.addEventListener("click", function() {
-          _afficherConfirmForceUpdate().then(function(ok) {
-            if (!ok) return;
-            if (typeof window.mettreAJourCodeSeul === "function") {
-              window.mettreAJourCodeSeul();
-            } else {
-              setStatus(window.I18n ? window.I18n.t("home.maj.indispo") : "Fonction de mise à jour indisponible", true);
-            }
-          });
-        });
-      }
-
-      // 🆘 v1.37.0 — Bouton "Désinscrire le Service Worker" (kill SW).
-      // Double garde-fou :
+      // 🆘 v1.37.0 — KILL SW (ouvre killsw.html). Double garde-fou :
       //   1. Ping Internet AVANT la modale — refus immédiat si offline ou
-      //      serveur KO (car re-download des assets requis au prochain boot).
-      //      Sans Internet l'app deviendrait inutilisable après le kill.
-      //   2. Modale de confirmation (pattern Promise-based aligné sur
-      //      _afficherConfirmForceUpdate) — l'user doit valider explicitement.
-      const killSwBtn = document.getElementById("loaderKillSwBtn");
-      if (killSwBtn) {
-        killSwBtn.addEventListener("click", async function() {
-          // 🆘 v1.37.0 — Overlay "Vérification…" pendant le ping (5s max).
-          // Sinon l'user ne voit RIEN se passer entre clic et résultat
-          // (KARMA "l'user sais pas qu'il se passe un truc"). Pattern
-          // overlay simple créé inline + auto-remove dans le finally.
-          const waitOverlay = document.createElement("div");
-          waitOverlay.className = "kta-modal-overlay";
-          waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
-          waitOverlay.innerHTML =
-            '<div class="kta-modal" style="max-width:340px;">' +
-              '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
-              '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
-              '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
-            '</div>';
-          document.documentElement.appendChild(waitOverlay);
+      //      serveur KO (re-download des assets requis au prochain boot).
+      //   2. Modale de confirmation (Promise, js/loaderSwModals.js).
+      async function _depannageKillSw() {
+        // Overlay "Vérification…" pendant le ping (5s max) : sinon l'user
+        // ne voit RIEN se passer entre clic et résultat.
+        const waitOverlay = document.createElement("div");
+        waitOverlay.className = "kta-modal-overlay";
+        waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
+        waitOverlay.innerHTML =
+          '<div class="kta-modal" style="max-width:340px;">' +
+            '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+            '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
+            '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
+          '</div>';
+        document.documentElement.appendChild(waitOverlay);
 
-          // Garde-fou 1 : ping Internet. Refuser si offline.
-          // Si _pingInternet n'est pas exposé (timing de chargement),
-          // fallback sur navigator.onLine (moins fiable, juste OS-level).
-          let online;
-          try {
-            if (typeof window._pingInternet === "function") {
-              online = await window._pingInternet();
-            } else {
-              online = (typeof navigator !== "undefined") ? navigator.onLine : true;
-            }
-          } catch(e) { online = false; }
-
-          // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
-          try { waitOverlay.remove(); } catch(e) {}
-
-          if (!online) {
-            _afficherKillSwOfflineRefus();
-            return;
+        // Garde-fou 1 : ping Internet. Si _pingInternet n'est pas exposé
+        // (timing de chargement), repli sur navigator.onLine.
+        let online;
+        try {
+          if (typeof window._pingInternet === "function") {
+            online = await window._pingInternet();
+          } else {
+            online = (typeof navigator !== "undefined") ? navigator.onLine : true;
           }
-          // Garde-fou 2 : confirmation utilisateur.
-          _afficherConfirmKillSw().then(function(ok) {
-            if (!ok) return;
-            window.location.href = "killsw.html";
-          });
+        } catch(e) { online = false; }
+
+        // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
+        try { waitOverlay.remove(); } catch(e) {}
+
+        if (!online) {
+          _afficherKillSwOfflineRefus();
+          return;
+        }
+        // Garde-fou 2 : confirmation utilisateur.
+        _afficherConfirmKillSw().then(function(ok) {
+          if (!ok) return;
+          window.location.href = "killsw.html";
         });
       }
+
+      // La fenêtre 🆘 Dépannage, construite à chaque ouverture : le
+      // MutationObserver de js/interfaceDocs.js y pose le ❓ (fiche
+      // « depannage »). Elle s'empile au-dessus de ⚙️ Configuration (même
+      // z-index, ajoutée après) et SOUS les confirmations, ajoutées après
+      // elle : à l'annulation, on y revient.
+      function _fermerDepannage() {
+        const m = document.getElementById("kta-depannage-modal");
+        if (m) m.remove();
+        window.removeEventListener("keydown", _depannageOnKey, true);
+      }
+      // Échap ne ferme la fenêtre que si elle est AU PREMIER PLAN : quand une
+      // confirmation (ou la fiche d'aide) est ouverte par-dessus, c'est elle
+      // qui doit partir. Écoute en capture + stopPropagation : l'Échap de
+      // ⚙️ Configuration ne fermerait sinon la fenêtre parente dans la foulée
+      // (il s'abstient aussi tant que la fenêtre existe).
+      function _depannageOnKey(e) {
+        if (e.key !== "Escape") return;
+        const m = document.getElementById("kta-depannage-modal");
+        if (!m) return;
+        for (let n = m.nextElementSibling; n; n = n.nextElementSibling) {
+          if (/overlay|submodal/.test(n.className || "") && n.style.display !== "none") return;
+        }
+        e.stopPropagation();
+        _fermerDepannage();
+      }
+      function _ouvrirDepannage() {
+        _fermerDepannage();
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        const _esc = function(s) {
+          return String(s).replace(/[&<>"]/g, function(c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        };
+        // Adresse de la page de secours, relative à l'origine (dev, prod, selfhost).
+        let urlSecours = "killsw.html";
+        try { urlSecours = new URL("killsw.html", window.location.href).href; } catch(e) {}
+
+        const overlay = document.createElement("div");
+        overlay.id = "kta-depannage-modal";
+        overlay.className = "kta-readme-modal-overlay";
+        overlay.style.display = "flex";
+        overlay.innerHTML =
+          '<div class="kta-readme-modal-boite kta-depannage-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">' + _t("home.cfg.depannage.title") + '</span>' +
+              '<button class="kta-panneau-close" type="button" id="kta-depannage-close">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps kta-depannage-corps">' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.updateWhen") + '</p>' +
+                '<button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn">' +
+                  _t("home.cfg.forceUpdateBtn") + '</button>' +
+              '</div>' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.killSwWhen") + '</p>' +
+                '<button class="loader-btn-secondary" type="button" id="loaderKillSwBtn">' +
+                  _t("home.cfg.killSwBtn") + '</button>' +
+              '</div>' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.resetWhen") + '</p>' +
+                '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">' +
+                  _t("home.cfg.resetBtn") + '</button>' +
+              '</div>' +
+              '<p class="kta-depannage-secours kta-tx-muted">' + _t("home.cfg.depannage.killswPage") +
+                ' <code>' + _esc(urlSecours) + '</code></p>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(overlay);
+
+        overlay.addEventListener("click", function(e) {
+          if (e.target === overlay) _fermerDepannage();
+        });
+        document.getElementById("kta-depannage-close").addEventListener("click", _fermerDepannage);
+        document.getElementById("loaderForceUpdateBtn").addEventListener("click", _depannageForceUpdate);
+        document.getElementById("loaderKillSwBtn").addEventListener("click", _depannageKillSw);
+        document.getElementById("loaderResetBtn").addEventListener("click", _depannageReset);
+        window.addEventListener("keydown", _depannageOnKey, true);
+      }
+
+      const depannageBtn = document.getElementById("loaderDepannageBtn");
+      if (depannageBtn) depannageBtn.addEventListener("click", _ouvrirDepannage);
 
       // ═══════════════════════════════════════════════════════════════
       // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
