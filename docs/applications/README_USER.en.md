@@ -1325,7 +1325,7 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 
 **Turning it on**: from the home screen, **⚙️ Configuration** → **🔐 Local access code** → **🔐 Enable access code**. Choose your code, confirm it, then accept biometrics if offered. **Write your code down** somewhere safe.
 
-**At startup**, the lock screen follows the splash screen: biometrics start on their own (you can cancel and type your code instead), otherwise you type your code.
+**At startup**, the lock screen follows the splash screen: biometrics start on their own (you can cancel and type your code instead), otherwise you type your code. To lock it again, close the app completely (or reload the page): the code is asked for at the next opening.
 
 **Changing or disabling**: same section, **✏️ Change code** or **🔓 Disable**, after confirming with biometrics or the current code.
 

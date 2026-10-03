@@ -1325,7 +1325,7 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 
 **Activar**: desde la pantalla de inicio, **⚙️ Configuración** → **🔐 Código de acceso local** → **🔐 Activar código de acceso**. Elige tu código, confírmalo y acepta la biometría si se te propone. **Apunta tu código** en un lugar seguro.
 
-**Al iniciar**, la pantalla de bloqueo sigue a la pantalla de arranque: la biometría se lanza sola (puedes cancelarla y escribir tu código), si no, escribes tu código.
+**Al iniciar**, la pantalla de bloqueo sigue a la pantalla de arranque: la biometría se lanza sola (puedes cancelarla y escribir tu código), si no, escribes tu código. Para volver a bloquearla, cierra la app por completo (o recarga la página): el código se vuelve a pedir en la siguiente apertura.
 
 **Cambiar o desactivar**: misma sección, **✏️ Cambiar código** o **🔓 Desactivar**, tras validar con la biometría o con el código actual.
 

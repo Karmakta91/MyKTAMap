@@ -1325,7 +1325,7 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 
 **Activer** : depuis l'accueil, **⚙️ Configuration** → **🔐 Code d'accès local** → **🔐 Activer le code d'accès**. Choisis ton code, confirme-le, puis accepte la biométrie si elle t'est proposée. **Note ton code** en lieu sûr.
 
-**Au démarrage**, l'écran de verrouillage suit l'écran de démarrage : la biométrie se lance d'elle-même (tu peux l'annuler et saisir ton code), sinon tu tapes ton code.
+**Au démarrage**, l'écran de verrouillage suit l'écran de démarrage : la biométrie se lance d'elle-même (tu peux l'annuler et saisir ton code), sinon tu tapes ton code. Pour reverrouiller, ferme complètement l'app (ou recharge la page) : le code est redemandé à l'ouverture suivante.
 
 **Modifier ou désactiver** : même section, **✏️ Modifier le code** ou **🔓 Désactiver**, après validation par biométrie ou par le code actuel.
 
