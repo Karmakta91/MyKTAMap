@@ -23,7 +23,7 @@ L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les 
 ### La philosophie
 
 - 🌐 **100 % hors-ligne par défaut** — l'app fonctionne sans réseau une fois le plan chargé. Tu peux la lancer en avion, dans le métro, ou à 30 m sous terre.
-- 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Le seul fetch externe possible est la mise à jour du code de l'app (et tu peux le couper). L'auditeur peut vérifier dans `🔒 Audit réseau`.
+- 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Les seuls accès extérieurs sont la vérification des mises à jour et, si un de tes plans est calibré GPS, le fond de carte OpenStreetMap de la Vue OSM (active par défaut, désactivable dans ⚙️ Configuration) : aucune donnée de tes plans n'y part. L'auditeur peut vérifier dans `🔒 Audit réseau`.
 - 📦 **Propriété des données** — tes annotations, tes photos, tes mesures sont stockées **localement**, dans le navigateur. Personne d'autre que toi n'y a accès. Tu peux tout exporter à tout moment (`💾 Enregistrer session`) et tout effacer en 2 clics (`💥 Tout réinitialiser`).
 - 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, l'auditer. Pas de boîte noire, pas de marketing.
 - ⚖️ **Discrétion = respect** — un plan partagé n'importe comment, c'est un lieu fragilisé. L'app ne contient aucun plan par défaut ; c'est à chaque utilisateur de charger les siens, et de **ne pas les diffuser** au-delà du cercle de confiance.
@@ -60,7 +60,7 @@ MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, 
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **dès qu'un de tes plans est calibré GPS** (active par défaut, désactivable dans ⚙️ Configuration). L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
 - 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
@@ -410,7 +410,7 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 
 ### ⚙️ Modale "Configuration"
 
-Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe tous les réglages du chargeur (tiling, performance, debug, mise à jour, reset) :
+Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe tous les réglages du chargeur (langue, affichage, confidentialité, mise à jour, réinitialisation) :
 
 > **Ordre des sections dans la modale (de haut en bas, identique au UI)** :
 
@@ -515,7 +515,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
   - 📐 Mesure simple (si ≥ 2 points posés)
   - 📏 Distance totale des tracés (si surlignage magenta actif) — **cliquable pour ouvrir la modale**
   - 🗺️ Itinéraire (distance + temps + mode) — **cliquable pour ouvrir la modale Itinéraire**
-  - 🧭 Tracker GPS — **boussole LED ON (vert) / OFF (rouge)** toujours visible
+  - 🧭 Tracker — **boussole LED ON (vert) / OFF (rouge)** toujours visible
   - Si tout est actif et que ça ne tient pas, le footer **s'agrandit automatiquement et passe à la ligne** — aucune info coupée
   - Gros bouton ▾▴ à droite pour réduire / agrandir le footer manuellement
 - **Sidebars unifiées gauche/droite** — chaque côté est une **seule barre verticale continue** :
@@ -682,9 +682,9 @@ Sur smartphone, le système d'exploitation (iOS / Android) peut **fermer brutale
 
 La fenêtre détaille :
 - **Pourquoi** ça s'est produit (mémoire saturée la plupart du temps)
-- **Comment éviter que ça recommence** : fermer les autres applications en arrière-plan, baisser le mode performance dans le loader, éviter d'ouvrir trop d'onglets de navigateur en parallèle, garder le smartphone à jour, exporter régulièrement votre session pour ne rien perdre
+- **Comment éviter que ça recommence** : fermer les autres applications en arrière-plan, activer le 🚀 Mode Performance ULTRA sur ce plan (⚙️ Réglages → 🚀 Performance), éviter d'ouvrir trop d'onglets de navigateur en parallèle, garder le smartphone à jour, exporter régulièrement votre session pour ne rien perdre
 
-Si vous voyez cette fenêtre **régulièrement**, c'est le signe qu'il faut **réduire le mode performance** (Performance < Équilibré < Qualité, niveau de RAM décroissant).
+Si vous voyez cette fenêtre **régulièrement** sur un même plan, activez-y le **🚀 Mode Performance ULTRA** (⚙️ Réglages → 🚀 Performance) ; si ça ne suffit pas, le plan doit être découpé à la génération (V2 tuilé).
 
 ### 📡 Utilisation hors connexion
 
@@ -733,7 +733,7 @@ Si vous voulez remettre l'application **à l'état initial** (comme un premier l
 - Le cache de l'application (mode hors-ligne désactivé jusqu'à reconnexion)
 - Votre **liste de plans** (entrées supprimées)
 - Les **ZIP mémorisés dans le navigateur** (perdus)
-- Vos **préférences** (mode performance par plan, options de tracker, logs détaillés, etc.)
+- Vos **préférences** (Mode ULTRA par plan, options de tracker, etc.)
 
 L'application demande **deux confirmations** avant d'exécuter le reset, et vous rappelle d'**exporter votre liste** au préalable si vous souhaitez la conserver.
 
@@ -759,7 +759,7 @@ Tu peux :
 - **📥 Exporter** le journal en fichier `.json` (à partager / archiver / faire auditer)
 - **🗑️ Vider** le buffer
 
-**À surveiller** : si tu vois apparaître une requête `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` ou `EventSource`, ou une URL externe (catégorie en rouge) autre que le ping de connectivité Google → **contacte l'auteur immédiatement** (Instagram **@karma_kta** ou **contact@myktamap.fr**) : ça contredirait la promesse de cette page.
+**À surveiller** : si tu vois apparaître une requête `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` ou `EventSource`, ou une URL externe (catégorie en rouge) autre que le test de connexion de l'app (`ping.html`, sur le même site) → **contacte l'auteur immédiatement** (Instagram **@karma_kta** ou **contact@myktamap.fr**) : ça contredirait la promesse de cette page.
 
 #### 📖 Que fait l'app sur le réseau ?
 
@@ -1070,7 +1070,7 @@ Le bouton **🔍** dans la barre latérale **OU** le raccourci clavier **Ctrl+K*
 - Le **niveau** (en mode multi-niveau)
 
 **🌐 Coordonnées GPS** *(uniquement si le plan est géoréférencé)* :
-- Colle directement un couple de coordonnées au **format Google Maps** : `48.680831, 2.158843`
+- Colle directement un couple de coordonnées au **format Google Maps** : `48.856600, 2.352200`
 - L'app convertit en position sur le plan via le calibrage GPS du plan
 - Si un **POI existe dans 50 px autour** → carte verte "🎯 Aller au point" avec distance affichée
 - Sinon → carte bleue "➕ Créer un point ici" → ouvre le formulaire de saisie pré-rempli sur cette position (= 3 clics au total depuis Maps : Ctrl+K · Coller · Créer)
@@ -1509,7 +1509,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
   Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
-- 📋 **« Copier ma position »** : un bouton carré **à droite des chiffres** (les chiffres eux-mêmes marchent aussi — c'est là que le doigt va d'abord). Il devient ✅ le temps de te confirmer la copie. Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.823328, 2.322915` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
+- 📋 **« Copier ma position »** : un bouton carré **à droite des chiffres** (les chiffres eux-mêmes marchent aussi — c'est là que le doigt va d'abord). Il devient ✅ le temps de te confirmer la copie. Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.856600, 2.352200` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
 - 🔋 **Une ligne d'état en haut à droite** : ton **niveau de batterie** (seulement si ton navigateur l'expose et si tu n'as pas décoché le réglage — sinon rien du tout, pas de « ? » ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨. *L'échelle du plan n'y est plus (v1.97.11) : c'est un chiffre de calibrage, il se lit dans ⚙️ Réglages, pas quand on cherche où l'on est.*
 - 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Configuration de l'accueil.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
@@ -1592,7 +1592,7 @@ Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l
 
 Les sections ci-dessous détaillent les fonctionnalités avancées : intégrations cross-app (KML, Lost Mode, heatmap, etc.), exploitation terrain temps réel (vues Live par rôle, statuts, rapports), et consolidation cross-device (import de rapports d'équipiers).
 
-> 💡 **Le partage opérateur ↔ équipes** passe par le **rapport `.mkmsec.report.json`** classique (échange de fichier device-à-device).
+> 💡 **Transmettre aux équipes** : l'opérateur exporte le scénario (**📤 Export .mkmsec.json**) et l'envoie à chaque équipe, qui l'importe sur son téléphone. Au retour, chaque équipe renvoie son rapport (**`.mkmsec.report.json`**), que l'opérateur importe.
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
@@ -1897,12 +1897,13 @@ Pour le secouriste sur le terrain qui suit son parcours :
 | 🟠 | Aide demandée | Renfort matériel / humain demandé |
 | 🟣 | Demi-tour forcé | Parcours abandonné, retour anticipé |
 | 🚨 | **Victime trouvée** | **Urgence absolue** — déclenche signal rouge clignotant côté PC |
+| ⚪ | Passée, non renseignée | Posé par l'app : étape passée sans statut choisi |
 
 **Photos** : appui « 📸 Photo (X/5) » → caméra arrière auto sur mobile OU galerie. Max 5 photos par étape, compression auto JPEG q85 max 1920px. Cliquer une miniature → viewer plein écran avec swipe + zoom.
 
 **Auto-save** : observations sauvées au blur du textarea ET au changement d'étape. Pas besoin de bouton « Sauver ».
 
-**Auto-statut RAS** : passer à l'étape suivante sans avoir mis de statut explicite → marqué automatiquement « 🟢 RAS » (suppose que tu as fait l'étape sans rien à signaler). Re-clic statut possible si besoin.
+**Étape passée sans statut** : passer à l'étape suivante sans avoir choisi de statut la marque **« ⚪ Passée, non renseignée »**, jamais « RAS » : une étape sautée n'est pas une étape fouillée. Re-clic statut possible.
 
 #### 👤 Vue Live — Mode OPÉRATEUR SURFACE (vue d'ensemble)
 
@@ -2692,7 +2693,7 @@ Les objets qui sont **déjà** du type choisi sont simplement laissés tels quel
 
 ## 🏗️ Mode multi-niveau (carrières multi-étages)
 
-Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (Glacière, Capucins, sites avec étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.
+Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (carrières à étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.
 
 > 📚 **Cohérence visuelle des niveaux** : quand le mode multi-niveau est activé, les tracés sont automatiquement empilés selon leur niveau — une galerie au Niveau 0 apparaît toujours **AU-DESSUS** d'une galerie au Niveau -1, et celle au Niveau +1 au-dessus du Niveau 0. Au sein du même niveau : Chemin (en arrière) < Secondaire < Principal (au-dessus). L'itinéraire calculé et les zones inaccessibles ⛔ passent toujours au-dessus de tout pour rester visibles.
 
@@ -2986,7 +2987,7 @@ Pour chaque point (A et B), 3 méthodes au choix :
 - **📍 Cliquer carte** : la modale se réduit, tu cliques sur la carte là où tu connais les coords GPS → x/y plan auto-remplies. Renseigne les coords GPS.
 - **Saisie manuelle** des 3 champs (Plan x, Plan y, **GPS (lat, lng)**).
 
-> 🌐 **Format GPS** : le champ `GPS (lat, lng)` accepte directement le **format Google Maps natif** (`48.680831, 2.158843`). Tu peux copier les coords depuis Google Maps (clic droit → copier les coordonnées) et coller le tout dans le champ — pas besoin de séparer en 2 champs lat / lng. Si le format est invalide, le champ devient rouge avec un message explicite. Le même format est accepté **partout** dans l'app (recherche Ctrl+K · Settings KMZ · création de plan géoréférencé).
+> 🌐 **Format GPS** : le champ `GPS (lat, lng)` accepte directement le **format Google Maps natif** (`48.856600, 2.352200`). Tu peux copier les coords depuis Google Maps (clic droit → copier les coordonnées) et coller le tout dans le champ — pas besoin de séparer en 2 champs lat / lng. Si le format est invalide, le champ devient rouge avec un message explicite. Le même format est accepté **partout** dans l'app (recherche Ctrl+K · Settings KMZ · création de plan géoréférencé).
 
 > 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
 
@@ -3024,7 +3025,7 @@ Clic **Télécharger** → fichier `MyKTAMap_<NomDuPlan>_<date>.kmz` télécharg
 
 Ton calibrage 2 points est sauvegardé **par plan** (sur cet appareil). Au prochain export du même plan, les 8 champs sont déjà pré-remplis — tu ajustes si besoin et tu re-télécharges. Si tu changes de plan ou repars à zéro, tu n'as qu'à re-saisir.
 
-> ⚠️ **Limites de la précision** : la transformation est une **similarity 2D** (rotation + scale uniforme + translation). Sur des plans globalement plats et rigides, c'est suffisant. Sur des plans très étendus ou non-rigides (déformations locales), attends-toi à une légère dérive aux extrémités opposées au calibrage. Une version future pourra supporter 3+ points (least squares) pour plus de précision si besoin.
+> ⚠️ **Limites de la précision** : la transformation est une **similarity 2D** (rotation + scale uniforme + translation). Sur des plans globalement plats et rigides, c'est suffisant. Sur des plans très étendus ou non-rigides (déformations locales), attends-toi à une légère dérive aux extrémités opposées au calibrage. Un **point C** (ci-dessus) corrige ces plans déformés.
 
 > ⚠️ **Comme pour l'export PNG**, vérifie que ton KMZ ne révèle pas d'informations sensibles avant de le partager publiquement (carrière privée, accès restreint…).
 
@@ -3052,7 +3053,7 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 
 > ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
 
-#### Ouverture — 3 sources
+#### Ouverture
 
 1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
@@ -3297,20 +3298,6 @@ La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploa
 
 > 💡 **Workflow recommandé** : génère le ZIP V2 une fois pour toutes sur ton PC, puis partage-le sur ton téléphone (Drive, AirDrop, etc.). Le téléphone l'importe en quelques secondes et tu profites du runtime tuilé sans coût mémoire au boot.
 
-#### 🎛️ Désactiver le tuilage à la lecture (V2 → V1 brut)
-
-Au chargement d'un plan V2, tu peux choisir **Mode performance : Désactivé** dans la modale **⚙️ Configuration** du loader. Dans ce cas, le runtime ignore les tuiles et charge directement l'**image source** du ZIP, gardée intacte, comme un plan V1 classique.
-
-Use cases :
-- Comparer le rendu V2 vs V1 sur le même plan
-- Bypass temporaire si tu vois un comportement bizarre du système de tuiles (debug)
-
-⚠️ Ce mode charge toute l'image en RAM → susceptible de crasher sur mobile pour les gros plans (c'est ce que V2 évite normalement).
-
-> 💡 **À tester en priorité** sur ton plus gros plan qui crashe sur mobile, ou avant de partager un plan lourd à quelqu'un avec un téléphone modeste.
-
----
-
 ## 🚀 Optimiser ton plan pour la performance
 
 Un plan léger se charge plus vite, navigue plus fluide et **réduit fortement le risque de crash mémoire sur mobile**. Voici les bonnes pratiques par ordre d'impact.
@@ -3323,7 +3310,7 @@ L'image base est le **plus gros consommateur mémoire**. Sur mobile, le navigate
 |---|---|---|
 | ≤ 4 000 × 4 000 px | OK partout | ✅ Idéal |
 | 4 000 - 8 000 px | OK desktop, dézoom limité sur mobile | ⚠️ Acceptable |
-| 8 000 - 16 000 px | Risque de crash sur mobile bas/moyenne gamme | ⚠️ Force le tuilage (mode Performance) |
+| 8 000 - 16 000 px | Risque de crash sur mobile bas/moyenne gamme | ⚠️ Découper le plan à la génération (V2 tuilé) |
 | > 16 000 px | Crash quasi-garanti sur mobile | ❌ À éviter |
 
 **Astuce** : si ton plan source est gigantesque, redimensionne à 6 000-8 000 px de côté max avec un éditeur d'image (GIMP, Photoshop, [Squoosh](https://squoosh.app/) en ligne). Tu perds un peu de détail au zoom maximum mais tu gagnes énormément en stabilité.
@@ -3396,16 +3383,16 @@ Deux choix :
 
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 
-Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 6 optimisations agressives simultanément.
+Si ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 7 optimisations agressives simultanément.
 
 > 🆕 **Trois choses à savoir** :
 > - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont pas impactés. Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
 > - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec l'option « Ne rendre que les éléments visibles » active — seul l'affichage des milliers de points des calques de données est allégé.
 > - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
 
-> ⚠️ Ces optims **ne touchent PAS à l'image** (déjà gérée par le mode performance ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
+> ⚠️ Ces optims **ne touchent PAS à l'image** (gérée par le découpage, voir ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
 
-**Les 6 toggles individuels** (activables séparément si tu veux affiner) :
+**Les 7 réglages individuels** (activables séparément si tu veux affiner) :
 
 | Toggle | Effet | Trade-off |
 |---|---|---|
@@ -3415,6 +3402,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 | 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
 | 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
+| 🛡️ **Limiter le dézoom sur mobile** | Sur téléphone, plafonne le dézoom pour éviter un crash mémoire. **Coché par défaut** | Pas de vue d'ensemble complète sur mobile — **reload requis** |
 
 **Comment t'en servir** :
 
@@ -3422,9 +3410,9 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 - **Si tu veux affiner** → garde ULTRA décoché et active manuellement les toggles selon ce que tu veux sacrifier. Par exemple : tu peux activer juste **🐢 Auto-save lent** et **👁️ Ne rendre que les éléments visibles** pour gagner pas mal sans rien perdre visuellement.
 - **Pour revenir au comportement normal** → décoche **🚀 ULTRA** (ça décoche tout) ou décoche individuellement.
 
-**Persistance** : les toggles sont mémorisés dans ton navigateur (préférence globale, pas par plan). Ils restent activés entre sessions.
+**Persistance** : les réglages sont mémorisés **pour ce plan**, sur cet appareil. Ils restent activés entre les sessions.
 
-> 💡 Combo recommandé pour les très gros plans : 🚀 ULTRA + mode performance ⚡ Performance au chargement + image source ≤ 8000 px / JPEG q85.
+> 💡 Combo recommandé pour les très gros plans : plan **découpé à la génération** (V2 tuilé) + 🚀 ULTRA + image source ≤ 8000 px / JPEG q85.
 
 ### 7. 📱 Spécifique mobile
 
@@ -3445,7 +3433,7 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 - 1 ou 2 calques image max
 - Routes **dessinées dans le PNG** + calque JSON masqué pour le pathfinder
 - Points répartis dans 2-3 calques de données toggleables
-- Preset **🎯 Équilibré** par défaut, **⚡ Performance** pour les vieux mobiles
+- Gros plan : **découpé à la génération** (V2 tuilé) ; vieux mobile : **🚀 Mode ULTRA**
 
 ---
 
@@ -3686,7 +3674,7 @@ Tu peux aussi **pinner** une version exacte au lieu de `latest` :
 - **Conflit de ports** : si tu as déjà un autre service sur `8443` côté hôte, change le mapping : `-p 9443:8443` par exemple.
 - **Pas de mises à jour automatiques** : tu décides quand `docker pull`. Pour de l'auto-update, regarde [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **Aucune donnée envoyée ailleurs**. L'image embarque l'app vanilla, exactement comme la version officielle, mais servie depuis ton propre matériel. C'est même un peu plus offline-friendly que la prod (pas de fetch occasionnel vers `gstatic.com` pour le ping de connectivité — l'audit réseau reste actif si tu veux vérifier).
+> 🔒 **Aucune donnée envoyée ailleurs**. L'image embarque l'app vanilla, exactement comme la version officielle, mais servie depuis ton propre matériel. L'audit réseau reste actif si tu veux vérifier.
 
 > 📖 **Tu n'as jamais utilisé Docker ?** Un guide pas-à-pas dédié existe : **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — installation Docker Desktop (Windows/Mac/Linux), démarrage du daemon, troubleshooting des erreurs courantes (cert auto-signé, conflits de port, WSL 2), alternatives sans Docker.
 
@@ -3774,11 +3762,11 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 ### 🐛 Logs détaillés (mode debug)
 
-Le bouton **🐛 Logs détaillés** dans la modale **⚙️ Configuration** du chargeur active un mode verbose :
+Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** active un mode verbeux :
 - Logs supplémentaires dans la console (capteurs du tracker, étapes du tiling)
-- Affichage des **chiffres techniques** sous le sélecteur Mode performance (tailles de tuile, qualité JPEG, seuil de déclenchement)
 
-Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut. Réglage aussi accessible depuis ⚙️ Réglages > Logs détaillés.
+
+Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut.
 
 ---
 
@@ -3788,13 +3776,13 @@ Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. 
 Vérifiez que `plan-config.json` est bien à la racine de votre archive ZIP, et que tous les fichiers référencés sont présents.
 
 **L'image du plan est floue**
-Selon le preset choisi, la résolution de travail est réduite (`Performance` plus que `Équilibré`, qui est plus que `Qualité`). Si votre appareil a assez de mémoire, basculez en **🌟 Qualité** au prochain chargement pour une image plus nette.
+Sur un très grand plan non découpé, l'app réduit l'image pour qu'elle tienne en mémoire. Pour une image nette, le plan doit être **découpé à la génération** (V2 tuilé) — demande-le à son créateur.
 
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
 
 **L'application crash sur Mobile avec un JPEG volumineux**
-Choisissez **⚡ Performance** dans le sélecteur Mode performance avant de charger le plan.
+Ouvrez le plan, puis activez le **🚀 Mode Performance ULTRA** (⚙️ Réglages → 🚀 Performance). Si ça ne suffit pas, le plan doit être découpé à la génération (V2 tuilé).
 
 **Un mode reste actif sans le vouloir**
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
@@ -3823,6 +3811,6 @@ Si l'app est totalement coincée même après changement de réseau, deux option
 > ⚠️ Ces deux outils **ne suppriment AUCUNE donnée utilisateur** (plans mémorisés, sessions per-plan, photos POI, photos Mode Secours, backups, préférences). Ils ne purgent que le cache des fichiers de l'app (HTML / CSS / JS / icônes). En cas de doute, **📤 Exporter le profil** AVANT pour avoir un backup.
 
 **Problème non résolu**
-Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'équipe technique.
+Écris à l'auteur (**contact@myktamap.fr**) : ce que tu faisais, ton téléphone et ton navigateur, et une capture si possible.
 
 ---

@@ -23,7 +23,7 @@ La app **no tiene ninguna pretensión de sustituir** a los viejos planos de pape
 ### La filosofía
 
 - 🌐 **100 % sin conexión por defecto** — la app funciona sin red una vez cargado el plano. Puedes usarla en un avión, en el metro o a 30 m bajo tierra.
-- 🔒 **Cero telemetría** — no se llama a ningún servicio de terceros para seguirte. La única petición externa posible es la actualización del código de la app (y puedes cortarla). Quien audite puede comprobarlo en `🔒 Auditoría de red`.
+- 🔒 **Cero telemetría** — no se llama a ningún servicio de terceros para seguirte. Las únicas peticiones externas son la comprobación de actualizaciones y, si uno de tus planos está calibrado GPS, el fondo de mapa OpenStreetMap de la Vista OSM (activa por defecto, desactivable en ⚙️ Configuración): ningún dato de tus planos sale. Quien audite puede comprobarlo en `🔒 Auditoría de red`.
 - 📦 **Propiedad de los datos** — tus anotaciones, tus fotos y tus mediciones se guardan **localmente**, en el navegador. Nadie más que tú tiene acceso. Puedes exportarlo todo en cualquier momento (`💾 Guardar sesión`) y borrarlo todo en 2 clics (`💥 Reiniciarlo todo`).
 - 🤝 **Código abierto** — la licencia es `CC BY-NC-SA 4.0`. Puedes leer el código y auditarlo. Sin cajas negras, sin marketing.
 - ⚖️ **Discreción = respeto** — un plano compartido de cualquier manera es un lugar debilitado. La app no contiene ningún plano por defecto; cada usuario carga los suyos y **no debe difundirlos** más allá del círculo de confianza.
@@ -60,7 +60,7 @@ MyKTAMap se apoya enteramente en **piezas de código abierto**. Sin estos proyec
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL a elegir)* — lectura y escritura de los archivos `.zip` en el navegador (planos, sesiones, exportaciones, extracción parcial para el minimapa de la pantalla de inicio). Gracias a **Stuart Knightley** y a sus colaboradores.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generación de PDF imprimibles (A0 → A4, vertical/horizontal, página en miniatura del Modo Rescate, incrustación del Modo Historia).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, incluido en el repositorio)* — captura del resultado del DOM como imagen (lienzo → PNG). Se usa para integrar el **mapa OSM de Leaflet** en los PDF **«Briefing para bomberos»** del Modo Rescate: la pila gráfica webgl + teselas + superposiciones + plano proyectado, todo ello congelado en una imagen incrustada en el PDF entregado a los servicios de rescate externos. Gracias a **Niklas von Hertzen** y a sus colaboradores.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) y sus colaboradores** — bajo licencia **[ODbL](https://opendatacommons.org/licenses/odbl/)** para los datos y **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** para la cartografía. Datos cartográficos mundiales mostrados en la **Vista OSM** (ventana del plano + widget de la pantalla de inicio) **únicamente cuando tú la activas mediante la opción dedicada**. La app muestra la atribución `© OpenStreetMap contributors` en la esquina de cada mapa OSM, **como exige la licencia ODbL**. Alojamiento de las teselas: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fundación sin ánimo de lucro, política de registros pública, sin rastreo publicitario). Sin ese bien común monumental — construido desde 2004 por **miles de voluntarios** que cartografían el mundo calle a calle — la Vista OSM no existiría.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) y sus colaboradores** — bajo licencia **[ODbL](https://opendatacommons.org/licenses/odbl/)** para los datos y **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** para la cartografía. Datos cartográficos mundiales mostrados en la **Vista OSM** (ventana del plano + widget de la pantalla de inicio) **en cuanto uno de tus planos está calibrado GPS** (activa por defecto, desactivable en ⚙️ Configuración). La app muestra la atribución `© OpenStreetMap contributors` en la esquina de cada mapa OSM, **como exige la licencia ODbL**. Alojamiento de las teselas: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fundación sin ánimo de lucro, política de registros pública, sin rastreo publicitario). Sin ese bien común monumental — construido desde 2004 por **miles de voluntarios** que cartografían el mundo calle a calle — la Vista OSM no existiría.
 - 🧭 **Algoritmo de Dijkstra** (1959) — cálculo del camino más corto para los itinerarios asistidos. Edsger W. Dijkstra (1930-2002): gracias por esta idea de hace más de 60 años que sigue sosteniendo Google Maps, el enrutamiento de OpenStreetMap y todos los GPS del mundo.
 - 🌐 **[Estándar GPX 1.1](https://www.topografix.com/gpx.asp)** — formato de intercambio con TopoDroid, OsmAnd, Strava, Garmin y el ecosistema de actividades al aire libre.
 - 🛡️ **[Estándares web](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Mantenidos por miles de personas con las que nunca nos cruzaremos y a las que debemos muchísimo.
@@ -679,9 +679,9 @@ En el teléfono, el sistema operativo (iOS / Android) puede **cerrar de golpe la
 
 La ventana detalla:
 - **Por qué** ha ocurrido (memoria saturada la mayoría de las veces)
-- **Cómo evitar que se repita**: cerrar las demás aplicaciones en segundo plano, bajar el modo de rendimiento en el cargador, evitar abrir demasiadas pestañas del navegador en paralelo, mantener el teléfono actualizado y exportar regularmente tu sesión para no perder nada
+- **Cómo evitar que se repita**: cerrar las demás aplicaciones en segundo plano, activar el 🚀 Modo Rendimiento ULTRA en este plano (⚙️ Ajustes → 🚀 Rendimiento), evitar abrir demasiadas pestañas del navegador en paralelo, mantener el teléfono actualizado y exportar regularmente tu sesión para no perder nada
 
-Si ves esta ventana **con frecuencia**, es señal de que hay que **reducir el modo de rendimiento** (Rendimiento < Equilibrado < Calidad, en orden decreciente de RAM).
+Si ves esta ventana **con frecuencia** en un mismo plano, activa en él el **🚀 Modo Rendimiento ULTRA** (⚙️ Ajustes → 🚀 Rendimiento); si no basta, el plano debe trocearse al generarlo (V2 teselado).
 
 ### 📡 Uso sin conexión
 
@@ -730,7 +730,7 @@ Si quieres devolver la aplicación **a su estado inicial** (como en un primer ar
 - La caché de la aplicación (modo sin conexión desactivado hasta la próxima conexión)
 - Tu **lista de planos** (entradas eliminadas)
 - Los **ZIP memorizados en el navegador** (perdidos)
-- Tus **preferencias** (modo de rendimiento por plano, opciones del rastreador, registros detallados, etc.)
+- Tus **preferencias** (modo ULTRA por plano, opciones del rastreador, etc.)
 
 La aplicación pide **dos confirmaciones** antes de ejecutar el reinicio, y te recuerda que **exportes tu lista** previamente si deseas conservarla.
 
@@ -756,7 +756,7 @@ Puedes:
 - **📥 Exportar** el registro a un archivo `.json` (para compartir / archivar / someter a auditoría)
 - **🗑️ Vaciar** el búfer
 
-**A vigilar**: si ves aparecer una petición `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` o `EventSource`, o una URL externa (categoría en rojo) distinta del ping de conectividad de Google → **contacta con el autor inmediatamente** (Instagram **@karma_kta** o **contact@myktamap.fr**): contradiría la promesa de esta página.
+**A vigilar**: si ves aparecer una petición `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` o `EventSource`, o una URL externa (categoría en rojo) distinta de la prueba de conexión de la app (`ping.html`, en el mismo sitio) → **contacta con el autor inmediatamente** (Instagram **@karma_kta** o **contact@myktamap.fr**): contradiría la promesa de esta página.
 
 #### 📖 ¿Qué hace la app en la red?
 
@@ -1066,7 +1066,7 @@ El botón **🔍** de la barra lateral **O** el atajo de teclado **Ctrl+K** (`Cm
 - El **nivel** (en modo multinivel)
 
 **🌐 Coordenadas GPS** *(solo si el plano está georreferenciado)*:
-- Pega directamente un par de coordenadas en **formato Google Maps**: `48.680831, 2.158843`
+- Pega directamente un par de coordenadas en **formato Google Maps**: `48.856600, 2.352200`
 - La app las convierte en una posición sobre el plano mediante el calibrado GPS del plano
 - Si **existe un POI en un radio de 50 px** → tarjeta verde «🎯 Ir al punto» con la distancia indicada
 - Si no → tarjeta azul «➕ Crear un punto aquí» → abre el formulario ya rellenado en esa posición (= 3 clics en total desde Maps: Ctrl+K · Pegar · Crear)
@@ -1505,7 +1505,7 @@ El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a
 - 🗺️ **Minimapa con enfoque automático**: zoom cerrado (~20-50 m de horizonte) centrado permanentemente en tu posición. Muestra de fondo las **vías / zonas / estructuras del plano** — útil para localizar caminos, salidas y peligros en las inmediaciones
   Usa los **colores de tu leyenda**: si has recoloreado un tipo o creado tus propios tipos, los reconoces aquí igual que en el mapa.
   Tu **itinerario activo** siempre aparece dibujado (cian intenso + halo blanco, para seguir viéndose sobre ese fondo tan ampliado), y el mapa **gira** como el principal si has activado el modo «plano orientado».
-- 📋 **« Copiar mi posición »**: un botón cuadrado **a la derecha de las cifras** (también sirve pulsar las cifras — ahí va el dedo primero). Se convierte en ✅ mientras confirma la copia. Si tu plano está georreferenciado copia **solo las coordenadas** — `48.823328, 2.322915` — el formato que se pega directamente en un SMS, en Google Maps o en Mapas, sin tener que limpiar nada. Si no, copia el **nombre del plano y tu posición X/Y**, que solo significa algo para quien tenga el mismo plano. Conviéne tenerlo a mano en cuanto tengas algo de cobertura. ⚠️ *La duda se queda en la pantalla, no en el mensaje: si tu posición nunca se ha confirmado, la línea bajo las cifras lo dice — díselo también a quien escribas.*
+- 📋 **« Copiar mi posición »**: un botón cuadrado **a la derecha de las cifras** (también sirve pulsar las cifras — ahí va el dedo primero). Se convierte en ✅ mientras confirma la copia. Si tu plano está georreferenciado copia **solo las coordenadas** — `48.856600, 2.352200` — el formato que se pega directamente en un SMS, en Google Maps o en Mapas, sin tener que limpiar nada. Si no, copia el **nombre del plano y tu posición X/Y**, que solo significa algo para quien tenga el mismo plano. Conviéne tenerlo a mano en cuanto tengas algo de cobertura. ⚠️ *La duda se queda en la pantalla, no en el mensaje: si tu posición nunca se ha confirmado, la línea bajo las cifras lo dice — díselo también a quien escribas.*
 - 🔋 **Una línea de estado arriba a la derecha**: tu **nivel de batería** (solo si tu navegador lo expone y no has desmarcado el ajuste — si no, nada en absoluto, ningún « ? »; crítico aquí: sabes cuánto te queda antes de que el teléfono se apague), el estado del **rastreador** y el de la **brújula**. El **nombre del plano** va justo bajo el título 🚨. *La escala del plano ya no aparece (v1.97.11): es una cifra de calibrado, se consulta en ⚙️ Configuración, no cuando buscas dónde estás.*
 - 🌗 **Tema**: la pantalla sigue el de la app (oscuro o claro). Ya no hay botón propio — un solo ajuste, en ⚙️ Configuración.
 - 🔋 **Wake Lock**: la pantalla no se apaga automáticamente mientras el modo esté activo (no hace falta tocar el teléfono cada 30 segundos para despertarlo)
@@ -1587,7 +1587,7 @@ Puedes preparar **varias hipótesis** simultáneas («si Marc salió por el Este
 
 Las secciones siguientes detallan las funciones avanzadas: integraciones entre aplicaciones (KML, Modo perdido, mapa de calor, etc.), explotación sobre el terreno en tiempo real (vistas en directo por rol, estados, informes) y consolidación entre dispositivos (importación de informes de los miembros del equipo).
 
-> 💡 **El intercambio entre operador y equipos** se hace mediante el clásico informe `.mkmsec.report.json` (intercambio de archivos de dispositivo a dispositivo).
+> 💡 **Enviar a los equipos**: el operador exporta el escenario (**📤 Export .mkmsec.json**) y lo envía a cada equipo, que lo importa en su teléfono. A la vuelta, cada equipo devuelve su informe (**`.mkmsec.report.json`**), que el operador importa.
 
 > 💡 **Recomendación de campo**: prepara uno o dos escenarios **ANTES** de que haya un incidente en tus planos favoritos, para identificar las fricciones del flujo de trabajo (dónde están los accesos, cómo dividir la red, qué niveles por equipo). Durante un incidente real estarás en modo urgencia y la app debe estar lista para usarse en 30 segundos.
 
@@ -1892,12 +1892,13 @@ Para el rescatador sobre el terreno que sigue su recorrido:
 | 🟠 | Ayuda solicitada | Se pide refuerzo material o humano |
 | 🟣 | Media vuelta forzada | Recorrido abandonado, regreso anticipado |
 | 🚨 | **Víctima encontrada** | **Urgencia absoluta** — dispara una señal roja intermitente en el puesto de mando |
+| ⚪ | Pasada, sin informar | La pone la app: etapa pasada sin elegir estado |
 
 **Fotos**: pulsa «📸 Foto (X/5)» → cámara trasera automática en móvil O galería. Máximo 5 fotos por etapa, compresión automática JPEG q85 con un máximo de 1920 px. Pulsa una miniatura → visor a pantalla completa con deslizamiento y zoom.
 
 **Guardado automático**: las observaciones se guardan al salir del área de texto Y al cambiar de etapa. No hace falta ningún botón de «Guardar».
 
-**Estado automático «Sin novedad»**: pasar a la etapa siguiente sin haber puesto un estado explícito → se marca automáticamente como «🟢 Sin novedad» (se supone que has hecho la etapa sin nada que señalar). Puedes volver a pulsar el estado si hace falta.
+**Etapa pasada sin estado**: pasar a la etapa siguiente sin haber elegido estado la marca **«⚪ Pasada, sin informar»**, nunca «Sin novedad»: una etapa saltada no es una etapa registrada. Puedes ponerle un estado después.
 
 #### 👤 Vista en directo — Modo OPERADOR DE SUPERFICIE (visión de conjunto)
 
@@ -2686,7 +2687,7 @@ Los objetos que **ya** son del tipo elegido simplemente se dejan como están: el
 > ℹ️ Estas tres acciones solo aparecen en **tus** objetos. Un objeto que viene de una capa de datos abre una ventana de **solo lectura**: para corregirlo o eliminarlo, abre antes su capa para modificarla desde 🔍 **Filtros** y luego exporta la capa corregida.
 
 ## 🏗️ Modo multinivel (canteras de varias plantas)
-Algunas canteras y galerías tienen **varios niveles físicamente apilados** (Glacière, Capucins, yacimientos con plantas). El modo multinivel permite gestionar correctamente esos planos: cada trazado/zona/punto pertenece a un nivel, y el buscador de rutas no atraviesa mágicamente de un nivel a otro por los cruces visuales en 2D.
+Algunas canteras y galerías tienen **varios niveles físicamente apilados** (canteras con varias plantas). El modo multinivel permite gestionar correctamente esos planos: cada trazado/zona/punto pertenece a un nivel, y el buscador de rutas no atraviesa mágicamente de un nivel a otro por los cruces visuales en 2D.
 
 > 📚 **Coherencia visual de los niveles**: cuando el modo multinivel está activado, los trazados se apilan automáticamente según su nivel — una galería del Nivel 0 aparece siempre **POR ENCIMA** de una galería del Nivel -1, y la del Nivel +1 por encima del Nivel 0. Dentro de un mismo nivel: Camino (detrás) < Secundaria < Principal (encima). El itinerario calculado y las zonas inaccesibles ⛔ pasan siempre por encima de todo para seguir siendo visibles.
 
@@ -2979,7 +2980,7 @@ Para cada punto (A y B), 3 métodos a elegir:
 - **📍 Pulsar en el mapa**: la ventana se reduce, pulsas en el mapa donde conoces las coordenadas GPS → x/y del plano rellenadas automáticamente. Indica las coordenadas GPS.
 - **Introducción manual** de los 3 campos (Plano x, Plano y, **GPS (lat, lng)**).
 
-> 🌐 **Formato GPS**: el campo `GPS (lat, lng)` acepta directamente el **formato nativo de Google Maps** (`48.680831, 2.158843`). Puedes copiar las coordenadas desde Google Maps (clic derecho → copiar las coordenadas) y pegarlo todo en el campo — no hace falta separarlo en 2 campos de lat / lng. El mismo formato se acepta **en toda** la app (búsqueda Ctrl+K · ajustes KMZ · creación de plano georreferenciado).
+> 🌐 **Formato GPS**: el campo `GPS (lat, lng)` acepta directamente el **formato nativo de Google Maps** (`48.856600, 2.352200`). Puedes copiar las coordenadas desde Google Maps (clic derecho → copiar las coordenadas) y pegarlo todo en el campo — no hace falta separarlo en 2 campos de lat / lng. El mismo formato se acepta **en toda** la app (búsqueda Ctrl+K · ajustes KMZ · creación de plano georreferenciado).
 
 > 💡 **Consejo**: elige 2 puntos **alejados** en el plano (idealmente en los extremos opuestos) — cuanto mayor sea la distancia AB, mejor será la precisión de la transformación. La app lo rechaza si AB mide menos de 50 px en el plano o menos de 1 metro en la realidad.
 
@@ -3017,7 +3018,7 @@ Pulsa **Descargar** → se descarga el archivo `MyKTAMap_<NombreDelPlano>_<fecha
 
 Tu calibrado de 2 puntos se guarda **por plano** (en este dispositivo). En la siguiente exportación del mismo plano, los 8 campos ya vienen rellenados — los ajustas si hace falta y vuelves a descargar. Si cambias de plano o empiezas de cero, solo tienes que volver a introducirlos.
 
-> ⚠️ **Límites de la precisión**: la transformación es una **similitud 2D** (rotación + escala uniforme + traslación). En planos globalmente planos y rígidos, es suficiente. En planos muy extensos o no rígidos (deformaciones locales), cuenta con una ligera deriva en los extremos opuestos al calibrado. Una versión futura podrá admitir 3 o más puntos (mínimos cuadrados) para más precisión si hace falta.
+> ⚠️ **Límites de la precisión**: la transformación es una **similitud 2D** (rotación + escala uniforme + traslación). En planos globalmente planos y rígidos, es suficiente. En planos muy extensos o no rígidos (deformaciones locales), cuenta con una ligera deriva en los extremos opuestos al calibrado. Un **punto C** (más arriba) corrige esos planos deformados.
 
 > ⚠️ **Igual que con la exportación PNG**, comprueba que tu KMZ no revele información sensible antes de compartirlo públicamente (cantera privada, acceso restringido…).
 
@@ -3045,7 +3046,7 @@ Pulsa **⬇️ → 📊 Editor de datos del plano** (en modo mapa) **o** el bot�
 
 > ℹ️ Desde la **pantalla de inicio** no hay todavía ningún plano cargado: solo se ofrecen las fuentes **📦 ZIP** y **📄 JSON** (no hay «plano en curso»).
 
-#### Apertura — 3 fuentes
+#### Apertura
 
 1. **🗺️ Plano en curso** — enumera las capas de datos del plano abierto (pozos, accesos, trazados, zonas…). Elige una para editarla.
 2. **📦 Importar un ZIP** — recupera la lista de capas de datos de un plano completo (`.zip`).
@@ -3290,20 +3291,6 @@ La casilla 🧱 Convertir a V2 aparece en el formulario en cuanto has **cargado 
 
 > 💡 **Flujo recomendado**: genera el ZIP V2 una vez por todas en tu PC y luego pásalo a tu teléfono (Drive, AirDrop, etc.). El teléfono lo importa en unos segundos y disfrutas del teselado en ejecución sin coste de memoria al arrancar.
 
-#### 🎛️ Desactivar el teselado en la lectura (V2 → V1 en bruto)
-
-Al cargar un plano V2, puedes elegir **Modo de rendimiento: Desactivado** en la ventana **⚙️ Configuración** del cargador. En ese caso, la ejecución ignora las teselas y carga directamente la **imagen de origen** del ZIP, conservada intacta, como un plano V1 clásico.
-
-Casos de uso:
-- Comparar el resultado V2 frente al V1 en el mismo plano
-- Puentear temporalmente si observas un comportamiento extraño del sistema de teselas (depuración)
-
-⚠️ Este modo carga toda la imagen en RAM → puede fallar en móvil con planos grandes (que es justo lo que V2 evita).
-
-> 💡 **A probar con prioridad** en tu plano más grande que falla en móvil, o antes de compartir un plano pesado con alguien que tenga un teléfono modesto.
-
----
-
 ## 🚀 Optimizar tu plano para el rendimiento
 
 Un plano ligero se carga más rápido, navega con más fluidez y **reduce mucho el riesgo de fallo de memoria en móvil**. Estas son las buenas prácticas por orden de impacto.
@@ -3316,7 +3303,7 @@ La imagen base es la que **más memoria consume**. En móvil, el navegador reser
 |---|---|---|
 | ≤ 4000 × 4000 px | Correcto en todas partes | ✅ Ideal |
 | 4000 - 8000 px | Correcto en escritorio, alejamiento limitado en móvil | ⚠️ Aceptable |
-| 8000 - 16 000 px | Riesgo de fallo en móviles de gama baja/media | ⚠️ Fuerza el teselado (modo Rendimiento) |
+| 8000 - 16 000 px | Riesgo de fallo en móviles de gama baja/media | ⚠️ Trocear el plano al generarlo (V2 teselado) |
 | > 16 000 px | Fallo casi garantizado en móvil | ❌ A evitar |
 
 **Truco**: si tu plano de origen es gigantesco, redimensiónalo a un máximo de 6000-8000 px de lado con un editor de imagen (GIMP, Photoshop, [Squoosh](https://squoosh.app/) en línea). Pierdes algo de detalle al máximo zoom pero ganas enormemente en estabilidad.
@@ -3389,16 +3376,16 @@ Dos opciones:
 
 ### 6 bis. 🚀 Modo Rendimiento ULTRA — para los planos realmente grandes que fallan
 
-Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de más de 4000 × 2000 píxeles con muchos trazados), abre **⚙️ Ajustes → sección «🚀 Modo Rendimiento ULTRA»** y activa el **interruptor maestro 🚀 ULTRA**. Activa 6 optimizaciones agresivas de forma simultánea.
+Si tu plano sigue fallando (típicamente planos de más de 4000 × 2000 píxeles con muchos trazados), abre **⚙️ Ajustes → sección «🚀 Modo Rendimiento ULTRA»** y activa el **interruptor maestro 🚀 ULTRA**. Activa 7 optimizaciones agresivas de forma simultánea.
 
 > 🆕 **Tres cosas que debes saber**:
 > - **Ajuste POR PLANO**: marcar ULTRA aquí afecta ÚNICAMENTE al plano abierto. Tus demás planos no se ven afectados. Tras la actualización, los planos que tenían ULTRA arrancan desactivados — vuelve a marcarlo en los que lo necesiten.
 > - **Tus puntos de sesión son sagrados**: los POI que añades a mano (✏️) siguen **siempre visibles**, incluso con el recorte por ventana visible activo — solo se aligera la visualización de los miles de puntos de las capas de datos.
 > - **Mensaje al abrir**: cuando hay optimizaciones activas en un plano, un mensaje te lo recuerda al cargarlo — una visualización «aligerada» (trazados simplificados, ventanas emergentes de datos desactivadas…) no es un error.
 
-> ⚠️ Estas optimizaciones **NO afectan a la imagen** (ya la gestiona el modo de rendimiento anterior). Se centran en los elementos vectoriales (trazados, puntos, cálculos).
+> ⚠️ Estas optimizaciones **NO afectan a la imagen** (la gestiona el troceado, ver más arriba). Se centran en los elementos vectoriales (trazados, puntos, cálculos).
 
-**Los 6 interruptores individuales** (activables por separado si quieres afinar):
+**Los 7 interruptores individuales** (activables por separado si quieres afinar):
 
 | Interruptor | Efecto | Contrapartida |
 |---|---|---|
@@ -3408,6 +3395,7 @@ Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de 
 | 🚫 **Desactivar las ventanas emergentes de las capas de datos** | Sin ventana emergente al pulsar los marcadores de las capas (pozos, etc.) | Usa 🔍 Búsqueda para interactuar |
 | 🐢 **Guardado automático lento (30 s)** | Guarda cada 30 s en lugar de cada 1,5 s | Riesgo de perder 30 s de cambios si falla |
 | 👁️ **Dibujar solo los trazados visibles** | Omite las vías fuera de pantalla | Ligera aparición progresiva al desplazar |
+| 🛡️ **Limitar el alejamiento en móvil** | En el teléfono, limita el alejamiento para evitar un fallo de memoria. **Marcado por defecto** | Sin vista de conjunto completa en móvil — **recarga necesaria** |
 
 **Cómo usarlo**:
 
@@ -3415,9 +3403,9 @@ Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de 
 - **Si quieres afinar** → deja ULTRA desmarcado y activa manualmente los interruptores según lo que estés dispuesto a sacrificar. Por ejemplo: puedes activar solo **🐢 Guardado automático lento** y **👁️ Recorte por ventana visible** para ganar bastante sin perder nada visualmente.
 - **Para volver al comportamiento normal** → desmarca **🚀 ULTRA** (los desmarca todos) o desmárcalos uno a uno.
 
-**Persistencia**: los interruptores se memorizan en tu navegador (preferencia global, no por plano). Siguen activos entre sesiones.
+**Persistencia**: los interruptores se guardan **para este plano**, en este dispositivo. Siguen activos entre sesiones.
 
-> 💡 Combinación recomendada para los planos muy grandes: 🚀 ULTRA + modo de rendimiento ⚡ Rendimiento al cargar + imagen de origen ≤ 8000 px / JPEG q85.
+> 💡 Combinación recomendada para los planos muy grandes: plano **troceado al generarlo** (V2 teselado) + 🚀 ULTRA + imagen de origen ≤ 8000 px / JPEG q85.
 
 ### 7. 📱 Específico de móvil
 
@@ -3438,7 +3426,7 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 - 1 o 2 capas de imagen como máximo
 - Vías **dibujadas en el PNG** + capa JSON oculta para el buscador de rutas
 - Puntos repartidos en 2 o 3 capas de datos conmutables
-- Preajuste **🎯 Equilibrado** por defecto, **⚡ Rendimiento** para los móviles antiguos
+- Plano grande: **troceado al generarlo** (V2 teselado); móvil antiguo: **🚀 Modo ULTRA**
 
 ---
 
@@ -3678,7 +3666,7 @@ También puedes **fijar** una versión exacta en lugar de `latest`:
 - **Conflicto de puertos**: si ya tienes otro servicio en el `8443` del host, cambia el mapeo: `-p 9443:8443`, por ejemplo.
 - **Sin actualizaciones automáticas**: tú decides cuándo hacer `docker pull`. Para actualizaciones automáticas, mira [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **Ningún dato se envía a ninguna parte**. La imagen incluye la app vanilla, exactamente igual que la versión oficial, pero servida desde tu propio equipo. Es incluso un poco más apta para el uso sin conexión que la versión de producción (sin la petición ocasional a `gstatic.com` para el ping de conectividad — la auditoría de red sigue activa si quieres comprobarlo).
+> 🔒 **Ningún dato se envía a ninguna parte**. La imagen incluye la app vanilla, exactamente igual que la versión oficial, pero servida desde tu propio equipo. La auditoría de red sigue activa si quieres comprobarlo.
 
 > 📖 **¿Nunca has usado Docker?** Existe una guía paso a paso dedicada: **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — instalación de Docker Desktop (Windows/Mac/Linux), arranque del demonio, resolución de los errores más comunes (certificado autofirmado, conflictos de puertos, WSL 2), alternativas sin Docker.
 
@@ -3766,11 +3754,11 @@ Si un plano que **ya habías importado** es revocado por el autor DESPUÉS de tu
 
 ### 🐛 Registros detallados (modo depuración)
 
-El botón **🐛 Registros detallados** de la ventana **⚙️ Configuración** del cargador activa un modo detallado:
+En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido con contraseña), **🐛 Registros detallados** activa un modo detallado:
 - Registros adicionales en la consola (sensores del rastreador, etapas del teselado)
-- Visualización de las **cifras técnicas** bajo el selector de Modo de rendimiento (tamaños de tesela, calidad JPEG, umbral de activación)
 
-Útil para informar de un problema o para entender lo que ocurre bajo el capó. Desactivado por defecto. El ajuste también es accesible desde ⚙️ Ajustes > Registros detallados.
+
+Útil para informar de un problema o para entender lo que ocurre bajo el capó. Desactivado por defecto.
 
 ---
 
@@ -3780,13 +3768,13 @@ El botón **🐛 Registros detallados** de la ventana **⚙️ Configuración** 
 Comprueba que `plan-config.json` está en la raíz de tu archivo ZIP y que todos los archivos referenciados están presentes.
 
 **La imagen del plano se ve borrosa**
-Según el preajuste elegido, la resolución de trabajo se reduce (`Rendimiento` más que `Equilibrado`, que a su vez más que `Calidad`). Si tu dispositivo tiene memoria suficiente, cambia a **🌟 Calidad** en la próxima carga para obtener una imagen más nítida.
+En un plano muy grande sin trocear, la app reduce la imagen para que quepa en memoria. Para una imagen nítida, el plano debe **trocearse al generarlo** (V2 teselado): pídeselo a quien lo creó.
 
 **El rastreador deriva demasiado rápido**
 Reajusta tu posición con frecuencia. Ajusta la escala y el tamaño del paso en los ajustes.
 
 **La aplicación falla en móvil con un JPEG muy grande**
-Elige **⚡ Rendimiento** en el selector de Modo de rendimiento antes de cargar el plano.
+Abre el plano y activa el **🚀 Modo Rendimiento ULTRA** (⚙️ Ajustes → 🚀 Rendimiento). Si no basta, el plano debe trocearse al generarlo (V2 teselado).
 
 **Un modo se queda activo sin querer**
 Vuelve a pulsar el botón activo (en verde) para desactivarlo.
@@ -3815,6 +3803,6 @@ Si la app está totalmente atascada incluso tras cambiar de red, hay dos opcione
 > ⚠️ Estas dos herramientas **no eliminan NINGÚN dato de usuario** (planos memorizados, sesiones por plano, fotos de POI, fotos del Modo Rescate, copias de seguridad, preferencias). Solo purgan la caché de los archivos de la app (HTML / CSS / JS / iconos). En caso de duda, **📤 Exporta el perfil** ANTES para tener una copia.
 
 **Problema sin resolver**
-Abre **⚙️ → 🐛 Registros**, copia los registros y transmíteselos al equipo técnico.
+Escribe al autor (**contact@myktamap.fr**): qué estabas haciendo, tu teléfono y tu navegador, y una captura si es posible.
 
 ---

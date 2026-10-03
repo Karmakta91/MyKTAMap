@@ -23,7 +23,7 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 ### The philosophy
 
 - 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
-- 🔒 **Zero telemetry** — no third-party service is called to track you. The only possible external fetch is the update of the app code (and you can disable it). The auditor can verify in `🔒 Network audit`.
+- 🔒 **Zero telemetry** — no third-party service is called to track you. The only outside requests are the update check and, if one of your maps is GPS-calibrated, the OpenStreetMap background of the OSM View (on by default, can be turned off in ⚙️ Configuration): none of your map data goes out. The auditor can verify in `🔒 Network audit`.
 - 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`📤 Export`) and erase everything in 2 clicks (`💥 Reset everything`).
 - 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
 - ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
@@ -60,7 +60,7 @@ MyKTAMap relies entirely on **open-source bricks**. Without these projects, the 
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **as soon as one of your maps is GPS-calibrated** (on by default, can be turned off in ⚙️ Configuration). The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
@@ -415,7 +415,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 ### ⚙️ "Configuration" modal
 
-On the home page, a **⚙️ Configuration button** in the loader header (next to 📖 Documentation and 🚨 Alerts) opens a single modal that groups all loader settings (tiling, performance, debug, update, reset):
+On the home page, a **⚙️ Configuration button** in the loader header (next to 📖 Documentation and 🚨 Alerts) opens a single modal that groups all loader settings (language, display, privacy, update, reset):
 
 > **Order of sections in the modal (top to bottom, identical to UI)**:
 
@@ -519,7 +519,7 @@ applies to every later load.
   - 📐 Simple measurement (if ≥ 2 points placed)
   - 📏 Total path distance (if magenta highlight active) — **clickable to open the modal**
   - 🗺️ Route (distance + time + mode) — **clickable to open the Route modal**
-  - 🧭 GPS Tracker — **LED compass ON (green) / OFF (red)** always visible
+  - 🧭 Tracker — **LED compass ON (green) / OFF (red)** always visible
   - If everything is active and it doesn't fit, the footer **automatically grows and wraps to the next line** — no info is cut off
   - Large ▾▴ button on the right to manually shrink / enlarge the footer
 - **Unified left/right sidebars** — each side is a **single continuous vertical bar**:
@@ -690,9 +690,9 @@ On smartphone, the operating system (iOS / Android) may **abruptly close applica
 
 The window details:
 - **Why** it happened (saturated memory most of the time)
-- **How to prevent it from happening again**: close other applications in the background, lower the performance mode in the loader, avoid opening too many browser tabs in parallel, keep your smartphone up to date, regularly export your session to avoid losing anything
+- **How to prevent it from happening again**: close other applications in the background, turn on 🚀 Performance ULTRA mode for this map (⚙️ Settings → 🚀 Performance), avoid opening too many browser tabs in parallel, keep your smartphone up to date, regularly export your session to avoid losing anything
 
-If you see this window **regularly**, it's a sign that you need to **reduce the performance mode** (Performance < Balanced < Quality, decreasing RAM level).
+If you see this window **regularly** on the same map, turn on **🚀 Performance ULTRA mode** for it (⚙️ Settings → 🚀 Performance); if that is not enough, the map must be split when it is generated (V2 tiled).
 
 ### 📡 Offline use
 
@@ -741,7 +741,7 @@ If you want to return the application **to its initial state** (like a first lau
 - The application cache (offline mode disabled until reconnection)
 - Your **list of maps** (entries deleted)
 - The **ZIPs memorized in the browser** (lost)
-- Your **preferences** (performance mode per map, tracker options, detailed logs, etc.)
+- Your **preferences** (ULTRA mode per map, tracker options, etc.)
 
 The application requests **two confirmations** before executing the reset, and reminds you to **export your list** beforehand if you want to keep it.
 
@@ -767,7 +767,7 @@ You can:
 - **📥 Export** the log as a `.json` file (to share / archive / have audited)
 - **🗑️ Empty** the buffer
 
-**To watch out for**: if you see a `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` or `EventSource` request appear, or an external URL (category in red) other than the Google connectivity ping → **contact the author immediately** (Instagram **@karma_kta** or **contact@myktamap.fr**): this would contradict the promise of this page.
+**To watch out for**: if you see a `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` or `EventSource` request appear, or an external URL (category in red) other than the app's connection test (`ping.html`, on the same site) → **contact the author immediately** (Instagram **@karma_kta** or **contact@myktamap.fr**): this would contradict the promise of this page.
 
 #### 📖 What does the app do on the network?
 
@@ -1075,7 +1075,7 @@ The **🔍** button in the side bar **OR** the keyboard shortcut **Ctrl+K** (`Cm
 - The **level** (in multi-level mode)
 
 **🌐 GPS coordinates** *(only if the map is georeferenced)*:
-- Paste directly a pair of coordinates in **Google Maps format**: `48.680831, 2.158843`
+- Paste directly a pair of coordinates in **Google Maps format**: `48.856600, 2.352200`
 - The app converts to position on the map via the map's GPS calibration
 - If a **POI exists within 50 px around** → green card "🎯 Go to point" with distance displayed
 - Otherwise → blue card "➕ Create a point here" → opens the input form pre-filled at this position (= 3 clicks total from Maps: Ctrl+K · Paste · Create)
@@ -1511,7 +1511,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
   It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
-- 📋 **“Copy my position”**: a square button **to the right of the figures** (tapping the figures works too — that is where your finger goes first). It turns into ✅ while it confirms the copy. If your map is georeferenced it copies **the coordinates alone** — `48.823328, 2.322915` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
+- 📋 **“Copy my position”**: a square button **to the right of the figures** (tapping the figures works too — that is where your finger goes first). It turns into ✅ while it confirms the copy. If your map is georeferenced it copies **the coordinates alone** — `48.856600, 2.352200` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
 - 🔋 **One status line at the top right**: your **battery level** (only if your browser exposes it and you have not unticked the setting — otherwise nothing at all, no “?”; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title. *The map scale is gone (v1.97.11): it is a calibration figure, it belongs in ⚙️ Settings, not on the screen where you are looking for yourself.*
 - 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in the home screen's ⚙️ Configuration.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
@@ -1596,7 +1596,7 @@ You can prepare **several hypotheses** simultaneously ("if Marc left via the Eas
 
 The sections below detail the advanced features: cross-app integrations (KML, Lost Mode, heatmap, etc.), real-time field exploitation (Live views by role, statuses, reports), and cross-device consolidation (import of teammate reports).
 
-> 💡 **Operator ↔ teams sharing** goes through the classic **`.mkmsec.report.json` report** (device-to-device file exchange).
+> 💡 **Sending to the teams**: the operator exports the scenario (**📤 Export .mkmsec.json**) and sends it to each team, which imports it on its phone. Back up, each team sends its report (**`.mkmsec.report.json`**), which the operator imports.
 
 > 💡 **Field recommendation**: prepare one or two scenarios **BEFORE** an incident on your favorite maps to identify workflow frictions (where are the accesses, how to divide the network, which levels by team). During a real incident, you will be in emergency mode and the app must be ready to draw in 30 seconds.
 
@@ -1903,12 +1903,13 @@ For the rescuer on the field who follows their route:
 | 🟠 | Help requested | Material / human reinforcement requested |
 | 🟣 | Forced u-turn | Abandoned route, early return |
 | 🚨 | **Victim found** | **Absolute emergency** — triggers flashing red signal on the operator side |
+| ⚪ | Passed, not reported | Set by the app: step passed without choosing a status |
 
 **Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
 
 **Auto-save**: observations saved on textarea blur AND on step change. No need for "Save" button.
 
-**Auto-status NTR**: moving to the next step without having set an explicit status → automatically marked "🟢 NTR" (assumes you did the step with nothing to report). Re-click status possible if needed.
+**Step passed without a status**: moving to the next step without choosing a status marks it **"⚪ Passed, not reported"**, never "NTR": a skipped step is not a searched step. You can still set a status afterwards.
 
 #### 👤 Live view — SURFACE OPERATOR mode (overview)
 
@@ -2695,7 +2696,7 @@ Objects that are **already** of the chosen type are simply left alone — the cl
 
 ## 🏗️ Multi-level mode (multi-story underground quarries)
 
-Some underground quarries / galleries have **several physically stacked levels** (Glacière, Capucins, sites with stories). Multi-level mode lets you manage these maps correctly: each path/zone/point belongs to a level, and the pathfinder doesn't magically cross from one level to another through 2D visual intersections.
+Some underground quarries / galleries have **several physically stacked levels** (quarries with several floors). Multi-level mode lets you manage these maps correctly: each path/zone/point belongs to a level, and the pathfinder doesn't magically cross from one level to another through 2D visual intersections.
 
 > 📚 **Visual consistency of levels**: when multi-level mode is enabled, paths are automatically stacked according to their level — a gallery at Level 0 always appears **ABOVE** a gallery at Level -1, and the one at Level +1 above Level 0. Within the same level: Trail (in the back) < Secondary < Main (above). The calculated route and inaccessible zones ⛔ always pass above everything to remain visible.
 
@@ -2988,7 +2989,7 @@ For each point (A and B), 3 methods to choose from:
 - **📍 Click map**: the modal shrinks, you click on the map where you know the GPS coords → map x/y auto-filled. Fill in the GPS coords.
 - **Manual entry** of the 3 fields (Map x, Map y, **GPS (lat, lng)**).
 
-> 🌐 **GPS format**: the `GPS (lat, lng)` field directly accepts the **native Google Maps format** (`48.680831, 2.158843`). You can copy the coords from Google Maps (right-click → copy coordinates) and paste it all into the field — no need to split into 2 lat / lng fields. If the format is invalid, the field turns red with an explicit message. The same format is accepted **everywhere** in the app (Ctrl+K search · KMZ Settings · georeferenced map creation).
+> 🌐 **GPS format**: the `GPS (lat, lng)` field directly accepts the **native Google Maps format** (`48.856600, 2.352200`). You can copy the coords from Google Maps (right-click → copy coordinates) and paste it all into the field — no need to split into 2 lat / lng fields. If the format is invalid, the field turns red with an explicit message. The same format is accepted **everywhere** in the app (Ctrl+K search · KMZ Settings · georeferenced map creation).
 
 > 💡 **Tip**: choose 2 **far apart** points on the map (ideally at opposite ends) — the larger the AB distance, the better the transformation accuracy. The app refuses if AB is less than 50 px on the map or less than 1 meter IRL.
 
@@ -3026,7 +3027,7 @@ Click **Download** → file `MyKTAMap_<MapName>_<date>.kmz` downloaded.
 
 Your 2-point calibration is saved **per map** (on this device). On the next export of the same map, the 8 fields are already pre-filled — adjust if needed and re-download. If you change maps or start over, you'll just need to re-enter it.
 
-> ⚠️ **Accuracy limits**: the transformation is a **2D similarity** (rotation + uniform scale + translation). On globally flat and rigid maps, it's sufficient. On very extensive or non-rigid maps (local deformations), expect a slight drift at the ends opposite to the calibration. A future version may support 3+ points (least squares) for more accuracy if needed.
+> ⚠️ **Accuracy limits**: the transformation is a **2D similarity** (rotation + uniform scale + translation). On globally flat and rigid maps, it's sufficient. On very extensive or non-rigid maps (local deformations), expect a slight drift at the ends opposite to the calibration. A **point C** (above) corrects such distorted maps.
 
 > ⚠️ **As with PNG export**, check that your KMZ doesn't reveal sensitive information before sharing it publicly (private underground quarry, restricted access…).
 
@@ -3054,7 +3055,7 @@ Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data 
 
 > ℹ️ From the **home screen**, no plan is loaded yet: only the **📦 ZIP** and **📄 JSON** sources are offered (no "current plan").
 
-#### Opening — 3 sources
+#### Opening
 
 1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
 2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
@@ -3299,20 +3300,6 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 
 > 💡 **Recommended workflow**: generate the V2 ZIP once and for all on your PC, then share it on your phone (Drive, AirDrop, etc.). The phone imports it in a few seconds and you enjoy the tiled runtime without memory cost at boot.
 
-#### 🎛️ Disable tiling on read (V2 → V1 raw)
-
-When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** of the ZIP, kept intact, as a classic V1 map.
-
-Use cases:
-- Compare V2 vs V1 rendering on the same map
-- Temporary bypass if you see weird behavior of the tile system (debug)
-
-⚠️ This mode loads the entire image in RAM → may crash on mobile for large maps (this is what V2 normally avoids).
-
-> 💡 **To test in priority** on your largest map that crashes on mobile, or before sharing a heavy map with someone with a modest phone.
-
----
-
 ## 🚀 Optimize your map for performance
 
 A lightweight map loads faster, navigates more smoothly, and **strongly reduces the risk of memory crash on mobile**. Here are the best practices in order of impact.
@@ -3325,7 +3312,7 @@ The base image is the **biggest memory consumer**. On mobile, the browser alloca
 |---|---|---|
 | ≤ 4 000 × 4 000 px | OK everywhere | ✅ Ideal |
 | 4 000 - 8 000 px | OK desktop, limited zoom-out on mobile | ⚠️ Acceptable |
-| 8 000 - 16 000 px | Risk of crash on low/mid-range mobile | ⚠️ Forces tiling (Performance mode) |
+| 8 000 - 16 000 px | Risk of crash on low/mid-range mobile | ⚠️ Split the map when generating it (V2 tiled) |
 | > 16 000 px | Crash almost guaranteed on mobile | ❌ To avoid |
 
 **Tip**: if your source map is gigantic, resize to 6 000-8 000 px side max with an image editor (GIMP, Photoshop, [Squoosh](https://squoosh.app/) online). You lose a bit of detail at max zoom but you gain a lot in stability.
@@ -3397,16 +3384,16 @@ Two choices:
 
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
-If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
+If your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 7 aggressive optimizations simultaneously.
 
 > 🆕 **Three things to know**:
 > - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are not impacted. After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
 > - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with the "Viewport culling" option on — only the thousands of data-layer points get lightened.
 > - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
 
-> ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
+> ⚠️ These optims do **NOT** touch the image (handled by the splitting, see above). They target vector elements (paths, points, calculations).
 
-**The 6 individual toggles** (activable separately if you want to refine):
+**The 7 individual toggles** (activable separately if you want to refine):
 
 | Toggle | Effect | Trade-off |
 |---|---|---|
@@ -3416,6 +3403,7 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 | 🚫 **Disable popups on data layers** | No popup on click on layer markers (puits, etc.) | Use 🔍 Search to interact |
 | 🐢 **Slow auto-save (30s)** | Save every 30s instead of 1.5s | Risk of losing 30s of edits if crash |
 | 👁️ **Only render visible paths** | Skip off-screen roads | Light pop-in on pan |
+| 🛡️ **Limit zoom-out on mobile** | On phones, caps zoom-out to avoid a memory crash. **Checked by default** | No full overview on mobile — **reload required** |
 
 **How to use it**:
 
@@ -3423,9 +3411,9 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 - **If you want to refine** → keep ULTRA unchecked and manually enable the toggles according to what you want to sacrifice. For example: you can enable just **🐢 Slow auto-save** and **👁️ Viewport culling** to gain quite a bit without losing anything visually.
 - **To return to normal behavior** → uncheck **🚀 ULTRA** (this unchecks everything) or uncheck individually.
 
-**Persistence**: the toggles are memorized in your browser (global preference, not per map). They remain enabled between sessions.
+**Persistence**: the toggles are saved **for this map**, on this device. They stay on between sessions.
 
-> 💡 Recommended combo for very large maps: 🚀 ULTRA + ⚡ Performance mode at load + source image ≤ 8000 px / JPEG q85.
+> 💡 Recommended combo for very large maps: map **split when generated** (V2 tiled) + 🚀 ULTRA + source image ≤ 8000 px / JPEG q85.
 
 ### 7. 📱 Mobile-specific
 
@@ -3446,7 +3434,7 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 - 1 or 2 image layers max
 - Routes **drawn in the PNG** + hidden JSON layer for the pathfinder
 - Points distributed across 2-3 toggleable data layers
-- **🎯 Balanced** preset by default, **⚡ Performance** for old mobiles
+- Large map: **split when generated** (V2 tiled); old phone: **🚀 ULTRA mode**
 
 ---
 
@@ -3687,7 +3675,7 @@ You can also **pin** a specific version instead of `latest`:
 - **Port conflict**: if you already have another service on `8443` on the host, change the mapping: `-p 9443:8443` for example.
 - **No automatic updates**: you decide when to `docker pull`. For auto-update, check [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the network audit stays active if you want to verify).
+> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. The network audit stays active if you want to verify.
 
 > 📖 **Never used Docker?** A dedicated step-by-step guide exists: **[`docs/applications/DOCKER_INSTALL.en.md`](DOCKER_INSTALL.en.md)** — Docker Desktop install (Windows/Mac/Linux), daemon startup, troubleshooting common errors (self-signed cert, port conflicts, WSL 2), Docker-free alternatives.
 
@@ -3771,11 +3759,11 @@ If a plan **you have already imported** is revoked by the author AFTER your impo
 
 ### 🐛 Detailed logs (debug mode)
 
-The **🐛 Detailed logs** button in the **⚙️ Configuration** modal of the loader enables verbose mode:
+In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Detailed logs** turns on verbose mode:
 - Additional console logs (tracker sensors, tiling steps)
-- Display of **technical figures** under the Performance mode selector (tile sizes, JPEG quality, trigger threshold)
 
-Useful to report a problem or understand what's happening under the hood. Disabled by default. Setting also accessible from ⚙️ Settings > Detailed logs.
+
+Useful to report a problem or understand what's happening under the hood. Disabled by default.
 
 ---
 
@@ -3785,13 +3773,13 @@ Useful to report a problem or understand what's happening under the hood. Disabl
 Check that `plan-config.json` is at the root of your ZIP archive, and that all referenced files are present.
 
 **The map image is blurry**
-Depending on the chosen preset, the working resolution is reduced (`Performance` more than `Balanced`, which is more than `Quality`). If your device has enough memory, switch to **🌟 Quality** at the next loading for a sharper image.
+On a very large map that is not split, the app reduces the image so it fits in memory. For a sharp image, the map must be **split when generated** (V2 tiled) — ask its creator.
 
 **The tracker drifts too fast**
 Recalibrate your position frequently. Adjust the scale and step size in the settings.
 
 **The application crashes on Mobile with a large JPEG**
-Choose **⚡ Performance** in the Performance mode selector before loading the map.
+Open the map, then turn on **🚀 Performance ULTRA mode** (⚙️ Settings → 🚀 Performance). If that is not enough, the map must be split when generated (V2 tiled).
 
 **A mode stays active without intent**
 Press the active button (in green) again to deactivate it.
@@ -3820,6 +3808,6 @@ If the app is completely stuck even after changing networks, two options that pr
 > ⚠️ These two tools **do NOT delete ANY user data** (saved maps, per-map sessions, POI photos, Rescue Mode photos, backups, preferences). They only purge the cache of the app files (HTML / CSS / JS / icons). When in doubt, **📤 Export your profile** BEFORE to have a backup.
 
 **Unresolved problem**
-Open **⚙️ → 🐛 Logs**, copy the journals and pass them on to the technical team.
+Write to the author (**contact@myktamap.fr**): what you were doing, your phone and browser, and a screenshot if possible.
 
 ---

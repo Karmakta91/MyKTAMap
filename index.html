@@ -1149,7 +1149,7 @@
             <li data-i18n-html="home.netdoc.verify1"><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
             <li data-i18n-html="home.netdoc.verify2"><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
             <li data-i18n-html="home.netdoc.verify3"><strong>Mode hors-ligne strict</strong> : coche le toggle dans la même section. Le navigateur refusera activement toute requête non-whitelistée — l'app reste 100% fonctionnelle.</li>
-            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée (<code>connect-src 'self' https://www.gstatic.com</code>).</li>
+            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée : seuls le site lui-même et le fond de carte OpenStreetMap sont autorisés.</li>
           </ol>
         </div>
 
