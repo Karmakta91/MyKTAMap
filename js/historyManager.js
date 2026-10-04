@@ -204,6 +204,67 @@
   }
 
   // ============================================================
+  // 🆔 v2.2.0 — TRACES DE SUPPRESSION (ETUDE_UID lot B, décisions 8 et 9)
+  // ============================================================
+  // Les traces sont tenues ICI, à un seul endroit, plutôt qu'à chacun des
+  // ~15 sites de suppression (gomme, popup, tout effacer, conversion, tableur,
+  // import GPX…) : toute action passe par record(), et un diff des uid entre
+  // l'instantané « avant » et l'état courant dit ce qui a disparu.
+  //   - Diff sur l'UNION des catégories de l'instantané : une conversion qui
+  //     fait passer un objet des tracés aux zones n'est pas une suppression.
+  //   - Pas de trace pour l'itinéraire calculé, ni pour un objet rapatrié d'un
+  //     calque (`_srcCalque`) : le restituer le rend à son calque, rien n'est
+  //     supprimé.
+  const _CATS = ["editorPoints", "roads", "zones", "structures"];
+  const _GETTERS = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
+
+  function _indexUid(listesParCat) {
+    const m = new Map();
+    _CATS.forEach(function(c) {
+      (listesParCat[c] || []).forEach(function(o) {
+        if (o && typeof o.uid === "string" && o.uid) m.set(o.uid, o);
+      });
+    });
+    return m;
+  }
+  function _etatCourantPour(snap) {
+    const out = {};
+    _CATS.forEach(function(c) {
+      if (Array.isArray(snap[c]) && typeof window[_GETTERS[c]] === "function") out[c] = window[_GETTERS[c]]() || [];
+    });
+    return out;
+  }
+  function _laisseTrace(o) {
+    return !!(o && !o._srcCalque && !(window.KtaUid && window.KtaUid.estTransitoire(o)));
+  }
+
+  // Après une action enregistrée : disparu → trace ; réapparu → trace retirée.
+  function _tracerDepuis(avant) {
+    const K = window.KtaUid;
+    if (!K || !avant) return;
+    const a = _indexUid(avant), b = _indexUid(_etatCourantPour(avant));
+    a.forEach(function(o, uid) { if (!b.has(uid) && _laisseTrace(o)) K.tombstone(uid); });
+    b.forEach(function(o, uid) { if (!a.has(uid)) K.untombstone(uid); });
+  }
+
+  // Après un undo / redo : l'état revient en arrière, et revenir en arrière
+  // est une MODIFICATION (décision 9) — sinon une synchro garderait la version
+  // annulée, plus récente. Réapparu → trace retirée + touch ; disparu → trace ;
+  // présent des deux côtés mais différent → touch. Même uid dans tous les cas.
+  function _tracerRetour(avantRetour) {
+    const K = window.KtaUid;
+    if (!K || !avantRetour) return;
+    const a = _indexUid(avantRetour), b = _indexUid(_etatCourantPour(avantRetour));
+    b.forEach(function(o, uid) {
+      if (K.estTransitoire(o)) return;
+      const prec = a.get(uid);
+      if (!prec) { K.untombstone(uid); K.touch(o); }
+      else if (prec.updatedAt !== o.updatedAt) K.touch(o);
+    });
+    a.forEach(function(o, uid) { if (!b.has(uid) && _laisseTrace(o)) K.tombstone(uid); });
+  }
+
+  // ============================================================
   // RECORD / UNDO / REDO
   // ============================================================
   // record(label, beforeState?, category?) — push une entrée d'historique.
@@ -218,6 +279,7 @@
   //                 beforeState. Sinon l'undo ne restaurera pas la bonne data.
   function record(label, beforeState, category) {
     const snap = beforeState || _captureState(category);
+    try { _tracerDepuis(snap); } catch(e) { console.warn("[HistoryManager] traces de suppression :", e); }
     // 🌍 i18n : fallback localisé (label absent) — clé history.action.default.
     undoStack.push({ label: String(label || _t("history.action.default")), category: category || null, snapshot: snap, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) {
@@ -250,6 +312,7 @@
     // Capture ciblée sur la MÊME catégorie que l'entrée (cohérence pour redo).
     const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);
+    try { _tracerRetour(currentState); } catch(e) { console.warn("[HistoryManager] traces (undo) :", e); }
     // Push l'état COURANT (= post-mutation pré-undo) sur redo, avec le
     // même label + catégorie : le user verra "↩ Annulé : <label>" et pourra
     // redo pour rétablir l'état.
@@ -266,6 +329,7 @@
     const entry = redoStack.pop();
     const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);
+    try { _tracerRetour(currentState); } catch(e) { console.warn("[HistoryManager] traces (redo) :", e); }
     undoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
     _showToast(_t("history.redone") + entry.label);

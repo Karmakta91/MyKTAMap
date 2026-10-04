@@ -178,6 +178,9 @@
       calquesSession: (window.CalqueSession && window.CalqueSession.getSessionState)
                         ? window.CalqueSession.getSessionState()
                         : null,
+      // 🆔 v2.2.0 — traces de suppression { uid, deletedAt } (ETUDE_UID lot B) :
+      // sans elles, une synchro ressusciterait un objet supprimé ici.
+      tombstones: window.KtaUid ? window.KtaUid.getTombstones() : [],
 
       // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking
       // comme ca la fonction [heatmap] devient pertinante") :
@@ -268,6 +271,10 @@
         // localStorage est purgé (save > _isEmptyState → removeItem) et le tracé
         // est perdu au reload. Le tracker compte comme contenu.
         && (state.trackerTimeline || []).length === 0
+        // 🆔 v2.2.0 — des traces SEULES comptent comme contenu : tout supprimer
+        // ne doit pas effacer le slot, sinon les traces partiraient avec et les
+        // objets supprimés ressusciteraient à la prochaine synchro.
+        && (state.tombstones || []).length === 0
         && lcEmpty;
   }
 
@@ -311,6 +318,7 @@
     }
     _lastForceSave = 0;
 
+    if (window.KtaUid) window.KtaUid.purge();   // 🆔 v2.2.0 : traces > 90 jours
     const state = _gatherState();
     const hash  = _hashState(state);
     if (hash === _lastHash) return false; // pas de changement depuis dernier save
@@ -349,6 +357,8 @@
       measureMode:    state.measureMode    || "distance",
       // 🔄 v1.85.0 — verrou des calques rapatries (cf. js/calqueSession.js).
       calquesSession: state.calquesSession || null,
+      // 🆔 v2.2.0 — traces de suppression (purgées à 90 jours avant écriture).
+      tombstones:     state.tombstones || [],
       // 🆕 v1.16.0 step 2 : overrides légende (libellés + visibilité +
       // entrées custom). null si LegendCustomization n'a pas encore été
       // chargé ou si l'user n'a rien personnalisé — c'est OK, le restore
@@ -561,6 +571,11 @@
                 + window.KtaUid.ensureAll(payload.zones, "zn", repli, vus)
                 + window.KtaUid.ensureAll(payload.structures, "st", repli, vus);
         if (n > 0) console.log("[SessionPersist] Identifiants posés sur " + n + " objet(s) (migration v2.1.0)");
+        // 🆔 v2.2.0 — traces de suppression de ce plan (absentes d'une session
+        // antérieure = liste vide), purgées au-delà de 90 jours.
+        window.KtaUid.setTombstones(payload.tombstones);
+        const purgees = window.KtaUid.purge();
+        if (purgees > 0) console.log("[SessionPersist] " + purgees + " trace(s) de suppression de plus de 90 jours purgée(s)");
       }
 
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
@@ -755,6 +770,9 @@
     // que dans clear() — cf. commentaire). Double protection en cas
     // d'appel direct sans passer par clear().
     _annulerPhase2();
+    // 🆔 v2.2.0 — « Effacer la session » est une remise à zéro locale : les
+    // traces de suppression partent aussi (décision KARMA Q1, 04/10/2026).
+    if (window.KtaUid) window.KtaUid.setTombstones([]);
     if (window.setEditorPoints)  window.setEditorPoints([]);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
@@ -988,6 +1006,10 @@
       try { window.LegendCustomization.loadSessionState(null); }
       catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
     }
+    // 🆔 v2.2.0 — même piège que la légende : les traces de suppression du plan
+    // PRÉCÉDENT ne doivent pas être écrites dans le slot de celui-ci. On repart
+    // de zéro ; _applyRestore recharge celles du plan s'il en a.
+    if (window.KtaUid) window.KtaUid.setTombstones([]);
 
     const saved = getSaved();  // lit le slot du plan courant
     let restored = null;

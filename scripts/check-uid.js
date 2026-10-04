@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0, chantier 1 lot A)
+// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B)
 // =====================================================================
 // Chaque objet de carte porte une identité stable : `uid` + `updatedAt` (ms).
 // Décisions : docs/ETUDE_UID.md. Ce que ce script empêche :
@@ -199,9 +199,129 @@ const iCfg = IDX.indexOf('<script src="js/config.js"'), iUid = IDX.indexOf('<scr
 t("index.html charge ktaUid après config.js et AVANT utils.js", iCfg > 0 && iUid > iCfg && iUt > iUid);
 t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
 
+// ═════════ 3. LOT B — TRACES DE SUPPRESSION ET FUSION (v2.2.0) ═════════
+{
+  const store = { editorPoints: [], roads: [], zones: [], structures: [] };
+  const w = {
+    console: { log() {}, warn() {}, error() {} },
+    document: { addEventListener() {}, activeElement: null },
+    getEditorPoints: () => store.editorPoints, setEditorPoints: (a) => { store.editorPoints = a || []; },
+    getRoads: () => store.roads, setRoads: (a) => { store.roads = a || []; }, resetRoads: () => { store.roads = []; },
+    getZones: () => store.zones, setZones: (a) => { store.zones = a || []; }, resetZones: () => { store.zones = []; },
+    getStructures: () => store.structures, setStructures: (a) => { store.structures = a || []; }, resetStructures: () => { store.structures = []; },
+    getCurrentRoadIndex: () => -1, getCurrentZoneIndex: () => -1, getCurrentStructureIndex: () => -1,
+    setCurrentRoadByIndex() {}, setCurrentZoneByIndex() {}, setCurrentStructureByIndex() {}
+  };
+  w.window = w;
+  const c2 = vm.createContext(w);
+  vm.runInContext("var document = window.document, console = window.console;", c2);
+  let HM = null, KU = null;
+  try {
+    vm.runInContext(lire("js/ktaUid.js"), c2, { filename: "ktaUid.js" });
+    vm.runInContext(lire("js/historyManager.js"), c2, { filename: "historyManager.js" });
+    HM = w.HistoryManager; KU = w.KtaUid;
+  } catch (e) { t("lot B : ktaUid + historyManager s'exécutent — " + e.message, false); }
+
+  if (HM && KU) {
+    const traces = () => KU.getTombstones().map((x) => x.uid);
+    const raz = () => { store.editorPoints = []; store.roads = []; store.zones = []; store.structures = []; KU.setTombstones([]); HM.reset(); };
+
+    // Suppression → trace
+    raz();
+    store.roads = [{ uid: "rd_a_aaaaaa", updatedAt: 10, type: "principal", points: [] }, { uid: "rd_b_bbbbbb", updatedAt: 10, type: "principal", points: [] }];
+    let avant = HM.captureState("roads");
+    store.roads = store.roads.filter((o) => o.uid !== "rd_a_aaaaaa");
+    HM.record("suppr", avant, "roads");
+    t("🩸 suppression enregistrée → trace de suppression", traces().indexOf("rd_a_aaaaaa") >= 0 && traces().length === 1);
+
+    // Annulation → même uid, trace retirée, updatedAt = maintenant
+    HM.undo();
+    const revenu = store.roads.find((o) => o.uid === "rd_a_aaaaaa");
+    t("annulation d'une suppression : l'objet revient avec le MÊME uid", !!revenu);
+    t("annulation : sa trace de suppression est retirée", traces().indexOf("rd_a_aaaaaa") < 0);
+    t("annulation : updatedAt = maintenant (sinon la synchro garderait la version annulée)", revenu && Math.abs(revenu.updatedAt - Date.now()) < 5000);
+
+    // Rétablir → trace de nouveau
+    HM.redo();
+    t("rétablir la suppression : la trace revient", traces().indexOf("rd_a_aaaaaa") >= 0);
+
+    // Annulation d'une modification → touch
+    raz();
+    store.zones = [{ uid: "zn_m_mmmmmm", updatedAt: 100, type: "eau", points: [] }];
+    avant = HM.captureState("zones");
+    store.zones[0].updatedAt = 200; store.zones[0].type = "remblais";
+    HM.record("modif", avant, "zones");
+    HM.undo();
+    t("annulation d'une modification : updatedAt = maintenant, pas l'ancien 100", store.zones[0].type === "eau" && Math.abs(store.zones[0].updatedAt - Date.now()) < 5000);
+    t("annulation d'une modification : aucune trace", traces().length === 0);
+
+    // Conversion inter-familles (instantané complet) → pas de trace
+    raz();
+    store.roads = [{ uid: "rd_c_cccccc", updatedAt: 1, type: "principal", points: [] }];
+    avant = HM.captureState();
+    store.roads = []; store.zones = [{ uid: "rd_c_cccccc", updatedAt: 2, type: "eau", points: [] }];
+    HM.record("conversion", avant);
+    t("🩸 conversion d'un tracé en zone (même uid) : PAS de trace de suppression", traces().length === 0);
+
+    // Itinéraire et objet rapatrié d'un calque → pas de trace
+    raz();
+    store.roads = [{ uid: "rd_i_iiiiii", updatedAt: 1, type: "itinerary", points: [] },
+                   { uid: "rd_k_kkkkkk", updatedAt: 1, type: "principal", points: [], _srcCalque: "calque1" }];
+    avant = HM.captureState("roads");
+    store.roads = [];
+    HM.record("effacer", avant, "roads");
+    t("itinéraire calculé et objet rendu à son calque : aucune trace", traces().length === 0);
+
+    // Purge à 90 jours
+    KU.setTombstones([{ uid: "pt_v_vvvvvv", deletedAt: Date.now() - 91 * 864e5 }, { uid: "pt_r_rrrrrr", deletedAt: Date.now() - 10 * 864e5 }]);
+    const np = KU.purge();
+    t("purge : une trace de 91 jours part, une de 10 jours reste", np === 1 && traces().join() === "pt_r_rrrrrr");
+    KU.setTombstones([{ uid: "", deletedAt: 1 }, { uid: "pt_ok_aaaaaa" }, null, { uid: "pt_ok_bbbbbb", deletedAt: 5 }]);
+    t("setTombstones : entrées invalides ignorées", traces().join() === "pt_ok_bbbbbb");
+
+    // Fusion par uid
+    const F = KU.fusionnerCalques([
+      { roads: [{ uid: "rd_f_ffffff", updatedAt: 100, type: "principal", label: "vieux" }],
+        data: [{ uid: "pt_d_dddddd", updatedAt: 5, nom: "A" }, { uid: "pt_d_dddddd", updatedAt: 6, nom: "B" }, { nom: "sans uid" }],
+        zones: [{ uid: "zn_x_xxxxxx", updatedAt: 50, type: "eau" }] },
+      { roads: [{ uid: "rd_f_ffffff", updatedAt: 200, type: "principal", label: "récent" }],
+        zones: [{ uid: "zn_y_yyyyyy", updatedAt: 80, type: "eau" }],
+        tombstones: [{ uid: "zn_x_xxxxxx", deletedAt: 60 }, { uid: "zn_y_yyyyyy", deletedAt: 70 }] }
+    ]);
+    t("fusion : un même objet dans deux fichiers n'est pas doublé", F.roads.length === 1);
+    t("fusion : la version la plus récente gagne", F.roads[0].label === "récent");
+    t("🩸 fusion : deux objets d'un MÊME fichier au même uid restent DEUX objets (uid neuf au second)",
+      F.data.filter((p) => p.uid).length === 2 && F.data[0].uid !== F.data[1].uid);
+    t("fusion : un objet sans uid est gardé tel quel", F.data.some((p) => p.nom === "sans uid"));
+    t("fusion : une suppression postérieure à la dernière modification l'emporte", !F.zones.some((z) => z.uid === "zn_x_xxxxxx"));
+    t("fusion : une suppression ANTÉRIEURE à une modification ne l'efface pas", F.zones.some((z) => z.uid === "zn_y_yyyyyy"));
+    const G = KU.fusionnerCalques([
+      { roads: [{ uid: "rd_g_gggggg", updatedAt: 1, type: "principal" }] },
+      { zones: [{ uid: "rd_g_gggggg", updatedAt: 9, type: "eau" }] }
+    ]);
+    t("fusion : un objet converti entre-temps suit sa version gagnante (une seule famille)", G.roads.length === 0 && G.zones.length === 1);
+  }
+
+  // Câblage persistance / exports / imports
+  const SPB = lire("js/sessionPersist.js"), SEB = lire("js/sessionExporter.js"), IIE = lire("js/interfaceImportExport.js"),
+    CCB = lire("js/createConf.js");
+  t("persistance : les traces font partie de l'état sauvegardé", /tombstones: window\.KtaUid \? window\.KtaUid\.getTombstones\(\) : \[\]/.test(SPB) && /tombstones:\s+state\.tombstones \|\| \[\]/.test(SPB));
+  t("🩸 persistance : des traces seules comptent comme contenu (sinon le slot partirait avec elles)", /\(state\.tombstones \|\| \[\]\)\.length === 0/.test(SPB));
+  t("restauration : les traces du plan sont rechargées puis purgées", /window\.KtaUid\.setTombstones\(payload\.tombstones\);\s*const purgees = window\.KtaUid\.purge\(\);/.test(SPB));
+  const iRaz = SPB.indexOf("if (window.KtaUid) window.KtaUid.setTombstones([]);\n\n    const saved = getSaved();");
+  t("🩸 changement de plan : les traces du plan PRÉCÉDENT sont vidées avant restauration", iRaz > 0);
+  t("« Effacer la session » vide les traces (décision Q1)", /function _viderEtatCourant\(\) \{[\s\S]{0,400}KtaUid\.setTombstones\(\[\]\)/.test(SPB));
+  t("export complet : emporte les traces (décision Q2)", /tombstones: window\.KtaUid \? window\.KtaUid\.getTombstones\(\) : \[\]\n\s+\};/.test(SEB));
+  t("export anonymisé : retire les traces", /delete session\.tombstones;/.test(SEB));
+  t("fusion de sessions : par uid (KtaUid.fusionnerCalques)", /const f = window\.KtaUid\.fusionnerCalques\(jsons\);/.test(SEB));
+  t("fusion du Générateur : même règle", /window\.KtaUid\.fusionnerCalques\(parsedArr\)/.test(CCB));
+  t("import par remplacement : identités préparées et traces du fichier AVANT les setters (2 chemins)",
+    (IIE.match(/_preparerIdentitesImport\((data|dataParsee)\);[^\n]*\n\s+if \(window\.setEditorPoints\)/g) || []).length === 2);
+}
+
 console.log("");
 if (ko) {
   console.log("⚠️ " + ko + " echec(s)");
   process.exit(1);
 }
-console.log("🎉 identifiants stables : uniques, jamais écrasés, posés partout où un objet naît ou change");
+console.log("🎉 identifiants stables : uniques, jamais écrasés, posés partout ; suppressions tracées, fusion par uid");

@@ -88,6 +88,17 @@ par le filet des 4 setters. **Jamais** dans KMZ, GPX ni l'export anonymisé. Abs
 tant qu'ils ne sont pas régénérés. Unicité **par stockage** (un objet rapatrié d'un calque garde l'uid
 de l'original). Module : `js/ktaUid.js` ; décisions : `docs/ETUDE_UID.md`.
 
+→ **Traces de suppression (v2.2.0)** : le payload de session et l'export complet portent
+`"tombstones": [{ "uid": "rd_…", "deletedAt": 1759572000000 }]` — un objet supprimé laisse son uid
+90 jours, pour qu'une synchro ou une fusion ne le ressuscite pas. Tenues par `HistoryManager`
+(diff des uid à chaque action, annulation = trace retirée + `touch`), purgées à 90 jours,
+vidées par « Effacer la session » et au changement de plan, **jamais** dans l'export anonymisé.
+Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque (`_srcCalque`).
+Fusion de sessions et du Générateur : `KtaUid.fusionnerCalques` (même uid de deux fichiers = même
+objet, le plus récent gagne ; même uid dans UN fichier = deux objets, uid neuf au second ; une trace
+postérieure à la dernière modification l'emporte). Import par remplacement : les traces du fichier
+remplacent celles du plan.
+
 ### Format export session
 
 ```json

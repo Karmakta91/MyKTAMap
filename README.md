@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.1.0` (04/10/2026)
+## 📦 Version courante — `v2.2.0` (04/10/2026)
+
+> 🔀 **v2.2.0 — Traces de suppression et fusion par uid (chantier 1, lot B)** : un objet supprimé ne ressuscite plus à une fusion ou un réimport ; la fusion de sessions ne double plus un même objet.
 
 > 🆔 **v2.1.0 — Identifiants stables (chantier 1, lot A)** : chaque objet de carte porte `uid` + `updatedAt`, migration des sessions à l'ouverture, sans changer la version de session.
 
@@ -515,6 +517,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.2.0 (04/10/2026) — Traces de suppression et fusion par uid (chantier 1, lot B)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 7-9 + Q1/Q2. Prérequis d'une synchro « le dernier gagne » (plusieurs personnes sur un même plan, un même utilisateur sur plusieurs appareils) : sans trace, un objet supprimé ici ressusciterait depuis une autre copie.
+- 🪦 **Traces** `{ uid, deletedAt }` dans `js/ktaUid.js` (`tombstone`, `untombstone`, `getTombstones`, `setTombstones`, `purge` à 90 jours, `estTransitoire`). **Tenues à un seul endroit : `HistoryManager`** — à chaque `record()`, diff des uid sur l'union des catégories de l'instantané (une conversion n'est pas une suppression) ; `undo`/`redo` : réapparu → trace retirée + `touch`, modifié → `touch` (décision 9). Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque.
+- 💾 **Persistance** : traces dans le payload et l'état haché ; des traces seules comptent comme contenu (le slot n'est plus effacé quand tout est supprimé) ; vidées au changement de plan (même piège que la légende v1.76.0) et par « Effacer la session » (Q1) ; purge à chaque sauvegarde.
+- 🔀 **Fusion** : `KtaUid.fusionnerCalques`, règle unique pour la fusion de sessions et celle du Générateur — même uid de deux fichiers = même objet, le plus récent gagne (à égalité : fichier le plus tardif) ; même uid dans un même fichier = deux objets (uid neuf au second) ; une trace postérieure à la dernière modification l'emporte ; un objet converti suit sa version gagnante. L'alerte « ids en double » ne signale plus que des NOMS en double.
+- 📤 **Exports / imports** : export complet (et repli `telechargerSessionJSON`) emportent les traces (Q2), l'anonymisé les retire ; import par remplacement : identités préparées (repli = date d'export) et traces du fichier AVANT les setters.
+- 🛡️ **Garde-fous** : `check-uid.js` passe à 90 contrôles (historyManager exécuté sur de faux tableaux : suppression, annulation, rétablissement, conversion, itinéraire, calque, purge, fusion) — sabotages vérifiés ; `check-export-anonyme.js` piège aussi les traces.
+- ✅ **Test navigateur** (relevé fictif) : suppression réelle (`KtaConvertir.supprimer`) → trace ; sauvegarde → trace stockée ; rechargement → trace restituée ; annulation → objet revenu avec le même uid, trace retirée, daté de maintenant ; aucune erreur JS.
+- ⏭️ **Lot suivant** : C (photos, favoris, liaisons, Secours rattachés par uid au lieu du nom).
 
 #### v2.1.0 (04/10/2026) — Identifiants stables des objets (chantier 1, lot A)
 

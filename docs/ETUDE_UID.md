@@ -61,7 +61,7 @@ d'imports sans doublons, rattachement fiable des photos au lieu d'un rattachemen
    `touch` à chaque modification ; conversion ; tableur (« Dupliquer » donne un `uid` neuf) ; lectures de
    la base (`getAllEmbedded*`) ; Générateurs (`createConf`, `kmzImport`, `gpxImport`, `sigImport`) ;
    garde-fou `check-uid.js`. N'ajoute que des champs.
-2. **Lot B — suppressions et fusion.** Traces (payload, purge, vidage, historique d'annulation),
+2. ✅ **Lot B — suppressions et fusion, livré en v2.2.0.** Traces (payload, purge, vidage, historique d'annulation),
    annulation, fusion par `uid`, import par remplacement.
 3. **Lot C — références.** Photos, favoris, liaisons, Secours ; « à rattacher » ; i18n ; 3 guides.
    Le plus dangereux : une garde mal remplacée dans l'éditeur supprimerait réellement des photos.

@@ -60,6 +60,7 @@ const session = {
   structures: [{ type: "pilier-1", points: [[5, 5], [6, 6], [7, 5]], description: M + " pilier", uid: "st_UIDMARK4", updatedAt: 1759572000000 }],
   measure: { points: [] },
   measureSurface: { points: [] },
+  tombstones: [{ uid: "pt_UIDMARK5", deletedAt: 1759572000000 }],
   interPlanLinks: [{
     id: "lk1",
     a: { planId: "server_" + M, planName: M + " Réseau", pointId: M + " Salle", pointNom: M + " Salle", x: 10, y: 20 },

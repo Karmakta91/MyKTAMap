@@ -2520,8 +2520,18 @@ function _importerDatalayerZip(zipFile) {
         }
       });
     })).then(function(parsedArr) {
+      // 🆔 v2.2.0 — même fusion PAR UID que la fusion de sessions
+      // (KtaUid.fusionnerCalques) : un objet présent dans deux calques n'est
+      // plus doublé. La boucle ci-dessous ne sert alors plus qu'à la légende.
+      const _fusionUid = (window.KtaUid && typeof window.KtaUid.fusionnerCalques === "function")
+        ? window.KtaUid.fusionnerCalques(parsedArr) : null;
+      if (_fusionUid) {
+        merged.data = _fusionUid.data; merged.roads = _fusionUid.roads;
+        merged.zones = _fusionUid.zones; merged.structures = _fusionUid.structures;
+      }
       parsedArr.forEach(function(json) {
         if (!json || typeof json !== "object") return;
+        if (_fusionUid) { if (json.customLegend) _absorberLegendeCalque(json.customLegend); return; }
         // Points : .data ou .editorPoints
         if (Array.isArray(json.data) && json.data.length > 0) {
           merged.data = merged.data.concat(json.data);
