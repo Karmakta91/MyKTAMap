@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.0.0` (04/10/2026)
+## 📦 Version courante — `v2.0.1` (04/10/2026)
+
+> 🔒 **v2.0.1 — Export anonymisé : liaisons inter-plan retirées** : elles y livraient le vrai nom du plan et du point de chaque côté depuis v1.57.0.
 
 > 🔌 **v2.0.0 — Nouvelle frontière community/pro, pastille « connexion serveur »** : myktamap.fr reste sans serveur, pour toujours, et le dit dans son pied de page ; une installation indépendante peut déclarer une connexion serveur (`config.serverConnection`), affichée mais encore inactive.
 
@@ -511,6 +513,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.0.1 (04/10/2026) — Export anonymisé : les liaisons inter-plan ne fuient plus
+
+- 🔍 **Origine** : relevée pendant le cadrage du chantier 1 (identifiants stables). `_anonymiserSession` (`js/sessionExporter.js`) ne retirait pas `session.interPlanLinks`, ajoutée à l'export complet en v1.57.0 : chaque côté d'une liaison y porte un instantané `{ planName, pointNom, planId, pointId }`, soit les **vrais noms** du plan et du point. Un export « anonymisé » d'un plan avec liaisons les livrait.
+- 🔒 **Correctif** : `delete session.interPlanLinks` dans l'anonymiseur. Une liaison n'a de sens qu'entre deux plans que le destinataire d'un export public n'a pas.
+- 🛡️ **Garde-fou** `scripts/check-export-anonyme.js` (pré-commit, bloquant) : exécute la vraie fonction sur une session piégée dont chaque texte identifiant porte un marqueur, et cherche ce marqueur dans **tout** le JSON produit — une clé future oubliée échouera sans avoir à être listée. Sabotage vérifié (fuite retrouvée sans le correctif).
+- 📄 **Docs** : NETWORK_AUDIT md+html, AI_CONTEXT, notes de version (prévient qu'un export anonymisé antérieur peut contenir ces noms).
 
 #### v2.0.0 (04/10/2026) — Nouvelle frontière community/pro : le connecteur (chantier 0)
 

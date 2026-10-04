@@ -603,6 +603,7 @@ documentées ici pour la doctrine.
 |---|---|---|
 | `check-no-pro-leak.js` | frontière community ↔ pro : aucun fichier pro (`*.php`, `pro/`, `backend/`, modules pro nommés) | — (préventif) |
 | `check-connexion-serveur.js` | connexion serveur (v2.0.0) : validation de l'app ET de ConfAdmin exécutées sur la même table de cas, états, index injoignable ≠ connexion coupée, licence importée insuffisante, aucune requête dans `ktaExtensions.js` | — (préventif, né avec la fonction) |
+| `check-export-anonyme.js` | export anonymisé : exécute `_anonymiserSession` sur une session piégée et cherche le marqueur dans TOUT le JSON produit | liaisons inter-plan (vrais noms de plan et de point) livrées par l'export anonymisé de v1.57.0 à v2.0.0 |
 | `check-modal-lifecycle.js` | cycle de vie des modales (**advisory**) | fuites de modales v1.44 |
 | `check-api-surface.js` | charge RÉELLEMENT les modules IIFE en VM, vérifie chaque export annoncé + comportements (repeinture après mutation, survie de l'override au save/load, migration `hidden` tableau, dédup collisions d'id) | `WALLPAPER_MAX_PX` (01/08) puis `DEFAULT_RENDERS` (04/08) : export fantôme → module mort au boot, `node -c` passe |
 | `check-prefs-survival.js` | toute pref écrite est bien relue par `buildAppConfigFromPlan` | magnétisme perdu au chargement de plan (03/08) |

@@ -378,6 +378,14 @@ node scripts/check-kiosque-serveur.js || exit $?
 # profil, et que le module ne fait aucune requete. BLOQUANT.
 node scripts/check-connexion-serveur.js || exit $?
 
+# EXPORT ANONYMISE (v2.0.1) : fait pour etre PARTAGE publiquement. Le script
+# EXECUTE `_anonymiserSession` (extraite du vrai fichier) sur une session piegee
+# dont chaque texte identifiant porte un marqueur, puis cherche le marqueur dans
+# TOUT le JSON produit — une cle ajoutee demain a l export complet et oubliee
+# dans l anonymiseur fera echouer le commit. Ne en v2.0.1 : les liaisons
+# inter-plan livraient les vrais noms de plan et de point depuis v1.57.0. BLOQUANT.
+node scripts/check-export-anonyme.js || exit $?
+
 # DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
 # 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
 # widget OSM du HOME monte une carte dont le fond vient de

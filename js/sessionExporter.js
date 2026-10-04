@@ -1817,6 +1817,14 @@
       delete session.photosTotalKB;
     }
 
+    // 🔒 v2.0.1 — LIAISONS INTER-PLAN. Chaque côté d'une liaison porte un
+    // instantané { planName, pointNom, planId, pointId, x, y } : les VRAIS noms
+    // du plan et du point. Ajoutées à l'export complet en v1.57.0, elles
+    // n'avaient jamais été retirées ici — un export « anonymisé » livrait donc
+    // le nom du réseau et de ses points. Une liaison n'a de sens qu'entre deux
+    // plans que le destinataire n'a pas : on la retire entièrement.
+    delete session.interPlanLinks;
+
     // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
     delete session.noteLibre;
     delete session.historeSessionPdf;
