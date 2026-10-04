@@ -243,6 +243,27 @@ async function _decouvrirPlansExtension() {
     if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
   });
   if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");
+
+  // 📁 Dossiers de l'instance fournis par l'extension : même doctrine que ceux de
+  // l'index (proposés, verrouillés tant qu'ils sont déclarés, un rangement manuel de
+  // l'utilisateur l'emporte). Appliqués EN MÊME TEMPS que ceux de l'index — sinon
+  // applyIndexFolders libérerait ces derniers. null (serveur injoignable) : rien ne bouge.
+  const dossiers = await window.KtaExtensions.dossiersExtension();
+  if (Array.isArray(dossiers) && typeof window.PlanRegistry.applyIndexFolders === "function") {
+    const st = (window.KtaInstance && window.KtaInstance.etat) ? window.KtaInstance.etat() : null;
+    const deIndex = (st && st.index && Array.isArray(st.index.folders)) ? st.index.folders : [];
+    const table = window.PlanRegistry.applyIndexFolders(deIndex.concat(dossiers.map(function(d) {
+      return Object.assign({}, d, { id: "ext_" + d.id });
+    })));
+    liste.forEach(function(p) {
+      if (!p || !p.id || typeof window.PlanRegistry.setPlanFolder !== "function") return;
+      const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const cible = p.dossier ? (table["ext_" + p.dossier] || null) : null;
+      const e = window.PlanRegistry.findById(id);
+      if (cible) window.PlanRegistry.setPlanFolder(id, cible, "index");
+      else if (e && e.folderSrc === "index") window.PlanRegistry.setPlanFolder(id, null, "index");
+    });
+  }
 }
 
 // Application de `config` : sous-titre (splash + header loader — textContent

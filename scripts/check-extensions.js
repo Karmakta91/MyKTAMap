@@ -248,6 +248,21 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 erreur de l'extension → aucune action", K3.actionsCompte("config").length === 0);
   }
 
+  // ═════════ 6 quinquies. DOSSIERS DE L'INSTANCE ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : dossiers inconnus (null, rien ne bouge)", (await K.dossiersExtension()) === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "d", apiVersion: 1, plans: { lister: () => [], charger: () => null,
+      dossiers: () => [{ id: 7, name: "  Secteur nord ", color: "#f4c542", rule: { tags: ["nord", 3] } }, { id: "x" }, null] } });
+    const l = await K2.dossiersExtension();
+    t("dossiers nettoyés (sans nom écartés, id en texte, règle filtrée)",
+      l.length === 1 && l[0].id === "7" && l[0].name === "Secteur nord" && l[0].rule.tags.join() === "nord");
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "e", apiVersion: 1, plans: { lister: () => [], charger: () => null, dossiers: () => { throw new Error("x"); } } });
+    t("🩸 erreur de l'extension → null (les dossiers existants ne sont pas libérés)", (await K3.dossiersExtension()) === null);
+  }
+
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
@@ -273,6 +288,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&
       SW.indexOf('h.get("X-Kta-Ext")') < SW.indexOf("event.respondWith("));
     t("Service Worker : les caches myktamap-ext- survivent à l'activation", /const EXT_CACHE_PREFIX = "myktamap-ext-";/.test(SW) && /!_estCacheExt\(key\)/.test(SW));
+    const MN = lire("js/main.js");
+    t("🩸 accueil : dossiers de l'extension appliqués AVEC ceux de l'index (jamais à leur place)",
+      /dossiersExtension\(\)/.test(MN) && /applyIndexFolders\(deIndex\.concat\(/.test(MN));
     const HP = lire("js/homeProfile.js");
     t("carte profil : lit KtaExtensions.compte, se redessine sur mktm:compte-changed",
       /KtaExtensions\.compte\(\)/.test(HP) && /addEventListener\("mktm:compte-changed"/.test(HP));

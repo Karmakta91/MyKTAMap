@@ -429,6 +429,24 @@
     return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression }); });
   }
 
+  // Dossiers de l'instance fournis par la source de plans (prise facultative
+  // plans.dossiers) : [{ id, name, color?, order?, rule?: { tags } }]. null = inconnu
+  // (pas de prise, serveur injoignable, erreur) → l'accueil ne touche à rien.
+  function dossiersExtension() {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.dossiers !== "function") return Promise.resolve(null);
+    return Promise.resolve().then(function () { return ext.plans.dossiers(); }).then(function (l) {
+      if (!Array.isArray(l)) return null;
+      return l.filter(function (d) { return d && (typeof d.id === "string" || typeof d.id === "number") && typeof d.name === "string" && d.name.trim(); })
+        .slice(0, 100).map(function (d, i) {
+          const o = { id: String(d.id).slice(0, 60), name: d.name.trim().slice(0, 40), order: Number.isFinite(d.order) ? d.order : i };
+          if (typeof d.color === "string") o.color = d.color.slice(0, 16);
+          if (d.rule && Array.isArray(d.rule.tags)) o.rule = { tags: d.rule.tags.filter(function (t) { return typeof t === "string"; }).slice(0, 20) };
+          return o;
+        });
+    }).catch(function (e) { console.warn("[Extensions] plans.dossiers a échoué :", e); return null; });
+  }
+
   // ── Publication depuis le Générateur ──
   function publierPlan(args) {
     const ext = _prise("publierPlan");
@@ -603,6 +621,7 @@
     exportAutorise: exportAutorise,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,
+    dossiersExtension: dossiersExtension,
     chargerPlanExtension: chargerPlanExtension,
     publierPlan: publierPlan,
     changementsDepuis: changementsDepuis,

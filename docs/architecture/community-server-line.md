@@ -153,6 +153,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
+- **Dossiers de l'instance** : prise facultative `plans.dossiers()` → `[{ id, name, color?, order?, rule? }]` et champ
+  `dossier` sur chaque plan listé. L'accueil les traite comme les dossiers de l'index (proposés, verrouillés tant
+  qu'ils sont déclarés, un rangement manuel de l'utilisateur l'emporte), appliqués **avec** ceux de l'index pour ne
+  pas les libérer ; `null` (serveur injoignable, erreur) → rien ne bouge. Les étiquettes passent déjà par `tags`.
 - **Actions du compte** : la prise `actionsCompte(lieu)` (« profil » | « config ») rend les actions à proposer ; la
   fenêtre « Mon profil » les montre **après la photo et le pseudo, avant le grade**, et le panneau ⚙️ Configuration dans un bloc
   « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
