@@ -122,7 +122,13 @@
           <circle cx="110" cy="110" r="104" fill="none" stroke-linecap="round" stroke-dasharray="90 565"></circle>
         </svg>
       </div>
-      <div id="splashTitle"><span class="kta-titre-base">MyKTAMap</span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span></div>
+      <!-- 2️⃣ v2.0.0 (KARMA) — identité de la série 2.x, comme les écrans d'accueil
+           qui changent avec chaque version de Windows : un « 2 » doré, de biais, qui
+           mord légèrement sur le « p » de « MyKTAMap », et un fin cadre doré autour de
+           l'écran. Depuis v2.0.0, le splash n'affiche plus « -pro », même en édition pro
+           (décision KARMA) : le suffixe reste dans l'en-tête de l'accueil. Rempli et montré par main.js > _splashStart
+           depuis la version majeure : rien ne s'affiche avant la v2. -->
+      <div id="splashTitle"><span class="kta-titre-base-cadre"><span class="kta-titre-base">MyKTAMap</span><span id="splashMajeure" aria-hidden="true" hidden></span></span></div>
       <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
     </div>
 
@@ -194,6 +200,11 @@
        tôt + cache localStorage pour éviter tout flash visuel au boot 2+
        sur une instance pro. Cf js/proLicense.js pour le détail. -->
   <script src="js/proLicense.js"></script>
+  <!-- 🔌 v2.0.0 : CONNEXION SERVEUR — interrupteur `config.serverConnection` de
+       l'instance + pastille d'état du pied de page. Après proLicense.js (règle :
+       « on » n'aboutit qu'avec une licence de source serveur). Aucune requête.
+       Contrat : docs/architecture/community-server-line.md §3. -->
+  <script src="js/ktaExtensions.js"></script>
 
   <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
        Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
@@ -347,16 +358,12 @@
           <!-- 🌍 v1.46.0 (KARMA) — Le sélecteur de langue GLOBALE a été déplacé
                du header vers la modale Configuration (après Incognito) : header
                trop chargé sur mobile. Cf #loaderLangSection plus bas + js/main.js. -->
+          <!-- 📡 Fichiers hors-ligne manquants (lot B) : visible SEULEMENT quand la
+               pastille du pied de page est rouge ; clic = tout récupérer. -->
+          <button class="loader-btn-help kta-offline-hdr" id="loaderOfflineHdrBtn" type="button" hidden>📥</button>
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" data-i18n-title="home.header.alert" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" data-i18n-title="home.header.help" title="Documentation utilisateur">📖</button>
           <button class="loader-btn-help" id="loaderConfigBtn" type="button" data-i18n-title="home.header.config" title="Configuration (perf, debug, reset)">⚙️</button>
-          <!-- 🔒 v1.14.11 (KARMA) : remplace le bouton ☠️ Arrêt (v1.14.8) qui
-               ne servait à rien (window.close() refusé par les navigateurs sur
-               onglet classique). Maintenant : verrouille l'app si un PIN est
-               configuré. Si pas de PIN → modale info qui renvoie vers ⚙️
-               Configuration. Si PIN actif → cleanup + reload → la gate PIN
-               s'affiche au boot, l'user doit re-saisir le code. -->
-          <button class="loader-btn-help loader-btn-lock" id="loaderLockBtn" type="button" data-i18n-title="home.header.lock" title="Verrouiller l'application (saisie du code requis pour reprendre)">🔒</button>
         </div>
       </div>
 
@@ -553,14 +560,6 @@
 
       <div id="loaderStatus"></div>
 
-      <!-- 🆕 v1.8.0 : badge "MODE HORS-LIGNE STRICT" visible seulement quand
-           NetworkAudit.isParanoia() === true. Rappel persistant à l'user que
-           toute requête sortante non whitelistée est bloquée. Cliquable →
-           ouvre ⚙️ Configuration pour aller décocher le toggle. -->
-      <div id="loaderParanoiaBadge" class="kta-net-paranoia-badge" style="display:none;" data-i18n-title="home.privacy.badgeTitle" title="Cliquer pour ouvrir la configuration et désactiver" data-i18n="home.privacy.badge">
-        🔒 MODE HORS-LIGNE STRICT ACTIF
-      </div>
-
       <!-- Mention copyright + licence (visible côté utilisateur).
            v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
            retirée — elle reste présente dans les headers copyright des
@@ -604,7 +603,16 @@
             <span class="kta-loader-copyright-pro-badge" data-i18n="home.footer.proBadge">✓ Licence professionnelle active</span>
           </span>
           <span class="kta-loader-copyright-sep">·</span>
-          <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span>
+          <!-- 📡 Pastille « hors-ligne » (lot B, 03/10/2026) : état du cache hors-ligne,
+               peinte par js/homeConfig.js > _initPastilleHorsLigne (title/aria au rendu).
+               Élément FRÈRE du badge (celui-ci réécrit son propre texte), soudé à lui
+               par .kta-offline-groupe (nowrap) pour ne pas partir seul à la ligne. -->
+          <span class="kta-offline-groupe"><span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span><button type="button" class="kta-offline-dot" id="loaderOfflineDot" hidden></button></span>
+          <!-- 🔌 v2.0.0 : pastille « connexion serveur », peinte par js/ktaExtensions.js
+               (classe de couleur, mot, title/aria au rendu). Groupe insécable à part :
+               sous 380 px, seule l'icône reste (le mot est dans l'infobulle et la modale).
+               Clic → modale « Que fait l'app sur le réseau ? ». -->
+          <span class="kta-cnx-groupe"><span class="kta-loader-copyright-sep">·</span><button type="button" class="kta-cnx-chip" id="loaderCnxChip" hidden><span class="kta-cnx-ico" aria-hidden="true">🔌</span><span class="kta-cnx-mot"></span></button></span>
         </span>
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
              nouvelles citations") : mention des libs + algo majeurs du
@@ -915,12 +923,12 @@
              Trois actions :
                1. 📋 Voir le journal réseau live (modale buffer)
                2. 📖 Que fait l'app sur le réseau ? (modale doc + lien doc/NETWORK_AUDIT.md)
-               3. 🔒 Mode hors-ligne strict (toggle paranoia opt-in)
+               3. 🗺️ Vue OSM (seul accès à un tiers : le fond de carte OpenStreetMap)
              Cf. docs/NETWORK_AUDIT.md pour la doc complète.
 
              ⚠️ Ordre v1.8.0 (suite KARMA) : Confidentialité avant Force update
              et avant Reset. Logique narrative : actions douces / informatives
-             d'abord (audit, mode strict), puis actions de purge progressive
+             d'abord (audit, Vue OSM), puis actions de purge progressive
              (Force update = cache PWA uniquement, Reset = tout). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
@@ -933,15 +941,11 @@
           <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" data-i18n="home.privacy.netDocBtn">
             📖 Que fait l'app sur le réseau ?
           </button>
+          <!-- Case "Vue OSM" (autorise tile.openstreetmap.org, seul tiers que
+               l'app contacte). Cochée par défaut depuis v1.90.2 ; décochée,
+               ni le widget de l'accueil ni la modale Vue OSM ne chargent de
+               tuile (cf js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
-            <input type="checkbox" id="loaderNetParanoiaCb">
-            <span data-i18n-html="home.privacy.strictToggle"><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
-          </label>
-          <!-- 🆕 v1.39.0 — Toggle opt-in "Vue OSM" (autorise tile.openstreetmap.org).
-               Par défaut OFF (philosophie 100% offline préservée). Si activé,
-               un bouton "🌍 Vue OSM" apparaît dans la status bar des plans
-               georef-calibrés (cf js/osmView.js). -->
-          <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
             <input type="checkbox" id="loaderOsmOptInCb">
             <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — affiche tes plans calibrés GPS au-dessus d'une carte du monde. Contacte <code>tile.openstreetmap.org</code> dès que le widget de l'accueil ou la modale Vue OSM s'affiche. <strong>Activé par défaut</strong> depuis la v1.90.2 ; décoché, il le reste (aucune mise à jour ne revient dessus).</span>
           </label>
@@ -1005,72 +1009,24 @@
           <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
             📊 Voir l'état mémoire
           </button>
-          <!-- 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
-               Diagnostic du cache PWA : compare la liste ASSETS_TO_CACHE
-               attendue avec ce qui est réellement en cache. Verdict +
-               bouton pour récupérer les manquants. -->
-          <button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;" data-i18n="home.inspector.swBtn">
-            🔧 Voir l'état du cache (Service Worker)
-          </button>
+          <!-- 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) vit dans le
+               🛠️ Mode Développeur (js/devMode.js, mode actif seulement). L'état
+               du cache hors-ligne est montré à tous par la pastille du pied de page. -->
         </div>
 
-        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
-             Purge uniquement le cache Service Worker (assets HTTP) puis
-             reload → l'app récupère la dernière version sans toucher aux
-             données utilisateur (session, plans mémorisés, préférences,
-             code d'accès). Utile pour forcer une update même sans popup
-             ou si la détection version a foiré.
-
-             ⚠️ Position v1.8.1-refonte-17 (suite KARMA) : placé JUSTE
-             AVANT Reset pour que la gradation "purge cache → purge tout"
-             se lise d'un coup d'œil sans rupture (avant, le toggle
-             Affichage les séparait visuellement). -->
+        <!-- 🆘 Dépannage (lot A, 03/10/2026) — UN seul bouton visible.
+             Les trois outils de dépannage (🔄 Forcer la mise à jour, 🆘 Kill SW,
+             💥 Tout réinitialiser) vivent dans la fenêtre #kta-depannage-modal,
+             construite à l'ouverture par js/homeConfig.js > _ouvrirDepannage(),
+             rangés du plus doux au plus radical. Leurs ids historiques
+             (#loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn) sont
+             portés par les boutons de la fenêtre. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.updateTitle">🔄 Mise à jour</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.updateHint">
-            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
-            re-télécharge la dernière version depuis le serveur. <strong>Tes données
-            sont préservées</strong> (plans mémorisés, sessions, préférences, code
-            d'accès). Nécessite une connexion Internet active.
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n="home.cfg.depannage.hint">
+            L'app ne se met pas à jour, reste bloquée ou plante ? Les outils de réparation sont ici.
           </p>
-          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;" data-i18n="home.cfg.forceUpdateBtn">
-            🔄 Forcer la mise à jour
-          </button>
-        </div>
-
-        <!-- 🆘 v1.37.0 — Kill SW (option intermédiaire entre la mise à jour
-             douce ci-dessus et le reset complet ci-dessous). Ouvre killsw.html
-             dans le même onglet : page autonome qui désinscrit proprement le
-             Service Worker, purge les caches PWA, mais préserve TOUTES les
-             données utilisateur (localStorage, IndexedDB, sessions, plans,
-             prefs). À utiliser si la "mise à jour douce" ne propage pas la
-             nouvelle version (badge footer reste sur "ancienne → nouvelle"
-             même après reload). Évite d'avoir à faire un Reset complet
-             irréversible juste pour débloquer un SW coincé. -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.killSwTitle">🆘 Désinscrire le Service Worker</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.killSwHint">
-            À essayer si la mise à jour douce ci-dessus n'a pas suffi (badge
-            footer toujours sur « ancienne → nouvelle » après reload). Désinscrit
-            le SW et purge les caches PWA — au prochain chargement, un SW tout
-            neuf prend le relais. <strong>Tes données restent intactes</strong>
-            (plans, sessions, préférences, code d'accès). Moins destructif que
-            le Reset complet ci-dessous.
-          </p>
-          <button class="loader-btn-secondary" type="button" id="loaderKillSwBtn" style="width:100%;" data-i18n="home.cfg.killSwBtn">
-            🆘 Ouvrir l'outil Kill SW
-          </button>
-        </div>
-
-        <!-- 💥 Reset complet -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.resetTitle">💥 Réinitialisation</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n-html="home.cfg.resetHint">
-            Vide TOUT le stockage de l'app (cache, plans mémorisés, sessions, préférences).
-            Cette action est <strong>irréversible</strong> et nécessite une connexion Internet pour re-télécharger les assets.
-          </p>
-          <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn" style="width:100%;" data-i18n="home.cfg.resetBtn">
-            💥 Tout réinitialiser
+          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn">
+            🆘 Dépannage
           </button>
         </div>
 
@@ -1119,7 +1075,7 @@
 
   <!-- 🆕 v1.8.0 : Modale "📖 Que fait l'app sur le réseau ?" — doc inline
        qui explique le modèle PWA, liste la whitelist, explique comment
-       vérifier soi-même (F12 + paranoia). Pointe aussi vers
+       vérifier soi-même (journal + F12). Pointe aussi vers
        docs/NETWORK_AUDIT.md pour la version longue. -->
   <div id="loaderNetDocModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-doc-boite">
@@ -1128,6 +1084,12 @@
         <button class="kta-panneau-close" id="loaderNetDocClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-net-doc-corps">
+        <!-- 🔌 v2.0.0 : état de la connexion serveur de CETTE installation,
+             peint par js/ktaExtensions.js (textContent). -->
+        <div class="kta-net-doc-section kta-cnx-bloc" id="loaderNetDocCnx" hidden>
+          <div class="kta-net-doc-section-titre kta-cnx-bloc-titre"></div>
+          <p class="kta-net-doc-hint kta-cnx-bloc-texte"></p>
+        </div>
         <div class="kta-net-doc-lead" data-i18n-html="home.netdoc.lead">
           <strong>MyKTAMap est une PWA 100% client-side.</strong> Tout ce que tu crées (annotations, sessions, plans mémorisés, calibrations KMZ, préférences) <strong>reste dans ton navigateur</strong>. Le serveur Nginx ne fait que servir des fichiers statiques. Aucun backend applicatif, aucune base de données serveur, aucun analytics, aucun cookie de tracking.
         </div>
@@ -1148,8 +1110,8 @@
           <ol class="kta-net-doc-ol">
             <li data-i18n-html="home.netdoc.verify1"><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
             <li data-i18n-html="home.netdoc.verify2"><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
-            <li data-i18n-html="home.netdoc.verify3"><strong>Mode hors-ligne strict</strong> : coche le toggle dans la même section. Le navigateur refusera activement toute requête non-whitelistée — l'app reste 100% fonctionnelle.</li>
-            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée (<code>connect-src 'self' https://www.gstatic.com</code>).</li>
+            <li data-i18n-html="home.netdoc.verify3"><strong>Un seul site extérieur</strong> : le fond de carte OpenStreetMap de la Vue OSM (<code>tile.openstreetmap.org</code>). Décoche la case « 🗺️ Vue OSM » dans la même section (ou passe en mode incognito) : l'app ne contacte plus que son propre serveur — le journal et F12 te le montrent.</li>
+            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée : seuls le site lui-même et le fond de carte OpenStreetMap sont autorisés.</li>
           </ol>
         </div>
 

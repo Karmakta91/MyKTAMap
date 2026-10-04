@@ -96,10 +96,26 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
 - `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
 - **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
 - Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
-- 🆕 **Animation reveal du titre depuis v1.30.0** : « MyKTAMap » se révèle progressivement
-  (`clip-path` 700 ms) → pause ~600 ms → « -pro » se révèle (pro uniquement, 500 ms). Même
-  easing `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA. Détails complets +
-  pièges de spécificité CSS : cf `ui.md §83` et `security-legal.md §84`.
+- **Révélation du titre** : « MyKTAMap » se découvre de gauche à droite (`clip-path`, même easing
+  `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA). **Le splash n'affiche plus « -pro »**
+  depuis v2.0.0, même en édition pro (décision KARMA) : le suffixe et sa révélation restent dans
+  l'en-tête de l'accueil (`.loader-titre-nom`). Pièges de spécificité du suffixe : `security-legal.md §84`.
+- 2️⃣ **Identité de la série 2.x** (v2.0.0, décision KARMA — l'accueil change avec chaque version majeure,
+  comme sous Windows, sans toucher à la philosophie du splash ni à ses 3,5 s) :
+  - un **« 2 » orange brûlé (`#e07b1a` ; `#a8530a` en clair), plus foncé que le doré, de
+    biais, qui mord légèrement sur le « p » de « MyKTAMap »** (`#splashMajeure`) — contraste voulu avec
+    le doré du titre. Posé sur `.kta-titre-base-cadre`, HORS de `.kta-titre-base` dont le clip-path de
+    révélation le couperait. Il « tampe » à 1,5 s, une fois le mot révélé ;
+  - un **cadre doré marqué** autour de l'écran (`#splashOverlay.kta-splash-majeure::before` : filet de 2 px
+    plein, halo doré/orange, lueur intérieure ; 7 px du bord). Sur écran tactile (`pointer: coarse`), coins
+    **6 px en haut** (le cadre naît sous la barre d'état opaque, là où l'écran n'est pas arrondi) et
+    **50 px en bas** (parallèle aux coins arrondis de l'écran, sinon le cadre en sortait — retour iPhone 17).
+    ⚠️ Sans `viewport-fit=cover`, les `env(safe-area-*)` valent 0 : ne pas s'appuyer dessus ici ;
+  - la **version en haut à droite** passe à l'accent charte (`#f4c542`, `#b8860b` en clair), en gras, 13 px ;
+  - `_splashStart()` écrit le chiffre depuis la version majeure et pose la classe **à partir de la v2
+    seulement** : une v3 affichera « 3 » sans rien toucher ;
+  - police : sous-ensemble Kalam 700 **réduit aux chiffres** (`lib/fonts/kalam-700-splash.woff2`, ~3,5 Ko,
+    OFL — licence à côté), précaché ; la CSP n'accepte que les polices du site.
 
 ---
 

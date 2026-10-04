@@ -23,14 +23,19 @@
  *   2. Logge chaque requête dans un buffer en mémoire (max 500 entries).
  *   3. Permet à l'utilisateur de voir le journal en temps réel via la
  *      modale 📋 Voir le journal réseau (UI dans loaderConfigModal).
- *   4. Propose un Mode hors-ligne strict (paranoia, opt-in) qui bloque
- *      activement toute requête sortante non-whitelistée.
  *
- * Whitelist hardcodée (visible dans WHITELIST_HUMAN, exposée à l'UI) :
- *   - Même origine (l'app elle-même servie depuis location.origin).
- *     Inclut automatiquement le ping santé serveur <origin>/ping.html
- *     (body "OK"). Depuis v1.9.3, plus aucun appel externe non-MyKTAMap
- *     (l'ancien ping Google gstatic.com/generate_204 a été retiré).
+ * Le module OBSERVE, il ne bloque rien : chaque requête part normalement et
+ * est consignée. La seule requête vers un tiers que l'app peut émettre est le
+ * fond de carte OpenStreetMap de la Vue OSM, coupé par la case 🗺️ Vue OSM
+ * (OsmView.isOptedIn) et par le mode incognito — pas par ce module.
+ * ⚠️ Les tuiles posées en <img> (Leaflet) ne passent pas par fetch/XHR :
+ * elles n'apparaissent pas dans ce journal, seulement dans l'onglet Réseau
+ * de F12.
+ *
+ * Origines attendues (WHITELIST_HUMAN, affichées dans la modale doc audit) :
+ *   - Même origine (l'app elle-même servie depuis location.origin), dont
+ *     le ping santé serveur <origin>/ping.html (body "OK").
+ *   - blob: et data: (références locales au navigateur, aucun réseau).
  *
  * Ordre de chargement critique
  * ----------------------------
@@ -51,10 +56,9 @@
  * ------------------------------------------
  *   getLog()        → Array<Entry>  — copie du buffer (snapshot)
  *   clear()         → void          — vide le buffer
- *   setParanoia(b)  → void          — toggle mode hors-ligne strict
- *   isParanoia()    → boolean       — état du toggle
  *   onLog(cb)       → unsubscribe   — callback appelé à chaque nouvel event
- *   WHITELIST_HUMAN → Array<string> — descriptions lisibles de la whitelist
+ *   WHITELIST_HUMAN → Array<string> — descriptions lisibles des origines attendues
+ *   exportJson()    → string        — journal exporté (bouton 📥)
  *
  * Structure Entry :
  *   {
@@ -64,8 +68,7 @@
  *     method:    string,        // GET, POST, WS, SSE, etc.
  *     hasBody:   boolean,       // true si payload envoyé (POST/PUT/PATCH avec body)
  *     category:  string,        // classification (cf. _classify)
- *     status:    number | string | null,  // HTTP status, "BLOCKED", "FAIL", "OPEN"
- *     blocked:   boolean        // true si bloqué par le mode paranoia
+ *     status:    number | string | null   // HTTP status, "SENT", "FAIL", "OPEN"
  *   }
  * =========================================================================
  */
@@ -77,46 +80,10 @@
   // CONFIGURATION
   // ============================================================
   const BUFFER_MAX  = 500;
-  const LS_PARANOIA = "myktamap_network_paranoia_v1";
 
   // ============================================================
-  // WHITELIST (hardcodée, visible à l'UI via WHITELIST_HUMAN)
+  // ORIGINES ATTENDUES (visibles à l'UI via WHITELIST_HUMAN)
   // ============================================================
-  // Chaque entrée = fonction(url) → boolean.
-  // Si AU MOINS UNE renvoie true, l'URL est whitelistée.
-  // 🆕 v1.9.3-B-side-fix (KARMA "ping doit être origin pour dev/prod") :
-  // le ping cible désormais `<origin>/ping.html` au lieu d'un hardcode.
-  // C'est SAME-ORIGIN par définition → déjà couvert par le 1er pattern,
-  // pas besoin d'entrée dédiée. La whitelist a même UNE entrée de MOINS
-  // qu'avant (suppression de l'ancien pattern gstatic + de l'éphémère
-  // pattern myktamap.fr/ping.html).
-  // → Plus AUCUN domaine externe dans la whitelist. Promesse "100%
-  // client-side, aucun appel externe non-MyKTAMap" respectée à la lettre.
-  const WHITELIST_PATTERNS = [
-    // Same-origin : l'app elle-même (myktamap.fr, devmap,
-    // myktamap.fr, localhost…). Inclut automatiquement le ping
-    // <origin>/ping.html (cf. js/interface.js _pingInternet).
-    function(url) {
-      try {
-        if (!url) return false;
-        const u = new URL(url, location.origin);
-        return u.origin === location.origin;
-      } catch(e) { return false; }
-    },
-    // Blob URLs locales (URL.createObjectURL) — utilisées par le tiling V2
-    // pour servir les tuiles JPEG depuis le ZIP en mémoire. 100% LOCALES
-    // au navigateur, aucune fuite réseau possible : c'est juste un
-    // déréférencement de Blob déjà chargé en RAM. Cf. CLAUDE.md §27.
-    function(url) {
-      return typeof url === "string" && url.indexOf("blob:") === 0;
-    },
-    // Data URLs (base64 inline) — utilisées pour les icônes SVG inline
-    // et certains exports. Pas de fuite réseau possible.
-    function(url) {
-      return typeof url === "string" && url.indexOf("data:") === 0;
-    }
-  ];
-
   // Descriptions human-readable (affichées dans la modale doc audit).
   // Construites AU RENDU (jamais au load) → dicos i18n prêts. Exposées via
   // un getter `WHITELIST_HUMAN` sur l'API : chaque accès rebâtit l'array dans
@@ -148,26 +115,11 @@
   // STATE
   // ============================================================
   let _logBuffer = [];
-  let _paranoia  = false;
   let _listeners = [];
-
-  // Hydratation depuis localStorage (préférence persistée entre sessions)
-  try {
-    _paranoia = localStorage.getItem(LS_PARANOIA) === "1";
-  } catch(e) { /* localStorage indisponible (incognito strict) → paranoia off */ }
 
   // ============================================================
   // HELPERS
   // ============================================================
-  function _isWhitelisted(url) {
-    for (let i = 0; i < WHITELIST_PATTERNS.length; i++) {
-      try {
-        if (WHITELIST_PATTERNS[i](url)) return true;
-      } catch(e) { /* skip patterns qui throw */ }
-    }
-    return false;
-  }
-
   // Classification automatique pour l'affichage UI (label coloré)
   function _classify(url) {
     if (!url) return "unknown";
@@ -217,11 +169,6 @@
     }
   }
 
-  function _shouldBlock(url) {
-    if (!_paranoia) return false;
-    return !_isWhitelisted(url);
-  }
-
   function _resolveUrl(input) {
     try {
       if (typeof input === "string") return input;
@@ -259,18 +206,8 @@
         method:   (method || "GET").toUpperCase(),
         hasBody:  hasBody,
         category: _classify(url),
-        status:   null,
-        blocked:  false
+        status:   null
       };
-
-      if (_shouldBlock(url)) {
-        entry.blocked = true;
-        entry.status  = "BLOCKED";
-        _log(entry);
-        return Promise.reject(
-          new Error("[NetworkAudit] Bloqué par le mode hors-ligne strict : " + url)
-        );
-      }
 
       _log(entry);
       return _origFetch.apply(this, arguments).then(function(resp) {
@@ -307,16 +244,8 @@
         method:   method,
         hasBody:  hasBody,
         category: _classify(url),
-        status:   null,
-        blocked:  false
+        status:   null
       };
-
-      if (_shouldBlock(url)) {
-        entry.blocked = true;
-        entry.status  = "BLOCKED";
-        _log(entry);
-        throw new Error("[NetworkAudit] XHR bloqué par le mode hors-ligne strict : " + url);
-      }
 
       _log(entry);
       const _xhr = this;
@@ -340,16 +269,8 @@
         method:   "POST",  // sendBeacon est toujours POST
         hasBody:  hasBody,
         category: _classify(url),
-        status:   null,
-        blocked:  false
+        status:   null
       };
-
-      if (_shouldBlock(url)) {
-        entry.blocked = true;
-        entry.status  = "BLOCKED";
-        _log(entry);
-        return false;  // sendBeacon retourne bool, false = échec
-      }
 
       _log(entry);
       const result = _origBeacon(url, data);
@@ -370,16 +291,8 @@
         method:   "WS",
         hasBody:  false,
         category: _classify(url),
-        status:   "OPEN",
-        blocked:  false
+        status:   "OPEN"
       };
-
-      if (_shouldBlock(url)) {
-        entry.blocked = true;
-        entry.status  = "BLOCKED";
-        _log(entry);
-        throw new Error("[NetworkAudit] WebSocket bloqué par le mode hors-ligne strict : " + url);
-      }
 
       _log(entry);
       return new _OrigWS(url, protocols);
@@ -405,16 +318,8 @@
         method:   "SSE",
         hasBody:  false,
         category: _classify(url),
-        status:   "OPEN",
-        blocked:  false
+        status:   "OPEN"
       };
-
-      if (_shouldBlock(url)) {
-        entry.blocked = true;
-        entry.status  = "BLOCKED";
-        _log(entry);
-        throw new Error("[NetworkAudit] EventSource bloqué par le mode hors-ligne strict : " + url);
-      }
 
       _log(entry);
       return new _OrigES(url, init);
@@ -435,22 +340,6 @@
 
     // Vidage manuel du buffer
     clear: function() { _logBuffer = []; },
-
-    // Toggle paranoia + persistance
-    setParanoia: function(v) {
-      _paranoia = !!v;
-      try {
-        if (_paranoia) localStorage.setItem(LS_PARANOIA, "1");
-        else           localStorage.removeItem(LS_PARANOIA);
-      } catch(e) {}
-      // Hook UI badge si présent (cf. index.html footer)
-      if (typeof window._kta_majBadgeParanoia === "function") {
-        try { window._kta_majBadgeParanoia(); } catch(e) {}
-      }
-      console.info("[NetworkAudit] Mode hors-ligne strict :", _paranoia ? "ACTIF" : "désactivé");
-    },
-
-    isParanoia: function() { return _paranoia; },
 
     // Souscription aux events live (UI journal)
     onLog: function(cb) {
@@ -474,7 +363,6 @@
         appVersion: (window.__MKM__ && window.__MKM__.build) || "?",
         userAgent:  navigator.userAgent,
         origin:     location.origin,
-        paranoia:   _paranoia,
         whitelist:  _buildWhitelistHuman(),
         bufferSize: _logBuffer.length,
         bufferMax:  BUFFER_MAX,
@@ -486,8 +374,7 @@
             url:       e.url,
             hasBody:   e.hasBody,
             category:  e.category,
-            status:    e.status,
-            blocked:   e.blocked
+            status:    e.status
           };
         })
       }, null, 2);
@@ -498,20 +385,11 @@
   // BANNIÈRE CONSOLE (visible à F12, bypass debug.js proxy car
   // ce script tourne AVANT debug.js — console natif)
   // ============================================================
-  if (_paranoia) {
-    console.info(
-      "%c[NetworkAudit]%c MODE HORS-LIGNE STRICT ACTIF %c\nToute requête réseau non whitelistée sera bloquée.\nWhitelist : " + _buildWhitelistHuman().join(" | "),
-      "background:#ff9500;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;",
-      "color:#ff9500;font-weight:bold;",
-      "color:#888;"
-    );
-  } else {
-    console.info(
-      "%c[NetworkAudit]%c Instrumentation active. " +
-      "Audit accessible via ⚙️ Configuration → 🔒 Audit réseau.",
-      "background:#8cb4ff;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;",
-      "color:#8cb4ff;"
-    );
-  }
+  console.info(
+    "%c[NetworkAudit]%c Instrumentation active. " +
+    "Audit accessible via ⚙️ Configuration → 🔒 Audit réseau.",
+    "background:#8cb4ff;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;",
+    "color:#8cb4ff;"
+  );
 
 })();

@@ -59,7 +59,8 @@
         });
         // Escape ferme la modale (cohérent avec autres modales projet)
         document.addEventListener("keydown", function(e) {
-          if (e.key === "Escape" && configModal.style.display !== "none") {
+          if (e.key === "Escape" && configModal.style.display !== "none" &&
+              !document.getElementById("kta-depannage-modal")) {
             _fermerLoaderConfig();
           }
         });
@@ -173,170 +174,6 @@
           }
         });
       })();
-
-      // === BOUTON 🔒 VERROUILLER L'APPLICATION (v1.14.11) ===
-      // KARMA : « plutôt que éteindre qui sert à rien, on fait verrouiller
-      // (si password actif) ».
-      //
-      // Remplace l'ancien bouton 🔌 Shutdown (v1.14.8-v1.14.10) qui était
-      // largement bloqué par window.close() refusé sur les onglets web
-      // classiques.
-      //
-      // Flow :
-      //   1. Si PinLock pas activé → modale info « Aucun mot de passe »
-      //      avec bouton qui ouvre la modale ⚙️ Configuration.
-      //   2. Si PinLock activé → modale confirm « Verrouiller MyKTAMap ? » →
-      //      si oui → cleanup modules actifs → location.reload() → au boot,
-      //      la gate PIN s'affiche (cf. js/main.js qui appelle
-      //      MyKTAMapPinLock.ouvrirGate si isEnabled && !isUnlocked).
-
-      // Modale d'info « pas de PIN configuré » — pattern charte MyKTAMap.
-      function _afficherLockNoPinInfo() {
-        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        const old = document.getElementById("kta-lock-nopin-modal");
-        if (old) old.remove();
-
-        const modal = document.createElement("div");
-        modal.id = "kta-lock-nopin-modal";
-        modal.className = "kta-readme-modal-overlay kta-lock-nopin-overlay";
-        modal.innerHTML =
-          '<div class="kta-readme-modal-boite kta-lock-nopin-boite">' +
-            '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">' + _t("home.lock.noPinTitle") + '</span>' +
-              '<button class="kta-panneau-close" id="kta-lock-nopin-close" type="button" aria-label="' + _t("home.lock.close") + '">✕</button>' +
-            '</div>' +
-            '<div class="kta-readme-modal-corps kta-lock-nopin-corps">' +
-              '<div class="kta-lock-nopin-icone">🔐</div>' +
-              '<p class="kta-lock-nopin-msg">' +
-                _t("home.lock.noPinMsg") +
-              '</p>' +
-              '<p class="kta-lock-nopin-hint">' +
-                '<em>' + _t("home.lock.noPinHint") + '</em>' +
-              '</p>' +
-            '</div>' +
-            '<div class="kta-lock-nopin-actions">' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lock-nopin-cancel" type="button">' + _t("home.lock.close") + '</button>' +
-              '<button class="kta-btn kta-btn-primary kta-lock-nopin-ok" id="kta-lock-nopin-config" type="button">' +
-                _t("home.lock.openConfig") +
-              '</button>' +
-            '</div>' +
-          '</div>';
-        document.documentElement.appendChild(modal);
-
-        function _close() {
-          modal.remove();
-          document.removeEventListener("keydown", _onKey);
-        }
-        function _onKey(e) {
-          if (e.key === "Escape" || e.key === "Enter") _close();
-        }
-        document.getElementById("kta-lock-nopin-close").addEventListener("click", _close);
-        document.getElementById("kta-lock-nopin-cancel").addEventListener("click", _close);
-        document.getElementById("kta-lock-nopin-config").addEventListener("click", function() {
-          _close();
-          if (typeof _ouvrirLoaderConfig === "function") _ouvrirLoaderConfig();
-        });
-        modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
-        document.addEventListener("keydown", _onKey);
-
-        setTimeout(function() {
-          const okBtn = document.getElementById("kta-lock-nopin-config");
-          if (okBtn) okBtn.focus();
-        }, 50);
-      }
-
-      // Modale confirm « Verrouiller MyKTAMap ? » — pattern charte, accent
-      // bleu (action neutre/sécurité, pas destructive comme l'ancien shutdown).
-      function _confirmLock() {
-        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        return new Promise(function(resolve) {
-          const old = document.getElementById("kta-lock-confirm-modal");
-          if (old) old.remove();
-
-          const modal = document.createElement("div");
-          modal.id = "kta-lock-confirm-modal";
-          modal.className = "kta-readme-modal-overlay kta-lock-confirm-overlay";
-          modal.innerHTML =
-            '<div class="kta-readme-modal-boite kta-lock-confirm-boite">' +
-              '<div class="kta-readme-modal-header">' +
-                '<span class="kta-readme-modal-titre">' + _t("home.lock.confirmTitle") + '</span>' +
-                '<button class="kta-panneau-close" id="kta-lock-confirm-close" type="button" aria-label="' + _t("home.lock.cancel") + '">✕</button>' +
-              '</div>' +
-              '<div class="kta-readme-modal-corps kta-lock-confirm-corps">' +
-                '<div class="kta-lock-confirm-icone">🔒</div>' +
-                '<p class="kta-lock-confirm-msg">' +
-                  _t("home.lock.confirmMsg") +
-                '</p>' +
-                '<p class="kta-lock-confirm-hint">' +
-                  '<em>' + _t("home.lock.confirmHint") + '</em>' +
-                '</p>' +
-              '</div>' +
-              '<div class="kta-lock-confirm-actions">' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-lock-confirm-cancel" type="button">' + _t("home.lock.cancel") + '</button>' +
-                '<button class="kta-btn kta-btn-primary kta-lock-confirm-ok" id="kta-lock-confirm-ok" type="button">' +
-                  _t("home.lock.confirmOk") +
-                '</button>' +
-              '</div>' +
-            '</div>';
-          document.documentElement.appendChild(modal);
-
-          function _close(value) {
-            modal.remove();
-            document.removeEventListener("keydown", _onKey);
-            resolve(value);
-          }
-          function _onKey(e) {
-            if (e.key === "Escape") _close(false);
-            else if (e.key === "Enter") _close(true);
-          }
-          document.getElementById("kta-lock-confirm-close").addEventListener("click", function() { _close(false); });
-          document.getElementById("kta-lock-confirm-cancel").addEventListener("click", function() { _close(false); });
-          document.getElementById("kta-lock-confirm-ok").addEventListener("click", function() { _close(true); });
-          modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
-          document.addEventListener("keydown", _onKey);
-
-          setTimeout(function() {
-            const okBtn = document.getElementById("kta-lock-confirm-ok");
-            if (okBtn) okBtn.focus();
-          }, 50);
-        });
-      }
-
-      const lockBtn = document.getElementById("loaderLockBtn");
-      if (lockBtn) {
-        lockBtn.addEventListener("click", function() {
-          const pinActif = !!(window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled && window.MyKTAMapPinLock.isEnabled());
-          if (!pinActif) {
-            _afficherLockNoPinInfo();
-            return;
-          }
-          _confirmLock().then(function(ok) {
-            if (!ok) return;
-            // Cleanup défensif des modules potentiellement actifs (mêmes que
-            // l'ancien shutdown — on coupe avant reload pour éviter qu'un
-            // intervalle de tracker continue à écrire pendant le teardown).
-            function _safeCall(fn, label) {
-              try { if (typeof fn === "function") fn(); }
-              catch(e) { console.warn("[Lock] cleanup " + label + " :", e); }
-            }
-            _safeCall(window.Tracker && window.Tracker.stop, "Tracker.stop");
-            _safeCall(window.EmergencyMode && window.EmergencyMode.desactiver, "EmergencyMode.desactiver");
-            // 🐛 v1.79.3 — visait window.TrackerReplay.arreter : mauvais nom
-            // (MyKTAMapTrackerReplay) ET méthode inexistante (l'API est
-            // ouvrirModale/fermer) → no-op silencieux depuis sa naissance.
-            // Impact réel nul (location.reload() suit), corrigé pour que le
-            // cleanup fasse ce qu'il annonce.
-            _safeCall(window.MyKTAMapTrackerReplay && window.MyKTAMapTrackerReplay.fermer, "MyKTAMapTrackerReplay.fermer");
-            _safeCall(window.OOMGuard && window.OOMGuard.stop, "OOMGuard.stop");
-            _safeCall(window.LostMode && window.LostMode.desactiver, "LostMode.desactiver");
-
-            // Reload → main.js détecte isEnabled() && !isUnlocked() → affiche
-            // la gate PIN avant la suite de l'init. L'user devra saisir le
-            // code pour reprendre.
-            location.reload();
-          });
-        });
-      }
 
       // === BOUTON 🔔 ALERTE EN COURS ===
       // Force le re-fetch de alert.json et affiche soit la modale d'alerte
@@ -495,106 +332,335 @@
         }
       })();
 
+      // === 📡 PASTILLE « HORS-LIGNE » (lot B, 03/10/2026) ===
+      // Un point coloré accolé au badge de version (#loaderOfflineDot) MONTRE
+      // l'état du cache hors-ligne, que l'auto-réparation (SwInspector.
+      // autoHealIfNeeded, ~5 s après l'accueil) répare en silence :
+      //   🟢 ok · 🔴 manquants (clic = tout récupérer) · 🟠 récupération en
+      //   cours, ou manquants hors réseau · ⚪ pas de service worker.
+      // Le rouge seul remonte dans l'en-tête (#loaderOfflineHdrBtn). Le badge de
+      // version garde son clic et son état « mise à jour disponible » : la
+      // pastille est un élément À CÔTÉ, jamais dedans (le badge réécrit son
+      // textContent). Vérifications : au résultat de l'auto-réparation
+      // (événement kta-sw-autoheal), au controllerchange, après un clic.
+      // Aucune boucle, aucune minuterie. Accueil seulement : en mode carte, le
+      // pied de page et l'en-tête de l'accueil sont masqués avec lui.
+      (function _initPastilleHorsLigne() {
+        const dot = document.getElementById("loaderOfflineDot");
+        const hdr = document.getElementById("loaderOfflineHdrBtn");
+        if (!dot) return;
+        const _t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+        const CLASSES = ["kta-offline-ok", "kta-offline-ko", "kta-offline-wait", "kta-offline-off"];
+        let _dernier = null;        // dernier résultat de SwInspector.etat()
+        let _enCours = false;       // récupération (auto ou clic) en cours
+        let _progres = null;        // { faits, total } pendant un clic
+
+        function _peindre() {
+          // Dicos en cours de rechargement (I18n.reload() au controllerchange,
+          // main.js) : on ne peint pas de clé humanisée, onChange repeindra.
+          if (window.I18n && typeof window.I18n.has === "function" && !window.I18n.has("home.offline.dot.ok")) return;
+          const e = _dernier;
+          let cls, titre;
+          if (_enCours) {
+            cls = "kta-offline-wait";
+            titre = _progres
+              ? _t("home.offline.progres", { n: _progres.faits, total: _progres.total })
+              : _t("home.offline.dot.encours");
+          } else if (!e || e.etat === "indisponible") {
+            cls = "kta-offline-off";
+            titre = _t(e && e.raison === "incognito" ? "home.offline.dot.incognito" : "home.offline.dot.sansSw");
+          } else if (e.etat === "ok") {
+            cls = "kta-offline-ok";
+            titre = _t("home.offline.dot.ok", { v: e.version });
+          } else if (navigator.onLine === false) {
+            cls = "kta-offline-wait";
+            titre = _t("home.offline.dot.horsReseau", { count: e.manquants });
+          } else {
+            cls = "kta-offline-ko";
+            titre = _t("home.offline.dot.manquants", { count: e.manquants });
+          }
+          CLASSES.forEach(function(c) { dot.classList.remove(c); });
+          dot.classList.add(cls);
+          dot.title = titre;
+          dot.setAttribute("aria-label", titre);
+          dot.hidden = false;
+          if (hdr) {
+            const rouge = cls === "kta-offline-ko";
+            hdr.hidden = !rouge;
+            if (rouge) {
+              hdr.title = titre;
+              hdr.setAttribute("aria-label", titre);
+            }
+          }
+        }
+
+        function _verifier() {
+          if (!window.SwInspector || typeof window.SwInspector.etat !== "function") return Promise.resolve();
+          // Les titres sont traduits au rendu : on attend les dicos (un
+          // controllerchange du tout premier chargement peut les devancer).
+          const dicos = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : null;
+          return Promise.all([window.SwInspector.etat(), dicos]).then(function(r) {
+            _dernier = r[0];
+            _peindre();
+          });
+        }
+
+        // Petit message court au-dessus de tout, visible depuis l'en-tête comme
+        // depuis le pied de page (les toasts d'OOMGuard attendent la fin du
+        // splash de la carte et « info » est tu par défaut : pas adaptés ici).
+        let _msgTimer = null;
+        function _message(texte, cls, garder) {
+          let m = document.getElementById("kta-offline-msg");
+          if (!m) {
+            m = document.createElement("div");
+            m.id = "kta-offline-msg";
+            m.className = "kta-offline-msg";
+            m.setAttribute("role", "status");
+            m.setAttribute("aria-live", "polite");
+            m.addEventListener("click", function() { m.hidden = true; });
+            document.body.appendChild(m);
+          }
+          m.textContent = texte;
+          m.classList.remove("kta-offline-msg-ok", "kta-offline-msg-ko");
+          if (cls) m.classList.add(cls);
+          m.hidden = false;
+          clearTimeout(_msgTimer);
+          _msgTimer = null;
+          if (!garder) _msgTimer = setTimeout(function() { m.hidden = true; }, 6000);
+        }
+
+        function _recuperer() {
+          if (_enCours || !window.SwInspector || typeof window.SwInspector.recuperer !== "function") return;
+          _enCours = true;
+          _progres = null;
+          _peindre();
+          window.SwInspector.recuperer(function(faits, total) {
+            _progres = { faits: faits, total: total };
+            _peindre();
+            _message(_t("home.offline.progres", { n: faits, total: total }), null, true);
+          }).then(function(r) {
+            _enCours = false;
+            _progres = null;
+            if (r.echecs > 0) {
+              _message(_t("home.offline.msg.echecs", { count: r.echecs }), "kta-offline-msg-ko");
+            } else {
+              _message(_t("home.offline.msg.ok"), "kta-offline-msg-ok");
+            }
+            return _verifier();
+          }).catch(function(err) {
+            console.warn("[HomeConfig] récupération hors-ligne :", err && err.message);
+            _enCours = false;
+            _progres = null;
+            _message(_t("home.offline.msg.erreur"), "kta-offline-msg-ko");
+            return _verifier();
+          });
+        }
+
+        function _clic() {
+          const e = _dernier;
+          if (_enCours) {
+            _message(_t("home.offline.dot.encours"));
+          } else if (!e || e.etat === "indisponible") {
+            _message(dot.title);
+          } else if (e.etat === "ok") {
+            // Vert : comportement du badge de version (notes / mise à jour).
+            const ver = document.getElementById("loaderCopyrightVersion");
+            if (ver) ver.click();
+          } else if (navigator.onLine === false) {
+            _message(dot.title);
+          } else {
+            _recuperer();
+          }
+        }
+
+        dot.addEventListener("click", _clic);
+        if (hdr) hdr.addEventListener("click", _recuperer);
+
+        window.addEventListener("kta-sw-autoheal", function(ev) {
+          const d = ev.detail || {};
+          if (d.phase === "debut") {
+            _enCours = true;
+            _peindre();
+            return;
+          }
+          _enCours = false;
+          _verifier();
+        });
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.addEventListener("controllerchange", function() { _verifier(); });
+        }
+        // Langue changée ou dicos rechargés : les titres suivent.
+        if (window.I18n && typeof window.I18n.onChange === "function") {
+          window.I18n.onChange(function() { if (_dernier || _enCours) _peindre(); });
+        }
+        // Le réseau revient ou tombe : on ne fait que repeindre (aucune
+        // vérification, l'état du cache n'a pas changé).
+        window.addEventListener("online", function() { if (_dernier) _peindre(); });
+        window.addEventListener("offline", function() { if (_dernier) _peindre(); });
+      })();
+
       // v1.7.3 : section "Plus d'options" retirée du loader (boutons
       // déplacés dans la modale ⚙️ Configuration). Les IDs #advancedHead,
       // #advancedBox, #advancedChevron n'existent plus dans le DOM.
       // Le bloc collapse handler est retiré aussi (devenu inutile).
 
-      // === BOUTON "💥 TOUT RÉINITIALISER" ===
-      const resetBtn = document.getElementById("loaderResetBtn");
-      if (resetBtn) {
-        resetBtn.addEventListener("click", function() {
-          if (typeof window.viderCacheAppli === "function") {
-            window.viderCacheAppli();
+      // === 🆘 DÉPANNAGE (lot A, 03/10/2026) ===
+      // Les trois outils de dépannage ne sont plus affichés en vrac dans
+      // ⚙️ Configuration : un seul bouton « 🆘 Dépannage » ouvre une fenêtre
+      // qui les range du plus doux au plus radical. Les trois parcours
+      // ci-dessous sont les anciens écouteurs de clic, extraits TELS QUELS en
+      // fonctions nommées (confirmations comprises) — aucune logique changée.
+
+      // 💥 TOUT RÉINITIALISER — double confirmation portée par viderCacheAppli
+      // (js/interfaceMaintenance.js).
+      function _depannageReset() {
+        if (typeof window.viderCacheAppli === "function") {
+          window.viderCacheAppli();
+        } else {
+          setStatus(window.I18n ? window.I18n.t("home.reset.indispo") : "Fonction de réinitialisation indisponible", true);
+        }
+      }
+
+      // 🔄 FORCER LA MISE À JOUR (v1.7.3) — « reset lite » : purge cache SW +
+      // reload, préserve TOUTES les données user. Garde-fou : modale de
+      // confirmation (js/loaderSwModals.js). Le ping internet n'est PAS
+      // répliqué ici : il vit dans `mettreAJourCodeSeul()`, qui affiche
+      // `_softUpdateOfflineWarning()` si offline.
+      function _depannageForceUpdate() {
+        _afficherConfirmForceUpdate().then(function(ok) {
+          if (!ok) return;
+          if (typeof window.mettreAJourCodeSeul === "function") {
+            window.mettreAJourCodeSeul();
           } else {
-            setStatus(window.I18n ? window.I18n.t("home.reset.indispo") : "Fonction de réinitialisation indisponible", true);
+            setStatus(window.I18n ? window.I18n.t("home.maj.indispo") : "Fonction de mise à jour indisponible", true);
           }
         });
       }
 
-      // === BOUTON "🔄 FORCER LA MISE À JOUR" (v1.7.3) ===
-      // "Reset lite" : purge cache SW + reload → récupère la dernière
-      // version. Préserve TOUTES les données user (localStorage,
-      // IndexedDB, sessions). Helper window.mettreAJourCodeSeul existe
-      // déjà depuis l'UpdateChecker — on le réutilise tel quel.
-      //
-      // 🆕 v1.7.3 (fix KARMA) : garde-fou de confirmation. Avant : un seul
-      // clic déclenchait le pipeline (ping → purge cache → reload). Trop
-      // facile à déclencher par erreur, et l'action implique un reload
-      // immédiat. Maintenant : modale custom (pattern `kta-readme-modal-
-      // overlay`) qui explique ce qui se passe + ce qui est préservé,
-      // demande confirmation explicite. Reste plus léger que le double
-      // confirm du Reset complet — c'est cohérent avec la sémantique
-      // "douce" de l'action (rien n'est supprimé).
-      //
-      // Note : on ne réplique PAS le ping internet ici — il existe déjà
-      // dans `mettreAJourCodeSeul()` (cf. js/interface.js ligne 1859)
-      // qui affiche `_softUpdateOfflineWarning()` si offline.
-      const forceUpdateBtn = document.getElementById("loaderForceUpdateBtn");
-      if (forceUpdateBtn) {
-        forceUpdateBtn.addEventListener("click", function() {
-          _afficherConfirmForceUpdate().then(function(ok) {
-            if (!ok) return;
-            if (typeof window.mettreAJourCodeSeul === "function") {
-              window.mettreAJourCodeSeul();
-            } else {
-              setStatus(window.I18n ? window.I18n.t("home.maj.indispo") : "Fonction de mise à jour indisponible", true);
-            }
-          });
-        });
-      }
-
-      // 🆘 v1.37.0 — Bouton "Désinscrire le Service Worker" (kill SW).
-      // Double garde-fou :
+      // 🆘 v1.37.0 — KILL SW (ouvre killsw.html). Double garde-fou :
       //   1. Ping Internet AVANT la modale — refus immédiat si offline ou
-      //      serveur KO (car re-download des assets requis au prochain boot).
-      //      Sans Internet l'app deviendrait inutilisable après le kill.
-      //   2. Modale de confirmation (pattern Promise-based aligné sur
-      //      _afficherConfirmForceUpdate) — l'user doit valider explicitement.
-      const killSwBtn = document.getElementById("loaderKillSwBtn");
-      if (killSwBtn) {
-        killSwBtn.addEventListener("click", async function() {
-          // 🆘 v1.37.0 — Overlay "Vérification…" pendant le ping (5s max).
-          // Sinon l'user ne voit RIEN se passer entre clic et résultat
-          // (KARMA "l'user sais pas qu'il se passe un truc"). Pattern
-          // overlay simple créé inline + auto-remove dans le finally.
-          const waitOverlay = document.createElement("div");
-          waitOverlay.className = "kta-modal-overlay";
-          waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
-          waitOverlay.innerHTML =
-            '<div class="kta-modal" style="max-width:340px;">' +
-              '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
-              '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
-              '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
-            '</div>';
-          document.documentElement.appendChild(waitOverlay);
+      //      serveur KO (re-download des assets requis au prochain boot).
+      //   2. Modale de confirmation (Promise, js/loaderSwModals.js).
+      async function _depannageKillSw() {
+        // Overlay "Vérification…" pendant le ping (5s max) : sinon l'user
+        // ne voit RIEN se passer entre clic et résultat.
+        const waitOverlay = document.createElement("div");
+        waitOverlay.className = "kta-modal-overlay";
+        waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
+        waitOverlay.innerHTML =
+          '<div class="kta-modal" style="max-width:340px;">' +
+            '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+            '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
+            '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
+          '</div>';
+        document.documentElement.appendChild(waitOverlay);
 
-          // Garde-fou 1 : ping Internet. Refuser si offline.
-          // Si _pingInternet n'est pas exposé (timing de chargement),
-          // fallback sur navigator.onLine (moins fiable, juste OS-level).
-          let online;
-          try {
-            if (typeof window._pingInternet === "function") {
-              online = await window._pingInternet();
-            } else {
-              online = (typeof navigator !== "undefined") ? navigator.onLine : true;
-            }
-          } catch(e) { online = false; }
-
-          // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
-          try { waitOverlay.remove(); } catch(e) {}
-
-          if (!online) {
-            _afficherKillSwOfflineRefus();
-            return;
+        // Garde-fou 1 : ping Internet. Si _pingInternet n'est pas exposé
+        // (timing de chargement), repli sur navigator.onLine.
+        let online;
+        try {
+          if (typeof window._pingInternet === "function") {
+            online = await window._pingInternet();
+          } else {
+            online = (typeof navigator !== "undefined") ? navigator.onLine : true;
           }
-          // Garde-fou 2 : confirmation utilisateur.
-          _afficherConfirmKillSw().then(function(ok) {
-            if (!ok) return;
-            window.location.href = "killsw.html";
-          });
+        } catch(e) { online = false; }
+
+        // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
+        try { waitOverlay.remove(); } catch(e) {}
+
+        if (!online) {
+          _afficherKillSwOfflineRefus();
+          return;
+        }
+        // Garde-fou 2 : confirmation utilisateur.
+        _afficherConfirmKillSw().then(function(ok) {
+          if (!ok) return;
+          window.location.href = "killsw.html";
         });
       }
+
+      // La fenêtre 🆘 Dépannage, construite à chaque ouverture : le
+      // MutationObserver de js/interfaceDocs.js y pose le ❓ (fiche
+      // « depannage »). Elle s'empile au-dessus de ⚙️ Configuration (même
+      // z-index, ajoutée après) et SOUS les confirmations, ajoutées après
+      // elle : à l'annulation, on y revient.
+      function _fermerDepannage() {
+        const m = document.getElementById("kta-depannage-modal");
+        if (m) m.remove();
+        window.removeEventListener("keydown", _depannageOnKey, true);
+      }
+      // Échap ne ferme la fenêtre que si elle est AU PREMIER PLAN : quand une
+      // confirmation (ou la fiche d'aide) est ouverte par-dessus, c'est elle
+      // qui doit partir. Écoute en capture + stopPropagation : l'Échap de
+      // ⚙️ Configuration ne fermerait sinon la fenêtre parente dans la foulée
+      // (il s'abstient aussi tant que la fenêtre existe).
+      function _depannageOnKey(e) {
+        if (e.key !== "Escape") return;
+        const m = document.getElementById("kta-depannage-modal");
+        if (!m) return;
+        for (let n = m.nextElementSibling; n; n = n.nextElementSibling) {
+          if (/overlay|submodal/.test(n.className || "") && n.style.display !== "none") return;
+        }
+        e.stopPropagation();
+        _fermerDepannage();
+      }
+      function _ouvrirDepannage() {
+        _fermerDepannage();
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        const _esc = function(s) {
+          return String(s).replace(/[&<>"]/g, function(c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        };
+        // Adresse de la page de secours, relative à l'origine (dev, prod, selfhost).
+        let urlSecours = "killsw.html";
+        try { urlSecours = new URL("killsw.html", window.location.href).href; } catch(e) {}
+
+        const overlay = document.createElement("div");
+        overlay.id = "kta-depannage-modal";
+        overlay.className = "kta-readme-modal-overlay";
+        overlay.style.display = "flex";
+        overlay.innerHTML =
+          '<div class="kta-readme-modal-boite kta-depannage-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">' + _t("home.cfg.depannage.title") + '</span>' +
+              '<button class="kta-panneau-close" type="button" id="kta-depannage-close">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps kta-depannage-corps">' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.updateWhen") + '</p>' +
+                '<button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn">' +
+                  _t("home.cfg.forceUpdateBtn") + '</button>' +
+              '</div>' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.killSwWhen") + '</p>' +
+                '<button class="loader-btn-secondary" type="button" id="loaderKillSwBtn">' +
+                  _t("home.cfg.killSwBtn") + '</button>' +
+              '</div>' +
+              '<div class="kta-depannage-item">' +
+                '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.resetWhen") + '</p>' +
+                '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">' +
+                  _t("home.cfg.resetBtn") + '</button>' +
+              '</div>' +
+              '<p class="kta-depannage-secours kta-tx-muted">' + _t("home.cfg.depannage.killswPage") +
+                ' <code>' + _esc(urlSecours) + '</code></p>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(overlay);
+
+        overlay.addEventListener("click", function(e) {
+          if (e.target === overlay) _fermerDepannage();
+        });
+        document.getElementById("kta-depannage-close").addEventListener("click", _fermerDepannage);
+        document.getElementById("loaderForceUpdateBtn").addEventListener("click", _depannageForceUpdate);
+        document.getElementById("loaderKillSwBtn").addEventListener("click", _depannageKillSw);
+        document.getElementById("loaderResetBtn").addEventListener("click", _depannageReset);
+        window.addEventListener("keydown", _depannageOnKey, true);
+      }
+
+      const depannageBtn = document.getElementById("loaderDepannageBtn");
+      if (depannageBtn) depannageBtn.addEventListener("click", _ouvrirDepannage);
 
       // ═══════════════════════════════════════════════════════════════
       // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
@@ -970,27 +1036,15 @@
         });
       }
 
-      // 🆕 v1.43.12 — 🔧 Inspecteur Service Worker. Ouvre la modale de
-      // diagnostic du cache PWA : compare ASSETS_TO_CACHE (attendus) avec
-      // le contenu réel du cache. Verdict + bouton récupération manuels.
-      // Module js/swInspector.js chargé à proximité de memInspector.
-      const swInspectBtn = document.getElementById("loaderSwInspectorBtn");
-      if (swInspectBtn) {
-        swInspectBtn.addEventListener("click", function() {
-          if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") {
-            window.SwInspector.ouvrir();
-          } else {
-            setStatus("Module SwInspector indisponible — recharge la page", true);
-          }
-        });
-      }
+      // 🔧 L'inspecteur Service Worker (#loaderSwInspectorBtn) est rendu et
+      // branché par js/devMode.js (mode développeur actif seulement).
 
       // 🆕 v1.43.13 — Auto-heal silencieux du cache SW. Tire ~5s après le
       // boot pour laisser le SW finir son install. Garde-fous internes
-      // (online, SW ready, pas incognito/strict-offline, 1x par session,
-      // cap 100 fetches). Output en console uniquement, pas de toast user.
-      // Concept : si l'install initial a foiré sur 44 assets, l'user n'a
-      // plus à le savoir — le cache se répare tout seul au prochain boot.
+      // (online, SW ready, pas incognito, 1x par session,
+      // cap 100 fetches). La réparation reste silencieuse ; son résultat
+      // (événement kta-sw-autoheal) repeint la pastille « hors-ligne » du
+      // pied de page (cf. _initPastilleHorsLigne plus haut).
       setTimeout(function() {
         if (window.SwInspector && typeof window.SwInspector.autoHealIfNeeded === "function") {
           window.SwInspector.autoHealIfNeeded();
@@ -1316,46 +1370,13 @@
       // ═══════════════════════════════════════════════════════════════
       // 🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
       // ═══════════════════════════════════════════════════════════════
-      // 3 boutons + 1 toggle dans la section "🔒 Confidentialité & Audit"
-      // de la modale Configuration :
+      // Section "🔒 Confidentialité & Audit" de la modale Configuration :
       //   - 📋 Voir le journal réseau → ouvre #loaderNetLogModal (live)
       //   - 📖 Que fait l'app sur le réseau ? → ouvre #loaderNetDocModal
-      //   - 🔒 Mode hors-ligne strict → toggle window.NetworkAudit
-      //
-      // Le badge "MODE HORS-LIGNE STRICT" dans le footer est mis à jour via
-      // window._kta_majBadgeParanoia (appelé par NetworkAudit.setParanoia).
+      //   - 🗺️ Vue OSM → OsmView.setOptedIn (seul accès à un tiers :
+      //     le fond de carte OpenStreetMap)
 
-      // ── Helper : maj du badge paranoia + sync checkbox ──────────────
-      window._kta_majBadgeParanoia = function() {
-        const isOn = !!(window.NetworkAudit && window.NetworkAudit.isParanoia());
-        const badge = document.getElementById("loaderParanoiaBadge");
-        if (badge) badge.style.display = isOn ? "block" : "none";
-        const cb = document.getElementById("loaderNetParanoiaCb");
-        if (cb) cb.checked = isOn;
-      };
-
-      // ── Init : sync checkbox + badge depuis l'état actuel ───────────
-      try { window._kta_majBadgeParanoia(); } catch(e) {}
-
-      // ── Badge cliquable → ouvre la modale Configuration ─────────────
-      const paranoiaBadge = document.getElementById("loaderParanoiaBadge");
-      if (paranoiaBadge) {
-        paranoiaBadge.addEventListener("click", function() {
-          _ouvrirLoaderConfig();
-        });
-      }
-
-      // ── Toggle "🔒 Mode hors-ligne strict" ──────────────────────────
-      const paranoiaCb = document.getElementById("loaderNetParanoiaCb");
-      if (paranoiaCb) {
-        paranoiaCb.addEventListener("change", function() {
-          if (window.NetworkAudit) {
-            window.NetworkAudit.setParanoia(paranoiaCb.checked);
-          }
-        });
-      }
-
-      // 🆕 v1.39.0 — Toggle "🗺️ Autoriser la Vue OSM"
+      // Toggle "🗺️ Autoriser la Vue OSM"
       const osmOptInCb = document.getElementById("loaderOsmOptInCb");
       if (osmOptInCb && window.OsmView) {
         osmOptInCb.checked = window.OsmView.isOptedIn();
@@ -1459,8 +1480,7 @@
           // sur le .md et qu'il n'est pas (encore) dans le cache, le SW
           // servirait le splash index.html à la place → confusion totale
           // pour l'user. Le .html est dans ASSETS_TO_CACHE depuis v1.8.0
-          // donc toujours dispo offline. Path same-origin → passe la CSP
-          // et le mode paranoia.
+          // donc toujours dispo offline. Path same-origin → passe la CSP.
           window.open("docs/applications/NETWORK_AUDIT.html", "_blank", "noopener,noreferrer");
         });
       }

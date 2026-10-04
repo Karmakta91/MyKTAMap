@@ -225,6 +225,14 @@
       return { x: v.x, y: v.y, source: "search", label: v.label || "" };
     });
   }
+  // 🪧 Guidage (01/10/2026) : le trajet à vol d'oiseau jusqu'au tracé est
+  // compté, comme pour un itinéraire classique (décision K, ETUDE_GUIDAGE).
+  function _raccordsM(r, scale) {
+    const px = (window.ItiGuidage && typeof window.ItiGuidage.longueurRaccordsPx === "function")
+      ? window.ItiGuidage.longueurRaccordsPx(r) : 0;
+    return px / (scale > 0 ? scale : 1);
+  }
+
   async function _legEntre(ctx, from, to, via) {
     const wps = [from].concat(_viaWps(via)).concat([to]);
     let r;
@@ -236,10 +244,14 @@
     } else {
       r = window.Pathfinder.computeRouteOnRoads(wps, ctx.roads, {
         zones: ctx.zones, avoidPoints: ctx.avoidPts,
-        avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius
+        avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius,
+        echelle: ctx.scale   // 🪧 carrefours mesurés à l'échelle de CE plan
       });
     }
-    return { path: r.path, distM: r.totalDistance / ctx.scale, usedFallback: !!r.usedFallback };
+    return {
+      path: r.path, distM: r.totalDistance / ctx.scale + _raccordsM(r, ctx.scale), usedFallback: !!r.usedFallback,
+      raccords: r.raccords || [], carrefours: r.carrefours || []
+    };
   }
 
   async function _computeMultiHop(dest, pos, planA, via) {
@@ -379,10 +391,22 @@
             : "🌀 " + ((nFrom.side && nFrom.side.pointNom) || "");
           curLeg = {
             planId: nTo.planId, planName: ctxs[nTo.planId].planName,
-            path: [], distM: 0, usedFallback: false,
+            path: [], distM: 0, usedFallback: false, raccords: [], carrefours: [],
             fromWp: { x: nFrom.x, y: nFrom.y, source: (ids[i - 1] === "@start") ? "tracker" : "portal", label: fromLabel }
           };
         }
+        // 🪧 Deux morceaux bout à bout sur le même plan : seuls le départ du
+        // premier et l'arrivée du dernier restent (sinon une « arrivée » au
+        // milieu du trajet). Le raccord intermédiaire reste compté dans distM :
+        // cas rare, et le libellé de distance, lui, se relit sur la road.
+        const racc = (pr.leg.raccords || []).filter(function(r) {
+          return !(curLeg.raccords.length && r.role === "depart");
+        });
+        if (racc.length && curLeg.raccords.length) {
+          curLeg.raccords = curLeg.raccords.filter(function(r) { return r.role !== "arrivee"; });
+        }
+        curLeg.raccords = curLeg.raccords.concat(racc);
+        curLeg.carrefours = curLeg.carrefours.concat(pr.leg.carrefours || []);
         curLeg.path = curLeg.path.concat(pr.leg.path);
         curLeg.distM += pr.leg.distM;
         curLeg.usedFallback = curLeg.usedFallback || pr.leg.usedFallback;
@@ -541,17 +565,20 @@
            { x: dest.x, y: dest.y, source: "search", label: dest.label || "" }],
           routingB.roads,
           { zones: routingB.zones, avoidPoints: avoidPtsB,
-            avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius });
+            avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius,
+            echelle: scaleB });   // 🪧 carrefours mesurés à l'échelle du plan B
       } catch(eB) {
         echecs.push({ portail: nomPortail, cote: "B", msg: eB.message || String(eB) });
         continue;
       }
-      const totalM = (legA.totalDistance / scaleA) + (legB.totalDistance / scaleB);
+      const distAM = legA.totalDistance / scaleA + _raccordsM(legA, scaleA);
+      const distBM = legB.totalDistance / scaleB + _raccordsM(legB, scaleB);
+      const totalM = distAM + distBM;
       if (!best || totalM < best.totalM) {
         best = {
           portal: c, legA: legA, legB: legB,
-          distAM: legA.totalDistance / scaleA,
-          distBM: legB.totalDistance / scaleB,
+          distAM: distAM,
+          distBM: distBM,
           totalM: totalM,
           nomPortail: nomPortail
         };
@@ -584,10 +611,40 @@
   // { planId, sortie:{x,y}, portalOut, nextDistM }
   let _currentPortalOut = null;
 
-  function _tracerItinerary(path, waypoints) {
+  // Croisements que le guidage annoncera sur une étape : un carrefour isolé,
+  // ou une zone de carrefours (membres qui partagent le même centre) = UN.
+  function _nbCroisements(carrefours) {
+    const vus = {};
+    let n = 0;
+    (carrefours || []).forEach(function(c) {
+      if (!c.zone) { n++; return; }
+      const k = Math.round(c.zone.x) + "," + Math.round(c.zone.y);
+      if (!vus[k]) { vus[k] = true; n++; }
+    });
+    return n;
+  }
+
+  // 🪧 01/10/2026 — `leg` porte aussi `raccords` / `carrefours` : le guidage
+  // annonce les croisements, le pointillé jusqu'au tracé est dessiné et compté.
+  // `suivants` = étapes des plans d'après : résumées sur la road (`suite`) pour
+  // que la feuille de route dise ce qui attend après le portail.
+  function _tracerItinerary(leg, suivants) {
     if (!window.getRoads || !window.setRoads) return;
     const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
-    roads.push({ type: "itinerary", points: path, waypoints: waypoints || [] });
+    const road = {
+      type: "itinerary", points: leg.path, waypoints: leg.waypoints || [],
+      raccords: leg.raccords || [], carrefours: leg.carrefours || []
+    };
+    if (Array.isArray(suivants) && suivants.length) {
+      let portail = leg.portalOut;
+      road.suite = suivants.map(function(l) {
+        const s = { portail: (portail && portail.nom) || "", plan: l.planName || l.planId || "",
+                    distM: l.distM || 0, croisements: _nbCroisements(l.carrefours) };
+        portail = l.portalOut;
+        return s;
+      });
+    }
+    roads.push(road);
     window.setRoads(roads);
   }
 
@@ -605,6 +662,7 @@
         {
           planId: planA, planName: nomA,
           path: res.legA.path, distM: res.distAM, usedFallback: !!res.legA.usedFallback,
+          raccords: res.legA.raccords || [], carrefours: res.legA.carrefours || [],
           waypoints: [{ x: 0, y: 0, source: "tracker", label: "" }]
             .concat(_viaWps(via))
             .concat([{ x: res.portal.sortieA.x, y: res.portal.sortieA.y, source: "portal", label: "🌀 " + res.nomPortail }]),
@@ -621,6 +679,7 @@
         {
           planId: res.planB.id, planName: res.planB.name || res.planB.id,
           path: res.legB.path, distM: res.distBM, usedFallback: !!res.legB.usedFallback,
+          raccords: res.legB.raccords || [], carrefours: res.legB.carrefours || [],
           waypoints: [
             { x: res.portal.entreeB.x, y: res.portal.entreeB.y, source: "portal", label: "🌀 " + (res.portal.entreeB.pointNom || "") },
             { x: res.dest.x, y: res.dest.y, source: "search", label: res.dest.label || "" }
@@ -758,7 +817,7 @@
     // Trace le 1er leg (remplace l'itinéraire actif — même sémantique que
     // « Y aller ») + flash sur le portail à rejoindre.
     const leg0 = chain.legs[0];
-    _tracerItinerary(leg0.path, leg0.waypoints);
+    _tracerItinerary(leg0, chain.legs.slice(1));
     try {
       const cible = leg0.waypoints[1];
       const latlng = window.convertCoord(cible.x, cible.y);
@@ -806,7 +865,7 @@
     const reste = _pendingChain;
     setTimeout(function() {
       try {
-        _tracerItinerary(head.path, head.waypoints);
+        _tracerItinerary(head, reste);
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(_t("ipr.toast.legTraced", {
             dest: (head.waypoints[1] && head.waypoints[1].label) || "",
@@ -847,10 +906,40 @@
   function onPlanExit(contexte) {
     _retirerProchainPortail();
     _currentPortalOut = null;
-    if (contexte === "home") _pendingChain = null;
+    if (contexte === "home") { _pendingChain = null; return; }
+    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée sur un
+    // switch : ouvrir le plan suivant par le sélecteur (sans prendre le
+    // portail) y traçait l'étape, écrasait l'itinéraire de ce plan et
+    // l'enregistrait dans sa session. On ne la poursuit plus que si :
+    //   • on part par une traversée PHYSIQUE (goTo recalerTracker) ;
+    //   • l'itinéraire du plan quitté n'a pas été REMPLACÉ par un autre — tant
+    //     que la chaîne court, le sien porte `suite` (gardée par la coupe et
+    //     la replanification). Absent, il a été clôturé au portail : normal.
+    if (_pendingChain && _pendingChain.length) {
+      const traverse = !!(window.InterPlanLinks &&
+        typeof window.InterPlanLinks.traverseePhysiqueEnCours === "function" &&
+        window.InterPlanLinks.traverseePhysiqueEnCours());
+      const iti = (window.getRoads ? window.getRoads() : [])
+        .find(function(r) { return r && r.type === "itinerary" && !r._preview; });
+      const remplace = !!(iti && !iti.suite);
+      if (!traverse || remplace) {
+        console.log("[InterPlanRoute] Suite abandonnée (" + (remplace ? "itinéraire remplacé" : "plan quitté sans le portail") + ")");
+        _pendingChain = null;
+      }
+    }
+  }
+
+  // L'utilisateur supprime l'itinéraire (« 🗑️ Supprimer » / « ❌ Effacer ») :
+  // la suite sur les autres plans part avec lui.
+  function abandonnerSuite() {
+    if (_pendingChain) console.log("[InterPlanRoute] Suite abandonnée (itinéraire supprimé)");
+    _pendingChain = null;
+    _currentPortalOut = null;
+    _retirerProchainPortail();
   }
 
   window.InterPlanRoute = {
+    abandonnerSuite:     abandonnerSuite,
     computeEtAfficher:   computeEtAfficher,
     onPlanLoaded:        onPlanLoaded,
     onTrackerRecale:     onTrackerRecale,

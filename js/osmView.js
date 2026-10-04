@@ -110,8 +110,6 @@
 // PRIVACY
 //   - Aucun appel sortant tant que la modale n'est pas ouverte ET que le
 //     toggle "Autoriser OSM" est activé.
-//   - Si "Mode hors-ligne strict" activé → bouton désactivé visuellement +
-//     toast d'erreur.
 //   - Si "Mode incognito" activé → bouton désactivé + toast.
 //
 // API
@@ -244,7 +242,7 @@
   // Leaflet dont le fond vient de `tile.openstreetmap.org`. Actif par défaut,
   // l'accueil contacte donc OpenStreetMap AU CHARGEMENT, sans clic — pour qui
   // possède au moins un plan géoréférencé. Restent bloquants et prioritaires :
-  // mode hors-ligne strict, incognito, hors-ligne réel, aucun plan géoréf.
+  // incognito, hors-ligne réel, aucun plan géoréf.
   // Un bandeau ponctuel le dit à l'utilisateur la première fois
   // (osmHomePreview.js) : un défaut qui contacte un tiers s'annonce.
   //
@@ -294,12 +292,6 @@
   }
   function _hasGeoref() {
     return !!_getEffectiveGeoref();
-  }
-  function _isStrictOfflineOn() {
-    try {
-      return !!(window.NetworkAudit && typeof window.NetworkAudit.isStrictOfflineEnabled === "function"
-                && window.NetworkAudit.isStrictOfflineEnabled());
-    } catch(e) { return false; }
   }
   function _isIncognitoOn() {
     try { return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
@@ -379,7 +371,7 @@
   function isAvailable() {
     // 🆕 v1.43.0 — Si offline mais cache OSM présent pour la bbox du
     // plan, on autorise quand même l'ouverture (mode « cache offline »).
-    // Strict-offline + incognito restent bloquants (= choix volontaire user).
+    // L'incognito reste bloquant (= choix volontaire user).
     // Fire-and-forget : à chaque appel (polling 2s refonteInterface) on
     // raffraichit la flag _planHasCachedTiles en arrière-plan → converge
     // en ~1 tick après chargement du plan. Sans ça, la flag reste à false
@@ -388,7 +380,7 @@
     try {
       if (window.OsmTilesCache) _recheckCachedForCurrentPlan();
     } catch(e) {}
-    return _hasGeoref() && isOptedIn() && !_isStrictOfflineOn() && !_isIncognitoOn() && _isOnlineOrCached();
+    return _hasGeoref() && isOptedIn() && !_isIncognitoOn() && _isOnlineOrCached();
   }
 
   // =========================
@@ -750,17 +742,11 @@
   // 🆕 v1.40.18 — Fix GPS ponctuel + marker sur la map (1 clic = 1 fix).
   // Source : navigator.geolocation (API browser native). 0 réseau, 0 stockage.
   // Permission OS demandée à la demande user (pas au boot).
-  // 🆕 v1.40.19 — Garde runtime strict offline / incognito : si l'user a activé
-  // ces modes PENDANT la session (la modale était déjà ouverte), on bloque ici.
+  // Garde runtime incognito : si l'user est passé en incognito PENDANT la
+  // session (la modale était déjà ouverte), on bloque ici.
   // Note : navigator.onLine===false ne bloque PAS le GPS (le GPS marche en avion).
   function _showMyGpsPositionOsm() {
     if (!_osmMap) return;
-    if (_isStrictOfflineOn()) {
-      if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast(window.I18n.t("osm.gps.strictOffline.toast"), "warn");
-      } else { alert(window.I18n.t("osm.gps.strictOffline.alert")); }
-      return;
-    }
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm.gps.incognito.toast"), "warn");
@@ -1733,12 +1719,11 @@
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.I18n.t("osm.btn.centerPlan") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.I18n.t("osm.btn.centerTracker") + '</button>' +
           // 🆕 v1.40.18 — Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage, 0 réseau)
-          // 🆕 v1.40.19 — Disabled visuel si strict offline OU incognito au moment du build
+          // Disabled visuel si incognito au moment du build
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mygps" style="font-size:12px; padding:5px 10px;"' +
-            (_isStrictOfflineOn() || _isIncognitoOn() ? ' disabled' : '') +
+            (_isIncognitoOn() ? ' disabled' : '') +
             ' title="' +
-              _escapeHtml(_isStrictOfflineOn() ? window.I18n.t("osm.btn.mygps.title.strictOffline")
-                : _isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
+              _escapeHtml(_isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
                 : window.I18n.t("osm.btn.mygps.title.default")) +
             '">' + window.I18n.t("osm.btn.mygps") + '</button>' +
           // 📏 v1.85.0 — la mesure, jusqu'ici reservee a la Vue OSM du HOME.
@@ -2008,7 +1993,7 @@
     if (!window.OsmTilesCache || !_osmMap) return;
     if (!btn) btn = document.getElementById("kta-osm-cache-btn");
     const oldLabel = btn ? btn.textContent : "";
-    // Garde : pas dispo si offline strict (= besoin du réseau pour télécharger)
+    // Garde : pas dispo hors-ligne (= besoin du réseau pour télécharger)
     if (!_isOnline()) {
       _toast(window.I18n.t("osm.cache.run.noNetwork"), 4000);
       return;
@@ -2459,12 +2444,6 @@
     // pour expliquer comment activer.
     if (!_isV2Plan()) {
       alert(window.I18n.t("osm.open.notV2"));
-      return;
-    }
-    if (_isStrictOfflineOn()) {
-      if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast(window.I18n.t("osm.open.strictOffline.toast"), "warn");
-      } else { alert(window.I18n.t("osm.open.strictOffline.alert")); }
       return;
     }
     if (_isIncognitoOn()) {

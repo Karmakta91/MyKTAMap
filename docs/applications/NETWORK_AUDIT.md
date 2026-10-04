@@ -1,10 +1,10 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.99.0** (1er octobre 2026). Les notes par version sont en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v2.0.0** (4 octobre 2026). Les notes par version sont en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
-> **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
-> hors-ligne strict** si tu veux une garantie active côté navigateur.
+> **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
+> site extérieur qu'elle contacte** (OpenStreetMap, pour la Vue OSM).
 
 ---
 
@@ -84,7 +84,7 @@ envoyé** (réponse : rien, jamais).
 
 | Endpoint | Méthode | Quand | Pourquoi | Données envoyées |
 |---|---|---|---|---|
-| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA | Charger l'app | **Aucune** |
+| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA ; fichiers manquants retéléchargés par la réparation automatique (~5 s après l'accueil) ou d'un appui sur la pastille hors-ligne rouge | Charger l'app | **Aucune** |
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur (v1.42.0+) | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
@@ -92,7 +92,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (v1.45.0+, espagnol v1.46.1+) | **Aucune** (fichiers statiques same-origin, **network-first depuis v1.46.5** + **cache-buster `?v=<build>` depuis v1.46.6** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
-| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | **Uniquement** quand la modale **Vue OSM** est ouverte (cf v1.39.0, opt-in strict requis) | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -101,10 +101,16 @@ envoyé** (réponse : rien, jamais).
 Pour dev : `dev.myktamap.fr`. Sur ton réseau local en
 développement : `localhost` ou IP locale.
 
-**Aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket`,
-`EventSource` ou n'importe quelle autre méthode d'envoi de données vers
-un serveur n'est jamais émise par l'app.** Si un jour ça change, ce
-fichier sera mis à jour en conséquence et la version sera bumpée.
+**Sur `myktamap.fr`, aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`,
+`WebSocket`, `EventSource` ou n'importe quelle autre méthode d'envoi de
+données vers un serveur n'est jamais émise par l'app — et ce domaine n'aura
+jamais de serveur applicatif.** Depuis la v2.0.0, une installation
+indépendante (hors de ce domaine) peut déclarer une **connexion serveur**
+dans sa configuration ; l'app affiche alors son état dans le pied de page de
+l'accueil (pastille 🔌), et rien n'est activé sans une licence posée par
+cette installation. Sur `myktamap.fr`, la pastille affiche « Serveur :
+désactivé ». Si un jour ce qui précède change, ce fichier sera mis à jour en
+conséquence et la version sera bumpée.
 
 ### À propos du ping `<origin>/ping.html` (depuis v1.9.3)
 
@@ -144,9 +150,9 @@ lu pour vérification. Si le serveur répond autre chose (404, 500, body
 différent), le ping est traité comme "indispo" et l'app refuse de
 tenter la mise à jour douce.
 
-Si tu préfères ne pas faire ce ping du tout, **active le mode hors-ligne
-strict** (cf. plus bas) : il sera bloqué comme tout autre appel non
-local.
+Ce ping vise **le serveur de l'app lui-même** (même origine) : il ne
+contacte aucun tiers et n'envoie rien. Il n'a lieu que sur ton action
+(reset, Force update, ouverture de la Vue OSM).
 
 ### À propos des tuiles OSM `tile.openstreetmap.org` (depuis v1.39.0)
 
@@ -158,10 +164,10 @@ sous 3 conditions strictes simultanément réunies** :
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
    map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
    masqué côté UI et l'appel n'a aucun moyen de se déclencher.
-2. **L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »** dans
-   ⚙️ Configuration home. **Default OFF**, persisté en `localStorage`
-   sous la clé `myktamap_osm_view_opt_in`. L'utilisateur peut le
-   désactiver à tout moment.
+2. **L'utilisateur n'a pas désactivé la Vue OSM** dans ⚙️ Configuration
+   home. **Active par défaut** (un bandeau le signale au premier usage),
+   persisté en `localStorage` sous la clé `myktamap_osm_view_opt_in` :
+   un refus (« 0 ») est mémorisé et n'est jamais réécrasé.
 3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
    possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
    - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️
@@ -174,9 +180,7 @@ sous 3 conditions strictes simultanément réunies** :
      visuellement.
 
 **Garanties supplémentaires** :
-- Le bouton modale et la colonne widget sont aussi masqués si « Mode
-  hors-ligne strict » OU « Mode incognito » sont actifs (extension
-  automatique de ces deux modes).
+- La modale et le widget sont aussi bloqués en **Mode incognito**.
 - Modale et widget : masqués si `navigator.onLine === false` (hors-ligne
   détecté par le navigateur).
 - Un ping `/ping.html` est effectué juste avant l'ouverture de la modale
@@ -213,7 +217,7 @@ sous 3 conditions strictes simultanément réunies** :
   reçu, si la position est **très loin** de la bbox du plan georef sélectionné
   (>50% au-delà des bords), le marker n'est **pas affiché** + toast warn avec
   la distance approximative au centre du plan. Garantit qu'un user à Paris ne
-  voit pas son fix s'afficher sur un plan des Catacombes de Lyon par erreur.
+  voit pas son fix s'afficher sur un plan situé à Lyon par erreur.
   Marge ×1.5 (= `bounds.pad(0.5)`) choisie permissive pour ne pas rejeter les
   fix légitimes en bordure de plan. Si la bbox plan n'est pas calculable (dims
   manquantes, georef absente), fallback safe : on autorise (comportement
@@ -225,16 +229,12 @@ sous 3 conditions strictes simultanément réunies** :
   La config Nginx versionnée (`docs/nginx-csp-config.conf` et `docker/nginx-docker.conf`)
   a été mise à jour. Restriction `(self)` choisie volontairement : seule notre origine
   peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).
-- **Gating Mode hors-ligne strict + Mode incognito (depuis v1.40.19)** :
-  la Vue OSM (modale ET widget HOME) respecte les modes vie privée :
-  - **Mode hors-ligne strict** activé → modale `osmView.js` bloquée à
-    l'ouverture (toast warn) + widget HOME affiche un message dédié
-    "🛡️ Hors-ligne strict actif" au lieu de la mini-carte (parité ajoutée
-    v1.40.19, le widget avait un trou v1.40.0-18).
-  - **Mode incognito** activé → idem (message "🕶️ Mode incognito actif"
-    dans le widget HOME, modale bloquée).
-  - **Bouton « 📍 Ma position »** : si l'user active strict offline ou
-    incognito PENDANT que la modale est ouverte (edge case toggle pendant
+- **Mode incognito** : la Vue OSM (modale ET widget HOME) est coupée —
+  modale `osmView.js` bloquée à l'ouverture (toast warn), widget HOME
+  remplacé par le message "🕶️ Mode incognito actif" au lieu de la
+  mini-carte.
+  - **Bouton « 📍 Ma position »** : si l'user passe en incognito PENDANT
+    que la modale est ouverte (edge case toggle pendant
     session), le bouton est désactivé visuellement (au build initial) ET
     le clic est neutralisé runtime (toast warn + early return, jamais de
     fix GPS). Note : `navigator.onLine === false` (Wi-Fi/4G coupé)
@@ -309,13 +309,12 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   appelle automatiquement la même logique que le bouton « Récupérer
   fichiers manquants » de l'Inspecteur SW. Conditions cumulatives :
   (1) `navigator.onLine === true`, (2) Service Worker controller actif,
-  (3) **pas en Mode hors-ligne strict**, (4) **pas en Mode incognito**,
-  (5) pas déjà tiré cette session (`sessionStorage` anti-spam),
-  (6) cap à 100 fetches max (anti-DDoS sur cache cassé). Output en console
+  (3) **pas en Mode incognito**,
+  (4) pas déjà tiré cette session (`sessionStorage` anti-spam),
+  (5) cap à 100 fetches max (anti-DDoS sur cache cassé). Output en console
   uniquement (pas de toast UI). Toutes les requêtes sont des `cache.add`
   des assets `ASSETS_TO_CACHE` — donc 100 % self-origin sur la whitelist
-  existante. **Respect intégral des modes privacy** : strict offline +
-  incognito désactivent l'auto-heal.
+  existante. **Respect du mode incognito** : il désactive l'auto-heal.
 - **v1.43.14** — UX : ajout d'un bouton 🔼/🔽 dans le header de la modale
   Vue OSM pour réduire/afficher les contrôles (opacité, actions, toggles,
   niveaux M-LVL, tags). État persisté en localStorage
@@ -387,8 +386,8 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   Les requêtes restent 100 % self-origin sur les URLs déjà déclarées dans
   `ASSETS_TO_CACHE`. **Aucun impact privacy** : le log IDB reste 100 %
   local (jamais transmis), le toast s'affiche uniquement côté client.
-  **Respect intégral des modes privacy** : strict offline + incognito
-  désactivent déjà l'auto-heal qui produirait le log.
+  **Respect du mode incognito** : il désactive déjà l'auto-heal qui
+  produirait le log.
 
 - **v1.43.23** — Auto-heal plus persistant : garde-fou `sessionStorage` rendu
   intelligent. Au lieu de "1× par session brut" (qui bloquait le retry au reload
@@ -609,10 +608,10 @@ bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
   `tiles`. Effaçable manuellement, ou via le bouton « 💥 Tout
   réinitialiser » de ⚙️ Configuration, ou via le `OsmTilesCache.clear()`
   exposé en console.
-- **Respect des modes vie privée** : le bouton « 💾 Cacher pour offline »
-  est masqué/désactivé si Mode hors-ligne strict OU Mode incognito sont
-  actifs (héritage automatique des gates `osmView.js` /
-  `osmHomePreview.js` v1.40.19).
+- **Respect des réglages vie privée** : le bouton « 💾 Cacher pour offline »
+  vit dans la carte Vue OSM — case 🗺️ Vue OSM décochée ou Mode incognito
+  actif, la carte ne s'ouvre pas, donc aucun préchargement n'est possible
+  (gates `osmView.js` / `osmHomePreview.js`).
 
 **Verdict réseau v1.44.7** : ✅ aucune nouvelle URL ajoutée à la liste
 blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
@@ -654,7 +653,12 @@ Tu y verras chaque requête avec :
 - La catégorie (`app-script`, `plan-data`, `ping`, etc.)
 - Si la requête envoyait des données (`hasBody: true/false`)
 - Le statut HTTP de la réponse
-- Si elle a été bloquée par le mode hors-ligne strict
+
+⚠️ Le journal voit les appels faits par le code de l'app (`fetch`,
+`XMLHttpRequest`, `sendBeacon`, `WebSocket`, `EventSource`). Les **tuiles
+de la Vue OSM** sont des images posées par la carte : elles n'y figurent
+pas. Pour les voir — et vérifier qu'elles ne partent que vers
+`tile.openstreetmap.org` — utilise la Méthode 2 (F12).
 
 Tu peux **copier** le journal au format texte ou **exporter en JSON**
 (bouton 📥) pour le partager / l'archiver / le faire auditer par un tiers.
@@ -695,42 +699,46 @@ Méthode 1. Tu peux le lire en intégralité pour comprendre la mécanique.
 
 ---
 
-## 🛡️ Le mode hors-ligne strict (paranoia opt-in)
+## 🗺️ Couper le seul site extérieur : la case Vue OSM
 
-Si la liste blanche te suffit pas et que tu veux une **garantie active
-côté navigateur**, active le **Mode hors-ligne strict** :
+L'app n'envoie **aucune** de tes données. Toutes ses requêtes vont vers
+**son propre serveur** — sauf une : le **fond de carte OpenStreetMap** de la
+Vue OSM (`tile.openstreetmap.org`). C'est le seul tiers que l'app contacte,
+et une case suffit à le couper :
 
 1. **Page d'accueil → ⚙️ Configuration**
 2. Section **🔒 Confidentialité & Audit**
-3. Coche **🔒 Mode hors-ligne strict**
+3. Décoche **🗺️ Vue OSM (OpenStreetMap)**
 
-Une fois activé :
-- **Toute requête sortante non-whitelistée est interceptée et bloquée
-  AVANT même d'atteindre le réseau** (le navigateur reçoit une exception,
-  pas un timeout).
-- Un badge orange `🔒 PARANOIA` apparaît dans le footer de la page d'accueil
-  pour te rappeler que le mode est actif.
-- L'app continue de fonctionner normalement (annotations, calculs, exports
-  PNG/KMZ, navigation, multi-niveau, itinéraire, tracker… tout ce qui ne
-  nécessite pas de réseau).
-- Les seules choses qui ne marcheront plus :
-  - La **détection automatique de mise à jour** (puisque `version.json` est
-    bloqué — sauf qu'il est en `<origin>` donc whitelisté par défaut)
-  - Les **plans serveur** que tu n'as pas encore mémorisés (mais ils sont
-    en same-origin donc whitelistés aussi)
-  - Le **ping `<origin>/ping.html`** avant un reset / force update
+Décochée, la case coupe tout ce qui touche OpenStreetMap : ni le widget de
+l'accueil ni la modale Vue OSM ne chargent de tuile, et le préchargement
+« 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
+**aucune mise à jour ne revient dessus**. Le **mode incognito** coupe lui
+aussi la Vue OSM.
 
-Le toggle est **persistant** : il survit aux reloads et aux fermetures
-d'onglet, jusqu'à ce que tu le décoches manuellement (ou que tu fasses
-un reset complet via 💥 Tout réinitialiser).
+Pour le vérifier : **📋 Voir le journal réseau** (requêtes de l'app) et
+**F12 → Réseau** (tout, y compris les images de carte) — tu ne dois plus
+voir que ton domaine.
 
-### Différence avec le mode `Avion` de ton OS
+### Pourquoi il n'y a plus de « mode hors-ligne strict »
 
-Le mode Avion coupe le WiFi/4G/5G entièrement. Le mode hors-ligne strict
-de MyKTAMap, lui, **te laisse une connexion fonctionnelle** pour le reste
-de ton appareil (autres apps, navigateur) mais bloque uniquement les
-appels que MyKTAMap pourrait faire. Tu peux donc faire des recherches
-web en parallèle pendant que MyKTAMap reste isolée.
+L'app proposait une case **🔒 Mode hors-ligne strict**, censée bloquer
+toute requête vers un autre site. Elle a été **retirée**, parce qu'elle ne
+tenait pas sa promesse : en pratique, elle ne bloquait que le
+**préchargement des tuiles OSM** (« 💾 Save Offline »). Ses autres blocages
+annoncés — Vue OSM, widget de l'accueil, Mode Secours, réparation
+automatique du cache — **ne fonctionnaient pas**, et l'affichage des tuiles
+OSM, fait par des images, lui échappait de toute façon. Comme tout le reste
+du trafic de l'app va vers son propre serveur, la case 🗺️ Vue OSM fait déjà
+ce travail — et elle, fonctionne. Mieux vaut une case qui coupe vraiment
+qu'un mode qui rassure à tort.
+
+### Et le mode `Avion` de ton OS ?
+
+Le mode Avion coupe tout le réseau de l'appareil. L'app continue de
+fonctionner (plans mémorisés, annotations, tracker, itinéraire, exports) ;
+seuls la Vue OSM (sans tuiles en cache), la détection de mise à jour et le
+chargement de plans serveur non mémorisés attendent le retour du réseau.
 
 ---
 
@@ -811,7 +819,7 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 
 | Espace | Contenu | Comment l'inspecter |
 |---|---|---|
-| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, paranoia, `myktamap_wake_lock_v1` boolean depuis v1.21.1, `myktamap_session_v1_<planId>` per-plan **enrichi depuis v1.21.2 avec trackerTimeline + trackerStartTs** — impact taille : ~1800 entries × ~80 bytes ≈ ~140 KB pour une session de 30 min de tracking continu, soit ~2 % du quota 5 MB localStorage typique navigateur, etc.) | F12 → Application → Local Storage |
+| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, `myktamap_wake_lock_v1` boolean depuis v1.21.1, `myktamap_session_v1_<planId>` per-plan **enrichi depuis v1.21.2 avec trackerTimeline + trackerStartTs** — impact taille : ~1800 entries × ~80 bytes ≈ ~140 KB pour une session de 30 min de tracking continu, soit ~2 % du quota 5 MB localStorage typique navigateur, etc.) | F12 → Application → Local Storage |
 | **localStorage → `myktamap_plan_stats_v1_<planId>`** (v1.21.4+) | **NOUVEAU v1.21.4** — Cache de stats agrégées par plan : `{pois, roads, distPx, breakdowns: {pointsByTag, roadsByType, zonesByType, structsByType}, ts, source}`. Counts uniquement (jamais de Blob/photo data). JSON-serialisé strictement local. Alimenté par `_computePlanStatsLive` + `_persisterStatsPlanCourant` (agrégation session + embedded via getters publics). | F12 → Application → Local Storage |
 | **localStorage → `myktamap_loader_bar_stats_v1`** (v1.21.4+) | **NOUVEAU v1.21.4** — Configuration de la bandeau profil du loader : array de keys (`["time", "storage", "plans"]`). Default `["time", "storage"]`. Persistance pure locale, aucune transmission. | F12 → Application → Local Storage |
 | **localStorage → `myktamap_skip_server_plans_v1`** (v1.21.4+) | Boolean `"true"` / `"false"`. Si actif, les plans serveur ne sont pas inscrits au boot. ⚠️ **Sémantique v1.73.0** : le `fetch("data/index.json")` (same-origin, déjà whitelisté) a désormais TOUJOURS lieu au boot — il porte la config d'instance kiosque (sous-titre, flags, liaisons) qui doit s'appliquer même pref active ; la pref ne skippe QUE l'enregistrement des plans. Le SW sert ce fichier en **network-first** (timeout 3 s, fallback cache — même pattern que les dicos i18n) : aucune nouvelle URL, aucune donnée sortante, 1 requête same-origin par boot. | F12 → Application → Local Storage |
@@ -874,6 +882,22 @@ retrouver sans cache hors-ligne).
 > _v1.76.0 — **Personnalisation de la légende (couleurs des types) et légende voyageant avec les exports** : tout est **purement local** — les couleurs choisies vivent dans la sauvegarde de session de ton navigateur (localStorage), le rendu est recalculé sur l'appareil. **Aucune requête réseau nouvelle, aucun nouveau domaine, whitelist inchangée.** Point de transparence : les fichiers que **tu exportes toi-même** (calque de données, session, KMZ/GPX) contiennent désormais la définition de tes types personnalisés — noms que tu as tapés et couleurs choisies — pour que le destinataire les retrouve. Rien ne part de ton appareil autrement que par ces fichiers que tu télécharges et partages toi-même. v1.75.0 — **Import depuis un SIG** : tu peux convertir un fichier QGIS (GeoJSON, KML, KMZ) en plan. **Le fichier est lu sur ton appareil, rien n'est envoyé** — aucun service de conversion, aucun géocodeur, aucune vérification en ligne des coordonnées. Le fond de plan est dessiné localement. **Fond d'écran de l'accueil** : ton image reste dans le stockage local du navigateur, avec ses métadonnées supprimées au passage. **Récupération du ZIP d'un plan** : l'archive vient du stockage local, le téléchargement ne passe par aucun serveur. **Aucune nouvelle requête, aucun nouveau domaine, whitelist inchangée.** v1.73.1 — Trois correctifs **sans aucun impact réseau** : le réimport d'un plan déjà connu propose de le mettre à jour au lieu de créer un doublon (registre et archive locaux, mêmes emplacements de stockage qu'avant), ouvrir une fenêtre désarme l'outil de dessin en cours (interface pure), et la Vue OSM affiche enfin les calques livrés masqués dans un ZIP (mêmes fichiers déjà lus localement). **Aucune nouvelle requête, aucune donnée sortante.** v1.73.0 — **Mode serveur « kiosque »** : une instance auto-hébergée peut personnaliser son sous-titre, masquer l'import de plans/le Générateur et livrer ses liaisons via `data/index.json` (fichier **déjà lu depuis toujours**, même domaine). Changement de comportement : ce fichier est désormais relu **au réseau à chaque démarrage** (au lieu du cache) pour que les mises à jour d'une instance se propagent — **1 requête same-origin par boot, aucune nouvelle URL, aucune donnée sortante** ; hors-ligne, la copie en cache est utilisée. La page `confadmin.html` (outil du déployeur) travaille **100 % localement** : les ZIP et le profil qu'on lui donne ne quittent jamais le navigateur. v1.71.0 — Le mode OSM affiche **plusieurs plans à la fois** (panneau d'ordre/opacité) : toujours **100 % local** (lecture des ZIP sur l'appareil), seules les tuiles de fond `tile.openstreetmap.org` déjà whitelistées sont demandées — aucune requête réseau nouvelle. v1.70.0 — Mode OSM enrichi d'une **recherche 100 % locale** (vos plans géoréférencés + leurs points, lus depuis votre appareil — **aucun service d'adresses interrogé**, aucune requête réseau nouvelle, whitelist inchangée) + avertissement de performance à la première ouverture. v1.69.0 — Nouveau « Mon carnet » : tes sorties sont archivées **sur ton appareil uniquement** (nouvelle base locale `myktamap_journal`), avec tes notes et tes PDF de plan réunis au même endroit — le Mode Histoire accepte désormais **jusqu'à 10 PDF par plan** (base `myktamap_histoire_pdfs` migrée, plafonds 25/100 Mo, enfin comptée dans « Stockage »). L'accueil est **repensé** (habillage en cards, recherche au centre de l'en-tête, Vue OSM agrandie, outils en grille) : **réorganisation d'affichage pure**, mêmes fonctions. Aucune requête réseau ajoutée, aucune photo dupliquée (le carnet ne garde que des références), aucune donnée collectée. v1.68.1 — Correctif d'affichage des traductions au démarrage (certains libellés apparaissaient en anglais approximatif). **Purement local**, et l'app émet même **une requête de moins** au démarrage : les dictionnaires de langue n'étaient parfois téléchargés deux fois, c'est corrigé — aucune nouvelle requête réseau, aucune donnée collectée. v1.68.0 — Accueil repensé pour mobile (réorganisation d'affichage uniquement). **Purement local** : CSS et logique d'affichage — aucune requête réseau, aucune donnée collectée. v1.67.2 — L'export du profil inclut désormais le registre des liaisons entre plans et deux préférences de navigation. **Purement local** : mêmes données locales, simplement embarquées dans le fichier d'export que l'utilisateur télécharge lui-même — aucune requête réseau, aucune donnée collectée. v1.67.1 — Correctifs d'interface : les boutons flottants de navigation (retour réduit, portail suivant, boussole) disparaissent proprement à la sortie d'un plan, et les conditions d'utilisation sont traduites en espagnol. **Purement local** — aucune requête réseau, aucune donnée collectée. v1.67.0 — Multi-niveau : le plan principal se masque comme le niveau 0 (superposition d'étages lisible) + avertissement du générateur si un calque de niveau n'a pas de transparence. **Purement local** : logique d'affichage et analyse d'images dans le navigateur — aucune requête réseau, aucune donnée collectée. v1.66.0 — Nettoyage interne : le script embarqué de l'écran d'accueil est découpé en 3 fichiers JavaScript statiques (chargement des plans, profil, configuration) — extraction à l'identique, aucun changement de comportement. **Purement local** : mêmes fonctions, servies depuis les mêmes origines, 3 fichiers de plus au précache — aucune requête réseau nouvelle, aucune donnée collectée. v1.65.0 — Vue « réseau de plans » (graphe des plans et portails dans le gestionnaire Mes liaisons). **Purement local** : rendu SVG dans le navigateur à partir de données déjà locales (bibliothèque + registre des liaisons) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. Un fichier JS statique de plus au précache (`js/planNetwork.js`). v1.64.0 — Itinéraire à travers plusieurs plans (multi-hop, opt-in à cocher), refonte du déroulé (la traversée se propose quand on est au portail), points de passage avant le portail, et 3 correctifs (lecture des calques de plans serveur, position du tracker au changement de plan, effacement du tracé à « Effacer la session »). **Purement local** : mêmes lectures de plans same-origin/IndexedDB déjà couvertes par l'audit — aucune nouvelle requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.63.0 — Confidentialité des photos renforcée : toute photo est ré-encodée à l'ajout, ce qui supprime systématiquement ses métadonnées EXIF (position GPS de la prise de vue, date, modèle d'appareil) ; l'export anonymisé peut désormais inclure les photos, chacune ré-encodée sans métadonnées avant d'entrer dans l'archive (une photo non ré-encodable est exclue). **Purement local** : traitement d'images dans le navigateur, aucune requête réseau, aucune donnée collectée. v1.62.0 — Transparence des plans : les images sources avec canal alpha sont tuilées sans fond ajouté (tuiles WebP/PNG au lieu de JPEG). **Purement local** : encodage/décodage d'images dans le navigateur, aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.61.0 — Itinéraire vivant (replanification automatique au recalage de position + validation d'étapes via « 📍 Je suis ici », dans n'importe quel ordre) + recalage du tracker sur le point d'arrivée d'un portail + bouton Retour réductible/fermable + correctifs d'affichage (boutons de fermeture de modales). **Purement local** : tous les calculs d'itinéraire et réglages restent sur l'appareil (localStorage) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.60.1 — Améliorations de traduction (Journal réseau, messages d'import) — **aucun impact réseau**. v1.60.0 — Itinéraire inter-plan (calcul de trajet à travers les portails). **Aucune nouvelle surface réseau** : les tracés du plan de destination sont lus depuis le stockage local (IndexedDB) ou le propre domaine de l'app (déjà couverts par `connect-src 'self'`) ; tout le calcul est local. v1.59.0 — Mode Performance ULTRA par plan (opt-in strict), gestionnaire de liaisons, nouveau tag « Portail » avec icône dédiée (fichier image local, précaché), avertissements « plan injoignable ». **Purement local** : réglages en localStorage par plan, lecture des plans via stockage local ou requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`) — aucune nouvelle permission, aucune donnée collectée. v1.58.0 — Recherche multi-plans + bouton Retour après un saut inter-plan. **Aucune nouvelle surface réseau** : la lecture des points des autres plans passe par le stockage local (localStorage/IndexedDB) ou par des requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`). v1.57.4 — Correctif interne de stabilité mémoire lors des changements de plan répétés. **Purement local** — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.57.3 — Mise à jour de documentation uniquement (Aide intégrée, Aide IA et doc utilisateur pour les liaisons inter-plan) — aucun impact réseau. v1.57.2 — Correctif purement local : les outils d'édition sont désactivés à l'ouverture d'un plan (aucun impact réseau). v1.57.1 — Liaisons inter-plan (avec correctif d'arrivée : bascule automatique sur le niveau du point de destination) (lier un point d'un plan à un point d'un autre plan). **Aucune nouvelle surface réseau** : le registre des liaisons vit en localStorage, la lecture des points d'un autre plan passe par le stockage local (IndexedDB) ou par des requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`). Les conditions d'utilisation s'affichent désormais avant la saisie du code d'accès (changement d'ordre local, zéro réseau). (v1.56.3 : renommage du domaine de dev en `dev.myktamap.fr`.)_
 
 
+> **v2.0.0 (pastille « connexion serveur »)** : **aucune requête nouvelle, aucun domaine nouveau, whitelist `connect-src` inchangée.** Une pastille 🔌 apparaît en bas de l’accueil : sur `myktamap.fr` elle affiche « Base de données : désactivée », et un clic ouvre « Que fait l’app sur le réseau ? ». Son état est **lu dans `data/index.json`, que l’app chargeait déjà à chaque démarrage** : aucune lecture de plus. Une installation indépendante peut y déclarer une connexion serveur (adresse d’API, modules) ; l’app **ne contacte jamais cette adresse** dans cette version et ne charge aucun module — elle affiche seulement « Licence requise », « Configurée, aucun module » ou « Configuration invalide ». La dernière configuration vue est gardée **sur l’appareil** (stockage local, clé `myktamap_server_connection_v1`), jamais dans l’export de profil. La phrase « aucun POST/PUT… » plus haut est désormais bornée à `myktamap.fr`, qui n’aura jamais de serveur applicatif. Le démarrage affiche un « 2 » manuscrit au-dessus du titre dans une **police embarquée** (`lib/fonts/kalam-700-splash.woff2`, ~3,5 Ko) : un fichier de plus **servi par le site lui-même et précaché** — aucune police tierce, aucun Google Fonts, `font-src 'self'` inchangé.
+>
+> **v1.99.8 (tutoriel d’accueil refondu)** : **aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
+>
+> **v1.99.6 (guide et aide réécrits)** : **aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
+>
+> **v1.99.5 (plus de consigne fantôme à la suppression de l’itinéraire)** : **aucun changement réseau**, aucun domaine, aucune requête.
+>
+> **v1.99.4 (inter-plans : la suite ne passe que par le portail)** : **aucun changement réseau**, aucun domaine, aucune requête.
+>
+> **v1.99.3 (supprimer l’itinéraire depuis la question de recalcul)** : **aucun changement réseau**, aucun domaine, aucune requête (un bouton de plus dans une fenêtre).
+>
+> **v1.99.2 (guidage des itinéraires inter-plans)** : **aucun changement réseau**, aucun domaine, aucune requête. Les données des autres plans étaient déjà lues sur l’appareil pour calculer le trajet ; le guidage en garde simplement les croisements.
+>
+> **v1.99.1 (guidage de plaque en plaque ; coupe de l’itinéraire derrière soi)** : **aucun changement réseau**, aucun domaine, aucune requête. La coupe de l’itinéraire et le guidage se calculent sur l’appareil.
+>
 > **v1.99.0 (fonctionnalités optionnelles ; Aide IA dans la Documentation)** : **aucun changement réseau**, aucun domaine, aucune requête. **Un capteur de moins écouté par défaut** : l’indicateur de batterie est désormais une option désactivée — tant qu’il l’est, l’app n’interroge pas le niveau de batterie du téléphone. L’Aide IA lit toujours `AI_CONTEXT.md` sur le même serveur, seulement quand on la demande.
 >
 > **v1.98.26 (calques en modification à l’import de session ; import unifié ; « Nouveau type… »)** : **aucun changement réseau**, aucun domaine, aucune requête. Tout se passe sur l’appareil.

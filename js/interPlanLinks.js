@@ -1441,6 +1441,10 @@
     naviguerVers:         naviguerVers,
     supprimerDepuisPopup: supprimerDepuisPopup,
     onPlanLoaded:         onPlanLoaded,
+    // 🌀 01/10/2026 — vrai pendant le changement de plan d'une traversée
+    // PHYSIQUE de portail (goTo recalerTracker) : interPlanRoute n'y poursuit
+    // l'itinéraire que dans ce cas (un plan ouvert autrement l'abandonne).
+    traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); },
     onPointDeleted:       onPointDeleted,
     onPointMoved:         onPointMoved,   // 📌 v1.85.0 : recale les coords d'un point déplacé
     refreshBadges:        refreshBadges,

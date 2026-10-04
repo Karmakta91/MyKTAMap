@@ -482,15 +482,8 @@
       );
     } catch(e) { return null; }
   }
-  // 🆕 v1.40.19 — Parité gating modale OsmView : strict offline + incognito.
-  // Le widget HOME avait un trou (v1.40.0-18) : il chargeait quand même les
-  // tuiles OSM en mode hors-ligne strict ou en incognito. On ferme.
-  function _isStrictOfflineOn() {
-    try {
-      return !!(window.NetworkAudit && typeof window.NetworkAudit.isStrictOfflineEnabled === "function"
-                && window.NetworkAudit.isStrictOfflineEnabled());
-    } catch(e) { return false; }
-  }
+  // Parité gating modale OsmView : en incognito, le widget ne charge aucune
+  // tuile OSM.
   function _isIncognitoOn() {
     try { return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
     catch(e) { return false; }
@@ -580,19 +573,6 @@
         '<div><strong>' + window.I18n.t("osm_home.offline.title") + '</strong></div>' +
         '<div style="max-width:280px; font-size:12px;">' +
           window.I18n.t("osm_home.offline.body") +
-        '</div>' +
-      '</div>';
-  }
-
-  // 🆕 v1.40.19 — Cas Mode hors-ligne strict (NetworkAudit) : on bloque le
-  // widget HOME complètement, parité comportement modale OsmView.
-  function _renderStrictOffline(container) {
-    container.innerHTML =
-      '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">🛡️</div>' +
-        '<div><strong>' + window.I18n.t("osm_home.strict.title") + '</strong></div>' +
-        '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          window.I18n.t("osm_home.strict.body") +
         '</div>' +
       '</div>';
   }
@@ -1927,15 +1907,9 @@
 
   // 🆕 v1.40.18 — Fix GPS ponctuel sur le widget HOME (1 clic = 1 fix).
   // Browser API native, 0 stockage, 0 réseau, permission OS demandée à la demande.
-  // 🆕 v1.40.19 — Garde runtime strict offline / incognito (parité OsmView).
+  // Garde runtime incognito (parité OsmView).
   function _showMyGpsPositionHome() {
     if (!_mapInstance) return;
-    if (_isStrictOfflineOn()) {
-      if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast(window.I18n.t("osm_home.gps.strictToast"), "warn");
-      } else { alert(window.I18n.t("osm_home.gps.strictAlert")); }
-      return;
-    }
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm_home.gps.incognitoToast"), "warn");
@@ -3334,7 +3308,7 @@
     //
     // 🩸 Pourquoi ici et pas seulement dans `_initMiniMap` : la purge de la
     // v1.91.1 est suspendue à la RECRÉATION DE LA CARTE. Tout chemin de rendu
-    // qui n'y arrive pas — hors-ligne sans cache, incognito, strict offline,
+    // qui n'y arrive pas — hors-ligne sans cache, incognito,
     // conteneur sans `#ktaOsmHomeMap` — laissait la pile intacte, avec des
     // plans dont les couches appartenaient à une carte morte. Posée au point
     // d'entrée, la règle ne dépend plus d'aucun de ces chemins.
@@ -3361,13 +3335,7 @@
       _renderOptInNeeded(container);
       return;
     }
-    // 🆕 v1.40.19 — Cas 1bis : strict offline → message dédié, bloque tout
-    if (_isStrictOfflineOn()) {
-      _renderStrictOffline(container);
-      _afficherBandeauDefaut(container);
-      return;
-    }
-    // 🆕 v1.40.19 — Cas 1ter : incognito → idem (pas de leak metadata plan)
+    // Cas 1bis : incognito → message dédié, bloque tout (pas de leak metadata plan)
     if (_isIncognitoOn()) {
       _renderIncognito(container);
       _afficherBandeauDefaut(container);

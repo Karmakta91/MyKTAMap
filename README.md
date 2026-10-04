@@ -12,14 +12,25 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.0` (01/10/2026)
+## 📦 Version courante — `v2.0.0` (04/10/2026)
+
+> 🔌 **v2.0.0 — Nouvelle frontière community/pro, pastille « connexion serveur »** : myktamap.fr reste sans serveur, pour toujours, et le dit dans son pied de page ; une installation indépendante peut déclarer une connexion serveur (`config.serverConnection`), affichée mais encore inactive.
+
+> 🎓 **v1.99.8 — Tutoriel d’accueil refondu** : 27 → 11 cartes dans l’ordre du guide, une carte « Avant de descendre » ; plus de jargon ni d’affirmation fausse.
+
+> 📖 **v1.99.6 — Guide et Aide réécrits** : documentation fr/en/es restructurée par parcours et divisée par deux, Aide ❓ rangée comme le guide avec 5 fiches nouvelles ; faits faux et données réelles retirés.
+
+> 🪧 **v1.99.5 — Plus de consigne fantôme** : après « Supprimer l’itinéraire », le bandeau de guidage disparaît aussitôt (il réapparaissait un instant).
+
+> 🌀 **v1.99.4 — Inter-plans : la suite ne passe que par le portail** : supprimer / remplacer l’itinéraire ou ouvrir le plan suivant autrement abandonne la suite (elle s’y traçait et s’enregistrait dans sa session).
+
+> 🗑️ **v1.99.3 — Supprimer l’itinéraire depuis la question de recalcul** : « Je suis ici » hors du trajet propose désormais Recalculer / Garder / **Supprimer l’itinéraire**.
+
+> 🌀 **v1.99.2 — Guidage inter-plans** : croisements annoncés et raccords comptés sur un trajet par portail (carrefours mesurés à l’échelle du plan cible) ; la feuille de route dit ce qui attend sur chaque plan suivant.
+
+> 🪧 **v1.99.1 — Guidage de plaque en plaque** : guidage sans suivi dès qu’une position est confirmée ; « 📍 Je suis ici » à ≤ 8 m du trajet coupe la partie déjà faite sans recalcul ni question ; la croix du bandeau coupe le guidage (tuile 🪧 pour le rallumer). Plus aucune donnée réelle de terrain citée dans le dépôt.
 
 > 🧩 **v1.99.0 — Fonctionnalités optionnelles** : Replay, Heatmap, batterie et vibration désactivés par défaut, regroupés dans ⚙️ Configuration › 🧩 Fonctionnalités optionnelles (la heatmap du Mode Secours reste) ; 🤖 Aide IA déplacée dans l’en-tête de la Documentation (menu de langue au lieu des drapeaux) ; vibration plus perdue à l’ouverture d’un plan.
-
-> 🔄 **v1.98.26 — Calques en modification à l’import de session** : réimporter une session (même sur un autre appareil) remet en modification les calques dont elle porte la copie ; plus de doublon ni de calque masqué et vide. Plus : import unifié (un sélecteur), « ➕ Nouveau type… » dans les menus de la légende.
-
-> 📊 **v1.98.25 — Mode Secours, vague 8b** : couverture par niveau (« sur un parcours » ≠ « dans une zone »), surlignage des galeries hors parcours, zones liées à leur niveau.
-
 
 > 🚑 **v1.98.16 — Mode Secours, vague 5 (sécurité terrain)** : la victime a une position, un marqueur ✚ et un bouton « Évacuer » (Sortie d'urgence depuis elle, niveau compris) ; départ / retour prévu par équipe avec alertes orange puis rouge ; rappel général (état tenu par l'opérateur — l'app ne prévient personne, pas de réseau).
 
@@ -500,6 +511,69 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.0.0 (04/10/2026) — Nouvelle frontière community/pro : le connecteur (chantier 0)
+
+- 🔍 **Origine** : décision KARMA du 04/10/2026 — la frontière « zéro trace de pro » bridait le développement pro. Elle devient « zéro FICHIER pro » : le repo community peut porter des points d'extension neutres, myktamap.fr n'aura jamais de backend. Cadrage complet par QCM (gouvernance `community-server-line.md` §3, `docs/ETUDE_UID.md`), chantier 0 = l'interrupteur et sa pastille.
+- 🔌 **Connecteur** (`js/ktaExtensions.js`, nouveau, précaché) : lit `config.serverConnection` dans l'index déjà chargé par `_chargerIndexServeur()` ; `valider()` pure → états **off / invalide / licence / configuree** (règle E : seule une licence de source `server` donne « configurée ») ; dernière config mémorisée (`myktamap_server_connection_v1`, hors export de profil) rejouée quand l'index est injoignable — un non-2xx compte comme injoignable, car le SW renvoie un 404 synthétique hors ligne ; recalcul à chaque `mktm:license-changed` ; événement `mktm:connexion-changed`. **Aucune requête**, l'API n'est jamais contactée.
+- 🏷️ **Pastille** : à côté du badge de version (couleur `.kta-tx-*` par état + point `currentColor`, l'emoji ne prenant pas la couleur) ; clic → modale « Que fait l'app sur le réseau ? » avec un bloc d'état en tête ; icône seule sous 380 px et sur le pied de page replié (`homeLoader` la repose après réécriture du bouton). Clés `home.serveur.*` fr/en/es (`home.connexion.*` était déjà prise par le test de connexion).
+- 🏗️ **ConfAdmin** : bloc 🔌 replié, même validation que l'app (corps recopié), champ écrit seulement si « activée », téléchargement et copie refusés tant qu'il est invalide.
+- 2️⃣ **Splash** : identité de la série 2.x, sans changer la philosophie du splash ni ses 3,5 s — un « 2 » orange brûlé (`#e07b1a`, contraste voulu avec le doré du titre), de biais, qui mord légèrement sur le « p » de « MyKTAMap » et tampe après sa révélation, plus un cadre doré marqué autour de l'écran (filet 2 px, halo) et la version en haut à droite à l'accent charte ; écrit depuis la version majeure (une v3 affichera « 3 »). « -pro » ne s'affiche plus dans le splash, même en édition pro (il reste dans l'en-tête de l'accueil). Police embarquée : sous-ensemble Kalam 700 réduit aux chiffres (`lib/fonts/`, ~3,5 Ko, OFL), précaché. Vérifié à 600 et 800 px de haut, en mobile 390×844 et en édition pro, fr/en/es.
+- 🛡️ **Garde-fou** `scripts/check-connexion-serveur.js` (pré-commit, bloquant, 82 contrôles) : exécute la validation de l'app ET de ConfAdmin sur 24 cas, table de vérité des états, règle B (mémoire rejouée, jamais effacée par une coupure), licence importée ≠ configurée, câblage main/homeLoader/index.html, précache, hors export de profil, aucune requête dans le module. Sabotages vérifiés (3/3 attrapés).
+- 📄 **Docs** : NETWORK_AUDIT md+html (phrase « aucun POST/PUT… » bornée à myktamap.fr, entrée v2.0.0), 3 guides (puce 🔌 dans Confidentialité), Aide › Dépannage, AI_CONTEXT, SELFHOST, plans-loader, gouvernance (chantier 0 livré), CLAUDE.md.
+- ✅ **Tests** : pré-commit vert ; Edge headless piloté en CDP — états off / invalide / licence, infobulle, bloc de la modale, icône du pied de page replié, mot masqué sous 380 px ; `checkup-home-scroll` et `checkup-langues` verts. ⚠️ Le smoke automatisé est rouge **à l'identique sur le commit précédent** : l'alerte publique en cours reste ouverte pendant le scénario (préexistant, hors de ce chantier). États « licence » et « configurée » en vrai déploiement : à tester par KARMA avec un index de test (`data/` interdit à Claude).
+
+#### v1.99.8 (03/10/2026) — Tutoriel d’accueil refondu (v1.99.7 non publiée)
+
+- 🔍 **Origine** : demande KARMA — même philosophie que le guide et l’Aide pour l’onboarding ; audit par agent (pertinence carte par carte, erreurs prouvées dans le code).
+- 🎓 **Tutoriel** (`0d5752e`) : 27 → 11 cartes, 34 k → 4,2 k caractères FR — Bienvenue (données sur le téléphone) · Avant de descendre (installer, charger avec du réseau) · Charger un plan · Urgence · Se repérer · Chercher · Suivre sa position · Itinéraire et guidage · Annoter · Tes données · Réglages et aide. Retirés : carte « 100 % hors-ligne, 100 % privé », création de plan, légende, Mode Secours, multi-niveau, stats/heatmap. Erreurs disparues : « Mode panique », Sortie d’urgence « dans le menu Tracker », champ « État » inexistant, croisements « automatiques », commande vocale toujours présente et « aucun audio ne quitte ton appareil » (faux : service du navigateur), touche Espace.
+- 🧱 **Mécanique** : clés nommées `tutorial.card.<cle>.*` (le rang ne fait plus la clé) ; les 64 clés `tutorial.cardNN.*` supprimées des 3 dicos ; `check-doc-vocabulaire` §3 ne lit plus une carte par son numéro.
+- 📖 **Guide** (`258e7e7`, `d52e241`, `a65f9ef`) : deux phrases retirées du topo ; confidentialité : retour à l’introduction d’origine et à sa liste de risques.
+- ✅ **Tests** : pré-commit vert ; navigateur fr/en/es — 11 cartes rendues dans l’ordre, aucun défilement sur mobile 390×844, aucune erreur JS.
+
+#### v1.99.6 (03/10/2026) — Guide utilisateur et Aide intégrée réécrits
+
+- 🔍 **Origine** : demande KARMA — « éviter l’indigestion de l’user » ; deux audits : `docs/audits/2026-10-03_audit-guide-utilisateur-v1.md` et `2026-10-03_audit-aide-integree-v1.md`.
+- 📖 **Guide fr/en/es** (lots L0-L5, `670b0b0` → `fc26afc`) : 11 erreurs factuelles corrigées (dont 2 données réelles) ; restructuration par parcours (topo et remerciements en tête, 🆘 urgence avant la carte) ; chapitre « 🔭 Pour aller plus loin » (optionnel, Mode Secours réécrit selon le parcours de l’opérateur, créateurs de plans) ; passe bruit : 241 k → 122 k caractères FR. Le moteur Markdown rend les titres de niveau 5.
+- ❓ **Aide intégrée** (lots A1-A3, `f51e63d` → `dc88d36`) : 8 catégories alignées sur le guide, 5 fiches nouvelles (Je suis perdu, Affichage XL, Itinéraire et guidage, Corriger, Multi-niveau), ❓ contextuel sur 20 fenêtres, 35 fiches réécrites (une vingtaine de faits faux, preuves dans le code) : 71 k → 36 k caractères FR.
+- 🛡️ **Contrôles** : `check-aide-contextuelle` cherche l’en-tête dans le fichier qui crée la modale ; `checkup-langues` lit les titres des fiches dans les dicos.
+- ✅ **Tests** : pré-commit vert ; navigateur fr/en/es (Documentation : titres, recherche, aucun Markdown brut ; Aide : chaque fiche rendue, recherche, ❓ contextuels) ; checkup-langues vert.
+
+#### v1.99.5 (01/10/2026) — Plus de consigne fantôme à la suppression de l’itinéraire
+
+- 🔍 **Origine** : retour KARMA — après « 🗑️ Supprimer l’itinéraire », le bandeau « Rejoindre le tracé » réapparaissait un très court instant.
+- 🐛 **Cause / correctif** (`50ad807`) : le « Je suis ici » hors trajet avait affiché le bandeau sous la fenêtre de choix ; il restait jusqu’au battement suivant du guidage (1 s). `_effacerItineraireActif` appelle `ItiGuidage.rafraichir()` (vaut aussi pour « ❌ Effacer »).
+- ✅ **Tests** : Playwright (bandeau masqué juste après le clic — échouait avant) ; check-guidage +1.
+
+#### v1.99.4 (01/10/2026) — Inter-plans : la suite de l’itinéraire ne passe que par le portail
+
+- 🔍 **Origine** : question KARMA après v1.99.3 — « l’itinéraire persiste sur l’autre plan alors que je ne prends pas le portail : une session se crée ? ». `_pendingChain` (RAM) n’était oubliée qu’au retour à l’accueil : ouvrir le plan suivant par le sélecteur y traçait l’étape, écrasait l’itinéraire de ce plan et l’enregistrait dans sa session.
+- 🐛 **Correctif** (`0fce8eb`) : suite abandonnée à la suppression (`_effacerItineraireActif` → `InterPlanRoute.abandonnerSuite`), et au changement de plan si ce n’est pas une traversée physique (`InterPlanLinks.traverseePhysiqueEnCours`) ou si l’itinéraire du plan quitté a été remplacé (présent sans `suite`). Absent = clôturé au portail : la suite continue.
+- ✅ **Tests** : check-guidage +3 (câblage) ; test Node chargeant le vrai `interPlanRoute.js` 7/7, et 4 échecs attendus contre le code d’avant (bug reproduit). ⚠️ Pas joué sur un vrai portail (un seul plan local). Un itinéraire déjà déposé par le bug sur un plan reste à effacer à la main.
+
+#### v1.99.3 (01/10/2026) — « 🗑️ Supprimer l’itinéraire » dans la question de recalcul
+
+- 🔍 **Origine** : demande KARMA — itinéraire en cours, « Je suis ici » sur un point hors du trajet : seulement Recalculer / Garder ; il fallait ouvrir la modale Itinéraire pour s’en débarrasser.
+- 🗑️ **3e choix** (`08e0009`) : `ktaConfirm` accepte `opts.autre = {label, valeur}` (bouton `kta-btn-danger`, la Promise rend `valeur`, appelants existants inchangés) ; `_effacerItineraireActif()` extrait du bouton « ❌ Effacer l’itinéraire » et partagé. Texte de la question corrigé (il renvoyait à un bouton « Annuler » inexistant).
+- ✅ **Tests** : Playwright à taille téléphone (3 choix, Garder conserve, Supprimer efface tracé + bandeau + toast, 0 erreur JS) ; tous les check-* du pré-commit.
+
+#### v1.99.2 (01/10/2026) — Guidage des itinéraires inter-plans
+
+- 🔍 **Origine** : backlog « Guidage, ce qui reste » — `interPlanRoute.js` perdait les `raccords` / `carrefours` que le pathfinder rend déjà ; sur un trajet par portail, le bandeau n’annonçait que l’arrivée. Puis question KARMA : « comment s’organise la feuille de route en inter-plans ? ».
+- 🌀 **Champs transportés** (`f010f7c`) : chaque étape de la chaîne garde raccords + carrefours, `_tracerItinerary(leg)` les pose ; deux morceaux bout à bout sur un même plan ne gardent que le départ du premier et l’arrivée du dernier. Distances d’étape avec raccords (décision K).
+- 📏 **Échelle du plan cible** : l’étape d’un autre plan est calculée depuis le plan ouvert ; la détection des carrefours lisait `APP_CONFIG.scale` (rayon de sortie 3 m, zone 5 m). Option `computeRouteOnRoads(…, { echelle })` portée jusqu’à `_carrefoursSurChemin` / `_zonesDeCarrefour`.
+- 🪧 **Feuille de route** (`df5a966`) : `road.suite` (une entrée par plan suivant : portail, plan, distance, croisements) → ligne « Puis 🌀 portail → plan : 350 m, 4 croisements » ; survit à la coupe et à la replanification.
+- 📋 **Backlog** : poids des jonctions de niveau d’un plan distant (même défaut d’échelle + profondeurs du plan ouvert), laissé hors lot.
+- ✅ **Tests** : `check-guidage` +10 (échelle cible vs plan ouvert, raccords, câblage, lignes de suite) ; `checkup-guidage` vert ; rendu de la feuille vérifié dans Chromium (chaîne simulée). ⚠️ Pas de vrai trajet par portail joué : un seul plan local.
+
+#### v1.99.1 (01/10/2026) — Guidage de plaque en plaque ; croix = tuile éteinte
+
+- 🔍 **Origine** : retours KARMA en test de la v1.99.0 — le guidage exigeait le suivi actif, alors qu’on peut avancer en tapant « Je suis ici » sur les plaques ; fermer le bandeau obligeait à couper le suivi et recalculer l’itinéraire pour le retrouver ; chaque « Je suis ici » proposait un recalcul complet, même sur le trajet. Décisions 1:a 2:a 3:a 4:a.
+- 🪧 **Guidage sans suivi** (`itiGuidage.js > _maj`) : suivi actif **ou** position confirmée (`getTrackingPositionEtat().confirmee`) ; sans confirmation, la position vaut le départ du plan → masqué.
+- ✕ **Croix = « Jamais »** (`setPref`) : la tuile 🪧 s’éteint et la rallume sur le même itinéraire. `_masquePour` supprimé (la tuile ne savait pas lever ce masquage).
+- ✂️ **Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, source `"point"`) : point à ≤ `COUPE_SEUIL_M` (8 m, tolérance du guidage — un seuil en px changerait de sens selon la résolution du plan) → road coupée au premier passage, sans Dijkstra ni question ; étapes / raccords projetés dans l’ordre du trajet (dépassés → `done` / retirés), raccord de départ retiré, carrefours restés sur le trajet gardés ; dernière étape dépassée → clôture. Hors seuil ou clic carte : question inchangée. **Exclus** : parcours Secours (`road.secours`, étapes validées par le scénario) et `sansReplan`.
+- 🧹 **Données réelles** (`7ad4b5d`) : nom du réseau du test terrain, identifiant / dimensions de son plan et nom d’un point retirés du journal, du backlog, de `secours.md`, d’AI_CONTEXT, des guides et de 4 commentaires de code (suite de `fa402f0`). Doc : titre de la modale Documentation sans 📖 (`1d085b5`).
+- ✅ **Tests** : `check-guidage` +4 ; `checkup-guidage` vert (G9 réécrit pour la nouvelle règle) ; test Playwright dédié (17 vérifs : coupe sans question, étapes validées, guidage sans suivi, croix / tuile, hors trajet → question, 0 erreur JS) ; tous les check-* du pré-commit. ⚠️ Pas testé sur téléphone ni au passage d’un portail.
 
 #### v1.99.0 (01/10/2026) — Fonctionnalités optionnelles ; Aide IA dans la Documentation
 

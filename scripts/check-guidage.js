@@ -67,12 +67,16 @@ const sansArrivee = g => g.consignes.filter(c => c.type !== "arrivee");
 function fauxElement() {
   const enfants = {};
   const classes = new Set();
-  return {
+  const el = {
     style: {}, textContent: "", innerHTML: "", title: "", isConnected: true,
     classList: { toggle(c, on) { if (on) classes.add(c); else classes.delete(c); }, contains: c => classes.has(c) },
-    setAttribute() {}, addEventListener() {},
+    setAttribute() {},
+    // garde le handler « click » : `__clic()` le déclenche (croix du bandeau)
+    addEventListener(type, fn) { if (type === "click") el.__onclick = fn; },
+    __clic() { if (el.__onclick) el.__onclick({ target: el }); },
     querySelector(sel) { return enfants[sel] || (enfants[sel] = fauxElement()); }
   };
+  return el;
 }
 
 async function bandeau() {
@@ -131,7 +135,25 @@ async function bandeau() {
   G.setPref("auto");
   actif = false; G.rafraichir();
   t("suivi arrêté : bandeau masqué", G.etat().visible === false);
+  // 01/10/2026 (KARMA 1:a) — sans suivi, une position CONFIRMÉE (« Je suis
+  // ici » sur une plaque) suffit ; la position du départ du plan, non.
+  let confirmee = true;
+  w.getTrackingPositionEtat = () => ({ confirmee: confirmee, suiviActif: actif });
+  G.rafraichir();
+  t("sans suivi, position confirmée : bandeau visible", G.etat().visible === true);
+  confirmee = false; G.rafraichir();
+  t("sans suivi, position NON confirmée : bandeau masqué", G.etat().visible === false);
+  delete w.getTrackingPositionEtat;
   actif = true;
+  // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »),
+  // la tuile 🪧 le rallume, sans recalculer l'itinéraire. (Itinéraire normal :
+  // une sortie d'urgence, elle, reste affichée même sur « Jamais ».)
+  iti = Object.assign({}, it.road);
+  aller(20, 500);
+  w.__bandeau.querySelector(".kta-guid-fermer").__clic();
+  t("croix : réglage passé à « Jamais »", G.getPref() === "jamais" && G.etat().visible === false);
+  G.setPref("auto");
+  t("croix puis tuile : le bandeau revient, même itinéraire", G.etat().visible === true);
 
   // Départ hors tracé : « rejoindre le tracé » + flèche relative au téléphone
   iti = Object.assign({}, it.road);                  // nouvelle road → état neuf
@@ -428,6 +450,70 @@ async function bandeau() {
     const zone = w.Pathfinder.computeReachable({ x: 20, y: 20 }, 400, {});
     t("pathfinder : zone atteignable calculée en < 3 s (" + (Date.now() - t0) + " ms)",
       !!zone && (Date.now() - t0) < 3000);
+  }
+
+  // 13) ITINÉRAIRE INTER-PLANS (01/10/2026) — l'étape sur l'AUTRE plan est
+  //     calculée depuis le plan ouvert : ses carrefours doivent se mesurer à
+  //     l'échelle de SON plan (rayon de sortie 3 m), pas du plan courant.
+  //     Une branche de 30 px = 7,5 m à 4 px/m (vrai croisement), 0,75 m à
+  //     40 px/m (amorce du dessin, ignorée).
+  {
+    const reseauB = [R("principal", [[0, 500], [800, 500]]), R("principal", [[400, 500], [400, 530]])];
+    const w = bac([], { scale: 40 });                 // plan OUVERT : 40 px/m
+    const wps = [{ x: 20, y: 500, label: "A" }, { x: 780, y: 500, label: "B" }];
+    const sansEchelle = w.Pathfinder.computeRouteOnRoads(wps, reseauB, {});
+    const avecEchelle = w.Pathfinder.computeRouteOnRoads(wps, reseauB, { echelle: 4 });
+    t("inter-plans : sans échelle, mesuré au plan ouvert (40 px/m) → amorce ignorée",
+      sansEchelle.carrefours.length === 0);
+    t("inter-plans : avec l'échelle du plan cible (4 px/m) → le croisement est vu",
+      avecEchelle.carrefours.length === 1);
+    t("inter-plans : raccords rendus par computeRouteOnRoads",
+      Array.isArray(avecEchelle.raccords) && avecEchelle.raccords.length === 2);
+    const ip = fs.readFileSync(path.join(ROOT, "js/interPlanRoute.js"), "utf8");
+    t("câblage inter-plans : l'étape distante passe l'échelle de son plan",
+      ip.includes("echelle: ctx.scale") && ip.includes("echelle: scaleB"));
+    t("câblage inter-plans : la road tracée porte raccords + carrefours",
+      ip.includes("raccords: leg.raccords || [], carrefours: leg.carrefours || []"));
+    t("câblage inter-plans : distances avec les raccords (décision K)",
+      ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
+
+    // Feuille de route : elle s'arrête au portail, puis UNE ligne par plan
+    // suivant (`road.suite`, posée par interPlanRoute > _tracerItinerary).
+    const w2 = bac([R("principal", [[0, 500], [800, 500]])]);
+    const it2 = await itineraire(w2, [20, 500], [780, 500]);
+    let feuille = null;
+    w2.document = {
+      getElementById: () => null,
+      createElement: () => (feuille = fauxElement()),
+      documentElement: { appendChild() {} }
+    };
+    w2.ItiGuidage.ouvrirFeuilleDeRoute(Object.assign({}, it2.road, {
+      suite: [{ portail: "Sortie nord", plan: "Plan B", distM: 350, croisements: 4 },
+              { portail: "Puits", plan: "Plan C", distM: 80, croisements: 0 }]
+    }));
+    const html = feuille ? feuille.innerHTML : "";
+    t("feuille inter-plans : une ligne « Puis 🌀 portail → plan » par plan suivant",
+      (html.match(/guid\.feuille\.suite/g) || []).length === 2 && html.includes("Plan B") && html.includes("Plan C"));
+    t("feuille inter-plans : nombre de croisements (4, puis aucun)",
+      html.includes("guid.feuille.croisementsN") && html.includes("guid.feuille.croisements0"));
+    t("câblage inter-plans : la suite est posée au tracé de chaque étape",
+      ip.includes("_tracerItinerary(leg0, chain.legs.slice(1))") && ip.includes("_tracerItinerary(head, reste)"));
+    const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
+    t("câblage inter-plans : la suite survit à la coupe et à la replanification",
+      (ii.match(/if \(road\.suite\) newRoad\.suite = road\.suite;/g) || []).length === 2);
+    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée : ouvrir
+    // le plan suivant par le sélecteur y traçait l'étape (et l'enregistrait dans
+    // sa session). Elle ne se poursuit que par une traversée PHYSIQUE, et part
+    // avec l'itinéraire supprimé ou remplacé.
+    const il = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
+    t("câblage inter-plans : la traversée physique est lisible au changement de plan",
+      il.includes("traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); }"));
+    t("câblage inter-plans : plan quitté sans le portail ou itinéraire remplacé → suite abandonnée",
+      ip.includes("if (!traverse || remplace) {") && ip.includes("const remplace = !!(iti && !iti.suite);"));
+    t("supprimer l'itinéraire rafraîchit le bandeau tout de suite (pas de consigne fantôme 1 s)",
+      /function _effacerItineraireActif\(\) \{[\s\S]*?window\.ItiGuidage\.rafraichir\(\)[\s\S]*?\n\}/.test(ii));
+    t("câblage inter-plans : supprimer l'itinéraire abandonne la suite",
+      ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
 
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal

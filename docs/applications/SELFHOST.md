@@ -12,7 +12,7 @@
   (mutualisé FTP, GitHub Pages, nginx, Docker — cf. section Docker du README utilisateur).
 - Vos plans visibles dès l'ouverture dans « 📚 Mes plans » (badge 🌐), chargés en 1 clic.
 - Vos **liaisons inter-plan** (portails) livrées d'office à tous les visiteurs.
-- Un **sous-titre à vous** (ex. « Gironde ») sur l'écran de démarrage et l'accueil — et sur les PDF exportés.
+- Un **sous-titre à vous** (ex. « Club spéléo du Nord ») sur l'écran de démarrage et l'accueil — et sur les PDF exportés.
 - Optionnel : masquer l'import de plans et/ou le Générateur pour une interface « consultation ».
 - Les visiteurs gardent TOUTES leurs données en local (sessions, carnet, notes, photos) : rien ne transite par votre serveur.
 
@@ -42,7 +42,7 @@
 ```json
 {
   "config": {
-    "subtitle": "Gironde",
+    "subtitle": "Club spéléo du Nord",
     "serverPlansOnly": true,
     "disableGenerator": true,
     "accessHash": "89e39e…（SHA-256 du mot de passe, 64 caractères hexadécimaux）"
@@ -50,7 +50,7 @@
   "plans": [
     { "id": "carrieres-nord", "path": "data/carrieres-nord", "name": "Carrières Nord",
       "version": "V2.1", "author": "Asso X", "multiLevel": true, "tiledV2": true,
-      "tags": ["gironde", "carrière"] }
+      "tags": ["calcaire", "carrière"] }
   ],
   "liaisons": { "version": 1, "links": [ /* généré par confadmin — ne pas écrire à la main */ ] }
 }
@@ -60,6 +60,16 @@
 - `subtitle` : remplace « Cartographie souterraine » (démarrage, accueil, en-tête des PDF exportés). Le nom MyKTAMap reste.
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.
+- `serverConnection` (v2.0.0) : **réservé aux instances qui greffent des modules de connexion à un serveur.**
+  Un kiosque n'en a pas besoin : sans ce champ, l'app affiche « Base de données : désactivée » dans son pied de page.
+  Forme : `{ "state": "on", "api": "https://api.exemple.org", "modules": ["pro/sync.js"] }` — `api` en
+  `https://` (elle peut vivre sur un autre domaine que l'app : ajoutez alors son origine à `connect-src`
+  dans votre CSP), `modules` = chemins **sur le même site que l'app** (20 max). Dans cette version, l'app
+  **ne contacte pas** `api` et **ne charge aucun module** : elle affiche seulement l'état à vos visiteurs —
+  « Licence requise » tant qu'aucun `Licence-pro.json` n'est posé à la racine, « Configurée, aucun module »
+  sinon, « Configuration invalide » (en rouge, visible de tous) si le champ est mal formé. ConfAdmin
+  (bloc 🔌, replié) écrit ce champ avec les mêmes règles et refuse de télécharger un index invalide.
+  Contrat complet : `docs/architecture/community-server-line.md` §3.
 - `plans[].tags` : étiquettes proposées pour ce plan (**12 max, 24 caractères chacune** ; au-delà, l'app
   rogne). Elles s'affichent sous le nom du plan chez le visiteur et servent ses chips-filtres.
   **L'index propose, l'utilisateur dispose** : dès qu'un visiteur édite les étiquettes d'un plan, les

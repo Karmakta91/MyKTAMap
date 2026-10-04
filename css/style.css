@@ -3422,6 +3422,12 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   margin: 14px 0 6px;
 }
 
+.kta-readme-corps h5 {
+  font-size: 13px;
+  color: #c8d0e0;
+  margin: 12px 0 4px;
+}
+
 /* HR — séparateur en dégradé (5:b) */
 .kta-readme-corps hr {
   border: none;
@@ -4338,6 +4344,96 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   animation: splashTextIn 0.6s ease-out 0.45s both;
 }
 
+/* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
+   (#e07b1a, plus foncé que le doré du titre : contraste voulu, choix KARMA), de biais,
+   au-dessus à droite de « MyKTAMap », et un fin cadre doré autour de l'écran —
+   comme les accueils qui changent à chaque version de Windows, sans toucher
+   à la philosophie du splash (rose, arc, titre, signature, 3,5 s).
+   - Le chiffre est posé sur le cadre de « MyKTAMap » et mord légèrement sur la
+     panse du « p » (choix KARMA). Le splash n'affiche plus « -pro » depuis
+     v2.0.0, même en édition pro : rien ne vient se loger à sa droite.
+   - Il vit HORS de .kta-titre-base, dont le clip-path de révélation le couperait.
+   - Il « tampe » après la révélation du titre (fin à ~1,45 s) : 0,5 s dès 1,5 s.
+   Police embarquée (sous-ensemble Kalam 700, chiffres seuls, OFL) : la CSP
+   n'accepte que les polices du site. Main levée, comme la signature KARMA. */
+@font-face {
+  font-family: "KTA Main";
+  src: url("../lib/fonts/kalam-700-splash.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+.kta-titre-base-cadre {
+  position: relative;
+  display: inline-block;
+}
+#splashMajeure {
+  position: absolute;
+  top: -0.1em;
+  right: -0.4em;
+  font-family: "KTA Main", "Segoe Script", "Bradley Hand", cursive;
+  font-weight: 700;
+  font-size: 1.15em;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #e07b1a;
+  text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
+  transform: rotate(-12deg);
+  opacity: 0;
+  animation: kta-splash-majeure 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.5s forwards;
+}
+#splashMajeure[hidden] { display: none; }
+@keyframes kta-splash-majeure {
+  from { opacity: 0; transform: rotate(-30deg) scale(0.4); }
+  to   { opacity: 1; transform: rotate(-12deg) scale(1); }
+}
+/* Cadre doré : filet de 2 px plein, halo doré/orange autour et lueur dedans
+   (KARMA : « pas assez flash »), posé au-dessus du fond, sous le contenu,
+   inerte au toucher, dans la zone sûre des écrans à encoche. */
+#splashOverlay.kta-splash-majeure::before {
+  content: "";
+  position: absolute;
+  top: calc(7px + env(safe-area-inset-top, 0px));
+  right: calc(7px + env(safe-area-inset-right, 0px));
+  bottom: calc(7px + env(safe-area-inset-bottom, 0px));
+  left: calc(7px + env(safe-area-inset-left, 0px));
+  border: 2px solid rgba(244, 197, 66, 0.9);
+  border-radius: 18px;
+  box-shadow:
+    0 0 14px rgba(244, 197, 66, 0.55),
+    0 0 34px rgba(224, 123, 26, 0.25),
+    inset 0 0 18px rgba(244, 197, 66, 0.22),
+    inset 0 0 60px rgba(244, 197, 66, 0.06);
+  pointer-events: none;
+  opacity: 0;
+  animation: kta-splash-cadre 1.2s ease-out 0.2s forwards;
+}
+/* Téléphones (retour KARMA, iPhone 17) : la barre d'état est opaque
+   (apple-mobile-web-app-status-bar-style = black) et l'app ne déclare pas
+   viewport-fit=cover — les env(safe-area-*) valent 0, inutilisables ici.
+   - En HAUT, le cadre naît sous l'heure, là où l'écran n'est PAS arrondi :
+     angles presque droits (un arrondi n'y aurait aucun sens).
+   - En BAS, il longe les coins arrondis de l'écran (~55 pt sur les iPhone
+     récents) : 18 px le faisaient sortir de l'écran dans les angles. 50 px =
+     une courbe parallèle à celle de l'écran, 7 px en retrait. */
+@media (pointer: coarse) {
+  #splashOverlay.kta-splash-majeure::before {
+    border-radius: 6px 6px 50px 50px;
+  }
+}
+@keyframes kta-splash-cadre {
+  from { opacity: 0; transform: scale(1.015); }
+  to   { opacity: 1; transform: scale(1); }
+}
+html.kta-theme-light #splashMajeure {
+  color: #a8530a !important;
+  text-shadow: none;
+}
+html.kta-theme-light #splashOverlay.kta-splash-majeure::before {
+  border-color: rgba(139, 101, 8, 0.85);
+  box-shadow: 0 0 10px rgba(184, 134, 11, 0.4), inset 0 0 14px rgba(184, 134, 11, 0.15);
+}
+
 @keyframes splashTextIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -4411,8 +4507,10 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   position: absolute;
   top: calc(20px + env(safe-area-inset-top, 0px));
   right: 22px;
-  font-size: 11px;
-  color: #8892a4;  /* checkup thème (C4) */
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;  /* v2.0.0 (KARMA) : accent charte, gras, plus visible */
+  text-shadow: 0 0 10px rgba(244, 197, 66, 0.35);
   letter-spacing: 0.06em;
   font-family: 'Courier New', monospace;
   z-index: 2;
@@ -5500,36 +5598,6 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   color: #e8eaf0;
 }
 
-/* 🔒 v1.14.11 — Bouton Verrouiller (remplace 🔌 Arrêt v1.14.8 retiré).
-   Accent bleu charte (action neutre/sécurité, pas destructive) — cohérent
-   avec la palette des autres .loader-btn-help. Hover marqué pour confirmer
-   l'intention avant la modale de confirmation. */
-.loader-btn-help.loader-btn-lock {
-  background: rgba(140, 180, 255, 0.10);
-  border-color: rgba(140, 180, 255, 0.35);
-  color: #aac6ff;
-}
-.loader-btn-help.loader-btn-lock:hover {
-  background: rgba(140, 180, 255, 0.22);
-  border-color: rgba(140, 180, 255, 0.60);
-  color: #e8eaf0;
-}
-/* v1.14.15 (KARMA « je vois pas le fond blanc pour verouiller ») :
-   le bouton lock apparaissait en ambre permanent à cause du sticky :hover
-   sur mobile (après tap, le :hover reste collé jusqu'à un tap ailleurs).
-   Fix global : on neutralise aussi explicitement focus/active pour ce
-   bouton ET on déplace le :hover ambre dans @media (hover: hover) (cf
-   plus bas dans ce fichier) pour qu'il ne s'active que sur les devices
-   avec un vrai pointeur (mouse, trackpad), pas sur tactile. */
-body.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
-body.kta-theme-light .loader-btn-help.loader-btn-lock:active,
-html.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
-html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
-  background: #ffffff !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border-strong) !important;
-}
-
 /* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
    Gap volontairement faible pour les coller visuellement. */
 .loader-header-actions {
@@ -5980,6 +6048,32 @@ html.kta-theme-light .kta-cfg-group-titre {
   background: rgba(255, 110, 110, 0.18);
   border-color: rgba(255, 110, 110, 0.55);
   color: #ffd0d0;
+}
+
+/* 🆘 Fenêtre Dépannage (⚙️ Configuration › 🆘 Dépannage, js/homeConfig.js) :
+   trois actions du plus doux au plus radical + l'adresse de la page de secours.
+   Fenêtre courte : hauteur au contenu, comme les confirmations. */
+.kta-readme-modal-boite.kta-depannage-boite {
+  max-width: 480px;
+  height: auto;
+  max-height: 92vh;
+}
+.kta-depannage-item {
+  margin-bottom: 14px;
+}
+.kta-depannage-item .kta-loader-perf-hint {
+  margin: 0 0 6px 0;
+}
+.kta-depannage-item .loader-btn-secondary {
+  width: 100%;
+}
+.kta-depannage-secours {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.kta-depannage-secours code {
+  word-break: break-all;
 }
 
 #loaderStatus {
@@ -7350,8 +7444,9 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 /* =====================================================================
    🚨 MODE URGENCE — v1.10.1
-   Overlay plein écran avec position GPS + cap boussole en GROS, désactive
-   tout le superflu. 2 thèmes : sombre (visibilité nocturne) / clair
+   Overlay plein écran : minimap interactive + cap boussole en GROS (les
+   coordonnées GPS passent dans la bulle 📋), désactive tout le superflu.
+   2 thèmes : sombre (visibilité nocturne) / clair
    (lampe d'appoint).
    ===================================================================== */
 
@@ -7394,8 +7489,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
-.kta-emergency-dark .kta-emergency-copier-btn   { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.45); color: #e8eaf0; }
-.kta-emergency-dark .kta-emergency-copier-btn:hover { background: rgba(255,255,255,0.12); }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
 
@@ -7409,8 +7502,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
-.kta-emergency-light .kta-emergency-copier-btn   { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.5); color: #2c3848; }
-.kta-emergency-light .kta-emergency-copier-btn:hover { background: rgba(0,0,0,0.1); }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
 
@@ -7469,17 +7560,38 @@ html.kta-theme-light .kta-cfg-group-titre {
   min-width: 0;   /* sinon l'ellipsis du nom de plan ne peut pas s'appliquer */
 }
 
-/* Les puces d'état : échelle et état matériel, alignées à droite du titre.
-   Elles remplaçent le bloc « ÉCHELLE / PLAN / ÉTAT » qui mangeait une
-   pleine largeur de grille en bas de l'écran. */
+/* La ligne d'état (batterie, tracker, boussole), alignée à droite du titre,
+   suivie de l'icône 📋 des coordonnées sur un plan géoréférencé. */
 .kta-emergency-etats {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
   text-align: right;
 }
+
+/* 📋 03/10/2026 — icône des coordonnées (plan géoréférencé seulement).
+   44 px : minimum tactile, cet écran se touche avec des gants. */
+.kta-em-coords-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  border: 1.5px solid;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+}
+.kta-emergency-dark  .kta-em-coords-btn { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.55); }
+.kta-emergency-light .kta-em-coords-btn { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.6); }
+/* Les règles `display` des classes l'emportent sur l'attribut `hidden`. */
+.kta-emergency-overlay [hidden] { display: none !important; }
 
 .kta-emergency-chip {
   font-size: 11.5px;
@@ -7490,12 +7602,10 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-emergency-grid {
   display: grid;
-  /* Une colonne partout (la position en pleine largeur, la minimap sous
-     elle) : depuis que le bloc meta et le bloc GPS ont disparu, une
-     deuxième colonne ne laisserait qu'un trou à côté de la position.
-     La 2ème piste `1fr` donne à la minimap toute la hauteur restante. */
+  /* 03/10/2026 : le bloc position est parti — la minimap est seule et
+     prend toute la place, en portrait comme en paysage. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
@@ -7540,8 +7650,10 @@ html.kta-theme-light .kta-cfg-group-titre {
   pointer-events: none;  /* le minimap derrière ne reçoit pas de clics non plus */
   padding: 10px 14px 0 14px;  /* bottom 0 → degrés collés au bord */
 }
+/* 🖐️ 03/10/2026 : la minimap se manipule au doigt — le texte posé dessus
+   (CAP, degrés) laisse passer les gestes. */
 .kta-emergency-bloc-heading-overlay > * {
-  pointer-events: auto;  /* mais les enfants restent interactifs (clic compass futur) */
+  pointer-events: none;
 }
 
 /* TOP group : 🧭 CAP + cardinal (SE/S/N/...) empilés sans gap excessif */
@@ -7568,39 +7680,112 @@ html.kta-theme-light .kta-cfg-group-titre {
   line-height: 1.1;
 }
 
-.kta-emergency-pos-gps {
-  font-size: 22px;  /* GPS un peu plus petit (longs floats) */
-}
-
 .kta-emergency-sub {
   font-size: 12.5px;
   font-style: italic;
   margin-top: 2px;
 }
 
-/* 📋 Copier sa position pour l'envoyer dès qu'on capte.
-   🧹 27/09/2026 (KARMA « trop grand, prend une place inutile — profite de la
-   place restante dans l'alignement de la position, en mode carré ») : le bouton
-   était pleine largeur SOUS les chiffres et coûtait 48 px de hauteur à la
-   carte. Il partage maintenant leur ligne et occupe le vide à leur droite.
-   48 px de côté : au-dessus du minimum tactile (44 px), parce que cet écran se
-   touche avec des gants. Discret en couleur — le rouge et le jaune restent à la
-   donnée et à la sortie. */
-.kta-emergency-pos-ligne {
+/* 🎯 03/10/2026 — Recentrer : visible seulement quand l'utilisateur a bougé
+   la minimap (le suivi est alors en pause). En bas à droite du bloc, au-dessus
+   du texte posé sur la carte, cible ≥ 48 px. */
+.kta-em-recentrer-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-emergency-dark  .kta-em-recentrer-btn { background: #1a1f2e; color: #f4c542; border-color: #f4c542; }
+.kta-emergency-light .kta-em-recentrer-btn { background: #ffffff; color: #b8740b; border-color: #b8740b; }
+
+/* 📍 Points sur la minimap : l'icône du catalogue, sans le cadre blanc par
+   défaut des `divIcon` Leaflet, ni le `scale` de la carte principale. */
+.kta-em-mini-poi {
+  background: none !important;
+  border: none !important;
+  cursor: pointer;
+}
+.kta-em-mini-poi img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
+  user-select: none;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+}
+.kta-em-mini-poi-sans-icone::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: #8cb4ff;
+  border: 2px solid #ffffff;
+}
+
+/* 💬 Bulles (coordonnées / point) au-dessus de l'écran XL. Le fond capte
+   l'appui « à côté » qui ferme la bulle. */
+.kta-em-bulle-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+}
+.kta-em-bulle {
+  width: 100%;
+  max-width: 460px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border: 2px solid;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.kta-emergency-dark  .kta-em-bulle { background: #1a1f2e; color: #e8eaf0; border-color: #f4c542; }
+.kta-emergency-light .kta-em-bulle { background: #ffffff; color: #0a0d18; border-color: #b8740b; }
+.kta-em-bulle-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 10px;
 }
-.kta-emergency-pos-ligne .kta-emergency-value {
-  flex: 1;
-  min-width: 0;   /* sans ça, des chiffres longs poussent le bouton hors du bloc */
+.kta-em-bulle-titre {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.kta-emergency-copier-btn {
+.kta-emergency-dark  .kta-em-bulle-titre { color: #f4c542; }
+.kta-emergency-light .kta-em-bulle-titre { color: #b8740b; }
+.kta-em-bulle-fermer {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1;
   border: 1.5px solid;
   border-radius: 10px;
@@ -7608,8 +7793,54 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-family: inherit;
   background: transparent;
   color: inherit;
-  transition: background 0.12s;
 }
+.kta-emergency-dark  .kta-em-bulle-fermer { border-color: rgba(200, 208, 224, 0.4); }
+.kta-emergency-light .kta-em-bulle-fermer { border-color: rgba(44, 56, 72, 0.35); }
+/* Coordonnées : lisibles à un mètre, pour les dicter au téléphone. */
+.kta-em-coords-val {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: clamp(30px, 10.5vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+.kta-emergency-dark  .kta-em-coords-val { color: #f4c542; }
+.kta-emergency-light .kta-em-coords-val { color: #b8740b; }
+.kta-em-bulle-statut { text-align: center; }
+.kta-emergency-dark  .kta-em-bulle-statut { color: #c8d0e0; }
+.kta-emergency-light .kta-em-bulle-statut { color: #2c3848; }
+/* Nom du point : en gros, c'est ce qu'on cherche à reconnaître. */
+.kta-em-bulle-titre.kta-em-point-nom {
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  padding-top: 8px;
+}
+.kta-em-point-type { font-size: 14px; font-weight: 700; }
+.kta-emergency-dark  .kta-em-point-type { color: #8892a4; }
+.kta-emergency-light .kta-em-point-type { color: #4a5468; }
+.kta-em-point-note {
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.kta-em-bulle-action {
+  min-height: 52px;
+  padding: 12px 16px;
+  font-size: 17px;
+  font-weight: 800;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.kta-emergency-dark  .kta-em-bulle-action { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
+.kta-emergency-light .kta-em-bulle-action { background: #b8740b; color: #ffffff; border-color: #b8740b; }
 
 /* Heading bloc — texte par-dessus le minimap, donc halo prononcé pour lisibilité */
 .kta-emergency-heading-num {
@@ -7850,7 +8081,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 @media (max-width: 540px) {
   .kta-emergency-titre      { font-size: 19px; }
   .kta-emergency-value      { font-size: 26px; }
-  .kta-emergency-pos-gps    { font-size: 18px; }
   .kta-emergency-heading-num { font-size: 44px; }
   .kta-emergency-heading-card { font-size: 22px; }
   .kta-emergency-bloc-heading { min-height: 260px; }
@@ -7860,38 +8090,30 @@ html.kta-theme-light .kta-cfg-group-titre {
 /* 📱 27/09/2026 — TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
    tout téléphone en affichage zoomé). Mesuré avant cette règle : 50 px de
    défilement, dont l'essentiel vient du PLANCHER de la mini-carte (260 px) et
-   non du bouton de copie. Le bouton de sortie restait atteignable (il est
+   non du bouton de copie (retiré depuis). Le bouton de sortie restait atteignable (il est
    collant), mais un écran de panique ne devrait rien faire défiler du tout. */
 @media (max-width: 360px) {
   .kta-emergency-bloc-heading { min-height: 200px; }
-  .kta-emergency-copier-btn   { width: 44px; height: 44px; font-size: 19px; }
   .kta-emergency-value        { font-size: 23px; }
-  .kta-emergency-pos-gps      { font-size: 16.5px; }
 }
 
 /* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
-   landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape, on
-   force 2 colonnes (sinon scroll vertical bloqué) + tailles réduites
-   pour que tout rentre sans scroll. La minimap se redimensionne via
+   landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape :
+   tailles réduites pour que tout rentre sans scroll. La minimap se redimensionne via
    le listener orientationchange (cf emergencyMode.js > _orientationListener). */
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   .kta-emergency-box        { max-width: none; gap: 8px; }
-  /* 🗺️ 26/09/2026 : position à gauche, minimap à droite sur TOUTE la
-     hauteur — en paysage bas, l'empilement vertical ne laissait que
-     160 px de carte. */
-  .kta-emergency-grid       { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
-                              grid-template-rows: minmax(0, 1fr); gap: 8px; }
-  .kta-emergency-bloc-heading { grid-column: 2 / 3; grid-row: 1; }
+  /* 🗺️ 03/10/2026 : le bloc position est parti — la minimap occupe toute
+     la largeur ET toute la hauteur restante. */
+  .kta-emergency-grid       { gap: 8px; }
   .kta-emergency-titre      { font-size: 17px; }
   .kta-emergency-value      { font-size: 22px; }
-  .kta-emergency-pos-gps    { font-size: 16px; }
   .kta-emergency-heading-num { font-size: 32px; }
   .kta-emergency-heading-card { font-size: 18px; }
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
-  .kta-emergency-copier-btn { width: 40px; height: 40px; font-size: 18px; }
   .kta-emergency-mini-map   { min-height: 140px; }
   .kta-emergency-chip       { font-size: 10.5px; }
   .kta-emergency-plan-nom   { font-size: 12px; }
@@ -8454,7 +8676,7 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
     white-space: nowrap;
   }
   .loader-header-actions { margin-left: auto; }
-  #loaderAlertBtn, #loaderHelpBtn, #loaderConfigBtn, #loaderLockBtn {
+  #loaderAlertBtn, #loaderHelpBtn, #loaderConfigBtn, #loaderOfflineHdrBtn {
     min-width: 36px;
     min-height: 36px;
   }
@@ -10761,6 +10983,151 @@ body.kta-theme-light .kta-profile-pro-hint {
   }
 }
 
+/* 📡 Pastille « hors-ligne » (lot B, 03/10/2026) — point accolé au badge de
+   version, peint par homeConfig.js > _initPastilleHorsLigne. Le bouton fait
+   20 px de zone tactile, le point 9 px. Couleurs = celles de .kta-tx-ok/err/
+   warn/muted (variantes claires comprises). [hidden] doit gagner sur display. */
+.kta-offline-groupe { white-space: nowrap; }
+.kta-offline-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 1px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.kta-offline-dot[hidden],
+.kta-offline-hdr[hidden],
+.kta-offline-msg[hidden] { display: none !important; }
+.kta-offline-dot::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #8892a4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.kta-offline-dot.kta-offline-ok::before   { background: #6ee287; }
+.kta-offline-dot.kta-offline-ko::before   { background: #ff8c8c; box-shadow: 0 0 6px rgba(255, 140, 140, 0.7); }
+.kta-offline-dot.kta-offline-wait::before {
+  background: #ffb380;
+  animation: kta-offline-wait-pulse 1.4s ease-in-out infinite;
+}
+.kta-offline-dot.kta-offline-off::before  { background: #8892a4; }
+.kta-offline-dot:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+@keyframes kta-offline-wait-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+html.kta-theme-light .kta-offline-dot.kta-offline-ok::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-ok::before   { background: #1e7a3a; }
+html.kta-theme-light .kta-offline-dot.kta-offline-ko::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-ko::before   { background: #a01818; box-shadow: none; }
+html.kta-theme-light .kta-offline-dot.kta-offline-wait::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-wait::before { background: #8b3a00; }
+html.kta-theme-light .kta-offline-dot.kta-offline-off::before,
+body.kta-theme-light .kta-offline-dot.kta-offline-off::before  { background: #6b6354; }
+
+/* Indicateur d'en-tête : même rouge que l'alerte 🚨 « emergency », sans pulsation. */
+.loader-btn-help.kta-offline-hdr {
+  background: rgba(220, 53, 69, 0.22);
+  border-color: rgba(255, 107, 107, 0.55);
+  color: #ffe4d4;
+}
+.loader-btn-help.kta-offline-hdr:hover {
+  background: rgba(255, 53, 69, 0.40);
+  border-color: rgba(255, 107, 107, 0.85);
+}
+body.kta-theme-light .loader-btn-help.kta-offline-hdr {
+  background: #fde3e3 !important;
+  border: 1px solid #a01818 !important;
+}
+
+/* Message court (progression / résultat) au-dessus de l'accueil. */
+.kta-offline-msg {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  max-width: calc(100vw - 32px);
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  background: #1a1f2e;
+  color: #e8eaf0;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.kta-offline-msg.kta-offline-msg-ok { border-color: #6ee287; }
+.kta-offline-msg.kta-offline-msg-ko { border-color: #ff8c8c; }
+html.kta-theme-light .kta-offline-msg,
+body.kta-theme-light .kta-offline-msg {
+  background: #ffffff;
+  color: #2a2620;
+}
+html.kta-theme-light .kta-offline-msg.kta-offline-msg-ok,
+body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a; }
+html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
+body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
+
+/* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
+   vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
+   licence warn · configuree info, variantes claires comprises). Sous 380 px,
+   seule l'icône reste : le mot est dans l'infobulle et dans la modale réseau. */
+.kta-cnx-groupe { white-space: nowrap; }
+.kta-cnx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 20px;
+  margin: 0;
+  padding: 0 3px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.kta-cnx-chip[hidden],
+.kta-cnx-bloc[hidden] { display: none !important; }
+.kta-cnx-chip:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 1px;
+}
+.kta-cnx-ico { font-size: 11px; line-height: 1; }
+.kta-cnx-mini { font-size: 11px; }
+/* Un emoji ne prend pas la couleur du texte : sans ce point, l'icône seule
+   (écran étroit, pied de page replié) ne dirait rien de l'état. */
+.kta-cnx-ico::after,
+.kta-cnx-mini::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+@media (max-width: 379px) {
+  .kta-cnx-mot { display: none; }
+}
+
 /* Signature manuscrite KARMA dans le footer copyright. Depuis v1.7.3, sert
    d'identité visible au copyright (avant : "© 2026 Flavien VIDAL [signature]"
    → maintenant : "© 2026 [signature]"). Le nom civil reste dans les headers
@@ -11712,9 +12079,10 @@ body.kta-multilevel-active .kta-compass-widget {
    🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
    ================================================================== */
 
-/* Toggle "Mode hors-ligne strict" dans la section Confidentialité de
-   la modale Configuration du loader. Pattern label+checkbox cohérent
-   avec les autres toggles (debug, perfPreset, etc.). */
+/* Case à cocher générique de la modale Configuration du loader (label +
+   checkbox + texte) : Vue OSM, plans serveur, rejeu, heatmap, batterie,
+   vibration, import/export… Le nom historique est conservé : la classe est
+   réutilisée par une dizaine de cases (index.html, interfaceImportExport.js). */
 .kta-net-paranoia-toggle {
   display: flex;
   align-items: flex-start;
@@ -11756,41 +12124,6 @@ body.kta-multilevel-active .kta-compass-widget {
   word-break: break-word;
 }
 
-/* Badge "MODE HORS-LIGNE STRICT" dans le footer du loader (visible
-   seulement quand paranoia ON). Cliquable → ouvre Configuration.
-
-   🆕 v1.8.0 fix : ajout box-sizing:border-box. Sans ça, `<div>` est en
-   content-box par défaut (les `<button>` héritent border-box du user-agent
-   stylesheet mais pas les `<div>`), donc width:100% + padding 10/14 +
-   border 1px = 100% + 30px → débordement de 30px à droite hors du
-   #planLoaderBox parent. */
-.kta-net-paranoia-badge {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 8px 0 12px 0;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(255, 149, 0, 0.18), rgba(255, 149, 0, 0.08));
-  border: 1px solid rgba(255, 149, 0, 0.5);
-  border-radius: 8px;
-  color: #ffb380;
-  font-weight: 600;
-  font-size: 13px;
-  text-align: center;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  user-select: none;
-  animation: kta-paranoia-pulse 2.4s ease-in-out infinite;
-}
-.kta-net-paranoia-badge:hover {
-  background: linear-gradient(135deg, rgba(255, 149, 0, 0.28), rgba(255, 149, 0, 0.14));
-  border-color: rgba(255, 149, 0, 0.75);
-  color: #ffc89a;
-}
-@keyframes kta-paranoia-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.4); }
-  50%      { box-shadow: 0 0 8px 2px rgba(255, 149, 0, 0.22); }
-}
 
 /* ─────────────────────────────────────────────────────────────────
    Modale 📋 Journal réseau (live) — #loaderNetLogModal
@@ -11890,7 +12223,6 @@ body.kta-multilevel-active .kta-compass-widget {
 .kta-net-status-ok      { color: #a8d4a8; }
 .kta-net-status-err     { color: #ff8c8c; }
 .kta-net-status-pending { color: #8892a4; }
-.kta-net-status-blocked { color: #ff9500; }
 
 .kta-net-body-yes {
   display: inline-block;
@@ -11911,13 +12243,6 @@ body.kta-multilevel-active .kta-compass-widget {
   border-radius: 4px;
   font-weight: 500;
   font-size: 10px;
-}
-
-.kta-net-row-blocked {
-  background: rgba(255, 149, 0, 0.08) !important;
-}
-.kta-net-row-blocked td {
-  border-left: 3px solid #ff9500;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -14513,156 +14838,6 @@ html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
   background: linear-gradient(180deg, #ffd866, #e8b537) !important;
 }
 
-/* === 🔒 v1.14.11 — Modales Verrouiller MyKTAMap ===
-   Remplace .kta-shutdown-confirm-* (v1.14.10) suite à KARMA « plutôt que
-   éteindre qui sert à rien, on fait verrouiller (si password actif) ».
-   Pattern miroir de .kta-theme-confirm-* (v1.14.9). Accent bleu charte
-   (action neutre/sécurité, pas destructive) sur la modale confirm.
-   Variant nopin = modale d'info quand aucun PIN n'est configuré. */
-.kta-lock-confirm-overlay,
-.kta-lock-nopin-overlay {
-  background: rgba(5, 8, 15, 0.78) !important;
-}
-.kta-lock-confirm-boite,
-.kta-lock-nopin-boite {
-  max-width: 480px;
-  height: auto !important;
-  max-height: 88vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-  border: 1px solid rgba(140, 180, 255, 0.40) !important;
-  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.14),
-              0 18px 60px rgba(0, 0, 0, 0.65) !important;
-}
-.kta-lock-confirm-corps,
-.kta-lock-nopin-corps {
-  padding: 22px 24px 14px !important;
-  text-align: center;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-.kta-lock-confirm-icone,
-.kta-lock-nopin-icone {
-  font-size: 56px;
-  line-height: 1;
-  margin: 4px 0 14px;
-  color: #8cb4ff;
-  text-shadow: 0 0 28px rgba(140, 180, 255, 0.40);
-}
-.kta-lock-confirm-msg,
-.kta-lock-nopin-msg {
-  color: #e8eaf0;
-  font-size: 14.5px;
-  line-height: 1.55;
-  margin: 0 0 12px;
-}
-.kta-lock-confirm-msg strong,
-.kta-lock-nopin-msg strong {
-  color: #aac6ff;
-  font-weight: 700;
-}
-.kta-lock-confirm-hint,
-.kta-lock-nopin-hint {
-  color: #8892a4;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 6px 0 0;
-  padding: 8px 12px;
-  background: rgba(140, 180, 255, 0.06);
-  border-left: 2px solid rgba(140, 180, 255, 0.40);
-  border-radius: 0 4px 4px 0;
-  text-align: left;
-}
-.kta-lock-confirm-hint em,
-.kta-lock-nopin-hint em {
-  font-style: italic;
-}
-.kta-lock-confirm-actions,
-.kta-lock-nopin-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding: 12px 18px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  flex: 0 0 auto;
-}
-.kta-lock-confirm-actions .kta-btn,
-.kta-lock-nopin-actions .kta-btn {
-  min-width: 130px;
-}
-/* Bouton primary : jaune charte MyKTAMap (cohérent avec « Activer et
-   relancer » du switch thème — signature visuelle de la marque). */
-.kta-lock-confirm-actions .kta-lock-confirm-ok,
-.kta-lock-nopin-actions .kta-lock-nopin-ok {
-  background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
-  border: 1px solid #c99a1f !important;
-  color: #2a1f08 !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
-}
-.kta-lock-confirm-actions .kta-lock-confirm-ok:hover,
-.kta-lock-nopin-actions .kta-lock-nopin-ok:hover {
-  background: linear-gradient(180deg, #ffd866, #e8b537) !important;
-  box-shadow: 0 3px 14px rgba(244, 197, 66, 0.45) !important;
-}
-.kta-lock-confirm-actions .kta-lock-confirm-ok:focus-visible,
-.kta-lock-nopin-actions .kta-lock-nopin-ok:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-/* Variant theme light — beige + accent ambre */
-body.kta-theme-light .kta-lock-confirm-overlay,
-html.kta-theme-light .kta-lock-confirm-overlay,
-body.kta-theme-light .kta-lock-nopin-overlay,
-html.kta-theme-light .kta-lock-nopin-overlay {
-  background: rgba(40, 32, 20, 0.55) !important;
-}
-body.kta-theme-light .kta-lock-confirm-boite,
-html.kta-theme-light .kta-lock-confirm-boite,
-body.kta-theme-light .kta-lock-nopin-boite,
-html.kta-theme-light .kta-lock-nopin-boite {
-  background: var(--kta-light-bg-elevated) !important;
-  color: var(--kta-light-text) !important;
-  border-color: rgba(161, 110, 16, 0.40) !important;
-  box-shadow: 0 0 0 1px rgba(161, 110, 16, 0.10),
-              0 18px 60px rgba(80, 60, 30, 0.30) !important;
-}
-body.kta-theme-light .kta-lock-confirm-icone,
-html.kta-theme-light .kta-lock-confirm-icone,
-body.kta-theme-light .kta-lock-nopin-icone,
-html.kta-theme-light .kta-lock-nopin-icone {
-  color: #a16e10;
-  text-shadow: 0 0 28px rgba(161, 110, 16, 0.30);
-}
-body.kta-theme-light .kta-lock-confirm-msg,
-html.kta-theme-light .kta-lock-confirm-msg,
-body.kta-theme-light .kta-lock-nopin-msg,
-html.kta-theme-light .kta-lock-nopin-msg {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-lock-confirm-msg strong,
-html.kta-theme-light .kta-lock-confirm-msg strong,
-body.kta-theme-light .kta-lock-nopin-msg strong,
-html.kta-theme-light .kta-lock-nopin-msg strong {
-  color: #6b4d10 !important;
-}
-body.kta-theme-light .kta-lock-confirm-hint,
-html.kta-theme-light .kta-lock-confirm-hint,
-body.kta-theme-light .kta-lock-nopin-hint,
-html.kta-theme-light .kta-lock-nopin-hint {
-  color: var(--kta-light-text-muted) !important;
-  background: rgba(244, 197, 66, 0.18) !important;
-  border-left-color: rgba(161, 110, 16, 0.55) !important;
-}
-body.kta-theme-light .kta-lock-confirm-actions,
-html.kta-theme-light .kta-lock-confirm-actions,
-body.kta-theme-light .kta-lock-nopin-actions,
-html.kta-theme-light .kta-lock-nopin-actions {
-  border-top-color: var(--kta-light-border) !important;
-}
-
 /* === ↻ v1.14.11 — Theme light overrides pour la modale « Session
    précédente restaurée » (.kta-session-modal-*). KARMA : « en mode clair,
    le modal quand on charge la dernière carte session précédente restaurée
@@ -14695,13 +14870,6 @@ body.kta-theme-light .kta-session-modal-detail,
 html.kta-theme-light .kta-session-modal-detail {
   color: var(--kta-light-text-muted) !important;
 }
-
-/* v1.14.11 : tous les styles .kta-shutdown-* (v1.14.8 → v1.14.10) ont
-   été retirés en même temps que le bouton 🔌 Arrêt de l'application —
-   plus aucun chemin de code n'instancie #kta-shutdown-confirm-modal ni
-   #kta-shutdown-overlay. Le remplaçant fonctionnel est le bouton 🔒
-   Verrouiller (cf. .kta-lock-confirm-* / .kta-lock-nopin-* plus haut).
-   Aussi retiré : .loader-btn-shutdown (CSS bouton header). */
 
 /* === 📝 v1.16.0 step 1 — Popup note (zones / tracés / structures) ===
    Le popup utilise les mêmes classes Leaflet que les popups points
@@ -15209,7 +15377,7 @@ body.kta-theme-light .kta-legende-modal-boite {
  * Lève la restriction "mode carte uniquement" → le thème clair s'applique
  * désormais à : body, loader plein écran (#planLoaderOverlay + Box), home
  * cards (Mes plans, Récents, Reprendre), boutons home, modale Config home,
- * modale Audit réseau (NetDoc + NetLog), drawer perf, toggles paranoia,
+ * modale Audit réseau (NetDoc + NetLog), drawer perf, cases .kta-net-paranoia-toggle,
  * inputs file, status messages.
  *
  * Le splash KARMA animé est volontairement laissé en dark (cinématique de
@@ -15253,8 +15421,8 @@ body.kta-theme-light #planLoaderBox a:hover {
    toujours transparent ») : remplacement du fond rgba(0,0,0,0.05) (5%
    noir = quasi-transparent sur fond beige du loader-header → l'user
    percevait ça comme « transparent ») par un vrai blanc opaque #ffffff.
-   S'applique uniformément aux 3 boutons utilitaires du header :
-   📖 Documentation, ⚙️ Configuration, 🔒 Verrouiller. */
+   S'applique uniformément aux boutons utilitaires du header :
+   🚨 Alerte, 📖 Documentation, ⚙️ Configuration. */
 body.kta-theme-light .loader-btn-help,
 body.kta-theme-light .loader-btn-secondary {
   background: #ffffff !important;
@@ -15264,7 +15432,7 @@ body.kta-theme-light .loader-btn-secondary {
 /* v1.14.15 (KARMA) : :hover encapsulé dans @media (hover: hover) pour
    ne s'activer que sur les devices avec un vrai pointeur (mouse). Sur
    tactile, après tap, le :hover restait sticky → le bouton apparaissait
-   en ambre permanent (vu sur le bouton 🔒 Verrouiller dernier tappé). */
+   en ambre permanent après un tap. */
 @media (hover: hover) {
   body.kta-theme-light .loader-btn-help:hover,
   body.kta-theme-light .loader-btn-secondary:hover {
@@ -15344,6 +15512,7 @@ body.kta-theme-light #exportListBtn,
 body.kta-theme-light #loaderPlannerBtn,
 body.kta-theme-light #loaderResetBtn,
 body.kta-theme-light #loaderForceUpdateBtn,
+body.kta-theme-light #loaderDepannageBtn,
 body.kta-theme-light #loaderAlertBtn,
 body.kta-theme-light #loaderHelpBtn,
 body.kta-theme-light #loaderConfigBtn,
@@ -15370,7 +15539,7 @@ body.kta-theme-light .kta-aide-section-titre {
 body.kta-theme-light .kta-loader-perf-hint {
   color: var(--kta-light-text-muted);
 }
-/* === Toggles checkbox (paranoia / legacy / showInter / themeLight) === */
+/* === Cases à cocher de la Configuration (.kta-net-paranoia-toggle) === */
 body.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
@@ -15433,11 +15602,6 @@ body.kta-theme-light #loaderNetDocWhitelist {
 }
 body.kta-theme-light #loaderNetLogMeta {
   color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light #loaderParanoiaBadge {
-  background: rgba(220, 50, 50, 0.15) !important;
-  color: #b02020 !important;
-  border: 1px solid rgba(220, 50, 50, 0.4) !important;
 }
 
 /* === Petites modales système (Force update / plan introuvable / yes-no) === */
@@ -15533,7 +15697,8 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
-html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h5 {
   color: #1a1612 !important;
 }
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,
@@ -16103,7 +16268,7 @@ html.kta-theme-light .splash-claude-sub {
   color: #6b6354 !important;
 }
 html.kta-theme-light #splashVersion {
-  color: #6b6354 !important;
+  color: #b8860b !important;
 }
 html.kta-theme-light #splashLicense {
   color: #6b6354 !important;
@@ -16898,11 +17063,6 @@ html.kta-theme-light #loaderNetDocWhitelist {
 html.kta-theme-light #loaderNetLogMeta {
   color: #6b6354 !important;
 }
-html.kta-theme-light #loaderParanoiaBadge {
-  background: rgba(220, 50, 50, 0.15) !important;
-  color: #b02020 !important;
-  border: 1px solid rgba(220, 50, 50, 0.4) !important;
-}
 
 /* === Modale Choix suppression (apparaît sur clic ❌ Mesure, ❌ Tracé, etc.) === */
 
@@ -17021,7 +17181,8 @@ body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
-body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h5 {
   color: #1a1612 !important;
 }
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,

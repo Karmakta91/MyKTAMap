@@ -48,9 +48,11 @@ Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 trac�
 
 Décisions : `docs/ETUDE_GUIDAGE.md` ; archi : `docs/architecture/tracking.md` §Guidage.
 
-- 🟡 **Itinéraires inter-plans non couverts** : `interPlanRoute.js` crée ses roads sans `raccords` / `carrefours`
-  → pas de pointillé, raccord non compté, et le bandeau n'y dit que l'arrivée (aucun croisement connu). Brancher
-  `_champsGuidage`. ⚠️ doc seule (non re-vérifié le 29/09).
+- 🟡 **Poids des jonctions de niveau sur un plan distant** (vu le 01/10/2026 en branchant le guidage
+  inter-plans) : `pathfinder.js > _poidsSegment` lit l'échelle ET les profondeurs de niveau du plan OUVERT
+  (`APP_CONFIG.scale`, `getProfondeurNiveau`). L'étape d'un itinéraire inter-plans calculée sur un autre plan
+  multi-niveau pèse donc ses jonctions avec les profondeurs du mauvais plan → choix de chemin légèrement
+  faussé. Les carrefours, eux, reçoivent déjà l'échelle du plan cible (`opts.echelle`). ✅ vérifié (code lu).
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
@@ -67,6 +69,21 @@ natives).
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
   exercices le réclament **M**.
+- **Ouvrir un plan de secours depuis l'accueil** (demande KARMA, 03/10 ; audit par agent, lecture seule) : l'équipier qui reçoit
+  un `.mkmsec.json` doit aujourd'hui ouvrir le bon plan à la main, puis 🧭 Tracker → 🚨 Mode Secours → 📥 Importer → aperçu →
+  « Ouvrir le scénario » → 🚀 Lancer → rôle (~8 gestes). Pire : déposé sur « 📦 Ajouter un plan », le fichier part à la
+  conversion SIG (`homeLoader.js` `_estFichierSig` attrape tout `.json`). Cible : l'accueil lit le contenu
+  (`type: "myktamap-secours-scenario"`, pas l'extension — les messageries renomment), retrouve le plan dans `PlanRegistry`
+  (id, puis nom + version : l'id diffère entre `local_…` et `server_…`), le charge par `chargerPlanDuRegistre`, puis au
+  `SecoursMode.init()` qui suit enchaîne aperçu, import (identifiants d'origine gardés : sinon l'opérateur refuse le rapport)
+  et choix du rôle. Plan absent : arrêt avec un message qui nomme plan et version attendus, jamais « le plus proche ».
+  Homonymes : choix par l'utilisateur. Pièges : attendre la fin du splash et la restauration de session (motif « cible en
+  attente » d'`InterPlanLinks.goTo`) ; plan local sans copie dans l'app → passer par la fenêtre « Plan introuvable » (iOS
+  bloque un sélecteur de fichier ouvert par programme). Lots : L1 reconnaître et aiguiller (y compris le rapport d'équipe)
+  **S** · L2 enchaînement complet **M** · L3 reprise après arrêt brutal (`sessionStorage`, facultatif) **S**. À trancher :
+  1. plan d'une autre version (reco : demander) · 2. garder l'aperçu (reco : oui) · 3. rôle « Équipe » présélectionné
+  (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
+  depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
 
 ⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
 `entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
@@ -115,6 +132,34 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 ⚠️ **Côté DATA (KARMA seul)** : les `plan-config.json` générés avant v1.97.9 gardent une valeur fautive pour
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
+
+## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
+
+Livré : bug incognito (`67846d5`), suppression du mode hors-ligne strict (`6a85b5b`), 🆘 Dépannage (`c923dcb`),
+pastille hors-ligne + inspecteur SW dans le mode dev (`4049614`).
+
+- 🟠 **La fenêtre « Que fait l'app sur le réseau ? » dit « liste exhaustive » sans citer OpenStreetMap** : ajouter une
+  entrée `netaudit.whitelist.osm` ×3 (la puce `home.netdoc.verify3` le dit déjà). **S.**
+- 🟡 **CSP décrite de travers** : `security-legal.md` §40.7 cite `connect-src 'self' https://www.gstatic.com`, NETWORK_AUDIT
+  « la directive clé est `connect-src 'self'` » — la conf réelle autorise aussi `blob:` et `tile.openstreetmap.org`. **S.**
+- 🟡 `security-legal.md` ~l.350 décrit encore un écran PIN bloquant qui renvoie à « Tout réinitialiser » (le verrou est
+  temporaire depuis le 13/09). **S.**
+- ⚪ Thème clair : `#loaderResetBtn` (règle par id `!important`) écrase le style « danger » du bouton reset de 🆘 Dépannage.
+- 🔬 Pastille hors-ligne : coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange
+  (hors réseau) et thème clair non testés en navigateur ; la progression avance par paquets de 10.
+- ⚪ Un vieil export de profil réécrit la clé `myktamap_network_paranoia_v1` (inerte) ; purge possible en 1 ligne si gênant.
+
+## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
+
+Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
+
+- 🟠 **Commande vocale : français seulement** — `voiceCommand.js` force `fr-FR` et ses motifs sont en français ; les guides EN/ES le disent désormais. À trancher : la traduire ou l'annoncer comme telle dans l'interface. ✅ vérifié (code lu).
+- 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
+- 🟡 **« 💾 Sauver la note »** écrit en dur en français dans la bulle d'un objet (`utils.js` ~l.962) : EN/ES l'affichent en français.
+- 🟡 **ES** : `lost.modal.titre` dit « Modo emergencia » quand `ui.subaction.*` dit « Modo urgencia ».
+- 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
+- ⚪ **Code d'accès oublié** : le guide dit maintenant que seul l'effacement des données du site lève le verrou (le démarrage attend le code, `main.js`). Pas de voie de secours dans l'app — décision de produit, à confirmer.
+- ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
 
 ## 📝 Stratégie doc — à trancher par KARMA
 

@@ -22,7 +22,7 @@
     "liaisons": { "version": 1, "links": [ /* format registre myktamap_interplan_links_v1, planId REMAPPÉS "server_<id>" */ ] }
   }
   ```
-  ⚠️ `decouvrirPlansServeur` (main.js) ne lit QUE `plans` aujourd'hui — champs inconnus ignorés (rétrocompat totale). **`config.subtitle` est lu DÈS v1.73.0** (`main.js > _appliquerSousTitreKiosque`, appelé par `decouvrirPlansServeur`) : remplace « Cartographie souterraine » sur les 2 nœuds `[data-i18n="home.tagline"]` (splash + header loader) via `textContent` (jamais innerHTML) **+ retrait de l'attribut `data-i18n`** — sans ce retrait, tout changement de langue ré-écraserait l'override. ⚠️ Pref « ne pas charger les plans serveur » → discovery skippée → sous-titre non appliqué (limite consignée, résolue au lot lecteurs). **Depuis v1.73.0 TOUT est lu** : `_chargerIndexServeur()` (main.js) fetch l'index à CHAQUE boot (même pref skip-server active — elle ne skippe que l'inscription des plans), le SW le sert **network-first** (fraîcheur kiosque, fallback cache offline) ; `_appliquerConfigKiosque()` applique sous-titre + flags (serverPlansOnly masque #panelZip + head + .loader-plans-filters + section pref skip ; disableGenerator masque #loaderPlannerBtn) ; les `liaisons` sont fusionnées par id via `InterPlanLinks.importLinks` (idempotent, rejouée à chaque boot). Le tagline des PDF exportés suit aussi `config.subtitle` (pdfExport). Gouvernance + règle des 2 flags MAX : `community-server-line.md`. Guide admin : `docs/applications/SELFHOST.md`. `confadmin.html` (racine, **HORS `ASSETS_TO_CACHE`**, FR inline hors i18n) : lit les ZIPs via `lib/jszip.min.js` (tout local), pioche les liaisons dans localStorage même-origine OU un export de profil (`sections.preferences`), et REMAPPE les planId locaux → `"server_" + id` (même sanitisation `[^a-z0-9_-]` que le moteur — sinon les liaisons pointeraient vers des ids d'un autre appareil).
+  ⚠️ `decouvrirPlansServeur` (main.js) ne lit QUE `plans` aujourd'hui — champs inconnus ignorés (rétrocompat totale). **`config.subtitle` est lu DÈS v1.73.0** (`main.js > _appliquerSousTitreKiosque`, appelé par `decouvrirPlansServeur`) : remplace « Cartographie souterraine » sur les 2 nœuds `[data-i18n="home.tagline"]` (splash + header loader) via `textContent` (jamais innerHTML) **+ retrait de l'attribut `data-i18n`** — sans ce retrait, tout changement de langue ré-écraserait l'override. ⚠️ Pref « ne pas charger les plans serveur » → discovery skippée → sous-titre non appliqué (limite consignée, résolue au lot lecteurs). **Depuis v1.73.0 TOUT est lu** : `_chargerIndexServeur()` (main.js) fetch l'index à CHAQUE boot (même pref skip-server active — elle ne skippe que l'inscription des plans), le SW le sert **network-first** (fraîcheur kiosque, fallback cache offline) ; `_appliquerConfigKiosque()` applique sous-titre + flags (serverPlansOnly masque #panelZip + head + .loader-plans-filters + section pref skip ; disableGenerator masque #loaderPlannerBtn) ; les `liaisons` sont fusionnées par id via `InterPlanLinks.importLinks` (idempotent, rejouée à chaque boot). Le tagline des PDF exportés suit aussi `config.subtitle` (pdfExport). `config.serverConnection` (v2.0.0, connexion serveur d'une instance) est lu au même endroit par `_appliquerConnexionServeur()` → `js/ktaExtensions.js` (état + pastille, aucune requête) ; un non-2xx (dont le 404 synthétique du SW hors ligne) compte comme « index injoignable » → dernière config mémorisée. Gouvernance + règle des 2 flags MAX : `community-server-line.md`. Guide admin : `docs/applications/SELFHOST.md`. `confadmin.html` (racine, **HORS `ASSETS_TO_CACHE`**, FR inline hors i18n) : lit les ZIPs via `lib/jszip.min.js` (tout local), pioche les liaisons dans localStorage même-origine OU un export de profil (`sections.preferences`), et REMAPPE les planId locaux → `"server_" + id` (même sanitisation `[^a-z0-9_-]` que le moteur — sinon les liaisons pointeraient vers des ids d'un autre appareil).
 - **Persistance ZIP local** : `meta.fsHandle` (Chrome/Edge) ou `meta.storeBlob` (mobile/Safari).
 - 🧹 **Les plans serveur disparus sont ÉLAGUÉS (v1.88.2)** — la découverte ne faisait que des `addOrUpdate` : **rien ne retirait jamais une entrée**. Un plan sorti de `data/index.json` restait dans le registre (localStorage), s'affichait dans « Mes plans », et **partait dans l'export de profil**, où il polluait l'instance d'en face. Constaté par KARMA (« si je reset full, la liste remonte »). `decouvrirPlansServeur` retire désormais les entrées `type:"server" && discovered:true` absentes de l'index. 🛟 *Le code n'est atteint qu'après un fetch d'index **réussi** — un serveur injoignable ne peut pas vider la liste — et les **données associées ne sont pas purgées** : si le plan revient sous le même id, sessions et géoréf se rattachent. 🍖 Corriger la source a suffi : l'export reste inchangé, une entrée périmée importée ailleurs sera élaguée au premier boot de cette instance.*
 - 🩸 **Qui fait autorité sur `version` (v1.88.0)** — `index.json` ET `plan-config.json` en portent un, et ils **divergent déjà dans ce repo** (`V1` vs `V2` pour le plan de test). Comme `addOrUpdate` fait un `Object.assign`, la version **ping-pongait** : celle de l'index au boot, celle du plan-config au chargement, retour à l'index au boot suivant — la fiche ℹ️ Infos affichait donc l'une ou l'autre selon la dernière action. Pire, `entry.version || null` **effaçait** la version connue quand l'index omet le champ. **Règle** : le `plan-config.json` fait autorité (il est *dans* le plan), `index.json` n'est qu'un indice **avant le premier chargement** ; l'origine est tracée par `versionSrc`, et on n'écrit jamais `null`.
@@ -164,8 +164,7 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
   1. 🖼️ Tiling (segmented 5 presets)
   2. 🚀 ULTRA (7 toggles)
   3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
-  4. 🔄 **Force update douce** *(nouveau)*
-  5. 💥 Tout réinitialiser
+  4. 🆘 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🆘 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
 - `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
 - `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
 
@@ -173,12 +172,12 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
 - Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
 - Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
 - Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
-- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser
 - Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
 
 #### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
 
-Nouveau bouton 🔄 dans la modale Configuration. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+Bouton 🔄 de la fenêtre ⚙️ Configuration → 🆘 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
 
 Différences fondamentales avec `viderCacheAppli()` :
 
@@ -191,7 +190,7 @@ Différences fondamentales avec `viderCacheAppli()` :
 | Confirmation | ✅ Modale simple (1 étape) | ✅ Double confirm |
 | Ping internet | ✅ (interne à `mettreAJourCodeSeul`) | ✅ (avant la double confirm) |
 
-**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, index.html) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
+**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, `js/loaderSwModals.js`) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
 - Ce qui va se passer : purge cache des assets + reload + re-download
 - Ce qui est préservé : plans, sessions, prefs, unlock gate
 - Conditions : connexion Internet active (vérifiée juste après par `mettreAJourCodeSeul`), reload immédiat
@@ -202,11 +201,12 @@ Use case : user signale "l'app n'a pas la dernière feature" → un Force update
 
 #### 39.3 Pattern HTML/CSS
 
-Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Boutons handlers dans `index.html` (inline) :
+Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Handlers dans `js/homeConfig.js` :
 
 - `loaderConfigBtn` → `_ouvrirLoaderConfig()` (set `display:flex`)
 - `loaderConfigClose` + backdrop click + Escape → `_fermerLoaderConfig()`
-- `loaderForceUpdateBtn` → `window.mettreAJourCodeSeul()`
+- `loaderDepannageBtn` → `_ouvrirDepannage()` : construit `#kta-depannage-modal` (✕, clic-fond, Échap ; ❓ → fiche « depannage » via `AIDE_PAR_MODALE`). Elle s'empile au-dessus de la Configuration et sous les confirmations ; Échap ne la ferme que si elle est au premier plan, et l'Échap de la Configuration s'abstient tant qu'elle existe.
+- Dans cette fenêtre, les ids historiques : `loaderForceUpdateBtn` → `_depannageForceUpdate()` (confirmation puis `window.mettreAJourCodeSeul()`) · `loaderKillSwBtn` → `_depannageKillSw()` (ping Internet, confirmation, puis `killsw.html`) · `loaderResetBtn` → `_depannageReset()` (`window.viderCacheAppli()`, double confirmation)
 
 Les handlers existants pour Tiling segmented / ULTRA toggles / 🐛 Logs / 💥 Reset sont conservés et juste **déplacés** dans le DOM. Pas de changement de logique.
 

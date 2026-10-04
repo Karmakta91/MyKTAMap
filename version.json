@@ -1,8 +1,9 @@
 {
-  "version": "v1.99.0",
-  "released": "2026-10-01",
+  "version": "v2.0.0",
+  "released": "2026-10-04",
   "notes": [
-    "🧩 Replay, Heatmap, indicateur de batterie et vibration deviennent des options, désactivées par défaut : réactive celles qui te servent dans ⚙️ Configuration › Fonctionnalités optionnelles. L’Aide IA est maintenant dans la Documentation, à côté du choix de langue.",
-    "🚨 Mode Secours : évacuation vers les accès des équipes, bilan des engagés, heure de retour impérative, et une couverture plus honnête, niveau par niveau. Et un calque ouvert à la modification le reste quand tu réimportes ta session."
+    "🔌 Nouveau, en bas de l’accueil : « Base de données : désactivée ». Sur myktamap.fr, l’app n’a ni base de données ni backend, et n’en aura jamais : tes plans, tes sorties et tes photos restent sur ton appareil. Touche la pastille pour voir tout ce que l’app fait sur le réseau.",
+    "🧩 Replay, Heatmap, batterie et vibration deviennent des options désactivées par défaut (⚙️ Configuration › Fonctionnalités optionnelles). 📖 Documentation, Aide ❓ et tutoriel sont réécrits, plus courts. Nouveau : une pastille à côté du numéro de version, en bas de l’accueil — verte, l’app est prête hors-ligne ; rouge, touche-la pour tout enregistrer. Les outils de réparation sont réunis sous ⚙️ Configuration › 🆘 Dépannage ; le mode hors-ligne strict et le bouton 🔒 de l’accueil disparaissent (pour couper la carte du monde, décoche 🗺️ Vue OSM ; pour reverrouiller, ferme l’app).",
+    "🪧 Le guidage marche aussi sans le suivi : touche « 📍 Je suis ici » sur une plaque proche de l’itinéraire, la partie déjà faite disparaît sans recalcul. Il suit aussi un trajet qui passe par un portail. La croix du bandeau coupe le guidage ; la tuile 🪧 du menu Tracker le rallume."
   ]
 }

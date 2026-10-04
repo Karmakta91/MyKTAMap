@@ -338,7 +338,7 @@
         debugMode:              ac.debugMode === true,
         perfPreset:             ac.perfPreset || "?",
         scaledMarkers:          ac.scaledMarkers !== false,
-        showRoadIntersections:  ac.showRoadIntersections !== false,
+        showRoadIntersections:  ac.showRoadIntersections === true,   // défaut OFF (config.js)
         multiLevel:             ac.multiLevel === true,
         activeLevel:            ac.activeLevel != null ? ac.activeLevel : null
       };

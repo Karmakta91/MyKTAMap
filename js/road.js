@@ -778,11 +778,11 @@ function _renderIntersections() {
   // 🐛 v1.44.1 — purge via helper (fix accumulation FeatureGroup, cf. supra).
   _purgeIntersectionLayers();
 
-  // 🆕 v1.9.2 — toggle on/off des cercles d'intersection. Default true.
+  // 🆕 v1.9.2 — toggle on/off des cercles d'intersection. Défaut OFF (getPlanShowsIntersections).
   // 🆕 v1.36.2 — l'option est désormais PER-PLAN (déplacée de Configuration
   // home vers ⚙️ Réglages map mode). Helper `getPlanShowsIntersections()`
   // (cf js/config.js) lit la pref per-plan, fallback sur la pref globale
-  // historique, fallback default true. Le calcul reste accessible via
+  // historique, fallback false. Le calcul reste accessible via
   // window.computeRoadIntersections pour les exports (KMZ) indépendamment.
   const _shows = (typeof window.getPlanShowsIntersections === "function")
     ? window.getPlanShowsIntersections()

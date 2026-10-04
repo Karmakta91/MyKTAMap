@@ -614,6 +614,12 @@ window.ktaConfirm = function(message, opts) {
                 ' value="' + (Number.isFinite(opts.nombre.valeur) ? opts.nombre.valeur : '') + '"></label>'
             : '') +
           '<div class="kta-conv-actions">' +
+            // 🗑️ 01/10/2026 — 3e choix optionnel (`opts.autre = {label, valeur}`) : la
+            // Promise rend alors `opts.autre.valeur` (jamais un booléen, pour que
+            // l'appelant ne le confonde pas avec OK / Annuler). Sans `autre`, rien ne change.
+            (opts.autre
+              ? '<button class="kta-btn kta-btn-danger" id="kta-confirm-autre"></button>'
+              : '') +
             '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
             '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
           '</div>' +
@@ -645,6 +651,11 @@ window.ktaConfirm = function(message, opts) {
     document.addEventListener("keydown", surTouche);
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
     ov.querySelector("#kta-confirm-non").addEventListener("click", function() { finir(false); });
+    const autreEl = ov.querySelector("#kta-confirm-autre");
+    if (autreEl) {
+      autreEl.textContent = opts.autre.label || "";
+      autreEl.addEventListener("click", function() { finir(opts.autre.valeur); });
+    }
     ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
     // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre s'il y en a un)
     if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
@@ -3340,7 +3351,12 @@ window.telechargerPlan = telechargerPlan;
         if (cs.display === "none" || cs.visibility === "hidden") continue;
         var z = parseInt(cs.zIndex, 10);
         if (isNaN(z)) z = 0;
-        if (z > topZ) {
+        // `>=` : à z-index ÉGAL, le DERNIER dans le DOM gagne — c'est lui qui
+        // est peint au-dessus. Avec `>`, une fenêtre empilée sur ⚙️ Configuration
+        // (même z-index 99999, ajoutée après) laissait Échap fermer la
+        // Configuration dessous au lieu d'elle (03/10/2026, fenêtre 🆘 Dépannage
+        // et ses confirmations).
+        if (z >= topZ) {
           topZ = z;
           top = el;
         }

@@ -124,7 +124,7 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
         const t = document.querySelector("#kta-aide-modal .kta-readme-modal-titre");
         return t ? t.textContent.trim() : "";
       });
-      // ES = « ❓ Ayuda — Referencia de los botones »
+      // ES = « ❓ Ayuda »
       if (/Ayuda/i.test(titre)) ok("Aide servie en ESPAGNOL — « " + titre + " »");
       else if (/Help/i.test(titre)) pb("Aide en ANGLAIS — c'était le repli d'AVANT le lot 2 ; le contenu espagnol existe désormais (« " + titre + " »)");
       else if (/Aide/i.test(titre)) pb("Aide en FRANÇAIS — la résolution de langue ne prend pas 'es' (« " + titre + " »)");
@@ -139,10 +139,18 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       // et en espagnol.
       const lignes = await page.locator("#kta-aide-modal .kta-aide-row").allTextContents();
       const joint = lignes.join(" | ");
-      if (/Modo perfil/i.test(joint)) ok("fiche « Modo perfil » présente et traduite (bug du conteneur oublié)");
-      else pb("« Modo perfil » absente du hub — séparation des 2 sections ou traduction manquante");
-      if (/Biblioteca de planos/i.test(joint)) ok("fiche « Biblioteca de planos » présente (section qui n'existait même pas en EN)");
-      else pb("« Biblioteca de planos » absente");
+      // Titres lus dans les dicos, pas recopiés : l'audit de l'aide (03/10/2026)
+      // les a reformulés, et ce contrôle s'est alors cru en échec.
+      const _dico = function (l) {
+        return JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "..", "lang", l + ".json"), "utf8"));
+      };
+      const ES = _dico("es"), FR = _dico("fr");
+      [["profil", "bug du conteneur oublié"], ["bibliotheque-plans", "section qui n'existait même pas en EN"]].forEach(function (c) {
+        const tEs = ES["aide.sec." + c[0] + ".titre"] || "";
+        const tFr = FR["aide.sec." + c[0] + ".titre"] || "";
+        if (tEs && tEs !== tFr && lignes.some(function (l) { return l.indexOf(tEs) >= 0; })) ok("fiche « " + tEs + " » présente et traduite (" + c[1] + ")");
+        else pb("fiche « " + c[0] + " » absente du hub ou non traduite (« " + tEs + " »)");
+      });
       // Un titre resté français signalerait une clé non traduite passée au filet.
       const residusFr = lignes.filter(function (t) { return /Réglages|Recherche unifiée|Mon carnet|Astuces/i.test(t); });
       if (!residusFr.length) ok("aucun titre de section resté en français");

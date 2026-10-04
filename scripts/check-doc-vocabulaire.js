@@ -92,15 +92,21 @@ const groupes = [];
   const nImg = (IMG.match(/name="leg_style"[^>]*value="[a-z]+"/g) || []).length;
   const nPdf = (PDF.match(/_radioRowInline\("pdf_leg_style",\s*"[a-z]+"/g) || []).length;
   t("les styles de légende sont comptables dans les deux écrans (image " + nImg + " · PDF " + nPdf + ")", nImg > 0 && nPdf > 0);
+  // Le tutoriel ne compte plus les styles (refonte du 03/10/2026 : une carte
+  // d'accueil ne détaille pas l'export). Le contrôle ne lit plus une carte
+  // par son numéro : toute carte qui annoncerait un nombre de styles doit
+  // annoncer celui de l'export image.
   const MOT = { fr: ["styles", "estilos"], en: ["styles"], es: ["estilos"] };
   LANGS.forEach(function (l) {
-    const card = DICOS[l]["tutorial.card22.texte"] || "";      // carte « Export image »
-    const nb = MOT[l].map(function (mot) {
-      const m = card.match(new RegExp("(\\d+)\\s+" + mot, "i"));
-      return m ? Number(m[1]) : null;
-    }).filter(function (x) { return x !== null; })[0];
-    t("🩸 " + l + " : la carte « Export image » du tutoriel annonce " + nImg + " styles, pas ceux du PDF" +
-      (nb !== undefined && nb !== nImg ? " — elle en annonce " + nb : ""), nb === nImg);
+    const faux = [];
+    Object.keys(DICOS[l]).filter(function (k) { return /^tutorial\.card\./.test(k); }).forEach(function (k) {
+      MOT[l].forEach(function (mot) {
+        const m = DICOS[l][k].match(new RegExp("(\\d+)\\s+" + mot, "i"));
+        if (m && Number(m[1]) !== nImg) faux.push(k + " annonce " + m[1]);
+      });
+    });
+    t("🩸 " + l + " : aucune carte du tutoriel n'annonce un autre nombre de styles que l'export image (" + nImg + ")" +
+      (faux.length ? " — " + faux.join(" · ") : ""), faux.length === 0);
   });
 }
 

@@ -102,7 +102,7 @@ function fonction(nom) {
 // seul plan en liste doit être celui dernièrement chargé. Je peux même pas les
 // supprimer. » La purge de la v1.91.1 était suspendue à la RECRÉATION DE LA
 // CARTE (`_initMiniMap`) : tout chemin de rendu qui n'y arrive pas — hors-ligne
-// sans cache, incognito, strict offline, conteneur sans `#ktaOsmHomeMap` —
+// sans cache, incognito, conteneur sans `#ktaOsmHomeMap` —
 // laissait la pile intacte, avec des plans dont les couches appartenaient à une
 // carte morte. La règle est désormais posée au POINT D'ENTRÉE du retour.
 {

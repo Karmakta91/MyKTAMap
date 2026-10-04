@@ -2522,10 +2522,11 @@ function initInterface() {
       },
       {
         // 🪧 27/09/2026 — Guidage de l'itinéraire (décision KARMA 1:c) : le
-        // bandeau s'affiche TOUT SEUL dès que suivi + itinéraire coexistent ;
-        // ce réglage (Auto / Jamais, persisté) est le seul moyen de le couper
-        // pour de bon. La croix du bandeau ne le masque que pour l'itinéraire
-        // en cours. Étude : docs/ETUDE_GUIDAGE.md.
+        // bandeau s'affiche TOUT SEUL dès qu'un itinéraire coexiste avec le
+        // suivi OU une position confirmée (« Je suis ici », 01/10/2026). Ce
+        // réglage (Auto / Jamais, persisté) le coupe ; la croix du bandeau
+        // fait la même chose (KARMA 2:a) et cette tuile le rallume.
+        // Étude : docs/ETUDE_GUIDAGE.md.
         icone: "🪧",
         titre: window.I18n.t("ui.subaction.guidage"),
         section: "outils",

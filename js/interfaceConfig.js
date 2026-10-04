@@ -1455,7 +1455,7 @@ function afficherConfig() {
           les déclenchements accidentels une fois un plan chargé (l'user perd
           potentiellement sa session active + tous ses plans mémorisés en 2 clics).
           Pour reset depuis la map : passer par 🗂️ titre cliquable → home → ⚙️
-          Configuration → 💥 Tout réinitialiser.
+          Configuration → 🆘 Dépannage → 💥 Tout réinitialiser.
         -->
         ${_cfgGroupeFin()}
         <div class="kta-cfg-actions-bar">

@@ -76,7 +76,7 @@ données de l'utilisateur, un échec là = pas de release, point.
 | 9 | | ≡ Légende → ✏️ Modifier, puis 🔍 Filtres | Les deux s'ouvrent et agissent |
 | 10 | | Ouvrir le Mode Secours | S'ouvre, données du plan présentes |
 | 11 | | Badge version footer + modale « Mise à jour » | **Bonne version**, notes du bump courant |
-| 12 | 🔒 | Kill SW (`killsw.html`) puis recharger | L'app revit sur la nouvelle version, URL propre |
+| 12 | 🔒 | Kill SW (⚙️ Configuration → 🆘 Dépannage → 🆘 Ouvrir l'outil Kill SW, ou `killsw.html` directement) puis recharger | L'app revit sur la nouvelle version, URL propre |
 | 13 | | **Pages annexes à jour** : ouvrir l'Audit réseau (version en tête = version du bump) + vérifier en console l'absence de `[I18n] Clé manquante` | Attrape les **uploads FTP partiels** (`docs/` ou `lang/` non montés) — vécu 2× le 06/08 : Audit resté en v1.75.2, clés `home.profile.*` « manquantes » alors que le repo était sain |
 
 > **Voie rapide hotfix** (bump de cache type v1.75.1, zéro changement fonctionnel) :

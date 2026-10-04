@@ -129,7 +129,7 @@ Les anciennes entrées du journal restent nommées en `vNNN` (historique préser
 - Pour un **test du badge clignotant** : bump UNIQUEMENT `version.json` (simule une nouvelle version côté serveur sans modifier le code)
 - Pour un **fix CSS qui doit être propagé** : bump `sw.js` + au choix `copyright.js` selon si on veut afficher la même version qu'avant ou pas
 
-**Badge version cliquable** (`index.html > _initFooterVersion`) :
+**Badge version cliquable** (`js/homeConfig.js > _initFooterVersion`) :
 - `<span id="loaderCopyrightVersion">` dans le footer du loader, en fin de `.kta-loader-copyright-line2`
 - 2 états :
   - **Normal** : `v143` gris monospace
@@ -137,6 +137,21 @@ Les anciennes entrées du journal restent nommées en `vNNN` (historique préser
 - Évaluation initiale via `localStorage["myktamap_last_version_data"]` (cache UpdateChecker) au DOM ready
 - Re-évaluation via `UpdateChecker.onCheck()` callback après le fetch frais (couvre le cas où la version a changé entre 2 boots)
 - Au clic : `UpdateChecker.showCurrent()` qui force le re-fetch + affiche soit la modale d'update (bypass snooze), soit `afficherModaleAlerteAbsente("up-to-date")` qui montre les notes de la version installée
+
+**📡 Pastille « hors-ligne »** (`js/homeConfig.js > _initPastilleHorsLigne`, `#loaderOfflineDot`) — un point accolé au badge,
+élément **frère** (le badge réécrit son `textContent`) : il ne touche ni au clic du badge ni à son état « update dispo ».
+- Source : `SwInspector.etat()` (`js/swInspector.js`) → `{ etat: "ok"|"manquants"|"indisponible", manquants, attendus,
+  version, raison? }`. **Comparaison seule** : un message `GET_EXPECTED_ASSETS` au SW + `caches.open().keys()`, zéro
+  requête réseau. `indisponible` = pas de SW contrôleur, pas de Cache API, incognito, ou SW muet (timeout 3 s).
+- Couleurs : 🟢 `ok` · 🔴 `manquants` en ligne · 🟠 récupération en cours, ou `manquants` avec `navigator.onLine === false`
+  · ⚪ `indisponible`. Le rouge seul remonte dans l'en-tête de l'accueil (`#loaderOfflineHdrBtn`, 📥, masqué sinon).
+- Clic rouge (pastille ou 📥) : `SwInspector.recuperer(onProgress)` → `REFETCH_MISSING_ASSETS` par paquets de 10 (la
+  taille de lot du SW), progression « n/N » dans un message court (`#kta-offline-msg`), puis revérification. Clic vert =
+  clic du badge (notes de version). Orange / gris = message court.
+- Vérifiée **sans minuterie** : à l'événement `kta-sw-autoheal` émis par `SwInspector.autoHealIfNeeded()` (phase
+  `debut` = orange, `fin` = revérifier ; la sortie « skipped » émet aussi `fin`), au `controllerchange`, après un clic.
+  Avant le premier résultat (~5 s), la pastille est masquée. `online`/`offline` ne font que repeindre.
+- L'inspecteur détaillé (diff fichier par fichier, causes d'échec) est dans le 🛠️ Mode Développeur seulement.
 
 **Modale informative compacte** (`window.afficherModaleAlerteAbsente`) :
 - 3 statuts : `"up-to-date"` (clic badge sans update), `"no-alert"` (clic 🚨 sans alerte), `"offline"`
@@ -586,7 +601,8 @@ documentées ici pour la doctrine.
 
 | Script | Garde quoi | Bug fondateur |
 |---|---|---|
-| `check-no-pro-leak.js` | frontière community ↔ pro | — (préventif) |
+| `check-no-pro-leak.js` | frontière community ↔ pro : aucun fichier pro (`*.php`, `pro/`, `backend/`, modules pro nommés) | — (préventif) |
+| `check-connexion-serveur.js` | connexion serveur (v2.0.0) : validation de l'app ET de ConfAdmin exécutées sur la même table de cas, états, index injoignable ≠ connexion coupée, licence importée insuffisante, aucune requête dans `ktaExtensions.js` | — (préventif, né avec la fonction) |
 | `check-modal-lifecycle.js` | cycle de vie des modales (**advisory**) | fuites de modales v1.44 |
 | `check-api-surface.js` | charge RÉELLEMENT les modules IIFE en VM, vérifie chaque export annoncé + comportements (repeinture après mutation, survie de l'override au save/load, migration `hidden` tableau, dédup collisions d'id) | `WALLPAPER_MAX_PX` (01/08) puis `DEFAULT_RENDERS` (04/08) : export fantôme → module mort au boot, `node -c` passe |
 | `check-prefs-survival.js` | toute pref écrite est bien relue par `buildAppConfigFromPlan` | magnétisme perdu au chargement de plan (03/08) |
@@ -597,7 +613,7 @@ documentées ici pour la doctrine.
 | `check-georef-estimation.js` | maths de l'estimation du point B (A + échelle + Nord) | `Number(null) = 0` → un A à lat nulle partait à l'équateur |
 | `check-image-header-dims.js` | parseur binaire des dimensions d'image du Générateur | « Image non décodable » sur les JPG 32K×32K (limite Chrome/Skia) |
 | `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
-| `check-devmode-docs.js` | manifest de la bibliothèque du Mode Dev (chemins existants, aucun `.md` d'archi oublié, hash SHA-256) | doc renommée = modale cassée en silence |
+| `check-devmode-docs.js` | manifest de la bibliothèque du Mode Dev (chemins existants, aucun `.md` d'archi oublié, hash SHA-256) ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | doc renommée = modale cassée en silence |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
 | `check-aide-sections.js` | structure de l'Aide intégrée : même nombre de sections FR/EN, **1 seul titre par section**, `AIDE_CATEGORIES` couvre tout (ni orpheline, ni doublon, ni hors-bornes) | **3 bugs d'un coup le 01/09** : conteneur oublié fusionnant 2 sections FR (« Mode profil » inatteignable) · section absente en EN alors que les index sont **communs aux 2 langues** · index annoncé à 29 pour une section en 30 (« Mon carnet » tombée dans le filet « Autres ») |
 

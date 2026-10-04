@@ -1,21 +1,27 @@
-# Architecture MyKTAMap — Frontière community & mode serveur « kiosque »
+# Architecture MyKTAMap — Frontière community ↔ pro, mode serveur « kiosque », connexion serveur
 
-> **Document de gouvernance, figé le 30/07/2026 (décision KARMA, topo « mode serveur »).**
+> **Document de gouvernance (décisions KARMA du 30/07/2026, frontière révisée le 04/10/2026).**
 > Toute modification de ce périmètre = arbitrage explicite de KARMA, jamais un choix
 > d'implémentation. Référencé par CLAUDE.md (§ Frontière community ↔ pro).
 
 ---
 
-## 1. La promesse community (non négociable)
+## 1. Les promesses (non négociables)
 
-**« La seule promesse de community, c'est PAS DE BACKEND. »** (KARMA, 30/07/2026)
+**myktamap.fr (et dev.myktamap.fr) n'ont pas de backend, et n'en auront jamais.** C'est la
+promesse publique : NETWORK_AUDIT borne déjà sa garantie à ce domaine.
 
-Ce repo produit une app **100 % statique** :
+**Le repo community produit une app qui fonctionne entièrement sans serveur applicatif :**
 - servable par n'importe quel hébergement de fichiers (FTP, GitHub Pages, Docker nginx, clé USB) ;
-- **aucun code serveur**, aucune API, aucune base de données côté serveur ;
-- **aucun compte utilisateur**, aucune authentification, aucune synchronisation cloud ;
+- **aucun code serveur dans ce repo** (PHP, Node…), aucun module JS qui parle à un backend ;
 - toutes les données utilisateur restent dans le navigateur (localStorage / IndexedDB) ;
 - gratuite, **sans bridage** : aucun flag ne verrouille une capacité derrière un paiement.
+
+**La frontière pro n'est plus « zéro trace », c'est « zéro fichier pro ».** Le pro, ce sont
+les fichiers qui se **greffent** sur l'app (PHP + JS propres à son fonctionnement). Ils vivent
+dans le repo privé `MyKTAMap-pro`, ne sont jamais servis ni précachés quand la connexion
+serveur est coupée, et ne sont jamais commités ici. Le repo community peut, lui, porter des
+**points d'extension neutres** (§3), pour que le pro se greffe sans patcher le cœur.
 
 ## 2. Le mode serveur « kiosque » — ce qu'il EST
 
@@ -44,16 +50,213 @@ la sécurité ni du bridage : contournables via la console, et c'est assumé —
 données de l'utilisateur final lui appartiennent toujours (sessions, carnet, notes,
 photos restent locales et exportables).
 
-## 3. Ce qui n'entrera JAMAIS ici (périmètre exclu)
+## 3. La connexion serveur — points d'extension
 
-- Backend / API / comptes / sync cloud / multi-tenant / télémétrie.
+> ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
+> LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
+> garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
+> 🚧 **Tout le reste de ce paragraphe est un contrat, pas encore codé** (états ON / DOWN, chargeur
+> de modules, garde des requêtes, gate déléguée et autres prises — chantiers 1 à 3) : ne pas le
+> documenter comme livré ailleurs (NETWORK_AUDIT, README_USER, AI_CONTEXT).
+> Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
+> chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
+
+Une instance (infra dédiée, hors myktamap.fr) peut greffer des modules qui parlent à un
+serveur. Community fournit l'interrupteur, l'état, le chargeur et les prises ; jamais le code
+qui parle au serveur.
+
+**Le champ** : `index.json > config.serverConnection`, un objet :
+
+```json
+"serverConnection": { "state": "on", "api": "https://api.exemple.org", "modules": ["pro/sync.js"] }
+```
+
+- `state` : `"on"` | `"off"`. Ce n'est pas un flag kiosque au sens de la règle des 2 flags
+  (§2) : ce n'est pas du désencombrement, c'est l'interrupteur des extensions, régi par ce
+  paragraphe seul.
+- `api` : origine du backend. Elle peut différer de celle de l'app (règle D). Une adresse
+  d'API n'est pas un secret : l'index est public et c'est assumé.
+- `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`).
+
+**Les états** :
+
+| État | Condition | Affichage (footer) | Modules greffés / requêtes |
+|---|---|---|---|
+| **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | 🔌 « Base de données : désactivée » | Jamais chargés ; garde bloquant |
+| **INVALIDE** | Champ mal formé : pas un objet, `state` inconnu, `api` hors `https://`, module hors de l'origine de l'app (raison exacte journalisée `[Connexion]`) | « Configuration invalide » (décision KARMA, contre la reco d'un repli silencieux en OFF) | Jamais chargés ; garde bloquant |
+| **LICENCE** | `"on"` mais aucune licence pro de source `"server"` | « Licence requise » | Jamais chargés |
+| **CONFIGURÉE** | `"on"` + licence serveur, mais aucun module ne s'est encore déclaré | « Configurée, aucun module » | Personne ne sonde le serveur (règle C) : c'est l'état normal de tout le chantier 0 |
+| **ON** | `"on"` + licence serveur + backend qui répond | « Connecté » | Chargés ; requêtes autorisées |
+| **DOWN** | `"on"` + licence serveur, backend injoignable — ou index injoignable alors que la dernière config connue était `"on"` | « Serveur injoignable » | Chargés (depuis leur cache) ; rien ne part, travail en local |
+
+**Règles** :
+- **A. Champ absent = OFF.** Un vieil index reste valide, myktamap.fr n'a rien à écrire.
+- **B. Index injoignable au démarrage = dernière config mémorisée.** Mémorisée `"on"` →
+  DOWN ; jamais vue → OFF. 🩸 Même piège que `revaliderInstance` : « index injoignable »
+  et « connexion coupée par le déployeur » ne doivent pas se confondre. Une instance
+  configurée connectée qu'on ouvre hors ligne est **HS**, pas désactivée (décision KARMA :
+  pas d'échec fermé vers OFF).
+- **C. Community expose l'état, le module agit.** Community tient l'état, l'affiche et émet
+  un événement `mktm:*` à chaque changement (convention déjà utilisée par
+  `mktm:license-changed`). Sondage du backend, synchro, file et résolution des conflits
+  appartiennent au module greffé ; c'est lui qui signale à community le passage ON ↔ DOWN.
+- **D. L'API peut vivre sur un autre domaine que l'app** (vision cloud / conteneur). La
+  CSP de l'instance doit alors **ajouter** l'origine de l'API à `connect-src`, et l'API
+  répondre au CORS (preflight `OPTIONS` déclenché par un `PUT` cross-origin). Le `PUT` en
+  lui-même ne demande rien à la CSP. Le reste de la CSP (`script-src`, `frame-ancestors`…)
+  ne bouge pas : c'est elle qui empêche une injection d'exfiltrer les données synchronisées.
+  Le partage en direct du Mode Secours passe par un canal temps réel (WebSocket ou SSE) :
+  son origine (`wss://…`) s'ajoute elle aussi à `connect-src`.
+- **E. Un module greffé ne se charge que si DEUX conditions sont réunies** : une licence pro
+  de source **`"server"`** (le `Licence-pro.json` posé par l'instance ; une licence importée
+  par l'utilisateur ne compte pas, cohérent avec v1.90.9) **ET** `state: "on"`. La licence
+  reste ce qu'elle est (`proLicense.js` : cosmétique, en clair) : elle décide de ce que l'app
+  **charge**, jamais de ce que le backend **accepte**. L'authentification est l'affaire du
+  backend.
+- **F. Local-first.** L'app écrit **toujours** en local (IndexedDB), comme aujourd'hui ; le
+  module pousse vers le backend quand il peut. Il n'y a qu'un seul chemin d'écriture.
+
+**Points d'extension que community devra exposer** (tous neutres : nommés sans référence au
+pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
+
+| Point | Rôle | Pourquoi community |
+|---|---|---|
+| État de connexion + badge footer | Les états (OFF, INVALIDE, LICENCE, CONFIGURÉE, ON, DOWN), l'événement `mktm:*`, le badge **affiché partout, myktamap.fr compris** | Transparence active : la garantie se voit au lieu de se chercher dans l'audit |
+| Chargeur de modules | Lit `modules`, vérifie la règle E, injecte les scripts même origine | L'instance garde l'`index.html` community tel quel : zéro fork |
+| Garde unique | Toute requête d'extension passe par lui ; hors ON il refuse avant envoi | Même leçon que `ktaKiosqueServeurSeul()` : le verrou est au goulot |
+| Gate déléguée | Un module peut remplacer la gate d'entrée (code communautaire / `accessHash`) par son propre écran | Décision KARMA : sur une instance connectée, le compte remplace la gate |
+| Journal des changements | « Ce qui a changé depuis telle date », horodatage par objet (point, tracé, zone, session…) | Indispensable au local-first et à la résolution des conflits |
+| Source de plans enfichable | Un module peut fournir des plans à la bibliothèque (et leur stockage hors ligne) au lieu de `data/` | Sur une instance connectée, les plans soumis à des droits sont servis par le backend seul |
+| Filtre d'export | Un module peut refuser l'export ZIP d'un plan (ex. plan partagé dont on n'est pas propriétaire) | L'export vit dans community |
+| Effacement à la déconnexion | Un module peut demander l'effacement de ce qu'il a synchronisé, après vérification. **Jamais** les plans importés localement, qui ne viennent pas du backend | Les stores locaux appartiennent à community |
+| Droit d'import consulté | Le goulot d'import (`ktaKiosqueServeurSeul()`, import simple et multiple) consulte aussi le module : l'admin règle l'import local, et un Lecteur ne crée ni n'importe aucun plan | Le verrou d'import est déjà au goulot, côté community |
+| Publication depuis le Générateur | Prise « plan terminé » : un plan généré reste un brouillon local, puis le module le publie en base sur action du Créateur | Le Générateur vit dans community |
+| Mode Secours partagé | Sortant : l'événement `mktm:secours-scenario-mutated` (déjà émis). Entrant : une prise pour appliquer au scénario une modification reçue d'un autre appareil | Le Mode Secours vit dans community ; seul l'entrant manque |
+
+- **Une instance = une adresse** : chaque instance a son propre domaine, donc le navigateur
+  isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
+
+- **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
+  doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
+  cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
+  bumper `CACHE_NAME` côté community.
+- **ConfAdmin** (décision KARMA, contre la reco) : l'outil déployeur community propose un bloc
+  « Connexion serveur » (état, API, modules), **replié par défaut** et présenté comme réservé
+  aux instances qui greffent des modules. Il reste hors `ASSETS_TO_CACHE`.
+- **Transparence** : NETWORK_AUDIT ne couvre que myktamap.fr. Une instance connectée publie
+  sa propre page d'audit (modèle fourni par le pro) ; le badge y renvoie dès que l'état n'est
+  pas OFF.
+
+**Ce que ça garantit, et ce que ça ne garantit pas** : l'état est une **information
+d'affichage, jamais une sécurité** — contournable en console comme les flags kiosque. La
+CSP non plus ne protège rien ici : `connect-src` filtre des destinations, pas des méthodes
+HTTP, et `'self'` laisse passer un `PUT` vers un backend même origine. De même, le filtre
+d'export n'empêche pas de copier un plan qu'on a le droit de lire : ses données sont sur
+l'appareil (hors ligne oblige), donc lisibles en console. **Lire = pouvoir copier** : le
+filtre retire le bouton, pas la possibilité. Sur myktamap.fr, la preuve pour l'utilisateur
+est **l'absence physique des fichiers pro**, vérifiable dans l'onglet Réseau de son
+navigateur.
+
+**Forme technique** (QCM du 04/10/2026) :
+- **API** : un objet unique `window.KtaExtensions`. Un module appelle
+  `register({ nom, apiVersion, … })` en ne fournissant que les prises dont il a besoin
+  (gate, plans, import, export, déconnexion, secours…). Community appelle ces prises aux
+  bons goulots. Un seul point d'entrée à auditer ; `apiVersion` signale une incompatibilité
+  au lieu de casser en silence.
+- **Échec d'une prise** (erreur ou délai dépassé), selon son type : prise de **permission**
+  (gate, import, export) → **refus** avec un message clair ; prise d'**information**
+  (journal, secours, état) → erreur ignorée, l'app continue. Toute erreur est journalisée
+  `[Extensions]`.
+- **Gate en panne** : sur une instance connectée dont le module de connexion ne se charge
+  pas, écran « instance indisponible » + Réessayer. **Jamais de repli sur la gate
+  community** : le code communautaire, diffusé largement, ouvrirait une instance privée
+  (le trou corrigé en v1.90.7).
+- **Démarrage** : `index.json` est lu **une seule fois, avant les gates** (ou la config
+  mémorisée s'il est injoignable, règle B), puis réutilisé par la gate (`accessHash`), le
+  kiosque et la découverte des plans. Aujourd'hui, la gate passe avant
+  `_chargerIndexServeur()` et relit l'index de son côté.
+- **Identifiants d'objets** : chaque point, tracé, zone et structure reçoit un **id stable
+  et un `updatedAt` en millisecondes**, pour tout le monde, myktamap.fr compris, avec une
+  migration des anciennes sessions à l'ouverture. Aujourd'hui, tracés, zones et structures
+  sont des `{type, points[], level?}` sans identité, et les points n'ont qu'un
+  `date_update` au jour près. Sans ça, ni « le dernier gagne, par objet », ni le journal
+  des changements ne sont possibles.
+- **Cache des modules** : préfixe `myktamap-ext-<module>`, ajouté aux caches que
+  l'`activate` du Service Worker conserve (il efface aujourd'hui tout ce qui n'est ni
+  `CACHE_NAME` ni `myktamap-plan-`). Chaque module remplit et versionne le sien.
+- **Garde-fou** : `scripts/check-extensions.js` (pré-commit bloquant, sur le modèle de
+  `check-kiosque-serveur.js`) vérifie chaque prise appelée au goulot, le no-op sans module,
+  le refus quand une prise de permission échoue, l'absence de `pro/` dans
+  `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
+
+**Ordre des chantiers** :
+0. ✅ **Connecteur — release v2.0.0, livré** (amorce la transition) : lecture de `serverConnection`
+   dans `_chargerIndexServeur()` (après les gates, comme le kiosque) + mémorisation de la
+   dernière config connue (règle B) ; états OFF / INVALIDE / LICENCE / CONFIGURÉE ;
+   événement `mktm:*` ; **pastille collée au badge de version** du footer du HOME (même
+   groupe que la pastille hors-ligne, visible footer replié), icône + mot court,
+   **cliquable** → petite modale « aucune donnée ne quitte ton appareil » + lien vers
+   l'audit réseau ; bloc ConfAdmin replié avec la même validation que l'app. **Aucune
+   requête vers l'API** (rien ne la sonde avant le chantier 3). Doc de transparence dans
+   la **même** release : phrase NETWORK_AUDIT recadrée sur le domaine, 3 README_USER,
+   AI_CONTEXT, aide intégrée. Topo validé par KARMA (04/10/2026) :
+   - module `js/ktaExtensions.js` (porte l'état, puis `KtaExtensions` au chantier 3) avec
+     une fonction pure `valider(cfg)` → `{ etat, raison }` ; recalcul à chaque
+     `mktm:license-changed` (la licence peut arriver après l'index) ; événement
+     `mktm:connexion-changed` ; clé `myktamap_server_connection_v1` **exclue de l'export de
+     profil** (donnée de l'instance, pas de l'utilisateur) ;
+   - ⚠️ le footer replié masque tout `#loaderFooterBlock` (badge et pastilles compris) :
+     l'**icône seule**, colorée, s'ajoute au bouton replié (non cliquable, il déplie) ;
+   - clic sur la pastille → la modale existante « Que fait l'app sur le réseau ? »
+     (`#loaderNetDocModal`), avec un bloc d'état en tête ; pas de nouvelle modale ;
+   - couleurs : OFF `.kta-tx-muted`, INVALIDE `.kta-tx-err`, LICENCE `.kta-tx-warn`,
+     CONFIGURÉE `.kta-tx-info` ; **icône seule sous 380 px** (mot dans l'infobulle et la
+     modale) ;
+   - ConfAdmin n'écrit le champ **que si `state: "on"`** (l'absence vaut OFF) ;
+   - garde-fou `scripts/check-connexion-serveur.js` (pré-commit bloquant) : exécute la
+     validation de l'app **et** celle de ConfAdmin sur une table de cas (méthode
+     `check-tags-index.js`), table de vérité des états, clé hors export de profil, module
+     précaché ;
+   - les états INVALIDE / LICENCE / CONFIGURÉE en navigateur réel exigent un `index.json`
+     de test que seul KARMA peut poser (`data/` interdit à Claude) : à la smoke-list de la
+     porte de release.
+1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
+   myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
+2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
+   - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on
+     démarre sur la **dernière config mémorisée** (règle B). Aujourd'hui la lecture n'a aucun
+     délai maximal ;
+   - rangé dans **un objet de config d'instance partagé**, que lisent la gate (`accessHash`),
+     le kiosque, le connecteur et la découverte des plans. `_hashInstance()` cesse de
+     relire l'index : une requête de moins à l'ouverture de la gate, aucune de plus ailleurs ;
+   - la licence n'est attendue avant la gate (2 s max) **que si `state: "on"`** :
+     myktamap.fr et toute instance en OFF ne sont pas ralentis ;
+   - **rotation du mot de passe d'instance à effet immédiat** : la revalidation passe avant
+     la gate, donc au lancement, jamais en pleine session. 🩸 Une config **mémorisée** (index
+     injoignable) appelle `revaliderInstance(…, false)` : elle ne révoque jamais rien ;
+   - à réécrire à la livraison : les invariants « rotation au démarrage SUIVANT » et
+     « l'index n'est demandé que depuis la saisie de la gate » du §5, et les contrôles de
+     `scripts/check-gate-instance.js` qui figent l'ordre actuel (`_hashInstance`, position
+     de `revaliderInstance`).
+3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
+4. Modules greffés et backend : repo `MyKTAMap-pro`.
+
+Les noms et signatures exacts de chaque prise se fixent au chantier 3.
+
+## 4. Ce qui n'entrera JAMAIS ici (périmètre exclu)
+
+- **Fichiers pro** : code serveur (PHP, Node…), modules JS qui parlent à un backend
+  (sync, comptes, multi-tenant), docs commerciales, licences nominatives. Ils vivent dans
+  `MyKTAMap-pro`. Verrou : `scripts/check-no-pro-leak.js` (pré-commit, bloquant).
+- **Télémétrie**, sous aucune forme, y compris via une extension activée sur myktamap.fr.
 - **Branding complet (white-label)** : logo, nom d'app, thème de marque, domaine.
   La limite community est UN champ texte : `config.subtitle` (le nom « MyKTAMap »
   et la charte restent). Au-delà → hors de ce repo.
 - Gestion de droits, plans payants, quotas.
-- Tout pointeur vers du code externe privé (règle CLAUDE.md : pas de `TODO pro:`).
+- Commentaire-pointeur vers un fichier pro précis (`// TODO pro:`, chemin du repo privé) :
+  un point d'extension se documente par ce qu'il offre, pas par qui le consomme.
 
-## 4. Invariants d'implémentation
+## 5. Invariants d'implémentation
 
 - `confadmin.html` : outil déployeur **statique et local** (rien n'est uploadé),
   à la racine, **jamais dans `ASSETS_TO_CACHE`**, pas de lien depuis l'UI de l'app.
@@ -92,18 +295,18 @@ photos restent locales et exportables).
   vide, aucun moyen d'en sortir. La branche kiosque remet donc `show_server_plans` à true
   et `skip_server_plans_v1` à false, **et l'index est chargé AVANT que la pref de skip ne
   soit lue** (sinon le remède n'agissait qu'au démarrage suivant). ⚠️ Cela reste du
-  déclutter, pas de la sécurité : contournable en console, et c'est assumé.
-- **Toute nouvelle porte d'entrée de plans doit être recensée ici (v1.94.0)** : l'import
-  multiple (`js/importMasse.js`) vit dans la section 🧰 Outils du HOME, donc **hors de
-  `#panelZip`** que la branche kiosque masque. Signalé par KARMA : « si en mode serveur on
-  a coupé l'import de plan, il ne doit pas être affiché (comme Ajouter un plan) ». Sans
-  traitement, un kiosque « plans serveur uniquement » masquait l'ajout d'UN plan mais
-  laissait entrer N plans d'un coup. Corrigé aux deux niveaux — bouton masqué dans
-  `_appliquerConfigKiosque`, et `ouvrir()` **et** `importer()` interrogent
-  `ktaKiosqueServeurSeul()` (le chemin qui ÉCRIT est gardé séparément de celui qui
-  affiche : un appel programmatique n'entre pas plus qu'un clic). 📌 Leçon générale : le
-  masquage de `#panelZip` ne couvre QUE la zone de dépôt et « Charger
-  ce plan » — un bouton posé ailleurs y échappe silencieusement. Vérifié par
+  déclutter, pas de la sécurité : contournable en console, et c'est assumé.
+- **Toute nouvelle porte d'entrée de plans doit être recensée ici (v1.94.0)** : l'import
+  multiple (`js/importMasse.js`) vit dans la section 🧰 Outils du HOME, donc **hors de
+  `#panelZip`** que la branche kiosque masque. Signalé par KARMA : « si en mode serveur on
+  a coupé l'import de plan, il ne doit pas être affiché (comme Ajouter un plan) ». Sans
+  traitement, un kiosque « plans serveur uniquement » masquait l'ajout d'UN plan mais
+  laissait entrer N plans d'un coup. Corrigé aux deux niveaux — bouton masqué dans
+  `_appliquerConfigKiosque`, et `ouvrir()` **et** `importer()` interrogent
+  `ktaKiosqueServeurSeul()` (le chemin qui ÉCRIT est gardé séparément de celui qui
+  affiche : un appel programmatique n'entre pas plus qu'un clic). 📌 Leçon générale : le
+  masquage de `#panelZip` ne couvre QUE la zone de dépôt et « Charger
+  ce plan » — un bouton posé ailleurs y échappe silencieusement. Vérifié par
   `scripts/check-kiosque-serveur.js`.
 - **ConfAdmin sait REPRENDRE un `index.json` existant (v1.90.1)** : sans ça, éditer une
   étiquette sur un parc déjà en ligne obligeait à redéposer tous les ZIP et à retaper

@@ -7,64 +7,20 @@
  */
 
 // =========================
-// TUTORIAL.JS — Onboarding cards séquentielles (depuis v1.21.0, étendu v1.21.3)
+// TUTORIAL.JS — Onboarding : cartes séquentielles du premier lancement
 // =========================
-// Affiché AUTOMATIQUEMENT au tout premier lancement (détecté via flag
-// localStorage `myktamap_tutorial_seen_v1`). Réaffichable à tout moment
-// depuis le bouton 🎓 dans le header de la modale 📖 Documentation
-// (cf. interface.js > afficherReadme — depuis v1.21.3 ; auparavant
-// accessible via 📚 Aide > sous-action « 🎓 (Re)voir le tutoriel »).
+// Affiché AUTOMATIQUEMENT au tout premier lancement (flag localStorage
+// `myktamap_tutorial_seen_v1`, séquencé par firstRunFlow.js), réaffichable
+// depuis le bouton 🎓 de la modale 📖 Documentation.
 //
-// 🆕 v1.21.3 (KARMA "rajoute des diapo, pour décrire mieu chaque fonction") :
-// passage de 8 cards à 22 cards focalisées. Chaque card couvre UN sujet précis
-// au lieu d'empiler 4-6 features par diapo. Lecture plus digeste, nouveau
-// utilisateur découvre la richesse de l'app sans submergement.
-//
-// 🆕 v1.25.3 (KARMA "rajoute le du coup aussi on onbarding si c'est pas fait") :
-// ajout carte 13 "🚨 Mode Secours" → 22 → 23 cards. Insérée juste après les
-// modes urgence (carte 12) pour bien différencier les 3 modes "urgence" :
-// ⛑️ Je suis perdu (moi) / 🚨 Panique (moi) / 🚨 Mode Secours (équipe).
-//
-// 🆕 v1.40.32 (KARMA "on doit pouvoir enrichir le On Boarding avec la partie
-// OSM et Histoire (peut être d'autres oublis)") : 23 → 25 cards.
-// - Nouvelle carte 23 « 🌍 Vue OSM » (v1.39+) — plan projeté sur OpenStreetMap
-// - Nouvelle carte 24 « 📖 Mode Histoire » (v1.34.19+) — note libre + PDF embed
-// - Carte 12 (Modes urgence) enrichie avec 🚨 Sortie d'urgence (v1.35.0)
-// - Carte 25 (ex-23 ⚙️ Config) enrichie avec 🎤 Commande vocale (v1.34.0) +
-//   🪫 Vibration haptique (v1.34.26).
-//
-// Plan des 25 cartes :
-//   1. 🌟 Bienvenue
-//   2. 🛡️ Privacy & offline-first
-//   3. 🗂️ Charger un plan existant
-//   4. 🏗️ Créer un plan — Mode Simple
-//   5. 🏗️ Créer un plan — Mode Avancé
-//   6. 📍 Points POI + photos
-//   7. 🛣️ Tracés (Principal / Secondaire / Chemin)
-//   8. ⬛ Zones (+ inaccessible bloque pathfinder)
-//   9. 🏛️ Structures (piliers / murs / fronts)
-//   10. 🏷️ Légende personnalisable (cascade 3 niveaux)
-//   11. 🧭 Tracker PDR + Replay
-//   12. ⛑️🚨 Modes urgence (Perdu / Panique / Sortie d'urgence)   ← enrichi v1.40.32
-//   13. 🚨 Mode Secours (coordination équipes)
-//   14. 🔍 Recherche unifiée Ctrl+K
-//   15. ⭐ Favoris
-//   16. 🗺️ Itinéraire pathfinder + évitements
-//   17. 📐 Mesures + 📏 Distance totale
-//   18. 🏗️ Multi-niveau M-LVL
-//   19. 📊 Stats globales + 🔥 Heatmap
-//   20. 💾 Exports session JSON / KMZ / GPX
-//   21. 🖼️ Exports images PNG / PDF
-//   22. 🛡️ Sauvegardes auto + Undo Ctrl+Z
-//   23. 🌍 Vue OSM (modale + widget HOME)                         ← v1.40.32
-//   24. 📖 Mode Histoire (note libre + PDF embed)                 ← v1.40.32
-//   25. ⚙️ Config & outils annexes (+ 🎤 Vocale, 🪫 Vibration)    ← enrichi v1.40.32
+// 🎯 RÔLE : faire démarrer, pas tout montrer. Une carte = un geste utile au
+// premier jour, dans l'ordre du guide (Premiers pas → Urgence → Carte →
+// Recherche → Tracker → Itinéraire → Annoter → Données → Réglages). Le
+// détail vit dans le guide et l'Aide ❓ ; ce qui est désactivé par défaut,
+// réservé aux créateurs de plans ou au Mode Secours n'a pas de carte.
+// Refonte du 03/10/2026 (KARMA : « éviter l'indigestion ») : 27 → 11 cartes.
 //
 // API : window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }
-//
-// Auto-lancement : déclenché par main.js > _splashEnd → si isFirstLaunch
-// retourne true, on appelle ouvrir() après ~600ms (le temps que les modales
-// de splash queue soient flushées par OOMGuard, pour éviter le chevauchement).
 // =========================
 
 (function() {
@@ -73,61 +29,24 @@
   const LS_KEY  = "myktamap_tutorial_seen_v1";
   const MODAL_ID = "kta-tutorial-modal";
 
-  // Cartes : chaque entrée = { emoji, titre, texte (HTML autorisé), hint optionnel }
-  // ⚠️ Pas de fetch d'images externes — tout est emoji / texte pour rester offline-first.
-  // 🆕 v1.21.3 : passage 8 → 22 cards (KARMA "rajoute des diapo pour décrire mieu
-  // chaque fonction"). Découpe granulaire : 1 sujet = 1 carte = lecture digeste.
-  // 🆕 v1.25.3 : 22 → 23 cards (ajout carte 13 « 🚨 Mode Secours » après modes urgence).
-  // 🆕 v1.69.0 : 25 → 26 cards (ajout carte 25 « 📔 Mon carnet », après Mode Histoire).
-  // 🆕 v1.85.0 : 26 → 27 cards (ajout carte 6 « 🗺️ Convertir un relevé SIG »,
-  //              après les deux cartes de création de plan).
-  // ⚠️ Depuis v1.79.4, la parité des langues est garantie par les DICOS
-  // (check-i18n : parité fr/en + es stricte) — plus de tableaux par langue ici.
-  // ═══ 🌍 v1.79.4 — CONTENU MIGRÉ DANS LES DICOS lang/*.json (dette
-  // D-tutorial soldée) : les textes des 26 cartes vivent dans les clés
-  // tutorial.cardNN.titre/.texte/.hint et l'UI dans tutorial.ui.* —
-  // traduits fr/en/es, sous le filet de check-i18n. Ici ne reste que la
-  // STRUCTURE (emoji + présence d'un hint, au rang partagé toutes langues).
-  // La langue suit le choix GLOBAL de l'app (I18n.getLang — sélecteur de
-  // la gate depuis v1.79.4, ou ⚙️ Configuration) : le toggle interne
-  // 🇫🇷/🇬🇧 et l'usage de la clé myktamap_readme_lang sont RETIRÉS du
-  // tutoriel (la modale Documentation garde les siens, non touchée).
-  // Ajouter une carte = 1 entrée ici + 2-3 clés ×3 dicos. Ajouter une
-  // langue = traduire le dico, zéro code.
+  // Cartes : { cle, emoji, hint? }. Le texte vit dans les dicos :
+  // tutorial.card.<cle>.titre / .texte (HTML autorisé) / .hint (si hint:true).
+  // ⚠️ Les clés sont NOMMÉES, pas numérotées : jusqu'au 03/10/2026 le rang
+  // faisait la clé (`card{NN}`), et insérer ou retirer une carte renumérotait
+  // toutes les suivantes dans les trois dicos. Réordonner = déplacer une ligne.
+  // Pas d'image : emoji et texte seulement, pour rester hors-ligne.
   const STRUCTURE = [
-    { emoji: "🌟", hint: true },
-    { emoji: "🛡️" },
-    { emoji: "🗂️" },
-    { emoji: "🏗️", hint: true },
-    { emoji: "🎨" },
-    // 🗺️ v1.85.0 — l’import SIG etait ABSENT des 26 cartes : zero occurrence
-    // de « SIG », « GeoJSON » ou « QGIS ». Porte d’entree majeure des cinq
-    // dernieres versions, invisible pour un nouvel utilisateur. Rangee en 6e,
-    // apres les deux facons de CREER un plan — c’en est une troisieme.
-    // ⚠️ Le rang FAIT la cle (`card{NN}`) : inserer ici a renumerote 06..26
-    // en 07..27 dans les trois dicos.
-    { emoji: "🗺️", hint: true },
-    { emoji: "📍" },
-    { emoji: "🛣️" },
-    { emoji: "⬛" },
-    { emoji: "🏛️" },
-    { emoji: "🏷️" },
-    { emoji: "🧭" },
-    { emoji: "⛑️", hint: true },
-    { emoji: "🚨", hint: true },
-    { emoji: "🔍" },
-    { emoji: "⭐" },
-    { emoji: "🗺️" },
-    { emoji: "📐" },
-    { emoji: "🏗️", hint: true },
-    { emoji: "📊" },
-    { emoji: "💾" },
-    { emoji: "🖼️" },
-    { emoji: "🛡️" },
-    { emoji: "🌍", hint: true },
-    { emoji: "📖", hint: true },
-    { emoji: "📔", hint: true },
-    { emoji: "⚙️", hint: true },
+    { cle: "bienvenue",          emoji: "🌟", hint: true },
+    { cle: "avant-de-descendre", emoji: "📱" },
+    { cle: "charger",            emoji: "📦" },
+    { cle: "urgence",            emoji: "🆘", hint: true },
+    { cle: "interface",          emoji: "🗺️" },
+    { cle: "chercher",           emoji: "🔍" },
+    { cle: "suivre",             emoji: "🧭", hint: true },
+    { cle: "itineraire",         emoji: "🪧" },
+    { cle: "annoter",            emoji: "✏️" },
+    { cle: "donnees",            emoji: "📔" },
+    { cle: "reglages",           emoji: "⚙️" },
   ];
 
   // Alias préfixant DÉTECTÉ par check-i18n : les appels _t("skip")… sont
@@ -138,13 +57,13 @@
 
   // Cartes construites AU RENDU depuis le dico (jamais au load — règle
   // i18n du repo). Le littéral "tutorial." + … est reconnu comme préfixe
-  // dynamique par le scanner : toutes les clés cardNN.* restent couvertes.
+  // dynamique par le scanner : toutes les clés card.<cle>.* restent couvertes.
   function _cards() {
     const t = function(suffixe) {
       return (window.I18n && window.I18n.t) ? window.I18n.t("tutorial." + suffixe) : suffixe;
     };
-    return STRUCTURE.map(function(s, i) {
-      const base = "card" + String(i + 1).padStart(2, "0");
+    return STRUCTURE.map(function(s) {
+      const base = "card." + s.cle;
       const c = { emoji: s.emoji, titre: t(base + ".titre"), texte: t(base + ".texte") };
       if (s.hint) c.hint = t(base + ".hint");
       return c;

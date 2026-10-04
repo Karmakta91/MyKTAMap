@@ -367,6 +367,17 @@ node scripts/check-tags-index.js || exit $?
 # bouton — la modale d import se declenche depuis au moins deux endroits.
 node scripts/check-kiosque-serveur.js || exit $?
 
+# CONNEXION SERVEUR (v2.0.0, community-server-line.md §3) : une instance declare
+# `config.serverConnection` ; l app en tire un etat affiche dans le pied de page
+# (myktamap.fr : « off », pas de backend, jamais). Le script EXECUTE la
+# validation de l app ET celle de ConfAdmin sur la meme table de cas (un index
+# que l outil juge bon et que l app refuse serait le pire des deux mondes),
+# verifie qu un index INJOIGNABLE ne passe jamais pour « connexion coupee »
+# (une instance connectee hors ligne est HS, pas OFF), qu une licence importee
+# ne suffit pas, que la memoire de l instance ne part pas dans l export de
+# profil, et que le module ne fait aucune requete. BLOQUANT.
+node scripts/check-connexion-serveur.js || exit $?
+
 # DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
 # 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
 # widget OSM du HOME monte une carte dont le fond vient de

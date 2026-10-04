@@ -8,7 +8,8 @@
 //     déverrouillage persisté par appareil) + avertissement de responsabilité.
 //   - Contenu du mode : toggle logs détaillés (pilote setDebugMode global,
 //     le select des Réglages plan a été SUPPRIMÉ — décision 2:b), bouton
-//     📋 Afficher les logs (déménagé ici), et 📚 la BIBLIOTHÈQUE DE DOCS.
+//     📋 Afficher les logs (déménagé ici), 📚 la BIBLIOTHÈQUE DE DOCS,
+//     🏗️ ConfAdmin et 🔧 l'inspecteur Service Worker (js/swInspector.js).
 //   - 📚 Bibliothèque : tous les .md du repo (architecture, BACKLOG, MATHS,
 //     RELEASE_GATE, README racine) rendus par window.kta_renderMd dans une
 //     modale liste+lecture. Fetch same-origin À LA DEMANDE — pas de précache
@@ -38,12 +39,13 @@
     { path: "README.md",                                     titre: "📖 README (journal du projet)" },
     { path: "docs/BACKLOG.md",                               titre: "📌 BACKLOG — sujets ouverts & dettes" },
     { path: "docs/ETUDE_GUIDAGE.md",                         titre: "🪧 Étude — guidage de l'itinéraire" },
+    { path: "docs/ETUDE_UID.md",                              titre: "🆔 Étude — identifiant stable des objets" },
     { path: "docs/IA_POUR_LES_NULS.md",                      titre: "🤖 L'IA pour les nuls — méthode de travail avec une IA" },
     { path: "docs/INSTALLATION_SELFHOST.md",                 titre: "🛠️ Installation auto-hébergée" },
     { path: "docs/MATHS.md",                                 titre: "📐 Les maths de MyKTAMap" },
     { path: "docs/RELEASE_GATE.md",                          titre: "🚦 Porte de release" },
     { path: "docs/TILING.md",                                titre: "🖼️ Le tuilage (V1 / V2, plans serveur)" },
-    { path: "docs/architecture/community-server-line.md",    titre: "🏛️ Frontière community / serveur" },
+    { path: "docs/architecture/community-server-line.md",    titre: "🏛️ Frontière community / pro / serveur" },
     { path: "docs/architecture/data-formats.md",             titre: "📦 Formats JSON" },
     { path: "docs/architecture/docker-selfhost.md",          titre: "🐳 Auto-hébergement Docker" },
     { path: "docs/architecture/exports.md",                  titre: "📤 Exports PNG/PDF/KMZ/GPX" },
@@ -278,6 +280,7 @@
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' + t("home.debug.showLogs") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-docs" style="width:100%; margin-top:8px;">📚 ' + t("devmode.docs.bouton") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">🏗️ ' + t("devmode.confadmin") + '</button>' +
+          '<button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">' + t("home.inspector.swBtn") + '</button>' +
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hint") + '</p>'
         ) : (
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hintOff") + '</p>'
@@ -312,6 +315,13 @@
           // propre cycle de vie et ne doit pas remplacer la session en cours.
           try { window.open("confadmin.html", "_blank", "noopener"); }
           catch (e) { console.warn("[DevMode] Ouverture confadmin.html :", e); }
+        });
+        // 🔧 Inspecteur Service Worker (lot C, 03/10/2026) : déplacé ici depuis
+        // ⚙️ Configuration › Système & maintenance. Pour tous, l'état du cache
+        // hors-ligne est la pastille du pied de page de l'accueil.
+        document.getElementById("loaderSwInspectorBtn").addEventListener("click", function() {
+          if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") window.SwInspector.ouvrir();
+          else console.warn("[DevMode] Module SwInspector indisponible");
         });
       }
     };

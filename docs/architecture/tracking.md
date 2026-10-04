@@ -303,9 +303,9 @@ Skip silencieux si plan non calibré (= la ligne `🌐` n'apparaît pas du tout,
 
 #### 62.4 Fix mode urgence calibrage GPS
 
-`emergencyMode.js > _tick` : clone exact du fix v1.21.1 #1 (transform jamais persisté). Avant : `calib.transform` cherché directement → toujours `undefined` → bloc GPS toujours masqué. Après : `buildTransform` on-demand.
+`emergencyMode.js > _transformCalib` : clone exact du fix v1.21.1 #1 (transform jamais persisté). Avant : `calib.transform` cherché directement → toujours `undefined` → GPS jamais affiché. Après : transform construit à la demande (`buildTransformCalib`). Depuis le 03/10/2026, ce transform décide aussi si l'icône 📋 (bulle des coordonnées) existe — cf `secours.md` §52.0.
 
-⚠️ **Critique sécurité** : le bloc GPS du mode urgence est l'info principale pour qu'un utilisateur perdu puisse communiquer sa position à des secours externes (Google Maps, GPS standalone, etc.). Le bug le rendait inutilisable.
+⚠️ **Critique sécurité** : les coordonnées GPS du mode urgence sont l'info principale pour qu'un utilisateur perdu puisse communiquer sa position à des secours externes (Google Maps, GPS standalone, etc.). Le bug le rendait inutilisable.
 
 #### 62.5 Flyout sidebar étendu au Tracker
 
@@ -361,12 +361,12 @@ Wraps `navigator.wakeLock.request("screen")` :
 
 ### 70. Recherche par coordonnées GPS + input combiné Maps cross-app (depuis hotfix18, refactor input combiné hotfix21 — 2026-05-27)
 
-Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte des **coordonnées GPS au format Google Maps** (`48.680831, 2.158843`) et localise la position sur le plan.
+Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte des **coordonnées GPS au format Google Maps** (`48.856600, 2.352200`) et localise la position sur le plan.
 
 En complément (hotfix21), les **3 modales de saisie de géoréférencement** ont leur ancien duo `lat / lng` (2 champs séparés) fusionné en un seul input combiné `GPS (lat, lng)`. Le format collable est identique à celui de Ctrl+K, donc copier-coller depuis Google Maps marche partout uniformément.
 
 KARMA quote (hotfix18) :
-> « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.680831, 2.158843 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
+> « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.856600, 2.352200 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
 
 KARMA quote (hotfix21) :
 > « modifie l'interface parametre et kmz pour saisir les coordonée d'un coup comme on a fait pour recherche »
@@ -385,7 +385,7 @@ KARMA quote (hotfix21) :
 
 **Sujet B — Input combiné `lat, lng` (hotfix21)** :
 - 1 seul input texte (au lieu de 2 inputs number lat + lng) dans les 3 modales de calibrage
-- Accepte le format Google Maps natif `48.680831, 2.158843`
+- Accepte le format Google Maps natif `48.856600, 2.352200`
 - Validation live (au blur) : border rouge + message inline `.kta-gps-coords-error` si format invalide
 - Au submit/save : parse via `parseGpsCoords`, abort avec message d'erreur si invalide
 - Pré-remplissage : `formatGpsCoords(lat, lng)` recompose `"lat, lng"` depuis les valeurs FLAT stockées (rétrocompat absolue — le format de stockage `pointA: {x, y, lat, lng}` n'a PAS changé)
@@ -398,7 +398,7 @@ KARMA quote (hotfix21) :
 window.parseGpsCoords(str)
   → { lat, lng } | null
   // Regex stricte + validation plage géographique
-  // "48.680831, 2.158843" → {lat: 48.680831, lng: 2.158843}
+  // "48.856600, 2.352200" → {lat: 48.8566, lng: 2.3522}
   // "200, 2.15"           → null (lat hors plage)
   // "abc, 2.15"           → null
 
@@ -444,7 +444,7 @@ Hint visible UNIQUEMENT si plan calibré :
 ```html
 <div class="kta-search-gps-hint" id="kta-search-gps-hint" style="display:none;">
   🌐 Tu peux coller des coordonnées GPS au format
-  <code>48.680831, 2.158843</code> (depuis Google Maps)...
+  <code>48.856600, 2.352200</code> (depuis Google Maps)...
 </div>
 ```
 
@@ -462,7 +462,7 @@ Quand aucun POI dans 50 px, le bouton :
 
 L'user a ainsi 3 saisies seulement après scan GPS d'une coord depuis Maps :
 1. Ctrl+K
-2. Coller `48.680831, 2.158843`
+2. Coller `48.856600, 2.352200`
 3. Clic "➕ Créer un point ici" → formulaire de saisie POI s'ouvre
 
 #### 70.6 Rétrocompatibilité plans existants
@@ -912,7 +912,7 @@ Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`
 - **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main.
 - `sortieUrgence.js` : `_lancer(origine, meta)` garde `meta.mode` (`suivi` / `confirmee` / `clic`) + `ts` pour la ligne d'état de la modale ; `_tracerIndex` passe `{ origine }` à `itineraireYAller`.
 - `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine ; sans elle, même règle (picker si jamais confirmée).
-- `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée ».
+- `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée » dans la bulle 📋 des coordonnées ; sa bulle de point propose « 📍 Je suis ici » (`recalerTrackerSurPoint`), qui confirme la position.
 
 🪤 **Piège** : tout nouveau chemin qui écrit `position` sans passer par le clic recalage ni `recalerTrackerSurPoint`
 doit appeler `_marquerPositionConfirmee()`, sinon le picker s'ouvrira alors que l'utilisateur s'est situé.
@@ -1082,6 +1082,19 @@ rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), l
 `tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
 (apparition / disparition). Les consignes ne sont recalculées que si la road change.
 
+**Affichage** (`_maj`) : road + guide + (**suivi actif OU position confirmée** — `getTrackingPositionEtat().confirmee`,
+sans quoi la position vaut le départ du plan) + (urgence OU réglage « auto »). La croix pose « jamais » (`setPref`) :
+plus d'état « masqué pour cet itinéraire », la tuile 🪧 est le seul interrupteur.
+
+**✂️ Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, appelée par `_onTrackerRecale` pour la source
+`"point"` — « Je suis ici », picker « Où es-tu ? », portail ; jamais le clic carte) : si le point est à ≤ `COUPE_SEUIL_M`
+(8 m) du trajet, au **premier passage** (aller-retour), la road est remplacée par la suite du trajet depuis la
+projection — sans Dijkstra ni question. Étapes et raccords projetés **dans l'ordre** du trajet (chacun au-delà du
+précédent) : dépassés → `done` / retirés ; raccord `depart` retiré ; carrefours gardés s'ils sont à ≤ 3 px du
+nouveau trajet. Dernière étape dépassée → `_replanifierDepuis` (clôture). Hors seuil → replanification habituelle
+(avec question). **Exclus** : parcours Secours (`road.secours`), dont les étapes ne se valident que par le scénario
+(`_majRoadSuivi` les y recale) ; recalage `sansReplan`.
+
 ### 🩸 Pièges rencontrés — à ne pas réintroduire
 
 | Piège | Pourquoi | Garde |
@@ -1107,5 +1120,20 @@ demi-tours en 350 m sous 4 m de bruit).
 - **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
   `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
   interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
-- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) —
-  ils créent leurs roads sans `raccords` / `carrefours` (cf `docs/BACKLOG.md`).
+- **Inter-plans** (`interPlanRoute.js`, 01/10/2026) : chaque étape de la chaîne garde `raccords` / `carrefours`
+  et `_tracerItinerary(leg)` les pose sur la road. L'étape sur un AUTRE plan est calculée depuis le plan ouvert :
+  `computeRouteOnRoads(…, { echelle })` mesure ses carrefours à l'échelle de SON plan (sinon rayon de sortie et
+  zone faux d'un plan à l'autre). Deux morceaux bout à bout sur un même plan : seuls le départ du premier et
+  l'arrivée du dernier restent. Distances avec raccords (décision K). La feuille de route est **par étape** :
+  elle s'arrête au portail, puis `road.suite` (posée par `_tracerItinerary(leg, suivants)`, gardée par la coupe et
+  la replanification) ajoute une ligne par plan suivant : portail, plan, distance, nombre de croisements (carrefour
+  isolé ou zone = 1). Pas de consignes détaillées d'avance : elles se calculent à l'échelle du plan suivant, une
+  fois son étape tracée.
+  **Abandon de la suite** (`_pendingChain`, RAM) : au retour à l'accueil (comme avant), à la suppression de
+  l'itinéraire (`_effacerItineraireActif` → `InterPlanRoute.abandonnerSuite`), et au changement de plan
+  (`onPlanExit("switch")`) si ce n'est pas une traversée PHYSIQUE (`InterPlanLinks.traverseePhysiqueEnCours`,
+  goTo `recalerTracker`) ou si l'itinéraire du plan quitté a été remplacé (présent sans `suite`). Absent = clôturé
+  au portail (« Je suis ici » sur le point-portail) : la suite continue. Sans ça, ouvrir le plan suivant par le
+  sélecteur y traçait l'étape, écrasait son itinéraire et l'enregistrait dans sa session.
+- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) — ils créent leurs roads sans `raccords` /
+  `carrefours`.

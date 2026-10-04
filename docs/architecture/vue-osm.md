@@ -35,7 +35,7 @@
 > confronte les clés demandées aux trois dictionnaires — sans quoi une faute de frappe sortirait un libellé
 > humanisé en production, sans un mot.
 >
-> 🔒 **Restent prioritaires sur le défaut** : hors-ligne strict, incognito, hors-ligne réel, aucun plan
+> 🔒 **Restent prioritaires sur le défaut** : incognito, hors-ligne réel, aucun plan
 > géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
 
 > Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.43.8). Lue à la demande.
@@ -81,7 +81,6 @@ La **Vue OSM** projette les plans MyKTAMap géoréférencés sur OpenStreetMap (
 open()
   ├─ _hasGeoref() ?          (cascade source 1 → 2, cf §2.2)
   ├─ _isV2Plan() ?           (anti-crash mobile v1.39.10)
-  ├─ _isStrictOfflineOn() ?
   ├─ _isIncognitoOn() ?
   ├─ _isOnline() ?           (navigator.onLine + ping fiable)
   ├─ isOptedIn() ?           (LS myktamap_osm_view_opt_in)
@@ -333,16 +332,15 @@ Cache cleared au unload page (RAM-only, pas de LS). Re-sélection plan déjà vu
 
 | Aspect | Comportement |
 |---|---|
-| Opt-in | LS `myktamap_osm_view_opt_in`, default OFF |
+| Opt-in | LS `myktamap_osm_view_opt_in`, tri-état : absent → ON (défaut depuis v1.90.2), `"0"` = refus jamais réécrasé. **Seul interrupteur du seul tiers contacté** — il n'existe pas de « mode hors-ligne strict » (retiré : il ne coupait que le préchargement des tuiles) |
 | Pas opt-in | Modale : alert pédagogique / Widget HOME : colonne masquée |
-| Hors-ligne strict | Modale : `NetworkAudit.isStrictOfflineEnabled()` → toast warn |
-| Incognito | Modale : `IncognitoMode.isActive()` → toast warn |
+| Incognito | `IncognitoMode.isActive()` — Modale : toast warn / Widget HOME : `_renderIncognito` |
 | Hors-ligne navigator | Both : message "📴 Hors-ligne" |
 | Tiles OSM | Uniquement `tile.openstreetmap.org/{z}/{x}/{y}.png` (attribution OSM) |
 | Aucun cookie ou tracking | `crossOrigin: true` mais pas de credentials |
 | `kta:osmOptInChange` event | Listener dans osmHomePreview pour refresh widget si toggle change pendant la session |
 | **Bouton « 📍 Moi » (v1.40.18)** | `navigator.geolocation.getCurrentPosition` — 1 fix ponctuel à la demande user, JAMAIS `watchPosition`. Permission OS demandée à la demande (pas au boot). Marker + cercle accuracy en RAM only — JAMAIS persistés en LS/IDB/cookie, JAMAIS envoyés réseau. Reset au close modale + au refresh widget. Présent dans osmView (`_showMyGpsPositionOsm` + state `_myGpsMarker` / `_myGpsAccuracyCircle`) et dans osmHomePreview (`_showMyGpsPositionHome` + state `_myGpsMarkerHome` / `_myGpsAccuracyCircleHome`). |
-| **Gating modes vie privée (v1.40.19)** | Widget HOME : ajout helpers `_isStrictOfflineOn` + `_isIncognitoOn` (parité modale) + nouveaux renderers `_renderStrictOffline` / `_renderIncognito` appelés AVANT `_renderOffline` au `mount()`. Bouton GPS : désactivé visuellement (`disabled` attribute) au build modale si strict/incognito au moment du `open()` + early return runtime dans `_showMyGpsPositionOsm` / `_showMyGpsPositionHome` (toast warn) pour le cas où l'user active ces modes PENDANT que la modale est ouverte. `navigator.onLine === false` ne bloque PAS le GPS (le GPS device marche sans Internet). |
+| **Gating incognito** | Widget HOME : helper `_isIncognitoOn` (parité modale) + renderer `_renderIncognito` appelé AVANT `_renderOffline` au `mount()`. Bouton GPS : désactivé visuellement (`disabled` attribute) au build modale si incognito au moment du `open()` + early return runtime dans `_showMyGpsPositionOsm` / `_showMyGpsPositionHome` (toast warn) pour le cas où l'user passe en incognito PENDANT que la modale est ouverte. `check-osm-defaut.js` §5 bis **exécute** la garde avec le vrai module incognito. `navigator.onLine === false` ne bloque PAS le GPS (le GPS device marche sans Internet). |
 | **Header Permissions-Policy requis (v1.40.20)** | ⚠️ Pour que `navigator.geolocation.getCurrentPosition` fonctionne, le header serveur DOIT autoriser `geolocation=(self)`. Le default Nginx restrictif `geolocation=()` (en place v1.0 → v1.40.19) rejette l'API AVANT le prompt OS avec `crbug.com/414348233`. Configs mises à jour : `docs/nginx-csp-config.conf` (prod, ligne 141) + `docker/nginx-docker.conf` (self-host Docker, ligne 116). Cohérent avec `microphone=(self)` qui existait déjà pour la commande vocale E1. Déploiement prod = manuel par KARMA (FTP / redémarrage Nginx). |
 | **Garde-fou GPS hors champ plan (v1.40.21)** | Helpers `_getPlanGpsBbox()` (modale) / `_getPlanGpsBboxHome()` (widget) : projettent les 4 coins du plan via `_proj` + dims `imageWidth/Height` → `L.latLngBounds`. Au moment du fix GPS reçu, on étend la bbox via `bounds.pad(0.5)` (+50% chaque côté, marge généreuse) puis check `padded.contains([lat, lng])`. Si hors → toast warn avec distance Haversine au centre + console log + **pas de marker affiché** (privacy : aucune trace visuelle si user à des km du plan supposé). Si bbox impossible à calculer (dims manquantes, georef absente) → fallback safe : on autorise (= comportement v1.40.18-20 préservé). Marge `0.5` choisie pour être permissive : un fix à la frontière du plan reste accepté, seul un vrai "ailleurs" (autre ville, autre pays) déclenche le refus. |
 | **Popups POI cliquables widget HOME (v1.40.22)** | Fix CSS `overflow: hidden` → `overflow: visible` sur `.kta-osm-home-content` qui clippait silencieusement les popups Leaflet. Bouton `bindPopup` enrichi : `autoPan: true` + `autoPanPaddingTopLeft: L.point(20, 60)` + `maxWidth: 240` + `className: "kta-osm-popup"` pour activer auto-pan + clamp largeur + style charte. Idem modale OsmView (className + autoPan + maxWidth: 280). |
@@ -590,7 +588,7 @@ Pattern **sync gate + async refresh** : permet à `isAvailable()` de rester sync
 | Cache local | 100% client (IndexedDB local), jamais transmis ni synchronisé |
 | Politique OSM | `MAX_TILES_PER_CACHE = 200` par clic + 3 niveaux de zoom seulement (actuel ±1) = bulk-download raisonnable, conforme à l'esprit du [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) |
 | Cookies / tracking | Idem que sans cache : `crossOrigin: true` mais pas de credentials |
-| Strict offline / Incognito | Le bouton « Cacher » est masqué/désactivé dans ces modes (les tuiles seraient bloquées par le gate `_isStrictOfflineOn` avant même d'arriver au SW) |
+| Opt-in refusé / Incognito | Le bouton « Cacher » vit dans la carte Vue OSM : sans opt-in ou en incognito, la carte ne s'ouvre pas, donc aucun préchargement possible |
 
 ### 8.7 Pièges & conventions
 
