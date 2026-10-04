@@ -2391,7 +2391,9 @@
       // Map pointId → nom (depuis listePoints en session)
       const nomByPid = {};
       (points || []).forEach(function(p) {
-        nomByPid[String(p.id || "")] = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
+        const lib = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
+        nomByPid[String(p.id || "")] = lib;
+        if (p.uid) nomByPid[String(p.uid)] = lib;   // 🆔 v2.3.0 : photos rangées sous l'uid
       });
       // Format taille via le helper sessionExporter (déjà exposé)
       const fmt = window._kta_formatBytes || function(n) {

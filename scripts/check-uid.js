@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B)
+// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1)
 // =====================================================================
 // Chaque objet de carte porte une identité stable : `uid` + `updatedAt` (ms).
 // Décisions : docs/ETUDE_UID.md. Ce que ce script empêche :
@@ -317,6 +317,63 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("fusion du Générateur : même règle", /window\.KtaUid\.fusionnerCalques\(parsedArr\)/.test(CCB));
   t("import par remplacement : identités préparées et traces du fichier AVANT les setters (2 chemins)",
     (IIE.match(/_preparerIdentitesImport\((data|dataParsee)\);[^\n]*\n\s+if \(window\.setEditorPoints\)/g) || []).length === 2);
+}
+
+// ═════════ 4. LOT C1 — PHOTOS RATTACHÉES À L'UID (v2.3.0) ═════════
+{
+  const PH = lire("js/photos.js"), ED = lire("js/editor.js"), UT = lire("js/utils.js"),
+    SE = lire("js/sessionExporter.js"), MA = lire("js/main.js"), RI = lire("js/refonteInterface.js");
+  const fn = (src, nom) => {
+    const d = src.indexOf("function " + nom + "(");
+    if (d < 0) return "";
+    const o = src.indexOf("{", d); let p = 0;
+    for (let i = o; i < src.length; i++) { if (src[i] === "{") p++; else if (src[i] === "}") { p--; if (p === 0) return src.slice(d, i + 1); } }
+    return "";
+  };
+  const migr = fn(PH, "migrerPhotosPlan"), setP = fn(PH, "setPhotoPointId"), ref = fn(PH, "getPhotosForPointRef");
+  t("photos : getPhotosForPointRef, setPhotoPointId, migrerPhotosPlan exposées",
+    /getPhotosForPointRef:\s+getPhotosForPointRef/.test(PH) && /setPhotoPointId:\s+setPhotoPointId/.test(PH) && /migrerPhotosPlan:\s+migrerPhotosPlan/.test(PH));
+  t("🩸 migration : ne SUPPRIME jamais une photo (aucun delete dans migrerPhotosPlan ni setPhotoPointId)",
+    !!migr && !!setP && !/delete/i.test(migr) && !/\.delete\(|deletePhoto/.test(setP));
+  t("🩸 migration : rattache seulement si UN SEUL point porte ce nom ET qu'il a un uid",
+    /c\.length === 1 && typeof c\[0\]\.uid === "string" && c\[0\]\.uid/.test(migr));
+  t("migration : une photo déjà rangée sous un uid connu n'est pas touchée", /if \(!cle \|\| uids\.has\(cle\)\) return;/.test(migr));
+  t("double lecture : uid PUIS nom, sans doublon, marque _parNom", /rec\._parNom = !!uid;/.test(ref) && /if \(vus\.has\(rec\.id\)\) return;/.test(ref));
+  t("setPhotoPointId : lecture et écriture dans les rappels de la même requête (transaction active)",
+    /g\.onsuccess = function\(\) \{[\s\S]*const put = store\.put\(rec\);/.test(setP));
+
+  // Éditeur
+  t("éditeur : en ajout, les photos sont rangées sous l'uid du FUTUR point", /_uidAjout = window\.KtaUid\.genUid\("pt"\);\s*_photoPointId = _uidAjout;/.test(ED));
+  t("éditeur : ce même uid est posé sur le point créé", /if \(_uidAjout\) point\.uid = _uidAjout;/.test(ED));
+  t("🩸 éditeur : l'annulation ne supprime QUE la clé d'un point en cours d'ajout (jamais un point existant)",
+    /if \(!isEdit && window\.MyKTAMapPhotos &&\s*\(_photoPointId === _uidAjout \|\| _photoPointId\.indexOf\("_temp_"\) === 0\)\)/.test(ED));
+  t("éditeur : en édition, double lecture (uid + nom)", /getPhotosForPointRef\(planId, \{ uid: existingPoint\.uid, id: existingPoint\.id \}\)/.test(ED));
+  t("🩸 éditeur : rattachement nom → uid seulement s'il n'y a AUCUN homonyme (session + calques)",
+    /if \(ancienNom && homonymes === 0\) \{\s*photoOps\.push\(window\.MyKTAMapPhotos\.renamePointId\(planId, ancienNom, existingPoint\.uid\)\);/.test(ED));
+  t("éditeur : le popup d'un point de session reçoit son uid", /window\.attachPopupPhotos\(marker, String\(point\.id \|\| ""\), point\.uid\)/.test(ED));
+
+  // Popup
+  t("popup : double lecture quand le point a un uid", /getPhotosForPointRef\(planId, \{ uid: pointUid, id: pid \}\)/.test(UT));
+  t("🩸 popup : « à rattacher » = rangée par nom ET nom porté par plusieurs points", /_aRattacher: !!\(rec\._parNom && _nomAmbigu\)/.test(UT) && /_ktaCompterPointsNommes\(pid\) > 1/.test(UT));
+  t("popup : un bouton par photo la rattache à CE point (setPhotoPointId, rien supprimé)", /window\.MyKTAMapPhotos\.setPhotoPointId\(p\.id, pointUid\)/.test(UT));
+  t("popup : points des calques — uid transmis", /window\.attachPopupPhotos\(marker, String\(p\.id \|\| ""\), p\.uid\)/.test(UT));
+
+  // Exports et stats
+  t("exports : les photos d'un point se collectent sous son uid ET son nom (2 sites)",
+    (SE.match(/p\.uid \? \[String\(p\.uid\), String\(p\.id \|\| ""\)\] : \[String\(p\.id \|\| ""\)\]/g) || []).length === 2);
+  t("export : rattachement photo → point par uid puis nom", /const parUid = pt\.uid \? \(parPoint\[String\(pt\.uid\)\] \|\| \[\]\) : \[\];/.test(SE));
+  t("export anonymisé : les photos rangées sous l'uid suivent le code anonymisé", /if \(p\.uid\) idMap\[String\(p\.uid\)\] = code;/.test(SE));
+  t("stats photos : un uid affiche le nom du point", /if \(p\.uid\) nomByPid\[String\(p\.uid\)\] = lib;/.test(RI));
+
+  // Déclenchement
+  t("migration planifiée après restauration de session ET après chaque calque",
+    /window\._ktaPlanifierMigrationPhotos = function\(\)/.test(MA) && /SessionPersist\.onPlanLoaded[\s\S]{0,300}_ktaPlanifierMigrationPhotos\(\)/.test(MA) && /_ktaPlanifierMigrationPhotos === "function"\) window\._ktaPlanifierMigrationPhotos\(\);/.test(UT));
+  t("🩸 migration : abandonnée si le plan a changé pendant l'attente", /if \(\(window\._currentLoadedPlanId \|\| null\) !== planId\) return;/.test(MA));
+
+  ["fr", "en", "es"].forEach((l) => {
+    const D = JSON.parse(lire("lang/" + l + ".json"));
+    t("lang/" + l + " : textes « à rattacher »", ["titre", "btn", "fait", "echec"].every((k) => !!D["utils.popup.aRattacher." + k]));
+  });
 }
 
 console.log("");

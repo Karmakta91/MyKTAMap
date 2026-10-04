@@ -663,6 +663,8 @@ Up to **5 photos per point**, kept on your device only. In the add or edit windo
 
 **Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; a re-imported file restores its photos. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code; a photo that cannot be cleaned is left out.
 
+**📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
+
 > ⚠️ Photos take up the browser's storage (from a few dozen to a few hundred MB depending on the device); a warning appears near the limit. On iPhone, the system may empty this storage when it runs out of space: export regularly. **💥 Reset everything** also deletes the photos, and deleting a photo cannot be undone.
 
 ---

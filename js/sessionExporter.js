@@ -1665,7 +1665,10 @@
       parPoint[k].push(p.id);
     });
     return points.map(function(pt) {
-      const ids = parPoint[String(pt.id || "")];
+      // 🆔 v2.3.0 — photos rangées sous l'uid du point, puis sous son nom.
+      const parUid = pt.uid ? (parPoint[String(pt.uid)] || []) : [];
+      const parNom = parPoint[String(pt.id || "")] || [];
+      const ids = parUid.concat(parNom.filter(function(id) { return parUid.indexOf(id) < 0; }));
       if (!ids || ids.length === 0) return pt;
       const clone = Object.assign({}, pt);
       clone.photos = ids;
@@ -1713,6 +1716,7 @@
         // en double, donc ids en double et photos rattachées au mauvais point.
         const code = "📍 POI " + (firstTag ? firstTag + " " : "") + "#" + counterByTag[key];
         if (p.id) idMap[String(p.id)] = code;
+        if (p.uid) idMap[String(p.uid)] = code;   // 🆔 v2.3.0 : photos rangées sous l'uid
         const out  = {
           id:    code,
           nom:   code,
@@ -2218,7 +2222,8 @@
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
+      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2445,7 +2450,8 @@
     const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
+      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)

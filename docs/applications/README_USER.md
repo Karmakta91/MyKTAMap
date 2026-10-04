@@ -663,6 +663,8 @@ Jusqu'à **5 photos par point**, gardées sur ton appareil uniquement. Dans la f
 
 **Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; un fichier réimporté restaure ses photos. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point ; une photo qui ne peut pas être nettoyée est exclue.
 
+**📌 Photo « à rattacher »** : avant la v2.3.0, une photo était rangée sous le **nom** de son point. Si plusieurs points portent le même nom, l'app ne devine pas à qui elle appartient : dans la bulle de chacun de ces points, la photo apparaît avec un **cadre orange pointillé** et un bouton **📌 Photo N : c'est ce point**. Touche-le dans la bulle du bon point. Rien n'est jamais supprimé. Les photos d'un nom porté par un seul point sont rattachées toutes seules, et celles que tu prends maintenant suivent leur point même si tu le renommes.
+
 > ⚠️ Les photos occupent le stockage du navigateur (de quelques dizaines à quelques centaines de Mo selon l'appareil) ; un avertissement s'affiche près de la limite. Sur iPhone, le système peut vider ce stockage s'il manque de place : exporte régulièrement. **💥 Tout réinitialiser** efface aussi les photos, et leur suppression ne s'annule pas.
 
 ---

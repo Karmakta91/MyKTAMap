@@ -189,9 +189,19 @@ function afficherFormulaire(x, y, existingPoint) {
   //   - mode AJOUT   : id temporaire (UUID préfixé "_temp_") qu'on
   //     migrera vers le vrai nom à la validation. Permet à l'user
   //     d'attacher des photos AVANT d'avoir saisi un nom définitif.
+  // 🆔 v2.3.0 (lot C1) — la clé photo est l'UID du point, plus son nom :
+  //   - édition : l'uid du point (son nom en repli s'il n'en a pas encore) ;
+  //     les anciennes photos rangées sous le nom restent lues (double lecture) ;
+  //   - ajout : l'uid du FUTUR point, tiré ici et posé sur le point à la
+  //     validation — les photos prises avant d'avoir saisi un nom sont déjà
+  //     sous leur clé définitive, plus de renommage au save.
   let _photoPointId;
+  let _uidAjout = null;
   if (isEdit) {
-    _photoPointId = String(existingPoint.id || existingPoint.nom || "");
+    _photoPointId = String(existingPoint.uid || existingPoint.id || existingPoint.nom || "");
+  } else if (window.KtaUid) {
+    _uidAjout = window.KtaUid.genUid("pt");
+    _photoPointId = _uidAjout;
   } else {
     _photoPointId = "_temp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
   }
@@ -333,7 +343,11 @@ function afficherFormulaire(x, y, existingPoint) {
       // Si mode AJOUT sans photos uploadées → rien à nettoyer
       // Si mode AJOUT avec photos → on les delete via deletePhotosForPoint
       //   sur le _temp_ pointId (couvre aussi le cas où Set serait désynchro)
-      if (!isEdit && window.MyKTAMapPhotos && _photoPointId.indexOf("_temp_") === 0) {
+      // 🩸 v2.3.0 — garde STRICTE : seulement en AJOUT et sur la clé tirée pour
+      // ce point qui n'existe pas encore. Jamais sur un point existant : ses
+      // photos seraient supprimées pour de bon.
+      if (!isEdit && window.MyKTAMapPhotos &&
+          (_photoPointId === _uidAjout || _photoPointId.indexOf("_temp_") === 0)) {
         window.MyKTAMapPhotos.deletePhotosForPoint(planId, _photoPointId)
           .catch(function(e) { console.warn("[Editor] cleanup _temp_ photos :", e); });
       }
@@ -468,7 +482,12 @@ function afficherFormulaire(x, y, existingPoint) {
       _refreshCounterAndButtons();
       return;
     }
-    window.MyKTAMapPhotos.getPhotosForPoint(planId, _photoPointId).then(function(arr) {
+    // 🆔 v2.3.0 — double lecture : sous l'uid du point, et sous son nom
+    // (photos d'avant la v2.3.0 pas encore migrées).
+    const _lecture = (window.MyKTAMapPhotos.getPhotosForPointRef && existingPoint.uid)
+      ? window.MyKTAMapPhotos.getPhotosForPointRef(planId, { uid: existingPoint.uid, id: existingPoint.id })
+      : window.MyKTAMapPhotos.getPhotosForPoint(planId, _photoPointId);
+    _lecture.then(function(arr) {
       _photosCacheMeta = arr.map(function(rec) {
         const url = URL.createObjectURL(rec.blob);
         _photoObjectUrls.add(url);
@@ -609,11 +628,26 @@ function afficherFormulaire(x, y, existingPoint) {
       _photosPendingDelete.forEach(function(photoId) {
         photoOps.push(window.MyKTAMapPhotos.deletePhoto(photoId));
       });
-      // Migration : si mode ajout (pointId temp) OU si mode édition avec
-      // renommage (oldId !== newId), on rename les photoIds vers le bon id
-      const newPointId = nom;
-      if (_photoPointId !== newPointId) {
-        photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, newPointId));
+      // 🆔 v2.3.0 — les photos sont rangées sous l'UID : renommer le point ne
+      // les touche plus. Deux restes du rangement par nom :
+      //   - point d'avant la v2.3.0, sans uid : comportement historique
+      //     (renommage de clé nom → nouveau nom) ;
+      //   - point avec uid dont des photos sont encore rangées sous son nom :
+      //     on les rattache à l'uid, SEULEMENT si ce nom n'est porté par aucun
+      //     autre point (sinon on prendrait les photos d'un homonyme).
+      if (isEdit && !existingPoint.uid) {
+        if (_photoPointId !== nom) photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, nom));
+      } else if (isEdit && existingPoint.uid) {
+        const ancienNom = String(existingPoint.id || "");
+        const homonymes = listePoints.filter(function(p) { return p !== existingPoint && String(p.id || "") === ancienNom; }).length +
+          ((typeof window.getAllEmbeddedPoints === "function")
+            ? window.getAllEmbeddedPoints().filter(function(p) { return String(p.id || "") === ancienNom; }).length : 0);
+        if (ancienNom && homonymes === 0) {
+          photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, ancienNom, existingPoint.uid));
+        }
+      } else if (!_uidAjout && _photoPointId !== nom) {
+        // repli sans KtaUid : comportement historique (_temp_ → nom)
+        photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, nom));
       }
     }
 
@@ -666,6 +700,9 @@ function afficherFormulaire(x, y, existingPoint) {
           point.level = window.APP_CONFIG.activeLevel || 0;
         }
         // 🆔 v2.1.0 — identité stable dès la création (le nom peut changer, l'uid non).
+        // v2.3.0 : l'uid est celui tiré à l'ouverture du formulaire, sous lequel
+        // les photos de ce point sont déjà rangées.
+        if (_uidAjout) point.uid = _uidAjout;
         if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(point, "pt"));
 
         listePoints.push(point);
@@ -907,7 +944,7 @@ function _ajouterMarker(point) {
   // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à l'ouverture
   // (slot vide dans buildPointPopupHtml, rempli en async via popupopen).
   if (typeof window.attachPopupPhotos === "function") {
-    window.attachPopupPhotos(marker, String(point.id || ""));
+    window.attachPopupPhotos(marker, String(point.id || ""), point.uid);   // 🆔 v2.3.0 : uid + nom
   }
 
   // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.

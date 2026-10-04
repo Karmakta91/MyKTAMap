@@ -1566,7 +1566,20 @@ window._revokeAllPhotoObjectUrls = window._revokeAllPhotoObjectUrls || function(
   }
 };
 
-function attachPopupPhotos(marker, pointId) {
+// 🆔 v2.3.0 — combien de points du plan (session + calques) portent ce nom ?
+// Une photo rangée sous un nom porté par plusieurs points est « à rattacher » :
+// on ne devine jamais à quel point elle appartient (ETUDE_UID décision 12).
+function _ktaCompterPointsNommes(nom) {
+  const n = String(nom || "");
+  if (!n) return 0;
+  let c = 0;
+  (window.getEditorPoints ? window.getEditorPoints() || [] : []).forEach(function(p) { if (p && String(p.id || "") === n) c++; });
+  (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []).forEach(function(p) { if (p && String(p.id || "") === n) c++; });
+  return c;
+}
+window._ktaCompterPointsNommes = _ktaCompterPointsNommes;
+
+function attachPopupPhotos(marker, pointId, pointUid) {
   if (!marker || !pointId) return;
   if (marker._ktaPhotosAttached) return;  // idempotent
   marker._ktaPhotosAttached = true;
@@ -1608,7 +1621,12 @@ function attachPopupPhotos(marker, pointId) {
     slot.dataset.loaded = "0";
 
     const planId = window._currentLoadedPlanId || "default";
-    window.MyKTAMapPhotos.getPhotosForPoint(planId, pid).then(function(arr) {
+    // 🆔 v2.3.0 — double lecture : sous l'uid du point, puis sous son nom.
+    const _lecture = (pointUid && window.MyKTAMapPhotos.getPhotosForPointRef)
+      ? window.MyKTAMapPhotos.getPhotosForPointRef(planId, { uid: pointUid, id: pid })
+      : window.MyKTAMapPhotos.getPhotosForPoint(planId, pid);
+    const _nomAmbigu = !!pointUid && _ktaCompterPointsNommes(pid) > 1;
+    _lecture.then(function(arr) {
       if (!arr || arr.length === 0) {
         slot.innerHTML = "";
         slot.dataset.loaded = "1";
@@ -1625,7 +1643,9 @@ function attachPopupPhotos(marker, pointId) {
           mime:       rec.mime,
           size:       rec.size,
           createdAt:  rec.createdAt,
-          _objectUrl: url
+          _objectUrl: url,
+          // 🆔 v2.3.0 — rangée sous un nom porté par plusieurs points
+          _aRattacher: !!(rec._parNom && _nomAmbigu)
         };
       });
       // Rendu : grille de miniatures 44×44.
@@ -1657,9 +1677,43 @@ function attachPopupPhotos(marker, pointId) {
         // au clavier / focus-visible).
         img.setAttribute("role", "button");
         img.setAttribute("tabindex", "0");
+        if (p._aRattacher) img.classList.add("kta-popup-photo-arattacher");
         rowEl.appendChild(img);
       });
       slot.dataset.loaded = "1";
+
+      // 🆔 v2.3.0 — « À RATTACHER » : ces photos étaient rangées sous le NOM du
+      // point, et plusieurs points portent ce nom. L'app ne choisit pas à la
+      // place de l'utilisateur : un bouton par photo la rattache à CE point.
+      // Rien n'est supprimé ; une photo non rattachée reste visible ici comme
+      // sur l'homonyme.
+      const aRattacher = photosWithUrl.filter(function(p) { return p._aRattacher; });
+      if (aRattacher.length && pointUid && window.MyKTAMapPhotos.setPhotoPointId) {
+        const box = document.createElement("div");
+        box.className = "kta-popup-photos-arattacher";
+        const titre = document.createElement("div");
+        titre.className = "kta-popup-photos-arattacher-titre";
+        titre.textContent = window.I18n.t("utils.popup.aRattacher.titre", { n: aRattacher.length });
+        box.appendChild(titre);
+        aRattacher.forEach(function(p) {
+          const idx = photosWithUrl.indexOf(p);
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "kta-popup-btn kta-popup-photos-arattacher-btn";
+          b.textContent = window.I18n.t("utils.popup.aRattacher.btn", { n: idx + 1 });
+          b.addEventListener("click", function(ev) {
+            ev.stopPropagation();
+            b.disabled = true;
+            window.MyKTAMapPhotos.setPhotoPointId(p.id, pointUid).then(function(ok) {
+              b.textContent = ok ? window.I18n.t("utils.popup.aRattacher.fait") : window.I18n.t("utils.popup.aRattacher.echec");
+              const mini = rowEl.querySelector('.kta-popup-photo-mini[data-idx="' + idx + '"]');
+              if (ok && mini) mini.classList.remove("kta-popup-photo-arattacher");
+            });
+          });
+          box.appendChild(b);
+        });
+        slot.appendChild(box);
+      }
 
       // Click + keyboard handler sur chaque miniature → viewer plein écran.
       // 🔧 v1.9.3-B1d-fix6 : on est maintenant sur des <img role="button">
@@ -2363,7 +2417,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             // (workflow B1.d.γ à venir). Pour B1.d.α actuel, les data
             // layers n'ont pas de photos donc le slot reste invisible.
             if (typeof window.attachPopupPhotos === "function") {
-              window.attachPopupPhotos(marker, String(p.id || ""));
+              window.attachPopupPhotos(marker, String(p.id || ""), p.uid);   // 🆔 v2.3.0
             }
           }
 
@@ -2796,6 +2850,9 @@ function ajouterPointsDepuisJSON(url, layer) {
       if (typeof window._etendreAvailableLevelsSiBesoin === "function") {
         try { window._etendreAvailableLevelsSiBesoin(); } catch(e) {}
       }
+      // 🆔 v2.3.0 — un calque de plus est connu : ses points comptent pour
+      // l'ambiguïté des noms → la migration des photos est (re)planifiée.
+      if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
     })
     .catch(function(err) {
       console.warn("[Data] Erreur chargement", url, err);

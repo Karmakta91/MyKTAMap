@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.2.0` (04/10/2026)
+## 📦 Version courante — `v2.3.0` (04/10/2026)
+
+> 📸 **v2.3.0 — Photos rattachées à l'uid du point (chantier 1, lot C1)** : une photo suit son point renommé ; double lecture uid puis nom, migration douce, « à rattacher » quand le nom est ambigu.
 
 > 🔀 **v2.2.0 — Traces de suppression et fusion par uid (chantier 1, lot B)** : un objet supprimé ne ressuscite plus à une fusion ou un réimport ; la fusion de sessions ne double plus un même objet.
 
@@ -517,6 +519,18 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.3.0 (04/10/2026) — Photos rattachées à l'uid du point (chantier 1, lot C1)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 11-13. Le NOM du point servait de clé photo dans 11 endroits (éditeur, popups, exports, anonymisé, import, profil, ZIP de plan, stats, Carnet) : une bascule franche aurait perdu des photos au premier site oublié. Choix KARMA : **double lecture + migration douce**, lot C découpé en C1 / C2 / C3.
+- 📸 **`js/photos.js`** : `getPhotosForPointRef(planId, {uid, id})` (uid PUIS nom, sans doublon, `_parNom` sur les secondes), `setPhotoPointId` (une photo, lecture/écriture dans les rappels IDB), `migrerPhotosPlan` (nom porté par UN seul point qui a un uid → uid ; ambigu ou sans uid → inchangé ; **jamais de suppression**).
+- ✏️ **Éditeur** : en ajout, les photos sont rangées sous l'uid du FUTUR point (tiré à l'ouverture, posé à la validation — plus de clé `_temp_` ni de renommage) ; l'annulation ne supprime que cette clé, jamais celle d'un point existant ; en édition, double lecture, et rattachement nom → uid seulement sans homonyme (session + calques).
+- 📌 **Popup** : double lecture ; une photo rangée par nom d'un point dont le nom est porté par plusieurs points porte un cadre orange pointillé et un bouton « 📌 Photo N : c'est ce point » (fr/en/es).
+- 📤 **Exports / stats** : collecte des photos par uid ET nom, rattachement photo → point par uid puis nom, export anonymisé remappe aussi l'uid, stats photos affichent le nom pour un uid.
+- 🔄 **Migration** planifiée 2 s après la restauration de session et après chaque calque chargé (pas de signal « tout chargé ») ; abandonnée si le plan a changé.
+- 🛡️ **Garde-fou** : `check-uid.js` passe à 115 contrôles (migration sans suppression, rattachement seulement sans ambiguïté, garde d'annulation stricte, double lecture partout, textes 3 langues).
+- ✅ **Test navigateur** (IndexedDB réelle, relevé fictif) : photo sous nom unique → uid ; sous nom porté par 2 points → inchangée ; photo neuve sous l'uid ; double lecture ; popup du point ambigu → badge + bouton, le clic la rattache au bon point ; 3 photos avant comme après ; aucune erreur JS.
+- ⏭️ **Suite** : C2 (favoris, liaisons, Secours) ; C3 (photos des ZIP de plan : index du Générateur par uid).
 
 #### v2.2.0 (04/10/2026) — Traces de suppression et fusion par uid (chantier 1, lot B)
 

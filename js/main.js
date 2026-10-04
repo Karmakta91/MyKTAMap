@@ -611,6 +611,8 @@ async function lancerApplication() {
   if (window.SessionPersist) {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
+  // 🆔 v2.3.0 — photos rangées sous le nom du point → sous son uid (lot C1).
+  if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
 
   // 📔 v1.69.0 — Ouverture d'une SORTIE au carnet. Impérativement APRÈS
   // SessionPersist.onPlanLoaded : la baseline des compteurs doit inclure la
@@ -869,6 +871,29 @@ window.ktaNiveauxOccupes = function() {
   }
   return levelsFound.filter(function(v, i, a) { return a.indexOf(v) === i; })
                     .sort(function(a, b) { return a - b; });
+};
+
+// 🆔 v2.3.0 — MIGRATION DES PHOTOS VERS L'UID DU POINT (ETUDE_UID lot C1).
+// Les calques arrivent un par un, sans signal « tout est chargé » : on attend
+// 2 s après le DERNIER appel (restauration de session, puis chaque calque).
+// L'ambiguïté se juge sur TOUS les points du plan (session + calques) : une
+// photo n'est rattachée à un uid que si son nom n'est porté que par ce point.
+// 🩸 Le plan peut avoir changé pendant l'attente : on vérifie son id.
+let _ktaMigrPhotosTimer = null;
+window._ktaPlanifierMigrationPhotos = function() {
+  if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.migrerPhotosPlan !== "function") return;
+  const planId = window._currentLoadedPlanId || null;
+  if (!planId) return;
+  if (_ktaMigrPhotosTimer) clearTimeout(_ktaMigrPhotosTimer);
+  _ktaMigrPhotosTimer = setTimeout(function() {
+    _ktaMigrPhotosTimer = null;
+    if ((window._currentLoadedPlanId || null) !== planId) return;
+    const pts = [].concat(
+      (window.getEditorPoints ? window.getEditorPoints() || [] : []),
+      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
+    ).map(function(p) { return { uid: p && p.uid, id: p && p.id }; });
+    window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+  }, 2000);
 };
 
 window._etendreAvailableLevelsSiBesoin = function() {

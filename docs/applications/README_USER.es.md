@@ -663,6 +663,8 @@ Hasta **5 fotos por punto**, guardadas solo en tu dispositivo. En la ventana de 
 
 **Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; un archivo reimportado restaura sus fotos. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto; una foto que no puede limpiarse queda excluida.
 
+**📌 Foto «por asignar»**: antes de la v2.3.0, una foto se guardaba con el **nombre** de su punto. Si varios puntos llevan el mismo nombre, la app no adivina a cuál pertenece: en la burbuja de cada uno de esos puntos, la foto aparece con un **marco naranja punteado** y un botón **📌 Foto N: es este punto**. Tócalo en la burbuja del punto correcto. Nunca se borra nada. Las fotos cuyo nombre lleva un solo punto se asignan solas, y las que tomes ahora siguen a su punto aunque lo renombres.
+
 > ⚠️ Las fotos ocupan el almacenamiento del navegador (de unas decenas a unos cientos de MB según el dispositivo); aparece un aviso cerca del límite. En iPhone, el sistema puede vaciar ese almacenamiento si le falta espacio: exporta con regularidad. **💥 Reiniciar todo** también borra las fotos, y borrar una foto no se puede deshacer.
 
 ---

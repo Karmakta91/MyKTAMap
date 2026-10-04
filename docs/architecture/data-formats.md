@@ -94,6 +94,7 @@ de l'original). Module : `js/ktaUid.js` ; décisions : `docs/ETUDE_UID.md`.
 (diff des uid à chaque action, annulation = trace retirée + `touch`), purgées à 90 jours,
 vidées par « Effacer la session » et au changement de plan, **jamais** dans l'export anonymisé.
 Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque (`_srcCalque`).
+**Photos (v2.3.0)** : `pointId` d'une photo (IndexedDB `myktamap_photos`, exports, profil) vaut l'**uid** du point pour toute photo prise depuis v2.3.0 ; les anciennes restent sous le **nom** jusqu'à leur migration (automatique si le nom n'est porté que par un point ; sinon « à rattacher » par l'utilisateur). Lecture **double** partout (`MyKTAMapPhotos.getPhotosForPointRef` : uid, puis nom). Les ZIP de plan gardent l'index par nom jusqu'au lot C3.
 Fusion de sessions et du Générateur : `KtaUid.fusionnerCalques` (même uid de deux fichiers = même
 objet, le plus récent gagne ; même uid dans UN fichier = deux objets, uid neuf au second ; une trace
 postérieure à la dernière modification l'emporte). Import par remplacement : les traces du fichier

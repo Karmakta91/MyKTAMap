@@ -2673,6 +2673,31 @@ img.kta-popup-photo-mini:focus-visible {
    était un <button>. La nouvelle img.kta-popup-photo-mini:hover ci-dessus
    couvre déjà tous les cas. */
 
+/* 🆔 v2.3.0 — photo « à rattacher » : rangée sous un nom porté par plusieurs
+   points. Cadre orange pointillé + un bouton par photo sous la grille. */
+.kta-popup-photo-mini.kta-popup-photo-arattacher {
+  outline: 2px dashed #ffb380;
+  outline-offset: 1px;
+}
+.kta-popup-photos-arattacher {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-popup-photos-arattacher-titre {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #ffb380;
+}
+.kta-popup-photos-arattacher-btn {
+  font-size: 11px;
+  text-align: left;
+}
+html.kta-theme-light .kta-popup-photo-mini.kta-popup-photo-arattacher,
+body.kta-theme-light .kta-popup-photo-mini.kta-popup-photo-arattacher { outline-color: #8b3a00; }
+html.kta-theme-light .kta-popup-photos-arattacher-titre,
+body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
 .kta-popup-photos-count {
   margin-top: 5px;
   font-size: 10.5px;

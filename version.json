@@ -1,7 +1,8 @@
 {
-  "version": "v2.2.0",
+  "version": "v2.3.0",
   "released": "2026-10-04",
   "notes": [
+    "📸 Une photo suit désormais son point même si tu le renommes. Si plusieurs points portent le même nom, la bulle te demande à quel point va chaque ancienne photo (📌 « c'est ce point ») — rien n'est jamais supprimé.",
     "🔀 La fusion de sessions ne double plus un même élément présent dans deux fichiers : la version la plus récente est gardée, et un élément supprimé ne revient pas.",
     "🆔 Préparation interne : chaque point, tracé et zone de tes plans reçoit un identifiant permanent. Rien ne change à l’écran : tes sessions sont converties automatiquement, sans rien perdre, la première fois que tu ouvres chaque plan.",
     "🔒 Correctif de confidentialité : l’export de session « anonymisé » contenait encore les noms de tes liaisons entre plans (nom du plan et du point de chaque côté). Elles en sont désormais retirées. Si tu as partagé un export anonymisé depuis un plan qui avait des liaisons, il peut contenir ces noms.",
