@@ -76,6 +76,15 @@
   var LS_KEY_LOCAL  = "__mktm_pro_license_local__"; // licence importée manuellement
 
   var FETCH_PATH = "/Licence-pro.json";
+
+  // 🔏 04/10/2026 — LICENCES SIGNÉES. Une licence n'est acceptée que si :
+  //   - sa `signature` (ECDSA P-256 / SHA-256, brute r||s en base64) est valide pour
+  //     la clé publique ci-dessous (la clé privée ne quitte jamais KARMA) ;
+  //   - elle n'est pas expirée (`valid_until`) ;
+  //   - ses `domaines` couvrent l'adresse ouverte (`*` = tous, licences de test).
+  // La forme signée est la licence SANS `signature`, clés triées récursivement.
+  // Clé PUBLIQUE : la publier ne permet pas d'émettre de licence.
+  var CLE_PUBLIQUE_JWK = {"kty":"EC","crv":"P-256","x":"Gb2T21We0Y8M12M0v-JBtQQEDRtTlonRjR0v0QwCm1I","y":"owuAq0sHCqpV5N-9nU9yP-XXCVVByiZiOqAs42MOzbk"};
   var FETCH_TIMEOUT_MS = 1500;
   // 🩸 Sans licence serveur déjà connue (1er lancement, après « Tout réinitialiser »),
   // on attend la vraie réponse : 1,5 s ne suffisait pas quand le Service Worker
@@ -120,6 +129,33 @@
 
   function _safeRemoveLS(key) {
     try { localStorage.removeItem(key); } catch(e) {}
+  }
+
+  function _canonique(v) {
+    if (Array.isArray(v)) return "[" + v.map(_canonique).join(",") + "]";
+    if (v && typeof v === "object") {
+      return "{" + Object.keys(v).filter(function(k) { return k !== "signature"; }).sort()
+        .map(function(k) { return JSON.stringify(k) + ":" + _canonique(v[k]); }).join(",") + "}";
+    }
+    return JSON.stringify(v);
+  }
+  var _clePromesse = null;
+  // Promesse de booléen : signature valide, non expirée, domaine couvert. Sans WebCrypto
+  // (contexte non sécurisé), aucune licence ne peut être vérifiée → refusée.
+  function _verifierSignature(data) {
+    try {
+      if (!data || typeof data.signature !== "string" || !Array.isArray(data.domaines)) return Promise.resolve(false);
+      if (typeof data.valid_until === "string" && data.valid_until < new Date().toISOString().slice(0, 10)) return Promise.resolve(false);
+      var hote = (location.hostname || "").toLowerCase();
+      var domaines = data.domaines.map(function(d) { return String(d).toLowerCase(); });
+      if (domaines.indexOf("*") < 0 && domaines.indexOf(hote) < 0) return Promise.resolve(false);
+      if (!window.crypto || !crypto.subtle) return Promise.resolve(false);
+      if (!_clePromesse) _clePromesse = crypto.subtle.importKey("jwk", CLE_PUBLIQUE_JWK, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+      var sig = Uint8Array.from(atob(data.signature), function(c) { return c.charCodeAt(0); });
+      return _clePromesse.then(function(cle) {
+        return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, cle, sig, new TextEncoder().encode(_canonique(data)));
+      }).catch(function() { return false; });
+    } catch (e) { return Promise.resolve(false); }
   }
 
   function _validateData(data, strictHash) {
@@ -262,13 +298,14 @@
       .then(function(data) {
         if (data === undefined) return;
         var v = _validateData(data, /* strictHash */ false);
-        if (v.ok) {
-          _safeWriteLS(LS_KEY_SERVER, v.data);
-        } else {
-          _safeRemoveLS(LS_KEY_SERVER);
-        }
-        _recomputeActive();
-        _signalerVerifiee();
+        if (!v.ok) { _safeRemoveLS(LS_KEY_SERVER); _recomputeActive(); _signalerVerifiee(); return; }
+        // 🔏 Signature vérifiée AVANT de mémoriser : une licence non signée n'active rien.
+        return _verifierSignature(v.data).then(function(signee) {
+          if (signee) _safeWriteLS(LS_KEY_SERVER, v.data);
+          else { _safeRemoveLS(LS_KEY_SERVER); console.warn("[ProLicense] licence serveur refusée : signature invalide, expirée ou pour un autre domaine."); }
+          _recomputeActive();
+          _signalerVerifiee();
+        });
       })
       .catch(function() {
         // Network error / timeout → maintenir l'état cache (offline temporaire).
@@ -320,9 +357,12 @@
           resolve(v);
           return;
         }
-        _safeWriteLS(LS_KEY_LOCAL, v.data);
-        _recomputeActive();
-        resolve({ ok: true, data: v.data });
+        _verifierSignature(v.data).then(function(signee) {
+          if (!signee) { resolve({ ok: false, error: t("license.err.signature") }); return; }
+          _safeWriteLS(LS_KEY_LOCAL, v.data);
+          _recomputeActive();
+          resolve({ ok: true, data: v.data });
+        });
       };
       reader.onerror = function() {
         resolve({ ok: false, error: t("license.err.readError") });
@@ -361,12 +401,23 @@
     // Helpers diagnostic
     _LS_KEY_SERVER: LS_KEY_SERVER,
     _LS_KEY_LOCAL: LS_KEY_LOCAL,
-    HASH_PATTERN: HASH_PATTERN
+    HASH_PATTERN: HASH_PATTERN,
+    _verifierSignature: _verifierSignature   // tests (scripts/check-licence.js)
   };
 
   // -------------------------------------------------------------------------
   // Lancement de la vérification async côté serveur
   // -------------------------------------------------------------------------
+
+  // 🔏 Une licence mémorisée (localStorage) est revérifiée à chaque démarrage : une
+  // licence non signée (ou écrite à la main) est retirée.
+  [LS_KEY_SERVER, LS_KEY_LOCAL].forEach(function(cle) {
+    var memo = _safeReadLS(cle);
+    if (!memo) return;
+    _verifierSignature(memo).then(function(signee) {
+      if (!signee) { _safeRemoveLS(cle); _recomputeActive(); console.warn("[ProLicense] licence mémorisée retirée (non signée ou expirée)."); }
+    });
+  });
 
   _checkServerLicense();
 

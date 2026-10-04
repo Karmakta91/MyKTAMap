@@ -2274,6 +2274,7 @@
   "legendui.section.structures": "🏛️ Structures",
   "legendui.section.traces": "🛣️ Tracés",
   "legendui.section.zones": "⬛ Zones",
+  "license.err.signature": "Licence non reconnue : signature invalide, licence expirée ou émise pour une autre adresse.",
   "license.err.emptyOrInvalid": "Fichier vide ou format invalide.",
   "license.err.hashInvalid": "Format de license_hash invalide. Attendu : MKTM-LIC-<32 hex>.",
   "license.err.hashMissing": "Champ \"license_hash\" manquant. Format attendu : MKTM-LIC-<32 hex>.",

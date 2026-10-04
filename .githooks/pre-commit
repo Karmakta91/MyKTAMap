@@ -402,6 +402,11 @@ node scripts/check-uid.js || exit $?
 # module sur une instance OFF, aucune prise sans extension ne change rien. BLOQUANT.
 node scripts/check-extensions.js || exit $?
 
+# LICENCES SIGNEES (04/10/2026) : seules les licences signees par la cle de KARMA
+# (ECDSA P-256), non expirees et pour la bonne adresse activent le mode pro ; la
+# cle embarquee doit etre PUBLIQUE. Le script EXECUTE la verification. BLOQUANT.
+node scripts/check-licence.js || exit $?
+
 # DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
 # 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
 # widget OSM du HOME monte une carte dont le fond vient de
