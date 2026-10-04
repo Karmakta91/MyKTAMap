@@ -940,6 +940,7 @@
         absent:    { txt: "⬇️", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
         incomplet: { txt: "⬇️", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
         partiel:   { txt: "↻",  cle: "home.plans.offline.rowRetry",    repli: "Disponible, mais des fichiers manquent — réessayer" },
+        perime:    { txt: "⬇️", cle: "home.plans.offline.rowPerime",   repli: "Nouvelle version sur le serveur — la télécharger" },
         complet:   { txt: "↻",  cle: "home.plans.offline.rowUpdate",   repli: "Disponible hors-ligne — mettre à jour" }
       };
 
@@ -955,9 +956,22 @@
       }
 
       // Un SEUL caches.keys() pour toute la liste (cf PlanOffline.statuts).
+      // ☁️ Plans d'une installation reliée : l'état vient de l'extension (sa copie gardée).
+      const _ETAT_EXT = { garde: "complet", perime: "perime", absent: "absent" };
       async function _rafraichirBoutonsHorsLigne() {
+        const X = window.KtaExtensions;
+        Array.from(document.querySelectorAll(".kta-plan-row-dl")).forEach(function (b) {
+          const row = b.closest(".plan-row");
+          const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
+          if (!p || p.type !== "ext" || !X || typeof X.etatHorsLigneExtension !== "function") return;
+          X.etatHorsLigneExtension(p.id).then(function (e) { if (e) _peindreBoutonDl(b, _ETAT_EXT[e]); else b.hidden = true; });
+        });
         if (!window.PlanOffline || !window.PlanOffline.supporte()) return;
-        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl"));
+        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl")).filter(function (b) {
+          const row = b.closest(".plan-row");
+          const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
+          return p && p.type === "server";
+        });
         if (!btns.length) return;
         const ids = btns.map(function (b) {
           const row = b.closest(".plan-row");
@@ -976,6 +990,16 @@
       // progression : pas de modale, on reste dans la liste.
       async function _lancerHorsLigneLigne(planId, btn) {
         const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
+        if (plan && plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.garderPlanExtension === "function") {
+          btn.disabled = true; btn.textContent = "…";
+          const ok = await window.KtaExtensions.garderPlanExtension(planId);
+          btn.disabled = false;
+          if (!ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_homeT("home.plans.offline.rowExtEchec", "Téléchargement impossible (serveur injoignable ou stockage plein)"), "warn");
+          }
+          _rafraichirBoutonsHorsLigne();
+          return;
+        }
         if (!plan || plan.type !== "server" || !window.PlanOffline) return;
         const avant = { txt: btn.textContent, title: btn.title };
         btn.disabled = true;
@@ -1076,7 +1100,8 @@ function planRowHTML(plan) {
             </div>
             <div class="plan-row-actions">
               ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
-              ${plan.type === "server" ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
+              ${plan.type === "server" || (plan.type === "ext" && window.KtaExtensions &&
+                window.KtaExtensions.horsLigneExtensionDisponible()) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
                 title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
             </div>
@@ -2295,8 +2320,28 @@ function planRowHTML(plan) {
 
       function _deplacerPlans(ids, fid) {
         const PR = window.PlanRegistry;
+        const X = window.KtaExtensions;
+        const avant = {};
+        ids.forEach(function(id) { avant[id] = PR.planFolderId(PR.findById(id)); });
         let n = 0;
         ids.forEach(function(id) { if (PR.setPlanFolder(id, fid || null, "user")) n++; });
+        // ☁️ Plan d'une installation reliée, rangé dans (ou sorti d') un dossier DE
+        // L'INSTALLATION : rangé pour tous ceux qui voient ce plan, si le compte en a le
+        // droit. Sinon (droit, hors ligne, dossier de l'appareil) : rangement local seul.
+        if (X && typeof X.rangerPlanExtension === "function") {
+          const diffuses = ids.filter(function(id) {
+            const e = PR.findById(id);
+            return e && e.type === "ext" && (fid ? !!X.dossierExtension(fid) : !!X.dossierExtension(avant[id]));
+          });
+          if (diffuses.length) {
+            Promise.all(diffuses.map(function(id) { return X.rangerPlanExtension(id, fid || null); })).then(function(r) {
+              const ok = r.filter(Boolean).length;
+              if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+                window.OOMGuard.showToast(window.I18n.t("home.plans.folders.toastDiffuse", { n: ok }), "info");
+              }
+            });
+          }
+        }
         if (fid) PR.setFolderCollapsed(fid, false);   // on voit où le plan est arrivé
         _plansSelection.clear();
         _plansSelectMode = false;                       // un déplacement clôt la sélection

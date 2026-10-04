@@ -661,6 +661,53 @@
     catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
   }
 
+  // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne, plan par plan ──
+  // L'extension déclare plans.ranger(idExt, dossierExt|null) → Promise<bool> et
+  // plans.horsLigne = { etat(idExt) → Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }.
+  // Un dossier de l'installation porte, dans le registre, un id local : main.js donne la
+  // correspondance (associerDossiersExtension). Un dossier créé sur l'appareil n'est jamais diffusé.
+  let _dossiersRegistre = {};
+  function associerDossiersExtension(table) {
+    _dossiersRegistre = (table && typeof table === "object") ? Object.assign({}, table) : {};
+  }
+  function dossierExtension(dossierRegistreId) {
+    return (dossierRegistreId && _dossiersRegistre[dossierRegistreId]) || null;
+  }
+  function _idExtension(registreId) {
+    const e = window.PlanRegistry && typeof window.PlanRegistry.findById === "function" ? window.PlanRegistry.findById(registreId) : null;
+    return e && e.type === "ext" && e.extId ? String(e.extId) : null;
+  }
+  function rangerPlanExtension(registreId, dossierRegistreId) {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.ranger !== "function") return Promise.resolve(false);
+    const id = _idExtension(registreId);
+    const d = dossierRegistreId ? dossierExtension(dossierRegistreId) : null;
+    if (!id || (dossierRegistreId && !d)) return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.plans.ranger(id, d)).then(function (r) { return r === true; }, function () { return false; });
+    } catch (e) { console.warn("[Extensions] ranger :", e); return Promise.resolve(false); }
+  }
+  function _horsLigne() {
+    const ext = _prise("plans");
+    const h = ext && ext.plans.horsLigne;
+    return h && typeof h.etat === "function" && typeof h.garder === "function" ? h : null;
+  }
+  function horsLigneExtensionDisponible() { return !!_horsLigne(); }
+  function etatHorsLigneExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve(null);
+    try {
+      return Promise.resolve(h.etat(id)).then(function (e) { return ["garde", "perime", "absent"].indexOf(e) >= 0 ? e : null; },
+        function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function garderPlanExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve(false);
+    try { return Promise.resolve(h.garder(id)).then(function (r) { return r === true; }, function () { return false; }); }
+    catch (e) { return Promise.resolve(false); }
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -687,6 +734,12 @@
     basculerPresence: basculerPresence,
     positionTracker: positionTracker,
     afficherPresences: afficherPresences,
+    associerDossiersExtension: associerDossiersExtension,
+    dossierExtension: dossierExtension,
+    rangerPlanExtension: rangerPlanExtension,
+    horsLigneExtensionDisponible: horsLigneExtensionDisponible,
+    etatHorsLigneExtension: etatHorsLigneExtension,
+    garderPlanExtension: garderPlanExtension,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

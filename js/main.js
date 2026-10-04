@@ -255,6 +255,13 @@ async function _decouvrirPlansExtension() {
     const table = window.PlanRegistry.applyIndexFolders(deIndex.concat(dossiers.map(function(d) {
       return Object.assign({}, d, { id: "ext_" + d.id });
     })));
+    // Correspondance dossier du registre → dossier de l'extension : un plan rangé à la main
+    // dans un dossier de l'installation y est rangé pour tous (si le compte en a le droit).
+    if (typeof window.KtaExtensions.associerDossiersExtension === "function") {
+      const corresp = {};
+      dossiers.forEach(function(d) { const r = table["ext_" + d.id]; if (r) corresp[r] = String(d.id); });
+      window.KtaExtensions.associerDossiersExtension(corresp);
+    }
     liste.forEach(function(p) {
       if (!p || !p.id || typeof window.PlanRegistry.setPlanFolder !== "function") return;
       const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");

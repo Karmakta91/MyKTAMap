@@ -202,6 +202,35 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("pseudo vide → aucun compte", K4.compte() === null);
   }
 
+  // ═════════ 6 bis ter. RANGEMENT DIFFUSÉ + HORS LIGNE D'UN PLAN ☁️ ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_a" ? { id, type: "ext", extId: "A" } : id === "loc" ? { id, type: "local" } : null) };
+    t("sans extension : rien n'est diffusé, pas de bouton hors ligne",
+      (await K.rangerPlanExtension("ext_a", null)) === false && K.horsLigneExtensionDisponible() === false &&
+      (await K.etatHorsLigneExtension("ext_a")) === null);
+    const appels = [];
+    K.register({ nom: "r1", apiVersion: 1, plans: { lister: () => Promise.resolve([]), charger: () => Promise.reject(new Error("x")),
+      ranger: (id, d) => { appels.push([id, d]); return Promise.resolve(true); },
+      horsLigne: { etat: () => Promise.resolve("perime"), garder: () => Promise.resolve(true) } } });
+    K.associerDossiersExtension({ f_secteur: "D1" });
+    t("dossier de l'installation : rangé côté serveur avec les ids de l'extension",
+      (await K.rangerPlanExtension("ext_a", "f_secteur")) === true && JSON.stringify(appels[0]) === '["A","D1"]');
+    t("sortir d'un dossier de l'installation : dossier null envoyé", (await K.rangerPlanExtension("ext_a", null)) === true && appels[1][1] === null);
+    t("🩸 dossier créé sur l'appareil : JAMAIS diffusé", (await K.rangerPlanExtension("ext_a", "f_perso")) === false && appels.length === 2);
+    t("plan local : jamais envoyé à l'extension", (await K.rangerPlanExtension("loc", "f_secteur")) === false && appels.length === 2);
+    t("hors ligne d'un plan ☁️ : état et copie via l'extension",
+      K.horsLigneExtensionDisponible() && (await K.etatHorsLigneExtension("ext_a")) === "perime" && (await K.garderPlanExtension("ext_a")) === true);
+    const { K: K2, w: w2 } = nouveauContexte(null);
+    w2.PlanRegistry = w.PlanRegistry;
+    K2.register({ nom: "r2", apiVersion: 1, plans: { lister: () => [], charger: () => null, ranger: () => { throw new Error("x"); },
+      horsLigne: { etat: () => "n'importe quoi", garder: () => Promise.reject(new Error("y")) } } });
+    K2.associerDossiersExtension({ f_secteur: "D1" });
+    t("🩸 extension en erreur : refus, état inconnu, aucune exception",
+      (await K2.rangerPlanExtension("ext_a", "f_secteur")) === false && (await K2.etatHorsLigneExtension("ext_a")) === null &&
+      (await K2.garderPlanExtension("ext_a")) === false);
+  }
+
   // ═════════ 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ═════════
   {
     const { K, w } = nouveauContexte(null);
