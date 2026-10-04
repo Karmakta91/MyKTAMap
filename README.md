@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.7.4` (04/10/2026)
+## 📦 Version courante — `v2.8.0` (04/10/2026)
+
+> 🔏 **v2.8.0 — Licences pro signées, installations reliées prêtes pour la prod** : une licence n'active le mode pro que signée (ECDSA), non expirée et pour la bonne adresse ; plus de mot de passe codé en dur (« Continuer sans licence ») ; actions du compte dans « Mon profil » ; correctif XL. Regroupe tous les commits sans bump depuis v2.7.4 (règle : un bump par mise en prod).
 
 > 🧩 **v2.7.4 — Prise « compte » : la carte profil affiche le compte d'une installation reliée** (pseudo + rôle), sans écrire dans le profil local.
 
@@ -535,6 +537,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.8.0 (04/10/2026) — Licences signées, installations reliées (branche `Karma_dev`)
+
+- 📦 **Première version sous la règle « pas de bump par correctif »** (décision KARMA 04/10/2026, `CLAUDE.md`) : regroupe les commits livrés sans bump depuis v2.7.4. v2.7.4 a été mergée sur `main` avec ces commits mais sans bump : un appareil déjà en v2.7.4 ne les aurait jamais reçus (même `CACHE_NAME`) — d'où cette version.
+- 🔏 **Licences pro signées** (`32af51e`) : `js/proLicense.js` n'accepte qu'une licence dont la `signature` ECDSA P-256 est valide pour la clé **publique** embarquée, non expirée (`valid_until`) et dont les `domaines` couvrent l'adresse ouverte (`*` = test). Vérifiée au fetch serveur, à l'import manuel (`license.err.signature` ×3) et au démarrage (licences mémorisées retirées si invalides). 🛡️ `check-licence.js` (nouveau, bloquant) exécute la vérification avec une clé d'essai ; `check-no-pro-leak.js` refuse désormais toute clé privée, `.pem` et l'outil de signature (`7e8c101`). Aucune licence n'était en circulation : pas d'effet de bord.
+- 🗝️ **Gate sans mot de passe codé en dur** (`c24f158`) : une instance qui publie `config.accessHash` (myktamap.fr) garde son écran mot de passe ; sinon « Continuer sans licence » ou import d'une licence. L'ancien code en clair a disparu du code et de la doc (`security-legal.md` §36).
+- 🧩 **Prises d'extension** : `appliquerChangements` (synchro entrante par uid, `2fffc5c`) ; `api` « même site » `/api/` (`5c86ee9`) ; progression de chargement d'un plan ☁️ (`26533bc`) ; `actionsCompte(lieu)` — actions en tête de « Mon profil » et dans ⚙️ Configuration (`05f25e4`, `ae62845`) ; `effacerDonneesExtension` purge aussi photos, sauvegardes et calage (`030d96b`) ; dossiers fournis par la source de plans (`233efaa`).
+- 🩹 **Correctifs** : 1er lancement lent après réinitialisation — config et licence attendues, plus de gate community à tort (`eac64b4`) ; mini-carte XL : l'itinéraire suit « Je suis ici », un recalcul ou un effacement (`efd263d`) ; image Docker : `Referrer-Policy` alignée sur la prod, tuiles OSM débloquées (`263f9f4`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau sur myktamap.fr ; `Referrer-Policy` de l'image Docker documentée.
 
 #### v2.7.4 (04/10/2026) — Prise « compte » (branche `Karma_dev`, `karma_backend_dev` fusionnée)
 

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.7.4</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.8.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1135,6 +1135,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.8.0 (licences signées, installations reliées)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Une licence pro est désormais <strong>signée</strong> : l’app vérifie sa signature, sa date de fin et l’adresse pour laquelle elle a été émise <strong>dans ton navigateur</strong>, avec une clé publique embarquée — rien n’est envoyé pour la vérifier. Sur une installation reliée à une base de données : l’adresse de la base peut être un chemin du même site (<code>/api/</code>), toujours sur le même site que l’app ; un plan venu de la base affiche sa progression de téléchargement ; se déconnecter efface de l’appareil les données de ce compte. Image Docker community : en-tête <code>Referrer-Policy</code> aligné sur la prod (<code>strict-origin-when-cross-origin</code>) — la politique d’usage d’OpenStreetMap exige l’en-tête <code>Referer</code> (le site seul, jamais la page), sans quoi les tuiles de la Vue OSM étaient bloquées dans cette image.</p>
   <h3>v2.7.4 (compte affiché sur l’accueil d’une installation reliée)</h3>
   <p><strong>Aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée à une base de données, la carte profil de l’accueil affiche le compte connecté (pseudo et rôle) sans rien écrire dans ton profil local, qui revient à la déconnexion. Sans effet sur <code>myktamap.fr</code>.</p>
   <h3>v2.7.3 (écran de démarrage)</h3>

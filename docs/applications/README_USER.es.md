@@ -128,7 +128,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 - **📋 Ver el registro de red** — todas las peticiones de la app en directo, y si envían datos; se puede copiar, exportar o vaciar. Si una petición envía datos, o aparece una dirección externa distinta de OpenStreetMap (en rojo), **avisa al autor**: Instagram **@karma_kta** o **contact@myktamap.fr**.
 - **📖 ¿Qué hace la app en la red?** — la lista de direcciones que la app puede contactar y cómo comprobarlo con tu navegador (F12, pestaña Red).
-- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor.
+- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor. Con una cuenta de la instalación, tus acciones (contraseña, cerrar sesión) están arriba en **👤 Mi perfil**, y un administrador gestiona las cuentas desde **⚙️ Configuración**. **Cerrar sesión borra del dispositivo** los datos de esa cuenta (planos de la instalación, sesiones, fotos): lo que aún no se ha enviado se avisa antes.
 
 ---
 
@@ -1729,7 +1729,7 @@ Si el autor te ha entregado un archivo **`Licence-pro.json`**, este activa la ed
 - **En el primer inicio**, en la pantalla de bienvenida, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro.
 - En una instancia donde el administrador ha instalado la licencia en el servidor, tu perfil muestra simplemente ✓, sin botón.
 
-Un archivo mal formado se rechaza con un mensaje. El archivo se lee en tu navegador y no se envía a ninguna parte.
+Una licencia está **firmada por el autor** y se emite para una dirección y un periodo: un archivo modificado, caducado o emitido para otra dirección se rechaza con un mensaje. El archivo se lee y se verifica en tu navegador, y no se envía a ninguna parte.
 
 > ⚖️ La licencia es **nominativa**: compartirla con un tercero no autorizado infringe el contrato firmado con el autor.
 

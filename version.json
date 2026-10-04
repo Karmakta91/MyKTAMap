@@ -1,8 +1,8 @@
 {
-  "version": "v2.7.4",
+  "version": "v2.8.0",
   "released": "2026-10-04",
   "notes": [
     "🧩 Les installations indépendantes peuvent désormais brancher leur propre base de données, avec des comptes. Rien ne change sur myktamap.fr, qui n'en a pas et n'en aura jamais : tes données restent sur ton appareil.",
-    "📖 La documentation et l'aide ont été réécrites : plus courtes, plus simples, rangées dans l'ordre où tu en as besoin."
+    "📖 La documentation et l'aide ont été réécrites, plus courtes et plus simples. En mode XL, l'itinéraire de la mini-carte suit désormais « Je suis ici »."
   ]
 }

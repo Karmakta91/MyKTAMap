@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab).
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first.
 
 ---
 
@@ -1729,7 +1729,7 @@ If the author gave you a **`Licence-pro.json`** file, it turns on the pro editio
 - **On the very first launch**, on the welcome screen, **📂 Import my pro licence** takes you straight into pro mode.
 - On an instance where the administrator installed the license on the server, your profile simply shows ✓, with no button.
 
-A malformed file is refused with a message. The file is read in your browser and sent nowhere.
+A licence is **signed by the author** and issued for one address and a set period: a modified or expired file, or one issued for another address, is refused with a message. The file is read and checked in your browser and sent nowhere.
 
 > ⚖️ The license is **personal**: sharing it with an unauthorised third party breaches the contract made with the author.
 
