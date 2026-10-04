@@ -222,7 +222,7 @@ navigateur.
      porte de release.
 1. ✅ Ids + horodatages + migration (**livré de v2.1.0 à v2.5.0**, lots A, B, C1-C3) : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
-2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
+2. ✅ **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) — **livré en v2.6.0** (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` = section `config` seule) :
    - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on
      démarre sur la **dernière config mémorisée** (règle B). Aujourd'hui la lecture n'a aucun
      délai maximal ;
@@ -234,10 +234,9 @@ navigateur.
    - **rotation du mot de passe d'instance à effet immédiat** : la revalidation passe avant
      la gate, donc au lancement, jamais en pleine session. 🩸 Une config **mémorisée** (index
      injoignable) appelle `revaliderInstance(…, false)` : elle ne révoque jamais rien ;
-   - à réécrire à la livraison : les invariants « rotation au démarrage SUIVANT » et
-     « l'index n'est demandé que depuis la saisie de la gate » du §5, et les contrôles de
-     `scripts/check-gate-instance.js` qui figent l'ordre actuel (`_hashInstance`, position
-     de `revaliderInstance`).
+   - le kiosque reprend lui aussi la config mémorisée quand l'index est injoignable ;
+   - invariants du §5 et contrôles de `scripts/check-gate-instance.js` réécrits (ordre
+     config → revalidation → gate, une seule lecture, mémoire qui ne révoque rien).
 3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
 
@@ -334,11 +333,15 @@ Les noms et signatures exacts de chaque prise se fixent au chantier 3.
     injoignable » (ne rien toucher). La fonction ne peut pas les deviner : l'appelant le déclare. La
     première version reposait sur la discipline d'un site d'appel distant de 1800 lignes, et un futur appel
     de bonne foi aurait reverrouillé l'app à la première coupure réseau.
-  - ⏱️ **La rotation prend effet au démarrage SUIVANT** : la revalidation vit après la gate dans l'ordre du
-    boot, et couper quelqu'un au milieu de son relevé pour un changement de mot de passe serait pire que le
-    délai d'un boot.
-  - ⚡ **Zéro requête ajoutée pour qui est déjà entré** : l'index n'est demandé que depuis la saisie de la
-    gate, et seulement si le code communautaire a échoué.
+  - ⏱️ **La rotation prend effet dès le démarrage** (v2.6.0) : l'index est lu une fois AVANT les gates
+    (`js/ktaInstance.js`), et `revaliderInstance` passe avant la gate — au lancement, jamais en pleine
+    session (couper quelqu'un au milieu de son relevé serait pire que tout). 🩸 Une config **rejouée de
+    mémoire** (index injoignable, délai de 2 s dépassé) n'appelle pas la revalidation avec `true` : elle ne
+    révoque jamais rien.
+  - ⚡ **Une seule lecture de l'index par démarrage** (v2.6.0), partagée par la gate, le kiosque, le
+    connecteur et la découverte des plans ; la gate ne relit plus l'index à chaque tentative. Hors ligne,
+    elle trouve le mot de passe d'instance dans la dernière config connue — une instance protégée n'est
+    plus ouverte par le code communautaire faute d'index.
   - ⚙️ `confadmin.html` calcule le hash localement et n'écrit **jamais** le mot de passe ; à la reprise d'un
     index existant le champ reste **vide** (un hash ne remonte pas en mot de passe) et le hash repris est
     conservé tant qu'on ne tape rien. `crypto.subtle` exigeant un contexte sûr, une ouverture en `file://`

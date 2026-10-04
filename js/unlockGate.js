@@ -145,10 +145,22 @@
   // valeur acceptée par comparaison de chaînes.
   async function _hashInstance() {
     try {
-      const r = await fetch("data/index.json", { cache: "no-store" });
-      if (!r.ok) return null;
-      const idx = await r.json();
-      const h = idx && idx.config ? idx.config.accessHash : null;
+      // 🏛️ v2.6.0 (chantier 2) — l'index n'est plus relu ici : on lit la config
+      // d'instance chargée UNE fois au démarrage, avant les gates
+      // (js/ktaInstance.js). Index injoignable → dernière config connue : hors
+      // ligne, une instance protégée garde son mot de passe (avant, le fetch
+      // échouait → null → le code communautaire l'ouvrait).
+      let cfg = null;
+      if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
+        const st = await window.KtaInstance.charger();
+        cfg = st ? st.config : null;
+      } else {
+        const r = await fetch("data/index.json", { cache: "no-store" });   // repli : module absent
+        if (!r.ok) return null;
+        const idx = await r.json();
+        cfg = idx ? idx.config : null;
+      }
+      const h = cfg ? cfg.accessHash : null;
       if (typeof h !== "string") return null;
       const propre = h.trim().toLowerCase();
       if (!RE_HASH.test(propre)) {

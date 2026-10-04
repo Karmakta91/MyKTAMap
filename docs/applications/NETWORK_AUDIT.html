@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.5.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.6.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1135,6 +1135,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.6.0 (configuration de l’installation lue une seule fois)</h3>
+  <p><strong>Aucun domaine nouveau, une requête de moins.</strong> <code>data/index.json</code>, que l’app lisait déjà à chaque démarrage, est lu <strong>une seule fois</strong>, un peu plus tôt (avant l’écran de code), au lieu de deux quand cet écran s’affiche. Au-delà de 2 secondes sans réponse, l’app abandonne cette lecture et reprend la dernière configuration connue, gardée <strong>sur ton appareil</strong> (stockage local, clé <code>myktamap_instance_config_v1</code> : uniquement la section « config » de l’installation, ni tes données ni la liste des plans).</p>
   <h3>v2.5.0 (photos des plans importés)</h3>
   <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Les photos contenues dans un plan importé sont recopiées dans le stockage local de ton navigateur comme avant ; tes propres photos de ce plan ne sont plus effacées à sa réouverture. Tout se fait sur ton appareil.</p>
   <h3>v2.4.0 (favoris, liaisons et Secours rattachés à l’identifiant du point)</h3>

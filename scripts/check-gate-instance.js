@@ -169,9 +169,22 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /if \(!RE_HASH\.test\(propre\)\) \{/.test(GATE));
   t("…et un accessHash fautif est signalé, pas avalé en silence",
     /console\.warn\("\[UnlockGate\] config\.accessHash ignoré/.test(GATE));
-  t("le hash est lu dans data/index.json > config.accessHash",
-    /fetch\("data\/index\.json", \{ cache: "no-store" \}\)/.test(GATE) &&
-    /idx\.config \? idx\.config\.accessHash : null/.test(GATE));
+  // 🏛️ v2.6.0 (chantier 2) — la gate ne relit plus l'index : elle lit la
+  // config d'instance chargée UNE fois avant les gates (js/ktaInstance.js).
+  t("le hash vient de la config d'instance partagée (config.accessHash), lue une seule fois",
+    /const st = await window\.KtaInstance\.charger\(\);\s*cfg = st \? st\.config : null;/.test(GATE) &&
+    /const h = cfg \? cfg\.accessHash : null;/.test(GATE));
+  {
+    const KI = fs.readFileSync("js/ktaInstance.js", "utf8");
+    t("🏛️ ktaInstance : une seule lecture par démarrage (la promesse est mémorisée)",
+      /if \(_promesse\) return _promesse;/.test(KI));
+    t("🏛️ ktaInstance : délai maximal de 2 s (AbortController)", /const DELAI_MS = 2000;/.test(KI) && /ctrl\.abort\(\)/.test(KI));
+    t("🩸 ktaInstance : un non-2xx (404 synthétique du SW hors ligne) = injoignable, jamais « répondu »",
+      /if \(!r\.ok\) return null;/.test(KI));
+    t("🩸 ktaInstance : une config rejouée de mémoire est marquée repondu: false",
+      /_etat = \{ charge: true, repondu: false, index: null, config: memo/.test(KI));
+    t("ktaInstance : seule la section config est mémorisée (pas la liste des plans)", /_ecrireMemo\(config\);/.test(KI));
+  }
 }
 
 // ═════════ 4. 🔒 LE HASH D'INSTANCE EST EXCLUSIF — EXÉCUTÉ ═════════
@@ -226,17 +239,23 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /else\s+localStorage\.removeItem\(LS_UNLOCK_KIOSQUE\);/.test(GATE));
 }
 
-// ═════════ 6. LE BRANCHEMENT DANS LE BOOT ═════════
+// ═════════ 6. LE BRANCHEMENT DANS LE BOOT (v2.6.0, chantier 2) ═════════
+// La revalidation du mot de passe d'instance passe AVANT la gate : une rotation
+// prend effet dès ce démarrage (au lancement, jamais en pleine session).
 {
-  t("main.js revalide après le chargement de l'index",
-    /window\.UnlockGate\.revaliderInstance\([\s\S]{0,140}accessHash : null, true\);/.test(MAIN));
-  // 🩸 Elle doit vivre APRÈS le `if (!r.ok) return null;` du chargeur : si on
-  // la déplaçait avant, un index absent appellerait la revalidation avec null
-  // et effacerait la mémoire — le reverrouillage hors-ligne, par la bande.
-  const iOk  = MAIN.indexOf('console.log("[Main] data/index.json absent');
+  const appels = MAIN.match(/window\.UnlockGate\.revaliderInstance\(/g) || [];
+  t("main.js revalide UNE seule fois", appels.length === 1);
+  t("🩸 …seulement si l'index a VRAIMENT répondu (une config rejouée de mémoire ne révoque rien)",
+    /if \(_instanceBoot && _instanceBoot\.repondu && window\.UnlockGate &&[\s\S]{0,120}window\.UnlockGate\.revaliderInstance\(_instanceBoot\.config \? _instanceBoot\.config\.accessHash : null, true\);/.test(MAIN));
+  const iCharge = MAIN.indexOf("await window.KtaInstance.charger() : null;");
   const iRev = MAIN.indexOf("window.UnlockGate.revaliderInstance(");
-  t("🩸 …et jamais quand l'index est absent (elle est APRÈS la sortie anticipée)",
-    iOk > 0 && iRev > iOk);
+  const iGate = MAIN.indexOf("if (window.UnlockGate && !window.UnlockGate.isUnlocked())");
+  t("🔑 ordre du boot : config d'instance → revalidation → gate (rotation à effet immédiat)",
+    iCharge > 0 && iRev > iCharge && iGate > iRev);
+  t("la licence n'est attendue avant la gate que si l'instance déclare « on » (myktamap.fr non ralenti)",
+    /if \(_scBoot && _scBoot\.state === "on" && window\.MyKTAMapProLicense/.test(MAIN));
+  t("🩸 _chargerIndexServeur ne relit plus l'index (une seule lecture par démarrage)",
+    /const st = await window\.KtaInstance\.charger\(\);\s*idx = st && st\.repondu \? st\.index : null;/.test(MAIN));
 }
 
 // ═════════ 7. CONFADMIN NE STOCKE JAMAIS LE MOT DE PASSE ═════════

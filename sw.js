@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.5.0";
+const CACHE_NAME = "myktamap-cache-v2.6.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -173,6 +173,8 @@ const ASSETS_TO_CACHE = [
   // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle
   // marche aussi en mode offline.
   "./js/refonteInterface.js",
+  // 🏛️ v2.6.0 : config d'instance lue une fois avant les gates.
+  "./js/ktaInstance.js",
   "./js/unlockGate.js",
   // 🆕 v1.9.4 : code d'accès local optionnel (PIN/biométrie). Indispensable
   // offline (la gate s'affiche au boot avant tout fetch réseau, donc le

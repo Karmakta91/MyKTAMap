@@ -194,8 +194,11 @@ if (K) {
 // ═════════ 6. CÂBLAGE ═════════
 t("main.js transmet la config quand l'index a répondu (true)",
   /_appliquerConnexionServeur\(window\.KIOSK_CONFIG, true\)/.test(MAIN));
-t("🩸 main.js déclare l'index INJOIGNABLE (false) sur un non-2xx (404 synthétique du SW hors ligne)",
-  /if \(!r\.ok\) \{[\s\S]{0,700}_appliquerConnexionServeur\(null, false\)/.test(MAIN));
+t("🩸 main.js déclare l'index INJOIGNABLE (false) quand il n'a pas répondu (non-2xx = 404 synthétique du SW, cf ktaInstance)",
+  /if \(!idx\) \{[\s\S]{0,700}_appliquerConnexionServeur\(null, false\)/.test(MAIN) &&
+  /if \(!r\.ok\) return null;/.test(fs.readFileSync("js/ktaInstance.js", "utf8")));
+t("🔌 l'état de connexion est connu AVANT la gate (v2.6.0)",
+  /if \(_instanceBoot\) _appliquerConnexionServeur\(_instanceBoot\.config, _instanceBoot\.repondu\);/.test(MAIN));
 t("main.js déclare l'index injoignable (false) sur une erreur réseau",
   /catch\(e\) \{\s*console\.warn\("\[Main\] lecture data\/index\.json :", e\);\s*_appliquerConnexionServeur\(null, false\);/.test(MAIN));
 t("homeLoader repeint l'icône après avoir réécrit le bouton du pied de page replié",

@@ -98,7 +98,7 @@
     communautaire, dont le hash est lisible sur GitHub depuis toujours — le niveau de protection ne baisse
     donc pas, mais **il ne monte pas non plus**. C'est une barrière **sociale** (« il faut connaître le
     code »), **jamais une authentification**. N'y mettez rien que vous ne diriez pas à voix haute.
-  - **Le changer** re-demande le mot de passe à vos visiteurs, **au démarrage suivant** — pas au milieu de
+  - **Le changer** re-demande le mot de passe à vos visiteurs **dès leur prochain lancement de l'app** (v2.6.0) — jamais au milieu de
     leur session. **Le retirer** de l'index re-demande aussi. En revanche, un visiteur **hors ligne** garde
     son accès : une coupure réseau ne doit pas enfermer quelqu'un dehors.
 - ⚠️ Ces réglages **allègent l'interface**, ils ne « sécurisent » rien : MyKTAMap community n'est pas bridable, par principe.

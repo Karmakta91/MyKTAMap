@@ -308,6 +308,9 @@
        pour que main.js puisse vérifier l'auth dès initApp. Ne charge que
        le module (l'affichage de l'overlay est déclenché par main.js après
        le splash). -->
+  <!-- 🏛️ v2.6.0 : config d'instance lue UNE fois, avant les gates (chantier 2) —
+       la gate, le kiosque, le connecteur et la découverte des plans la partagent. -->
+  <script src="js/ktaInstance.js"></script>
   <script src="js/unlockGate.js"></script>
   <!-- 🆕 v1.9.4 : code d'accès local optionnel (PIN + biométrie). Chargé
        APRÈS unlockGate.js car le PIN est une couche par-dessus la barrière

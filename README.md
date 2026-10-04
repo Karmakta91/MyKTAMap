@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.5.0` (04/10/2026)
+## 📦 Version courante — `v2.6.0` (04/10/2026)
+
+> ⚡ **v2.6.0 — Config d'instance lue une fois, avant les gates (chantier 2)** : délai de 2 s puis dernière config connue ; rotation du mot de passe d'instance à effet immédiat.
 
 > 📸 **v2.5.0 — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé** : index photos du Générateur par uid ; rouvrir un plan ZIP n'efface plus les photos de l'utilisateur.
 
@@ -523,6 +525,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.6.0 (04/10/2026) — Config d'instance lue une fois, avant les gates (chantier 2)
+
+- 🔍 **Origine** : `community-server-line.md` §3, chantier 2 (QCM du 04/10/2026) — prérequis de la porte d'authentification (gate déléguée) : l'app doit connaître la config d'instance avant d'afficher la gate. Avant : la gate relisait `data/index.json` à chaque tentative, `main.js` le relisait après les gates (deux lectures qui pouvaient diverger), sans délai maximal, et une rotation du mot de passe d'instance attendait le démarrage suivant.
+- 🏛️ **`js/ktaInstance.js`** (nouveau, précaché, avant `unlockGate.js`) : `charger()` lit l'index **une fois** (promesse mémorisée), délai **2 s** (AbortController), non-2xx (404 synthétique du SW hors ligne) = injoignable ; injoignable → dernière section `config` connue (`myktamap_instance_config_v1`), `repondu: false`.
+- 🔑 **Boot** (`main.js > initApp`) : config d'instance → `revaliderInstance(…, true)` **seulement si l'index a répondu** → état de connexion → licence attendue (2 s) **seulement si `serverConnection.state === "on"`** → gates. Rotation du mot de passe d'instance **à effet immédiat**, jamais en pleine session ; une config de mémoire ne révoque rien.
+- 🗝️ **Gate** : `_hashInstance()` lit la config partagée (repli fetch si module absent) — une requête de moins par tentative ; **hors ligne, une instance protégée garde son mot de passe** (avant, le fetch échouait et le code communautaire l'ouvrait). **Kiosque** : reprend la config mémorisée quand l'index est injoignable.
+- 🛡️ **Garde-fous** : `check-gate-instance.js` réécrit (lecture unique, délai, mémoire `repondu: false`, ordre config → revalidation → gate, une seule revalidation) ; `check-connexion-serveur.js` (état connu avant la gate). Sabotages vérifiés.
+- ✅ **Tests navigateur avec `index.json` simulé** (interception réseau, `data/` jamais touché) : myktamap.fr déverrouillé → 1 lecture, accueil direct ; instance protégée → gate, le mot de passe d'instance ouvre, **1 lecture au total** ; mot de passe changé → gate dès ce démarrage ; index injoignable + mémoire → aucune révocation, kiosque appliqué ; index lent (5 s) → démarrage sans attendre ; pastille « invalide » et « licence requise » vérifiées en vrai ; aucune erreur JS.
+- ⏭️ **Suite** : chantier 3 — en commençant par la gate déléguée (porte d'authentification), sur `karma_backend_dev`.
 
 #### v2.5.0 (04/10/2026) — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé
 

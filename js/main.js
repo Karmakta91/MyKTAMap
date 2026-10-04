@@ -141,8 +141,25 @@ async function _chargerIndexServeur() {
     // herite d une fraicheur heuristique. Un index modifie pouvait donc
     // remonter perime (bug KARMA : « j ai refait un fichier index et ca ne
     // semble pas bien remonter »).
-    const r = await fetch("data/index.json", { cache: "no-store" });
-    if (!r.ok) {
+    // 🏛️ v2.6.0 (chantier 2) — PLUS DE SECONDE LECTURE : la config d'instance
+    // a été lue avant les gates (js/ktaInstance.js) ; on reprend ce résultat.
+    // Repli (module absent) : la lecture d'origine.
+    let idx = null;
+    if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
+      const st = await window.KtaInstance.charger();
+      idx = st && st.repondu ? st.index : null;
+      // Index injoignable mais config connue : le kiosque garde ses réglages
+      // hors ligne (même source que la gate et le connecteur). Pas de liste de
+      // plans à découvrir dans ce cas : on sort comme avant, sans index.
+      if (!idx && st && st.config) {
+        window.KIOSK_CONFIG = st.config;
+        _appliquerConfigKiosque();
+      }
+    } else {
+      const r = await fetch("data/index.json", { cache: "no-store" });
+      idx = r.ok ? await r.json() : null;
+    }
+    if (!idx) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
       // 🔌 v2.0.0 — Hors ligne et sans cache, le Service Worker répond un 404
       // SYNTHÉTIQUE (sw.js) : indiscernable d'un vrai 404. On le traite donc en
@@ -151,25 +168,12 @@ async function _chargerIndexServeur() {
       _appliquerConnexionServeur(null, false);
       return null;
     }
-    const idx = await r.json();
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
     _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
-    // 🔑 v1.90.6 — ROTATION DU MOT DE PASSE D INSTANCE. On n arrive ici QUE si
-    // l index a repondu : hors-ligne, ou si le fichier a disparu, la fonction
-    // n est pas appelee et le deverrouillage memorise survit. C est
-    // volontaire -- une coupure reseau ne doit pas reverrouiller l app.
-    // 🩸 Et c est APRES la gate dans l ordre du boot : le changement prend donc
-    // effet au PROCHAIN demarrage, pas en pleine session. Couper quelqu un au
-    // milieu de son releve pour une rotation de mot de passe serait pire que
-    // le delai d un boot.
-    if (window.UnlockGate && typeof window.UnlockGate.revaliderInstance === "function") {
-      // `true` : on n arrive ici QUE si le fetch a repondu 2xx. Un index
-      // injoignable sort plus haut et n appelle rien.
-      window.UnlockGate.revaliderInstance(
-        window.KIOSK_CONFIG ? window.KIOSK_CONFIG.accessHash : null, true);
-    }
+    // 🔑 La revalidation du mot de passe d'instance a lieu AVANT la gate
+    // depuis v2.6.0 (initApp) : rien à refaire ici.
     // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
     // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
     // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).
@@ -1973,6 +1977,35 @@ window.proposerRedemarrageLangue = function() {
     await _splashEnd();
     try { await window.LegalGate.ouvrirGate(); }
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  }
+
+  // 🏛️ v2.6.0 (chantier 2, community-server-line.md §3) — CONFIG D'INSTANCE
+  // LUE UNE FOIS, AVANT LES GATES. Même requête qu'avant (data/index.json),
+  // avancée : la gate, le kiosque, le connecteur et la découverte des plans la
+  // partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
+  const _instanceBoot = (window.KtaInstance && typeof window.KtaInstance.charger === "function")
+    ? await window.KtaInstance.charger() : null;
+  // 🔑 Rotation du mot de passe d'instance à EFFET IMMÉDIAT : la revalidation
+  // passe AVANT la gate, donc au lancement — jamais en pleine session (la
+  // raison de l'ancien délai d'un démarrage). 🩸 Seulement si l'index a
+  // VRAIMENT répondu : une config rejouée de mémoire ne révoque rien
+  // (revaliderInstance ignore tout appel sans `true`), sinon une coupure
+  // réseau reverrouillerait l'app.
+  if (_instanceBoot && _instanceBoot.repondu && window.UnlockGate &&
+      typeof window.UnlockGate.revaliderInstance === "function") {
+    window.UnlockGate.revaliderInstance(_instanceBoot.config ? _instanceBoot.config.accessHash : null, true);
+  }
+  // 🔌 L'état de connexion est connu avant la gate (une future gate déléguée en
+  // a besoin) ; la licence n'est ATTENDUE que si l'instance déclare « on » —
+  // myktamap.fr et toute instance en OFF ne perdent pas une milliseconde.
+  if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
+  const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
+  if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
+    await new Promise(function(resolve) {
+      const fin = function() { window.removeEventListener("mktm:license-changed", fin); clearTimeout(t); resolve(); };
+      const t = setTimeout(fin, 2000);
+      window.addEventListener("mktm:license-changed", fin);
+    });
   }
 
   // 🗝️ v173 : Unlock Gate (barrière communautaire).
