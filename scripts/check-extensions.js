@@ -132,6 +132,20 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 un signal ne rallume JAMAIS une instance OFF", off2.K.etat().etat === "off");
   }
 
+  // ═════════ 4 bis. API « MÊME SITE » (/api/) ═════════
+  {
+    const rel = nouveauContexte("server");
+    rel.w.location = { origin: "https://club.exemple.org", href: "https://club.exemple.org/index.html" };
+    rel.K.appliquerConfig({ serverConnection: { state: "on", api: "/api/", modules: ["pro/m.js"] } }, true);
+    t("api « /api/ » acceptée (état configurée)", rel.K.etat().etat === "configuree");
+    await rel.K.requete("health");
+    t("requête résolue à l'adresse de l'app (localhost, IP ou domaine : peu importe)",
+      rel.appelsFetch.length === 1 && rel.appelsFetch[0] === "https://club.exemple.org/api/health", rel.appelsFetch[0]);
+    let refus = false;
+    try { await rel.K.requete("https://autre.exemple.org/api/x"); } catch (e) { refus = true; }
+    t("🩸 api même site : une adresse d'un AUTRE site reste refusée", refus && rel.appelsFetch.length === 1);
+  }
+
   // ═════════ 5. CHARGEUR DE MODULES (règle E) ═════════
   {
     const off = nouveauContexte("server");

@@ -777,8 +777,12 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    if (typeof sc.api !== "string" || !/^https:\/\/[^\s/?#]+/i.test(sc.api.trim())) {
-      return { etat: "invalide", raison: "api doit être une adresse https://" };
+    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
+    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
+    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    if (typeof sc.api !== "string" ||
+        !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
+      return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
     }
     if (!Array.isArray(sc.modules)) {
       return { etat: "invalide", raison: "modules doit être une liste" };

@@ -82,8 +82,14 @@ qui parle au serveur.
 - `state` : `"on"` | `"off"`. Ce n'est pas un flag kiosque au sens de la règle des 2 flags
   (§2) : ce n'est pas du désencombrement, c'est l'interrupteur des extensions, régi par ce
   paragraphe seul.
-- `api` : origine du backend. Elle peut différer de celle de l'app (règle D). Une adresse
-  d'API n'est pas un secret : l'index est public et c'est assumé.
+- `api` : adresse du backend, sous l'une de deux formes :
+  - `https://…` : une origine, qui peut différer de celle de l'app (règle D) ;
+  - un **chemin du même site** (`/api/`) : résolu à l'adresse de l'app au moment de l'appel
+    (`KtaExtensions.apiBase()`). C'est le cas normal d'une installation à proxy `/api` : elle marche alors par
+    `localhost`, par IP (test sur téléphone en wifi) ou par nom de domaine, sans changer l'index. Refusés :
+    `//…` (protocole-relatif), un chemin sans `/` initial, un paramètre ou un espace.
+
+  Une adresse d'API n'est pas un secret : l'index est public et c'est assumé.
 - `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
   remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
 

@@ -14,7 +14,7 @@
 // Contrat complet : docs/architecture/community-server-line.md §3.
 //
 // L'instance déclare dans `data/index.json > config.serverConnection` :
-//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js?v=1.0.0"] }
+//   { "state": "on" | "off", "api": "https://…" | "/api/", "modules": ["chemin/module.js?v=1.0.0"] }
 //
 // États produits ici :
 //   off        — champ absent ou "off" (myktamap.fr : aucun backend, jamais)
@@ -70,8 +70,12 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    if (typeof sc.api !== "string" || !/^https:\/\/[^\s/?#]+/i.test(sc.api.trim())) {
-      return { etat: "invalide", raison: "api doit être une adresse https://" };
+    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
+    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
+    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    if (typeof sc.api !== "string" ||
+        !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
+      return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
     }
     if (!Array.isArray(sc.modules)) {
       return { etat: "invalide", raison: "modules doit être une liste" };
@@ -352,15 +356,25 @@
   // envoi hors des états « configurée » / « connectée » ; en « injoignable »,
   // seules les sondes (opts.sonde) partent, pour détecter le retour du serveur.
   // Jamais une autre origine que celle déclarée dans `serverConnection.api`.
+  // Base absolue de l'API : un chemin du même site (« /api/ ») est résolu à
+  // l'adresse de l'app (location.origin) au moment de l'appel.
+  function _apiBase() {
+    const a = _connexion && _connexion.api;
+    if (typeof a !== "string" || !a) return null;
+    if (a.charAt(0) !== "/") return a;
+    const o = (typeof location !== "undefined" && location && location.origin && location.origin !== "null") ? location.origin : null;
+    return o ? o + a : null;
+  }
   function requete(chemin, opts) {
     const o = opts || {};
     const etat = _etat;
     const permis = etat === "configuree" || etat === "on" || (etat === "down" && o.sonde === true);
     if (!permis) return Promise.reject(new Error("connexion serveur indisponible (" + etat + ")"));
     let url;
-    try { url = new URL(String(chemin || ""), _connexion.api); }
+    const base = _apiBase();
+    try { url = new URL(String(chemin || ""), base); }
     catch (e) { return Promise.reject(new Error("adresse invalide")); }
-    if (url.origin !== new URL(_connexion.api).origin) {
+    if (url.origin !== new URL(base).origin) {
       return Promise.reject(new Error("origine refusée : " + url.origin));
     }
     const init = Object.assign({}, o);
@@ -553,6 +567,7 @@
     appliquerConfig: appliquerConfig,
     etat: function () { return { etat: _etat, raison: _raison }; },
     peindre: peindre,
+    apiBase: _apiBase,
     ETATS: ETATS.slice(),
     LS_MEMO: LS_MEMO
   };
