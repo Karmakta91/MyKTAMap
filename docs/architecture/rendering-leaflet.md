@@ -100,6 +100,15 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
   (`clip-path` 700 ms) → pause ~600 ms → « -pro » se révèle (pro uniquement, 500 ms). Même
   easing `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA. Détails complets +
   pièges de spécificité CSS : cf `ui.md §83` et `security-legal.md §84`.
+- ✍️ **Ligne manuscrite de la série 2.x** (`#splashEre`, v2.0.0, décision KARMA) : « Bienvenue dans la v2 »
+  (clé `home.splash.ere`) s'écrit sous le sous-titre à **chaque** démarrage, par le même geste que la
+  signature KARMA (clip-path gauche → droite, 1,5 s à partir de 1,1 s) ; durée du splash inchangée.
+  Masquée par défaut, montrée par `_splashStart()` **seulement si la version majeure vaut 2** (le texte nomme
+  la v2 : une v3 doit le changer). Le bloc remonte (`.kta-splash-avec-ere`, −34 px, −60 px sous 700 px de
+  haut) pour ne pas toucher l'encadré de licence posé à 19vh du bas. Police : sous-ensemble Kalam 700
+  (`lib/fonts/kalam-700-splash.woff2`, ~5 Ko, OFL — licence à côté), précaché ; il ne contient que les
+  glyphes des 3 phrases + les chiffres : **changer le texte impose de régénérer le sous-ensemble**, sinon
+  les lettres manquantes tombent sur une police système.
 
 ---
 

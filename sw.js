@@ -128,6 +128,8 @@ const ASSETS_TO_CACHE = [
   "./js/proLicense.js",
   // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
   "./js/ktaExtensions.js",
+  // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
+  "./lib/fonts/kalam-700-splash.woff2",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",

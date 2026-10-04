@@ -1693,6 +1693,22 @@ function _splashStart() {
     const b = (window.__MKM__ && window.__MKM__.build) ? String(window.__MKM__.build) : "";
     ver.textContent = b ? (b.charAt(0) === "v" ? b : "v" + b) : "";
   }
+
+  // ✍️ v2.0.0 — Ligne manuscrite « Bienvenue dans la v2 », à chaque démarrage
+  // de la série 2.x (décision KARMA). Elle s'écrit pendant le splash, sans
+  // l'allonger (3,5 s inchangées). Montrée SEULEMENT si la majeure vaut 2 :
+  // le texte nomme la v2, une v3 devra le changer.
+  const ere = document.getElementById("splashEre");
+  if (ere) {
+    const majeure = parseInt(String((window.__MKM__ && window.__MKM__.build) || "").replace(/^v/, ""), 10);
+    if (majeure === 2) {
+      ere.hidden = false;
+      // Le bloc remonte d'autant, sinon la ligne descend sur l'encadré de
+      // licence (posé à 19vh du bas) dès 800 px de haut.
+      const box = document.getElementById("splashBox");
+      if (box) box.classList.add("kta-splash-avec-ere");
+    }
+  }
 }
 
 async function _splashEnd() {
