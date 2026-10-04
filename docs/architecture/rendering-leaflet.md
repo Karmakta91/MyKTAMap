@@ -107,7 +107,10 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
     le doré du titre. Posé sur `.kta-titre-base-cadre`, HORS de `.kta-titre-base` dont le clip-path de
     révélation le couperait. Il « tampe » à 1,5 s, une fois le mot révélé ;
   - un **cadre doré marqué** autour de l'écran (`#splashOverlay.kta-splash-majeure::before` : filet de 2 px
-    plein, halo doré/orange, lueur intérieure ; 7 px du bord, zone sûre des écrans à encoche respectée) ;
+    plein, halo doré/orange, lueur intérieure ; 7 px du bord). Sur écran tactile (`pointer: coarse`), coins
+    **6 px en haut** (le cadre naît sous la barre d'état opaque, là où l'écran n'est pas arrondi) et
+    **50 px en bas** (parallèle aux coins arrondis de l'écran, sinon le cadre en sortait — retour iPhone 17).
+    ⚠️ Sans `viewport-fit=cover`, les `env(safe-area-*)` valent 0 : ne pas s'appuyer dessus ici ;
   - la **version en haut à droite** passe à l'accent charte (`#f4c542`, `#b8860b` en clair) ;
   - `_splashStart()` écrit le chiffre depuis la version majeure et pose la classe **à partir de la v2
     seulement** : une v3 affichera « 3 » sans rien toucher ;

@@ -4408,6 +4408,19 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   opacity: 0;
   animation: kta-splash-cadre 1.2s ease-out 0.2s forwards;
 }
+/* Téléphones (retour KARMA, iPhone 17) : la barre d'état est opaque
+   (apple-mobile-web-app-status-bar-style = black) et l'app ne déclare pas
+   viewport-fit=cover — les env(safe-area-*) valent 0, inutilisables ici.
+   - En HAUT, le cadre naît sous l'heure, là où l'écran n'est PAS arrondi :
+     angles presque droits (un arrondi n'y aurait aucun sens).
+   - En BAS, il longe les coins arrondis de l'écran (~55 pt sur les iPhone
+     récents) : 18 px le faisaient sortir de l'écran dans les angles. 50 px =
+     une courbe parallèle à celle de l'écran, 7 px en retrait. */
+@media (pointer: coarse) {
+  #splashOverlay.kta-splash-majeure::before {
+    border-radius: 6px 6px 50px 50px;
+  }
+}
 @keyframes kta-splash-cadre {
   from { opacity: 0; transform: scale(1.015); }
   to   { opacity: 1; transform: scale(1); }
