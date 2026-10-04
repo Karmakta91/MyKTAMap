@@ -640,6 +640,11 @@
     if (!window.PlanRegistry) return [];
     return (window.PlanRegistry.getAll() || [])
       .filter(function(p) { return p && p.type === "local" && p.storedBlob === true; })
+      // 🧩 v2.7.0 (prise « filtre d'export ») : une extension peut refuser
+      // l'archive d'un plan (plan partagé dont on n'est pas propriétaire).
+      // Une prise qui échoue REFUSE. ⚠️ Retirer le bouton n'empêche pas la
+      // copie d'un plan qu'on peut lire (données sur l'appareil).
+      .filter(function(p) { return !window.KtaExtensions || window.KtaExtensions.exportAutorise(p.id); })
       .map(function(p) { return { id: p.id, name: p.name || p.id, bytes: p.fileSize || 0 }; });
   }
 

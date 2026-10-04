@@ -203,6 +203,48 @@ function _appliquerConnexionServeur(config, indexRepondu) {
   } catch(e) { console.warn("[Main] connexion serveur :", e); }
 }
 
+// 🧩 v2.7.0 — « Instance indisponible » : une instance connectée dont le module
+// de connexion ne se charge pas, ou dont la gate déléguée échoue. L'app reste
+// bloquée ici (comme une gate) ; « Réessayer » recharge la page. JAMAIS de
+// repli sur la gate community.
+function _ktaInstanceIndisponible() {
+  return new Promise(function() {
+    const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
+    const ov = document.createElement("div");
+    ov.id = "kta-instance-indispo";
+    ov.className = "kta-instance-indispo";
+    ov.setAttribute("role", "alertdialog");
+    const boite = document.createElement("div");
+    boite.className = "kta-instance-indispo-boite";
+    const h = document.createElement("h2"); h.textContent = t("ext.indispo.titre");
+    const p = document.createElement("p"); p.textContent = t("ext.indispo.texte");
+    const b = document.createElement("button"); b.type = "button"; b.className = "kta-btn kta-btn-primary";
+    b.textContent = t("ext.indispo.reessayer");
+    b.addEventListener("click", function() { location.reload(); });
+    boite.appendChild(h); boite.appendChild(p); boite.appendChild(b);
+    ov.appendChild(boite);
+    document.body.appendChild(ov);
+    // Promesse jamais résolue : le démarrage s'arrête là, comme un lockout de gate.
+  });
+}
+
+// 🧩 v2.7.0 — Plans fournis par une extension (prise « source de plans ») :
+// inscrits au registre en `type: "ext"`, ouverts par KtaExtensions.charger
+// PlanExtension (homeLoader). Une extension qui ne répond pas = aucun plan
+// ajouté (prise d'information : erreur ignorée).
+async function _decouvrirPlansExtension() {
+  if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
+  const liste = await window.KtaExtensions.listerPlansExtension();
+  liste.forEach(function(p) {
+    if (!p || !p.id) return;
+    const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
+      version: p.version || null });
+    if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
+  });
+  if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");
+}
+
 // Application de `config` : sous-titre (splash + header loader — textContent
 // jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
 // langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
@@ -213,7 +255,14 @@ function _appliquerConnexionServeur(config, indexRepondu) {
 // Masquer un bouton ne ferme pas une porte : tout ce qui doit être refusé en
 // kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
 window.ktaKiosqueServeurSeul = function() {
-  return !!(window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true);
+  if (window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true) return true;
+  // 🧩 v2.7.0 (chantier 3, prise « droit d'import ») : une extension peut
+  // refuser l'import local (réglage admin, rôle Lecteur). Même goulot que le
+  // kiosque : import simple, import multiple, import de profil. Une prise qui
+  // échoue REFUSE (KtaExtensions._permission).
+  if (window.KtaExtensions && typeof window.KtaExtensions.importAutorise === "function" &&
+      !window.KtaExtensions.importAutorise()) return true;
+  return false;
 };
 
 function _appliquerConfigKiosque() {
@@ -1447,7 +1496,10 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 
     const entry = {
       id: id,
-      type: "local",
+      // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
+      // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
+      // la déconnexion ne le retrouverait plus).
+      type: meta.typeRegistre === "ext" ? "ext" : "local",
       name: planName,
       version: planVer || null,
       author: rawConfig.plan.author || null,
@@ -1751,15 +1803,13 @@ function _splashStart() {
   }
 
   // 2️⃣ v2.0.0 — Identité visuelle de la série (décision KARMA) : le chiffre de
-  // la version majeure, en doré et de biais au-dessus de « MyKTAMap », et un
-  // fin cadre doré autour de l'écran. À partir de la v2 seulement ; chaque
-  // version majeure peut ensuite avoir son propre accueil.
+  // la version majeure, en orange et de biais au-dessus de « MyKTAMap ». À partir
+  // de la v2 seulement ; chaque version majeure peut ensuite avoir son propre accueil.
   const majeure = parseInt(String((window.__MKM__ && window.__MKM__.build) || "").replace(/^v/, ""), 10);
   const chiffre = document.getElementById("splashMajeure");
   if (chiffre && majeure >= 2) {
     chiffre.textContent = String(majeure);
     chiffre.hidden = false;
-    splash.classList.add("kta-splash-majeure");
   }
 }
 
@@ -2008,6 +2058,32 @@ window.proposerRedemarrageLangue = function() {
     });
   }
 
+  // 🧩 v2.7.0 (chantier 3) — MODULES GREFFÉS ET GATE DÉLÉGUÉE.
+  // Règle E : les modules ne se chargent que sur une instance « on » avec une
+  // licence de source serveur (KtaExtensions.chargerModules ne fait rien
+  // sinon : myktamap.fr n'en charge jamais). Ils se chargent AVANT les gates,
+  // pour qu'un module puisse remplacer la gate d'entrée par son compte.
+  let _gateDelegueeOk = false;
+  if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
+    const _mods = await window.KtaExtensions.chargerModules();
+    const _gate = window.KtaExtensions.gateDeleguee();
+    if (_gate) {
+      await _splashEnd();
+      try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
+      catch (e) {
+        // 🩸 JAMAIS de repli sur la gate community : le code communautaire,
+        // diffusé largement, ouvrirait une instance privée (trou v1.90.7).
+        console.warn("[Main] Gate déléguée en échec :", e);
+        await _ktaInstanceIndisponible();
+      }
+    } else if (_mods && _mods.demandes > 0 && _mods.echecs > 0) {
+      // Instance connectée dont un module ne se charge pas : écran dédié, même
+      // règle (jamais de repli sur la gate community).
+      await _splashEnd();
+      await _ktaInstanceIndisponible();
+    }
+  }
+
   // 🗝️ v173 : Unlock Gate (barrière communautaire).
   // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
   // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
@@ -2015,7 +2091,7 @@ window.proposerRedemarrageLangue = function() {
   // ⚠️ La fonction await ouvrirGate() ne résout JAMAIS en lockout (5 échecs)
   //    → main.js reste bloqué là pour toujours, l'user doit cliquer "Reset
   //    complet" dans l'overlay pour repartir. Volontaire.
-  if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
+  if (!_gateDelegueeOk && window.UnlockGate && !window.UnlockGate.isUnlocked()) {
     // On laisse le splash se finir d'abord (UX préservée) puis on enchaîne
     // sur le gate. Si l'user a déjà été déverrouillé (cas le plus fréquent
     // = 2e boot+), on saute complètement cette étape sans même montrer
@@ -2246,6 +2322,7 @@ window.proposerRedemarrageLangue = function() {
   } else if (_idxServeur) {
     await decouvrirPlansServeur(_idxServeur);
   }
+  try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
   // le charger automatiquement comme avant

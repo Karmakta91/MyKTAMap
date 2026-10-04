@@ -4371,9 +4371,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 
 /* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
    (#e07b1a, plus foncé que le doré du titre : contraste voulu, choix KARMA), de biais,
-   au-dessus à droite de « MyKTAMap », et un fin cadre doré autour de l'écran —
-   comme les accueils qui changent à chaque version de Windows, sans toucher
-   à la philosophie du splash (rose, arc, titre, signature, 3,5 s).
+   au-dessus à droite de « MyKTAMap » — comme les accueils qui changent à chaque
+   version de Windows, sans toucher à la philosophie du splash (rose, arc, titre,
+   signature, 3,5 s). Le cadre doré autour de l'écran a été retiré (KARMA, v2.7.3).
    - Le chiffre est posé sur le cadre de « MyKTAMap » et mord légèrement sur la
      panse du « p » (choix KARMA). Le splash n'affiche plus « -pro » depuis
      v2.0.0, même en édition pro : rien ne vient se loger à sa droite.
@@ -4412,51 +4412,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   from { opacity: 0; transform: rotate(-30deg) scale(0.4); }
   to   { opacity: 1; transform: rotate(-12deg) scale(1); }
 }
-/* Cadre doré : filet de 2 px plein, halo doré/orange autour et lueur dedans
-   (KARMA : « pas assez flash »), posé au-dessus du fond, sous le contenu,
-   inerte au toucher, dans la zone sûre des écrans à encoche. */
-#splashOverlay.kta-splash-majeure::before {
-  content: "";
-  position: absolute;
-  top: calc(7px + env(safe-area-inset-top, 0px));
-  right: calc(7px + env(safe-area-inset-right, 0px));
-  bottom: calc(7px + env(safe-area-inset-bottom, 0px));
-  left: calc(7px + env(safe-area-inset-left, 0px));
-  border: 2px solid rgba(244, 197, 66, 0.9);
-  border-radius: 18px;
-  box-shadow:
-    0 0 14px rgba(244, 197, 66, 0.55),
-    0 0 34px rgba(224, 123, 26, 0.25),
-    inset 0 0 18px rgba(244, 197, 66, 0.22),
-    inset 0 0 60px rgba(244, 197, 66, 0.06);
-  pointer-events: none;
-  opacity: 0;
-  animation: kta-splash-cadre 1.2s ease-out 0.2s forwards;
-}
-/* Téléphones (retour KARMA, iPhone 17) : la barre d'état est opaque
-   (apple-mobile-web-app-status-bar-style = black) et l'app ne déclare pas
-   viewport-fit=cover — les env(safe-area-*) valent 0, inutilisables ici.
-   - En HAUT, le cadre naît sous l'heure, là où l'écran n'est PAS arrondi :
-     angles presque droits (un arrondi n'y aurait aucun sens).
-   - En BAS, il longe les coins arrondis de l'écran (~55 pt sur les iPhone
-     récents) : 18 px le faisaient sortir de l'écran dans les angles. 50 px =
-     une courbe parallèle à celle de l'écran, 7 px en retrait. */
-@media (pointer: coarse) {
-  #splashOverlay.kta-splash-majeure::before {
-    border-radius: 6px 6px 50px 50px;
-  }
-}
-@keyframes kta-splash-cadre {
-  from { opacity: 0; transform: scale(1.015); }
-  to   { opacity: 1; transform: scale(1); }
-}
 html.kta-theme-light #splashMajeure {
   color: #a8530a !important;
   text-shadow: none;
-}
-html.kta-theme-light #splashOverlay.kta-splash-majeure::before {
-  border-color: rgba(139, 101, 8, 0.85);
-  box-shadow: 0 0 10px rgba(184, 134, 11, 0.4), inset 0 0 14px rgba(184, 134, 11, 0.15);
 }
 
 @keyframes splashTextIn {
@@ -11107,6 +11065,22 @@ html.kta-theme-light .kta-offline-msg.kta-offline-msg-ok,
 body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a; }
 html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
 body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
+
+/* 🧩 v2.7.0 — « Installation indisponible » (module de connexion absent ou gate
+   déléguée en échec). Au-dessus de tout, comme une gate ; jamais de repli. */
+.kta-instance-indispo {
+  position: fixed; inset: 0; z-index: 100100;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
+  padding: 16px;
+}
+.kta-instance-indispo-boite {
+  max-width: 420px; width: 100%;
+  background: #1a1f2e; border: 1px solid rgba(244, 197, 66, 0.35); border-radius: 12px;
+  padding: 22px 20px; color: #e8eaf0; text-align: center;
+}
+.kta-instance-indispo-boite h2 { margin: 0 0 10px; font-size: 18px; color: #f4c542; }
+.kta-instance-indispo-boite p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; color: #c8d0e0; }
 
 /* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
    vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·

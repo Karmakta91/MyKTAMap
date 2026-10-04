@@ -14,7 +14,7 @@
 // Contrat complet : docs/architecture/community-server-line.md §3.
 //
 // L'instance déclare dans `data/index.json > config.serverConnection` :
-//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js"] }
+//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js?v=1.0.0"] }
 //
 // États produits ici :
 //   off        — champ absent ou "off" (myktamap.fr : aucun backend, jamais)
@@ -38,12 +38,16 @@
   // Dernière config valide connue de l'instance. Donnée de l'INSTANCE, pas de
   // l'utilisateur : elle ne voyage pas avec l'export de profil.
   const LS_MEMO = "myktamap_server_connection_v1";
-  const ETATS = ["off", "invalide", "licence", "configuree"];
+  // v2.7.0 (chantier 3) : `on` et `down` existent — un module greffé les
+  // SIGNALE (règle C : community ne sonde jamais le serveur).
+  const ETATS = ["off", "invalide", "licence", "configuree", "on", "down"];
   const CLASSE_ETAT = {
     off:        "kta-tx-muted",
     invalide:   "kta-tx-err",
     licence:    "kta-tx-warn",
-    configuree: "kta-tx-info"
+    configuree: "kta-tx-info",
+    on:         "kta-tx-ok",
+    down:       "kta-tx-warn"
   };
   const MAX_MODULES = 20;
 
@@ -51,6 +55,7 @@
   let _etat = "off";
   let _raison = "";
   let _dejaEmis = false;
+  let _signal = null;   // "on" | "down" | null — posé par un module greffé (signaler)
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
   // 🩸 confadmin.html applique EXACTEMENT les mêmes règles :
@@ -77,8 +82,11 @@
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];
       // Même origine que l'app (script-src 'self') : chemin relatif, sans
-      // schéma, sans « // », sans remontée, terminé par .js.
-      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js$/.test(m) ||
+      // schéma, sans « // », sans remontée, terminé par .js. Un seul suffixe
+      // permis : « ?v=<version> » (v2.7.2). Le SW sert les modules depuis son
+      // cache (URL exacte) : changer la version change l'URL, donc la nouvelle
+      // version d'un module arrive sans attendre une release community.
+      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js(\?v=[A-Za-z0-9._-]{1,32})?$/.test(m) ||
           m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
@@ -145,6 +153,9 @@
   function _recalculer() {
     const avant = _etat;
     _etat = etatDe(_connexion, _sourceLicence());
+    // Le signal d'un module ne vaut que sur une instance « configurée » (on +
+    // licence serveur) : il ne peut jamais rallumer une instance OFF.
+    if (_etat === "configuree" && _signal) _etat = _signal;
     _raison = _connexion.raison || "";
     peindre();
     if (_etat !== avant || !_dejaEmis) {
@@ -251,7 +262,223 @@
   }
   if (window.I18n && typeof window.I18n.onChange === "function") window.I18n.onChange(peindre);
 
+
+  // =====================================================================
+  // 🧩 v2.7.0 — POINTS D'EXTENSION (chantier 3, community-server-line.md §3)
+  // =====================================================================
+  // Tout est NEUTRE : nommé sans référence au pro, utilisable par n'importe
+  // quelle extension, sans effet tant qu'aucune ne s'est déclarée.
+  //
+  // Une extension se déclare par :
+  //   KtaExtensions.register({
+  //     nom: "…", apiVersion: 1,
+  //     gate:     { ouvrir: function () → Promise },        // remplace la gate d'entrée
+  //     plans:    { lister: () → Promise<[{id,name,version?,tags?}]>,
+  //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
+  //     importAutorise: function () → bool,                 // permission (synchrone)
+  //     exportAutorise: function (planId) → bool,           // permission (synchrone)
+  //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
+  //   })
+  // Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
+  // Prises d'INFORMATION : une erreur est journalisée et ignorée.
+  const API_VERSION = 1;
+  const _extensions = [];
+  let _modules = { demandes: 0, charges: 0, echecs: 0, termine: false };
+
+  function register(ext) {
+    if (!ext || typeof ext !== "object" || typeof ext.nom !== "string" || !ext.nom) {
+      console.warn("[Extensions] déclaration refusée : objet sans nom");
+      return false;
+    }
+    if (ext.apiVersion !== API_VERSION) {
+      console.warn("[Extensions] « " + ext.nom + " » refusée : apiVersion " + ext.apiVersion +
+                   " (attendue " + API_VERSION + ")");
+      return false;
+    }
+    if (_extensions.some(function (e) { return e.nom === ext.nom; })) {
+      console.warn("[Extensions] « " + ext.nom + " » déjà déclarée");
+      return false;
+    }
+    _extensions.push(ext);
+    console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+    return true;
+  }
+  function _prise(nom) {
+    for (let i = 0; i < _extensions.length; i++) if (_extensions[i][nom]) return _extensions[i];
+    return null;
+  }
+  function aPrise(nom) { return !!_prise(nom); }
+
+  // ── Signal d'état par un module (règle C) ──
+  function signaler(etat) {
+    if (etat !== "on" && etat !== "down" && etat !== null) return false;
+    _signal = etat;
+    _recalculer();
+    return true;
+  }
+
+  // ── Chargeur de modules (règle E : licence serveur ET « on ») ──
+  // Charge les scripts de `serverConnection.modules`, même origine que l'app.
+  // Rend une promesse résolue quand tous ont fini (chargés ou en échec, 8 s max
+  // chacun). Ne fait RIEN hors de l'état « configurée ».
+  function chargerModules() {
+    if (etatDe(_connexion, _sourceLicence()) !== "configuree") {
+      _modules = { demandes: 0, charges: 0, echecs: 0, termine: true };
+      return Promise.resolve(_modules);
+    }
+    const liste = (_connexion.modules || []).slice();
+    _modules = { demandes: liste.length, charges: 0, echecs: 0, termine: false };
+    return Promise.all(liste.map(function (src) {
+      return new Promise(function (resolve) {
+        const s = document.createElement("script");
+        let fini = false;
+        const fin = function (ok) {
+          if (fini) return; fini = true;
+          if (ok) _modules.charges++; else { _modules.echecs++; console.warn("[Extensions] module non chargé : " + src); }
+          resolve();
+        };
+        const t = setTimeout(function () { fin(false); }, 8000);
+        s.onload = function () { clearTimeout(t); fin(true); };
+        s.onerror = function () { clearTimeout(t); fin(false); };
+        s.src = src;
+        document.head.appendChild(s);
+      });
+    })).then(function () { _modules.termine = true; return _modules; });
+  }
+
+  // ── Garde unique des requêtes d'extension ──
+  // Toute requête vers le backend d'une instance passe ICI. Refus avant tout
+  // envoi hors des états « configurée » / « connectée » ; en « injoignable »,
+  // seules les sondes (opts.sonde) partent, pour détecter le retour du serveur.
+  // Jamais une autre origine que celle déclarée dans `serverConnection.api`.
+  function requete(chemin, opts) {
+    const o = opts || {};
+    const etat = _etat;
+    const permis = etat === "configuree" || etat === "on" || (etat === "down" && o.sonde === true);
+    if (!permis) return Promise.reject(new Error("connexion serveur indisponible (" + etat + ")"));
+    let url;
+    try { url = new URL(String(chemin || ""), _connexion.api); }
+    catch (e) { return Promise.reject(new Error("adresse invalide")); }
+    if (url.origin !== new URL(_connexion.api).origin) {
+      return Promise.reject(new Error("origine refusée : " + url.origin));
+    }
+    const init = Object.assign({}, o);
+    delete init.sonde;
+    // Marque la requête pour le Service Worker (jamais de cache, v2.7.1) et
+    // interdit le cache HTTP : une réponse de backend n'a rien à faire hors ligne.
+    init.cache = "no-store";
+    const entetes = new Headers(init.headers || {});
+    entetes.set("X-Kta-Ext", "1");
+    init.headers = entetes;
+    return fetch(url.href, init);
+  }
+
+  // ── Prises de permission (synchrones) : une erreur = REFUS ──
+  function _permission(nom, args, parDefaut) {
+    const ext = _prise(nom);
+    if (!ext) return parDefaut;
+    try { return ext[nom].apply(ext, args || []) === true; }
+    catch (e) { console.warn("[Extensions] « " + nom + " » a échoué → refus :", e); return false; }
+  }
+  function importAutorise() { return _permission("importAutorise", [], true); }
+  function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+
+  // ── Gate déléguée ──
+  // Rend null si aucune extension ne fournit de gate, sinon une promesse qui
+  // résout quand l'extension a ouvert l'accès. Une gate qui échoue REJETTE :
+  // l'appelant affiche « instance indisponible », jamais la gate community.
+  function gateDeleguee() {
+    const ext = _prise("gate");
+    if (!ext || typeof ext.gate.ouvrir !== "function") return null;
+    try { return Promise.resolve(ext.gate.ouvrir()); }
+    catch (e) { return Promise.reject(e); }
+  }
+  function modulesEtat() { return Object.assign({}, _modules); }
+
+  // ── Source de plans ──
+  function listerPlansExtension() {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.lister !== "function") return Promise.resolve([]);
+    return Promise.resolve().then(function () { return ext.plans.lister(); })
+      .then(function (l) { return Array.isArray(l) ? l : []; })
+      .catch(function (e) { console.warn("[Extensions] plans.lister a échoué :", e); return []; });
+  }
+  function chargerPlanExtension(id) {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.charger !== "function") return Promise.reject(new Error("aucune source de plans"));
+    return Promise.resolve().then(function () { return ext.plans.charger(id); });
+  }
+
+  // ── Publication depuis le Générateur ──
+  function publierPlan(args) {
+    const ext = _prise("publierPlan");
+    if (!ext) return Promise.reject(new Error("aucune publication disponible"));
+    return Promise.resolve().then(function () { return ext.publierPlan(args); });
+  }
+
+  // ── Journal des changements (information) ──
+  // Ce qui a changé depuis `ts` (ms) : objets dont updatedAt > ts, et traces de
+  // suppression postérieures. Base de la synchro incrémentale (lot A/B).
+  function changementsDepuis(ts) {
+    const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
+    const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
+    return {
+      editorPoints: f(window.getEditorPoints && window.getEditorPoints()),
+      roads:        f(window.getRoads && window.getRoads()).filter(function (o) { return o.type !== "itinerary"; }),
+      zones:        f(window.getZones && window.getZones()),
+      structures:   f(window.getStructures && window.getStructures()),
+      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; })
+    };
+  }
+
+  // ── Effacement à la déconnexion ──
+  // Retire les plans fournis par une extension (registre `type: "ext"`), leur
+  // session, leurs photos et leur archive locale. 🩸 Jamais un plan importé par
+  // l'utilisateur (type « local ») ni un plan de l'instance (type « server ») :
+  // ils ne viennent pas du backend.
+  function effacerDonneesExtension(planIds) {
+    const PR = window.PlanRegistry;
+    if (!PR || !Array.isArray(planIds)) return Promise.resolve({ effaces: 0, refuses: 0 });
+    let effaces = 0, refuses = 0;
+    return planIds.reduce(function (p, id) {
+      return p.then(function () {
+        const e = PR.findById(id);
+        if (!e || e.type !== "ext") { refuses++; return; }
+        try { localStorage.removeItem("myktamap_session_v1_" + id); } catch (er) {}
+        return Promise.resolve(typeof PR.remove === "function" ? PR.remove(id) : null)
+          .then(function () { effaces++; });
+      });
+    }, Promise.resolve()).then(function () { return { effaces: effaces, refuses: refuses }; });
+  }
+
+  // ── Mode Secours partagé (entrant) ──
+  // Applique au scénario une modification reçue d'un autre appareil, par la
+  // fusion en liste blanche existante (SecoursMode.update). Le sortant est
+  // l'événement `mktm:secours-scenario-mutated`, déjà émis.
+  function secoursAppliquer(scenarioId, partiel) {
+    if (!window.SecoursMode || typeof window.SecoursMode.update !== "function") return false;
+    try { return window.SecoursMode.update(scenarioId, partiel) !== false; }
+    catch (e) { console.warn("[Extensions] secoursAppliquer :", e); return false; }
+  }
+
   window.KtaExtensions = {
+    API_VERSION: API_VERSION,
+    register: register,
+    aPrise: aPrise,
+    signaler: signaler,
+    chargerModules: chargerModules,
+    modulesEtat: modulesEtat,
+    requete: requete,
+    importAutorise: importAutorise,
+    exportAutorise: exportAutorise,
+    gateDeleguee: gateDeleguee,
+    listerPlansExtension: listerPlansExtension,
+    chargerPlanExtension: chargerPlanExtension,
+    publierPlan: publierPlan,
+    changementsDepuis: changementsDepuis,
+    effacerDonneesExtension: effacerDonneesExtension,
+    secoursAppliquer: secoursAppliquer,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,

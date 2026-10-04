@@ -12,7 +12,15 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.6.0` (04/10/2026)
+## 📦 Version courante — `v2.7.3` (04/10/2026)
+
+> 2️⃣ **v2.7.3 — Splash sans cadre, image Docker constructible depuis Windows, notes de version réduites.**
+
+> 🧩 **v2.7.2 — Un module greffé peut porter sa version (`pro/x.js?v=…`)** : sa mise à jour n'attend plus une release community.
+
+> 🧩 **v2.7.1 — Le Service Worker ne met jamais en cache une requête de backend** (marquée `X-Kta-Ext` ou authentifiée) : prérequis d'un backend servi à la même adresse que l'app.
+
+> 🧩 **v2.7.0 — Points d'extension (chantier 3, branche `karma_backend_dev`)** : `KtaExtensions.register()` et toutes les prises ; gate déléguée sans repli sur la gate community ; myktamap.fr inchangé.
 
 > ⚡ **v2.6.0 — Config d'instance lue une fois, avant les gates (chantier 2)** : délai de 2 s puis dernière config connue ; rotation du mot de passe d'instance à effet immédiat.
 
@@ -525,6 +533,34 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.3 (04/10/2026) — Splash sans cadre, Docker depuis Windows (branche `karma_backend_dev`)
+
+- 2️⃣ **Splash** : le cadre doré autour de l'écran est retiré (demande KARMA) ; le « 2 » reste. CSS `::before`, variantes tactile et claire, classe `kta-splash-majeure` supprimées.
+- 🐳 **Docker** : sur un checkout Windows (`core.autocrlf=true`), `docker/entrypoint.sh` arrivait en CRLF dans l'image → `#!/bin/sh\r` introuvable, le conteneur ne démarrait pas (trouvé au premier lancement de la pile pro). Le `Dockerfile` convertit le script en fins de ligne Unix au build.
+- 📝 **`version.json > notes`** réduites à deux sujets (consigne KARMA) : bases de données des installations indépendantes, documentation simplifiée.
+
+#### v2.7.2 (04/10/2026) — Version des modules greffés (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : test du module de connexion du chantier 4 — le SW met en cache un module au premier chargement et le sert ensuite depuis ce cache (règle par défaut), et le connecteur refusait tout suffixe au chemin (`pro/connexion.js?v=0.2.0` → état « invalide »). Une nouvelle version d'un module n'arrivait donc qu'au bump suivant de `CACHE_NAME`.
+- 🔧 **Correctif** (décision KARMA 1:a) : `serverConnection.modules` accepte un seul suffixe, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max). Changer la version change l'URL, donc l'entrée de cache. ConfAdmin porte la même règle (copie, alignement vérifié par le garde-fou).
+- 🛡️ `check-connexion-serveur.js` : 6 cas de plus (versionné accepté ; autre paramètre, version vide, deux paramètres, espace, suffixe avant `.js` refusés).
+
+#### v2.7.1 (04/10/2026) — Requêtes de backend jamais en cache (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : en préparant le Docker du backend (proxy `/api` à la même adresse que l'app), constat que `sw.js` intercepte et met en cache **toutes** les requêtes GET, sans filtre d'origine : les réponses d'un backend (données de compte, synchro) auraient été gardées sur l'appareil et servies périmées.
+- 🔧 **Correctif** : `KtaExtensions.requete` marque ses requêtes (`X-Kta-Ext: 1`, `cache: "no-store"`) ; le SW ne répond jamais à une requête marquée ou portant `Authorization` (le réseau seul décide). Sans effet sur myktamap.fr.
+- 🛡️ `check-extensions.js` → 42 contrôles (marquage exécuté, règle du SW placée avant tout `respondWith`).
+
+#### v2.7.0 (04/10/2026) — Points d'extension (chantier 3) — branche `karma_backend_dev`
+
+- 🔍 **Origine** : `community-server-line.md` §3, chantier 3 — tout ce dont le module pro a besoin côté community, sans une ligne de pro dans ce repo. Fusionné depuis `Karma_dev` (v2.6.0) sur consigne KARMA.
+- 🧩 **`js/ktaExtensions.js` — API v1** : `register({ nom, apiVersion: 1, gate, plans, importAutorise, exportAutorise, publierPlan })` (nom requis, version vérifiée, double déclaration refusée) ; `signaler("on"|"down")` (états `on` vert / `down` orange, jamais sur une instance OFF) ; `chargerModules()` (règle E : licence serveur ET « on », même origine, 8 s par script) ; `requete(chemin, opts)` (garde unique : origine de `api` seulement, refus hors « configurée / connectée », sondes en « injoignable ») ; permissions synchrones où **une erreur = refus** ; `gateDeleguee()` ; plans `listerPlansExtension` / `chargerPlanExtension` ; `publierPlan` ; `changementsDepuis(ts)` ; `effacerDonneesExtension(planIds)` (plans `ext` seulement) ; `secoursAppliquer`.
+- 🔑 **Boot** : licence (si « on ») → modules → **gate déléguée** si une extension la fournit ; en échec, ou module de connexion introuvable → écran **« Installation indisponible »** (Réessayer) — **jamais** la gate community.
+- 🔗 **Goulots** : import (`ktaKiosqueServeurSeul` consulte la prise), export de profil (archives filtrées), plans d'extension (`type: "ext"`, ☁️, ouverts via la prise, gardés sur l'appareil, type conservé à l'ouverture), Générateur (« Publier » si une extension sait publier), SW (caches `myktamap-ext-` gardés à l'activation).
+- 🛡️ **Garde-fous** : `check-extensions.js` (nouveau, 40 contrôles, module exécuté avec faux fetch qui compte ; sabotages vérifiés) ; `check-connexion-serveur.js` : un seul fetch, dans le garde.
+- ✅ **Test navigateur** avec faux module, licence et index servis par interception : gate déléguée appelée à la place de la gate community, état « connectée », plan ☁️ inscrit, import refusé par la prise ; module absent → « Installation indisponible », gate community jamais affichée ; myktamap.fr → aucun module demandé, état « off » ; aucune erreur JS.
+- ⏭️ **Suite** : chantier 4 dans le repo pro — Docker par couche (API Node+Fastify, PostgreSQL, Caddy, SMTP de test), admin par défaut à mot de passe changé à la 1re connexion, gestion des utilisateurs.
 
 #### v2.6.0 (04/10/2026) — Config d'instance lue une fois, avant les gates (chantier 2)
 

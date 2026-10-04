@@ -4155,6 +4155,23 @@ async function _genererZip() {
       URL.revokeObjectURL(url);
     }
 
+    // 🧩 v2.7.0 (prise « publication ») — si une extension sait publier, le
+    // Créateur peut envoyer le plan généré au serveur de l'instance (brouillon
+    // local → « Publier »). Sans extension : rien ne change.
+    if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
+      try {
+        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: name }),
+                                                { okLabel: window.I18n.t("ext.publier.ok") });
+        if (publier) {
+          await window.KtaExtensions.publierPlan({ blob: blob, nom: name });
+          alert(window.I18n.t("ext.publier.fait"));
+        }
+      } catch (e) {
+        console.warn("[Planner] publication :", e);
+        alert(window.I18n.t("ext.publier.echec"));
+      }
+    }
+
     const m = document.getElementById("kta-planner-modal");
     if (m) m.remove();
 

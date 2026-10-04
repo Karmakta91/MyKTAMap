@@ -249,7 +249,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /if \(_instanceBoot && _instanceBoot\.repondu && window\.UnlockGate &&[\s\S]{0,120}window\.UnlockGate\.revaliderInstance\(_instanceBoot\.config \? _instanceBoot\.config\.accessHash : null, true\);/.test(MAIN));
   const iCharge = MAIN.indexOf("await window.KtaInstance.charger() : null;");
   const iRev = MAIN.indexOf("window.UnlockGate.revaliderInstance(");
-  const iGate = MAIN.indexOf("if (window.UnlockGate && !window.UnlockGate.isUnlocked())");
+  const iGate = MAIN.indexOf("window.UnlockGate && !window.UnlockGate.isUnlocked())");   // v2.7.0 : précédé de !_gateDelegueeOk
   t("🔑 ordre du boot : config d'instance → revalidation → gate (rotation à effet immédiat)",
     iCharge > 0 && iRev > iCharge && iGate > iRev);
   t("la licence n'est attendue avant la gate que si l'instance déclare « on » (myktamap.fr non ralenti)",
