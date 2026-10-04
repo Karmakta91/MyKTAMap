@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — Guide Utilisateur
 
----
-
 ## 📖 Le topo
 
 ### D'où ça vient

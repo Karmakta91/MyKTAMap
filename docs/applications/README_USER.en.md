@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — User Guide
 
----
-
 ## 📖 The story
 
 ### Where it comes from

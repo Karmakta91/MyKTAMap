@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — Guía de usuario
 
----
-
 ## 📖 El porqué
 
 ### De dónde viene
