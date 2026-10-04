@@ -287,11 +287,17 @@
       .then(function(resp) {
         if (timeoutId) clearTimeout(timeoutId);
         if (!resp.ok) {
-          // 404 community OU 5xx → on purge le cache SERVEUR
-          // (mais on TOUCHE PAS au cache LOCAL, qui reste indépendant).
-          _safeRemoveLS(LS_KEY_SERVER);
-          _recomputeActive();
-          return null;
+          // Seule une ABSENCE déclarée (404 / 410 : pas de licence sur ce serveur) purge
+          // le cache SERVEUR (le cache LOCAL reste indépendant). Hors ligne (503 du
+          // Service Worker) ou serveur en panne (5xx) : on garde la licence connue —
+          // l'installation est « injoignable », pas devenue community.
+          if (resp.status === 404 || resp.status === 410) {
+            _safeRemoveLS(LS_KEY_SERVER);
+            _recomputeActive();
+            return null;
+          }
+          _signalerVerifiee();
+          return undefined;
         }
         return resp.json().catch(function() { return null; });
       })

@@ -1081,14 +1081,16 @@ self.addEventListener("fetch", (event) => {
   //  - Sur instance pro : 200 attendu → mode pro activé côté client
   //  - Si un déployeur retire le fichier, le mode pro doit s'éteindre
   //    instantanément au prochain check (pas de cache LRU qui le maintient).
-  // Le `cache: "no-store"` force la requête vers le réseau, le `catch` retourne
-  // un 404 explicite si offline (= revient en mode community gracieusement).
+  // Le `cache: "no-store"` force la requête vers le réseau. Hors ligne, le `catch`
+  // répond 503 marqué `X-Kta-Hors-Ligne` — PAS 404 : un 404 voulait dire « pas de
+  // licence » et effaçait celle de l'appareil (04/10/2026, KARMA hors wifi : gate
+  // community au lieu du dernier compte, état « licence requise » au lieu de « injoignable »).
   if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
         .catch(() => new Response("", {
-          status: 404,
-          headers: { "Content-Type": "application/json" }
+          status: 503,
+          headers: { "Content-Type": "application/json", "X-Kta-Hors-Ligne": "1" }
         }))
     );
     return;
