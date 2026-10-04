@@ -231,6 +231,25 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (await K2.garderPlanExtension("ext_a")) === false);
   }
 
+  // ═════════ 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune action sur les fiches", K.actionsObjet("pt_x").length === 0);
+    K.register({ nom: "ao", apiVersion: 1, actionsObjet: (uid) => [{ libelle: "  🕘 Historique  ", action: () => uid },
+      { libelle: "", action: () => 1 }, { libelle: "sans action" }, "n'importe quoi"] });
+    const l = K.actionsObjet("pt_x");
+    t("actions nettoyées (libellé, fonction), formes inattendues écartées", l.length === 1 && l[0].libelle === "🕘 Historique");
+    t("uid absent → aucune action", K.actionsObjet("").length === 0);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ao2", apiVersion: 1, actionsObjet: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → aucune action, aucune exception", K2.actionsObjet("pt_x").length === 0);
+    const U = lire("js/utils.js");
+    t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
+      /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
+    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions",
+      /if \(ext\.actionsObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+  }
+
   // ═════════ 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ═════════
   {
     const { K, w } = nouveauContexte(null);

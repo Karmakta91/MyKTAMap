@@ -950,7 +950,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
              '</div>';
     }
     // Mode edit (session)
-    return '<div class="kta-popup-point kta-note-popup">' +
+    const _uid = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;
+    return '<div class="kta-popup-point kta-note-popup"' + (_uid ? ' data-kta-uid="' + _esc(_uid).replace(/"/g, "&quot;") + '"' : "") + '>' +
              '<b>' + _esc(titreType) + '</b>' +
              '<div class="kta-note-popup-wrap">' +
                '<textarea class="kta-note-popup-textarea" rows="4" ' +
@@ -1352,7 +1353,9 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     catch(e) { console.warn("[Popup] section liaisons inter-plan :", e); }
   }
 
-  return '<div class="kta-popup-point">' +
+  // 🧩 uid d'un point de session : une extension peut y accrocher ses actions (historique…).
+  const _uidAttr = (isEditorSession === true && point.uid) ? ' data-kta-uid="' + _escAttr(point.uid) + '"' : "";
+  return '<div class="kta-popup-point"' + _uidAttr + '>' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +

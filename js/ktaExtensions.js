@@ -320,8 +320,9 @@
       return false;
     }
     _extensions.push(ext);
+    if (ext.actionsObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -712,6 +713,43 @@
     catch (e) { return Promise.resolve(false); }
   }
 
+  // ── Actions d'extension sur la fiche d'un objet de session ──
+  // L'extension déclare actionsObjet(uid) → [{ libelle, action }] (synchrone, ex. « Historique »).
+  // Les fiches portent data-kta-uid ; un observateur, posé SEULEMENT si la prise existe,
+  // ajoute les boutons à l'ouverture d'une fiche. Sans extension : rien n'est observé.
+  function actionsObjet(uid) {
+    const ext = _prise("actionsObjet");
+    if (!ext || typeof ext.actionsObjet !== "function" || typeof uid !== "string" || !uid) return [];
+    try {
+      const l = ext.actionsObjet(uid);
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
+  }
+  function _hydraterFiche(racine) {
+    if (!racine || racine.querySelector(".kta-popup-ext")) return;
+    const actions = actionsObjet(racine.getAttribute("data-kta-uid"));
+    if (!actions.length) return;
+    const zone = document.createElement("div");
+    zone.className = "kta-popup-actions kta-popup-ext";
+    actions.forEach(function (a) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "kta-popup-btn"; b.textContent = a.libelle;
+      b.addEventListener("click", function (ev) { ev.stopPropagation(); try { a.action(); } catch (e) { console.warn("[Extensions] action :", e); } });
+      zone.appendChild(b);
+    });
+    racine.appendChild(zone);
+  }
+  let _observateurFiches = null;
+  function _observerFiches() {
+    if (_observateurFiches || typeof MutationObserver !== "function" || !document.body) return;
+    _observateurFiches = new MutationObserver(function () {
+      document.querySelectorAll(".leaflet-popup-content [data-kta-uid]").forEach(_hydraterFiche);
+    });
+    _observateurFiches.observe(document.body, { childList: true, subtree: true });
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -744,6 +782,7 @@
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
+    actionsObjet: actionsObjet,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,
