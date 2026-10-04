@@ -42,8 +42,8 @@ function nouveauContexte(licence) {
     MyKTAMapProLicense: { isPro: () => !!licence, getSource: () => licence || null },
     CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
     addEventListener() {}, dispatchEvent() { return true; },
-    fetch: (url, init) => { appelsFetch.push(url); return Promise.resolve({ ok: true, url: url }); },
-    URL: URL, Promise: Promise, setTimeout: setTimeout, clearTimeout: clearTimeout
+    fetch: (url, init) => { appelsFetch.push(url); appelsFetch.dernierInit = init; return Promise.resolve({ ok: true, url: url }); },
+    URL: URL, Headers: Headers, Promise: Promise, setTimeout: setTimeout, clearTimeout: clearTimeout
   };
   w.window = w;
   const ctx = vm.createContext(w);
@@ -110,6 +110,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("« on » + licence serveur → état configurée", cfg.K.etat().etat === "configuree");
     await cfg.K.requete("/v1/sante");
     t("requête vers l'API déclarée : part", cfg.appelsFetch.length === 1 && cfg.appelsFetch[0] === "https://api.exemple.org/v1/sante");
+    const ini = cfg.appelsFetch.dernierInit || {};
+    t("🩸 la requête est marquée X-Kta-Ext et sans cache (le SW ne la mettra jamais en cache)",
+      ini.cache === "no-store" && ini.headers && typeof ini.headers.get === "function" && ini.headers.get("X-Kta-Ext") === "1");
     refus = false;
     try { await cfg.K.requete("https://ailleurs.example.net/x"); } catch (e) { refus = true; }
     t("🩸 requête vers une AUTRE origine : refusée", refus && cfg.appelsFetch.length === 1);
@@ -185,6 +188,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("plans d'extension : ouverts via la prise, gardés sur l'appareil, type conservé",
       /if \(plan\.type === "ext"\) \{/.test(HL) && /typeRegistre: "ext", storeBlob: true/.test(HL) && /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
     t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
+    t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
+      /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&
+      SW.indexOf('h.get("X-Kta-Ext")') < SW.indexOf("event.respondWith("));
     t("Service Worker : les caches myktamap-ext- survivent à l'activation", /const EXT_CACHE_PREFIX = "myktamap-ext-";/.test(SW) && /!_estCacheExt\(key\)/.test(SW));
     const assets = (SW.match(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/) || [""])[0];
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.7.0";
+const CACHE_NAME = "myktamap-cache-v2.7.1";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -1023,6 +1023,19 @@ self.addEventListener("fetch", (event) => {
   // CHAQUE requete, donc handler fetch mort et cache hors-ligne contourne.
   // Toute branche ajoutee plus bas doit pouvoir lire reqUrl sans y penser.
   const reqUrl = event.request.url || "";
+
+  // 🧩 v2.7.1 — JAMAIS DE CACHE POUR UNE REQUÊTE D'EXTENSION OU AUTHENTIFIÉE.
+  // Une installation peut servir le backend d'un module greffé à la même
+  // adresse que l'app : sans cette règle, ses réponses (données de compte,
+  // synchro) seraient mises en cache par le SW, servies périmées hors ligne et
+  // conservées sur l'appareil. Le garde KtaExtensions.requete marque ses
+  // requêtes (en-tête X-Kta-Ext) ; une requête portant Authorization ne se met
+  // jamais en cache non plus (sémantique HTTP). On ne répond pas : le réseau
+  // seul décide, comme sans SW.
+  try {
+    const h = event.request.headers;
+    if (h && (h.get("X-Kta-Ext") || h.get("Authorization"))) return;
+  } catch (e) { /* en-têtes illisibles : on continue normalement */ }
 
   // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
   // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les

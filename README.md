@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.7.0` (04/10/2026)
+## 📦 Version courante — `v2.7.1` (04/10/2026)
+
+> 🧩 **v2.7.1 — Le Service Worker ne met jamais en cache une requête de backend** (marquée `X-Kta-Ext` ou authentifiée) : prérequis d'un backend servi à la même adresse que l'app.
 
 > 🧩 **v2.7.0 — Points d'extension (chantier 3, branche `karma_backend_dev`)** : `KtaExtensions.register()` et toutes les prises ; gate déléguée sans repli sur la gate community ; myktamap.fr inchangé.
 
@@ -527,6 +529,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.1 (04/10/2026) — Requêtes de backend jamais en cache (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : en préparant le Docker du backend (proxy `/api` à la même adresse que l'app), constat que `sw.js` intercepte et met en cache **toutes** les requêtes GET, sans filtre d'origine : les réponses d'un backend (données de compte, synchro) auraient été gardées sur l'appareil et servies périmées.
+- 🔧 **Correctif** : `KtaExtensions.requete` marque ses requêtes (`X-Kta-Ext: 1`, `cache: "no-store"`) ; le SW ne répond jamais à une requête marquée ou portant `Authorization` (le réseau seul décide). Sans effet sur myktamap.fr.
+- 🛡️ `check-extensions.js` → 42 contrôles (marquage exécuté, règle du SW placée avant tout `respondWith`).
 
 #### v2.7.0 (04/10/2026) — Points d'extension (chantier 3) — branche `karma_backend_dev`
 

@@ -362,6 +362,12 @@
     }
     const init = Object.assign({}, o);
     delete init.sonde;
+    // Marque la requête pour le Service Worker (jamais de cache, v2.7.1) et
+    // interdit le cache HTTP : une réponse de backend n'a rien à faire hors ligne.
+    init.cache = "no-store";
+    const entetes = new Headers(init.headers || {});
+    entetes.set("X-Kta-Ext", "1");
+    init.headers = entetes;
     return fetch(url.href, init);
   }
 

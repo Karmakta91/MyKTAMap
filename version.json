@@ -1,5 +1,5 @@
 {
-  "version": "v2.7.0",
+  "version": "v2.7.1",
   "released": "2026-10-04",
   "notes": [
     "🧩 Les installations indépendantes peuvent désormais brancher leur propre base de données. Rien ne change sur myktamap.fr, qui n'en a pas et n'en aura jamais.",

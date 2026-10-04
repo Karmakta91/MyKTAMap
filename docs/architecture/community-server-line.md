@@ -142,6 +142,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Une instance = une adresse** : chaque instance a son propre domaine, donc le navigateur
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
+- **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
 - **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
   doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
   cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
