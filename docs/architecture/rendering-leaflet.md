@@ -102,7 +102,7 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
   l'en-tête de l'accueil (`.loader-titre-nom`). Pièges de spécificité du suffixe : `security-legal.md §84`.
 - 2️⃣ **Identité de la série 2.x** (v2.0.0, décision KARMA — l'accueil change avec chaque version majeure,
   comme sous Windows, sans toucher à la philosophie du splash ni à ses 3,5 s) :
-  - un **« 2 » bleu interaction (`#8cb4ff`, les pointes bleues de la rose ; `#1e5f99` en clair), de
+  - un **« 2 » orange brûlé (`#e07b1a` ; `#a8530a` en clair), plus foncé que le doré, de
     biais, qui mord légèrement sur le « p » de « MyKTAMap »** (`#splashMajeure`) — contraste voulu avec
     le doré du titre. Posé sur `.kta-titre-base-cadre`, HORS de `.kta-titre-base` dont le clip-path de
     révélation le couperait. Il « tampe » à 1,5 s, une fois le mot révélé ;
