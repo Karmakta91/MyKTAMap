@@ -418,10 +418,15 @@
       .then(function (l) { return Array.isArray(l) ? l : []; })
       .catch(function (e) { console.warn("[Extensions] plans.lister a échoué :", e); return []; });
   }
-  function chargerPlanExtension(id) {
+  // opts.progression(recus, total) : l'extension peut annoncer l'avancement du
+  // téléchargement (octets ; total 0 si inconnu) — l'accueil l'affiche.
+  function chargerPlanExtension(id, opts) {
     const ext = _prise("plans");
     if (!ext || typeof ext.plans.charger !== "function") return Promise.reject(new Error("aucune source de plans"));
-    return Promise.resolve().then(function () { return ext.plans.charger(id); });
+    const progression = opts && typeof opts.progression === "function" ? function (r, t) {
+      try { opts.progression(Number(r) || 0, Number(t) || 0); } catch (e) { /* affichage seulement */ }
+    } : null;
+    return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression }); });
   }
 
   // ── Publication depuis le Générateur ──
