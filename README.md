@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.99.8` (03/10/2026)
+## 📦 Version courante — `v2.0.0` (04/10/2026)
+
+> 🔌 **v2.0.0 — Nouvelle frontière community/pro, pastille « connexion serveur »** : myktamap.fr reste sans serveur, pour toujours, et le dit dans son pied de page ; une installation indépendante peut déclarer une connexion serveur (`config.serverConnection`), affichée mais encore inactive.
 
 > 🎓 **v1.99.8 — Tutoriel d’accueil refondu** : 27 → 11 cartes dans l’ordre du guide, une carte « Avant de descendre » ; plus de jargon ni d’affirmation fausse.
 
@@ -509,6 +511,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.0.0 (04/10/2026) — Nouvelle frontière community/pro : le connecteur (chantier 0)
+
+- 🔍 **Origine** : décision KARMA du 04/10/2026 — la frontière « zéro trace de pro » bridait le développement pro. Elle devient « zéro FICHIER pro » : le repo community peut porter des points d'extension neutres, myktamap.fr n'aura jamais de backend. Cadrage complet par QCM (gouvernance `community-server-line.md` §3, `docs/ETUDE_UID.md`), chantier 0 = l'interrupteur et sa pastille.
+- 🔌 **Connecteur** (`js/ktaExtensions.js`, nouveau, précaché) : lit `config.serverConnection` dans l'index déjà chargé par `_chargerIndexServeur()` ; `valider()` pure → états **off / invalide / licence / configuree** (règle E : seule une licence de source `server` donne « configurée ») ; dernière config mémorisée (`myktamap_server_connection_v1`, hors export de profil) rejouée quand l'index est injoignable — un non-2xx compte comme injoignable, car le SW renvoie un 404 synthétique hors ligne ; recalcul à chaque `mktm:license-changed` ; événement `mktm:connexion-changed`. **Aucune requête**, l'API n'est jamais contactée.
+- 🏷️ **Pastille** : à côté du badge de version (couleur `.kta-tx-*` par état + point `currentColor`, l'emoji ne prenant pas la couleur) ; clic → modale « Que fait l'app sur le réseau ? » avec un bloc d'état en tête ; icône seule sous 380 px et sur le pied de page replié (`homeLoader` la repose après réécriture du bouton). Clés `home.serveur.*` fr/en/es (`home.connexion.*` était déjà prise par le test de connexion).
+- 🏗️ **ConfAdmin** : bloc 🔌 replié, même validation que l'app (corps recopié), champ écrit seulement si « activée », téléchargement et copie refusés tant qu'il est invalide.
+- 🛡️ **Garde-fou** `scripts/check-connexion-serveur.js` (pré-commit, bloquant, 82 contrôles) : exécute la validation de l'app ET de ConfAdmin sur 24 cas, table de vérité des états, règle B (mémoire rejouée, jamais effacée par une coupure), licence importée ≠ configurée, câblage main/homeLoader/index.html, précache, hors export de profil, aucune requête dans le module. Sabotages vérifiés (3/3 attrapés).
+- 📄 **Docs** : NETWORK_AUDIT md+html (phrase « aucun POST/PUT… » bornée à myktamap.fr, entrée v2.0.0), 3 guides (puce 🔌 dans Confidentialité), Aide › Dépannage, AI_CONTEXT, SELFHOST, plans-loader, gouvernance (chantier 0 livré), CLAUDE.md.
+- ✅ **Tests** : pré-commit vert ; Edge headless piloté en CDP — états off / invalide / licence, infobulle, bloc de la modale, icône du pied de page replié, mot masqué sous 380 px ; `checkup-home-scroll` et `checkup-langues` verts. ⚠️ Le smoke automatisé est rouge **à l'identique sur le commit précédent** : l'alerte publique en cours reste ouverte pendant le scénario (préexistant, hors de ce chantier). États « licence » et « configurée » en vrai déploiement : à tester par KARMA avec un index de test (`data/` interdit à Claude).
 
 #### v1.99.8 (03/10/2026) — Tutoriel d’accueil refondu (v1.99.7 non publiée)
 

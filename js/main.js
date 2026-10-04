@@ -144,11 +144,17 @@ async function _chargerIndexServeur() {
     const r = await fetch("data/index.json", { cache: "no-store" });
     if (!r.ok) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
+      // 🔌 v2.0.0 — Hors ligne et sans cache, le Service Worker répond un 404
+      // SYNTHÉTIQUE (sw.js) : indiscernable d'un vrai 404. On le traite donc en
+      // « index injoignable » → dernière config connue (règle B), jamais OFF
+      // par défaut (décision KARMA : une instance connectée hors ligne est HS).
+      _appliquerConnexionServeur(null, false);
       return null;
     }
     const idx = await r.json();
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
+    _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
     // 🔑 v1.90.6 — ROTATION DU MOT DE PASSE D INSTANCE. On n arrive ici QUE si
     // l index a repondu : hors-ligne, ou si le fichier a disparu, la fonction
@@ -177,8 +183,20 @@ async function _chargerIndexServeur() {
     return idx;
   } catch(e) {
     console.warn("[Main] lecture data/index.json :", e);
+    _appliquerConnexionServeur(null, false);
     return null;
   }
+}
+
+// 🔌 v2.0.0 — Connexion serveur de l'instance (`config.serverConnection`) :
+// état et pastille gérés par js/ktaExtensions.js. `indexRepondu` dit si l'index
+// a vraiment répondu : la fonction ne peut pas le deviner (cf revaliderInstance).
+function _appliquerConnexionServeur(config, indexRepondu) {
+  try {
+    if (window.KtaExtensions && typeof window.KtaExtensions.appliquerConfig === "function") {
+      window.KtaExtensions.appliquerConfig(config, indexRepondu === true);
+    }
+  } catch(e) { console.warn("[Main] connexion serveur :", e); }
 }
 
 // Application de `config` : sous-titre (splash + header loader — textContent

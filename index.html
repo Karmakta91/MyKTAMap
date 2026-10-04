@@ -194,6 +194,11 @@
        tôt + cache localStorage pour éviter tout flash visuel au boot 2+
        sur une instance pro. Cf js/proLicense.js pour le détail. -->
   <script src="js/proLicense.js"></script>
+  <!-- 🔌 v2.0.0 : CONNEXION SERVEUR — interrupteur `config.serverConnection` de
+       l'instance + pastille d'état du pied de page. Après proLicense.js (règle :
+       « on » n'aboutit qu'avec une licence de source serveur). Aucune requête.
+       Contrat : docs/architecture/community-server-line.md §3. -->
+  <script src="js/ktaExtensions.js"></script>
 
   <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
        Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
@@ -597,6 +602,11 @@
                Élément FRÈRE du badge (celui-ci réécrit son propre texte), soudé à lui
                par .kta-offline-groupe (nowrap) pour ne pas partir seul à la ligne. -->
           <span class="kta-offline-groupe"><span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span><button type="button" class="kta-offline-dot" id="loaderOfflineDot" hidden></button></span>
+          <!-- 🔌 v2.0.0 : pastille « connexion serveur », peinte par js/ktaExtensions.js
+               (classe de couleur, mot, title/aria au rendu). Groupe insécable à part :
+               sous 380 px, seule l'icône reste (le mot est dans l'infobulle et la modale).
+               Clic → modale « Que fait l'app sur le réseau ? ». -->
+          <span class="kta-cnx-groupe"><span class="kta-loader-copyright-sep">·</span><button type="button" class="kta-cnx-chip" id="loaderCnxChip" hidden><span class="kta-cnx-ico" aria-hidden="true">🔌</span><span class="kta-cnx-mot"></span></button></span>
         </span>
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
              nouvelles citations") : mention des libs + algo majeurs du
@@ -1068,6 +1078,12 @@
         <button class="kta-panneau-close" id="loaderNetDocClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-net-doc-corps">
+        <!-- 🔌 v2.0.0 : état de la connexion serveur de CETTE installation,
+             peint par js/ktaExtensions.js (textContent). -->
+        <div class="kta-net-doc-section kta-cnx-bloc" id="loaderNetDocCnx" hidden>
+          <div class="kta-net-doc-section-titre kta-cnx-bloc-titre"></div>
+          <p class="kta-net-doc-hint kta-cnx-bloc-texte"></p>
+        </div>
         <div class="kta-net-doc-lead" data-i18n-html="home.netdoc.lead">
           <strong>MyKTAMap est une PWA 100% client-side.</strong> Tout ce que tu crées (annotations, sessions, plans mémorisés, calibrations KMZ, préférences) <strong>reste dans ton navigateur</strong>. Le serveur Nginx ne fait que servir des fichiers statiques. Aucun backend applicatif, aucune base de données serveur, aucun analytics, aucun cookie de tracking.
         </div>

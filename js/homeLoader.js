@@ -705,6 +705,12 @@
         footerToggle.textContent = replie
           ? "▴ © 2026 MyKTAMap · " + ((window.__MKM__ && window.__MKM__.build) || "")
           : "▾";
+        // 🔌 v2.0.0 — Replié, le bloc masque aussi la pastille de connexion
+        // serveur : ktaExtensions repose son icône sur ce bouton (le
+        // textContent ci-dessus vient de l'effacer).
+        if (window.KtaExtensions && typeof window.KtaExtensions.peindre === "function") {
+          window.KtaExtensions.peindre();
+        }
       }
       if (footerToggle && footerBlock) {
         footerToggle.addEventListener("click", function() {

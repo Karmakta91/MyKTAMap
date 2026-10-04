@@ -210,6 +210,29 @@
     <label class="kta-ca-flag"><input type="checkbox" id="caFlagNoGen">
       <span><strong>disableGenerator</strong> — sans Générateur<br>
       <small>Retire le Générateur de plans de la liste des outils.</small></span></label>
+
+    <!-- 🔌 v2.0.0 — CONNEXION SERVEUR (instances qui greffent des modules). Replié par
+         défaut : inutile à un kiosque. Champ écrit dans index.json SEULEMENT si l'état
+         est « on » (absent = désactivé). Mêmes règles que js/ktaExtensions.js >
+         valider(), vérifiées par scripts/check-connexion-serveur.js. -->
+    <details class="kta-ca-flag" id="caCnx" style="flex-direction:column; align-items:stretch; gap:6px;">
+      <summary style="cursor:pointer;"><strong>🔌 Connexion serveur</strong> — réservé aux instances qui greffent des modules de connexion</summary>
+      <small>Laisse sur « désactivée » pour un kiosque : rien n'est écrit dans <code>index.json</code>, et l'app affiche
+      « Serveur : désactivé ». « Activée » ne charge rien tant qu'une <strong>licence pro</strong> n'est pas posée sur
+      l'instance et qu'aucun module n'est installé ; l'état est toujours affiché aux visiteurs. Contrat :
+      <code>docs/architecture/community-server-line.md</code> §3.</small>
+      <select id="caCnxState" style="max-width:220px; background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px;">
+        <option value="off">désactivée</option>
+        <option value="on">activée</option>
+      </select>
+      <input type="text" id="caCnxApi" placeholder="adresse de l'API, ex. https://api.exemple.org" maxlength="200"
+             autocomplete="off" spellcheck="false"
+             style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px;">
+      <textarea id="caCnxModules" rows="3" placeholder="modules, un chemin par ligne, sur le même site que l'app (ex. pro/sync.js)"
+                spellcheck="false"
+                style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px; font-family:monospace;"></textarea>
+      <div id="caCnxEtat" style="font-size:12px; color:#8892a4;"></div>
+    </details>
     <p class="kta-ca-hint">⚠️ Ces réglages sont du <strong>désencombrement d'interface</strong>, pas un verrou de
     sécurité. Sous-titre, flags et liaisons sont lus depuis v1.73.0 — un <code>index.json</code> qui les
     contient reste valide sur toutes les versions (champs inconnus ignorés). Guide complet :
@@ -512,6 +535,13 @@
             ? "🔑 mot de passe existant conservé (" + _accessHash.slice(0, 16) + "…) — tape ici pour le remplacer"
             : "";
         }
+        // 🔌 connexion serveur reprise telle quelle (même invalide : on la montre
+        // pour qu'elle soit corrigée, l'export la refusera tant qu'elle l'est).
+        const sc = c.serverConnection;
+        $("caCnxState").value = (sc && sc.state === "on") ? "on" : "off";
+        $("caCnxApi").value = (sc && typeof sc.api === "string") ? sc.api : "";
+        $("caCnxModules").value = (sc && Array.isArray(sc.modules)) ? sc.modules.join("\n") : "";
+        if (sc && sc.state === "on") $("caCnx").open = true;
         _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
           ? d.liaisons : null;
         _statut($("caPlansStatus"),
@@ -682,6 +712,9 @@
       if (ng) out.config.disableGenerator = true;
       if (_accessHash) out.config.accessHash = _accessHash;
     }
+    // 🔌 connexion serveur : écrite SEULEMENT si « activée » et valide.
+    const cnx = _connexionSaisie();
+    if (cnx.valide && cnx.champ) { out.config = out.config || {}; out.config.serverConnection = cnx.champ; }
     // 📁 décision KARMA 9 : mode Dossiers par défaut (seulement s'il y a des dossiers)
     const fd = !!($("caFlagFoldersDefault") && $("caFlagFoldersDefault").checked) && _folders.length > 0;
     if (fd) { out.config = out.config || {}; out.config.plansViewDefault = "folders"; }
@@ -731,14 +764,73 @@
     return out;
   }
 
+  // ───────── 🔌 CONNEXION SERVEUR ─────────
+  // 🩸 MÊMES RÈGLES que js/ktaExtensions.js > valider() — corps recopié à
+  // l'identique, et scripts/check-connexion-serveur.js exécute les deux sur la
+  // même table de cas. Une instance que ConfAdmin jugerait valide et que l'app
+  // jugerait invalide serait le pire des deux mondes.
+  function ktaValiderConnexion(sc) {
+    if (sc === undefined || sc === null) return { etat: "off", raison: "absent" };
+    if (typeof sc !== "object" || Array.isArray(sc)) {
+      return { etat: "invalide", raison: "serverConnection doit être un objet" };
+    }
+    if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
+    if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
+
+    if (typeof sc.api !== "string" || !/^https:\/\/[^\s/?#]+/i.test(sc.api.trim())) {
+      return { etat: "invalide", raison: "api doit être une adresse https://" };
+    }
+    if (!Array.isArray(sc.modules)) {
+      return { etat: "invalide", raison: "modules doit être une liste" };
+    }
+    if (sc.modules.length > 20) {
+      return { etat: "invalide", raison: "plus de 20 modules" };
+    }
+    for (let i = 0; i < sc.modules.length; i++) {
+      const m = sc.modules[i];
+      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js$/.test(m) ||
+          m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
+        return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
+      }
+    }
+    return { etat: "on", raison: "", api: sc.api.trim(), modules: sc.modules.slice() };
+  }
+
+  // Lit le bloc : { valide, champ (à écrire, ou null), raison }.
+  function _connexionSaisie() {
+    if ($("caCnxState").value !== "on") return { valide: true, champ: null, raison: "" };
+    const champ = {
+      state: "on",
+      api: $("caCnxApi").value.trim(),
+      modules: $("caCnxModules").value.split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean)
+    };
+    const v = ktaValiderConnexion(champ);
+    return v.etat === "on"
+      ? { valide: true, champ: { state: "on", api: v.api, modules: v.modules }, raison: "" }
+      : { valide: false, champ: null, raison: v.raison };
+  }
+
   function _renderOut() {
     $("caOut").textContent = JSON.stringify(_construire(), null, 2);
+    const cnx = _connexionSaisie(), etat = $("caCnxEtat");
+    if (etat) {
+      etat.style.color = cnx.valide ? "#8892a4" : "#ff8c8c";
+      etat.textContent = !cnx.valide
+        ? "⛔ " + cnx.raison + " — index.json ne peut pas être téléchargé tant que ce n'est pas corrigé"
+        : (cnx.champ ? "✅ connexion activée (les visiteurs voient son état dans le pied de page)" : "");
+    }
+    $("caDownload").disabled = !cnx.valide;
+    $("caCopy").disabled = !cnx.valide;
   }
   $("caSubtitle").addEventListener("input", _renderOut);
   $("caFlagServerOnly").addEventListener("change", _renderOut);
   $("caFlagNoGen").addEventListener("change", _renderOut);
+  $("caCnxState").addEventListener("change", _renderOut);
+  $("caCnxApi").addEventListener("input", _renderOut);
+  $("caCnxModules").addEventListener("input", _renderOut);
 
   $("caDownload").addEventListener("click", function() {
+    if (!_connexionSaisie().valide) return;   // 🩸 jamais d'index qui casserait la connexion
     const blob = new Blob([JSON.stringify(_construire(), null, 2) + "\n"], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -747,6 +839,7 @@
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
   });
   $("caCopy").addEventListener("click", function() {
+    if (!_connexionSaisie().valide) return;
     const txt = JSON.stringify(_construire(), null, 2);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(txt).then(function() { $("caCopy").textContent = "✅ Copié"; setTimeout(function() { $("caCopy").textContent = "📋 Copier"; }, 1500); });

@@ -50,11 +50,14 @@ la sécurité ni du bridage : contournables via la console, et c'est assumé —
 données de l'utilisateur final lui appartiennent toujours (sessions, carnet, notes,
 photos restent locales et exportables).
 
-## 3. La connexion serveur — points d'extension (contrat, pas encore codé)
+## 3. La connexion serveur — points d'extension
 
-> 🚧 Contrat arrêté le 04/10/2026 (QCM de cadrage KARMA), implémentation prévue sur la branche
-> `karma_backend_dev`. Tant que cette note est là, **rien de ce paragraphe n'existe dans le
-> code** : ne pas le documenter comme livré ailleurs (NETWORK_AUDIT, README_USER, AI_CONTEXT).
+> ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
+> LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
+> garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
+> 🚧 **Tout le reste de ce paragraphe est un contrat, pas encore codé** (états ON / DOWN, chargeur
+> de modules, garde des requêtes, gate déléguée et autres prises — chantiers 1 à 3) : ne pas le
+> documenter comme livré ailleurs (NETWORK_AUDIT, README_USER, AI_CONTEXT).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 
@@ -187,7 +190,7 @@ navigateur.
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
 **Ordre des chantiers** :
-0. **Connecteur — release v2.0.0** (amorce la transition) : lecture de `serverConnection`
+0. ✅ **Connecteur — release v2.0.0, livré** (amorce la transition) : lecture de `serverConnection`
    dans `_chargerIndexServeur()` (après les gates, comme le kiosque) + mémorisation de la
    dernière config connue (règle B) ; états OFF / INVALIDE / LICENCE / CONFIGURÉE ;
    événement `mktm:*` ; **pastille collée au badge de version** du footer du HOME (même

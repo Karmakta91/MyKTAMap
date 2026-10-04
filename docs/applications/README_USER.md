@@ -130,6 +130,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau).
+- **🔌 La pastille « Serveur : désactivé »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises parle à un serveur. Sur myktamap.fr, c'est « désactivé », et ça le restera : ce site n'a pas de serveur applicatif. Une installation indépendante (club, équipe) peut en déclarer un : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus.
 
 ---
 

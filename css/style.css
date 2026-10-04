@@ -10991,6 +10991,51 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a
 html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
 body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
 
+/* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
+   vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
+   licence warn · configuree info, variantes claires comprises). Sous 380 px,
+   seule l'icône reste : le mot est dans l'infobulle et dans la modale réseau. */
+.kta-cnx-groupe { white-space: nowrap; }
+.kta-cnx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 20px;
+  margin: 0;
+  padding: 0 3px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.kta-cnx-chip[hidden],
+.kta-cnx-bloc[hidden] { display: none !important; }
+.kta-cnx-chip:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 1px;
+}
+.kta-cnx-ico { font-size: 11px; line-height: 1; }
+.kta-cnx-mini { font-size: 11px; }
+/* Un emoji ne prend pas la couleur du texte : sans ce point, l'icône seule
+   (écran étroit, pied de page replié) ne dirait rien de l'état. */
+.kta-cnx-ico::after,
+.kta-cnx-mini::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+@media (max-width: 379px) {
+  .kta-cnx-mot { display: none; }
+}
+
 /* Signature manuscrite KARMA dans le footer copyright. Depuis v1.7.3, sert
    d'identité visible au copyright (avant : "© 2026 Flavien VIDAL [signature]"
    → maintenant : "© 2026 [signature]"). Le nom civil reste dans les headers

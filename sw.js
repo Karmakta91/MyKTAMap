@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.99.8";
+const CACHE_NAME = "myktamap-cache-v2.0.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -126,6 +126,8 @@ const ASSETS_TO_CACHE = [
   // 100% transparent côté community (fichier absent → 404 silencieux → mode
   // community par défaut). Module sans effet visible si pas de Licence-pro.json.
   "./js/proLicense.js",
+  // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
+  "./js/ktaExtensions.js",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
