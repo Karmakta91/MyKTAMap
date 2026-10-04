@@ -116,17 +116,49 @@ window.Favoris = (function() {
     return _currentList().slice();
   }
 
-  function findByPointId(pointId) {
-    if (!pointId) return null;
+  // 🆔 v2.4.0 (ETUDE_UID lot C2) — un favori est rattaché à l'uid de son point
+  // (`pointUid` : le champ `uid` d'un favori est déjà SON identifiant, fav-…).
+  // Lecture : l'uid d'abord ; un favori ancien sans pointUid se reconnaît
+  // encore à son nom (double lecture, comme les photos).
+  function _correspond(f, pointId, pointUid) {
+    if (pointUid && f.pointUid) return f.pointUid === pointUid;
+    return !!pointId && f.pointId === pointId;
+  }
+  function findByPointId(pointId, pointUid) {
+    if (!pointId && !pointUid) return null;
     const list = _currentList();
     for (let i = 0; i < list.length; i++) {
-      if (list[i].pointId === pointId) return list[i];
+      if (_correspond(list[i], pointId, pointUid)) return list[i];
     }
     return null;
   }
 
-  function isFav(pointId) {
-    return !!findByPointId(pointId);
+  function isFav(pointId, pointUid) {
+    return !!findByPointId(pointId, pointUid);
+  }
+
+  // 🆔 v2.4.0 — Migration douce des favoris du plan courant (ETUDE_UID déc. 12) :
+  // un favori sans pointUid reçoit l'uid du point SI on peut le désigner sans
+  // deviner — un seul point de ce nom ; sinon parmi les homonymes, celui du
+  // même calque à la même position (tolérance 0,5 px). Ambigu : inchangé (il
+  // reste reconnu par son nom). `points` = tous les points du plan.
+  function migrerVersUid(points) {
+    if (!_currentPlanId || !Array.isArray(points)) return 0;
+    const list = _store.byPlan[_currentPlanId] || [];
+    let n = 0;
+    list.forEach(function(f) {
+      if (!f || f.pointUid || !f.pointId) return;
+      let c = points.filter(function(p) { return p && String(p.id || "") === f.pointId; });
+      if (c.length > 1) {
+        c = c.filter(function(p) {
+          return (!f.layerId || !p.layerId || p.layerId === f.layerId) &&
+                 Math.abs((p.x || 0) - (f.x || 0)) < 0.5 && Math.abs((p.y || 0) - (f.y || 0)) < 0.5;
+        });
+      }
+      if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) { f.pointUid = c[0].uid; n++; }
+    });
+    if (n > 0) { _save(); console.log("[Favoris] " + n + " favori(s) rattaché(s) à l'uid de leur point (v2.4.0)"); }
+    return n;
   }
 
   // ─────────────────────────────────────────────
@@ -140,11 +172,12 @@ window.Favoris = (function() {
     if (!_currentPlanId) return false;
     if (!snapshot || !snapshot.pointId) return false;
     // Anti-doublon
-    if (isFav(snapshot.pointId)) return false;
+    if (isFav(snapshot.pointId, snapshot.pointUid)) return false;
     if (!_store.byPlan[_currentPlanId]) _store.byPlan[_currentPlanId] = [];
     const entry = {
       uid:        _newUid(),
       pointId:    String(snapshot.pointId),
+      pointUid:   snapshot.pointUid ? String(snapshot.pointUid) : undefined,   // 🆔 v2.4.0
       nom:        String(snapshot.nom || "(sans nom)"),
       x:          Number(snapshot.x) || 0,
       y:          Number(snapshot.y) || 0,
@@ -159,11 +192,11 @@ window.Favoris = (function() {
     return true;
   }
 
-  function remove(pointId) {
+  function remove(pointId, pointUid) {
     if (!_currentPlanId) return false;
     const list = _store.byPlan[_currentPlanId];
     if (!list) return false;
-    const idx = list.findIndex(function(f) { return f.pointId === pointId; });
+    const idx = list.findIndex(function(f) { return _correspond(f, pointId, pointUid); });
     if (idx < 0) return false;
     list.splice(idx, 1);
     _save();
@@ -173,8 +206,8 @@ window.Favoris = (function() {
 
   function toggle(snapshot) {
     if (!snapshot || !snapshot.pointId) return { action: "none", changed: false };
-    if (isFav(snapshot.pointId)) {
-      const ok = remove(snapshot.pointId);
+    if (isFav(snapshot.pointId, snapshot.pointUid)) {
+      const ok = remove(snapshot.pointId, snapshot.pointUid);
       return { action: "removed", changed: ok };
     }
     const ok = add(snapshot);
@@ -393,6 +426,7 @@ window.Favoris = (function() {
 
   return {
     loadPlan:        loadPlan,
+    migrerVersUid:   migrerVersUid,   // 🆔 v2.4.0
     getAll:          getAll,
     isFav:           isFav,
     findByPointId:   findByPointId,

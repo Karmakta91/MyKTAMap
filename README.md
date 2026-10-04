@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.3.0` (04/10/2026)
+## 📦 Version courante — `v2.4.0` (04/10/2026)
+
+> 🌀 **v2.4.0 — Favoris, liaisons et Secours par uid (chantier 1, lot C2)** : supprimer un point n'efface plus les liaisons ni le favori d'un homonyme.
 
 > 📸 **v2.3.0 — Photos rattachées à l'uid du point (chantier 1, lot C1)** : une photo suit son point renommé ; double lecture uid puis nom, migration douce, « à rattacher » quand le nom est ambigu.
 
@@ -519,6 +521,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.4.0 (04/10/2026) — Favoris, liaisons et Secours rattachés à l'uid (chantier 1, lot C2)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 11-12. 🩸 **Défaut corrigé au passage** : les liaisons inter-plan reconnaissaient un point par son NOM (`_pointKey` = `id:<nom>`) — supprimer un point effaçait aussi les liaisons de ses **homonymes** ; l'étoile favori marquait tous les homonymes.
+- ⭐ **Favoris** (`js/favoris.js`) : champ `pointUid` (le `uid` d'un favori est SON identifiant `fav-…`) ; `isFav/findByPointId/remove` prennent `(nom, uid)` — l'uid d'abord, le nom pour un favori ancien ; `migrerVersUid(points)` : un seul point de ce nom, sinon l'homonyme du même calque à la même position (0,5 px), sinon rien. Popup : étoile et rafraîchissement par uid (`data-fav-pointuid`).
+- 🌀 **Liaisons** (`js/interPlanLinks.js`) : `_coteDuPoint` (uid d'abord, puis nom / coordonnées) remplace la comparaison par clé dans la lecture, la popup, `onPointDeleted` et `onPointMoved` ; un lien neuf porte `pointUid` de ses deux côtés ; `migrerVersUid(planId, points)` (côtés du plan courant, homonymes départagés à 1 px).
+- 🚑 **Secours** : `pointUid` voyage dans les 7 sites qui fabriquent une étape ; `_samePoint` et la couverture comparent l'uid d'abord.
+- 🔄 **Migration** : même passe planifiée que les photos (après restauration et chaque calque).
+- 🛡️ **Garde-fou** : `check-uid.js` → 138 contrôles (favoris.js exécuté ; `_coteDuPoint` extrait et exécuté : un côté rattaché ne désigne plus l'homonyme).
+- ✅ **Test navigateur** (relevé fictif) : deux points « Puits », liaison sur le premier ; suppression réelle du second → la liaison du premier **survit** ; étoile favori sur le bon point seulement ; aucune erreur JS.
 
 #### v2.3.0 (04/10/2026) — Photos rattachées à l'uid du point (chantier 1, lot C1)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1)
+// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1, v2.4.0 lot C2)
 // =====================================================================
 // Chaque objet de carte porte une identité stable : `uid` + `updatedAt` (ms).
 // Décisions : docs/ETUDE_UID.md. Ce que ce script empêche :
@@ -374,6 +374,80 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     const D = JSON.parse(lire("lang/" + l + ".json"));
     t("lang/" + l + " : textes « à rattacher »", ["titre", "btn", "fait", "echec"].every((k) => !!D["utils.popup.aRattacher." + k]));
   });
+}
+
+// ═════════ 5. LOT C2 — FAVORIS, LIAISONS, SECOURS PAR UID (v2.4.0) ═════════
+{
+  // Favoris : le vrai module, exécuté
+  const fstore = {};
+  const wf = {
+    console: { log() {}, warn() {}, error() {} },
+    localStorage: { getItem: (k) => (k in fstore ? fstore[k] : null), setItem: (k, v) => { fstore[k] = String(v); }, removeItem: (k) => { delete fstore[k]; } },
+    dispatchEvent() {}, addEventListener() {}, CustomEvent: function () {}
+  };
+  wf.window = wf;
+  const cf = vm.createContext(wf);
+  vm.runInContext("var localStorage = window.localStorage, console = window.console;", cf);
+  let FV = null;
+  try { vm.runInContext(lire("js/favoris.js"), cf, { filename: "favoris.js" }); FV = wf.Favoris; }
+  catch (e) { t("favoris.js s'exécute — " + e.message, false); }
+  if (FV) {
+    FV.loadPlan("plan_test");
+    FV.add({ pointId: "Puits", pointUid: "pt_a_aaaaaa", x: 10, y: 10 });
+    t("favori : rattaché à l'uid de son point (pointUid)", FV.getAll()[0].pointUid === "pt_a_aaaaaa");
+    t("🩸 favori : l'HOMONYME (même nom, autre uid) n'est pas marqué favori", FV.isFav("Puits", "pt_b_bbbbbb") === false);
+    t("favori : le bon point l'est", FV.isFav("Puits", "pt_a_aaaaaa") === true);
+    t("favori : ajouter l'homonyme crée un second favori (pas un faux doublon)", FV.add({ pointId: "Puits", pointUid: "pt_b_bbbbbb", x: 50, y: 50 }) === true && FV.getAll().length === 2);
+    FV.remove("Puits", "pt_b_bbbbbb");
+    t("favori : retirer l'homonyme laisse le bon favori", FV.getAll().length === 1 && FV.getAll()[0].pointUid === "pt_a_aaaaaa");
+    // Ancien favori sans pointUid : lecture par nom + migration
+    FV.add({ pointId: "Salle", x: 5, y: 5 });
+    t("favori ancien (sans pointUid) : encore reconnu par son nom", FV.isFav("Salle", "pt_s_ssssss") === true);
+    const n1 = FV.migrerVersUid([{ id: "Salle", uid: "pt_s_ssssss", x: 5, y: 5, layerId: "editor" }]);
+    t("migration : nom porté par un seul point → pointUid posé", n1 === 1 && FV.getAll().find((f) => f.pointId === "Salle").pointUid === "pt_s_ssssss");
+    FV.add({ pointId: "Double", x: 100, y: 100, layerId: "editor" });
+    const n2 = FV.migrerVersUid([{ id: "Double", uid: "pt_d1_aaaaaa", x: 100, y: 100, layerId: "editor" }, { id: "Double", uid: "pt_d2_bbbbbb", x: 300, y: 300, layerId: "editor" }]);
+    t("migration : homonymes → départagés par la position", n2 === 1 && FV.getAll().find((f) => f.pointId === "Double").pointUid === "pt_d1_aaaaaa");
+    FV.add({ pointId: "Triple", x: 1, y: 1 });
+    const n3 = FV.migrerVersUid([{ id: "Triple", uid: "pt_t1_aaaaaa", x: 9, y: 9 }, { id: "Triple", uid: "pt_t2_bbbbbb", x: 20, y: 20 }]);
+    t("🩸 migration : homonymes à d'autres positions → rien n'est deviné", n3 === 0 && !FV.getAll().find((f) => f.pointId === "Triple").pointUid);
+  }
+
+  // Liaisons : _coteDuPoint extraite du vrai fichier et exécutée
+  const IPL = lire("js/interPlanLinks.js");
+  const ex = (nom) => { const d = IPL.indexOf("function " + nom + "("); const o = IPL.indexOf("{", d); let p = 0;
+    for (let i = o; i < IPL.length; i++) { if (IPL[i] === "{") p++; else if (IPL[i] === "}") { p--; if (p === 0) return IPL.slice(d, i + 1); } } return ""; };
+  const cl = vm.createContext({});
+  vm.runInContext([ex("_pointKey"), ex("_sideKey"), ex("_coteDuPoint")].join("\n"), cl);
+  const cote = cl._coteDuPoint;
+  t("liaisons : _coteDuPoint extraite et exécutable", typeof cote === "function");
+  if (typeof cote === "function") {
+    const sideU = { planId: "P", pointId: "Puits", pointUid: "pt_a_aaaaaa", x: 10, y: 10 };
+    t("🩸 liaison : un côté rattaché à l'uid ne désigne PAS l'homonyme (supprimer l'un n'efface plus les liaisons de l'autre)",
+      cote(sideU, "P", { id: "Puits", uid: "pt_b_bbbbbb", x: 99, y: 99 }) === false);
+    t("liaison : il désigne bien son point", cote(sideU, "P", { id: "Puits", uid: "pt_a_aaaaaa", x: 10, y: 10 }) === true);
+    t("liaison : un côté ancien (sans pointUid) se reconnaît encore par le nom", cote({ planId: "P", pointId: "Salle", x: 1, y: 1 }, "P", { id: "Salle", uid: "pt_s_ssssss" }) === true);
+    t("liaison : jamais un côté d'un autre plan", cote(sideU, "Q", { id: "Puits", uid: "pt_a_aaaaaa" }) === false);
+    t("liaison : point de calque sans id → repli par coordonnées (ancienne position au déplacement)",
+      cote({ planId: "P", pointId: "", x: 5, y: 5 }, "P", { id: "", x: 50, y: 50 }, 5, 5) === true);
+  }
+  t("liaisons : lecture, popup, suppression et déplacement passent par _coteDuPoint",
+    (IPL.match(/_coteDuPoint\(/g) || []).length >= 7);
+  t("liaisons : un nouveau lien porte l'uid de ses deux côtés",
+    /pointUid: pointUid \? String\(pointUid\) : undefined,/.test(IPL) && /pointUid: p\.uid \? String\(p\.uid\) : undefined,/.test(IPL));
+  t("liaisons : migration exposée (côtés du plan courant seulement)", /migrerVersUid:\s+migrerVersUid/.test(IPL) && /side\.planId !== planId \|\| side\.pointUid/.test(IPL));
+
+  // Secours
+  const SEC = lire("js/secoursMode.js");
+  t("Secours : _samePoint compare l'uid d'abord", /if \(a\.pointUid && b\.pointUid\) return a\.pointUid === b\.pointUid;/.test(SEC));
+  t("Secours : la couverture compte les POI par uid d'abord", /w\.pointUid \|\| w\.pointId \|\|/.test(SEC));
+  t("Secours : l'uid voyage dans les 7 sites qui fabriquent une étape", (SEC.match(/pointUid/g) || []).length >= 14);
+
+  // Popup favori + migration planifiée
+  const UTC = lire("js/utils.js"), MAC = lire("js/main.js");
+  t("popup : l'étoile favori interroge l'uid du point", /window\.Favoris\.isFav\(point\.id, point\.uid\)/.test(UTC) && /data-fav-pointuid=/.test(UTC));
+  t("migration planifiée : favoris et liaisons dans la même passe que les photos",
+    /Favoris\.migrerVersUid\(pts\)/.test(MAC) && /InterPlanLinks\.migrerVersUid\(planId, pts\)/.test(MAC));
 }
 
 console.log("");

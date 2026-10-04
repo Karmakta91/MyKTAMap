@@ -888,11 +888,16 @@ window._ktaPlanifierMigrationPhotos = function() {
   _ktaMigrPhotosTimer = setTimeout(function() {
     _ktaMigrPhotosTimer = null;
     if ((window._currentLoadedPlanId || null) !== planId) return;
+    // 🆔 v2.4.0 (lot C2) — la même passe rattache aussi favoris et liaisons :
+    // tous partagent la règle « jamais deviné » (un seul point de ce nom, ou
+    // l'homonyme à la même position).
     const pts = [].concat(
-      (window.getEditorPoints ? window.getEditorPoints() || [] : []),
+      (window.getEditorPoints ? window.getEditorPoints() || [] : []).map(function(p) { return Object.assign({ layerId: "editor" }, p); }),
       (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
-    ).map(function(p) { return { uid: p && p.uid, id: p && p.id }; });
+    ).filter(Boolean).map(function(p) { return { uid: p.uid, id: p.id, x: p.x, y: p.y, layerId: p.layerId }; });
     window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    try { if (window.Favoris && window.Favoris.migrerVersUid) window.Favoris.migrerVersUid(pts); } catch(e) { console.warn("[Main] migration favoris :", e); }
+    try { if (window.InterPlanLinks && window.InterPlanLinks.migrerVersUid) window.InterPlanLinks.migrerVersUid(planId, pts); } catch(e) { console.warn("[Main] migration liaisons :", e); }
   }, 2000);
 };
 

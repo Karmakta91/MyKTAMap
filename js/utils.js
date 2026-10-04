@@ -1256,7 +1256,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
       .replace(/&/g, "&amp;").replace(/"/g, "&quot;")
       .replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
-  const isFav = !!(window.Favoris && window.Favoris.isFav(point.id));
+  const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));   // 🆔 v2.4.0
 
   // Bouton Supprimer : visible UNIQUEMENT pour les points de la session
   // utilisateur en cours (listePoints). Detection via le 2eme argument
@@ -1379,7 +1379,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              // libellé du bouton in-place (pas de re-render du popup entier).
              '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
                'data-fav-pointid="' + _escAttr(jsId) + '" ' +
-               'onclick="window.toggleFavoriPoint(\'' + jsId + '\',' + x + ',' + y + ",'" + jsName + "','" + _firstTag + "','" + _layerId + "','" + _escAttr(_layerLabel) + "'); return false;\" " +
+               'data-fav-pointuid="' + _escAttr(point.uid || "") + '" ' +
+               'onclick="window.toggleFavoriPoint(\'' + jsId + '\',' + x + ',' + y + ",'" + jsName + "','" + _firstTag + "','" + _layerId + "','" + _escAttr(_layerLabel) + "','" + _escAttr(point.uid || "") + "'); return false;\" " +
                'title="' + (isFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle")) + '">' +
                (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
@@ -1496,10 +1497,11 @@ if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
 // in-place le libellé du bouton dans toutes les popups ouvertes pour
 // CE pointId (cas où la même popup serait référencée à plusieurs
 // endroits — rare mais robuste).
-window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel) {
+window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel, pointUid) {
   if (!window.Favoris) return;
   const snapshot = {
     pointId:    pointId,
+    pointUid:   pointUid || undefined,   // 🆔 v2.4.0
     nom:        nom,
     x:          x,
     y:          y,
@@ -1510,9 +1512,11 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
   const res = window.Favoris.toggle(snapshot);
   // Refresh le libellé du bouton ⭐ dans la popup ouverte (ou plusieurs si
   // ce pointId apparaît à plusieurs endroits — improbable mais robuste).
-  const nowFav = window.Favoris.isFav(pointId);
+  const nowFav = window.Favoris.isFav(pointId, pointUid);
   document.querySelectorAll('.kta-popup-btn-fav[data-fav-pointid]').forEach(function(btn) {
-    if (btn.getAttribute("data-fav-pointid") === pointId) {
+    // 🆔 v2.4.0 — le bouton de CE point (uid), pas celui d'un homonyme.
+    const bu = btn.getAttribute("data-fav-pointuid") || "";
+    if (pointUid ? bu === pointUid : btn.getAttribute("data-fav-pointid") === pointId) {
       btn.textContent = nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff");
       btn.classList.toggle("kta-fav-active", nowFav);
       btn.title = nowFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle");
