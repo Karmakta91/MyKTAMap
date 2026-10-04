@@ -18,6 +18,7 @@
 - **Syntaxe** : `node -c fichier.js` (seul filet — pas de tests auto, pas de linter).
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
+- **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026, après 8 bumps de dev v2.0.1 → v2.7.4 pour une prod restée en v2.0.0) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod, juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.
 - **Bump = sync docs sur 4 axes** (sans MAJ = dette immédiate, à vérifier AVANT de considérer la release faite) :
   - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` + **`README_USER.es.md`** (modale Documentation — les TROIS sont servies, cf `interfaceDocs.js > DOC_AVAILABLE_LANGS` ; 🛡️ `scripts/check-doc-langues.js` (pré-commit, bloquant) vérifie qu'elles ont les **mêmes sections** et qu'aucune section traduite ne tombe **sous 70 % du FR** — mais il ne voit pas un contenu faux de bonne longueur : mettre à jour les 3 **dans le même commit** reste la règle) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
   - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
