@@ -196,7 +196,27 @@ navigateur.
    l'audit réseau ; bloc ConfAdmin replié avec la même validation que l'app. **Aucune
    requête vers l'API** (rien ne la sonde avant le chantier 3). Doc de transparence dans
    la **même** release : phrase NETWORK_AUDIT recadrée sur le domaine, 3 README_USER,
-   AI_CONTEXT, aide intégrée.
+   AI_CONTEXT, aide intégrée. Topo validé par KARMA (04/10/2026) :
+   - module `js/ktaExtensions.js` (porte l'état, puis `KtaExtensions` au chantier 3) avec
+     une fonction pure `valider(cfg)` → `{ etat, raison }` ; recalcul à chaque
+     `mktm:license-changed` (la licence peut arriver après l'index) ; événement
+     `mktm:connexion-changed` ; clé `myktamap_server_connection_v1` **exclue de l'export de
+     profil** (donnée de l'instance, pas de l'utilisateur) ;
+   - ⚠️ le footer replié masque tout `#loaderFooterBlock` (badge et pastilles compris) :
+     l'**icône seule**, colorée, s'ajoute au bouton replié (non cliquable, il déplie) ;
+   - clic sur la pastille → la modale existante « Que fait l'app sur le réseau ? »
+     (`#loaderNetDocModal`), avec un bloc d'état en tête ; pas de nouvelle modale ;
+   - couleurs : OFF `.kta-tx-muted`, INVALIDE `.kta-tx-err`, LICENCE `.kta-tx-warn`,
+     CONFIGURÉE `.kta-tx-info` ; **icône seule sous 380 px** (mot dans l'infobulle et la
+     modale) ;
+   - ConfAdmin n'écrit le champ **que si `state: "on"`** (l'absence vaut OFF) ;
+   - garde-fou `scripts/check-connexion-serveur.js` (pré-commit bloquant) : exécute la
+     validation de l'app **et** celle de ConfAdmin sur une table de cas (méthode
+     `check-tags-index.js`), table de vérité des états, clé hors export de profil, module
+     précaché ;
+   - les états INVALIDE / LICENCE / CONFIGURÉE en navigateur réel exigent un `index.json`
+     de test que seul KARMA peut poser (`data/` interdit à Claude) : à la smoke-list de la
+     porte de release.
 1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
 2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
