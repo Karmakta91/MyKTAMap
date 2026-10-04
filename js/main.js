@@ -2361,6 +2361,12 @@ window.proposerRedemarrageLangue = function() {
     await decouvrirPlansServeur(_idxServeur);
   }
   try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
+  // Un plan publié (ou retiré) par une extension en cours de route : la liste est relue.
+  window.addEventListener("mktm:plans-extension-changes", function() {
+    _decouvrirPlansExtension().then(function() {
+      if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+    }).catch(function(e) { console.warn("[Main] plans d'extension :", e); });
+  });
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
   // le charger automatiquement comme avant

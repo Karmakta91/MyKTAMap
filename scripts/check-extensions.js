@@ -231,6 +231,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (await K2.garderPlanExtension("ext_a")) === false);
   }
 
+  // ═════════ 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    const evts = [];
+    w.dispatchEvent = (e) => { evts.push(e.type); return true; };
+    K.register({ nom: "pub", apiVersion: 1, publierPlan: () => Promise.resolve({ id: "x" }) });
+    await K.publierPlan({ blob: null, nom: "n" });
+    t("publication réussie → mktm:plans-extension-changes (le plan rejoint l'accueil sans redémarrer)",
+      evts.indexOf("mktm:plans-extension-changes") >= 0);
+    t("…et l'accueil relit la liste à cet événement",
+      /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
+  }
+
   // ═════════ 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ═════════
   {
     const { K, w } = nouveauContexte(null);

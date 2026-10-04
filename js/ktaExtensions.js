@@ -467,7 +467,11 @@
   function publierPlan(args) {
     const ext = _prise("publierPlan");
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
-    return Promise.resolve().then(function () { return ext.publierPlan(args); });
+    return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
+      // Le plan publié rejoint tout de suite la liste de l'accueil (avant : au démarrage suivant).
+      try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+      return r;
+    });
   }
 
   // ── Journal des changements (information) ──
