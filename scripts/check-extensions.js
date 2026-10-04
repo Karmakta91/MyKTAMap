@@ -202,6 +202,35 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("pseudo vide → aucun compte", K4.compte() === null);
   }
 
+  // ═════════ 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans extension : présence inactive, pas de tuile (aPrise faux)", K.presenceActive() === false && K.aPrise("presence") === false);
+    t("sans extension : basculer ne publie rien (→ false)", (await K.basculerPresence()) === false);
+    t("sans carte : aucune position lue", K.positionTracker() === null);
+    w.map = {};
+    w.getTrackingPosition = () => ({ x: 10, y: 20 });
+    w.getTrackerLevel = () => -1;
+    w.getTrackingPositionEtat = () => ({ suiviActif: false, confirmee: false });
+    t("🩸 ni suivi ni position confirmée → null (jamais le point de départ du plan publié)", K.positionTracker() === null);
+    w.getTrackingPositionEtat = () => ({ suiviActif: true, confirmee: false });
+    const p = K.positionTracker();
+    t("suivi en cours → position + niveau", p && p.x === 10 && p.y === 20 && p.niveau === -1 && p.suiviActif === true);
+    t("affichage sans module de rendu → 0, sans erreur", K.afficherPresences([{ id: "a", pseudo: "b", x: 1, y: 2 }]) === 0);
+    let actif = false;
+    K.register({ nom: "p1", apiVersion: 1, presence: { actif: () => actif, basculer: () => { actif = !actif; } } });
+    t("extension déclarée : tuile proposée, bascule effective", K.aPrise("presence") && (await K.basculerPresence()) === true && K.presenceActive());
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "p2", apiVersion: 1, presence: { actif: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → présence inactive, aucune exception", K2.presenceActive() === false && (await K2.basculerPresence()) === false);
+    const IF = lire("js/interface.js");
+    t("tuile 📡 du tracker : seulement si une extension a la prise « presence »",
+      /X\.aPrise\("presence"\)/.test(IF) && /_groupes\.tracker\.dynamicSousActions = function/.test(IF));
+    const PR = lire("js/ktaPresences.js");
+    t("🩸 présences : affichage seulement (aucune requête réseau dans le module)", !/fetch\(|XMLHttpRequest|WebSocket/.test(PR));
+    t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
+  }
+
   // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
   {
     const { K, w } = nouveauContexte(null);

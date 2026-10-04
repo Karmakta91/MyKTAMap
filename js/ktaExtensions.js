@@ -305,7 +305,7 @@
     }
     _extensions.push(ext);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -609,6 +609,42 @@
     try { window.dispatchEvent(new CustomEvent("mktm:compte-changed")); } catch (e) { /* rien */ }
   }
 
+  // ── Présence sur le plan ouvert (tracking à plusieurs, opt-in) ──
+  // L'extension `presence: { actif(), basculer() }` publie la position de l'utilisateur
+  // UNIQUEMENT quand il l'a choisi (tuile 📡 du tracker). L'app ne fournit qu'une
+  // lecture (positionTracker) et un affichage (afficherPresences, js/ktaPresences.js).
+  // Sans extension : pas de tuile, rien n'est lu.
+  function presenceActive() {
+    const ext = _prise("presence");
+    if (!ext || !ext.presence || typeof ext.presence.actif !== "function") return false;
+    try { return ext.presence.actif() === true; } catch (e) { return false; }
+  }
+  function basculerPresence() {
+    const ext = _prise("presence");
+    if (!ext || !ext.presence || typeof ext.presence.basculer !== "function") return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.presence.basculer()).then(function () { return presenceActive(); },
+        function (e) { console.warn("[Extensions] presence :", e); return presenceActive(); });
+    } catch (e) { console.warn("[Extensions] presence :", e); return Promise.resolve(presenceActive()); }
+  }
+  // Position du tracker sur le plan ouvert, ou null tant qu'elle ne veut rien dire
+  // (ni suivi en cours ni position confirmée : ce serait le point de départ du plan).
+  function positionTracker() {
+    try {
+      if (!window.map || typeof window.getTrackingPosition !== "function") return null;
+      const e = typeof window.getTrackingPositionEtat === "function" ? window.getTrackingPositionEtat() : {};
+      if (!e.suiviActif && !e.confirmee) return null;
+      const p = window.getTrackingPosition();
+      if (!p || !isFinite(p.x) || !isFinite(p.y)) return null;
+      const n = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
+      return { x: p.x, y: p.y, niveau: Number.isInteger(n) ? n : null, suiviActif: !!e.suiviActif, ts: Date.now() };
+    } catch (e) { return null; }
+  }
+  function afficherPresences(liste) {
+    try { return window.KtaPresences ? window.KtaPresences.afficher(liste) : 0; }
+    catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -631,6 +667,10 @@
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
     actionsCompte: actionsCompte,
+    presenceActive: presenceActive,
+    basculerPresence: basculerPresence,
+    positionTracker: positionTracker,
+    afficherPresences: afficherPresences,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

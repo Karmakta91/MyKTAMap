@@ -135,6 +135,7 @@ const ASSETS_TO_CACHE = [
   "./js/proLicense.js",
   // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
   "./js/ktaExtensions.js",
+  "./js/ktaPresences.js",
   // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
   "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).

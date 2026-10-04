@@ -166,6 +166,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
   reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
   `changementsDepuis(ts)`.
+- **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
+  `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
+  tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
+  suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
+  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère + pseudo + ancienneté, grisé
+  après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
+  2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
+  l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
   de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
