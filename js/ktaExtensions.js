@@ -548,7 +548,11 @@
         const e = PR.findById(id);
         if (!e || e.type !== "ext") { refuses++; return; }
         try { localStorage.removeItem("myktamap_session_v1_" + id); } catch (er) {}
-        return Promise.resolve(typeof PR.remove === "function" ? PR.remove(id) : null)
+        // Photos, sauvegardes de session et calage du plan (purge du registre), puis
+        // l'entrée et son archive locale (remove).
+        return Promise.resolve(typeof PR.purgeAssociatedData === "function" ? PR.purgeAssociatedData(id) : null)
+          .catch(function () { /* purge partielle : on retire quand même l'entrée */ })
+          .then(function () { return typeof PR.remove === "function" ? PR.remove(id) : null; })
           .then(function () { effaces++; });
       });
     }, Promise.resolve()).then(function () { return { effaces: effaces, refuses: refuses }; });

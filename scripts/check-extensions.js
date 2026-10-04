@@ -171,10 +171,13 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("journal : traces de suppression postérieures à la date", ch.tombstones.length === 1 && ch.tombstones[0].uid === "zn_x");
     const supprimes = [];
     c.w.PlanRegistry = { findById: (id) => ({ ext_a: { id: "ext_a", type: "ext" }, loc: { id: "loc", type: "local" }, srv: { id: "srv", type: "server" } })[id] || null,
-                         remove: (id) => { supprimes.push(id); return Promise.resolve(); } };
+                         remove: (id) => { supprimes.push(id); return Promise.resolve(); },
+                         purgeAssociatedData: (id) => { purges.push(id); return Promise.resolve({}); } };
+    const purges = [];
     const r = await c.K.effacerDonneesExtension(["ext_a", "loc", "srv"]);
     t("🩸 effacement à la déconnexion : SEULS les plans d'extension partent (jamais local ni serveur)",
       r.effaces === 1 && r.refuses === 2 && supprimes.join() === "ext_a");
+    t("…avec leurs photos, sauvegardes et calage (purge du registre), toujours seulement l'extension", purges.join() === "ext_a");
     let appel = null;
     c.w.SecoursMode = { update: (id, p) => { appel = [id, p]; return true; } };
     t("Secours entrant : passe par la fusion en liste blanche existante (SecoursMode.update)",
