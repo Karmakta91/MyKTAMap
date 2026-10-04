@@ -446,6 +446,33 @@
     };
   }
 
+  // ── Bouton dans la barre du haut de l'accueil ──
+  // Une extension peut y loger UN point d'entrée (ex. le compte de l'installation),
+  // à côté de 📖 Documentation et ⚙️ Configuration, avec le même style. Il fait
+  // partie de l'accueil : il disparaît avec lui en mode carte. Texte seulement
+  // (icône 1-4 caractères, titre 80 max), action protégée (une erreur ne casse
+  // rien). 3 boutons au plus. Rend le bouton créé, ou null (barre absente, refus).
+  const MAX_BOUTONS = 3;
+  let _nbBoutons = 0;
+  function ajouterBoutonAccueil(def) {
+    if (!def || typeof def.action !== "function" || typeof def.icone !== "string") return null;
+    const icone = def.icone.trim();
+    if (!icone || Array.from(icone).length > 4 || _nbBoutons >= MAX_BOUTONS) return null;
+    const ref = document.getElementById("loaderHelpBtn");
+    if (!ref || !ref.parentNode) return null;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "loader-btn-help kta-ext-btn";
+    b.textContent = icone;
+    if (typeof def.titre === "string") b.title = def.titre.slice(0, 80);
+    b.addEventListener("click", function (ev) {
+      try { def.action(ev, b); } catch (e) { console.warn("[Extensions] bouton d'accueil :", e); }
+    });
+    ref.parentNode.insertBefore(b, ref);
+    _nbBoutons++;
+    return b;
+  }
+
   // ── Changements reçus (synchro entrante) ──
   // Applique au plan OUVERT des objets et des traces de suppression venus d'un
   // autre appareil ou d'une autre personne : même règle que la fusion de
@@ -562,6 +589,7 @@
     compte: compte,
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
+    ajouterBoutonAccueil: ajouterBoutonAccueil,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,

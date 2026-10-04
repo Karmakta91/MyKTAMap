@@ -230,6 +230,25 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
   }
 
+  // ═════════ 6 quater. BOUTON D'ACCUEIL ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans barre d'accueil : aucun bouton (null)", K.ajouterBoutonAccueil({ icone: "👤", action() {} }) === null);
+    const inseres = [];
+    const parent = { insertBefore: (b, ref) => inseres.push({ b, ref }) };
+    const aide = { id: "loaderHelpBtn", parentNode: parent };
+    w.document.getElementById = (id) => (id === "loaderHelpBtn" ? aide : null);
+    w.document.createElement = () => { const el = { listeners: {}, addEventListener(k, f) { this.listeners[k] = f; } }; return el; };
+    const b = K.ajouterBoutonAccueil({ icone: "👤", titre: "Compte", action() { throw new Error("x"); } });
+    t("bouton inséré AVANT 📖, au style de la barre", b && inseres.length === 1 && inseres[0].ref === aide && b.className === "loader-btn-help kta-ext-btn");
+    t("🩸 icône rendue en TEXTE (jamais de HTML)", b.textContent === "👤" && b.innerHTML === undefined);
+    let casse = false; try { b.listeners.click({}); } catch (e) { casse = true; }
+    t("🩸 une action qui plante ne casse rien", !casse);
+    t("icône trop longue refusée", K.ajouterBoutonAccueil({ icone: "ABCDE", action() {} }) === null);
+    K.ajouterBoutonAccueil({ icone: "2", action() {} }); K.ajouterBoutonAccueil({ icone: "3", action() {} });
+    t("3 boutons au plus", K.ajouterBoutonAccueil({ icone: "4", action() {} }) === null);
+  }
+
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
