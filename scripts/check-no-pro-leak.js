@@ -10,10 +10,15 @@
  * Branché en pre-commit hook via .githooks/pre-commit (cf README pour
  * l'install : `git config core.hooksPath .githooks` une fois).
  *
- * Politique : aucun JS qui parle à un backend ne doit jamais se
- * retrouver dans le repo community, même en mode "no-op" ou "mort".
- * Garantie charte §3 : community = 100% offline-first, aucune surface
- * réseau ouverte hors du registre `connect-src` documenté.
+ * Politique (frontière révisée le 04/10/2026, cf
+ * docs/architecture/community-server-line.md §1, §3 et §4) : la frontière
+ * est « zéro FICHIER pro », plus « zéro trace ». Les points d'extension
+ * neutres (interrupteur `config.serverConnection`, état OFF/ON/DOWN, garde,
+ * événements `mktm:*`) sont autorisés ici. Restent interdits : le code
+ * serveur (*.php, backend/), le dossier pro/ et tout module JS qui parle
+ * à un backend, même en mode "no-op" ou "mort". C'est donc surtout la règle
+ * de CHEMIN qui protège : les motifs de contenu ci-dessous ne connaissent
+ * que les noms d'un module pro déjà écrit, un renommage leur échappe.
  *
  * Patterns détectés (regex appliqués aux fichiers STAGED uniquement) :
  *   - Modules pro : MyKTAMapCloudSync, MyKTAMapCloudSyncUI
@@ -24,6 +29,8 @@
  *   - Endpoints backend : /v1/secours, /v1/health
  *
  * Fichiers interdits (chemin) :
+ *   - *.php, où qu'il soit (aucun code serveur dans ce repo)
+ *   - pro/** (dossier des modules greffés par une instance)
  *   - js/cloudSync.js, js/cloudSyncUI.js
  *   - backend/** (toute l'arbo backend Fastify+Prisma)
  *   - DRIFT.md, CHARTE.md, LICENSE_PRO.md, README_PRO.md, ROADMAP_PRO.md
@@ -68,6 +75,8 @@ const FORBIDDEN_PATTERNS = [
 // ============================================================
 
 const FORBIDDEN_FILES = [
+  { rx: /\.php$/i,                     label: "code serveur PHP (aucun code serveur ici)" },
+  { rx: /^pro\//,                      label: "module greffé pro" },
   { rx: /^js\/cloudSync(UI)?\.js$/,    label: "module pro" },
   { rx: /^backend\//,                  label: "code backend Fastify/Prisma pro" },
   { rx: /^DRIFT\.md$/,                 label: "doc pro" },
@@ -215,9 +224,10 @@ function main() {
   }
 
   console.error("");
-  console.error("Politique : aucun JS qui parle à un backend, ni fichier propriétaire");
-  console.error("(CHARTE / DRIFT / LICENSE_PRO / Licence-pro.json / backend/) ne doit");
-  console.error("se retrouver dans le repo community public.");
+  console.error("Politique : aucun fichier pro — code serveur (*.php, backend/), modules");
+  console.error("greffés (pro/), JS qui parle à un backend, fichiers propriétaires");
+  console.error("(CHARTE / DRIFT / LICENSE_PRO / Licence-pro.json) — dans le repo public.");
+  console.error("Les points d'extension NEUTRES sont autorisés (community-server-line.md §3).");
   console.error("");
   console.error("Actions possibles :");
   console.error("  1. git restore --staged <fichier>      (annule le staging)");

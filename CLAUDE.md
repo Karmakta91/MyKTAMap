@@ -9,10 +9,10 @@
 - Auteur Flavien VIDAL (KARMA). Licence **CC BY-NC-SA 4.0** (usage commercial interdit sans accord).
 
 ## 🔒 Frontière community ↔ pro (CRITIQUE)
-- Le **pro** (cloud sync, multi-tenant, backend, white-label…) vit dans le repo privé **`MyKTAMap-pro`**. Ce repo reste **100% offline, gratuit, sans bridage**.
-- ❌ Ne JAMAIS coder une feature pro ici sans valider — **par défaut tout est community**.
-- ❌ Ne JAMAIS référencer du code/feature pro (`// TODO pro:`, pointeurs…).
-- 🛡️ Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (activer 1×: `git config core.hooksPath .githooks`).
+- **Frontière = « zéro FICHIER pro »** (révisée le 04/10/2026, `docs/architecture/community-server-line.md`). Le pro = les fichiers qui se **greffent** (PHP, JS de sync/comptes/multi-tenant, white-label…) : ils vivent dans le repo privé **`MyKTAMap-pro`**, jamais ici. Ce repo reste **utilisable entièrement sans serveur, gratuit, sans bridage**. **myktamap.fr n'aura jamais de backend.**
+- ✅ Autorisé ici : des **points d'extension neutres** (`window.KtaExtensions.register()`, interrupteur `config.serverConnection`, états OFF/LICENCE/ON/DOWN, garde unique, événements `mktm:*`), no-op sans extension. Contrat : §3 du doc ci-dessus. Phase de cadrage : rien n'est codé ; le code ira sur la branche **`karma_backend_dev`**, sur consigne de KARMA.
+- ❌ Ne JAMAIS commiter de code serveur ni de module pro ici, et ne pas coder de feature pro sans valider — **par défaut tout est community**. Pas de commentaire-pointeur vers un fichier pro (`// TODO pro:`).
+- 🛡️ Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (refuse `*.php`, `pro/`, `backend/`, noms de modules pro ; activer 1×: `git config core.hooksPath .githooks`).
 
 ## ⚙️ Commandes & validation
 - **Syntaxe** : `node -c fichier.js` (seul filet — pas de tests auto, pas de linter).
@@ -79,7 +79,7 @@
 | Vue OSM modale + widget HOME (georef, tuiles V2, opt-in) | `docs/architecture/vue-osm.md` |
 | Versioning, live-config, releases, DX (selfhost, hooks), logs | `docs/architecture/infra-versioning.md` |
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
-| Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
+| Frontière community/pro, points d'extension (connexion serveur), mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 | **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** — ne liste que l'OUVERT : son silence ne prouve pas qu'une feature manque (cf ci-dessous) |
 | **Une feature « manque » ? une dette « existe » ?** | AVANT de l'annoncer : `grep` le symbole et les mots-clés dans `js/`, puis le journal `README.md`, puis `docs/architecture/<sujet>.md` (état actuel). Le code est la seule source qui ne ment pas |
