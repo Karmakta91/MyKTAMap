@@ -1,7 +1,8 @@
 {
-  "version": "v2.4.0",
+  "version": "v2.5.0",
   "released": "2026-10-04",
   "notes": [
+    "📸 Les photos que tu ajoutes à un plan importé, qui contient lui-même des photos, ne sont plus effacées quand tu le rouvres.",
     "🌀 Supprimer un point n’efface plus les liaisons, ni l’étoile favori, d’un autre point qui porte le même nom.",
     "📸 Une photo suit désormais son point même si tu le renommes. Si plusieurs points portent le même nom, la bulle te demande à quel point va chaque ancienne photo (📌 « c'est ce point ») — rien n'est jamais supprimé.",
     "🔀 La fusion de sessions ne double plus un même élément présent dans deux fichiers : la version la plus récente est gardée, et un élément supprimé ne revient pas.",

@@ -1554,14 +1554,35 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (typeof window._majOverlayChargement === "function") {
             window._majOverlayChargement("Restauration de " + photoIds.length + " photo(s)…");
           }
-          // Wipe préalable des photos IDB de ce planId (3:a)
+          // 🩸 v2.5.0 (lot C3, décision KARMA) — PLUS D'EFFACEMENT GLOBAL.
+          // Avant : `deletePhotosForPlan(planId)` à CHAQUE ouverture d'un plan ZIP
+          // qui embarque des photos (« 3:a ») — les photos prises par
+          // l'utilisateur sur ce plan, et ses rattachements « c'est ce point »,
+          // disparaissaient à la réouverture. Désormais :
+          //   - une photo du ZIP déjà présente est GARDÉE telle quelle (son
+          //     rattachement éventuel survit) ;
+          //   - une photo du ZIP absente est restaurée, marquée origine « plan » ;
+          //   - seules les photos d'origine « plan » qui ont disparu de la
+          //     nouvelle version du ZIP sont retirées ;
+          //   - une photo prise par l'utilisateur (sans cette marque) n'est JAMAIS
+          //     touchée. Une photo restaurée avant v2.5.0 n'a pas la marque : elle
+          //     reste aussi (au pire, une photo périmée — jamais une perte).
+          const _dansIndex = new Set(photoIds.map(String));
           try {
-            await window.MyKTAMapPhotos.deletePhotosForPlan(planId);
-          } catch(e) { console.warn("[Loader] deletePhotosForPlan :", e); }
+            const _existantes = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
+            for (const rec of _existantes) {
+              if (rec && rec.meta && rec.meta.origine === "plan" && !_dansIndex.has(String(rec.id))) {
+                await window.MyKTAMapPhotos.deletePhoto(rec.id);
+              }
+            }
+          } catch(e) { console.warn("[Loader] tri des photos du plan :", e); }
 
           let restoredCount = 0;
           for (const pid of photoIds) {
             const info = idxObj.photos[pid] || {};
+            try {
+              if (await window.MyKTAMapPhotos.getPhoto(pid)) continue;   // déjà là : on n'écrase rien
+            } catch(e) { /* lecture impossible : on restaure */ }
             const filename = "data/photos/" + (info.file || (pid + ".jpg"));
             const blobFile = findMatchingFile(filename, files);
             if (!blobFile) {
@@ -1578,7 +1599,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 pointId: String(info.pointId || ""),
                 blob:    blob,
                 mime:    info.mime || "image/jpeg",
-                size:    info.size || blob.size
+                size:    info.size || blob.size,
+                meta:    { origine: "plan" }   // 🆔 v2.5.0 : seules celles-ci peuvent être retirées
               });
               restoredCount++;
             } catch(e) {

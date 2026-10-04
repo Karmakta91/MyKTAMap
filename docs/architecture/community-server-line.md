@@ -220,7 +220,7 @@ navigateur.
    - les états INVALIDE / LICENCE / CONFIGURÉE en navigateur réel exigent un `index.json`
      de test que seul KARMA peut poser (`data/` interdit à Claude) : à la smoke-list de la
      porte de release.
-1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
+1. ✅ Ids + horodatages + migration (**livré de v2.1.0 à v2.5.0**, lots A, B, C1-C3) : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
 2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
    - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on

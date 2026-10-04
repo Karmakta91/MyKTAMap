@@ -63,7 +63,7 @@ d'imports sans doublons, rattachement fiable des photos au lieu d'un rattachemen
    garde-fou `check-uid.js`. N'ajoute que des champs.
 2. ✅ **Lot B — suppressions et fusion, livré en v2.2.0.** Traces (payload, purge, vidage, historique d'annulation),
    annulation, fusion par `uid`, import par remplacement.
-3. **Lot C — références**, découpé le 04/10/2026 (le nom sert de clé photo dans 11 endroits) : ✅ **C1 photos de session, livré en v2.3.0** (double lecture uid puis nom, migration douce, « à rattacher » par photo) · ✅ **C2 favoris, liaisons, Secours, livré en v2.4.0** (corrige au passage : supprimer un point effaçait les liaisons de ses homonymes) · C3 photos des ZIP de plan (index du Générateur). Photos, favoris, liaisons, Secours ; « à rattacher » ; i18n ; 3 guides.
+3. **Lot C — références**, découpé le 04/10/2026 (le nom sert de clé photo dans 11 endroits) : ✅ **C1 photos de session, livré en v2.3.0** (double lecture uid puis nom, migration douce, « à rattacher » par photo) · ✅ **C2 favoris, liaisons, Secours, livré en v2.4.0** (corrige au passage : supprimer un point effaçait les liaisons de ses homonymes) · ✅ **C3 photos des ZIP de plan, livré en v2.5.0** (index du Générateur par uid ; plus d'effacement global des photos à la réouverture d'un plan ZIP). **Chantier 1 terminé.** Photos, favoris, liaisons, Secours ; « à rattacher » ; i18n ; 3 guides.
    Le plus dangereux : une garde mal remplacée dans l'éditeur supprimerait réellement des photos.
 
 ## Points d'attention pour l'implémentation

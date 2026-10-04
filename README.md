@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.4.0` (04/10/2026)
+## 📦 Version courante — `v2.5.0` (04/10/2026)
+
+> 📸 **v2.5.0 — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé** : index photos du Générateur par uid ; rouvrir un plan ZIP n'efface plus les photos de l'utilisateur.
 
 > 🌀 **v2.4.0 — Favoris, liaisons et Secours par uid (chantier 1, lot C2)** : supprimer un point n'efface plus les liaisons ni le favori d'un homonyme.
 
@@ -521,6 +523,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.5.0 (04/10/2026) — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé
+
+- 🩸 **Perte de données corrigée** (relevée en préparant C3) : `startImportedPlan` (`js/main.js`) appelait `deletePhotosForPlan(planId)` à **chaque** ouverture d'un plan ZIP embarquant des photos (décision « 3:a », non documentée) — les photos prises par l'utilisateur sur ce plan et ses rattachements « c'est ce point » disparaissaient à la réouverture. Choix KARMA : plus d'effacement global — une photo du ZIP déjà présente est gardée telle quelle ; une absente est restaurée avec `meta.origine = "plan"` ; seules les photos d'origine « plan » disparues du nouvel index sont retirées ; une photo de l'utilisateur n'est jamais touchée (une photo restaurée avant v2.5.0, sans marque, reste aussi : au pire une photo périmée, jamais une perte). ⚠️ Non reproduit en navigateur (il faudrait un ZIP à photos) : lu dans le code et verrouillé par le garde-fou.
+- 🗂️ **Index photos du Générateur** (`data/photos/_index.json`) : `pointId` = uid du point quand son nom n'est porté que par un seul point du plan généré (`_collecterPointsCalque` + `_clePhotoIndex`, `js/createConf.js`) ; nom ambigu ou point inconnu → clé inchangée. Le chargement lit uid puis nom : les anciens ZIP restent valables.
+- 🛡️ **Garde-fou** : `check-uid.js` → 150 contrôles (fonctions du Générateur extraites et exécutées ; plus de `deletePhotosForPlan` au chargement ; seules les photos « plan » absentes de l'index retirées).
+- 🏁 **Chantier 1 terminé** (v2.1.0 → v2.5.0) : identifiants stables, traces de suppression, fusion par uid, photos / favoris / liaisons / Secours rattachés à l'uid. Prochaine étape cadrée : chantier 2 (lecture unique de l'index avant les gates) puis la porte d'authentification.
 
 #### v2.4.0 (04/10/2026) — Favoris, liaisons et Secours rattachés à l'uid (chantier 1, lot C2)
 

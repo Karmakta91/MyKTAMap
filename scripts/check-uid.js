@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1, v2.4.0 lot C2)
+// 🆔 check-uid.js — garde-fou pré-commit BLOQUANT (v2.1.0 lot A, v2.2.0 lot B, v2.3.0 lot C1, v2.4.0 lot C2, v2.5.0 lot C3)
 // =====================================================================
 // Chaque objet de carte porte une identité stable : `uid` + `updatedAt` (ms).
 // Décisions : docs/ETUDE_UID.md. Ce que ce script empêche :
@@ -184,7 +184,7 @@ t("lecture des calques : uid gardé pour zones et structures (registre + getters
   /uid:\s+\(typeof zone\.uid/.test(UTILS) && /uid:\s+\(typeof structure\.uid/.test(UTILS) && (UTILS.match(/if \(e\.uid\) out\.uid = e\.uid;/g) || []).length === 2);
 
 // Générateurs
-t("Générateur : chaque calque de données passe par _marquerUidCalque", /dataFolder\.file\(fileName, _marquerUidCalque\(await _lireFichier\(dlFile\)\)\)/.test(GEN));
+t("Générateur : chaque calque de données passe par _marquerUidCalque", /const _marque = _marquerUidCalque\(await _lireFichier\(dlFile\)\);\s*dataFolder\.file\(fileName, _marque\);/.test(GEN));
 ["js/kmzImport.js", "js/gpxImport.js", "js/sigImport.js"].forEach((f) => {
   t("Générateur d'import " + f + " : uid posés avant écriture", /KtaUid\.ensureAll\(/.test(lire(f)));
 });
@@ -448,6 +448,39 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("popup : l'étoile favori interroge l'uid du point", /window\.Favoris\.isFav\(point\.id, point\.uid\)/.test(UTC) && /data-fav-pointuid=/.test(UTC));
   t("migration planifiée : favoris et liaisons dans la même passe que les photos",
     /Favoris\.migrerVersUid\(pts\)/.test(MAC) && /InterPlanLinks\.migrerVersUid\(planId, pts\)/.test(MAC));
+}
+
+// ═════════ 6. LOT C3 — PHOTOS DES ZIP DE PLAN (v2.5.0) ═════════
+{
+  const GENC = lire("js/createConf.js"), MAIC = lire("js/main.js");
+  const ex = (src, nom) => { const d = src.indexOf("function " + nom + "("); if (d < 0) return ""; const o = src.indexOf("{", d); let p = 0;
+    for (let i = o; i < src.length; i++) { if (src[i] === "{") p++; else if (src[i] === "}") { p--; if (p === 0) return src.slice(d, i + 1); } } return ""; };
+  const c3 = vm.createContext({ TextDecoder: TextDecoder });
+  vm.runInContext(ex(GENC, "_clePhotoIndex") + "\n" + ex(GENC, "_collecterPointsCalque"), c3);
+  const cle = c3._clePhotoIndex, coll = c3._collecterPointsCalque;
+  t("Générateur : _clePhotoIndex et _collecterPointsCalque extraites et exécutables", typeof cle === "function" && typeof coll === "function");
+  if (typeof cle === "function" && typeof coll === "function") {
+    const acc = [];
+    coll(JSON.stringify({ data: [{ id: "Salle", uid: "pt_s_ssssss" }, { id: "Puits", uid: "pt_p1_aaaaaa" }, { id: "Puits", uid: "pt_p2_bbbbbb" }],
+                          roads: [{ type: "principal", points: [{ x: 1, y: 1 }], uid: "rd_x_xxxxxx" }] }), acc);
+    t("Générateur : seuls les POINTS des calques sont collectés (pas la géométrie des tracés)", acc.length === 3);
+    t("index photos : nom porté par UN point → son uid", cle("Salle", acc) === "pt_s_ssssss");
+    t("🩸 index photos : nom ambigu → la clé reste le nom (jamais deviné)", cle("Puits", acc) === "Puits");
+    t("index photos : clé déjà uid → inchangée", cle("pt_p2_bbbbbb", acc) === "pt_p2_bbbbbb");
+    t("index photos : point inconnu → inchangé", cle("Ailleurs", acc) === "Ailleurs");
+    const accSig = [];
+    coll(new TextEncoder().encode(JSON.stringify({ points: [{ id: "Entrée", uid: "pt_e_eeeeee" }] })), accSig);
+    t("Générateur : calque fourni en buffer (et famille SIG « points ») lu", accSig.length === 1 && cle("Entrée", accSig) === "pt_e_eeeeee");
+  }
+  t("Générateur : chaque calque marqué est collecté, et l'index passe par _clePhotoIndex",
+    /_collecterPointsCalque\(_marque, _pointsGeneres\);/.test(GENC) && /pointId: _clePhotoIndex\(rec\.pointId, _pointsGeneres\)/.test(GENC));
+  t("🩸 chargement d'un plan ZIP : PLUS d'effacement global des photos du plan",
+    !/await window\.MyKTAMapPhotos\.deletePhotosForPlan\(planId\);/.test(MAIC));
+  t("🩸 chargement : seules les photos d'origine « plan » absentes du nouvel index sont retirées",
+    /rec\.meta && rec\.meta\.origine === "plan" && !_dansIndex\.has\(String\(rec\.id\)\)/.test(MAIC));
+  t("chargement : une photo déjà présente n'est pas écrasée (son rattachement survit)",
+    /if \(await window\.MyKTAMapPhotos\.getPhoto\(pid\)\) continue;/.test(MAIC));
+  t("chargement : les photos restaurées depuis le ZIP portent l'origine « plan »", /meta:\s+\{ origine: "plan" \}/.test(MAIC));
 }
 
 console.log("");

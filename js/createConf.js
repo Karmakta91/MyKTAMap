@@ -2914,6 +2914,30 @@ function _afficherAvertissementV2(checkbox) {
 // gardés, les manquants posés. Le fichier arrive en ArrayBuffer ; s'il n'est
 // pas un JSON UTF-8 exploitable, il part tel quel (jamais de calque perdu pour
 // une identité).
+// 🆔 v2.5.0 (lot C3) — points ({uid, id}) d'un calque écrit (texte ou buffer).
+function _collecterPointsCalque(contenu, acc) {
+  try {
+    const texte = (typeof contenu === "string") ? contenu : new TextDecoder("utf-8").decode(contenu);
+    const d = JSON.parse(texte);
+    [d.data, d.editorPoints, d.points].forEach(function(arr) {
+      (Array.isArray(arr) ? arr : []).forEach(function(p) {
+        if (p && typeof p === "object" && !Array.isArray(p)) acc.push({ uid: p.uid, id: p.id });
+      });
+    });
+  } catch (e) { /* calque non JSON : ses points ne comptent pas */ }
+}
+// Clé d'une photo dans data/photos/_index.json : l'uid du point si la photo
+// est encore rangée sous un NOM porté par un seul point du plan généré ;
+// sinon la clé telle quelle (déjà un uid, nom ambigu, point inconnu). Le
+// chargement lit l'uid puis le nom : un index ancien reste valable.
+function _clePhotoIndex(cle, points) {
+  const c = String(cle || "");
+  if (!c || !Array.isArray(points)) return c;
+  if (points.some(function(p) { return p.uid === c; })) return c;
+  const memes = points.filter(function(p) { return String(p.id || "") === c; });
+  return (memes.length === 1 && memes[0].uid) ? String(memes[0].uid) : c;
+}
+
 function _marquerUidCalque(buffer) {
   if (!window.KtaUid || !buffer) return buffer;
   try {
@@ -3667,6 +3691,9 @@ async function _genererZip() {
 
     // ── Calques données ──
     const dataLayers = [];
+    // 🆔 v2.5.0 (lot C3) — points des calques écrits, pour que l'index des
+    // photos désigne chaque point par son uid (cf. plus bas).
+    const _pointsGeneres = [];
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const dlId    = document.getElementById(lid + "_id").value.trim();
@@ -3679,7 +3706,9 @@ async function _genererZip() {
 
       const fileName = dlId + ".json";
       if (dlFile) {
-        dataFolder.file(fileName, _marquerUidCalque(await _lireFichier(dlFile)));
+        const _marque = _marquerUidCalque(await _lireFichier(dlFile));
+        dataFolder.file(fileName, _marque);
+        _collecterPointsCalque(_marque, _pointsGeneres);
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
@@ -3780,7 +3809,7 @@ async function _genererZip() {
           const name = rec.id + "." + ext;
           photosFolder.file(name, rec.blob);
           idx[rec.id] = {
-            pointId: rec.pointId,
+            pointId: _clePhotoIndex(rec.pointId, _pointsGeneres),   // 🆔 v2.5.0 : l'uid si le nom est sans ambiguïté
             mime:    rec.mime || "image/jpeg",
             size:    rec.size || (rec.blob && rec.blob.size) || 0,
             file:    name
