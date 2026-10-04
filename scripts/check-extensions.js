@@ -167,6 +167,24 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       c.K.secoursAppliquer("sc1", { nom: "x" }) === true && appel[0] === "sc1");
   }
 
+  // ═════════ 6 bis. COMPTE CONNECTÉ ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucun compte (myktamap.fr garde son profil local)", K.compte() === null);
+    K.register({ nom: "c1", apiVersion: 1, compte: () => ({ pseudo: "  karma  ", libelle: "Admin" }) });
+    const c = K.compte();
+    t("compte déclaré : pseudo nettoyé + libellé", c && c.pseudo === "karma" && c.libelle === "Admin");
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "c2", apiVersion: 1, compte: () => { throw new Error("x"); } });
+    t("🩸 erreur de l'extension → aucun compte (la carte garde le profil local)", K2.compte() === null);
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "c3", apiVersion: 1, compte: () => ({ pseudo: "x".repeat(99), libelle: "y".repeat(99) }) });
+    t("longueurs bornées (40 / 24)", K3.compte().pseudo.length === 40 && K3.compte().libelle.length === 24);
+    const { K: K4 } = nouveauContexte(null);
+    K4.register({ nom: "c4", apiVersion: 1, compte: () => ({ pseudo: "   " }) });
+    t("pseudo vide → aucun compte", K4.compte() === null);
+  }
+
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),
@@ -192,6 +210,11 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&
       SW.indexOf('h.get("X-Kta-Ext")') < SW.indexOf("event.respondWith("));
     t("Service Worker : les caches myktamap-ext- survivent à l'activation", /const EXT_CACHE_PREFIX = "myktamap-ext-";/.test(SW) && /!_estCacheExt\(key\)/.test(SW));
+    const HP = lire("js/homeProfile.js");
+    t("carte profil : lit KtaExtensions.compte, se redessine sur mktm:compte-changed",
+      /KtaExtensions\.compte\(\)/.test(HP) && /addEventListener\("mktm:compte-changed"/.test(HP));
+    t("🩸 carte profil : le compte n'est JAMAIS écrit dans le profil local", !/setSurnom\([^)]*_compte/.test(HP));
+    t("modale profil : pseudo verrouillé quand un compte est connecté", /surnomInput\.readOnly = true/.test(HP));
     const assets = (SW.match(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/) || [""])[0];
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));
   }

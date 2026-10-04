@@ -55,14 +55,15 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.7.0)** : identifiants stables, lecture unique de l'index avant
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.7.4)** : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id) → Promise<Blob ZIP> }, importAutorise() → bool,
-> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise })` · `signaler("on"|"down"|null)` ·
+> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> `signaler("on"|"down"|null)` ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
-> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `importAutorise()` /
+> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
@@ -144,6 +145,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
+- **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
+  de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
+  verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
+  à la déconnexion. Texte seulement, 40 / 24 caractères max ; erreur ou forme inattendue = `null` (profil
+  local). L'extension annonce un changement par `notifierCompte()` (événement `mktm:compte-changed`).
 - **Version d'un module** : le SW met en cache un module au premier chargement et le sert ensuite depuis
   ce cache (règle par défaut, à l'URL exacte). Une nouvelle version passe donc par un **nouveau chemin**
   dans `index.json` (`pro/connexion.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. Sans
@@ -249,7 +255,7 @@ navigateur.
    - le kiosque reprend lui aussi la config mémorisée quand l'index est injoignable ;
    - invariants du §5 et contrôles de `scripts/check-gate-instance.js` réécrits (ordre
      config → revalidation → gate, une seule lecture, mémoire qui ne révoque rien).
-3. ✅ Points d'extension + `check-extensions.js` (**livré en v2.7.0**, branche `karma_backend_dev`) : gate déléguée (écran « Installation indisponible » si le module de connexion manque ou échoue, jamais de repli sur la gate community), chargeur de modules (règle E), garde des requêtes (origine de `api`, états permis, sondes en « injoignable »), états `on`/`down` signalés par le module, permissions import/export (erreur = refus), plans d'extension (`type: "ext"`, ☁️, gardés sur l'appareil), publication depuis le Générateur, journal des changements, effacement à la déconnexion (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
+3. ✅ Points d'extension + `check-extensions.js` (**livré en v2.7.0**, fusionné dans `Karma_dev`) : gate déléguée (écran « Installation indisponible » si le module de connexion manque ou échoue, jamais de repli sur la gate community), chargeur de modules (règle E), garde des requêtes (origine de `api`, états permis, sondes en « injoignable »), états `on`/`down` signalés par le module, permissions import/export (erreur = refus), plans d'extension (`type: "ext"`, ☁️, gardés sur l'appareil), publication depuis le Générateur, journal des changements, effacement à la déconnexion (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
 
 Les noms et signatures exacts de chaque prise se fixent au chantier 3.

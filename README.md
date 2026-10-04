@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.7.3` (04/10/2026)
+## 📦 Version courante — `v2.7.4` (04/10/2026)
+
+> 🧩 **v2.7.4 — Prise « compte » : la carte profil affiche le compte d'une installation reliée** (pseudo + rôle), sans écrire dans le profil local.
 
 > 2️⃣ **v2.7.3 — Splash sans cadre, image Docker constructible depuis Windows, notes de version réduites.**
 
@@ -533,6 +535,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.4 (04/10/2026) — Prise « compte » (branche `Karma_dev`, `karma_backend_dev` fusionnée)
+
+- 🩸 **Origine** : test de la pile pro par KARMA — la carte profil affichait « Mon profil / Touriste » une fois connecté en admin. Un premier essai (module pro qui écrit le pseudo dans le surnom local, choix 1:a) effaçait le surnom de l'appareil et ne permettait ni le rôle ni le verrou : remplacé par une prise neutre (1:b, reco acceptée).
+- 🔧 **`KtaExtensions.compte()`** (+ `notifierCompte()`, événement `mktm:compte-changed`) : la carte affiche `pseudo` à la place du surnom et `libelle` (rôle) à la place du rang ; la modale verrouille le pseudo (`home.profile.nicknameAccount` ×3). **Rien n'est écrit dans le profil local.** Sans extension : `null`, rien ne change (myktamap.fr).
+- 🛡️ `check-extensions.js` : 8 contrôles de plus (compte absent sans extension, nettoyé, borné, erreur → `null`, jamais écrit dans le profil local, modale verrouillée).
+- ✅ Mesuré sur la pile Docker pro : surnom local « Karma » intact pendant la connexion, carte « admin | Admin », modale verrouillée, « Karma » revient à la déconnexion.
 
 #### v2.7.3 (04/10/2026) — Splash sans cadre, Docker depuis Windows (branche `karma_backend_dev`)
 

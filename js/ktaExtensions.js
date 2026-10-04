@@ -301,7 +301,7 @@
     }
     _extensions.push(ext);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -462,6 +462,29 @@
     catch (e) { console.warn("[Extensions] secoursAppliquer :", e); return false; }
   }
 
+  // ── Compte connecté (v2.7.4) ──
+  // Une extension de connexion peut dire QUI est connecté : la carte profil de
+  // l'accueil l'affiche à la place du profil local, sans rien y écrire (le
+  // surnom et la photo de l'appareil restent intacts et reviennent à la
+  // déconnexion). Rendu en texte seulement, longueurs bornées. Erreur ou forme
+  // inattendue = aucun compte (null) : la carte garde le profil local.
+  function compte() {
+    const ext = _prise("compte");
+    if (!ext || typeof ext.compte !== "function") return null;
+    try {
+      const c = ext.compte();
+      if (!c || typeof c.pseudo !== "string" || !c.pseudo.trim()) return null;
+      return {
+        pseudo: c.pseudo.trim().slice(0, 40),
+        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : ""
+      };
+    } catch (e) { console.warn("[Extensions] compte :", e); return null; }
+  }
+  // L'extension prévient quand le compte change (connexion, rôle modifié).
+  function notifierCompte() {
+    try { window.dispatchEvent(new CustomEvent("mktm:compte-changed")); } catch (e) { /* rien */ }
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -479,6 +502,8 @@
     changementsDepuis: changementsDepuis,
     effacerDonneesExtension: effacerDonneesExtension,
     secoursAppliquer: secoursAppliquer,
+    compte: compte,
+    notifierCompte: notifierCompte,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,
