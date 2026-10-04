@@ -93,6 +93,10 @@ qui parle au serveur.
   Une adresse d'API n'est pas un secret : l'index est public et c'est assumé.
 - `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
   remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
+- `transparence` (facultatif) : page de transparence de l'installation, **même site**, chemin relatif terminé
+  par `.html` (mêmes règles qu'un module, sans suffixe). Dès que l'état n'est pas OFF, la pastille ouvre cette
+  page au lieu de l'audit réseau community (qui ne sait pas ce que l'installation fait des données). Champ dans
+  ConfAdmin ; `valider()` et sa copie ConfAdmin le gardent (concordance vérifiée par `check-connexion-serveur.js`).
 
 **Les états** :
 

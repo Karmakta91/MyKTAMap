@@ -95,12 +95,22 @@
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
     }
-    return {
+    // transparence (facultatif) : la page de transparence de l'installation, sur le MÊME
+    // site que l'app (chemin relatif .html, mêmes règles qu'un module). La pastille y
+    // mène dès que l'état n'est pas OFF (cadrage : ce que l'installation fait de tes données).
+    if (sc.transparence !== undefined && (typeof sc.transparence !== "string" ||
+        !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/.test(sc.transparence) ||
+        sc.transparence.indexOf("..") >= 0 || sc.transparence.indexOf("//") >= 0)) {
+      return { etat: "invalide", raison: "transparence doit être une page .html du même site (ex. pro/transparence.html)" };
+    }
+    const v = {
       etat: "on",
       raison: "",
       api: sc.api.trim(),
       modules: sc.modules.slice()
     };
+    if (sc.transparence) v.transparence = sc.transparence;
+    return v;
   }
 
   // ── Règle E : « on » n'aboutit qu'avec une licence de source "server" ──
@@ -242,6 +252,12 @@
     if (chip && !chip._ktaCable) {
       chip._ktaCable = true;
       chip.addEventListener("click", function () {
+        // Installation reliée qui publie sa page de transparence : c'est elle qui dit ce
+        // que l'installation fait des données (la doc community ne le sait pas).
+        if (_etat !== "off" && _connexion && _connexion.transparence) {
+          window.open(_connexion.transparence, "_blank", "noopener");
+          return;
+        }
         if (typeof window._ouvrirNetDocModal === "function") window._ouvrirNetDocModal();
       });
     }

@@ -142,6 +142,11 @@ const CAS = [
   ["module : deux paramètres", { state: "on", api: OK.api, modules: ["pro/m.js?v=1&x=2"] }, "invalide"],
   ["module : version avec espace", { state: "on", api: OK.api, modules: ["pro/m.js?v=1 2"] }, "invalide"],
   ["module : version avant .js", { state: "on", api: OK.api, modules: ["pro/m?v=1.js"] }, "invalide"],
+  ["transparence : page du même site", { state: "on", api: OK.api, modules: [], transparence: "pro/transparence.html" }, "on"],
+  ["transparence : autre domaine", { state: "on", api: OK.api, modules: [], transparence: "https://x.org/t.html" }, "invalide"],
+  ["transparence : remonte", { state: "on", api: OK.api, modules: [], transparence: "../t.html" }, "invalide"],
+  ["transparence : pas une page .html", { state: "on", api: OK.api, modules: [], transparence: "pro/t.js" }, "invalide"],
+  ["transparence : non texte", { state: "on", api: OK.api, modules: [], transparence: 42 }, "invalide"],
   ["21 modules", { state: "on", api: OK.api, modules: Array.from({ length: 21 }, (_, i) => "pro/m" + i + ".js") }, "invalide"]
 ];
 if (K && validerCA) {
@@ -151,8 +156,10 @@ if (K && validerCA) {
     t("   …et ConfAdmin rend exactement la même chose", JSON.stringify(a) === JSON.stringify(b));
   });
   const v = K.valider(OK);
-  t("valider() ne garde que state/api/modules (aucun champ inconnu ne passe)",
-    v.api === OK.api && v.modules.join() === "pro/sync.js");
+  t("valider() ne garde que state/api/modules (+ transparence) : aucun champ inconnu ne passe",
+    v.api === OK.api && v.modules.join() === "pro/sync.js" && Object.keys(K.valider(Object.assign({ autre: 1 }, OK))).join() === "etat,raison,api,modules");
+  t("transparence gardée quand elle est valide",
+    K.valider(Object.assign({ transparence: "pro/transparence.html" }, OK)).transparence === "pro/transparence.html");
 }
 
 // ═════════ 4. TABLE DE VÉRITÉ DES ÉTATS (règle E) ═════════

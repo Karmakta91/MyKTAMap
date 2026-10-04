@@ -231,6 +231,9 @@
       <textarea id="caCnxModules" rows="3" placeholder="modules, un chemin par ligne, sur le même site que l'app (ex. pro/sync.js ou pro/sync.js?v=1.2.0)"
                 spellcheck="false"
                 style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px; font-family:monospace;"></textarea>
+      <input type="text" id="caCnxTransparence" placeholder="page de transparence (facultatif), ex. pro/transparence.html" maxlength="200"
+             autocomplete="off" spellcheck="false"
+             style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px;">
       <div id="caCnxEtat" style="font-size:12px; color:#8892a4;"></div>
     </details>
     <p class="kta-ca-hint">⚠️ Ces réglages sont du <strong>désencombrement d'interface</strong>, pas un verrou de
@@ -541,6 +544,7 @@
         $("caCnxState").value = (sc && sc.state === "on") ? "on" : "off";
         $("caCnxApi").value = (sc && typeof sc.api === "string") ? sc.api : "";
         $("caCnxModules").value = (sc && Array.isArray(sc.modules)) ? sc.modules.join("\n") : "";
+        $("caCnxTransparence").value = (sc && typeof sc.transparence === "string") ? sc.transparence : "";
         if (sc && sc.state === "on") $("caCnx").open = true;
         _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
           ? d.liaisons : null;
@@ -797,7 +801,17 @@
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
     }
-    return { etat: "on", raison: "", api: sc.api.trim(), modules: sc.modules.slice() };
+    // transparence (facultatif) : la page de transparence de l'installation, sur le MÊME
+    // site que l'app (chemin relatif .html, mêmes règles qu'un module). La pastille y
+    // mène dès que l'état n'est pas OFF (cadrage : ce que l'installation fait de tes données).
+    if (sc.transparence !== undefined && (typeof sc.transparence !== "string" ||
+        !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/.test(sc.transparence) ||
+        sc.transparence.indexOf("..") >= 0 || sc.transparence.indexOf("//") >= 0)) {
+      return { etat: "invalide", raison: "transparence doit être une page .html du même site (ex. pro/transparence.html)" };
+    }
+    const v = { etat: "on", raison: "", api: sc.api.trim(), modules: sc.modules.slice() };
+    if (sc.transparence) v.transparence = sc.transparence;
+    return v;
   }
 
   // Lit le bloc : { valide, champ (à écrire, ou null), raison }.
@@ -808,9 +822,12 @@
       api: $("caCnxApi").value.trim(),
       modules: $("caCnxModules").value.split(/\r?\n/).map(function(s) { return s.trim(); }).filter(Boolean)
     };
+    if ($("caCnxTransparence").value.trim()) champ.transparence = $("caCnxTransparence").value.trim();
     const v = ktaValiderConnexion(champ);
+    const garde = { state: "on", api: v.api, modules: v.modules };
+    if (v.transparence) garde.transparence = v.transparence;
     return v.etat === "on"
-      ? { valide: true, champ: { state: "on", api: v.api, modules: v.modules }, raison: "" }
+      ? { valide: true, champ: garde, raison: "" }
       : { valide: false, champ: null, raison: v.raison };
   }
 
@@ -832,6 +849,7 @@
   $("caCnxState").addEventListener("change", _renderOut);
   $("caCnxApi").addEventListener("input", _renderOut);
   $("caCnxModules").addEventListener("input", _renderOut);
+  $("caCnxTransparence").addEventListener("input", _renderOut);
 
   $("caDownload").addEventListener("click", function() {
     if (!_connexionSaisie().valide) return;   // 🩸 jamais d'index qui casserait la connexion
