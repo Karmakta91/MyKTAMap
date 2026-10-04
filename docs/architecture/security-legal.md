@@ -1,11 +1,8 @@
 # Architecture MyKTAMap — Sécurité : gates, PIN, audit réseau, légal, licence
 
-> 🔑 **v1.90.6 (EXCLUSIF depuis v1.90.7) — le mot de passe d'instance, quand il existe, est le SEUL.**
-> `data/index.json > config.accessHash` ouvre la gate ; **tant qu'il est publié, le code communautaire
-> (`HASH_VALIDE`) n'ouvre plus cette instance.** 🩸 La v1.90.6 acceptait les deux — trou signalé par KARMA :
-> le code communautaire est distribué largement (il ouvre la prod qui n'héberge rien), il aurait donc ouvert
-> toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
-> hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
+> 🔑 **Le mot de passe d'instance, quand il existe, est le SEUL** (`data/index.json > config.accessHash`).
+> Il n'y a **plus de code communautaire codé en dur** depuis le 04/10/2026 : sans mot de passe d'instance,
+> l'écran d'entrée propose « Continuer sans licence » (§36).
 >
 > 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
 > `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
@@ -59,90 +56,82 @@
 
 ---
 
-### 36. Unlock Gate — barrière communautaire d'accès (depuis v173)
+### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Continuer sans licence »)
 
-Module `js/unlockGate.js` qui intercale un écran de saisie de mot de passe entre la fin du splash et le démarrage normal de l'app. Vérification 1 fois à la 1ère installation, mémorisé en localStorage ensuite, re-demandé après reset complet.
+Module `js/unlockGate.js` : un écran entre la fin du splash et le démarrage normal, montré au premier
+lancement et après un reset complet (le choix est mémorisé en localStorage). **Plus aucun mot de passe
+codé en dur** depuis le 04/10/2026 (décision KARMA) : l'ancien code communautaire, son hash et son
+affichage en clair dans la fenêtre de reset sont supprimés.
 
-#### 36.1 ⚠️ Niveau de sécurité — barrière SOCIALE, pas une vraie auth
+#### 36.1 Deux écrans, selon l'instance
 
-MyKTAMap est une PWA 100% client → tout le code HTML/JS/CSS est servi en clair par Nginx ET disponible publiquement sur GitHub (`Karmakta91/MyKTAMap`). Cette gate est efficace pour :
-- ✅ Décourager les passants / robots d'indexation
-- ✅ Cadrer "communauté" → "il faut connaître le code"
-- ❌ NE PAS empêcher un attaquant motivé (hash dans le code → brute force offline trivial ; bypass `localStorage.setItem("myktamap_unlock_v1", "<hash>")` en F12 → 5 secondes)
+Le mode est décidé **avant** de dessiner (`_monterGate` lit `_hashInstance()`, config d'instance déjà
+chargée par `ktaInstance.js`) :
 
-**KARMA explicitement informé et a validé.** Le mdp est communiqué hors-bande aux utilisateurs (forum, message direct).
+| Instance | Écran | Ce qui ouvre |
+|---|---|---|
+| publie `index.json > config.accessHash` (posé par ConfAdmin ; c'est le cas de myktamap.fr) | 🗝️ champ mot de passe, **sans** bloc licence | **seul** le mot de passe de l'instance |
+| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 « Bienvenue » : **Continuer sans licence** + 📂 Importer ma licence pro | le bouton (mémorise `libre-v1`) ou une licence valide |
 
-#### 36.2 Hash hardcodé (SHA-256)
+⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
+est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
 
-Le mdp en clair n'apparaît PAS dans `unlockGate.js` — juste son hash SHA-256 calculé via `crypto.subtle.digest`. Pour bumper le mdp :
-```bash
-echo -n "<nouveau-mdp>" | openssl dgst -sha256
-```
-Mettre le résultat dans la const `HASH_VALIDE` de `unlockGate.js`. Au prochain boot, les users qui avaient l'ancien hash en localStorage seront re-demandés (le hash en LS ne matchera plus le nouveau).
+#### 36.2 Ce qui est mémorisé
 
-⚠️ **Si on change le mdp** : il faut aussi changer la const `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair affiché dans la modale Reset). Ces 2 valeurs doivent rester synchronisées.
+- `myktamap_unlock_v1` (`LS_UNLOCK`) : `libre-v1` (accès libre, licence pro) **ou** le hash du mot de
+  passe d'instance accepté.
+- `myktamap_unlock_instance_v1` (`LS_UNLOCK_KIOSQUE`) : le hash d'instance accepté — sans lui, un accès
+  par mot de passe serait reverrouillé au premier démarrage hors ligne.
+- `isUnlocked()` (**lecture seule** : elle est appelée dès le chargement du module, avant la
+  revalidation) ouvre si `libre-v1`, si le hash stocké = la mémoire d'instance, ou si c'est l'**ancien
+  code communautaire sans mémoire d'instance** (`HASH_HERITE`, migration : un appareil entré avec
+  l'ancien code vaut « déjà choisi »). `HASH_HERITE` n'est **jamais** comparé à une saisie.
+- `revaliderInstance(hash, indexRepondu)` (appelée par `main.js` avant la gate, **seulement si l'index a
+  répondu**) : l'instance impose un mot de passe → tout autre accès mémorisé (libre, ancien code, ancien
+  mot de passe) est **révoqué** ; l'instance retire son mot de passe → l'accès qui en venait est révoqué
+  (l'écran propose alors « Continuer sans licence »).
 
-#### 36.3 5 tentatives + verrou TEMPORISÉ (M2, décision KARMA 13/09/2026 — avant : lockout permanent)
+Mesuré le 04/10/2026 (Edge, index simulé) : ancien code sans mot de passe d'instance → ouvert ; ancien
+code + instance au **même** mot de passe → ouvert, mémoire posée ; ancien code ou accès libre + instance
+à un **autre** mot de passe → écran mot de passe ; mot de passe d'instance retiré → écran libre.
 
-Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au reload), verrou dans `localStorage["myktamap_unlock_lock_v1"]` = `{ until, start, level }`.
-- Tentatives 1-4 : message rouge "❌ Code incorrect. Tentatives restantes : N"
-- Tentative 5 : **verrou temporisé** au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), compteur remis à 0, palier +1
-  - Champ saisie masqué, "🚫 Trop de tentatives", **compte à rebours** (`_fmtDuree`), rappel de l'escalade
-  - À l'expiration : la gate est **remontée** (`_monterGate`, la Promise de `ouvrirGate()` survit — même mécanisme que le changement de langue) et un code juste la résout, palier et compteur remis à zéro
-  - **Toujours PAS de bouton reset** depuis le verrou (le bypass reset → modale Reset affiche le mdp → re-saisie reste vrai)
-  - **Base de temps** : horloge de l'appareil. Reculer l'horloge sous `start` laisse verrouillé ; l'avancer raccourcit le délai. Accepté : le verrou sert à ralentir un tiers qui a le téléphone en main, pas à résister à qui contrôle l'horloge — et le verrou **définitif** tuait l'app de son propriétaire sous terre, hors réseau, plan compris (audit ergonomie 13/09/2026, bloquant B7)
-  - Liens externes pour contacter l'auteur si l'user a légitimement perdu son accès : Instagram `@karma_kta` + `mailto:contact@myktamap.fr`
+#### 36.3 5 tentatives + verrou TEMPORISÉ (écran mot de passe seulement ; M2, décision KARMA 13/09/2026)
 
-#### 36.4 Position dans le flow `main.js > initApp`
+Compteur `localStorage["myktamap_unlock_attempts"]`, verrou `localStorage["myktamap_unlock_lock_v1"]` =
+`{ until, start, level }`. Tentatives 1-4 : « ❌ Code incorrect. Tentatives restantes : N ». Tentative 5 :
+verrou temporisé au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), compteur remis à 0.
+À l'expiration, la gate est **remontée** (la Promise de `ouvrirGate()` survit) et un mot de passe juste la
+résout. **Pas de bouton reset** depuis le verrou. Base de temps : horloge de l'appareil (accepté : le verrou
+ralentit un tiers qui a le téléphone en main ; le verrou **définitif** tuait l'app de son propriétaire sous
+terre — audit ergonomie 13/09/2026, B7). L'écran libre n'a ni tentatives ni verrou.
 
-APRÈS `_splashEnd()`, AVANT `PlanRegistry.init()` et tout le reste :
-```js
-if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
-  await _splashEnd();
-  await window.UnlockGate.ouvrirGate();  // bloque jusqu'à unlock
-}
-```
-- User authentifié (cas le plus fréquent = 2e boot+) : gate skip silencieusement, comportement v172 strictement préservé
-- 1ère installation : splash 4s → gate → saisie → unlock → loader
-- Verrou temporisé : `ouvrirGate()` ne résout pas pendant le délai ; à l'expiration la gate remonte et un code juste résout (M2, 13/09/2026)
+#### 36.4 Position dans le boot (`main.js > initApp`)
 
-#### 36.5 Affichage du mdp dans la modale Reset
+Gate légale → config d'instance (`KtaInstance.charger`) → `revaliderInstance(…, true)` si l'index a répondu
+→ modules greffés / gate déléguée (chantier 3 ; une gate déléguée en échec n'ouvre **jamais** celle-ci) →
+`if (!_gateDelegueeOk && UnlockGate && !UnlockGate.isUnlocked()) await ouvrirGate()` → PIN local.
+Une licence pro (serveur ou locale) contourne l'écran **sauf** sur une instance qui publie un mot de passe.
 
-Constante `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair). Affichée dans la 1ère modale de confirmation de reset via un bloc jaune accent :
-```
-🗝️ Code d'accès requis au redémarrage
-Après reset, l'app redemandera le code d'accès communautaire :
-[F!sYs44!h4z!3J]   ← code en monospace, fond noir, user-select:all
-Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer !
-```
+#### 36.5 Fenêtre « 💥 Tout réinitialiser »
 
-Permet à un user **déjà authentifié** de reset proprement sans perdre l'accès. C'est le SEUL endroit du code où le mdp apparaît en clair (volontaire — sinon impossible à afficher).
-
-`localStorage.clear()` de `viderCacheAppli` purge naturellement le flag `myktamap_unlock_v1` → la gate redemande au prochain boot. Pas besoin d'appeler `UnlockGate.lock()` explicitement.
+`viderCacheAppli` purge `localStorage` → l'écran revient au démarrage suivant. Sur une instance qui publie
+un mot de passe, la 1ʳᵉ fenêtre prévient qu'il sera **redemandé** (`maint.reset_access_code_*`), **sans
+jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (« Continuer sans licence »).
 
 #### 36.6 API publique `window.UnlockGate`
 
-- `isUnlocked()` → bool — lit `localStorage["myktamap_unlock_v1"]`
-- `isLockedOut()` → bool — true si attempts ≥ 5
-- `ouvrirGate()` → Promise — résout `true` à l'unlock ; pendant un verrou temporisé, l'écran de verrou remonte la gate à l'expiration
-- `lock()` → void — retire les flags (utilitaire, pas appelé par défaut)
+`isUnlocked()` · `isLockedOut()` · `ouvrirGate()` → Promise · `lock()` · `markUnlockedViaLicensePro()`
+(pose `libre-v1`) · `revaliderInstance(hash, indexRepondu)` · `instanceRequiertMotDePasse()` → Promise<bool>.
 
-#### 36.7 Workflow release / bump du mdp
+#### 36.7 À NE PAS faire
 
-À chaque release qui touche au mdp, **impératif** : afficher le nouveau mdp dans `version.json > notes` (en première puce, avec warning explicite) pour que les users qui mettent à jour le voient AVANT l'update. Sinon : update → cache PWA purgé → nouveau code chargé → gate apparaît → user bloqué car n'a pas noté le mdp.
-
-Format suggéré pour la 1ère puce de v173+ :
-```
-🔐 IMPORTANT — Accès restreint communautaire activé. Si tu mets à jour,
-l'app te demandera un code d'accès au prochain démarrage. Le code est :
-F!sYs44!h4z!3J — note-le avant de mettre à jour !
-```
-
-#### 36.8 À NE PAS faire
-
-- **Ne JAMAIS** réintroduire un bouton reset depuis le lockout (bypass trivial). Si un user perd son accès → désinstaller manuellement (= friction délibérée).
-- **Ne PAS** exposer le mdp en clair via `window.UnlockGate.getPassword()` ou similaire (rendrait inutile le hash dans le code).
-- **Ne PAS** bumper le mdp sans synchroniser HASH_VALIDE (unlockGate.js) ET KTA_UNLOCK_PASSWORD_DISPLAY (interface.js) ET la première puce de version.json.
+- **Ne JAMAIS** réintroduire un mot de passe codé en dur ni un mot de passe **en clair** dans le code, la
+  doc ou `version.json` (le dépôt est public : l'ancien code et sa valeur en clair restent dans
+  l'historique Git — il ne protège plus rien).
+- **Ne JAMAIS** réintroduire un bouton reset depuis le verrou.
+- **Ne PAS** écrire dans `localStorage` depuis `isUnlocked()` (appelée avant la revalidation).
+- Garde-fou : `scripts/check-gate-instance.js` (matrice `isUnlocked`, décision du submit, révocations,
+  écrans libre / mot de passe, ordre du boot).
 
 ---
 
@@ -525,9 +514,9 @@ Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail
 
 #### 77.10 Voie d'accès UnlockGate via import de licence (v1.28.5)
 
-Au premier chargement de l'app (= UnlockGate active, code communautaire requis), un **second canal
-d'entrée** est désormais proposé : importer un fichier `Licence-pro.json` reçu par mail/canal privé.
-Le mode pro est activé directement et la gate se ferme — pas besoin de saisir le code communautaire.
+Sur l'écran **libre** de l'UnlockGate (instance sans mot de passe, §36), l'import d'un fichier
+`Licence-pro.json` reçu par mail/canal privé active le mode pro et ferme la gate. Sur une instance qui
+publie un mot de passe, le bloc est retiré et l'import n'ouvre pas la gate (mot de passe requis).
 
 **Implémentation** (`js/unlockGate.js`, ~70 lignes ajoutées) :
 
@@ -539,7 +528,7 @@ Le mode pro est activé directement et la gate se ferme — pas besoin de saisir
   `window.MyKTAMapProLicense.importFile(file)` (= **même API que §77.5 import profil**, validation
   stricte avec hash bien formé requis). Si OK :
   ```js
-  localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+  localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);   // "libre-v1"
   localStorage.removeItem(LS_ATTEMPTS);
   // fondu overlay + resolve(true)
   ```
@@ -1365,7 +1354,7 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 **⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
 0. ⚖️ **Conditions d'utilisation** — affichée par **`main.js > initApp` AVANT l'UnlockGate** (pas par le flow). Bug corrigé : déclenchée post-splash par le flow, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
-1. 🗝️ **UnlockGate** (code communautaire / import licence) puis 🔐 **gate PIN** — inchangées.
+1. 🗝️ **UnlockGate** (mot de passe d'instance, ou « Continuer sans licence » / import licence) puis 🔐 **gate PIN**.
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`) → 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`).
 

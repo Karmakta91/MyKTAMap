@@ -596,12 +596,19 @@ function _resetFlowOfflineWarning() {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
-// 🗝️ v173 : mot de passe en clair affiché à l'écran de reset pour que
-// l'user le retrouve avant de tout effacer (choix 6=a validé KARMA).
-// ⚠️ Volontairement en clair ici (sinon impossible d'afficher à l'user).
-// Le hash SHA-256 dans unlockGate.js reste la source de vérité pour la
-// comparaison. Si on bumpe le mdp un jour : changer les 2 endroits ensemble.
-const KTA_UNLOCK_PASSWORD_DISPLAY = "F!sYs44!h4z!3J";
+// 🔓 04/10/2026 — plus de mot de passe communautaire (ni hash, ni valeur en
+// clair). Seule une instance qui publie SON mot de passe (index.json >
+// config.accessHash) le redemande après reset : on PRÉVIENT, sans jamais
+// l'afficher. Config d'instance lue en mémoire (KtaInstance, chargée au boot).
+function _resetBlocAccesInstance() {
+  const st = (window.KtaInstance && typeof window.KtaInstance.etat === "function") ? window.KtaInstance.etat() : null;
+  const h = st && st.config ? st.config.accessHash : null;
+  if (typeof h !== "string" || !/^[0-9a-f]{64}$/i.test(h.trim())) return "";
+  return '<div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); ' +
+    'border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">' +
+    '🗝️ <strong class="kta-tx-accent">' + window.I18n.t("maint.reset_access_code_title") + '</strong><br>' +
+    '<span class="kta-tx-clair">' + window.I18n.t("maint.reset_access_code_intro") + '</span></div>';
+}
 
 function _resetFlowConfirmation() {
   const overlay1 = document.createElement("div");
@@ -628,12 +635,7 @@ function _resetFlowConfirmation() {
         </div>
         <strong>${window.I18n.t("maint.reset_offline_warning")}</strong>
 
-        <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
-          🗝️ <strong style="color:#f4c542;">${window.I18n.t("maint.reset_access_code_title")}</strong><br>
-          <span style="color:#c8d0e0;">${window.I18n.t("maint.reset_access_code_intro")}</span><br>
-          <code style="display:inline-block; margin-top:6px; padding:4px 10px; background:#0a0d18; border:1px solid rgba(244,197,66,0.30); border-radius:4px; color:#f4c542; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:14px; user-select:all;">${KTA_UNLOCK_PASSWORD_DISPLAY}</code>
-          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">${window.I18n.t("maint.reset_access_code_note")}</span>
-        </div>
+        ${_resetBlocAccesInstance()}
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">${window.I18n.t("maint.btn_cancel")}</button>

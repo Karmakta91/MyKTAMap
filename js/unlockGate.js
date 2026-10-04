@@ -8,9 +8,14 @@
 // =====================================================================
 // UNLOCK GATE — barrière communautaire d'accès (depuis v173)
 // =====================================================================
-// Mot de passe unique partagé entre utilisateurs autorisés. Vérifié 1 fois
-// à la 1ère installation puis mémorisé en localStorage. Re-demandé après
-// un reset complet (viderCacheAppli purge le localStorage).
+// 🔓 Depuis le 04/10/2026 (décision KARMA) : PLUS DE MOT DE PASSE CODÉ EN DUR.
+// Deux écrans selon l'instance :
+//   - instance qui publie un mot de passe (`index.json > config.accessHash`,
+//     posé par ConfAdmin — c'est le cas de myktamap.fr) : champ mot de passe,
+//     comme avant. C'est le SEUL mot de passe qui ouvre.
+//   - sinon (usage local, ZIP, Docker community) : « Continuer sans licence »
+//     ou importer une licence pro. Le choix est retenu sur l'appareil.
+// Re-demandé après un reset complet (viderCacheAppli purge le localStorage).
 //
 // ⚠️ NIVEAU DE SÉCURITÉ : c'est une barrière SOCIALE / COMMUNAUTAIRE, pas
 // une vraie authentification. Le code source HTML/JS est servi en clair
@@ -26,9 +31,8 @@
 //   ✅ Cadrer "communauté" → "il faut connaître le code"
 //   ❌ NE PAS empêcher un attaquant motivé de bypass
 //
-// Hash SHA-256 hardcodé : on évite le mdp en clair dans le code. Le mdp
-// lui-même est communiqué hors-bande aux utilisateurs (forum, message
-// direct, etc.).
+// Le mot de passe d'une instance est communiqué hors-bande par son
+// déployeur ; seul son hash SHA-256 est publié dans l'index.
 // =====================================================================
 
 (function() {
@@ -38,7 +42,14 @@
   //   echo -n "<nouveau-mdp>" | openssl dgst -sha256
   // → mettre le résultat ici, l'app redemandera au prochain boot des users
   //   qui avaient l'ancien (le hash en localStorage ne matchera plus).
-  const HASH_VALIDE = "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae";
+  // Valeur mémorisée quand l'utilisateur continue sans licence (ou entre par
+  // une licence pro) sur une instance SANS mot de passe.
+  const ACCES_LIBRE = "libre-v1";
+  // 🩸 MIGRATION SEULEMENT — hash de l'ancien code communautaire (supprimé le
+  // 04/10/2026). Il n'est JAMAIS comparé à une saisie : il sert à reconnaître
+  // un appareil déjà déverrouillé avec l'ancien code, qui vaut « déjà choisi »
+  // (décision KARMA, reco 3) au lieu de lui remontrer l'écran.
+  const HASH_HERITE = "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae";
 
   // Clés localStorage
   const LS_UNLOCK   = "myktamap_unlock_v1";       // hash validé (= mdp accepté)
@@ -87,11 +98,10 @@
   // authentification — et ce serait mentir que de le présenter autrement.
   //
   // 🩸 CE QUI EST MÉMORISÉ, ET POURQUOI. Le hash accepté est écrit dans
-  // `LS_UNLOCK`, comme avant. Mais `isUnlocked()` compare à `HASH_VALIDE` : un
-  // utilisateur entré par le mot de passe du kiosque serait donc REVERROUILLÉ
-  // au premier démarrage hors-ligne, quand l'index n'est pas joignable. D'où
-  // cette seconde clé : elle se souvient du hash d'instance accepté, sans quoi
-  // la fonctionnalité serait inutilisable justement là où l'app sert le plus.
+  // `LS_UNLOCK`. Hors ligne, l'index n'est pas joignable : `isUnlocked()` n'a
+  // rien d'autre pour reconnaître un accès légitime par mot de passe d'instance.
+  // D'où cette seconde clé : elle se souvient du hash d'instance accepté, sans
+  // quoi l'utilisateur serait REVERROUILLÉ au premier démarrage hors ligne.
   const LS_UNLOCK_KIOSQUE = "myktamap_unlock_instance_v1";
   const RE_HASH = /^[0-9a-f]{64}$/;
 
@@ -127,7 +137,14 @@
   function isUnlocked() {
     try {
       const v = localStorage.getItem(LS_UNLOCK);
-      if (v === HASH_VALIDE) return true;
+      if (v === ACCES_LIBRE) return true;
+      // Ancien code communautaire sans mémoire d'instance : vaut accès libre.
+      // 🩸 LECTURE SEULE — isUnlocked() est appelée dès le chargement du module,
+      // AVANT revaliderInstance : convertir ici effaçait l'ancien hash, qui
+      // n'était alors plus reconnu par une instance au même mot de passe
+      // (mesuré le 04/10/2026, accès révoqué à tort). Une instance qui impose
+      // un AUTRE mot de passe le révoque au démarrage en ligne (revaliderInstance).
+      if (v === HASH_HERITE && !localStorage.getItem(LS_UNLOCK_KIOSQUE)) return true;
       // 🩸 Le hash d'instance mémorisé, lu SANS réseau : hors-ligne, c'est la
       // seule chose qui empêche de reverrouiller quelqu'un qui est entré
       // légitimement. La comparaison exige les deux valeurs non vides — sans
@@ -216,14 +233,13 @@
           localStorage.setItem(LS_UNLOCK_KIOSQUE, propre);   // mémoire alignée sur l'accès en cours
         }
       } else {
-        // Pas (ou plus) de mot de passe d'instance : seul le code communautaire
-        // vaut désormais. Un accès entré via un mot de passe d'instance (mémoire
-        // présente) est révoqué — retirer le mot de passe ne doit pas laisser un
-        // accès dont le hash n'est plus le code communautaire.
+        // Pas (ou plus) de mot de passe d'instance : un accès entré via le mot
+        // de passe d'instance (mémoire présente) est révoqué — au prochain
+        // démarrage, l'écran propose « Continuer sans licence ».
         const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
         if (memo) {
           localStorage.removeItem(LS_UNLOCK_KIOSQUE);
-          if (v === memo && v !== HASH_VALIDE) localStorage.removeItem(LS_UNLOCK);
+          if (v === memo) localStorage.removeItem(LS_UNLOCK);
           console.log("[UnlockGate] mot de passe d'instance retiré — ressaisie au prochain démarrage");
         }
       }
@@ -265,8 +281,10 @@
     }).join("");
   }
 
-  function _creerOverlay() {
+  // mode : "instance" (mot de passe publié par l'index) | "libre" (aucun).
+  function _creerOverlay(mode) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const libre = mode === "libre";
     const o = document.createElement("div");
     o.id = "kta-unlock-overlay";
     o.innerHTML =
@@ -277,23 +295,27 @@
         // → tout le funnel suit (gate légale, tutoriel, home). Pré-sélection
         // = langue détectée (navigator.language, mécanisme existant).
         '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
-        '<div class="kta-unlock-icon">🗝️</div>' +
-        '<div class="kta-unlock-titre">' + t("gate.titre") + '</div>' +
+        '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
+        '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
         '<p class="kta-unlock-info">' +
-          t("gate.info") +
+          t(libre ? "gate.libre.info" : "gate.info") +
         '</p>' +
         // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
         // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
           t("gate.contact") +
         '</div>' +
-        '<form id="kta-unlock-form" autocomplete="off">' +
-          '<input type="password" id="kta-unlock-input" placeholder="' + t("gate.placeholder") + '" ' +
-                 'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">' +
-          '<button type="submit" id="kta-unlock-btn" class="kta-btn kta-btn-primary">' +
-            t("gate.unlockBtn") +
-          '</button>' +
-        '</form>' +
+        (libre
+          ? '<button type="button" id="kta-unlock-libre-btn" class="kta-btn kta-btn-primary kta-unlock-libre-btn">' +
+              t("gate.libre.continuer") +
+            '</button>'
+          : '<form id="kta-unlock-form" autocomplete="off">' +
+              '<input type="password" id="kta-unlock-input" placeholder="' + t("gate.placeholder") + '" ' +
+                     'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">' +
+              '<button type="submit" id="kta-unlock-btn" class="kta-btn kta-btn-primary">' +
+                t("gate.unlockBtn") +
+              '</button>' +
+            '</form>') +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
         // 🆕 v1.28.5 — Voie alternative d'accès via licence pro. Un user
         // qui détient une licence pro valide n'a pas à connaître le code
@@ -441,19 +463,18 @@
     // y est négligeable. Hors-ligne, le Service Worker sert l'index en cache
     // (network-first), donc le hash d'instance reste connu.
     const hashInstance = await _hashInstance();
+    // 🔓 04/10/2026 : plus de code communautaire. Seul le mot de passe publié
+    // par l'instance ouvre (le champ n'est affiché que s'il existe).
     const okInstance   = !!(hashInstance && hashed === hashInstance);
-    // Le code communautaire n'ouvre QUE si l'instance n'impose PAS le sien.
-    const okCommunaute = (!hashInstance && hashed === HASH_VALIDE);
 
-    if (okCommunaute || okInstance) {
+    if (okInstance) {
       // ✅ Succès
       try {
         localStorage.setItem(LS_UNLOCK, hashed);
         // 🩸 Mémoriser le hash d'instance est ce qui rend l'accès utilisable
         // HORS LIGNE : `isUnlocked()` n'a alors rien d'autre pour reconnaître
         // un déverrouillage légitime.
-        if (okInstance) localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
-        else            localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+        localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
         localStorage.removeItem(LS_ATTEMPTS);
         localStorage.removeItem(LS_LOCK);   // 🔒 M2 : palier remis à zéro
       } catch(e) {}
@@ -516,12 +537,31 @@
   }
 
   function _monterGate() {
+    // 🔓 04/10/2026 — le mode dépend de l'instance : on lit son hash AVANT de
+    // dessiner (config d'instance déjà chargée et mémorisée : instantané).
+    _hashInstance().catch(function() { return null; }).then(function(h) { _monterGateMode(h); });
+  }
+
+  // Sortie commune : fondu, retrait de l'écran, promesse résolue.
+  function _libererGate(overlay, delai) {
+    setTimeout(function() {
+      overlay.classList.add("kta-unlock-fading");
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (_resolveGate) {
+          const r = _resolveGate;
+          _resolveGate = null;
+          r(true);
+        }
+      }, 250);
+    }, delai);
+  }
+
+  function _monterGateMode(hashInstance) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     (function() {
-
-      // Si déjà en lockout au boot (= localStorage attempts ≥ 5), afficher
-      // l'overlay directement en mode lockout (pas de form).
-      const overlay = _creerOverlay();
+      const libre = !hashInstance;
+      const overlay = _creerOverlay(libre ? "libre" : "instance");
 
       // 🌍 v1.79.4 — sélecteur de langue : setLang recharge le dico puis on
       // re-monte la gate (l'overlay actuel est remplacé, la Promise survit).
@@ -536,7 +576,28 @@
         });
       });
 
-      if (isLockedOut()) {
+      // 🔓 Instance sans mot de passe : « Continuer sans licence » (choix
+      // retenu sur l'appareil), ou import d'une licence pro (plus bas).
+      if (libre) {
+        _instanceProtegeeGate = false;
+        const btnLibre = overlay.querySelector("#kta-unlock-libre-btn");
+        if (btnLibre) {
+          setTimeout(function() { btnLibre.focus(); }, 100);
+          btnLibre.addEventListener("click", function() {
+            try {
+              localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
+              localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+              localStorage.removeItem(LS_ATTEMPTS);
+            } catch(e) {}
+            btnLibre.disabled = true;
+            _libererGate(overlay, 0);
+          });
+        }
+      }
+
+      // Si déjà en lockout au boot (tentatives épuisées), l'écran du verrou
+      // remplace le formulaire — seulement quand un mot de passe est demandé.
+      if (!libre && isLockedOut()) {
         _afficherLockout(overlay);
         return;
       }
@@ -546,9 +607,9 @@
       const fb    = overlay.querySelector("#kta-unlock-feedback");
 
       // Focus champ après animation fade-in
-      setTimeout(function() { if (input) input.focus(); }, 100);
+      if (input) setTimeout(function() { input.focus(); }, 100);
 
-      form.addEventListener("submit", function(e) {
+      if (form) form.addEventListener("submit", function(e) {
         e.preventDefault();
         _onSubmit(overlay, input, fb);
       });
@@ -564,14 +625,12 @@
       // c'est instantané en pratique. Le flag `_instanceProtegeeGate` double
       // ce retrait d'un refus au clic (ci-dessous) au cas où le bloc serait
       // rendu autrement un jour.
-      _instanceProtegeeGate = false;
-      _hashInstance().then(function(h) {
-        if (!h) return;
+      if (!libre) {
         _instanceProtegeeGate = true;
         overlay.querySelectorAll(".kta-licence-community").forEach(function(el) {
           if (el && el.parentNode) el.parentNode.removeChild(el);
         });
-      }).catch(function() {});
+      }
 
       // 🆕 v1.28.5 — Voie alternative "Ou importer ma licence pro".
       // L'user clique sur le bouton → file picker .json → import via
@@ -611,7 +670,8 @@
               // Cohérent : détenir une licence pro = canal légitime, pas besoin
               // de re-saisir le code partagé à chaque reload.
               try {
-                localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+                localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
+                localStorage.removeItem(LS_UNLOCK_KIOSQUE);
                 localStorage.removeItem(LS_ATTEMPTS);
               } catch(e) {}
               fb.innerHTML =
@@ -669,7 +729,7 @@
   // la résolution async de proLicense.isPro().
   function markUnlockedViaLicensePro() {
     try {
-      localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+      localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
       localStorage.removeItem(LS_ATTEMPTS);
     } catch(e) {}
   }

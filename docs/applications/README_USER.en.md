@@ -1194,9 +1194,9 @@ Reposition yourself often (**📍 I am here**), check the scale (🎯 above) and
 
 Tap the active button (in green) again to turn it off.
 
-### 🔑 The access code is refused
+### 🔑 The password is refused
 
-If the app is provided to you by an installation with its own password (association, club), **that password** is the one you need: the community code does not open it, and neither does a pro licence. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap simply offers **Continue without a licence**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
@@ -1212,7 +1212,7 @@ These tools delete **no** data (stored maps, sessions, photos, logbook, preferen
 **⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
-- It also shows the **community access code**, asked again at restart: **write it down before confirming**, or you will not be able to get in.
+- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue without a licence**.
 - Two confirmations are required. Do it **with a connection**: if you are offline, a red window warns you that the app will be unusable until the network is back.
 
 Not to be confused with **↺ Default values** in ⚙️ Settings, which only touches the settings of the open map.
@@ -1726,7 +1726,7 @@ The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form s
 If the author gave you a **`Licence-pro.json`** file, it turns on the pro edition **on this device**.
 
 - **From your profile**: **📂 Import a pro license**, then choose the file. The bottom of the home screen shows ✓ Pro license active and the startup screen shows "Professional edition". **🗑️ Remove local license** takes you back to community mode; you can re-import the file later.
-- **On the very first launch**, on the community code screen, **📂 Import my pro licence** takes you straight into pro mode, without that code.
+- **On the very first launch**, on the welcome screen, **📂 Import my pro licence** takes you straight into pro mode.
 - On an instance where the administrator installed the license on the server, your profile simply shows ✓, with no button.
 
 A malformed file is refused with a message. The file is read in your browser and sent nowhere.

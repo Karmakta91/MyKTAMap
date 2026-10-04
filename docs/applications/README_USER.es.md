@@ -1194,9 +1194,9 @@ Recoloca tu posición a menudo (**📍 Estoy aquí**), comprueba la escala (🎯
 
 Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
-### 🔑 El código de acceso se rechaza
+### 🔑 La contraseña se rechaza
 
-Si la app te la proporciona una instalación con su propia contraseña (asociación, club), es **esa contraseña** la que necesitas: el código comunitario no abre, y una licencia pro tampoco. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap simplemente propone **Continuar sin licencia**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
@@ -1212,7 +1212,7 @@ Estas herramientas no borran **ningún** dato (planos memorizados, sesiones, fot
 **⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de planos y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
-- También muestra el **código de acceso comunitario**, que se vuelve a pedir al reiniciar: **anótalo antes de confirmar**, o no podrás volver a entrar.
+- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar sin licencia**.
 - Se piden dos confirmaciones. Hazlo **con conexión**: si estás sin conexión, una ventana roja te avisa de que la app quedará inutilizable hasta que vuelva la red.
 
 No hay que confundirlo con **↺ Valores por defecto** de ⚙️ Ajustes, que solo afecta a los ajustes del plano abierto.
@@ -1726,7 +1726,7 @@ La forma corta `{ "plans": ["test1", "test2"] }` también funciona; la forma det
 Si el autor te ha entregado un archivo **`Licence-pro.json`**, este activa la edición pro **en este dispositivo**.
 
 - **Desde tu perfil**: **📂 Importar una licencia pro** y elige el archivo. La parte inferior de la pantalla de inicio muestra ✓ Licencia pro activa y la pantalla de arranque «Edición profesional». **🗑️ Quitar licencia local** te devuelve al modo comunitario; puedes volver a importar el archivo más tarde.
-- **En el primer inicio**, en la pantalla del código comunitario, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro, sin ese código.
+- **En el primer inicio**, en la pantalla de bienvenida, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro.
 - En una instancia donde el administrador ha instalado la licencia en el servidor, tu perfil muestra simplemente ✓, sin botón.
 
 Un archivo mal formado se rechaza con un mensaje. El archivo se lee en tu navegador y no se envía a ninguna parte.
