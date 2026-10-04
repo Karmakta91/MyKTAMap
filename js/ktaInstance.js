@@ -33,6 +33,12 @@
 
   const LS_MEMO = "myktamap_instance_config_v1";
   const DELAI_MS = 2000;
+  // 🩸 Premier contact (aucune config mémorisée) : rien à rejouer, on attend la
+  // VRAIE réponse. Vécu le 04/10/2026 (KARMA, après « Tout réinitialiser ») : le
+  // Service Worker qui se réinstalle retélécharge toute l'app, l'index arrive
+  // après 2 s → config inconnue → une instance pro (ou protégée par mot de passe)
+  // affichait la gate community libre. Le délai court ne vaut que s'il y a un repli.
+  const DELAI_PREMIER_MS = 15000;
   let _promesse = null;
   let _etat = { charge: false, repondu: false, index: null, config: null, source: "aucune" };
 
@@ -53,7 +59,8 @@
 
   function _lireIndex() {
     const ctrl = (typeof AbortController === "function") ? new AbortController() : null;
-    const minuterie = setTimeout(function () { if (ctrl) ctrl.abort(); }, DELAI_MS);
+    const delai = _lireMemo() ? DELAI_MS : DELAI_PREMIER_MS;
+    const minuterie = setTimeout(function () { if (ctrl) ctrl.abort(); }, delai);
     // `no-store` explicite (v1.88.2) : le cache HTTP pouvait servir un index
     // périmé quand le Service Worker ne contrôle pas encore l'onglet.
     return fetch("data/index.json", { cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
@@ -79,7 +86,7 @@
       } else {
         const memo = _lireMemo();
         _etat = { charge: true, repondu: false, index: null, config: memo, source: memo ? "memoire" : "aucune" };
-        console.log("[Instance] data/index.json injoignable (délai " + DELAI_MS + " ms ou hors ligne) — " +
+        console.log("[Instance] data/index.json injoignable (délai dépassé ou hors ligne) — " +
                     (memo ? "dernière config connue rejouée" : "aucune config connue"));
       }
       return _etat;
@@ -91,6 +98,7 @@
     charger: charger,
     etat: function () { return _etat; },
     LS_MEMO: LS_MEMO,
-    DELAI_MS: DELAI_MS
+    DELAI_MS: DELAI_MS,
+    DELAI_PREMIER_MS: DELAI_PREMIER_MS
   };
 })();

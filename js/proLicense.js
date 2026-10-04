@@ -77,6 +77,11 @@
 
   var FETCH_PATH = "/Licence-pro.json";
   var FETCH_TIMEOUT_MS = 1500;
+  // 🩸 Sans licence serveur déjà connue (1er lancement, après « Tout réinitialiser »),
+  // on attend la vraie réponse : 1,5 s ne suffisait pas quand le Service Worker
+  // retélécharge toute l'app en même temps (licence abandonnée avant même d'être
+  // envoyée → instance pro prise pour une app community, vécu le 04/10/2026).
+  var FETCH_TIMEOUT_PREMIER_MS = 15000;
 
   // Pattern de validation du hash de licence.
   // Format : MKTM-LIC- suivi de 32 caractères hexadécimaux (insensible à la casse).
@@ -226,9 +231,11 @@
     var timeoutId = null;
     if (typeof AbortController === "function") {
       ctrl = new AbortController();
+      var dejaConnue = false;
+      try { dejaConnue = !!localStorage.getItem(LS_KEY_SERVER); } catch(e) {}
       timeoutId = setTimeout(function() {
         try { ctrl.abort(); } catch(e) {}
-      }, FETCH_TIMEOUT_MS);
+      }, dejaConnue ? FETCH_TIMEOUT_MS : FETCH_TIMEOUT_PREMIER_MS);
     }
 
     var opts = {
@@ -261,11 +268,18 @@
           _safeRemoveLS(LS_KEY_SERVER);
         }
         _recomputeActive();
+        _signalerVerifiee();
       })
       .catch(function() {
         // Network error / timeout → maintenir l'état cache (offline temporaire).
         if (timeoutId) clearTimeout(timeoutId);
+        _signalerVerifiee();
       });
+  }
+  // Fin de la vérification serveur (licence trouvée ou non) : le démarrage qui
+  // l'attend n'a pas à patienter jusqu'au délai maximal.
+  function _signalerVerifiee() {
+    try { window.dispatchEvent(new CustomEvent("mktm:license-checked")); } catch(e) {}
   }
 
   // -------------------------------------------------------------------------

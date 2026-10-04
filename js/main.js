@@ -2051,10 +2051,20 @@ window.proposerRedemarrageLangue = function() {
   if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
   const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
   if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
+    // Licence serveur déjà connue : 2 s suffisent (repli). Sinon (1er lancement,
+    // après « Tout réinitialiser ») : jusqu'à 15 s, et on repart dès la fin de la
+    // vérification (mktm:license-checked) — trouvée ou non.
+    let _licConnue = false;
+    try { _licConnue = !!localStorage.getItem(window.MyKTAMapProLicense._LS_KEY_SERVER); } catch(e) {}
     await new Promise(function(resolve) {
-      const fin = function() { window.removeEventListener("mktm:license-changed", fin); clearTimeout(t); resolve(); };
-      const t = setTimeout(fin, 2000);
+      const fin = function() {
+        window.removeEventListener("mktm:license-changed", fin);
+        window.removeEventListener("mktm:license-checked", fin);
+        clearTimeout(t); resolve();
+      };
+      const t = setTimeout(fin, _licConnue ? 2000 : 15000);
       window.addEventListener("mktm:license-changed", fin);
+      window.addEventListener("mktm:license-checked", fin);
     });
   }
 
