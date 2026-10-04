@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — User Guide
 
-> This guide is intended for application users. It explains how to use each function, how to prepare your phone for a field trip, and outlines the essential rules regarding data discretion.
-
 ---
 
 ## 📖 The story
@@ -80,9 +78,6 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 ---
 
 **Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
-
-*MyKTAMap — User Guide*
-*These places are fragile. Discretion is a form of respect.*
 
 ---
 
@@ -1753,3 +1748,6 @@ There is nothing else to do.
 In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
 ---
+
+*MyKTAMap — User Guide*
+*These places are fragile. Discretion is a form of respect.*

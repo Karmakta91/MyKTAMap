@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — Guide Utilisateur
 
-> Ce guide est destiné aux utilisateurs de l'application. Il explique comment utiliser chaque fonction, comment préparer votre téléphone pour une sortie terrain, et rappelle les règles essentielles concernant la discrétion des données.
-
 ---
 
 ## 📖 Le topo
@@ -80,9 +78,6 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 ---
 
 **Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
-
-*MyKTAMap — Guide Utilisateur*
-*Ces lieux sont fragiles. La discrétion est une forme de respect.*
 
 ---
 
@@ -1753,3 +1748,6 @@ Il n'y a rien d'autre à faire.
 Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 
 ---
+
+*MyKTAMap — Guide Utilisateur*
+*Ces lieux sont fragiles. La discrétion est une forme de respect.*

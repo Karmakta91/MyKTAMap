@@ -1,7 +1,5 @@
 # 📗 MyKTAMap — Guía de usuario
 
-> Esta guía está destinada a los usuarios de la aplicación. Explica cómo utilizar cada función, cómo preparar tu teléfono para una salida sobre el terreno, y recuerda las reglas esenciales sobre la discreción de los datos.
-
 ---
 
 ## 📖 El porqué
@@ -80,9 +78,6 @@ Por haberte tomado 10 minutos para leer en lugar de pulsar a ciegas. Es exactame
 ---
 
 **Créditos de bibliotecas y algoritmos** — 🍃 Leaflet (cartografía interactiva) · 🔄 Leaflet.ImageOverlay.Rotated (ajuste con 2 anclas + proyección de la Vista OSM) · 📦 JSZip (lectura/escritura de los archivos ZIP) · 📤 jsPDF (exportación a PDF imprimible) · 📸 html2canvas (captura del DOM para el PDF de Briefing para bomberos) · 🌍 OpenStreetMap y colaboradores (datos ODbL, Vista OSM opcional) · 🧭 Dijkstra (cálculo del camino más corto para los itinerarios) · 🌐 GPX 1.1 (intercambio para actividades al aire libre).
-
-*MyKTAMap — Guía de usuario*
-*Estos lugares son frágiles. La discreción es una forma de respeto.*
 
 ---
 
@@ -1753,3 +1748,6 @@ No hay nada más que hacer.
 En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto. El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 
 ---
+
+*MyKTAMap — Guía de usuario*
+*Estos lugares son frágiles. La discreción es una forma de respeto.*
