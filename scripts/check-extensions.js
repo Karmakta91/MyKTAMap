@@ -185,6 +185,37 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("pseudo vide → aucun compte", K4.compte() === null);
   }
 
+  // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans plan ouvert : rien n'est appliqué (null)", K.appliquerChangements({ editorPoints: [] }) === null);
+    // Vrai moteur de fusion (ktaUid.js) + un plan ouvert simulé
+    const vm2 = require("vm");
+    const ctx = vm2.createContext(w);
+    vm2.runInContext(lire("js/ktaUid.js"), ctx, { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_aaaa1111", name: "Local", updatedAt: 100 }, { uid: "pt_bbbb2222", name: "Vieux", updatedAt: 100 }];
+    let routes = [{ uid: "rd_cccc3333", type: "chemin", points: [], updatedAt: 100 }, { type: "itinerary", points: [1, 2] }];
+    let sauve = 0;
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; };
+    w.getRoads = () => routes; w.setRoads = (r) => { routes = r; };
+    w.getZones = () => []; w.setZones = () => {}; w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save: () => { sauve++; } };
+    const recu = { editorPoints: [{ uid: "pt_aaaa1111", name: "Distant plus récent", updatedAt: 200 }, { uid: "pt_dddd4444", name: "Nouveau", updatedAt: 150 }],
+                   roads: [{ uid: "rd_cccc3333", type: "chemin", points: [], updatedAt: 50 }],
+                   tombstones: [{ uid: "pt_bbbb2222", deletedAt: 300 }] };
+    const res = K.appliquerChangements(recu);
+    const parUid = Object.fromEntries(pts.map((p) => [p.uid, p.name]));
+    t("le plus récent gagne (objet distant plus récent)", parUid.pt_aaaa1111 === "Distant plus récent");
+    t("un objet nouveau arrive", parUid.pt_dddd4444 === "Nouveau");
+    t("🩸 une trace de suppression distante retire l'objet", !("pt_bbbb2222" in parUid));
+    t("…et elle est gardée localement (il ne ressuscitera pas)", w.KtaUid.getTombstones().some((x) => x.uid === "pt_bbbb2222"));
+    t("une version distante plus ancienne ne remplace pas la locale", routes.find((r) => r.uid === "rd_cccc3333").updatedAt === 100);
+    t("🩸 l'itinéraire en cours n'est jamais touché", routes.some((r) => r.type === "itinerary" && r.points.length === 2));
+    t("la session est sauvegardée", sauve === 1 && res && typeof res.fusionnes === "number");
+    recu.editorPoints[0].name = "modifié après coup";
+    t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
+  }
+
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),

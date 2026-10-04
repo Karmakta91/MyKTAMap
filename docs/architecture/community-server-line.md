@@ -63,7 +63,8 @@ photos restent locales et exportables).
 > exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|null)` ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
-> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` · `importAutorise()` /
+> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
+> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
@@ -145,6 +146,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
+- **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
+  suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
+  plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
+  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
+  `changementsDepuis(ts)`.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
   de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent

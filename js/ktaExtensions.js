@@ -432,6 +432,49 @@
     };
   }
 
+  // ── Changements reçus (synchro entrante) ──
+  // Applique au plan OUVERT des objets et des traces de suppression venus d'un
+  // autre appareil ou d'une autre personne : même règle que la fusion de
+  // sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace
+  // postérieure l'emporte, un objet supprimé ne ressuscite pas). L'itinéraire
+  // en cours n'est jamais touché. Rend { fusionnes, supprimes } ou null (aucun
+  // plan ouvert). Les objets reçus sont copiés : rien de partagé avec l'appelant.
+  function appliquerChangements(lot) {
+    if (!lot || typeof lot !== "object" || !window.KtaUid ||
+        typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
+    const copie = function (a) {
+      return Array.isArray(a) ? JSON.parse(JSON.stringify(a.filter(function (o) { return o && typeof o === "object"; }))) : [];
+    };
+    const routes = (window.getRoads && window.getRoads()) || [];
+    const horsFusion = routes.filter(function (r) { return r && (r.type === "itinerary" || r._preview); });
+    const local = {
+      data: window.getEditorPoints() || [],
+      roads: routes.filter(function (r) { return horsFusion.indexOf(r) < 0; }),
+      zones: (window.getZones && window.getZones()) || [],
+      structures: (window.getStructures && window.getStructures()) || [],
+      tombstones: window.KtaUid.getTombstones()
+    };
+    const distant = {
+      data: copie(lot.editorPoints),
+      roads: copie(lot.roads).filter(function (r) { return r.type !== "itinerary" && !r._preview; }),
+      zones: copie(lot.zones),
+      structures: copie(lot.structures),
+      tombstones: Array.isArray(lot.tombstones) ? lot.tombstones : []
+    };
+    const r = window.KtaUid.fusionnerCalques([local, distant]);
+    const traces = new Map();
+    local.tombstones.concat(distant.tombstones).forEach(function (t) {
+      if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
+    });
+    window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
+    window.setEditorPoints(r.data);
+    if (window.setRoads) window.setRoads(r.roads.concat(horsFusion));
+    if (window.setZones) window.setZones(r.zones);
+    if (window.setStructures) window.setStructures(r.structures);
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
+    return { fusionnes: r.fusionnes, supprimes: r.supprimes };
+  }
+
   // ── Effacement à la déconnexion ──
   // Retire les plans fournis par une extension (registre `type: "ext"`), leur
   // session, leurs photos et leur archive locale. 🩸 Jamais un plan importé par
@@ -504,6 +547,7 @@
     secoursAppliquer: secoursAppliquer,
     compte: compte,
     notifierCompte: notifierCompte,
+    appliquerChangements: appliquerChangements,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,
