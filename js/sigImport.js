@@ -1430,6 +1430,14 @@
       planConfig.tiling = tilingManifest;
     }
 
+    // 🆔 v2.1.0 — un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
+    if (window.KtaUid) {
+      const _vus = new Set();
+      window.KtaUid.ensureAll(ingested.points, "pt", undefined, _vus);
+      window.KtaUid.ensureAll(ingested.roads, "rd", undefined, _vus);
+      window.KtaUid.ensureAll(ingested.zones, "zn", undefined, _vus);
+      window.KtaUid.ensureAll(ingested.structures, "st", undefined, _vus);
+    }
     zip.file("data/sig.json", JSON.stringify({
       points: ingested.points,
       roads:  ingested.roads,

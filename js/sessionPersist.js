@@ -544,6 +544,25 @@
         window.CalqueSession.loadSessionState(payload.calquesSession);
       }
 
+      // 🆔 v2.1.0 — MIGRATION DES IDENTIFIANTS, à l'ouverture du plan (ETUDE_UID
+      // décision 4). Les objets d'une session ancienne reçoivent un uid, et leur
+      // updatedAt prend la date de la DERNIÈRE SAUVEGARDE de la session (pas
+      // « maintenant » : ils n'ont pas été modifiés aujourd'hui). Un Set partagé
+      // entre les 4 familles : un uid en double (migration de masse, copie d'une
+      // ancienne version) est régénéré. AVANT le découpage en deux phases des
+      // tracés, pour que l'itinéraire différé reçoive le même repli.
+      // `VERSION` ne change PAS : une ancienne version de l'app relit la session
+      // (champs inconnus ignorés) et un retour en arrière reste possible.
+      if (window.KtaUid) {
+        const repli = Date.parse(payload.savedAt) || Date.now();
+        const vus = new Set();
+        const n = window.KtaUid.ensureAll(payload.editorPoints, "pt", repli, vus)
+                + window.KtaUid.ensureAll(payload.roads, "rd", repli, vus)
+                + window.KtaUid.ensureAll(payload.zones, "zn", repli, vus)
+                + window.KtaUid.ensureAll(payload.structures, "st", repli, vus);
+        if (n > 0) console.log("[SessionPersist] Identifiants posés sur " + n + " objet(s) (migration v2.1.0)");
+      }
+
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
       // toggle calque "Ajout" sur points restaurés) — symmetric avec setRoads/setZones
       if (window.setEditorPoints && Array.isArray(payload.editorPoints)) {

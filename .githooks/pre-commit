@@ -386,6 +386,14 @@ node scripts/check-connexion-serveur.js || exit $?
 # inter-plan livraient les vrais noms de plan et de point depuis v1.57.0. BLOQUANT.
 node scripts/check-export-anonyme.js || exit $?
 
+# IDENTIFIANTS STABLES (v2.1.0, docs/ETUDE_UID.md) : chaque objet de carte porte
+# uid + updatedAt. Le script EXECUTE js/ktaUid.js (doublons regeneres en
+# migration de masse, uid jamais ecrase, copie du tableur = uid neuf) et verifie
+# le cablage des sites : setters, migration a l ouverture (VERSION de session
+# inchangee - une ancienne app ignorerait une version inconnue), touch a chaque
+# modification, lecture des calques, Generateurs, aucun uid vers KMZ/GPX. BLOQUANT.
+node scripts/check-uid.js || exit $?
+
 # DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
 # 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
 # widget OSM du HOME monte une carte dont le fond vient de

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.0.1</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.1.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1135,6 +1135,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.1.0 (identifiants stables des objets)</h3>
+  <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Chaque objet de tes plans reçoit un identifiant et une date de modification, <strong>calculés et rangés sur ton appareil</strong> (stockage local de la session, quelques dizaines d’octets par objet). Un fichier de plus est servi par le site et précaché (<code>js/ktaUid.js</code>). Ces identifiants partent dans tes exports JSON (que tu télécharges toi-même), <strong>jamais</strong> dans l’export anonymisé, KMZ ou GPX.</p>
   <h3>v2.0.1 (export anonymisé : liaisons retirées)</h3>
   <p><strong>Aucun changement réseau</strong>, aucun domaine, aucune requête. Correctif de confidentialité sur un <strong>fichier que tu télécharges toi-même</strong> : l’export de session « anonymisé » gardait les <strong>liaisons inter-plan</strong>, avec le vrai nom du plan et du point de chaque côté (présentes depuis la v1.57.0). Elles en sont retirées. Un export anonymisé fait <strong>avant</strong> la v2.0.1 depuis un plan qui avait des liaisons peut contenir ces noms : vérifie-le avant de le repartager.</p>
   <h3>v2.0.0 (pastille « connexion serveur »)</h3>

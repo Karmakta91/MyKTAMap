@@ -51,13 +51,13 @@ const session = {
   date_export: "2026-10-04T10:00:00.000Z",
   editorPoints: [
     { id: M + " Salle", nom: M + " Salle", x: 10, y: 20, tags: ["salle"], etat: "",
-      description: M + " description", profondeur: 12, date_update: "2026-10-01", source: "editor" },
+      description: M + " description", profondeur: 12, date_update: "2026-10-01", source: "editor", uid: "pt_UIDMARK1", updatedAt: 1759572000000 },
     { id: M + " Puits", nom: M + " Puits", x: 30, y: 40, tags: [], description: "",
       date_update: "2026-10-02", source: "editor", photos: ["p1"] }
   ],
-  roads: [{ type: "principal", points: [[1, 2], [3, 4]], label: M + " galerie", description: M + " note" }],
-  zones: [{ type: "eau", points: [[1, 1], [2, 2], [3, 1]], description: M + " zone" }],
-  structures: [{ type: "pilier-1", points: [[5, 5], [6, 6], [7, 5]], description: M + " pilier" }],
+  roads: [{ type: "principal", points: [[1, 2], [3, 4]], label: M + " galerie", description: M + " note", uid: "rd_UIDMARK2", updatedAt: 1759572000000 }],
+  zones: [{ type: "eau", points: [[1, 1], [2, 2], [3, 1]], description: M + " zone", uid: "zn_UIDMARK3", updatedAt: 1759572000000 }],
+  structures: [{ type: "pilier-1", points: [[5, 5], [6, 6], [7, 5]], description: M + " pilier", uid: "st_UIDMARK4", updatedAt: 1759572000000 }],
   measure: { points: [] },
   measureSurface: { points: [] },
   interPlanLinks: [{
@@ -87,6 +87,9 @@ if (out) {
   t("la session est marquée anonymisée", out.anonymized === true && typeof out.anonymizedAt === "string");
   t("la géométrie est conservée (x/y du 1er point)", out.editorPoints && out.editorPoints[0].x === 10 && out.editorPoints[0].y === 20);
   const json = JSON.stringify(out);
+  // 🆔 v2.1.0 — un uid relierait le fichier anonymisé à la session d'origine.
+  t("🆔 aucun identifiant stable (uid) ne survit", json.indexOf("UIDMARK") < 0);
+  t("🆔 aucun horodatage de modification (updatedAt) ne survit", json.indexOf("updatedAt") < 0);
   const i = json.indexOf(M);
   t("🔒 AUCUN texte identifiant ne survit, quelle que soit la clé" +
     (i >= 0 ? " — trouvé : …" + json.slice(Math.max(0, i - 60), i + 30) + "…" : ""), i < 0);

@@ -55,7 +55,7 @@ d'imports sans doublons, rattachement fiable des photos au lieu d'un rattachemen
 
 ## Découpage (Q4, 04/10/2026) : trois lots, chacun livré seul
 
-1. **Lot A — l'identité.** Nouveau module `js/ktaUid.js` (`genUid`, `touch`, `ensure`, `ensureAll` avec
+1. ✅ **Lot A — l'identité, livré en v2.1.0.** Nouveau module `js/ktaUid.js` (`genUid`, `touch`, `ensure`, `ensureAll` avec
    régénération des doublons) ; filet dans les 4 setters (`setEditorPoints`, `setRoads`, `setZones`,
    `setStructures`) ; migration dans `sessionPersist._applyRestore` (repli `updatedAt` = `savedAt`) ;
    `touch` à chaque modification ; conversion ; tableur (« Dupliquer » donne un `uid` neuf) ; lectures de

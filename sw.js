@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.0.1";
+const CACHE_NAME = "myktamap-cache-v2.1.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -128,6 +128,8 @@ const ASSETS_TO_CACHE = [
   "./js/proLicense.js",
   // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
   "./js/ktaExtensions.js",
+  // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
+  "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
   "./lib/fonts/kalam-700-splash.woff2",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte

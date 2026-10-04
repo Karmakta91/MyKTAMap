@@ -217,6 +217,7 @@ function initRoad() {
           currentRoad.level = APP_CONFIG.activeLevel || 0;
         }
       }
+      if (window.KtaUid) window.KtaUid.ensure(currentRoad, "rd");   // 🆔 v2.1.0
       roadsData.push(currentRoad);
       if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
         console.log("[Road] nouveau tracé", currentRoad.type);
@@ -224,6 +225,7 @@ function initRoad() {
     }
 
     currentRoad.points.push({ x, y });
+    if (window.KtaUid) window.KtaUid.touch(currentRoad);   // 🆔 v2.1.0 : chaque sommet est une modification
 
     renderRoads();
 
@@ -1162,7 +1164,7 @@ function renderRoads() {
       window.attacherNotePopup(
         ghost,
         function() { return _roadRef.description; },
-        function(v) { _roadRef.description = v; },
+        function(v) { _roadRef.description = v; if (window.KtaUid) window.KtaUid.touch(_roadRef); },
         _roadPopupTitle(road.type),
         // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
         { convertir: { famille: "roads", obj: _roadRef } }
@@ -1395,6 +1397,7 @@ function removeLastRoadPoint() {
     if (currentRoad === last) currentRoad = null;
   } else {
     last.points.pop();
+    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
     // Si plus aucun point dans ce tracé, le retirer aussi
     if (last.points.length === 0) {
       roadsData.pop();
@@ -1414,6 +1417,8 @@ window.getRoads = function() {
 
 window.setRoads = function(roads) {
   roadsData = roads || [];
+  // 🆔 v2.1.0 — filet : tout tracé qui entre ressort avec un uid (cf ktaUid.js).
+  if (window.KtaUid) window.KtaUid.ensureAll(roadsData, "rd");
   currentRoad = null;
   renderRoads();
 };

@@ -634,7 +634,9 @@ function afficherFormulaire(x, y, existingPoint) {
         existingPoint.id          = nom;  // garde id === nom (rétro-compat)
         existingPoint.tags        = tag ? [tag] : [];
         existingPoint.description = desc;
-        existingPoint.date_update = new Date().toISOString().split("T")[0];
+        // 🆔 v2.1.0 — touch : updatedAt (ms) + date_update (jour), en un seul geste.
+        if (window.KtaUid) window.KtaUid.touch(existingPoint);
+        else existingPoint.date_update = new Date().toISOString().split("T")[0];
         // 🏗️ Multi-niveau : on garde le level d'origine (pas de re-tag automatique
         // sur le niveau actif au save d'une édition, ce serait surprenant si l'user
         // a switché de niveau entretemps).
@@ -663,6 +665,8 @@ function afficherFormulaire(x, y, existingPoint) {
         if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
           point.level = window.APP_CONFIG.activeLevel || 0;
         }
+        // 🆔 v2.1.0 — identité stable dès la création (le nom peut changer, l'uid non).
+        if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(point, "pt"));
 
         listePoints.push(point);
         _ajouterMarker(point);
@@ -799,6 +803,7 @@ window.repositionnerPointEditor = function(id, x, y) {
     // vient d'un calque ouvert a la modification.
     pt.x = Math.round(nx * 100) / 100;
     pt.y = Math.round(ny * 100) / 100;
+    if (window.KtaUid) window.KtaUid.touch(pt);   // 🆔 v2.1.0
 
     // Les liaisons inter-plan stockent les coords du point : sans ce recalage
     // le lien partirait de l'ancienne position a l'export KMZ.
@@ -1037,6 +1042,9 @@ window.getEditorPoints        = function() { return listePoints; };
 // étaient bien sur la map, mais hors du layerGroup que toggle l'overlay).
 window.setEditorPoints        = function(points) {
   listePoints = points || [];
+  // 🆔 v2.1.0 — filet : tout point qui entre (restauration, import, annulation,
+  // tableur, Secours…) ressort avec un uid. N'écrase jamais un uid existant.
+  if (window.KtaUid) window.KtaUid.ensureAll(listePoints, "pt");
   if (window.renderEditorPoints) window.renderEditorPoints();
 };
 

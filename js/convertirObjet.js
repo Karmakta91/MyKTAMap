@@ -186,6 +186,9 @@
     const neuf = Object.assign({}, obj, { type: typeCible });
     delete neuf.fromLevel;
     delete neuf.toLevel;
+    // 🆔 v2.1.0 — même objet, autre nature : l'uid suit (Object.assign le
+    // recopie), la conversion est une modification (ETUDE_UID décision 10).
+    if (window.KtaUid) window.KtaUid.touch(neuf);
     listes[familleCible].push(neuf);
 
     const touchees = (famille === familleCible) ? [famille] : [famille, familleCible];
@@ -283,6 +286,7 @@
       const neuf = Object.assign({}, it.obj, { type: typeCible });
       delete neuf.fromLevel;
       delete neuf.toLevel;
+      if (window.KtaUid) window.KtaUid.touch(neuf);   // 🆔 v2.1.0 (cf convertir)
       listes[familleCible].push(neuf);
       touchees[it.famille] = true;
       touchees[familleCible] = true;

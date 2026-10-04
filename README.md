@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.0.1` (04/10/2026)
+## 📦 Version courante — `v2.1.0` (04/10/2026)
+
+> 🆔 **v2.1.0 — Identifiants stables (chantier 1, lot A)** : chaque objet de carte porte `uid` + `updatedAt`, migration des sessions à l'ouverture, sans changer la version de session.
 
 > 🔒 **v2.0.1 — Export anonymisé : liaisons inter-plan retirées** : elles y livraient le vrai nom du plan et du point de chaque côté depuis v1.57.0.
 
@@ -513,6 +515,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.1.0 (04/10/2026) — Identifiants stables des objets (chantier 1, lot A)
+
+- 🔍 **Origine** : prérequis de toute synchro (cadrage base de données, `docs/ETUDE_UID.md`). Avant : tracés, zones et structures sans identité (reconnus par référence mémoire), points identifiés par leur NOM (changeant, non unique).
+- 🆔 **Module `js/ktaUid.js`** (nouveau, précaché, chargé avant `utils.js`) : `genUid(pt|rd|zn|st)` (date base 36 + 6 caractères `crypto.getRandomValues`), `touch` (`updatedAt` ms + `date_update` jour pour un point), `ensure` (pose sans jamais écraser), `ensureAll` (**régénère tout uid déjà vu** : migration de masse, copie d'une ancienne version), `cloneNeuf`, `sansIdentite`, `marquerCalqueTexte`.
+- 🔄 **Migration** dans `sessionPersist._applyRestore`, avant les setters et le découpage en deux phases des tracés : `updatedAt` de repli = `savedAt` de la session ; **`VERSION` reste 1** (une ancienne app ignorerait une version inconnue). **Filet** dans les 4 setters (`setEditorPoints/Roads/Zones/Structures`).
+- ✏️ **`touch` à chaque modification** : création / modification / repositionnement de point, sommets ajoutés et retirés (tracé, zone, structure), notes, conversion (l'uid suit), cellules et tags du tableur. **Tableur** : `uid`/`updatedAt` jamais en colonnes modifiables ; « Dupliquer » donne un **uid neuf** (une copie JSON l'aurait recopié).
+- 🗂️ **Calques** : `getAllEmbedded*` gardent `uid`/`updatedAt` quand ils existent ; le Générateur et les imports KMZ/GPX/SIG les posent sur les nouveaux plans (uid existants gardés, fichier non JSON laissé intact).
+- 🛡️ **Garde-fous** : `scripts/check-uid.js` (pré-commit, bloquant, 62 contrôles — module exécuté + câblage ; sabotages vérifiés : doublon, VERSION, setter, « Dupliquer ») ; `check-export-anonyme.js` vérifie en plus qu'aucun `uid`/`updatedAt` ne sort de l'export anonymisé.
+- ✅ **Tests navigateur** (Edge headless, relevé fictif) : session ancienne injectée → uid posés sur les 5 objets, `updatedAt` = date de sauvegarde ; sauvegarde → uid stockés, version 1 ; rechargement → **mêmes uid**, horodatage d'un tracé modifié conservé ; aucune erreur JS.
+- ⏭️ **Lots suivants** : B (traces de suppression, fusion par uid), C (références par nom → uid).
 
 #### v2.0.1 (04/10/2026) — Export anonymisé : les liaisons inter-plan ne fuient plus
 

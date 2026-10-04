@@ -1976,6 +1976,9 @@ window.getAllEmbeddedPoints = function() {
       };
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
       if (m._ktaDescription) item.description = m._ktaDescription;
+      // 🆔 v2.1.0 — l'identité du calque survit à la lecture (seulement si elle existe).
+      if (m._ktaUid) item.uid = m._ktaUid;
+      if (typeof m._ktaUpdatedAt === "number") item.updatedAt = m._ktaUpdatedAt;
       out.push(item);
     } catch(e) {}
   });
@@ -2001,6 +2004,8 @@ window.getAllEmbeddedZones = function() {
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
+      if (e.uid) out.uid = e.uid;                                   // 🆔 v2.1.0
+      if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
     });
 };
@@ -2049,6 +2054,8 @@ window.getAllEmbeddedStructures = function() {
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
+      if (e.uid) out.uid = e.uid;                                   // 🆔 v2.1.0
+      if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
     });
 };
@@ -2376,6 +2383,10 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🩸 v1.82.0 — calque d origine (cf. entry des roads plus bas) : sans
           // lui, l export ne peut pas rattacher un point à sa case « calque ».
           marker._ktaLayerId = _layerInfo ? _layerInfo.layerId : null;
+          // 🆔 v2.1.0 — identité du point dans son calque (posée par le Générateur
+          // sur les plans récents ; absente des anciens : on ne l'invente pas).
+          if (typeof p.uid === "string" && p.uid) marker._ktaUid = p.uid;
+          if (typeof p.updatedAt === "number") marker._ktaUpdatedAt = p.updatedAt;
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
 
@@ -2501,6 +2512,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
             description: road.description || undefined,
+            uid:         (typeof road.uid === "string" && road.uid) ? road.uid : undefined,   // 🆔 v2.1.0
+            updatedAt:   (typeof road.updatedAt === "number") ? road.updatedAt : undefined,
             origOpacity: style.opacity ?? 1
           };
           window._ktaDataPolylines.push(entry);
@@ -2685,6 +2698,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             level:           Number.isInteger(structure.level) ? structure.level : 0,
             // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
             description:     structure.description || undefined,
+            uid:             (typeof structure.uid === "string" && structure.uid) ? structure.uid : undefined,   // 🆔 v2.1.0
+            updatedAt:       (typeof structure.updatedAt === "number") ? structure.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.85
           };
@@ -2762,6 +2777,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             level:           Number.isInteger(zone.level) ? zone.level : 0,
             // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
             description:     zone.description || undefined,
+            uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,   // 🆔 v2.1.0
+            updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.7
           };

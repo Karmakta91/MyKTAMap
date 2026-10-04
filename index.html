@@ -1185,6 +1185,10 @@
 
   <!-- APP JS -->
   <script src="js/config.js" defer></script>
+  <!-- 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt), avant
+       tous les modules qui créent des objets (utils, road, zones, structures, editor…).
+       Décisions : docs/ETUDE_UID.md. Aucune requête, aucun stockage. -->
+  <script src="js/ktaUid.js" defer></script>
   <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
        (traces / zones / structures). Place EN AMONT de tous ses consommateurs
        (utils, road, zones, structures, exporter, puis kmz/gpx aux vagues

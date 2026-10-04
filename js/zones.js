@@ -132,6 +132,7 @@ function initZones() {
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         currentZone.level = window.APP_CONFIG.activeLevel || 0;
       }
+      if (window.KtaUid) window.KtaUid.ensure(currentZone, "zn");   // 🆔 v2.1.0
       zonesData.push(currentZone);
     }
 
@@ -155,6 +156,7 @@ function initZones() {
     }
 
     currentZone.points.push({ x: x, y: y });
+    if (window.KtaUid) window.KtaUid.touch(currentZone);   // 🆔 v2.1.0
     renderZones();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewZone
@@ -377,7 +379,7 @@ function renderZones() {
         window.attacherNotePopup(
           polygon,
           function() { return _zoneRef.description; },
-          function(v) { _zoneRef.description = v; },
+          function(v) { _zoneRef.description = v; if (window.KtaUid) window.KtaUid.touch(_zoneRef); },
           _zonePopupTitle(zone.type),
           // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
           { convertir: { famille: "zones", obj: _zoneRef } }
@@ -444,6 +446,7 @@ function removeLastZonePoint() {
     const last = zonesData[zonesData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
+    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
     if (last.points.length < 3) {
       // Plus assez de points → supprimer la zone entière
       zonesData.pop();
@@ -453,6 +456,7 @@ function removeLastZonePoint() {
   }
 
   currentZone.points.pop();
+  if (window.KtaUid) window.KtaUid.touch(currentZone);   // 🆔 v2.1.0
   if (currentZone.points.length === 0) {
     const idx = zonesData.indexOf(currentZone);
     if (idx >= 0) zonesData.splice(idx, 1);
@@ -471,6 +475,8 @@ window.getZones = function() {
 
 window.setZones = function(zones) {
   zonesData = zones || [];
+  // 🆔 v2.1.0 — filet : toute zone qui entre ressort avec un uid (cf ktaUid.js).
+  if (window.KtaUid) window.KtaUid.ensureAll(zonesData, "zn");
   currentZone = null;
   renderZones();
 };

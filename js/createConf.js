@@ -2899,6 +2899,23 @@ function _afficherAvertissementV2(checkbox) {
 // =========================
 // LECTURE FICHIER
 // =========================
+// 🆔 v2.1.0 — Un plan qui sort du Générateur porte un uid sur chaque objet de
+// ses calques de données (ETUDE_UID décision 5) : les uid existants sont
+// gardés, les manquants posés. Le fichier arrive en ArrayBuffer ; s'il n'est
+// pas un JSON UTF-8 exploitable, il part tel quel (jamais de calque perdu pour
+// une identité).
+function _marquerUidCalque(buffer) {
+  if (!window.KtaUid || !buffer) return buffer;
+  try {
+    const texte = new TextDecoder("utf-8").decode(buffer);
+    const neuf = window.KtaUid.marquerCalqueTexte(texte);
+    return neuf === texte ? buffer : neuf;
+  } catch (e) {
+    console.warn("[Generateur] uid non posés sur un calque :", e);
+    return buffer;
+  }
+}
+
 function _lireFichier(file) {
   return new Promise(function(resolve, reject) {
     const r = new FileReader();
@@ -3652,7 +3669,7 @@ async function _genererZip() {
 
       const fileName = dlId + ".json";
       if (dlFile) {
-        dataFolder.file(fileName, await _lireFichier(dlFile));
+        dataFolder.file(fileName, _marquerUidCalque(await _lireFichier(dlFile)));
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
