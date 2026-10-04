@@ -130,7 +130,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 - **📋 Ver el registro de red** — todas las peticiones de la app en directo, y si envían datos; se puede copiar, exportar o vaciar. Si una petición envía datos, o aparece una dirección externa distinta de OpenStreetMap (en rojo), **avisa al autor**: Instagram **@karma_kta** o **contact@myktamap.fr**.
 - **📖 ¿Qué hace la app en la red?** — la lista de direcciones que la app puede contactar y cómo comprobarlo con tu navegador (F12, pestaña Red).
-- **🔌 La pastilla «Servidor: desactivado»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas se comunica con un servidor. En myktamap.fr dice «desactivado», y así seguirá: este sitio no tiene servidor de aplicación. Una instalación independiente (club, equipo) puede declarar uno: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior.
+- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior.
 
 ---
 

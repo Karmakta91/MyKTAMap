@@ -172,9 +172,9 @@
     if (window.I18n && typeof window.I18n.has === "function" && !window.I18n.has("home.serveur.mot.off")) return;
     const cls = CLASSE_ETAT[_etat] || CLASSE_ETAT.off;
     const mot = _libelle(_etat);
-    // L'infobulle et le titre du bloc disent « Connexion serveur : <état> » :
+    // L'infobulle et le titre du bloc disent « Base de données : <état> » :
     // ils prennent la forme courte de l'état, pas le mot de la pastille (qui
-    // contient déjà « Serveur »).
+    // contient déjà « Base de données »).
     const etatCourt = _t("home.serveur.etat." + _etat);
     const titre = _t("home.serveur.infobulle", { etat: etatCourt });
 

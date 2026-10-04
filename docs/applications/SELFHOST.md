@@ -61,7 +61,7 @@
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.
 - `serverConnection` (v2.0.0) : **réservé aux instances qui greffent des modules de connexion à un serveur.**
-  Un kiosque n'en a pas besoin : sans ce champ, l'app affiche « Serveur : désactivé » dans son pied de page.
+  Un kiosque n'en a pas besoin : sans ce champ, l'app affiche « Base de données : désactivée » dans son pied de page.
   Forme : `{ "state": "on", "api": "https://api.exemple.org", "modules": ["pro/sync.js"] }` — `api` en
   `https://` (elle peut vivre sur un autre domaine que l'app : ajoutez alors son origine à `connect-src`
   dans votre CSP), `modules` = chemins **sur le même site que l'app** (20 max). Dans cette version, l'app

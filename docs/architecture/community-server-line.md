@@ -82,7 +82,7 @@ qui parle au serveur.
 
 | État | Condition | Affichage (footer) | Modules greffés / requêtes |
 |---|---|---|---|
-| **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | 🔌 « Serveur : désactivé » | Jamais chargés ; garde bloquant |
+| **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | 🔌 « Base de données : désactivée » | Jamais chargés ; garde bloquant |
 | **INVALIDE** | Champ mal formé : pas un objet, `state` inconnu, `api` hors `https://`, module hors de l'origine de l'app (raison exacte journalisée `[Connexion]`) | « Configuration invalide » (décision KARMA, contre la reco d'un repli silencieux en OFF) | Jamais chargés ; garde bloquant |
 | **LICENCE** | `"on"` mais aucune licence pro de source `"server"` | « Licence requise » | Jamais chargés |
 | **CONFIGURÉE** | `"on"` + licence serveur, mais aucun module ne s'est encore déclaré | « Configurée, aucun module » | Personne ne sonde le serveur (règle C) : c'est l'état normal de tout le chantier 0 |
