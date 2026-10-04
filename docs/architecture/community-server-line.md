@@ -55,9 +55,15 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> 🚧 **Tout le reste de ce paragraphe est un contrat, pas encore codé** (états ON / DOWN, chargeur
-> de modules, garde des requêtes, gate déléguée et autres prises — chantiers 1 à 3) : ne pas le
-> documenter comme livré ailleurs (NETWORK_AUDIT, README_USER, AI_CONTEXT).
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.7.0)** : identifiants stables, lecture unique de l'index avant
+> les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
+> `scripts/check-extensions.js`). Signatures (API v1) :
+> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
+> Promise<[{id,name,version?,tags?}]>, charger(id) → Promise<Blob ZIP> }, importAutorise() → bool,
+> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise })` · `signaler("on"|"down"|null)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
+> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `importAutorise()` /
+> `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 
@@ -237,7 +243,7 @@ navigateur.
    - le kiosque reprend lui aussi la config mémorisée quand l'index est injoignable ;
    - invariants du §5 et contrôles de `scripts/check-gate-instance.js` réécrits (ordre
      config → revalidation → gate, une seule lecture, mémoire qui ne révoque rien).
-3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
+3. ✅ Points d'extension + `check-extensions.js` (**livré en v2.7.0**, branche `karma_backend_dev`) : gate déléguée (écran « Installation indisponible » si le module de connexion manque ou échoue, jamais de repli sur la gate community), chargeur de modules (règle E), garde des requêtes (origine de `api`, états permis, sondes en « injoignable »), états `on`/`down` signalés par le module, permissions import/export (erreur = refus), plans d'extension (`type: "ext"`, ☁️, gardés sur l'appareil), publication depuis le Générateur, journal des changements, effacement à la déconnexion (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
 
 Les noms et signatures exacts de chaque prise se fixent au chantier 3.

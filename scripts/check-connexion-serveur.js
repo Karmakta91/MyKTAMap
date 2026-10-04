@@ -214,8 +214,20 @@ t("la pastille et le bloc d'état existent dans index.html",
 t("le module est précaché (sw.js > ASSETS_TO_CACHE)", /"\.\/js\/ktaExtensions\.js"/.test(SW));
 t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   PROF.indexOf("myktamap_server_connection_v1") < 0);
-t("🩸 le module ne fait AUCUNE requête (ni fetch, ni XHR, ni beacon, ni socket)",
-  !/\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(MOD.replace(/\/\/.*$/gm, "")));
+// v2.7.0 (chantier 3) : le module porte le GARDE des requêtes d'extension.
+// Règle : un seul fetch, dans requete() ; jamais de XHR/beacon/socket ; le
+// module ne contacte JAMAIS le serveur de lui-même (seule une extension
+// l'appelle), et en OFF requete refuse avant tout envoi (cf check-extensions).
+{
+  const sansComm = MOD.replace(/\/\/.*$/gm, "");
+  const nFetch = (sansComm.match(/\bfetch\s*\(/g) || []).length;
+  const d = sansComm.indexOf("function requete(");
+  let corps = "";
+  if (d >= 0) { const o = sansComm.indexOf("{", d); let pr = 0;
+    for (let k = o; k < sansComm.length; k++) { if (sansComm[k] === "{") pr++; else if (sansComm[k] === "}") { pr--; if (pr === 0) { corps = sansComm.slice(d, k + 1); break; } } } }
+  t("🩸 un seul fetch dans le module, et il vit dans requete() (le garde)", nFetch === 1 && /\bfetch\s*\(/.test(corps));
+  t("🩸 ni XHR, ni beacon, ni socket dans le module", !/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(sansComm));
+}
 t("ConfAdmin refuse l'export tant que le champ est invalide",
   /\$\("caDownload"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA) &&
   /\$\("caCopy"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA));

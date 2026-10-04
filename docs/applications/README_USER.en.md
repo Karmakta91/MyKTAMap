@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab).
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know.
 
 ---
 

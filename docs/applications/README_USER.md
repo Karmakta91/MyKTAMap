@@ -128,7 +128,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau).
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire.
 
 ---
 

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.6.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.7.0</strong> (4 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1135,6 +1135,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.7.0 (points d’extension des installations indépendantes)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> L’app peut désormais accueillir des modules de connexion à une base de données, mais <strong>uniquement</strong> sur une installation qui les déclare dans sa configuration <strong>et</strong> pose une licence ; <code>myktamap.fr</code> n’en déclare aucun, et l’app vérifie ces deux conditions avant de charger quoi que ce soit (la pastille reste « Base de données : désactivée »). Sur une telle installation, les modules sont servis par le même site que l’app, et toute requête vers la base de données passe par un garde unique qui refuse une autre adresse que celle déclarée, et refuse tout envoi quand la connexion est désactivée ou injoignable. La page de transparence de cette installation décrit ce qu’elle synchronise.</p>
   <h3>v2.6.0 (configuration de l’installation lue une seule fois)</h3>
   <p><strong>Aucun domaine nouveau, une requête de moins.</strong> <code>data/index.json</code>, que l’app lisait déjà à chaque démarrage, est lu <strong>une seule fois</strong>, un peu plus tôt (avant l’écran de code), au lieu de deux quand cet écran s’affiche. Au-delà de 2 secondes sans réponse, l’app abandonne cette lecture et reprend la dernière configuration connue, gardée <strong>sur ton appareil</strong> (stockage local, clé <code>myktamap_instance_config_v1</code> : uniquement la section « config » de l’installation, ni tes données ni la liste des plans).</p>
   <h3>v2.5.0 (photos des plans importés)</h3>

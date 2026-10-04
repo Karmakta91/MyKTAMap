@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.6.0";
+const CACHE_NAME = "myktamap-cache-v2.7.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -47,6 +47,13 @@ const CACHE_NAME = "myktamap-cache-v2.6.0";
 // et les servir.
 const PLAN_CACHE_PREFIX = "myktamap-plan-";
 function _estCachePlan(cle) { return typeof cle === "string" && cle.indexOf(PLAN_CACHE_PREFIX) === 0; }
+// 🧩 v2.7.0 (chantier 3) — caches des modules greffés : chaque module remplit et
+// versionne SON cache « myktamap-ext-<module> » ; l'activation du SW le garde
+// (une release community ne doit pas vider le hors-ligne d'un module, et une
+// release du module n'impose pas de bumper CACHE_NAME). Jamais dans
+// ASSETS_TO_CACHE : sur myktamap.fr, ces caches n'existent pas.
+const EXT_CACHE_PREFIX = "myktamap-ext-";
+function _estCacheExt(cle) { return typeof cle === "string" && cle.indexOf(EXT_CACHE_PREFIX) === 0; }
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -552,7 +559,7 @@ self.addEventListener("activate", (event) => {
       return Promise.all(
         keys
           // 💾 v1.87.0 : les caches de plan hors-ligne SURVIVENT au bump.
-          .filter((key) => key !== CACHE_NAME && !_estCachePlan(key))
+          .filter((key) => key !== CACHE_NAME && !_estCachePlan(key) && !_estCacheExt(key))
           .map((key) => {
             console.log("[SW] Suppression ancien cache :", key);
             return caches.delete(key);

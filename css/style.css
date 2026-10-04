@@ -11108,6 +11108,22 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a
 html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
 body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
 
+/* 🧩 v2.7.0 — « Installation indisponible » (module de connexion absent ou gate
+   déléguée en échec). Au-dessus de tout, comme une gate ; jamais de repli. */
+.kta-instance-indispo {
+  position: fixed; inset: 0; z-index: 100100;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
+  padding: 16px;
+}
+.kta-instance-indispo-boite {
+  max-width: 420px; width: 100%;
+  background: #1a1f2e; border: 1px solid rgba(244, 197, 66, 0.35); border-radius: 12px;
+  padding: 22px 20px; color: #e8eaf0; text-align: center;
+}
+.kta-instance-indispo-boite h2 { margin: 0 0 10px; font-size: 18px; color: #f4c542; }
+.kta-instance-indispo-boite p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; color: #c8d0e0; }
+
 /* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
    vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
    licence warn · configuree info, variantes claires comprises). Sous 380 px,

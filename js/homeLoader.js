@@ -999,7 +999,7 @@
       }
 
 function planRowHTML(plan) {
-        let icon = plan.type === "server" ? "🌐" : "💾";
+        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // 🧩 v2.7.0 : ☁️ = plan d'extension
         // Badge de persistance (plans locaux) — différencier visuellement les
         // modes de stockage (blob/fsHandle/pick).
         let badgeStorage = "";
@@ -2437,6 +2437,27 @@ function planRowHTML(plan) {
             } else {
               setStatus("Erreur : " + (e.message || e), true);
             }
+          }
+          return;
+        }
+
+        // 🧩 v2.7.0 — plan fourni par une extension (prise « source de plans ») :
+        // l'archive vient de l'extension ; une fois ouverte elle est gardée sur
+        // l'appareil (hors ligne), et l'effacement à la déconnexion la retire.
+        if (plan.type === "ext") {
+          setStatus("Chargement de " + plan.name + "…");
+          try {
+            let blob = null;
+            try { blob = await window.KtaExtensions.chargerPlanExtension(plan.extId || plan.id); }
+            catch (eExt) { blob = plan.storedBlob ? await window.PlanRegistry.getBlob(plan.id) : null; }
+            if (!blob) return setStatus("Plan indisponible (serveur injoignable)", true);
+            const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
+            const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+            await chargerZipFichier(fichier, (segmented !== "auto") ? segmented : (plan.perfPreset || "auto"),
+                                    { planId: plan.id, typeRegistre: "ext", storeBlob: true, zipFile: fichier });
+            if (window.masquerLoader) window.masquerLoader();
+          } catch (e) {
+            setStatus("Erreur : " + (e.message || e), true);
           }
           return;
         }
