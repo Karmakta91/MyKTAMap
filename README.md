@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.7.2` (04/10/2026)
+## 📦 Version courante — `v2.7.3` (04/10/2026)
+
+> 2️⃣ **v2.7.3 — Splash sans cadre, image Docker constructible depuis Windows, notes de version réduites.**
 
 > 🧩 **v2.7.2 — Un module greffé peut porter sa version (`pro/x.js?v=…`)** : sa mise à jour n'attend plus une release community.
 
@@ -531,6 +533,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.3 (04/10/2026) — Splash sans cadre, Docker depuis Windows (branche `karma_backend_dev`)
+
+- 2️⃣ **Splash** : le cadre doré autour de l'écran est retiré (demande KARMA) ; le « 2 » reste. CSS `::before`, variantes tactile et claire, classe `kta-splash-majeure` supprimées.
+- 🐳 **Docker** : sur un checkout Windows (`core.autocrlf=true`), `docker/entrypoint.sh` arrivait en CRLF dans l'image → `#!/bin/sh\r` introuvable, le conteneur ne démarrait pas (trouvé au premier lancement de la pile pro). Le `Dockerfile` convertit le script en fins de ligne Unix au build.
+- 📝 **`version.json > notes`** réduites à deux sujets (consigne KARMA) : bases de données des installations indépendantes, documentation simplifiée.
 
 #### v2.7.2 (04/10/2026) — Version des modules greffés (branche `karma_backend_dev`)
 

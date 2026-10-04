@@ -1,17 +1,8 @@
 {
-  "version": "v2.7.2",
+  "version": "v2.7.3",
   "released": "2026-10-04",
   "notes": [
-    "🧩 Les installations indépendantes peuvent désormais brancher leur propre base de données. Rien ne change sur myktamap.fr, qui n'en a pas et n'en aura jamais.",
-    "⚡ Le démarrage n'attend plus un serveur lent : au-delà de 2 secondes, l'app reprend la dernière configuration connue.",
-    "📸 Les photos que tu ajoutes à un plan importé, qui contient lui-même des photos, ne sont plus effacées quand tu le rouvres.",
-    "🌀 Supprimer un point n’efface plus les liaisons, ni l’étoile favori, d’un autre point qui porte le même nom.",
-    "📸 Une photo suit désormais son point même si tu le renommes. Si plusieurs points portent le même nom, la bulle te demande à quel point va chaque ancienne photo (📌 « c'est ce point ») — rien n'est jamais supprimé.",
-    "🔀 La fusion de sessions ne double plus un même élément présent dans deux fichiers : la version la plus récente est gardée, et un élément supprimé ne revient pas.",
-    "🆔 Préparation interne : chaque point, tracé et zone de tes plans reçoit un identifiant permanent. Rien ne change à l’écran : tes sessions sont converties automatiquement, sans rien perdre, la première fois que tu ouvres chaque plan.",
-    "🔒 Correctif de confidentialité : l’export de session « anonymisé » contenait encore les noms de tes liaisons entre plans (nom du plan et du point de chaque côté). Elles en sont désormais retirées. Si tu as partagé un export anonymisé depuis un plan qui avait des liaisons, il peut contenir ces noms.",
-    "🔌 Nouveau, en bas de l’accueil : « Base de données : désactivée ». Sur myktamap.fr, l’app n’a ni base de données ni backend, et n’en aura jamais : tes plans, tes sorties et tes photos restent sur ton appareil. Touche la pastille pour voir tout ce que l’app fait sur le réseau.",
-    "🧩 Replay, Heatmap, batterie et vibration deviennent des options désactivées par défaut (⚙️ Configuration › Fonctionnalités optionnelles). 📖 Documentation, Aide ❓ et tutoriel sont réécrits, plus courts. Nouveau : une pastille à côté du numéro de version, en bas de l’accueil — verte, l’app est prête hors-ligne ; rouge, touche-la pour tout enregistrer. Les outils de réparation sont réunis sous ⚙️ Configuration › 🆘 Dépannage ; le mode hors-ligne strict et le bouton 🔒 de l’accueil disparaissent (pour couper la carte du monde, décoche 🗺️ Vue OSM ; pour reverrouiller, ferme l’app).",
-    "🪧 Le guidage marche aussi sans le suivi : touche « 📍 Je suis ici » sur une plaque proche de l’itinéraire, la partie déjà faite disparaît sans recalcul. Il suit aussi un trajet qui passe par un portail. La croix du bandeau coupe le guidage ; la tuile 🪧 du menu Tracker le rallume."
+    "🧩 Les installations indépendantes peuvent désormais brancher leur propre base de données, avec des comptes. Rien ne change sur myktamap.fr, qui n'en a pas et n'en aura jamais : tes données restent sur ton appareil.",
+    "📖 La documentation et l'aide ont été réécrites : plus courtes, plus simples, rangées dans l'ordre où tu en as besoin."
   ]
 }
