@@ -78,6 +78,30 @@
 }
 ```
 
+→ **Identité stable (v2.1.0)** : chaque objet de carte (point, tracé, zone, structure) porte aussi
+`"uid": "pt_lq3x9a_k2f8m1"` (préfixe `pt_`/`rd_`/`zn_`/`st_` = famille **à la création**, puis date
+base 36 et 6 caractères aléatoires) et `"updatedAt": 1759572000000` (ms, mis à jour à chaque
+modification). `id` d'un point **reste son nom** (photos, favoris, liaisons, Secours s'y réfèrent
+encore jusqu'au lot C). Posés : par le Générateur et les imports KMZ/GPX/SIG sur les nouveaux plans ;
+dans une session, par la migration à l'ouverture (`updatedAt` de repli = `savedAt` de la session) et
+par le filet des 4 setters. **Jamais** dans KMZ, GPX ni l'export anonymisé. Absents des anciens plans
+tant qu'ils ne sont pas régénérés. Unicité **par stockage** (un objet rapatrié d'un calque garde l'uid
+de l'original). Module : `js/ktaUid.js` ; décisions : `docs/ETUDE_UID.md`.
+
+→ **Traces de suppression (v2.2.0)** : le payload de session et l'export complet portent
+`"tombstones": [{ "uid": "rd_…", "deletedAt": 1759572000000 }]` — un objet supprimé laisse son uid
+90 jours, pour qu'une synchro ou une fusion ne le ressuscite pas. Tenues par `HistoryManager`
+(diff des uid à chaque action, annulation = trace retirée + `touch`), purgées à 90 jours,
+vidées par « Effacer la session » et au changement de plan, **jamais** dans l'export anonymisé.
+Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque (`_srcCalque`).
+**Favoris, liaisons, Secours (v2.4.0)** : un favori porte `pointUid` (son champ `uid` reste SON identifiant `fav-…`) ; chaque côté d'une liaison porte `pointUid` ; une étape de Secours porte `pointUid`. Lecture : l'uid d'abord, puis le nom (et les coordonnées) pour une donnée ancienne. Migration douce dans la même passe que les photos (`main.js > _ktaPlanifierMigrationPhotos`) : un seul point de ce nom, ou l'homonyme à la même position ; sinon rien n'est deviné.
+
+**Photos (v2.3.0)** : `pointId` d'une photo (IndexedDB `myktamap_photos`, exports, profil) vaut l'**uid** du point pour toute photo prise depuis v2.3.0 ; les anciennes restent sous le **nom** jusqu'à leur migration (automatique si le nom n'est porté que par un point ; sinon « à rattacher » par l'utilisateur). Lecture **double** partout (`MyKTAMapPhotos.getPhotosForPointRef` : uid, puis nom). Index des ZIP de plan (`data/photos/_index.json`, v2.5.0) : `pointId` = uid du point quand son nom n'est porté que par un seul point du plan généré, sinon la clé d'origine ; les photos restaurées depuis le ZIP portent `meta.origine = "plan"` — seules celles-là peuvent être retirées à la réouverture (si elles ont disparu du ZIP), jamais une photo prise par l'utilisateur.
+Fusion de sessions et du Générateur : `KtaUid.fusionnerCalques` (même uid de deux fichiers = même
+objet, le plus récent gagne ; même uid dans UN fichier = deux objets, uid neuf au second ; une trace
+postérieure à la dernière modification l'emporte). Import par remplacement : les traces du fichier
+remplacent celles du plan.
+
 ### Format export session
 
 ```json
@@ -96,7 +120,7 @@
 
 → **Mode Histoire dans le ZIP de session** : `noteLibre` (string inline) + `historeSessionPdfs` (**tableau** depuis v1.69.0 : `[{name, file: "mode-histoire/<nom>"}]`, un fichier par entrée dans le dossier `mode-histoire/` du ZIP, noms dédoublonnés). `historeSessionPdf` (objet unique = **premier** document) reste écrit pour que les versions antérieures relisent au moins un PDF ; à l'import, le tableau prime et le champ unique sert de repli. Les deux sont **omis** en export anonymisé.
 
-→ **`customLegend`** (depuis v1.48.0) = état de légende personnalisée de l'utilisateur (renommages, masquages, types custom), sérialisé via `LegendCustomization.getSessionState()`. **Optionnel** : présent dans l'export complet, omis dans l'export « avancé » si l'état est vide. Restauré à l'import via `LegendCustomization.loadSessionState()` → rend la session **autoportante** même importée sur un ZIP « legacy » sans légende baked. Les **roads/zones n'ont pas d'`id`** (snapshot brut `{type, points, label?, level?}`) ; l'id de zone utilisé par l'évitement d'itinéraire est **dérivé au runtime** (`z_<type>_<x>_<y>_<n>`), jamais écrit dans l'export.
+→ **`customLegend`** (depuis v1.48.0) = état de légende personnalisée de l'utilisateur (renommages, masquages, types custom), sérialisé via `LegendCustomization.getSessionState()`. **Optionnel** : présent dans l'export complet, omis dans l'export « avancé » si l'état est vide. Restauré à l'import via `LegendCustomization.loadSessionState()` → rend la session **autoportante** même importée sur un ZIP « legacy » sans légende baked. Les **roads/zones n'ont pas d'`id`** (snapshot `{type, points, label?, level?, uid, updatedAt}` — `uid` depuis v2.1.0) ; l'id de zone utilisé par l'évitement d'itinéraire est **dérivé au runtime** (`z_<type>_<x>_<y>_<n>`), jamais écrit dans l'export.
 
 ### 🌀 Liaisons inter-plan (depuis v1.57.0)
 

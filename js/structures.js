@@ -406,6 +406,7 @@ function initStructures() {
           currentStructure.level = _activeLvl;
         }
       }
+      if (window.KtaUid) window.KtaUid.ensure(currentStructure, "st");   // 🆔 v2.1.0
       structuresData.push(currentStructure);
     }
 
@@ -416,6 +417,7 @@ function initStructures() {
     // proche du 1er point pour fermer.
     if (_isPolylineType(currentStructure.type)) {
       currentStructure.points.push({ x: x, y: y });
+      if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
       renderStructures();
       if (window.HistoryManager && _historyBefore) {
         const lbl = _isNewStruct
@@ -445,6 +447,7 @@ function initStructures() {
     }
 
     currentStructure.points.push({ x: x, y: y });
+    if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewStruct
@@ -782,7 +785,7 @@ function renderStructures() {
         window.attacherNotePopup(
           cibleClic,
           function() { return _structRef.description; },
-          function(v) { _structRef.description = v; },
+          function(v) { _structRef.description = v; if (window.KtaUid) window.KtaUid.touch(_structRef); },
           _structPopupTitle(s.type),
           // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
           { convertir: { famille: "structures", obj: _structRef } }
@@ -849,6 +852,7 @@ function removeLastStructurePoint() {
     const last = structuresData[structuresData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
+    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
     // 🆕 v1.9.3-A1.b.2 : minimum dépend du type (2 pour polyline, 3 pour polygon)
     const minPoints = _isPolylineType(last.type) ? 2 : 3;
     if (last.points.length < minPoints) {
@@ -860,6 +864,7 @@ function removeLastStructurePoint() {
   }
 
   currentStructure.points.pop();
+  if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
   if (currentStructure.points.length === 0) {
     const idx = structuresData.indexOf(currentStructure);
     if (idx >= 0) structuresData.splice(idx, 1);
@@ -878,6 +883,8 @@ window.getStructures = function() {
 
 window.setStructures = function(structures) {
   structuresData = structures || [];
+  // 🆔 v2.1.0 — filet : toute structure qui entre ressort avec un uid (cf ktaUid.js).
+  if (window.KtaUid) window.KtaUid.ensureAll(structuresData, "st");
   currentStructure = null;
   renderStructures();
 };

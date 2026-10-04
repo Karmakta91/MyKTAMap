@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab).
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know.
 
 ---
 
@@ -663,6 +663,8 @@ Up to **5 photos per point**, kept on your device only. In the add or edit windo
 
 **Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; a re-imported file restores its photos. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code; a photo that cannot be cleaned is left out.
 
+**📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
+
 > ⚠️ Photos take up the browser's storage (from a few dozen to a few hundred MB depending on the device); a warning appears near the limit. On iPhone, the system may empty this storage when it runs out of space: export regularly. **💥 Reset everything** also deletes the photos, and deleting a photo cannot be undone.
 
 ---
@@ -1192,9 +1194,9 @@ Reposition yourself often (**📍 I am here**), check the scale (🎯 above) and
 
 Tap the active button (in green) again to turn it off.
 
-### 🔑 The access code is refused
+### 🔑 The password is refused
 
-If the app is provided to you by an installation with its own password (association, club), **that password** is the one you need: the community code does not open it, and neither does a pro licence. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap simply offers **Continue without a licence**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
@@ -1210,7 +1212,7 @@ These tools delete **no** data (stored maps, sessions, photos, logbook, preferen
 **⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
-- It also shows the **community access code**, asked again at restart: **write it down before confirming**, or you will not be able to get in.
+- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue without a licence**.
 - Two confirmations are required. Do it **with a connection**: if you are offline, a red window warns you that the app will be unusable until the network is back.
 
 Not to be confused with **↺ Default values** in ⚙️ Settings, which only touches the settings of the open map.
@@ -1724,7 +1726,7 @@ The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form s
 If the author gave you a **`Licence-pro.json`** file, it turns on the pro edition **on this device**.
 
 - **From your profile**: **📂 Import a pro license**, then choose the file. The bottom of the home screen shows ✓ Pro license active and the startup screen shows "Professional edition". **🗑️ Remove local license** takes you back to community mode; you can re-import the file later.
-- **On the very first launch**, on the community code screen, **📂 Import my pro licence** takes you straight into pro mode, without that code.
+- **On the very first launch**, on the welcome screen, **📂 Import my pro licence** takes you straight into pro mode.
 - On an instance where the administrator installed the license on the server, your profile simply shows ✓, with no button.
 
 A malformed file is refused with a message. The file is read in your browser and sent nowhere.

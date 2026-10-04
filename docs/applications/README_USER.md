@@ -128,7 +128,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau).
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire.
 
 ---
 
@@ -663,6 +663,8 @@ Jusqu'à **5 photos par point**, gardées sur ton appareil uniquement. Dans la f
 
 **Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; un fichier réimporté restaure ses photos. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point ; une photo qui ne peut pas être nettoyée est exclue.
 
+**📌 Photo « à rattacher »** : avant la v2.3.0, une photo était rangée sous le **nom** de son point. Si plusieurs points portent le même nom, l'app ne devine pas à qui elle appartient : dans la bulle de chacun de ces points, la photo apparaît avec un **cadre orange pointillé** et un bouton **📌 Photo N : c'est ce point**. Touche-le dans la bulle du bon point. Rien n'est jamais supprimé. Les photos d'un nom porté par un seul point sont rattachées toutes seules, et celles que tu prends maintenant suivent leur point même si tu le renommes.
+
 > ⚠️ Les photos occupent le stockage du navigateur (de quelques dizaines à quelques centaines de Mo selon l'appareil) ; un avertissement s'affiche près de la limite. Sur iPhone, le système peut vider ce stockage s'il manque de place : exporte régulièrement. **💥 Tout réinitialiser** efface aussi les photos, et leur suppression ne s'annule pas.
 
 ---
@@ -1192,9 +1194,9 @@ Recale ta position souvent (**📍 Je suis ici**), vérifie l'échelle (🎯 ci-
 
 Touche à nouveau le bouton actif (en vert) pour le couper.
 
-### 🔑 Le code d'accès est refusé
+### 🔑 Le mot de passe est refusé
 
-Si l'app t'est fournie par une installation qui a son propre mot de passe (association, club), c'est **ce mot de passe** qu'il faut : le code communautaire n'ouvre pas, et une licence pro non plus. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap propose simplement **Continuer sans licence** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
@@ -1210,7 +1212,7 @@ Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos
 **⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
-- Elle affiche aussi le **code d'accès communautaire**, redemandé au redémarrage : **note-le avant de confirmer**, sinon tu ne pourras plus entrer.
+- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app proposera simplement **Continuer sans licence**.
 - Deux confirmations sont demandées. Fais-le **avec une connexion** : si tu es hors ligne, une fenêtre rouge te prévient que l'app sera inutilisable jusqu'au retour du réseau.
 
 À ne pas confondre avec **↺ Valeurs par défaut** de ⚙️ Réglages, qui ne touche qu'aux réglages du plan ouvert.
@@ -1724,7 +1726,7 @@ La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme d�
 Si l'auteur t'a remis un fichier **`Licence-pro.json`**, il active l'édition pro **sur cet appareil**.
 
 - **Depuis ton profil** : **📂 Importer une licence pro**, puis choisis le fichier. Le bas de l'accueil affiche ✓ Licence pro active et l'écran de démarrage « Édition professionnelle ». **🗑️ Retirer la licence locale** te ramène au mode communautaire ; tu peux réimporter le fichier plus tard.
-- **Au tout premier lancement**, sur l'écran du code communautaire, **📂 Importer ma licence pro** fait entrer directement en mode pro, sans ce code.
+- **Au tout premier lancement**, sur l'écran de bienvenue, **📂 Importer ma licence pro** fait entrer directement en mode pro.
 - Sur une instance où l'administrateur a installé la licence sur le serveur, ton profil affiche simplement ✓, sans bouton.
 
 Un fichier mal formé est refusé avec un message. Le fichier est lu dans ton navigateur et n'est envoyé nulle part.

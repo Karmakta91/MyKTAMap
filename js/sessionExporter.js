@@ -1665,7 +1665,10 @@
       parPoint[k].push(p.id);
     });
     return points.map(function(pt) {
-      const ids = parPoint[String(pt.id || "")];
+      // 🆔 v2.3.0 — photos rangées sous l'uid du point, puis sous son nom.
+      const parUid = pt.uid ? (parPoint[String(pt.uid)] || []) : [];
+      const parNom = parPoint[String(pt.id || "")] || [];
+      const ids = parUid.concat(parNom.filter(function(id) { return parUid.indexOf(id) < 0; }));
       if (!ids || ids.length === 0) return pt;
       const clone = Object.assign({}, pt);
       clone.photos = ids;
@@ -1713,6 +1716,7 @@
         // en double, donc ids en double et photos rattachées au mauvais point.
         const code = "📍 POI " + (firstTag ? firstTag + " " : "") + "#" + counterByTag[key];
         if (p.id) idMap[String(p.id)] = code;
+        if (p.uid) idMap[String(p.uid)] = code;   // 🆔 v2.3.0 : photos rangées sous l'uid
         const out  = {
           id:    code,
           nom:   code,
@@ -1816,6 +1820,17 @@
       delete session.photosCount;
       delete session.photosTotalKB;
     }
+
+    // 🔒 v2.0.1 — LIAISONS INTER-PLAN. Chaque côté d'une liaison porte un
+    // instantané { planName, pointNom, planId, pointId, x, y } : les VRAIS noms
+    // du plan et du point. Ajoutées à l'export complet en v1.57.0, elles
+    // n'avaient jamais été retirées ici — un export « anonymisé » livrait donc
+    // le nom du réseau et de ses points. Une liaison n'a de sens qu'entre deux
+    // plans que le destinataire n'a pas : on la retire entièrement.
+    delete session.interPlanLinks;
+    // 🆔 v2.2.0 — les traces de suppression portent des uid : elles relieraient
+    // le fichier à la session d'origine.
+    delete session.tombstones;
 
     // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
     delete session.noteLibre;
@@ -2001,7 +2016,10 @@
         // Réinjectées au registre à l'import (fusion par id, cf.
         // interfaceImportExport.js). Ids de plans déterministes → portables.
         interPlanLinks: (window.InterPlanLinks && window._currentLoadedPlanId)
-                          ? window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId) : []
+                          ? window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId) : [],
+        // 🆔 v2.2.0 — traces de suppression (décision KARMA Q2) : un réimport
+        // ou une fusion ne ressuscite pas un objet supprimé. Jamais en anonymisé.
+        tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
       };
 
       // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
@@ -2204,7 +2222,8 @@
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
+      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2431,7 +2450,8 @@
     const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
     const pointIdsSet = inclurePhotos && filteredPoints.length > 0
-      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      // 🆔 v2.3.0 — clés photo : l'uid du point ET son nom (double lecture).
+      ? new Set([].concat.apply([], filteredPoints.map(function(p) { return p.uid ? [String(p.uid), String(p.id || "")] : [String(p.id || "")]; })))
       : null;
     const photosPromise = (inclurePhotos && pointIdsSet)
       ? _collecterPhotosPlan(pointIdsSet)
@@ -2788,6 +2808,23 @@
   // Merge PUR : concatène les 4 tableaux de N objets data layer + détecte les
   // ids POI en double (concat brut conservé, alerte seulement). Pas de DOM.
   function _mergeDatalayerObjects(jsons) {
+    // 🆔 v2.2.0 — fusion PAR UID (ETUDE_UID décision 7) : un même objet présent
+    // dans plusieurs fichiers n'est plus dupliqué, le plus récent gagne, et une
+    // suppression postérieure l'emporte. Règle unique : KtaUid.fusionnerCalques
+    // (aussi utilisée par le Générateur). Repli : concaténation d'origine.
+    if (window.KtaUid && typeof window.KtaUid.fusionnerCalques === "function") {
+      const f = window.KtaUid.fusionnerCalques(jsons);
+      const mergedU = { data: f.data, roads: f.roads, zones: f.zones, structures: f.structures,
+                        fusionnes: f.fusionnes, supprimes: f.supprimes };
+      const seenU = Object.create(null), dupU = [];
+      mergedU.data.forEach(function(p) {
+        const id = (p && p.id != null) ? String(p.id) : null;
+        if (id == null) return;
+        if (seenU[id]) { if (dupU.indexOf(id) < 0) dupU.push(id); } else seenU[id] = true;
+      });
+      mergedU.dupIds = dupU;   // même NOM, uid différents : deux objets réels, alerte seulement
+      return mergedU;
+    }
     const merged = { data: [], roads: [], zones: [], structures: [] };
     (jsons || []).forEach(function(json) {
       if (!json || typeof json !== "object") return;

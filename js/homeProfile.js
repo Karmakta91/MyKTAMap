@@ -39,6 +39,9 @@
         if (window.I18n && window.I18n.onChange) {
           window.I18n.onChange(function() { _refreshLoaderProfileBar(); });
         }
+        // 🧩 v2.7.4 — compte d'une installation reliée (KtaExtensions.compte) :
+        // la carte se redessine quand l'extension annonce un changement.
+        window.addEventListener("mktm:compte-changed", function() { _refreshLoaderProfileBar(); });
         // 🆕 v1.21.1 : bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
         // Click anywhere → ouvre la modale Détails.
         bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
@@ -143,7 +146,13 @@
       let _barJeton = 0;                // 🐛 v1.75.0 — anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
-        const snap = window.UserProfile.get();
+        // 🧩 v2.7.4 — Installation reliée à une base de données : le compte
+        // connecté (pseudo + rôle, fournis par l'extension) prend la place du
+        // surnom et du rang. Rien n'est écrit dans le profil local : il revient
+        // tel quel à la déconnexion. Sans extension (myktamap.fr) : null.
+        const _compte = (window.KtaExtensions && typeof window.KtaExtensions.compte === "function")
+          ? window.KtaExtensions.compte() : null;
+        const snap = Object.assign({}, window.UserProfile.get(), _compte ? { surnom: _compte.pseudo } : {});
         const avatarWrap = document.getElementById("kta-loader-profile-avatar");
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
@@ -173,6 +182,11 @@
               badgeEl.style.display = "none";  // Touriste : pas de médaille
             }
           }
+        }
+
+        if (_compte && _compte.libelle) {
+          const rankLabelEl = document.getElementById("kta-loader-profile-rank");
+          if (rankLabelEl) { rankLabelEl.textContent = _compte.libelle; rankLabelEl.removeAttribute("data-kta-rank"); }
         }
 
         // 🆕 v1.53.0 : hauts faits — toast si de nouveaux succès sont débloqués
@@ -1056,6 +1070,25 @@
         // Bind handlers édition surnom (live + save button)
         const surnomInput = document.getElementById("kta-profile-details-surnom");
         const saveBtn     = document.getElementById("kta-profile-details-save-name");
+        // 🧩 v2.7.4 — compte connecté : le pseudo vient du compte, pas modifiable ici.
+        const _compteModale = (window.KtaExtensions && typeof window.KtaExtensions.compte === "function")
+          ? window.KtaExtensions.compte() : null;
+        if (_compteModale) {
+          surnomInput.value = _compteModale.pseudo;
+          surnomInput.readOnly = true;
+          surnomInput.title = _t("home.profile.nicknameAccount");
+          const hint = surnomInput.closest(".kta-profile-details-name-row");
+          const p = hint && hint.nextElementSibling;
+          if (p && p.classList.contains("kta-profile-details-hint")) p.textContent = _t("home.profile.nicknameAccount");
+        }
+        // 🧩 Compte de l'installation : APRÈS la photo et le pseudo, AVANT le grade (retour
+        // KARMA), le compte connecté et ses actions (gestion, hors ligne, données perso,
+        // déconnexion — fournies par l'extension).
+        if (window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
+          const blocCompte = window.KtaExtensions.blocActionsCompte("profil", _t("home.profile.compteTitre"));
+          const grade = document.getElementById("kta-profile-details-rank");
+          if (blocCompte && grade && grade.parentNode) grade.parentNode.insertBefore(blocCompte, grade);
+        }
         let _originalSurnom = surnomInput.value;
         surnomInput.addEventListener("input", function() {
           saveBtn.style.display = (surnomInput.value !== _originalSurnom) ? "" : "none";

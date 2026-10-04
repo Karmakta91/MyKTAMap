@@ -55,9 +55,18 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> 🚧 **Tout le reste de ce paragraphe est un contrat, pas encore codé** (états ON / DOWN, chargeur
-> de modules, garde des requêtes, gate déléguée et autres prises — chantiers 1 à 3) : ne pas le
-> documenter comme livré ailleurs (NETWORK_AUDIT, README_USER, AI_CONTEXT).
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.7.4)** : identifiants stables, lecture unique de l'index avant
+> les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
+> `scripts/check-extensions.js`). Signatures (API v1) :
+> `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
+> Promise<[{id,name,version?,tags?}]>, charger(id) → Promise<Blob ZIP> }, importAutorise() → bool,
+> exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
+> `signaler("on"|"down"|null)` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
+> `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
+> `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
+> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
+> `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 
@@ -74,9 +83,16 @@ qui parle au serveur.
 - `state` : `"on"` | `"off"`. Ce n'est pas un flag kiosque au sens de la règle des 2 flags
   (§2) : ce n'est pas du désencombrement, c'est l'interrupteur des extensions, régi par ce
   paragraphe seul.
-- `api` : origine du backend. Elle peut différer de celle de l'app (règle D). Une adresse
-  d'API n'est pas un secret : l'index est public et c'est assumé.
-- `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`).
+- `api` : adresse du backend, sous l'une de deux formes :
+  - `https://…` : une origine, qui peut différer de celle de l'app (règle D) ;
+  - un **chemin du même site** (`/api/`) : résolu à l'adresse de l'app au moment de l'appel
+    (`KtaExtensions.apiBase()`). C'est le cas normal d'une installation à proxy `/api` : elle marche alors par
+    `localhost`, par IP (test sur téléphone en wifi) ou par nom de domaine, sans changer l'index. Refusés :
+    `//…` (protocole-relatif), un chemin sans `/` initial, un paramètre ou un espace.
+
+  Une adresse d'API n'est pas un secret : l'index est public et c'est assumé.
+- `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
+  remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
 
 **Les états** :
 
@@ -136,6 +152,29 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Une instance = une adresse** : chaque instance a son propre domaine, donc le navigateur
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
+- **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
+- **Dossiers de l'instance** : prise facultative `plans.dossiers()` → `[{ id, name, color?, order?, rule? }]` et champ
+  `dossier` sur chaque plan listé. L'accueil les traite comme les dossiers de l'index (proposés, verrouillés tant
+  qu'ils sont déclarés, un rangement manuel de l'utilisateur l'emporte), appliqués **avec** ceux de l'index pour ne
+  pas les libérer ; `null` (serveur injoignable, erreur) → rien ne bouge. Les étiquettes passent déjà par `tags`.
+- **Actions du compte** : la prise `actionsCompte(lieu)` (« profil » | « config ») rend les actions à proposer ; la
+  fenêtre « Mon profil » les montre **après la photo et le pseudo, avant le grade**, et le panneau ⚙️ Configuration dans un bloc
+  « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
+  10 au plus, action protégée ; sans extension, rien n'apparaît.
+- **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
+  suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
+  plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
+  reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
+  `changementsDepuis(ts)`.
+- **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
+  de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
+  verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
+  à la déconnexion. Texte seulement, 40 / 24 caractères max ; erreur ou forme inattendue = `null` (profil
+  local). L'extension annonce un changement par `notifierCompte()` (événement `mktm:compte-changed`).
+- **Version d'un module** : le SW met en cache un module au premier chargement et le sert ensuite depuis
+  ce cache (règle par défaut, à l'URL exacte). Une nouvelle version passe donc par un **nouveau chemin**
+  dans `index.json` (`pro/connexion.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. Sans
+  suffixe, la mise à jour n'arriverait qu'au prochain bump de `CACHE_NAME` community.
 - **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
   doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
   cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
@@ -220,9 +259,9 @@ navigateur.
    - les états INVALIDE / LICENCE / CONFIGURÉE en navigateur réel exigent un `index.json`
      de test que seul KARMA peut poser (`data/` interdit à Claude) : à la smoke-list de la
      porte de release.
-1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
+1. ✅ Ids + horodatages + migration (**livré de v2.1.0 à v2.5.0**, lots A, B, C1-C3) : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
-2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
+2. ✅ **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) — **livré en v2.6.0** (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` = section `config` seule) :
    - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on
      démarre sur la **dernière config mémorisée** (règle B). Aujourd'hui la lecture n'a aucun
      délai maximal ;
@@ -234,11 +273,10 @@ navigateur.
    - **rotation du mot de passe d'instance à effet immédiat** : la revalidation passe avant
      la gate, donc au lancement, jamais en pleine session. 🩸 Une config **mémorisée** (index
      injoignable) appelle `revaliderInstance(…, false)` : elle ne révoque jamais rien ;
-   - à réécrire à la livraison : les invariants « rotation au démarrage SUIVANT » et
-     « l'index n'est demandé que depuis la saisie de la gate » du §5, et les contrôles de
-     `scripts/check-gate-instance.js` qui figent l'ordre actuel (`_hashInstance`, position
-     de `revaliderInstance`).
-3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
+   - le kiosque reprend lui aussi la config mémorisée quand l'index est injoignable ;
+   - invariants du §5 et contrôles de `scripts/check-gate-instance.js` réécrits (ordre
+     config → revalidation → gate, une seule lecture, mémoire qui ne révoque rien).
+3. ✅ Points d'extension + `check-extensions.js` (**livré en v2.7.0**, fusionné dans `Karma_dev`) : gate déléguée (écran « Installation indisponible » si le module de connexion manque ou échoue, jamais de repli sur la gate community), chargeur de modules (règle E), garde des requêtes (origine de `api`, états permis, sondes en « injoignable »), états `on`/`down` signalés par le module, permissions import/export (erreur = refus), plans d'extension (`type: "ext"`, ☁️, gardés sur l'appareil), publication depuis le Générateur, journal des changements, effacement à la déconnexion (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
 
 Les noms et signatures exacts de chaque prise se fixent au chantier 3.
@@ -334,11 +372,15 @@ Les noms et signatures exacts de chaque prise se fixent au chantier 3.
     injoignable » (ne rien toucher). La fonction ne peut pas les deviner : l'appelant le déclare. La
     première version reposait sur la discipline d'un site d'appel distant de 1800 lignes, et un futur appel
     de bonne foi aurait reverrouillé l'app à la première coupure réseau.
-  - ⏱️ **La rotation prend effet au démarrage SUIVANT** : la revalidation vit après la gate dans l'ordre du
-    boot, et couper quelqu'un au milieu de son relevé pour un changement de mot de passe serait pire que le
-    délai d'un boot.
-  - ⚡ **Zéro requête ajoutée pour qui est déjà entré** : l'index n'est demandé que depuis la saisie de la
-    gate, et seulement si le code communautaire a échoué.
+  - ⏱️ **La rotation prend effet dès le démarrage** (v2.6.0) : l'index est lu une fois AVANT les gates
+    (`js/ktaInstance.js`), et `revaliderInstance` passe avant la gate — au lancement, jamais en pleine
+    session (couper quelqu'un au milieu de son relevé serait pire que tout). 🩸 Une config **rejouée de
+    mémoire** (index injoignable, délai de 2 s dépassé) n'appelle pas la revalidation avec `true` : elle ne
+    révoque jamais rien.
+  - ⚡ **Une seule lecture de l'index par démarrage** (v2.6.0), partagée par la gate, le kiosque, le
+    connecteur et la découverte des plans ; la gate ne relit plus l'index à chaque tentative. Hors ligne,
+    elle trouve le mot de passe d'instance dans la dernière config connue — une instance protégée n'est
+    plus ouverte par le code communautaire faute d'index.
   - ⚙️ `confadmin.html` calcule le hash localement et n'écrit **jamais** le mot de passe ; à la reprise d'un
     index existant le champ reste **vide** (un hash ne remonte pas en mot de passe) et le hash repris est
     conservé tant qu'on ne tape rien. `crypto.subtle` exigeant un contexte sûr, une ouverture en `file://`

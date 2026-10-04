@@ -42,6 +42,11 @@
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
   function _estSession() { return _kind === "editorPoints"; }
+  // 🆔 v2.1.0 — préfixe d'uid de la famille éditée (cf js/ktaUid.js).
+  function _prefixeUid() {
+    return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
+  }
+  function _toucher(obj) { if (window.KtaUid && obj) window.KtaUid.touch(obj); }
 
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
@@ -647,6 +652,11 @@
     data.forEach(function(p) {
       Object.keys(p).forEach(function(k) { set.add(k); });
     });
+    // 🆔 v2.1.0 — l'identité n'est pas une donnée à éditer : `uid` et
+    // `updatedAt` restent sur les objets mais ne deviennent jamais des colonnes
+    // (une cellule modifiable permettrait de casser l'identité d'un objet).
+    set.delete("uid");
+    set.delete("updatedAt");
     // Ordre privilégié pour les clés courantes.
     // 🏗️ v169 (Karma_dev) : ajout de "level" juste après "y" pour que les
     // plans multi-niveau aient la colonne niveau visible à côté des coords
@@ -894,6 +904,7 @@
             const idx = parseInt(td.dataset.idx);
             const tagIdx = parseInt(removeBtn.dataset.tagRemove);
             _data[idx].tags = (_data[idx].tags || []).filter(function(_, i) { return i !== tagIdx; });
+            _toucher(_data[idx]);
             _modifie = true;
             _construireCorps();
             _miseAJourInfos();
@@ -979,6 +990,7 @@
       }
       if (nouvelle !== valOrig) {
         p[col] = nouvelle;
+        _toucher(p);
         _modifie = true;
         // F20 : type hors de la liste des types connus → signal, pas blocage.
         if (_typesValides && _typesValides.length && nouvelle &&
@@ -1114,6 +1126,7 @@
         if (i >= 0) tags.splice(i, 1);
         else        tags.push(t);
         _data[idx].tags = tags;
+        _toucher(_data[idx]);
         _modifie = true;
         _construireCorps();
         _miseAJourInfos();
@@ -1130,6 +1143,7 @@
         const tags = _data[idx].tags || [];
         if (!tags.includes(t)) tags.push(t);
         _data[idx].tags = tags;
+        _toucher(_data[idx]);
         _modifie = true;
         dd.remove();
         _construireCorps();
@@ -1173,6 +1187,7 @@
       else nouv[c] = "";
     });
     if ("id" in nouv) nouv.id = "";
+    if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(nouv, _prefixeUid()));   // 🆔 v2.1.0
     _data.push(nouv);
     _modifie = true;
     _construireCorps();
@@ -1198,7 +1213,11 @@
     if (_selection.size === 0) return;
     const indices = [..._selection].sort();
     indices.forEach(function(i) {
-      const copie = JSON.parse(JSON.stringify(_data[i]));
+      // 🆔 v2.1.0 — 🩸 une copie JSON recopierait l'uid : deux objets distincts
+      // partageraient une identité, et la future fusion « le plus récent gagne »
+      // en perdrait un. La copie reçoit un uid neuf.
+      const copie = window.KtaUid ? window.KtaUid.cloneNeuf(_data[i], _prefixeUid())
+                                  : JSON.parse(JSON.stringify(_data[i]));
       // Ajouter "_copie" à l'id si présent
       if (copie.id) copie.id = String(copie.id) + "_copie";
       _data.push(copie);

@@ -106,17 +106,27 @@
   function _sideKey(side) {
     return _pointKey(side.pointId, side.x, side.y);
   }
+  // 🆔 v2.4.0 (ETUDE_UID lot C2) — un côté de liaison désigne-t-il CE point ?
+  // L'uid d'abord (`pointUid`) : avec la clé par nom, supprimer un point
+  // effaçait aussi les liaisons de ses HOMONYMES. Repli par nom / coords pour
+  // un côté ancien ou un point sans uid (calque d'un vieux plan).
+  // `ancX/ancY` : position à utiliser pour le repli par coords (déplacement).
+  function _coteDuPoint(side, planId, point, ancX, ancY) {
+    if (!side || side.planId !== planId || !point) return false;
+    if (side.pointUid && point.uid) return side.pointUid === point.uid;
+    const x = (ancX !== undefined) ? ancX : point.x, y = (ancY !== undefined) ? ancY : point.y;
+    return _sideKey(side) === _pointKey(point.id, x, y);
+  }
 
   // Toutes les liaisons dont UN côté matche (planId, point). Retourne
   // [{ link, mySide: "a"|"b", other: <ref du côté opposé> }].
   function getLinksForPoint(planId, point) {
     if (!planId || !point) return [];
-    const key = _pointKey(point.id, point.x, point.y);
     const out = [];
     _load().links.forEach(function(l) {
-      if (l.a && l.a.planId === planId && _sideKey(l.a) === key) {
+      if (_coteDuPoint(l.a, planId, point)) {
         out.push({ link: l, mySide: "a", other: l.b });
-      } else if (l.b && l.b.planId === planId && _sideKey(l.b) === key) {
+      } else if (_coteDuPoint(l.b, planId, point)) {
         out.push({ link: l, mySide: "b", other: l.a });
       }
     });
@@ -214,9 +224,8 @@
       point.interPlanLinks.forEach(function(l) {
         if (l && l.id && !seen[l.id] && l.a && l.b) {
           // Détermine le côté local par croisement planId+point
-          const key = _pointKey(point.id, point.x, point.y);
-          const mySide = (l.a.planId === planId && _sideKey(l.a) === key) ? "a"
-                       : (l.b.planId === planId && _sideKey(l.b) === key) ? "b" : "a";
+          const mySide = _coteDuPoint(l.a, planId, point) ? "a"
+                       : _coteDuPoint(l.b, planId, point) ? "b" : "a";
           entries.push({ link: l, mySide: mySide, other: (mySide === "a") ? l.b : l.a, baked: true });
           seen[l.id] = true;
         }
@@ -255,7 +264,7 @@
     const tagArg = String((Array.isArray(point.tags) && point.tags[0]) || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const addBtn =
       '<button class="kta-popup-btn kta-ipl-add" type="button" ' +
-        "onclick=\"window.InterPlanLinks.ouvrirCreation('" + jsId + "'," + (Number(point.x) || 0) + "," + (Number(point.y) || 0) + ",'" + jsNom + "','" + source + "'," + lvlArg + ",'" + tagArg + "'); return false;\" " +
+        "onclick=\"window.InterPlanLinks.ouvrirCreation('" + jsId + "'," + (Number(point.x) || 0) + "," + (Number(point.y) || 0) + ",'" + jsNom + "','" + source + "'," + lvlArg + ",'" + tagArg + "','" + _esc(point.uid || "") + "'); return false;\" " +
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
         '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';
@@ -741,7 +750,7 @@
     if (m) m.remove();
   }
 
-  function ouvrirCreation(pointId, x, y, nom, source, level, tag) {
+  function ouvrirCreation(pointId, x, y, nom, source, level, tag, pointUid) {
     const planId = _currentPlanId();
     if (!planId) {
       alert(_t("ipl.err.noPlan"));
@@ -754,6 +763,7 @@
       planId:   planId,
       planName: _currentPlanName(),
       pointId:  String(pointId || ""),
+      pointUid: pointUid ? String(pointUid) : undefined,   // 🆔 v2.4.0
       pointNom: String(nom || ""),
       x: Number(x) || 0,
       y: Number(y) || 0,
@@ -841,6 +851,7 @@
             planId:   _targetPlan.id,
             planName: _targetPlan.name || _targetPlan.id,
             pointId:  String(p.id || ""),
+            pointUid: p.uid ? String(p.uid) : undefined,   // 🆔 v2.4.0
             pointNom: String(p.nom || ""),
             x: p.x, y: p.y,
             source: p.source,
@@ -1375,13 +1386,10 @@
   // immédiatement, des 2 côtés du registre.
   function onPointDeleted(planId, point) {
     if (!planId || !point) return 0;
-    const key = _pointKey(point.id, point.x, point.y);
     const reg = _load();
     const before = reg.links.length;
     reg.links = reg.links.filter(function(l) {
-      const matchA = l.a && l.a.planId === planId && _sideKey(l.a) === key;
-      const matchB = l.b && l.b.planId === planId && _sideKey(l.b) === key;
-      return !matchA && !matchB;
+      return !_coteDuPoint(l.a, planId, point) && !_coteDuPoint(l.b, planId, point);
     });
     const removed = before - reg.links.length;
     if (removed > 0) {
@@ -1390,6 +1398,30 @@
       console.log("[InterPlanLinks] " + removed + " liaison(s) purgée(s) (point supprimé)");
     }
     return removed;
+  }
+
+  // 🆔 v2.4.0 — Migration douce des côtés de liaison du plan courant (ETUDE_UID
+  // décision 12) : un côté sans pointUid reçoit l'uid du point s'il le désigne
+  // sans ambiguïté — un seul point de ce nom, sinon l'homonyme à la même
+  // position (1 px). Ambigu : inchangé (reconnu par son nom). Les côtés des
+  // AUTRES plans ne sont pas touchés : leurs points ne sont pas chargés.
+  function migrerVersUid(planId, points) {
+    if (!planId || !Array.isArray(points)) return 0;
+    const reg = _load();
+    let n = 0;
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(cote) {
+        const side = l[cote];
+        if (!side || side.planId !== planId || side.pointUid || !side.pointId) return;
+        let c = points.filter(function(p) { return p && String(p.id || "") === side.pointId; });
+        if (c.length > 1) {
+          c = c.filter(function(p) { return Math.abs((p.x || 0) - (side.x || 0)) < 1 && Math.abs((p.y || 0) - (side.y || 0)) < 1; });
+        }
+        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) { side.pointUid = c[0].uid; n++; }
+      });
+    });
+    if (n > 0) { _save(reg); console.log("[InterPlanLinks] " + n + " côté(s) de liaison rattaché(s) à l'uid de leur point (v2.4.0)"); }
+    return n;
   }
 
   // 📌 v1.85.0 — un point de session REPOSITIONNÉ (cf. editor.js >
@@ -1406,13 +1438,12 @@
   // le point n'a pas d'id (cas data layer) ; avec un id elle est ignorée.
   function onPointMoved(planId, point, ancX, ancY) {
     if (!planId || !point) return 0;
-    const key = _pointKey(point.id, ancX, ancY);
     const reg = _load();
     let recales = 0;
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(cote) {
         const side = l[cote];
-        if (!side || side.planId !== planId || _sideKey(side) !== key) return;
+        if (!_coteDuPoint(side, planId, point, ancX, ancY)) return;
         side.x = Number(point.x) || 0;
         side.y = Number(point.y) || 0;
         recales++;
@@ -1446,6 +1477,7 @@
     // l'itinéraire que dans ce cas (un plan ouvert autrement l'abandonne).
     traverseePhysiqueEnCours: function() { return !!(_pendingTarget && _pendingTarget.recale); },
     onPointDeleted:       onPointDeleted,
+    migrerVersUid:        migrerVersUid,   // 🆔 v2.4.0
     onPointMoved:         onPointMoved,   // 📌 v1.85.0 : recale les coords d'un point déplacé
     refreshBadges:        refreshBadges,
     // 🆕 v1.58.0 — navigation générique (liaisons, retour, recherche

@@ -141,8 +141,25 @@ async function _chargerIndexServeur() {
     // herite d une fraicheur heuristique. Un index modifie pouvait donc
     // remonter perime (bug KARMA : « j ai refait un fichier index et ca ne
     // semble pas bien remonter »).
-    const r = await fetch("data/index.json", { cache: "no-store" });
-    if (!r.ok) {
+    // 🏛️ v2.6.0 (chantier 2) — PLUS DE SECONDE LECTURE : la config d'instance
+    // a été lue avant les gates (js/ktaInstance.js) ; on reprend ce résultat.
+    // Repli (module absent) : la lecture d'origine.
+    let idx = null;
+    if (window.KtaInstance && typeof window.KtaInstance.charger === "function") {
+      const st = await window.KtaInstance.charger();
+      idx = st && st.repondu ? st.index : null;
+      // Index injoignable mais config connue : le kiosque garde ses réglages
+      // hors ligne (même source que la gate et le connecteur). Pas de liste de
+      // plans à découvrir dans ce cas : on sort comme avant, sans index.
+      if (!idx && st && st.config) {
+        window.KIOSK_CONFIG = st.config;
+        _appliquerConfigKiosque();
+      }
+    } else {
+      const r = await fetch("data/index.json", { cache: "no-store" });
+      idx = r.ok ? await r.json() : null;
+    }
+    if (!idx) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
       // 🔌 v2.0.0 — Hors ligne et sans cache, le Service Worker répond un 404
       // SYNTHÉTIQUE (sw.js) : indiscernable d'un vrai 404. On le traite donc en
@@ -151,25 +168,12 @@ async function _chargerIndexServeur() {
       _appliquerConnexionServeur(null, false);
       return null;
     }
-    const idx = await r.json();
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
     _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
-    // 🔑 v1.90.6 — ROTATION DU MOT DE PASSE D INSTANCE. On n arrive ici QUE si
-    // l index a repondu : hors-ligne, ou si le fichier a disparu, la fonction
-    // n est pas appelee et le deverrouillage memorise survit. C est
-    // volontaire -- une coupure reseau ne doit pas reverrouiller l app.
-    // 🩸 Et c est APRES la gate dans l ordre du boot : le changement prend donc
-    // effet au PROCHAIN demarrage, pas en pleine session. Couper quelqu un au
-    // milieu de son releve pour une rotation de mot de passe serait pire que
-    // le delai d un boot.
-    if (window.UnlockGate && typeof window.UnlockGate.revaliderInstance === "function") {
-      // `true` : on n arrive ici QUE si le fetch a repondu 2xx. Un index
-      // injoignable sort plus haut et n appelle rien.
-      window.UnlockGate.revaliderInstance(
-        window.KIOSK_CONFIG ? window.KIOSK_CONFIG.accessHash : null, true);
-    }
+    // 🔑 La revalidation du mot de passe d'instance a lieu AVANT la gate
+    // depuis v2.6.0 (initApp) : rien à refaire ici.
     // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
     // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
     // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).
@@ -199,6 +203,69 @@ function _appliquerConnexionServeur(config, indexRepondu) {
   } catch(e) { console.warn("[Main] connexion serveur :", e); }
 }
 
+// 🧩 v2.7.0 — « Instance indisponible » : une instance connectée dont le module
+// de connexion ne se charge pas, ou dont la gate déléguée échoue. L'app reste
+// bloquée ici (comme une gate) ; « Réessayer » recharge la page. JAMAIS de
+// repli sur la gate community.
+function _ktaInstanceIndisponible() {
+  return new Promise(function() {
+    const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
+    const ov = document.createElement("div");
+    ov.id = "kta-instance-indispo";
+    ov.className = "kta-instance-indispo";
+    ov.setAttribute("role", "alertdialog");
+    const boite = document.createElement("div");
+    boite.className = "kta-instance-indispo-boite";
+    const h = document.createElement("h2"); h.textContent = t("ext.indispo.titre");
+    const p = document.createElement("p"); p.textContent = t("ext.indispo.texte");
+    const b = document.createElement("button"); b.type = "button"; b.className = "kta-btn kta-btn-primary";
+    b.textContent = t("ext.indispo.reessayer");
+    b.addEventListener("click", function() { location.reload(); });
+    boite.appendChild(h); boite.appendChild(p); boite.appendChild(b);
+    ov.appendChild(boite);
+    document.body.appendChild(ov);
+    // Promesse jamais résolue : le démarrage s'arrête là, comme un lockout de gate.
+  });
+}
+
+// 🧩 v2.7.0 — Plans fournis par une extension (prise « source de plans ») :
+// inscrits au registre en `type: "ext"`, ouverts par KtaExtensions.charger
+// PlanExtension (homeLoader). Une extension qui ne répond pas = aucun plan
+// ajouté (prise d'information : erreur ignorée).
+async function _decouvrirPlansExtension() {
+  if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
+  const liste = await window.KtaExtensions.listerPlansExtension();
+  liste.forEach(function(p) {
+    if (!p || !p.id) return;
+    const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
+      version: p.version || null });
+    if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
+  });
+  if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");
+
+  // 📁 Dossiers de l'instance fournis par l'extension : même doctrine que ceux de
+  // l'index (proposés, verrouillés tant qu'ils sont déclarés, un rangement manuel de
+  // l'utilisateur l'emporte). Appliqués EN MÊME TEMPS que ceux de l'index — sinon
+  // applyIndexFolders libérerait ces derniers. null (serveur injoignable) : rien ne bouge.
+  const dossiers = await window.KtaExtensions.dossiersExtension();
+  if (Array.isArray(dossiers) && typeof window.PlanRegistry.applyIndexFolders === "function") {
+    const st = (window.KtaInstance && window.KtaInstance.etat) ? window.KtaInstance.etat() : null;
+    const deIndex = (st && st.index && Array.isArray(st.index.folders)) ? st.index.folders : [];
+    const table = window.PlanRegistry.applyIndexFolders(deIndex.concat(dossiers.map(function(d) {
+      return Object.assign({}, d, { id: "ext_" + d.id });
+    })));
+    liste.forEach(function(p) {
+      if (!p || !p.id || typeof window.PlanRegistry.setPlanFolder !== "function") return;
+      const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const cible = p.dossier ? (table["ext_" + p.dossier] || null) : null;
+      const e = window.PlanRegistry.findById(id);
+      if (cible) window.PlanRegistry.setPlanFolder(id, cible, "index");
+      else if (e && e.folderSrc === "index") window.PlanRegistry.setPlanFolder(id, null, "index");
+    });
+  }
+}
+
 // Application de `config` : sous-titre (splash + header loader — textContent
 // jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
 // langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
@@ -209,7 +276,14 @@ function _appliquerConnexionServeur(config, indexRepondu) {
 // Masquer un bouton ne ferme pas une porte : tout ce qui doit être refusé en
 // kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
 window.ktaKiosqueServeurSeul = function() {
-  return !!(window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true);
+  if (window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true) return true;
+  // 🧩 v2.7.0 (chantier 3, prise « droit d'import ») : une extension peut
+  // refuser l'import local (réglage admin, rôle Lecteur). Même goulot que le
+  // kiosque : import simple, import multiple, import de profil. Une prise qui
+  // échoue REFUSE (KtaExtensions._permission).
+  if (window.KtaExtensions && typeof window.KtaExtensions.importAutorise === "function" &&
+      !window.KtaExtensions.importAutorise()) return true;
+  return false;
 };
 
 function _appliquerConfigKiosque() {
@@ -611,6 +685,8 @@ async function lancerApplication() {
   if (window.SessionPersist) {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
+  // 🆔 v2.3.0 — photos rangées sous le nom du point → sous son uid (lot C1).
+  if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
 
   // 📔 v1.69.0 — Ouverture d'une SORTIE au carnet. Impérativement APRÈS
   // SessionPersist.onPlanLoaded : la baseline des compteurs doit inclure la
@@ -869,6 +945,34 @@ window.ktaNiveauxOccupes = function() {
   }
   return levelsFound.filter(function(v, i, a) { return a.indexOf(v) === i; })
                     .sort(function(a, b) { return a - b; });
+};
+
+// 🆔 v2.3.0 — MIGRATION DES PHOTOS VERS L'UID DU POINT (ETUDE_UID lot C1).
+// Les calques arrivent un par un, sans signal « tout est chargé » : on attend
+// 2 s après le DERNIER appel (restauration de session, puis chaque calque).
+// L'ambiguïté se juge sur TOUS les points du plan (session + calques) : une
+// photo n'est rattachée à un uid que si son nom n'est porté que par ce point.
+// 🩸 Le plan peut avoir changé pendant l'attente : on vérifie son id.
+let _ktaMigrPhotosTimer = null;
+window._ktaPlanifierMigrationPhotos = function() {
+  if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.migrerPhotosPlan !== "function") return;
+  const planId = window._currentLoadedPlanId || null;
+  if (!planId) return;
+  if (_ktaMigrPhotosTimer) clearTimeout(_ktaMigrPhotosTimer);
+  _ktaMigrPhotosTimer = setTimeout(function() {
+    _ktaMigrPhotosTimer = null;
+    if ((window._currentLoadedPlanId || null) !== planId) return;
+    // 🆔 v2.4.0 (lot C2) — la même passe rattache aussi favoris et liaisons :
+    // tous partagent la règle « jamais deviné » (un seul point de ce nom, ou
+    // l'homonyme à la même position).
+    const pts = [].concat(
+      (window.getEditorPoints ? window.getEditorPoints() || [] : []).map(function(p) { return Object.assign({ layerId: "editor" }, p); }),
+      (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
+    ).filter(Boolean).map(function(p) { return { uid: p.uid, id: p.id, x: p.x, y: p.y, layerId: p.layerId }; });
+    window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    try { if (window.Favoris && window.Favoris.migrerVersUid) window.Favoris.migrerVersUid(pts); } catch(e) { console.warn("[Main] migration favoris :", e); }
+    try { if (window.InterPlanLinks && window.InterPlanLinks.migrerVersUid) window.InterPlanLinks.migrerVersUid(planId, pts); } catch(e) { console.warn("[Main] migration liaisons :", e); }
+  }, 2000);
 };
 
 window._etendreAvailableLevelsSiBesoin = function() {
@@ -1413,7 +1517,10 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 
     const entry = {
       id: id,
-      type: "local",
+      // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
+      // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
+      // la déconnexion ne le retrouverait plus).
+      type: meta.typeRegistre === "ext" ? "ext" : "local",
       name: planName,
       version: planVer || null,
       author: rawConfig.plan.author || null,
@@ -1524,14 +1631,35 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (typeof window._majOverlayChargement === "function") {
             window._majOverlayChargement("Restauration de " + photoIds.length + " photo(s)…");
           }
-          // Wipe préalable des photos IDB de ce planId (3:a)
+          // 🩸 v2.5.0 (lot C3, décision KARMA) — PLUS D'EFFACEMENT GLOBAL.
+          // Avant : `deletePhotosForPlan(planId)` à CHAQUE ouverture d'un plan ZIP
+          // qui embarque des photos (« 3:a ») — les photos prises par
+          // l'utilisateur sur ce plan, et ses rattachements « c'est ce point »,
+          // disparaissaient à la réouverture. Désormais :
+          //   - une photo du ZIP déjà présente est GARDÉE telle quelle (son
+          //     rattachement éventuel survit) ;
+          //   - une photo du ZIP absente est restaurée, marquée origine « plan » ;
+          //   - seules les photos d'origine « plan » qui ont disparu de la
+          //     nouvelle version du ZIP sont retirées ;
+          //   - une photo prise par l'utilisateur (sans cette marque) n'est JAMAIS
+          //     touchée. Une photo restaurée avant v2.5.0 n'a pas la marque : elle
+          //     reste aussi (au pire, une photo périmée — jamais une perte).
+          const _dansIndex = new Set(photoIds.map(String));
           try {
-            await window.MyKTAMapPhotos.deletePhotosForPlan(planId);
-          } catch(e) { console.warn("[Loader] deletePhotosForPlan :", e); }
+            const _existantes = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
+            for (const rec of _existantes) {
+              if (rec && rec.meta && rec.meta.origine === "plan" && !_dansIndex.has(String(rec.id))) {
+                await window.MyKTAMapPhotos.deletePhoto(rec.id);
+              }
+            }
+          } catch(e) { console.warn("[Loader] tri des photos du plan :", e); }
 
           let restoredCount = 0;
           for (const pid of photoIds) {
             const info = idxObj.photos[pid] || {};
+            try {
+              if (await window.MyKTAMapPhotos.getPhoto(pid)) continue;   // déjà là : on n'écrase rien
+            } catch(e) { /* lecture impossible : on restaure */ }
             const filename = "data/photos/" + (info.file || (pid + ".jpg"));
             const blobFile = findMatchingFile(filename, files);
             if (!blobFile) {
@@ -1548,7 +1676,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 pointId: String(info.pointId || ""),
                 blob:    blob,
                 mime:    info.mime || "image/jpeg",
-                size:    info.size || blob.size
+                size:    info.size || blob.size,
+                meta:    { origine: "plan" }   // 🆔 v2.5.0 : seules celles-ci peuvent être retirées
               });
               restoredCount++;
             } catch(e) {
@@ -1695,15 +1824,13 @@ function _splashStart() {
   }
 
   // 2️⃣ v2.0.0 — Identité visuelle de la série (décision KARMA) : le chiffre de
-  // la version majeure, en doré et de biais au-dessus de « MyKTAMap », et un
-  // fin cadre doré autour de l'écran. À partir de la v2 seulement ; chaque
-  // version majeure peut ensuite avoir son propre accueil.
+  // la version majeure, en orange et de biais au-dessus de « MyKTAMap ». À partir
+  // de la v2 seulement ; chaque version majeure peut ensuite avoir son propre accueil.
   const majeure = parseInt(String((window.__MKM__ && window.__MKM__.build) || "").replace(/^v/, ""), 10);
   const chiffre = document.getElementById("splashMajeure");
   if (chiffre && majeure >= 2) {
     chiffre.textContent = String(majeure);
     chiffre.hidden = false;
-    splash.classList.add("kta-splash-majeure");
   }
 }
 
@@ -1923,6 +2050,71 @@ window.proposerRedemarrageLangue = function() {
     catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
   }
 
+  // 🏛️ v2.6.0 (chantier 2, community-server-line.md §3) — CONFIG D'INSTANCE
+  // LUE UNE FOIS, AVANT LES GATES. Même requête qu'avant (data/index.json),
+  // avancée : la gate, le kiosque, le connecteur et la découverte des plans la
+  // partagent (js/ktaInstance.js). Délai 2 s, puis dernière config connue.
+  const _instanceBoot = (window.KtaInstance && typeof window.KtaInstance.charger === "function")
+    ? await window.KtaInstance.charger() : null;
+  // 🔑 Rotation du mot de passe d'instance à EFFET IMMÉDIAT : la revalidation
+  // passe AVANT la gate, donc au lancement — jamais en pleine session (la
+  // raison de l'ancien délai d'un démarrage). 🩸 Seulement si l'index a
+  // VRAIMENT répondu : une config rejouée de mémoire ne révoque rien
+  // (revaliderInstance ignore tout appel sans `true`), sinon une coupure
+  // réseau reverrouillerait l'app.
+  if (_instanceBoot && _instanceBoot.repondu && window.UnlockGate &&
+      typeof window.UnlockGate.revaliderInstance === "function") {
+    window.UnlockGate.revaliderInstance(_instanceBoot.config ? _instanceBoot.config.accessHash : null, true);
+  }
+  // 🔌 L'état de connexion est connu avant la gate (une future gate déléguée en
+  // a besoin) ; la licence n'est ATTENDUE que si l'instance déclare « on » —
+  // myktamap.fr et toute instance en OFF ne perdent pas une milliseconde.
+  if (_instanceBoot) _appliquerConnexionServeur(_instanceBoot.config, _instanceBoot.repondu);
+  const _scBoot = _instanceBoot && _instanceBoot.config ? _instanceBoot.config.serverConnection : null;
+  if (_scBoot && _scBoot.state === "on" && window.MyKTAMapProLicense && !window.MyKTAMapProLicense.isPro()) {
+    // Licence serveur déjà connue : 2 s suffisent (repli). Sinon (1er lancement,
+    // après « Tout réinitialiser ») : jusqu'à 15 s, et on repart dès la fin de la
+    // vérification (mktm:license-checked) — trouvée ou non.
+    let _licConnue = false;
+    try { _licConnue = !!localStorage.getItem(window.MyKTAMapProLicense._LS_KEY_SERVER); } catch(e) {}
+    await new Promise(function(resolve) {
+      const fin = function() {
+        window.removeEventListener("mktm:license-changed", fin);
+        window.removeEventListener("mktm:license-checked", fin);
+        clearTimeout(t); resolve();
+      };
+      const t = setTimeout(fin, _licConnue ? 2000 : 15000);
+      window.addEventListener("mktm:license-changed", fin);
+      window.addEventListener("mktm:license-checked", fin);
+    });
+  }
+
+  // 🧩 v2.7.0 (chantier 3) — MODULES GREFFÉS ET GATE DÉLÉGUÉE.
+  // Règle E : les modules ne se chargent que sur une instance « on » avec une
+  // licence de source serveur (KtaExtensions.chargerModules ne fait rien
+  // sinon : myktamap.fr n'en charge jamais). Ils se chargent AVANT les gates,
+  // pour qu'un module puisse remplacer la gate d'entrée par son compte.
+  let _gateDelegueeOk = false;
+  if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
+    const _mods = await window.KtaExtensions.chargerModules();
+    const _gate = window.KtaExtensions.gateDeleguee();
+    if (_gate) {
+      await _splashEnd();
+      try { await _gate; _gateDelegueeOk = true; console.log("[Main] Gate déléguée franchie"); }
+      catch (e) {
+        // 🩸 JAMAIS de repli sur la gate community : le code communautaire,
+        // diffusé largement, ouvrirait une instance privée (trou v1.90.7).
+        console.warn("[Main] Gate déléguée en échec :", e);
+        await _ktaInstanceIndisponible();
+      }
+    } else if (_mods && _mods.demandes > 0 && _mods.echecs > 0) {
+      // Instance connectée dont un module ne se charge pas : écran dédié, même
+      // règle (jamais de repli sur la gate community).
+      await _splashEnd();
+      await _ktaInstanceIndisponible();
+    }
+  }
+
   // 🗝️ v173 : Unlock Gate (barrière communautaire).
   // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
   // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
@@ -1930,7 +2122,7 @@ window.proposerRedemarrageLangue = function() {
   // ⚠️ La fonction await ouvrirGate() ne résout JAMAIS en lockout (5 échecs)
   //    → main.js reste bloqué là pour toujours, l'user doit cliquer "Reset
   //    complet" dans l'overlay pour repartir. Volontaire.
-  if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
+  if (!_gateDelegueeOk && window.UnlockGate && !window.UnlockGate.isUnlocked()) {
     // On laisse le splash se finir d'abord (UX préservée) puis on enchaîne
     // sur le gate. Si l'user a déjà été déverrouillé (cas le plus fréquent
     // = 2e boot+), on saute complètement cette étape sans même montrer
@@ -2161,6 +2353,7 @@ window.proposerRedemarrageLangue = function() {
   } else if (_idxServeur) {
     await decouvrirPlansServeur(_idxServeur);
   }
+  try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
   // le charger automatiquement comme avant

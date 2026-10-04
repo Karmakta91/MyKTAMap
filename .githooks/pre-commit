@@ -378,6 +378,35 @@ node scripts/check-kiosque-serveur.js || exit $?
 # profil, et que le module ne fait aucune requete. BLOQUANT.
 node scripts/check-connexion-serveur.js || exit $?
 
+# EXPORT ANONYMISE (v2.0.1) : fait pour etre PARTAGE publiquement. Le script
+# EXECUTE `_anonymiserSession` (extraite du vrai fichier) sur une session piegee
+# dont chaque texte identifiant porte un marqueur, puis cherche le marqueur dans
+# TOUT le JSON produit — une cle ajoutee demain a l export complet et oubliee
+# dans l anonymiseur fera echouer le commit. Ne en v2.0.1 : les liaisons
+# inter-plan livraient les vrais noms de plan et de point depuis v1.57.0. BLOQUANT.
+node scripts/check-export-anonyme.js || exit $?
+
+# IDENTIFIANTS STABLES (v2.1.0, docs/ETUDE_UID.md) : chaque objet de carte porte
+# uid + updatedAt. Le script EXECUTE js/ktaUid.js (doublons regeneres en
+# migration de masse, uid jamais ecrase, copie du tableur = uid neuf) et verifie
+# le cablage des sites : setters, migration a l ouverture (VERSION de session
+# inchangee - une ancienne app ignorerait une version inconnue), touch a chaque
+# modification, lecture des calques, Generateurs, aucun uid vers KMZ/GPX. BLOQUANT.
+node scripts/check-uid.js || exit $?
+
+# POINTS D'EXTENSION (v2.7.0, chantier 3) : un module greffe peut remplacer la
+# gate, fournir des plans, refuser un import/export, publier, parler a un
+# backend. Le script EXECUTE js/ktaExtensions.js : une permission qui echoue
+# REFUSE, une gate deleguee en echec ne retombe jamais sur la gate community,
+# le garde des requetes refuse hors etat permis et hors origine declaree, aucun
+# module sur une instance OFF, aucune prise sans extension ne change rien. BLOQUANT.
+node scripts/check-extensions.js || exit $?
+
+# LICENCES SIGNEES (04/10/2026) : seules les licences signees par la cle de KARMA
+# (ECDSA P-256), non expirees et pour la bonne adresse activent le mode pro ; la
+# cle embarquee doit etre PUBLIQUE. Le script EXECUTE la verification. BLOQUANT.
+node scripts/check-licence.js || exit $?
+
 # DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
 # 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
 # widget OSM du HOME monte une carte dont le fond vient de

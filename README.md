@@ -12,7 +12,31 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.0.0` (04/10/2026)
+## 📦 Version courante — `v2.7.4` (04/10/2026)
+
+> 🧩 **v2.7.4 — Prise « compte » : la carte profil affiche le compte d'une installation reliée** (pseudo + rôle), sans écrire dans le profil local.
+
+> 2️⃣ **v2.7.3 — Splash sans cadre, image Docker constructible depuis Windows, notes de version réduites.**
+
+> 🧩 **v2.7.2 — Un module greffé peut porter sa version (`pro/x.js?v=…`)** : sa mise à jour n'attend plus une release community.
+
+> 🧩 **v2.7.1 — Le Service Worker ne met jamais en cache une requête de backend** (marquée `X-Kta-Ext` ou authentifiée) : prérequis d'un backend servi à la même adresse que l'app.
+
+> 🧩 **v2.7.0 — Points d'extension (chantier 3, branche `karma_backend_dev`)** : `KtaExtensions.register()` et toutes les prises ; gate déléguée sans repli sur la gate community ; myktamap.fr inchangé.
+
+> ⚡ **v2.6.0 — Config d'instance lue une fois, avant les gates (chantier 2)** : délai de 2 s puis dernière config connue ; rotation du mot de passe d'instance à effet immédiat.
+
+> 📸 **v2.5.0 — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé** : index photos du Générateur par uid ; rouvrir un plan ZIP n'efface plus les photos de l'utilisateur.
+
+> 🌀 **v2.4.0 — Favoris, liaisons et Secours par uid (chantier 1, lot C2)** : supprimer un point n'efface plus les liaisons ni le favori d'un homonyme.
+
+> 📸 **v2.3.0 — Photos rattachées à l'uid du point (chantier 1, lot C1)** : une photo suit son point renommé ; double lecture uid puis nom, migration douce, « à rattacher » quand le nom est ambigu.
+
+> 🔀 **v2.2.0 — Traces de suppression et fusion par uid (chantier 1, lot B)** : un objet supprimé ne ressuscite plus à une fusion ou un réimport ; la fusion de sessions ne double plus un même objet.
+
+> 🆔 **v2.1.0 — Identifiants stables (chantier 1, lot A)** : chaque objet de carte porte `uid` + `updatedAt`, migration des sessions à l'ouverture, sans changer la version de session.
+
+> 🔒 **v2.0.1 — Export anonymisé : liaisons inter-plan retirées** : elles y livraient le vrai nom du plan et du point de chaque côté depuis v1.57.0.
 
 > 🔌 **v2.0.0 — Nouvelle frontière community/pro, pastille « connexion serveur »** : myktamap.fr reste sans serveur, pour toujours, et le dit dans son pied de page ; une installation indépendante peut déclarer une connexion serveur (`config.serverConnection`), affichée mais encore inactive.
 
@@ -511,6 +535,109 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.4 (04/10/2026) — Prise « compte » (branche `Karma_dev`, `karma_backend_dev` fusionnée)
+
+- 🩸 **Origine** : test de la pile pro par KARMA — la carte profil affichait « Mon profil / Touriste » une fois connecté en admin. Un premier essai (module pro qui écrit le pseudo dans le surnom local, choix 1:a) effaçait le surnom de l'appareil et ne permettait ni le rôle ni le verrou : remplacé par une prise neutre (1:b, reco acceptée).
+- 🔧 **`KtaExtensions.compte()`** (+ `notifierCompte()`, événement `mktm:compte-changed`) : la carte affiche `pseudo` à la place du surnom et `libelle` (rôle) à la place du rang ; la modale verrouille le pseudo (`home.profile.nicknameAccount` ×3). **Rien n'est écrit dans le profil local.** Sans extension : `null`, rien ne change (myktamap.fr).
+- 🛡️ `check-extensions.js` : 8 contrôles de plus (compte absent sans extension, nettoyé, borné, erreur → `null`, jamais écrit dans le profil local, modale verrouillée).
+- ✅ Mesuré sur la pile Docker pro : surnom local « Karma » intact pendant la connexion, carte « admin | Admin », modale verrouillée, « Karma » revient à la déconnexion.
+
+#### v2.7.3 (04/10/2026) — Splash sans cadre, Docker depuis Windows (branche `karma_backend_dev`)
+
+- 2️⃣ **Splash** : le cadre doré autour de l'écran est retiré (demande KARMA) ; le « 2 » reste. CSS `::before`, variantes tactile et claire, classe `kta-splash-majeure` supprimées.
+- 🐳 **Docker** : sur un checkout Windows (`core.autocrlf=true`), `docker/entrypoint.sh` arrivait en CRLF dans l'image → `#!/bin/sh\r` introuvable, le conteneur ne démarrait pas (trouvé au premier lancement de la pile pro). Le `Dockerfile` convertit le script en fins de ligne Unix au build.
+- 📝 **`version.json > notes`** réduites à deux sujets (consigne KARMA) : bases de données des installations indépendantes, documentation simplifiée.
+
+#### v2.7.2 (04/10/2026) — Version des modules greffés (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : test du module de connexion du chantier 4 — le SW met en cache un module au premier chargement et le sert ensuite depuis ce cache (règle par défaut), et le connecteur refusait tout suffixe au chemin (`pro/connexion.js?v=0.2.0` → état « invalide »). Une nouvelle version d'un module n'arrivait donc qu'au bump suivant de `CACHE_NAME`.
+- 🔧 **Correctif** (décision KARMA 1:a) : `serverConnection.modules` accepte un seul suffixe, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max). Changer la version change l'URL, donc l'entrée de cache. ConfAdmin porte la même règle (copie, alignement vérifié par le garde-fou).
+- 🛡️ `check-connexion-serveur.js` : 6 cas de plus (versionné accepté ; autre paramètre, version vide, deux paramètres, espace, suffixe avant `.js` refusés).
+
+#### v2.7.1 (04/10/2026) — Requêtes de backend jamais en cache (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : en préparant le Docker du backend (proxy `/api` à la même adresse que l'app), constat que `sw.js` intercepte et met en cache **toutes** les requêtes GET, sans filtre d'origine : les réponses d'un backend (données de compte, synchro) auraient été gardées sur l'appareil et servies périmées.
+- 🔧 **Correctif** : `KtaExtensions.requete` marque ses requêtes (`X-Kta-Ext: 1`, `cache: "no-store"`) ; le SW ne répond jamais à une requête marquée ou portant `Authorization` (le réseau seul décide). Sans effet sur myktamap.fr.
+- 🛡️ `check-extensions.js` → 42 contrôles (marquage exécuté, règle du SW placée avant tout `respondWith`).
+
+#### v2.7.0 (04/10/2026) — Points d'extension (chantier 3) — branche `karma_backend_dev`
+
+- 🔍 **Origine** : `community-server-line.md` §3, chantier 3 — tout ce dont le module pro a besoin côté community, sans une ligne de pro dans ce repo. Fusionné depuis `Karma_dev` (v2.6.0) sur consigne KARMA.
+- 🧩 **`js/ktaExtensions.js` — API v1** : `register({ nom, apiVersion: 1, gate, plans, importAutorise, exportAutorise, publierPlan })` (nom requis, version vérifiée, double déclaration refusée) ; `signaler("on"|"down")` (états `on` vert / `down` orange, jamais sur une instance OFF) ; `chargerModules()` (règle E : licence serveur ET « on », même origine, 8 s par script) ; `requete(chemin, opts)` (garde unique : origine de `api` seulement, refus hors « configurée / connectée », sondes en « injoignable ») ; permissions synchrones où **une erreur = refus** ; `gateDeleguee()` ; plans `listerPlansExtension` / `chargerPlanExtension` ; `publierPlan` ; `changementsDepuis(ts)` ; `effacerDonneesExtension(planIds)` (plans `ext` seulement) ; `secoursAppliquer`.
+- 🔑 **Boot** : licence (si « on ») → modules → **gate déléguée** si une extension la fournit ; en échec, ou module de connexion introuvable → écran **« Installation indisponible »** (Réessayer) — **jamais** la gate community.
+- 🔗 **Goulots** : import (`ktaKiosqueServeurSeul` consulte la prise), export de profil (archives filtrées), plans d'extension (`type: "ext"`, ☁️, ouverts via la prise, gardés sur l'appareil, type conservé à l'ouverture), Générateur (« Publier » si une extension sait publier), SW (caches `myktamap-ext-` gardés à l'activation).
+- 🛡️ **Garde-fous** : `check-extensions.js` (nouveau, 40 contrôles, module exécuté avec faux fetch qui compte ; sabotages vérifiés) ; `check-connexion-serveur.js` : un seul fetch, dans le garde.
+- ✅ **Test navigateur** avec faux module, licence et index servis par interception : gate déléguée appelée à la place de la gate community, état « connectée », plan ☁️ inscrit, import refusé par la prise ; module absent → « Installation indisponible », gate community jamais affichée ; myktamap.fr → aucun module demandé, état « off » ; aucune erreur JS.
+- ⏭️ **Suite** : chantier 4 dans le repo pro — Docker par couche (API Node+Fastify, PostgreSQL, Caddy, SMTP de test), admin par défaut à mot de passe changé à la 1re connexion, gestion des utilisateurs.
+
+#### v2.6.0 (04/10/2026) — Config d'instance lue une fois, avant les gates (chantier 2)
+
+- 🔍 **Origine** : `community-server-line.md` §3, chantier 2 (QCM du 04/10/2026) — prérequis de la porte d'authentification (gate déléguée) : l'app doit connaître la config d'instance avant d'afficher la gate. Avant : la gate relisait `data/index.json` à chaque tentative, `main.js` le relisait après les gates (deux lectures qui pouvaient diverger), sans délai maximal, et une rotation du mot de passe d'instance attendait le démarrage suivant.
+- 🏛️ **`js/ktaInstance.js`** (nouveau, précaché, avant `unlockGate.js`) : `charger()` lit l'index **une fois** (promesse mémorisée), délai **2 s** (AbortController), non-2xx (404 synthétique du SW hors ligne) = injoignable ; injoignable → dernière section `config` connue (`myktamap_instance_config_v1`), `repondu: false`.
+- 🔑 **Boot** (`main.js > initApp`) : config d'instance → `revaliderInstance(…, true)` **seulement si l'index a répondu** → état de connexion → licence attendue (2 s) **seulement si `serverConnection.state === "on"`** → gates. Rotation du mot de passe d'instance **à effet immédiat**, jamais en pleine session ; une config de mémoire ne révoque rien.
+- 🗝️ **Gate** : `_hashInstance()` lit la config partagée (repli fetch si module absent) — une requête de moins par tentative ; **hors ligne, une instance protégée garde son mot de passe** (avant, le fetch échouait et le code communautaire l'ouvrait). **Kiosque** : reprend la config mémorisée quand l'index est injoignable.
+- 🛡️ **Garde-fous** : `check-gate-instance.js` réécrit (lecture unique, délai, mémoire `repondu: false`, ordre config → revalidation → gate, une seule revalidation) ; `check-connexion-serveur.js` (état connu avant la gate). Sabotages vérifiés.
+- ✅ **Tests navigateur avec `index.json` simulé** (interception réseau, `data/` jamais touché) : myktamap.fr déverrouillé → 1 lecture, accueil direct ; instance protégée → gate, le mot de passe d'instance ouvre, **1 lecture au total** ; mot de passe changé → gate dès ce démarrage ; index injoignable + mémoire → aucune révocation, kiosque appliqué ; index lent (5 s) → démarrage sans attendre ; pastille « invalide » et « licence requise » vérifiées en vrai ; aucune erreur JS.
+- ⏭️ **Suite** : chantier 3 — en commençant par la gate déléguée (porte d'authentification), sur `karma_backend_dev`.
+
+#### v2.5.0 (04/10/2026) — Photos des ZIP de plan (chantier 1, lot C3) — chantier 1 terminé
+
+- 🩸 **Perte de données corrigée** (relevée en préparant C3) : `startImportedPlan` (`js/main.js`) appelait `deletePhotosForPlan(planId)` à **chaque** ouverture d'un plan ZIP embarquant des photos (décision « 3:a », non documentée) — les photos prises par l'utilisateur sur ce plan et ses rattachements « c'est ce point » disparaissaient à la réouverture. Choix KARMA : plus d'effacement global — une photo du ZIP déjà présente est gardée telle quelle ; une absente est restaurée avec `meta.origine = "plan"` ; seules les photos d'origine « plan » disparues du nouvel index sont retirées ; une photo de l'utilisateur n'est jamais touchée (une photo restaurée avant v2.5.0, sans marque, reste aussi : au pire une photo périmée, jamais une perte). ⚠️ Non reproduit en navigateur (il faudrait un ZIP à photos) : lu dans le code et verrouillé par le garde-fou.
+- 🗂️ **Index photos du Générateur** (`data/photos/_index.json`) : `pointId` = uid du point quand son nom n'est porté que par un seul point du plan généré (`_collecterPointsCalque` + `_clePhotoIndex`, `js/createConf.js`) ; nom ambigu ou point inconnu → clé inchangée. Le chargement lit uid puis nom : les anciens ZIP restent valables.
+- 🛡️ **Garde-fou** : `check-uid.js` → 150 contrôles (fonctions du Générateur extraites et exécutées ; plus de `deletePhotosForPlan` au chargement ; seules les photos « plan » absentes de l'index retirées).
+- 🏁 **Chantier 1 terminé** (v2.1.0 → v2.5.0) : identifiants stables, traces de suppression, fusion par uid, photos / favoris / liaisons / Secours rattachés à l'uid. Prochaine étape cadrée : chantier 2 (lecture unique de l'index avant les gates) puis la porte d'authentification.
+
+#### v2.4.0 (04/10/2026) — Favoris, liaisons et Secours rattachés à l'uid (chantier 1, lot C2)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 11-12. 🩸 **Défaut corrigé au passage** : les liaisons inter-plan reconnaissaient un point par son NOM (`_pointKey` = `id:<nom>`) — supprimer un point effaçait aussi les liaisons de ses **homonymes** ; l'étoile favori marquait tous les homonymes.
+- ⭐ **Favoris** (`js/favoris.js`) : champ `pointUid` (le `uid` d'un favori est SON identifiant `fav-…`) ; `isFav/findByPointId/remove` prennent `(nom, uid)` — l'uid d'abord, le nom pour un favori ancien ; `migrerVersUid(points)` : un seul point de ce nom, sinon l'homonyme du même calque à la même position (0,5 px), sinon rien. Popup : étoile et rafraîchissement par uid (`data-fav-pointuid`).
+- 🌀 **Liaisons** (`js/interPlanLinks.js`) : `_coteDuPoint` (uid d'abord, puis nom / coordonnées) remplace la comparaison par clé dans la lecture, la popup, `onPointDeleted` et `onPointMoved` ; un lien neuf porte `pointUid` de ses deux côtés ; `migrerVersUid(planId, points)` (côtés du plan courant, homonymes départagés à 1 px).
+- 🚑 **Secours** : `pointUid` voyage dans les 7 sites qui fabriquent une étape ; `_samePoint` et la couverture comparent l'uid d'abord.
+- 🔄 **Migration** : même passe planifiée que les photos (après restauration et chaque calque).
+- 🛡️ **Garde-fou** : `check-uid.js` → 138 contrôles (favoris.js exécuté ; `_coteDuPoint` extrait et exécuté : un côté rattaché ne désigne plus l'homonyme).
+- ✅ **Test navigateur** (relevé fictif) : deux points « Puits », liaison sur le premier ; suppression réelle du second → la liaison du premier **survit** ; étoile favori sur le bon point seulement ; aucune erreur JS.
+
+#### v2.3.0 (04/10/2026) — Photos rattachées à l'uid du point (chantier 1, lot C1)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 11-13. Le NOM du point servait de clé photo dans 11 endroits (éditeur, popups, exports, anonymisé, import, profil, ZIP de plan, stats, Carnet) : une bascule franche aurait perdu des photos au premier site oublié. Choix KARMA : **double lecture + migration douce**, lot C découpé en C1 / C2 / C3.
+- 📸 **`js/photos.js`** : `getPhotosForPointRef(planId, {uid, id})` (uid PUIS nom, sans doublon, `_parNom` sur les secondes), `setPhotoPointId` (une photo, lecture/écriture dans les rappels IDB), `migrerPhotosPlan` (nom porté par UN seul point qui a un uid → uid ; ambigu ou sans uid → inchangé ; **jamais de suppression**).
+- ✏️ **Éditeur** : en ajout, les photos sont rangées sous l'uid du FUTUR point (tiré à l'ouverture, posé à la validation — plus de clé `_temp_` ni de renommage) ; l'annulation ne supprime que cette clé, jamais celle d'un point existant ; en édition, double lecture, et rattachement nom → uid seulement sans homonyme (session + calques).
+- 📌 **Popup** : double lecture ; une photo rangée par nom d'un point dont le nom est porté par plusieurs points porte un cadre orange pointillé et un bouton « 📌 Photo N : c'est ce point » (fr/en/es).
+- 📤 **Exports / stats** : collecte des photos par uid ET nom, rattachement photo → point par uid puis nom, export anonymisé remappe aussi l'uid, stats photos affichent le nom pour un uid.
+- 🔄 **Migration** planifiée 2 s après la restauration de session et après chaque calque chargé (pas de signal « tout chargé ») ; abandonnée si le plan a changé.
+- 🛡️ **Garde-fou** : `check-uid.js` passe à 115 contrôles (migration sans suppression, rattachement seulement sans ambiguïté, garde d'annulation stricte, double lecture partout, textes 3 langues).
+- ✅ **Test navigateur** (IndexedDB réelle, relevé fictif) : photo sous nom unique → uid ; sous nom porté par 2 points → inchangée ; photo neuve sous l'uid ; double lecture ; popup du point ambigu → badge + bouton, le clic la rattache au bon point ; 3 photos avant comme après ; aucune erreur JS.
+- ⏭️ **Suite** : C2 (favoris, liaisons, Secours) ; C3 (photos des ZIP de plan : index du Générateur par uid).
+
+#### v2.2.0 (04/10/2026) — Traces de suppression et fusion par uid (chantier 1, lot B)
+
+- 🔍 **Origine** : `docs/ETUDE_UID.md` décisions 7-9 + Q1/Q2. Prérequis d'une synchro « le dernier gagne » (plusieurs personnes sur un même plan, un même utilisateur sur plusieurs appareils) : sans trace, un objet supprimé ici ressusciterait depuis une autre copie.
+- 🪦 **Traces** `{ uid, deletedAt }` dans `js/ktaUid.js` (`tombstone`, `untombstone`, `getTombstones`, `setTombstones`, `purge` à 90 jours, `estTransitoire`). **Tenues à un seul endroit : `HistoryManager`** — à chaque `record()`, diff des uid sur l'union des catégories de l'instantané (une conversion n'est pas une suppression) ; `undo`/`redo` : réapparu → trace retirée + `touch`, modifié → `touch` (décision 9). Pas de trace pour l'itinéraire calculé ni pour un objet rendu à son calque.
+- 💾 **Persistance** : traces dans le payload et l'état haché ; des traces seules comptent comme contenu (le slot n'est plus effacé quand tout est supprimé) ; vidées au changement de plan (même piège que la légende v1.76.0) et par « Effacer la session » (Q1) ; purge à chaque sauvegarde.
+- 🔀 **Fusion** : `KtaUid.fusionnerCalques`, règle unique pour la fusion de sessions et celle du Générateur — même uid de deux fichiers = même objet, le plus récent gagne (à égalité : fichier le plus tardif) ; même uid dans un même fichier = deux objets (uid neuf au second) ; une trace postérieure à la dernière modification l'emporte ; un objet converti suit sa version gagnante. L'alerte « ids en double » ne signale plus que des NOMS en double.
+- 📤 **Exports / imports** : export complet (et repli `telechargerSessionJSON`) emportent les traces (Q2), l'anonymisé les retire ; import par remplacement : identités préparées (repli = date d'export) et traces du fichier AVANT les setters.
+- 🛡️ **Garde-fous** : `check-uid.js` passe à 90 contrôles (historyManager exécuté sur de faux tableaux : suppression, annulation, rétablissement, conversion, itinéraire, calque, purge, fusion) — sabotages vérifiés ; `check-export-anonyme.js` piège aussi les traces.
+- ✅ **Test navigateur** (relevé fictif) : suppression réelle (`KtaConvertir.supprimer`) → trace ; sauvegarde → trace stockée ; rechargement → trace restituée ; annulation → objet revenu avec le même uid, trace retirée, daté de maintenant ; aucune erreur JS.
+- ⏭️ **Lot suivant** : C (photos, favoris, liaisons, Secours rattachés par uid au lieu du nom).
+
+#### v2.1.0 (04/10/2026) — Identifiants stables des objets (chantier 1, lot A)
+
+- 🔍 **Origine** : prérequis de toute synchro (cadrage base de données, `docs/ETUDE_UID.md`). Avant : tracés, zones et structures sans identité (reconnus par référence mémoire), points identifiés par leur NOM (changeant, non unique).
+- 🆔 **Module `js/ktaUid.js`** (nouveau, précaché, chargé avant `utils.js`) : `genUid(pt|rd|zn|st)` (date base 36 + 6 caractères `crypto.getRandomValues`), `touch` (`updatedAt` ms + `date_update` jour pour un point), `ensure` (pose sans jamais écraser), `ensureAll` (**régénère tout uid déjà vu** : migration de masse, copie d'une ancienne version), `cloneNeuf`, `sansIdentite`, `marquerCalqueTexte`.
+- 🔄 **Migration** dans `sessionPersist._applyRestore`, avant les setters et le découpage en deux phases des tracés : `updatedAt` de repli = `savedAt` de la session ; **`VERSION` reste 1** (une ancienne app ignorerait une version inconnue). **Filet** dans les 4 setters (`setEditorPoints/Roads/Zones/Structures`).
+- ✏️ **`touch` à chaque modification** : création / modification / repositionnement de point, sommets ajoutés et retirés (tracé, zone, structure), notes, conversion (l'uid suit), cellules et tags du tableur. **Tableur** : `uid`/`updatedAt` jamais en colonnes modifiables ; « Dupliquer » donne un **uid neuf** (une copie JSON l'aurait recopié).
+- 🗂️ **Calques** : `getAllEmbedded*` gardent `uid`/`updatedAt` quand ils existent ; le Générateur et les imports KMZ/GPX/SIG les posent sur les nouveaux plans (uid existants gardés, fichier non JSON laissé intact).
+- 🛡️ **Garde-fous** : `scripts/check-uid.js` (pré-commit, bloquant, 62 contrôles — module exécuté + câblage ; sabotages vérifiés : doublon, VERSION, setter, « Dupliquer ») ; `check-export-anonyme.js` vérifie en plus qu'aucun `uid`/`updatedAt` ne sort de l'export anonymisé.
+- ✅ **Tests navigateur** (Edge headless, relevé fictif) : session ancienne injectée → uid posés sur les 5 objets, `updatedAt` = date de sauvegarde ; sauvegarde → uid stockés, version 1 ; rechargement → **mêmes uid**, horodatage d'un tracé modifié conservé ; aucune erreur JS.
+- ⏭️ **Lots suivants** : B (traces de suppression, fusion par uid), C (références par nom → uid).
+
+#### v2.0.1 (04/10/2026) — Export anonymisé : les liaisons inter-plan ne fuient plus
+
+- 🔍 **Origine** : relevée pendant le cadrage du chantier 1 (identifiants stables). `_anonymiserSession` (`js/sessionExporter.js`) ne retirait pas `session.interPlanLinks`, ajoutée à l'export complet en v1.57.0 : chaque côté d'une liaison y porte un instantané `{ planName, pointNom, planId, pointId }`, soit les **vrais noms** du plan et du point. Un export « anonymisé » d'un plan avec liaisons les livrait.
+- 🔒 **Correctif** : `delete session.interPlanLinks` dans l'anonymiseur. Une liaison n'a de sens qu'entre deux plans que le destinataire d'un export public n'a pas.
+- 🛡️ **Garde-fou** `scripts/check-export-anonyme.js` (pré-commit, bloquant) : exécute la vraie fonction sur une session piégée dont chaque texte identifiant porte un marqueur, et cherche ce marqueur dans **tout** le JSON produit — une clé future oubliée échouera sans avoir à être listée. Sabotage vérifié (fuite retrouvée sans le correctif).
+- 📄 **Docs** : NETWORK_AUDIT md+html, AI_CONTEXT, notes de version (prévient qu'un export anonymisé antérieur peut contenir ces noms).
 
 #### v2.0.0 (04/10/2026) — Nouvelle frontière community/pro : le connecteur (chantier 0)
 

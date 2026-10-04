@@ -2520,8 +2520,18 @@ function _importerDatalayerZip(zipFile) {
         }
       });
     })).then(function(parsedArr) {
+      // 🆔 v2.2.0 — même fusion PAR UID que la fusion de sessions
+      // (KtaUid.fusionnerCalques) : un objet présent dans deux calques n'est
+      // plus doublé. La boucle ci-dessous ne sert alors plus qu'à la légende.
+      const _fusionUid = (window.KtaUid && typeof window.KtaUid.fusionnerCalques === "function")
+        ? window.KtaUid.fusionnerCalques(parsedArr) : null;
+      if (_fusionUid) {
+        merged.data = _fusionUid.data; merged.roads = _fusionUid.roads;
+        merged.zones = _fusionUid.zones; merged.structures = _fusionUid.structures;
+      }
       parsedArr.forEach(function(json) {
         if (!json || typeof json !== "object") return;
+        if (_fusionUid) { if (json.customLegend) _absorberLegendeCalque(json.customLegend); return; }
         // Points : .data ou .editorPoints
         if (Array.isArray(json.data) && json.data.length > 0) {
           merged.data = merged.data.concat(json.data);
@@ -2899,6 +2909,47 @@ function _afficherAvertissementV2(checkbox) {
 // =========================
 // LECTURE FICHIER
 // =========================
+// 🆔 v2.1.0 — Un plan qui sort du Générateur porte un uid sur chaque objet de
+// ses calques de données (ETUDE_UID décision 5) : les uid existants sont
+// gardés, les manquants posés. Le fichier arrive en ArrayBuffer ; s'il n'est
+// pas un JSON UTF-8 exploitable, il part tel quel (jamais de calque perdu pour
+// une identité).
+// 🆔 v2.5.0 (lot C3) — points ({uid, id}) d'un calque écrit (texte ou buffer).
+function _collecterPointsCalque(contenu, acc) {
+  try {
+    const texte = (typeof contenu === "string") ? contenu : new TextDecoder("utf-8").decode(contenu);
+    const d = JSON.parse(texte);
+    [d.data, d.editorPoints, d.points].forEach(function(arr) {
+      (Array.isArray(arr) ? arr : []).forEach(function(p) {
+        if (p && typeof p === "object" && !Array.isArray(p)) acc.push({ uid: p.uid, id: p.id });
+      });
+    });
+  } catch (e) { /* calque non JSON : ses points ne comptent pas */ }
+}
+// Clé d'une photo dans data/photos/_index.json : l'uid du point si la photo
+// est encore rangée sous un NOM porté par un seul point du plan généré ;
+// sinon la clé telle quelle (déjà un uid, nom ambigu, point inconnu). Le
+// chargement lit l'uid puis le nom : un index ancien reste valable.
+function _clePhotoIndex(cle, points) {
+  const c = String(cle || "");
+  if (!c || !Array.isArray(points)) return c;
+  if (points.some(function(p) { return p.uid === c; })) return c;
+  const memes = points.filter(function(p) { return String(p.id || "") === c; });
+  return (memes.length === 1 && memes[0].uid) ? String(memes[0].uid) : c;
+}
+
+function _marquerUidCalque(buffer) {
+  if (!window.KtaUid || !buffer) return buffer;
+  try {
+    const texte = new TextDecoder("utf-8").decode(buffer);
+    const neuf = window.KtaUid.marquerCalqueTexte(texte);
+    return neuf === texte ? buffer : neuf;
+  } catch (e) {
+    console.warn("[Generateur] uid non posés sur un calque :", e);
+    return buffer;
+  }
+}
+
 function _lireFichier(file) {
   return new Promise(function(resolve, reject) {
     const r = new FileReader();
@@ -3640,6 +3691,9 @@ async function _genererZip() {
 
     // ── Calques données ──
     const dataLayers = [];
+    // 🆔 v2.5.0 (lot C3) — points des calques écrits, pour que l'index des
+    // photos désigne chaque point par son uid (cf. plus bas).
+    const _pointsGeneres = [];
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const dlId    = document.getElementById(lid + "_id").value.trim();
@@ -3652,7 +3706,9 @@ async function _genererZip() {
 
       const fileName = dlId + ".json";
       if (dlFile) {
-        dataFolder.file(fileName, await _lireFichier(dlFile));
+        const _marque = _marquerUidCalque(await _lireFichier(dlFile));
+        dataFolder.file(fileName, _marque);
+        _collecterPointsCalque(_marque, _pointsGeneres);
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
@@ -3753,7 +3809,7 @@ async function _genererZip() {
           const name = rec.id + "." + ext;
           photosFolder.file(name, rec.blob);
           idx[rec.id] = {
-            pointId: rec.pointId,
+            pointId: _clePhotoIndex(rec.pointId, _pointsGeneres),   // 🆔 v2.5.0 : l'uid si le nom est sans ambiguïté
             mime:    rec.mime || "image/jpeg",
             size:    rec.size || (rec.blob && rec.blob.size) || 0,
             file:    name
@@ -4097,6 +4153,23 @@ async function _genererZip() {
       a.click();
     } finally {
       URL.revokeObjectURL(url);
+    }
+
+    // 🧩 v2.7.0 (prise « publication ») — si une extension sait publier, le
+    // Créateur peut envoyer le plan généré au serveur de l'instance (brouillon
+    // local → « Publier »). Sans extension : rien ne change.
+    if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
+      try {
+        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: name }),
+                                                { okLabel: window.I18n.t("ext.publier.ok") });
+        if (publier) {
+          await window.KtaExtensions.publierPlan({ blob: blob, nom: name });
+          alert(window.I18n.t("ext.publier.fait"));
+        }
+      } catch (e) {
+        console.warn("[Planner] publication :", e);
+        alert(window.I18n.t("ext.publier.echec"));
+      }
     }
 
     const m = document.getElementById("kta-planner-modal");

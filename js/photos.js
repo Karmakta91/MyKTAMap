@@ -586,6 +586,100 @@
     });
   }
 
+  // ============================================================
+  // 🆔 v2.3.0 — PHOTOS RATTACHÉES À L'UID DU POINT (ETUDE_UID lot C1)
+  // ============================================================
+  // Avant : une photo est rangée sous le NOM du point (pointId = nom), qui
+  // change au renommage et n'est pas unique. Désormais les nouvelles photos
+  // sont rangées sous l'uid du point. Pour ne RIEN casser, la lecture est
+  // DOUBLE : une photo appartient à un point si sa clé vaut son uid, OU, à
+  // défaut, son nom. Les photos trouvées par le nom portent `_parNom: true`
+  // (l'appelant décide si c'est ambigu : plusieurs points du même nom).
+  function getPhotosForPointRef(planId, ref) {
+    const uid = ref && typeof ref.uid === "string" && ref.uid ? ref.uid : null;
+    const nom = ref && ref.id != null && String(ref.id) ? String(ref.id) : null;
+    if (!planId || (!uid && !nom)) return Promise.resolve([]);
+    const parUid = uid ? getPhotosForPoint(planId, uid) : Promise.resolve([]);
+    const parNom = (nom && nom !== uid) ? getPhotosForPoint(planId, nom) : Promise.resolve([]);
+    return Promise.all([parUid, parNom]).then(function(r) {
+      const vus = new Set(), out = [];
+      r[0].forEach(function(rec) { vus.add(rec.id); out.push(rec); });
+      r[1].forEach(function(rec) {
+        if (vus.has(rec.id)) return;
+        vus.add(rec.id);
+        rec._parNom = !!uid;   // rangée par nom alors que le point a un uid
+        out.push(rec);
+      });
+      return out;
+    });
+  }
+
+  // Rattache UNE photo à une clé (geste « C'est ce point », migration).
+  // Ne supprime jamais rien : seul `pointId` change.
+  function setPhotoPointId(photoId, pointId) {
+    if (!photoId || !pointId) return Promise.resolve(false);
+    // Lecture et écriture dans les RAPPELS de la requête (pas de .then entre
+    // les deux) : la transaction reste active, comme dans renamePointId.
+    return _tx("readwrite", function(store) {
+      return new Promise(function(resolve, reject) {
+        const g = store.get(String(photoId));
+        g.onsuccess = function() {
+          const rec = g.result;
+          if (!rec) { resolve(false); return; }
+          rec.pointId = String(pointId);
+          const put = store.put(rec);
+          put.onsuccess = function() { resolve(true); };
+          put.onerror = function() { reject(put.error); };
+        };
+        g.onerror = function() { reject(g.error); };
+      });
+    }).catch(function(e) {
+      console.warn("[Photos] setPhotoPointId erreur :", e);
+      return false;
+    });
+  }
+
+  // Migration douce, idempotente. `points` = TOUS les points du plan
+  // ({ uid?, id }), session ET calques — les points sans uid comptent pour
+  // l'ambiguïté. Une photo rangée sous un nom porté par UN SEUL point, qui a
+  // un uid, passe sous cet uid. Nom ambigu, point sans uid, aucun point :
+  // la photo reste sous le nom (la double lecture la retrouve). 🩸 Jamais de
+  // suppression ici. Rend { migrees, ambigues }.
+  function migrerPhotosPlan(planId, points) {
+    if (!planId || !Array.isArray(points)) return Promise.resolve({ migrees: 0, ambigues: 0 });
+    const uids = new Set(), parNom = new Map();
+    points.forEach(function(pt) {
+      if (!pt) return;
+      if (typeof pt.uid === "string" && pt.uid) uids.add(pt.uid);
+      const n = pt.id != null ? String(pt.id) : "";
+      if (!n) return;
+      if (!parNom.has(n)) parNom.set(n, []);
+      parNom.get(n).push(pt);
+    });
+    return getAllPhotosForPlan(planId).then(function(recs) {
+      let ambigues = 0;
+      const ops = [];
+      recs.forEach(function(rec) {
+        const cle = String(rec.pointId || "");
+        if (!cle || uids.has(cle)) return;
+        const c = parNom.get(cle) || [];
+        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) ops.push(setPhotoPointId(rec.id, c[0].uid));
+        else if (c.length > 1) ambigues++;
+      });
+      return Promise.all(ops).then(function(r) {
+        const migrees = r.filter(Boolean).length;
+        if (migrees || ambigues) {
+          console.log("[Photos] migration v2.3.0 : " + migrees + " photo(s) rattachée(s) à l'uid de leur point" +
+                      (ambigues ? ", " + ambigues + " à rattacher (nom porté par plusieurs points)" : ""));
+        }
+        return { migrees: migrees, ambigues: ambigues };
+      });
+    }).catch(function(e) {
+      console.warn("[Photos] migrerPhotosPlan erreur :", e);
+      return { migrees: 0, ambigues: 0 };
+    });
+  }
+
   function clearAll() {
     return _tx("readwrite", function(store) {
       return _reqPromise(store.clear()).then(function() {
@@ -645,6 +739,9 @@
     deletePhotosForPoint:    deletePhotosForPoint,
     deletePhotosForPlan:     deletePhotosForPlan,
     renamePointId:           renamePointId,
+    getPhotosForPointRef:    getPhotosForPointRef,   // 🆔 v2.3.0
+    setPhotoPointId:         setPhotoPointId,
+    migrerPhotosPlan:        migrerPhotosPlan,
     restorePhoto:            restorePhoto,
     clearAll:                clearAll,
     getStorageInfo:          getStorageInfo,

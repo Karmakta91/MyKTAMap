@@ -433,6 +433,8 @@
         zones:      [],
         structures: []
       };
+      // 🆔 v2.1.0 — un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
+      if (window.KtaUid) { const _vus = new Set(); ["data", "roads", "zones", "structures"].forEach(function (k) { window.KtaUid.ensureAll(payload[k], k === "data" ? "pt" : k === "roads" ? "rd" : k === "zones" ? "zn" : "st", undefined, _vus); }); }
       zip.file("data/imported.json", JSON.stringify(payload, null, 2));
     }
 

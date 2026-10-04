@@ -128,7 +128,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 - **📋 Ver el registro de red** — todas las peticiones de la app en directo, y si envían datos; se puede copiar, exportar o vaciar. Si una petición envía datos, o aparece una dirección externa distinta de OpenStreetMap (en rojo), **avisa al autor**: Instagram **@karma_kta** o **contact@myktamap.fr**.
 - **📖 ¿Qué hace la app en la red?** — la lista de direcciones que la app puede contactar y cómo comprobarlo con tu navegador (F12, pestaña Red).
-- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior.
+- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor.
 
 ---
 
@@ -663,6 +663,8 @@ Hasta **5 fotos por punto**, guardadas solo en tu dispositivo. En la ventana de 
 
 **Llevártelas**: marca la casilla 📸 de las fotos en ⬆️ → **🚀 Completo**, **🎨 Avanzado** o **🔄 Conversión**; un archivo reimportado restaura sus fotos. Con **🛡️ Anonimizar para compartir públicamente**, cada foto se renombra y se vincula al código anónimo de su punto; una foto que no puede limpiarse queda excluida.
 
+**📌 Foto «por asignar»**: antes de la v2.3.0, una foto se guardaba con el **nombre** de su punto. Si varios puntos llevan el mismo nombre, la app no adivina a cuál pertenece: en la burbuja de cada uno de esos puntos, la foto aparece con un **marco naranja punteado** y un botón **📌 Foto N: es este punto**. Tócalo en la burbuja del punto correcto. Nunca se borra nada. Las fotos cuyo nombre lleva un solo punto se asignan solas, y las que tomes ahora siguen a su punto aunque lo renombres.
+
 > ⚠️ Las fotos ocupan el almacenamiento del navegador (de unas decenas a unos cientos de MB según el dispositivo); aparece un aviso cerca del límite. En iPhone, el sistema puede vaciar ese almacenamiento si le falta espacio: exporta con regularidad. **💥 Reiniciar todo** también borra las fotos, y borrar una foto no se puede deshacer.
 
 ---
@@ -1192,9 +1194,9 @@ Recoloca tu posición a menudo (**📍 Estoy aquí**), comprueba la escala (🎯
 
 Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
-### 🔑 El código de acceso se rechaza
+### 🔑 La contraseña se rechaza
 
-Si la app te la proporciona una instalación con su propia contraseña (asociación, club), es **esa contraseña** la que necesitas: el código comunitario no abre, y una licencia pro tampoco. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap simplemente propone **Continuar sin licencia**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
@@ -1210,7 +1212,7 @@ Estas herramientas no borran **ningún** dato (planos memorizados, sesiones, fot
 **⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de planos y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
-- También muestra el **código de acceso comunitario**, que se vuelve a pedir al reiniciar: **anótalo antes de confirmar**, o no podrás volver a entrar.
+- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar sin licencia**.
 - Se piden dos confirmaciones. Hazlo **con conexión**: si estás sin conexión, una ventana roja te avisa de que la app quedará inutilizable hasta que vuelva la red.
 
 No hay que confundirlo con **↺ Valores por defecto** de ⚙️ Ajustes, que solo afecta a los ajustes del plano abierto.
@@ -1724,7 +1726,7 @@ La forma corta `{ "plans": ["test1", "test2"] }` también funciona; la forma det
 Si el autor te ha entregado un archivo **`Licence-pro.json`**, este activa la edición pro **en este dispositivo**.
 
 - **Desde tu perfil**: **📂 Importar una licencia pro** y elige el archivo. La parte inferior de la pantalla de inicio muestra ✓ Licencia pro activa y la pantalla de arranque «Edición profesional». **🗑️ Quitar licencia local** te devuelve al modo comunitario; puedes volver a importar el archivo más tarde.
-- **En el primer inicio**, en la pantalla del código comunitario, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro, sin ese código.
+- **En el primer inicio**, en la pantalla de bienvenida, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro.
 - En una instancia donde el administrador ha instalado la licencia en el servidor, tu perfil muestra simplemente ✓, sin botón.
 
 Un archivo mal formado se rechaza con un mensaje. El archivo se lee en tu navegador y no se envía a ninguna parte.

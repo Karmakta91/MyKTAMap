@@ -61,31 +61,42 @@ const VRAI = "a".repeat(64);          // faux « hash communautaire », forme va
 const KIOSK = "b".repeat(64);         // hash d'instance
 
 // ═════════ 1. isUnlocked, EXÉCUTÉ SUR TOUTE LA MATRICE ═════════
+// 🔓 04/10/2026 : plus de code communautaire. Accès libre (« Continuer sans
+// licence » / licence pro), mot de passe d'instance mémorisé, ou ancien code
+// hérité (converti en accès libre, jamais comparé à une saisie).
 {
   const code = extraire("isUnlocked");
   t("isUnlocked est extractible", !!code);
 
   const jouer = (unlock, kiosque) => {
+    const store = { u: unlock, k: kiosque };
     const sb = {
-      HASH_VALIDE: VRAI,
+      ACCES_LIBRE: "libre-v1", HASH_HERITE: VRAI,
       LS_UNLOCK: "u", LS_UNLOCK_KIOSQUE: "k",
       RE_HASH: /^[0-9a-f]{64}$/,
-      localStorage: { getItem: function (k) { return k === "u" ? unlock : kiosque; } }
+      localStorage: { getItem: function (k) { return store[k]; }, setItem: function (k, v) { store[k] = v; } }
     };
     vm.runInNewContext(code + "; resultat = isUnlocked();", sb, { filename: "gate.isUnlocked.js" });
-    return sb.resultat;
+    return { ouvert: sb.resultat, u: store.u };
   };
 
   if (code) {
-    t("le code communautaire ouvre, comme depuis toujours", jouer(VRAI, null) === true);
-    t("🔑 le mot de passe d'instance ouvre, s'il est mémorisé", jouer(KIOSK, KIOSK) === true);
-    t("un hash d'instance NON mémorisé n'ouvre pas", jouer(KIOSK, null) === false);
+    t("🔓 l'accès libre (« Continuer sans licence ») ouvre", jouer("libre-v1", null).ouvert === true);
+    const herite = jouer(VRAI, null);
+    t("🔓 un appareil entré avec l'ANCIEN code reste ouvert (vaut « déjà choisi »)…", herite.ouvert === true);
+    t("🩸 …SANS rien écrire : isUnlocked() tourne au chargement, avant la revalidation de l'instance", herite.u === VRAI);
+    t("ancien code = mot de passe d'instance identique, mémorisé : ouvert", jouer(VRAI, VRAI).ouvert === true);
+    t("🩸 ancien code face à une AUTRE mémoire d'instance : fermé", jouer(VRAI, KIOSK).ouvert === false);
+    t("🔑 le mot de passe d'instance ouvre, s'il est mémorisé", jouer(KIOSK, KIOSK).ouvert === true);
+    t("un hash d'instance NON mémorisé n'ouvre pas", jouer(KIOSK, null).ouvert === false);
     t("🩸 NAVIGATEUR VIERGE : deux `null` ne s'égalent PAS (sinon l'app est grande ouverte)",
-      jouer(null, null) === false);
-    t("🩸 une chaîne vide non plus", jouer("", "") === false);
-    t("🩸 un hash mémorisé de forme invalide est refusé", jouer("abc", "abc") === false);
-    t("un hash mémorisé qui ne correspond pas au stocké est refusé", jouer(KIOSK, VRAI) === false);
+      jouer(null, null).ouvert === false);
+    t("🩸 une chaîne vide non plus", jouer("", "").ouvert === false);
+    t("🩸 un hash mémorisé de forme invalide est refusé", jouer("abc", "abc").ouvert === false);
+    t("un hash mémorisé qui ne correspond pas au stocké est refusé", jouer(KIOSK, VRAI).ouvert === false);
   }
+  t("🩸 l'ancien hash n'apparaît qu'en migration (constante + isUnlocked), jamais face à une saisie",
+    (GATE.match(/HASH_HERITE/g) || []).length === 2 && !/HASH_VALIDE/.test(GATE));
 }
 
 // ═════════ 2. revaliderInstance, EXÉCUTÉ ═════════
@@ -169,9 +180,22 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /if \(!RE_HASH\.test\(propre\)\) \{/.test(GATE));
   t("…et un accessHash fautif est signalé, pas avalé en silence",
     /console\.warn\("\[UnlockGate\] config\.accessHash ignoré/.test(GATE));
-  t("le hash est lu dans data/index.json > config.accessHash",
-    /fetch\("data\/index\.json", \{ cache: "no-store" \}\)/.test(GATE) &&
-    /idx\.config \? idx\.config\.accessHash : null/.test(GATE));
+  // 🏛️ v2.6.0 (chantier 2) — la gate ne relit plus l'index : elle lit la
+  // config d'instance chargée UNE fois avant les gates (js/ktaInstance.js).
+  t("le hash vient de la config d'instance partagée (config.accessHash), lue une seule fois",
+    /const st = await window\.KtaInstance\.charger\(\);\s*cfg = st \? st\.config : null;/.test(GATE) &&
+    /const h = cfg \? cfg\.accessHash : null;/.test(GATE));
+  {
+    const KI = fs.readFileSync("js/ktaInstance.js", "utf8");
+    t("🏛️ ktaInstance : une seule lecture par démarrage (la promesse est mémorisée)",
+      /if \(_promesse\) return _promesse;/.test(KI));
+    t("🏛️ ktaInstance : délai maximal de 2 s (AbortController)", /const DELAI_MS = 2000;/.test(KI) && /ctrl\.abort\(\)/.test(KI));
+    t("🩸 ktaInstance : un non-2xx (404 synthétique du SW hors ligne) = injoignable, jamais « répondu »",
+      /if \(!r\.ok\) return null;/.test(KI));
+    t("🩸 ktaInstance : une config rejouée de mémoire est marquée repondu: false",
+      /_etat = \{ charge: true, repondu: false, index: null, config: memo/.test(KI));
+    t("ktaInstance : seule la section config est mémorisée (pas la liste des plans)", /_ecrireMemo\(config\);/.test(KI));
+  }
 }
 
 // ═════════ 4. 🔒 LE HASH D'INSTANCE EST EXCLUSIF — EXÉCUTÉ ═════════
@@ -182,61 +206,62 @@ const KIOSK = "b".repeat(64);         // hash d'instance
 // protégé. Quand une instance publie un hash valide, il doit être le SEUL.
 // On extrait la décision du vrai `_onSubmit` et on la joue sur les quatre cas.
 {
-  // Le cœur de la décision : de `const hashInstance = …` jusqu'aux deux lignes
-  // okInstance / okCommunaute. On le rend SYNCHRONE — `_hashInstance` stubé
-  // renvoie la valeur directement et l'`await` est retiré — pour jouer les
-  // quatre cas sans tordre tout le garde-fou en async.
-  const m = GATE.match(/const hashInstance = await _hashInstance\(\);[\s\S]*?const okCommunaute = \(![^\n]*\);/);
+  // Le cœur de la décision : de `const hashInstance = …` jusqu'à `okInstance`.
+  // Rendu SYNCHRONE — `_hashInstance` stubé renvoie la valeur directement.
+  const m = GATE.match(/const hashInstance = await _hashInstance\(\);[\s\S]*?const okInstance\s*=[^\n]*;/);
   t("la décision de déverrouillage est extractible", !!m);
   if (m) {
     const frag = m[0].replace("await _hashInstance()", "_hashInstance()");
     const jouer = (hashInstance, hashed) => {
-      const sb = { HASH_VALIDE: VRAI, _hashInstance: function () { return hashInstance; }, hashed: hashed };
-      return vm.runInNewContext("(function(){ " + frag + " return (okCommunaute || okInstance); })()",
+      const sb = { _hashInstance: function () { return hashInstance; }, hashed: hashed };
+      return vm.runInNewContext("(function(){ " + frag + " return okInstance; })()",
         sb, { filename: "gate.decision.js" });
     };
     t("🔑 instance : SON mot de passe ouvre", jouer(KIOSK, KIOSK) === true);
-    t("🩸 instance : le code communautaire est REFUSÉ (LE TROU FERMÉ)", jouer(KIOSK, VRAI) === false);
-    t("app communautaire (pas d'accessHash) : le code communautaire ouvre", jouer(null, VRAI) === true);
-    t("app communautaire : un autre mot de passe est refusé", jouer(null, KIOSK) === false);
+    t("🩸 instance : l'ancien code communautaire est REFUSÉ (LE TROU FERMÉ)", jouer(KIOSK, VRAI) === false);
+    t("🔓 sans mot de passe d'instance, AUCUNE saisie n'ouvre (plus de code en dur)", jouer(null, VRAI) === false);
     t("instance : un mot de passe quelconque est refusé", jouer(KIOSK, "d".repeat(64)) === false);
   }
 }
 
-// ═════════ 4b. L'INDEX EST DEMANDÉ À CHAQUE TENTATIVE (il le FAUT) ═════════
-// 🩸 On ne peut plus « sauter » la requête quand la saisie égale le hash
-// communautaire : elle doit justement être refusée si l'instance impose le
-// sien. Donc l'index est demandé à chaque submit — la gate étant rare, c'est
-// négligeable, et le SW sert l'index en cache hors-ligne.
+// ═════════ 4b. L'INDEX EST DEMANDÉ À CHAQUE TENTATIVE ═════════
 {
-  t("🔒 l'index est demandé INCONDITIONNELLEMENT au submit (plus de court-circuit sur HASH_VALIDE)",
-    /const hashInstance = await _hashInstance\(\);/.test(GATE) &&
-    !/if \(hashed !== HASH_VALIDE\) hashInstance = await _hashInstance\(\);/.test(GATE));
-  t("🩸 le code communautaire n'ouvre QUE sans hash d'instance",
-    /const okCommunaute = \(!hashInstance && hashed === HASH_VALIDE\);/.test(GATE));
+  t("🔒 l'index est demandé INCONDITIONNELLEMENT au submit",
+    /const hashInstance = await _hashInstance\(\);/.test(GATE));
+  t("🩸 plus aucun code communautaire dans la décision", !/okCommunaute/.test(GATE));
 }
 
 // ═════════ 5. LE SUCCÈS MÉMORISE CE QU'IL FAUT ═════════
 {
-  t("🔑 le hash accepté est stocké (et non plus `HASH_VALIDE` en dur)",
-    /localStorage\.setItem\(LS_UNLOCK, hashed\);/.test(GATE));
+  t("🔑 le hash accepté est stocké", /localStorage\.setItem\(LS_UNLOCK, hashed\);/.test(GATE));
   t("🩸 un succès d'instance mémorise le hash d'instance (sans quoi : hors-ligne, reverrouillé)",
-    /if \(okInstance\) localStorage\.setItem\(LS_UNLOCK_KIOSQUE, hashInstance\);/.test(GATE));
-  t("🩸 un succès COMMUNAUTAIRE efface cette mémoire (elle ne le concerne pas)",
-    /else\s+localStorage\.removeItem\(LS_UNLOCK_KIOSQUE\);/.test(GATE));
+    /localStorage\.setItem\(LS_UNLOCK_KIOSQUE, hashInstance\);/.test(GATE));
+  t("🔓 « Continuer sans licence » mémorise l'accès libre et efface la mémoire d'instance",
+    /btnLibre\.addEventListener\("click"[\s\S]{0,200}setItem\(LS_UNLOCK, ACCES_LIBRE\)[\s\S]{0,80}removeItem\(LS_UNLOCK_KIOSQUE\)/.test(GATE));
+  t("🔓 le mode de l'écran est décidé AVANT de le dessiner (hash d'instance lu d'abord)",
+    /_hashInstance\(\)[^\n]*\.then\(function\(h\) \{ _monterGateMode\(h\); \}\)/.test(GATE));
+  t("🔓 écran libre : bouton « Continuer sans licence », pas de champ mot de passe ; écran instance : l'inverse",
+    /\(libre\s*\?\s*'<button type="button" id="kta-unlock-libre-btn"[\s\S]{0,200}:\s*'<form id="kta-unlock-form"/.test(GATE));
+  t("🩸 le verrou temporisé ne s'applique qu'à l'écran avec mot de passe", /if \(!libre && isLockedOut\(\)\)/.test(GATE));
 }
 
-// ═════════ 6. LE BRANCHEMENT DANS LE BOOT ═════════
+// ═════════ 6. LE BRANCHEMENT DANS LE BOOT (v2.6.0, chantier 2) ═════════
+// La revalidation du mot de passe d'instance passe AVANT la gate : une rotation
+// prend effet dès ce démarrage (au lancement, jamais en pleine session).
 {
-  t("main.js revalide après le chargement de l'index",
-    /window\.UnlockGate\.revaliderInstance\([\s\S]{0,140}accessHash : null, true\);/.test(MAIN));
-  // 🩸 Elle doit vivre APRÈS le `if (!r.ok) return null;` du chargeur : si on
-  // la déplaçait avant, un index absent appellerait la revalidation avec null
-  // et effacerait la mémoire — le reverrouillage hors-ligne, par la bande.
-  const iOk  = MAIN.indexOf('console.log("[Main] data/index.json absent');
+  const appels = MAIN.match(/window\.UnlockGate\.revaliderInstance\(/g) || [];
+  t("main.js revalide UNE seule fois", appels.length === 1);
+  t("🩸 …seulement si l'index a VRAIMENT répondu (une config rejouée de mémoire ne révoque rien)",
+    /if \(_instanceBoot && _instanceBoot\.repondu && window\.UnlockGate &&[\s\S]{0,120}window\.UnlockGate\.revaliderInstance\(_instanceBoot\.config \? _instanceBoot\.config\.accessHash : null, true\);/.test(MAIN));
+  const iCharge = MAIN.indexOf("await window.KtaInstance.charger() : null;");
   const iRev = MAIN.indexOf("window.UnlockGate.revaliderInstance(");
-  t("🩸 …et jamais quand l'index est absent (elle est APRÈS la sortie anticipée)",
-    iOk > 0 && iRev > iOk);
+  const iGate = MAIN.indexOf("window.UnlockGate && !window.UnlockGate.isUnlocked())");   // v2.7.0 : précédé de !_gateDelegueeOk
+  t("🔑 ordre du boot : config d'instance → revalidation → gate (rotation à effet immédiat)",
+    iCharge > 0 && iRev > iCharge && iGate > iRev);
+  t("la licence n'est attendue avant la gate que si l'instance déclare « on » (myktamap.fr non ralenti)",
+    /if \(_scBoot && _scBoot\.state === "on" && window\.MyKTAMapProLicense/.test(MAIN));
+  t("🩸 _chargerIndexServeur ne relit plus l'index (une seule lecture par démarrage)",
+    /const st = await window\.KtaInstance\.charger\(\);\s*idx = st && st\.repondu \? st\.index : null;/.test(MAIN));
 }
 
 // ═════════ 7. CONFADMIN NE STOCKE JAMAIS LE MOT DE PASSE ═════════
@@ -325,7 +350,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
 
   // La gate retire le bloc d'import de licence sur une instance protégée…
   t("🔒 la gate RETIRE le bloc « importer ma licence » sur instance protégée",
-    /_hashInstance\(\)\.then\(function\(h\) \{[\s\S]{0,260}kta-licence-community[\s\S]{0,120}removeChild/.test(GATE));
+    /if \(!libre\) \{\s*_instanceProtegeeGate = true;[\s\S]{0,200}kta-licence-community[\s\S]{0,120}removeChild/.test(GATE));
   // …et refuse l'unlock au clic, défense en profondeur.
   t("🩸 …et refuse l'unlock même si le bloc est rendu (garde `_instanceProtegeeGate`)",
     /if \(_instanceProtegeeGate\) \{[\s\S]{0,160}return;/.test(GATE));
@@ -372,6 +397,6 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
-console.log(ko === 0 ? "\n🎉 gate d'instance : deux mots de passe, et aucune promesse de trop"
+console.log(ko === 0 ? "\n🎉 gate : le mot de passe de l'instance ou « Continuer sans licence », et aucune promesse de trop"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

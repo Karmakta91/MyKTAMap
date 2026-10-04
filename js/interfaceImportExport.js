@@ -48,6 +48,22 @@
 // =========================
 // EXPORT SESSION JSON
 // =========================
+// 🆔 v2.2.0 — Import par REMPLACEMENT d'une session (ETUDE_UID décision 7) :
+// les objets d'un fichier ancien reçoivent un uid (repli updatedAt = date
+// d'export du fichier), un uid en double dans le fichier est régénéré, et les
+// traces de suppression du fichier REMPLACENT celles du plan (c'est un
+// remplacement : l'état importé devient l'état du plan).
+function _preparerIdentitesImport(d) {
+  if (!window.KtaUid || !d || typeof d !== "object") return;
+  const repli = Date.parse(d.date_export || d.exported_at) || Date.now();
+  const vus = new Set();
+  window.KtaUid.ensureAll(d.editorPoints, "pt", repli, vus);
+  window.KtaUid.ensureAll(d.roads, "rd", repli, vus);
+  window.KtaUid.ensureAll(d.zones, "zn", repli, vus);
+  window.KtaUid.ensureAll(d.structures, "st", repli, vus);
+  window.KtaUid.setTombstones(d.tombstones);
+}
+
 function telechargerSessionJSON() {
   // Fonction conservée comme fallback si sessionExporter.js n'est pas chargé.
   // Format Full (sans mesure, sans tracker) — voir sessionExporter.js pour la modale complète.
@@ -61,7 +77,9 @@ function telechargerSessionJSON() {
     // 🆕 v1.9.3-A1.a : structures aussi dans le fallback JSON. Reste
     // rétro-compatible — les anciens imports sans 'structures' tomberont
     // sur l'array vide via `dataParsee.structures || []` côté import.
-    structures:   window.getStructures   ? window.getStructures()   : []
+    structures:   window.getStructures   ? window.getStructures()   : [],
+    // 🆔 v2.2.0 — traces de suppression (un réimport ne ressuscite rien)
+    tombstones:   window.KtaUid ? window.KtaUid.getTombstones() : []
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -91,6 +109,7 @@ function importerSessionJSON(file) {
         return;
       }
 
+      _preparerIdentitesImport(data);   // 🆔 v2.2.0
       if (window.setEditorPoints) window.setEditorPoints(data.editorPoints || []);
       if (window.renderEditorPoints) window.renderEditorPoints();
       if (window.resetMesure) window.resetMesure();
@@ -671,6 +690,7 @@ function ouvrirImportSession(fichierInitial) {
       return _restorerPhotos();
     }).then(function() {
       try {
+        _preparerIdentitesImport(dataParsee);   // 🆔 v2.2.0
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
         // 🆕 v1.48.0 (KARMA) : restaure la LÉGENDE CUSTOM de la session (labels +
         // entrées custom : zones/tracés/tags/structures inventés par l'user) AVANT

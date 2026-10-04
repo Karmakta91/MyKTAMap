@@ -14,7 +14,7 @@
 // Contrat complet : docs/architecture/community-server-line.md §3.
 //
 // L'instance déclare dans `data/index.json > config.serverConnection` :
-//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js"] }
+//   { "state": "on" | "off", "api": "https://…" | "/api/", "modules": ["chemin/module.js?v=1.0.0"] }
 //
 // États produits ici :
 //   off        — champ absent ou "off" (myktamap.fr : aucun backend, jamais)
@@ -38,12 +38,16 @@
   // Dernière config valide connue de l'instance. Donnée de l'INSTANCE, pas de
   // l'utilisateur : elle ne voyage pas avec l'export de profil.
   const LS_MEMO = "myktamap_server_connection_v1";
-  const ETATS = ["off", "invalide", "licence", "configuree"];
+  // v2.7.0 (chantier 3) : `on` et `down` existent — un module greffé les
+  // SIGNALE (règle C : community ne sonde jamais le serveur).
+  const ETATS = ["off", "invalide", "licence", "configuree", "on", "down"];
   const CLASSE_ETAT = {
     off:        "kta-tx-muted",
     invalide:   "kta-tx-err",
     licence:    "kta-tx-warn",
-    configuree: "kta-tx-info"
+    configuree: "kta-tx-info",
+    on:         "kta-tx-ok",
+    down:       "kta-tx-warn"
   };
   const MAX_MODULES = 20;
 
@@ -51,6 +55,7 @@
   let _etat = "off";
   let _raison = "";
   let _dejaEmis = false;
+  let _signal = null;   // "on" | "down" | null — posé par un module greffé (signaler)
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
   // 🩸 confadmin.html applique EXACTEMENT les mêmes règles :
@@ -65,8 +70,12 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    if (typeof sc.api !== "string" || !/^https:\/\/[^\s/?#]+/i.test(sc.api.trim())) {
-      return { etat: "invalide", raison: "api doit être une adresse https://" };
+    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
+    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
+    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    if (typeof sc.api !== "string" ||
+        !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
+      return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
     }
     if (!Array.isArray(sc.modules)) {
       return { etat: "invalide", raison: "modules doit être une liste" };
@@ -77,8 +86,11 @@
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];
       // Même origine que l'app (script-src 'self') : chemin relatif, sans
-      // schéma, sans « // », sans remontée, terminé par .js.
-      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js$/.test(m) ||
+      // schéma, sans « // », sans remontée, terminé par .js. Un seul suffixe
+      // permis : « ?v=<version> » (v2.7.2). Le SW sert les modules depuis son
+      // cache (URL exacte) : changer la version change l'URL, donc la nouvelle
+      // version d'un module arrive sans attendre une release community.
+      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js(\?v=[A-Za-z0-9._-]{1,32})?$/.test(m) ||
           m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
@@ -145,6 +157,9 @@
   function _recalculer() {
     const avant = _etat;
     _etat = etatDe(_connexion, _sourceLicence());
+    // Le signal d'un module ne vaut que sur une instance « configurée » (on +
+    // licence serveur) : il ne peut jamais rallumer une instance OFF.
+    if (_etat === "configuree" && _signal) _etat = _signal;
     _raison = _connexion.raison || "";
     peindre();
     if (_etat !== avant || !_dejaEmis) {
@@ -251,12 +266,378 @@
   }
   if (window.I18n && typeof window.I18n.onChange === "function") window.I18n.onChange(peindre);
 
+
+  // =====================================================================
+  // 🧩 v2.7.0 — POINTS D'EXTENSION (chantier 3, community-server-line.md §3)
+  // =====================================================================
+  // Tout est NEUTRE : nommé sans référence au pro, utilisable par n'importe
+  // quelle extension, sans effet tant qu'aucune ne s'est déclarée.
+  //
+  // Une extension se déclare par :
+  //   KtaExtensions.register({
+  //     nom: "…", apiVersion: 1,
+  //     gate:     { ouvrir: function () → Promise },        // remplace la gate d'entrée
+  //     plans:    { lister: () → Promise<[{id,name,version?,tags?}]>,
+  //                 charger: (id) → Promise<Blob ZIP> },   // source de plans
+  //     importAutorise: function () → bool,                 // permission (synchrone)
+  //     exportAutorise: function (planId) → bool,           // permission (synchrone)
+  //     publierPlan:    function ({ blob, nom }) → Promise  // Générateur
+  //   })
+  // Prises de PERMISSION (gate, import, export) : une erreur = REFUS.
+  // Prises d'INFORMATION : une erreur est journalisée et ignorée.
+  const API_VERSION = 1;
+  const _extensions = [];
+  let _modules = { demandes: 0, charges: 0, echecs: 0, termine: false };
+
+  function register(ext) {
+    if (!ext || typeof ext !== "object" || typeof ext.nom !== "string" || !ext.nom) {
+      console.warn("[Extensions] déclaration refusée : objet sans nom");
+      return false;
+    }
+    if (ext.apiVersion !== API_VERSION) {
+      console.warn("[Extensions] « " + ext.nom + " » refusée : apiVersion " + ext.apiVersion +
+                   " (attendue " + API_VERSION + ")");
+      return false;
+    }
+    if (_extensions.some(function (e) { return e.nom === ext.nom; })) {
+      console.warn("[Extensions] « " + ext.nom + " » déjà déclarée");
+      return false;
+    }
+    _extensions.push(ext);
+    console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+    return true;
+  }
+  function _prise(nom) {
+    for (let i = 0; i < _extensions.length; i++) if (_extensions[i][nom]) return _extensions[i];
+    return null;
+  }
+  function aPrise(nom) { return !!_prise(nom); }
+
+  // ── Signal d'état par un module (règle C) ──
+  function signaler(etat) {
+    if (etat !== "on" && etat !== "down" && etat !== null) return false;
+    _signal = etat;
+    _recalculer();
+    return true;
+  }
+
+  // ── Chargeur de modules (règle E : licence serveur ET « on ») ──
+  // Charge les scripts de `serverConnection.modules`, même origine que l'app.
+  // Rend une promesse résolue quand tous ont fini (chargés ou en échec, 8 s max
+  // chacun). Ne fait RIEN hors de l'état « configurée ».
+  function chargerModules() {
+    if (etatDe(_connexion, _sourceLicence()) !== "configuree") {
+      _modules = { demandes: 0, charges: 0, echecs: 0, termine: true };
+      return Promise.resolve(_modules);
+    }
+    const liste = (_connexion.modules || []).slice();
+    _modules = { demandes: liste.length, charges: 0, echecs: 0, termine: false };
+    return Promise.all(liste.map(function (src) {
+      return new Promise(function (resolve) {
+        const s = document.createElement("script");
+        let fini = false;
+        const fin = function (ok) {
+          if (fini) return; fini = true;
+          if (ok) _modules.charges++; else { _modules.echecs++; console.warn("[Extensions] module non chargé : " + src); }
+          resolve();
+        };
+        const t = setTimeout(function () { fin(false); }, 8000);
+        s.onload = function () { clearTimeout(t); fin(true); };
+        s.onerror = function () { clearTimeout(t); fin(false); };
+        s.src = src;
+        document.head.appendChild(s);
+      });
+    })).then(function () { _modules.termine = true; return _modules; });
+  }
+
+  // ── Garde unique des requêtes d'extension ──
+  // Toute requête vers le backend d'une instance passe ICI. Refus avant tout
+  // envoi hors des états « configurée » / « connectée » ; en « injoignable »,
+  // seules les sondes (opts.sonde) partent, pour détecter le retour du serveur.
+  // Jamais une autre origine que celle déclarée dans `serverConnection.api`.
+  // Base absolue de l'API : un chemin du même site (« /api/ ») est résolu à
+  // l'adresse de l'app (location.origin) au moment de l'appel.
+  function _apiBase() {
+    const a = _connexion && _connexion.api;
+    if (typeof a !== "string" || !a) return null;
+    if (a.charAt(0) !== "/") return a;
+    const o = (typeof location !== "undefined" && location && location.origin && location.origin !== "null") ? location.origin : null;
+    return o ? o + a : null;
+  }
+  function requete(chemin, opts) {
+    const o = opts || {};
+    const etat = _etat;
+    const permis = etat === "configuree" || etat === "on" || (etat === "down" && o.sonde === true);
+    if (!permis) return Promise.reject(new Error("connexion serveur indisponible (" + etat + ")"));
+    let url;
+    const base = _apiBase();
+    try { url = new URL(String(chemin || ""), base); }
+    catch (e) { return Promise.reject(new Error("adresse invalide")); }
+    if (url.origin !== new URL(base).origin) {
+      return Promise.reject(new Error("origine refusée : " + url.origin));
+    }
+    const init = Object.assign({}, o);
+    delete init.sonde;
+    // Marque la requête pour le Service Worker (jamais de cache, v2.7.1) et
+    // interdit le cache HTTP : une réponse de backend n'a rien à faire hors ligne.
+    init.cache = "no-store";
+    const entetes = new Headers(init.headers || {});
+    entetes.set("X-Kta-Ext", "1");
+    init.headers = entetes;
+    return fetch(url.href, init);
+  }
+
+  // ── Prises de permission (synchrones) : une erreur = REFUS ──
+  function _permission(nom, args, parDefaut) {
+    const ext = _prise(nom);
+    if (!ext) return parDefaut;
+    try { return ext[nom].apply(ext, args || []) === true; }
+    catch (e) { console.warn("[Extensions] « " + nom + " » a échoué → refus :", e); return false; }
+  }
+  function importAutorise() { return _permission("importAutorise", [], true); }
+  function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+
+  // ── Gate déléguée ──
+  // Rend null si aucune extension ne fournit de gate, sinon une promesse qui
+  // résout quand l'extension a ouvert l'accès. Une gate qui échoue REJETTE :
+  // l'appelant affiche « instance indisponible », jamais la gate community.
+  function gateDeleguee() {
+    const ext = _prise("gate");
+    if (!ext || typeof ext.gate.ouvrir !== "function") return null;
+    try { return Promise.resolve(ext.gate.ouvrir()); }
+    catch (e) { return Promise.reject(e); }
+  }
+  function modulesEtat() { return Object.assign({}, _modules); }
+
+  // ── Source de plans ──
+  function listerPlansExtension() {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.lister !== "function") return Promise.resolve([]);
+    return Promise.resolve().then(function () { return ext.plans.lister(); })
+      .then(function (l) { return Array.isArray(l) ? l : []; })
+      .catch(function (e) { console.warn("[Extensions] plans.lister a échoué :", e); return []; });
+  }
+  // opts.progression(recus, total) : l'extension peut annoncer l'avancement du
+  // téléchargement (octets ; total 0 si inconnu) — l'accueil l'affiche.
+  function chargerPlanExtension(id, opts) {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.charger !== "function") return Promise.reject(new Error("aucune source de plans"));
+    const progression = opts && typeof opts.progression === "function" ? function (r, t) {
+      try { opts.progression(Number(r) || 0, Number(t) || 0); } catch (e) { /* affichage seulement */ }
+    } : null;
+    return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression }); });
+  }
+
+  // Dossiers de l'instance fournis par la source de plans (prise facultative
+  // plans.dossiers) : [{ id, name, color?, order?, rule?: { tags } }]. null = inconnu
+  // (pas de prise, serveur injoignable, erreur) → l'accueil ne touche à rien.
+  function dossiersExtension() {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.dossiers !== "function") return Promise.resolve(null);
+    return Promise.resolve().then(function () { return ext.plans.dossiers(); }).then(function (l) {
+      if (!Array.isArray(l)) return null;
+      return l.filter(function (d) { return d && (typeof d.id === "string" || typeof d.id === "number") && typeof d.name === "string" && d.name.trim(); })
+        .slice(0, 100).map(function (d, i) {
+          const o = { id: String(d.id).slice(0, 60), name: d.name.trim().slice(0, 40), order: Number.isFinite(d.order) ? d.order : i };
+          if (typeof d.color === "string") o.color = d.color.slice(0, 16);
+          if (d.rule && Array.isArray(d.rule.tags)) o.rule = { tags: d.rule.tags.filter(function (t) { return typeof t === "string"; }).slice(0, 20) };
+          return o;
+        });
+    }).catch(function (e) { console.warn("[Extensions] plans.dossiers a échoué :", e); return null; });
+  }
+
+  // ── Publication depuis le Générateur ──
+  function publierPlan(args) {
+    const ext = _prise("publierPlan");
+    if (!ext) return Promise.reject(new Error("aucune publication disponible"));
+    return Promise.resolve().then(function () { return ext.publierPlan(args); });
+  }
+
+  // ── Journal des changements (information) ──
+  // Ce qui a changé depuis `ts` (ms) : objets dont updatedAt > ts, et traces de
+  // suppression postérieures. Base de la synchro incrémentale (lot A/B).
+  function changementsDepuis(ts) {
+    const seuil = (typeof ts === "number" && isFinite(ts)) ? ts : 0;
+    const f = function (arr) { return (arr || []).filter(function (o) { return o && typeof o.updatedAt === "number" && o.updatedAt > seuil; }); };
+    return {
+      editorPoints: f(window.getEditorPoints && window.getEditorPoints()),
+      roads:        f(window.getRoads && window.getRoads()).filter(function (o) { return o.type !== "itinerary"; }),
+      zones:        f(window.getZones && window.getZones()),
+      structures:   f(window.getStructures && window.getStructures()),
+      tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; })
+    };
+  }
+
+  // ── Actions du compte (Mon profil, Configuration) ──
+  // L'extension fournit, selon le LIEU (« profil » | « config »), les actions à
+  // proposer : la fenêtre « Mon profil » les montre en tête, sous le compte
+  // connecté ; le panneau ⚙️ Configuration dans un bloc « Installation » (ex. gérer
+  // les comptes, pour un admin). Texte seulement (60 car.), 10 au plus, action
+  // protégée ; erreur ou forme inattendue = aucune action.
+  function actionsCompte(lieu) {
+    const ext = _prise("actionsCompte");
+    if (!ext || typeof ext.actionsCompte !== "function") return [];
+    try {
+      const l = ext.actionsCompte(lieu);
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 10).map(function (a) { return { libelle: a.libelle.trim().slice(0, 60), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] actionsCompte :", e); return []; }
+  }
+  // Bloc prêt à insérer (même rendu dans les deux fenêtres) ; null s'il n'y a rien à montrer.
+  function blocActionsCompte(lieu, titre) {
+    const actions = actionsCompte(lieu);
+    const c = compte();
+    if (!actions.length && !(lieu === "profil" && c)) return null;
+    const bloc = document.createElement("div");
+    bloc.className = "kta-aide-section kta-ext-compte";
+    const h = document.createElement("div");
+    h.className = "kta-ext-compte-titre";
+    h.textContent = String(titre || "") + (c ? " — " + c.pseudo + (c.libelle ? " · " + c.libelle : "") : "");
+    bloc.appendChild(h);
+    actions.forEach(function (a) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "loader-btn-secondary kta-ext-compte-btn";
+      b.textContent = a.libelle;
+      b.addEventListener("click", function () {
+        try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
+      });
+      bloc.appendChild(b);
+    });
+    return bloc;
+  }
+
+  // ── Changements reçus (synchro entrante) ──
+  // Applique au plan OUVERT des objets et des traces de suppression venus d'un
+  // autre appareil ou d'une autre personne : même règle que la fusion de
+  // sessions (KtaUid.fusionnerCalques — par uid, le plus récent gagne, une trace
+  // postérieure l'emporte, un objet supprimé ne ressuscite pas). L'itinéraire
+  // en cours n'est jamais touché. Rend { fusionnes, supprimes } ou null (aucun
+  // plan ouvert). Les objets reçus sont copiés : rien de partagé avec l'appelant.
+  function appliquerChangements(lot) {
+    if (!lot || typeof lot !== "object" || !window.KtaUid ||
+        typeof window.getEditorPoints !== "function" || typeof window.setEditorPoints !== "function") return null;
+    const copie = function (a) {
+      return Array.isArray(a) ? JSON.parse(JSON.stringify(a.filter(function (o) { return o && typeof o === "object"; }))) : [];
+    };
+    const routes = (window.getRoads && window.getRoads()) || [];
+    const horsFusion = routes.filter(function (r) { return r && (r.type === "itinerary" || r._preview); });
+    const local = {
+      data: window.getEditorPoints() || [],
+      roads: routes.filter(function (r) { return horsFusion.indexOf(r) < 0; }),
+      zones: (window.getZones && window.getZones()) || [],
+      structures: (window.getStructures && window.getStructures()) || [],
+      tombstones: window.KtaUid.getTombstones()
+    };
+    const distant = {
+      data: copie(lot.editorPoints),
+      roads: copie(lot.roads).filter(function (r) { return r.type !== "itinerary" && !r._preview; }),
+      zones: copie(lot.zones),
+      structures: copie(lot.structures),
+      tombstones: Array.isArray(lot.tombstones) ? lot.tombstones : []
+    };
+    const r = window.KtaUid.fusionnerCalques([local, distant]);
+    const traces = new Map();
+    local.tombstones.concat(distant.tombstones).forEach(function (t) {
+      if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
+    });
+    window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
+    window.setEditorPoints(r.data);
+    if (window.setRoads) window.setRoads(r.roads.concat(horsFusion));
+    if (window.setZones) window.setZones(r.zones);
+    if (window.setStructures) window.setStructures(r.structures);
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
+    return { fusionnes: r.fusionnes, supprimes: r.supprimes };
+  }
+
+  // ── Effacement à la déconnexion ──
+  // Retire les plans fournis par une extension (registre `type: "ext"`), leur
+  // session, leurs photos et leur archive locale. 🩸 Jamais un plan importé par
+  // l'utilisateur (type « local ») ni un plan de l'instance (type « server ») :
+  // ils ne viennent pas du backend.
+  function effacerDonneesExtension(planIds) {
+    const PR = window.PlanRegistry;
+    if (!PR || !Array.isArray(planIds)) return Promise.resolve({ effaces: 0, refuses: 0 });
+    let effaces = 0, refuses = 0;
+    return planIds.reduce(function (p, id) {
+      return p.then(function () {
+        const e = PR.findById(id);
+        if (!e || e.type !== "ext") { refuses++; return; }
+        try { localStorage.removeItem("myktamap_session_v1_" + id); } catch (er) {}
+        // Photos, sauvegardes de session et calage du plan (purge du registre), puis
+        // l'entrée et son archive locale (remove).
+        return Promise.resolve(typeof PR.purgeAssociatedData === "function" ? PR.purgeAssociatedData(id) : null)
+          .catch(function () { /* purge partielle : on retire quand même l'entrée */ })
+          .then(function () { return typeof PR.remove === "function" ? PR.remove(id) : null; })
+          .then(function () { effaces++; });
+      });
+    }, Promise.resolve()).then(function () { return { effaces: effaces, refuses: refuses }; });
+  }
+
+  // ── Mode Secours partagé (entrant) ──
+  // Applique au scénario une modification reçue d'un autre appareil, par la
+  // fusion en liste blanche existante (SecoursMode.update). Le sortant est
+  // l'événement `mktm:secours-scenario-mutated`, déjà émis.
+  function secoursAppliquer(scenarioId, partiel) {
+    if (!window.SecoursMode || typeof window.SecoursMode.update !== "function") return false;
+    try { return window.SecoursMode.update(scenarioId, partiel) !== false; }
+    catch (e) { console.warn("[Extensions] secoursAppliquer :", e); return false; }
+  }
+
+  // ── Compte connecté (v2.7.4) ──
+  // Une extension de connexion peut dire QUI est connecté : la carte profil de
+  // l'accueil l'affiche à la place du profil local, sans rien y écrire (le
+  // surnom et la photo de l'appareil restent intacts et reviennent à la
+  // déconnexion). Rendu en texte seulement, longueurs bornées. Erreur ou forme
+  // inattendue = aucun compte (null) : la carte garde le profil local.
+  function compte() {
+    const ext = _prise("compte");
+    if (!ext || typeof ext.compte !== "function") return null;
+    try {
+      const c = ext.compte();
+      if (!c || typeof c.pseudo !== "string" || !c.pseudo.trim()) return null;
+      return {
+        pseudo: c.pseudo.trim().slice(0, 40),
+        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : ""
+      };
+    } catch (e) { console.warn("[Extensions] compte :", e); return null; }
+  }
+  // L'extension prévient quand le compte change (connexion, rôle modifié).
+  function notifierCompte() {
+    try { window.dispatchEvent(new CustomEvent("mktm:compte-changed")); } catch (e) { /* rien */ }
+  }
+
   window.KtaExtensions = {
+    API_VERSION: API_VERSION,
+    register: register,
+    aPrise: aPrise,
+    signaler: signaler,
+    chargerModules: chargerModules,
+    modulesEtat: modulesEtat,
+    requete: requete,
+    importAutorise: importAutorise,
+    exportAutorise: exportAutorise,
+    gateDeleguee: gateDeleguee,
+    listerPlansExtension: listerPlansExtension,
+    dossiersExtension: dossiersExtension,
+    chargerPlanExtension: chargerPlanExtension,
+    publierPlan: publierPlan,
+    changementsDepuis: changementsDepuis,
+    effacerDonneesExtension: effacerDonneesExtension,
+    secoursAppliquer: secoursAppliquer,
+    compte: compte,
+    notifierCompte: notifierCompte,
+    appliquerChangements: appliquerChangements,
+    actionsCompte: actionsCompte,
+    blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,
     etat: function () { return { etat: _etat, raison: _raison }; },
     peindre: peindre,
+    apiBase: _apiBase,
     ETATS: ETATS.slice(),
     LS_MEMO: LS_MEMO
   };

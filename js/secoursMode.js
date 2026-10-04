@@ -1910,7 +1910,8 @@
   // assumée : c'est un ordre de grandeur pour l'opérateur).
   function _calculerCouverture(s) {
     const groupes = (s && s.groupes) || [];
-    const cle = function(w) { return w && (w.pointId || (Math.round(w.x) + "," + Math.round(w.y))); };
+    // 🆔 v2.4.0 — l'uid d'abord : deux POI homonymes ne sont pas « le même ».
+    const cle = function(w) { return w && (w.pointUid || w.pointId || (Math.round(w.x) + "," + Math.round(w.y))); };
     const parcoursDe = function(g) {
       return [g.entree].concat(g.intermediaires || [], [g.sortie]).filter(function(w) { return w && typeof w.x === "number"; });
     };
@@ -2731,6 +2732,7 @@
           y:       point.y,
           level:   level,
           pointId: point.id || null,
+          pointUid: point.uid || null,   // 🆔 v2.4.0
           label:   point.nom || point.id || null
         };
         // idx = null pour les 3 cas :
@@ -10163,7 +10165,9 @@
   }
   function _samePoint(a, b) {
     if (!a || !b) return false;
-    // Match par pointId si présent, sinon par coords avec tolérance 0.5 px
+    // 🆔 v2.4.0 — l'uid d'abord (deux POI homonymes ne sont pas le même point),
+    // puis le pointId (nom), puis les coords avec tolérance 0.5 px.
+    if (a.pointUid && b.pointUid) return a.pointUid === b.pointUid;
     if (a.pointId && b.pointId) return a.pointId === b.pointId;
     return Math.abs((a.x || 0) - (b.x || 0)) < 0.5
         && Math.abs((a.y || 0) - (b.y || 0)) < 0.5;
@@ -11558,12 +11562,14 @@
     // (cohérent avec le mode "Cliquer sur la carte" de l'itinéraire existant).
     // Réutilise SearchPoints.getAllPoints si dispo.
     let pointId = null;
+    let pointUid = null;   // 🆔 v2.4.0
     let label = null;
     const snap = _trouverPoiProche(x, y, rayonSnap || 30);
     if (snap) {
       x = snap.x;
       y = snap.y;
       pointId = snap.pointId || null;
+      pointUid = snap.pointUid || null;
       label = snap.nom || snap.label || null;
       // 4e relecture (R4-1) : accroché à un POI → le niveau du POI, pas celui affiché.
       if (Number.isInteger(snap.level)) level = snap.level;
@@ -11572,11 +11578,11 @@
     if (typeof _mapModeCtx.onPoint === "function") {
       const cb = _mapModeCtx.onPoint;
       _finishMapMode();
-      cb({ x: x, y: y, level: level, pointId: pointId, label: label });
+      cb({ x: x, y: y, level: level, pointId: pointId, pointUid: pointUid, label: label });
       return;
     }
     _appliquerWaypoint(_mapModeCtx.groupeId, _mapModeCtx.role, _mapModeCtx.idx,
-                       { x: x, y: y, level: level, pointId: pointId, label: label });
+                       { x: x, y: y, level: level, pointId: pointId, pointUid: pointUid, label: label });
     _finishMapMode();
   }
 
@@ -11596,7 +11602,7 @@
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < bestD && d <= radiusPx) {
         bestD = d;
-        best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom, level: p.level };
+        best = { x: p.x, y: p.y, pointId: p.id, pointUid: p.uid || null, nom: p.nom, level: p.level };
       }
     });
     return best;
@@ -11673,6 +11679,7 @@
       const nom = f.nom || f.pointId || t("secours.pick.favoriDefault");
       html += '<button class="kta-secours-pick-favori" ' +
                 'data-pid="' + _escAttr(f.pointId || "") + '" ' +
+                'data-puid="' + _escAttr(f.pointUid || "") + '" ' +
                 'data-x="' + f.x + '" data-y="' + f.y + '" ' +
                 'data-lvl="' + (typeof f.level === "number" ? f.level : "") + '" ' +
                 'data-nom="' + _escAttr(nom) + '" ' +
@@ -11745,6 +11752,7 @@
           y:       parseFloat(btn.getAttribute("data-y")),
           level:   btn.getAttribute("data-lvl") !== "" ? parseInt(btn.getAttribute("data-lvl"), 10) : 0,
           pointId: btn.getAttribute("data-pid") || null,
+          pointUid: btn.getAttribute("data-puid") || null,   // 🆔 v2.4.0
           label:   btn.getAttribute("data-nom") || null
         };
         _close();
@@ -11795,6 +11803,7 @@
           const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
           const layerInfo = entry.layerLabel || entry.layerId || "";
           html += '<button class="kta-secours-pick-result" data-pid="' + _escAttr(p.id || "") +
+                  '" data-puid="' + _escAttr(p.uid || "") +
                   '" data-x="' + p.x + '" data-y="' + p.y +
                   '" data-lvl="' + (typeof p.level === "number" ? p.level : "") +
                   '" data-nom="' + _escAttr(nom) + '">' +
@@ -11814,6 +11823,7 @@
               y:       parseFloat(btn.getAttribute("data-y")),
               level:   btn.getAttribute("data-lvl") !== "" ? parseInt(btn.getAttribute("data-lvl"), 10) : 0,
               pointId: btn.getAttribute("data-pid") || null,
+              pointUid: btn.getAttribute("data-puid") || null,   // 🆔 v2.4.0
               label:   btn.getAttribute("data-nom") || null
             };
             _close();
@@ -12524,7 +12534,7 @@
           }
         }
         if (!inside) { cntSkipOutside++; return; }
-        if (dejaPresent({ x: p.x, y: p.y, pointId: p.id })) { cntSkipDup++; return; }
+        if (dejaPresent({ x: p.x, y: p.y, pointId: p.id, pointUid: p.uid || null })) { cntSkipDup++; return; }
         // Distance à l'entrée pour le tri
         const dx = p.x - g.entree.x, dy = p.y - g.entree.y;
         const distFromEntree = Math.sqrt(dx * dx + dy * dy);
@@ -12533,6 +12543,7 @@
           y:       p.y,
           level:   typeof p.level === "number" ? p.level : refLevel,
           pointId: p.id || null,
+          pointUid: p.uid || null,   // 🆔 v2.4.0
           label:   p.nom || p.id || null,
           _d:      distFromEntree
         });
@@ -12559,7 +12570,7 @@
       // Strip le _d helper avant save
       const newIntermediaires = (g.intermediaires || []).slice().concat(
         candidats.map(function(c) {
-          return { x: c.x, y: c.y, level: c.level, pointId: c.pointId, label: c.label };
+          return { x: c.x, y: c.y, level: c.level, pointId: c.pointId, pointUid: c.pointUid || null, label: c.label };
         })
       );
       updateGroupe(scenarioId, groupeId, { intermediaires: newIntermediaires });

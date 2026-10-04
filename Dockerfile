@@ -76,7 +76,9 @@ COPY --from=assets /www/ /usr/share/nginx/html/
 # Copie config Nginx custom + entrypoint
 COPY docker/nginx-docker.conf /etc/nginx/nginx.conf
 COPY docker/entrypoint.sh /docker-entrypoint-mkm.sh
-RUN chmod +x /docker-entrypoint-mkm.sh
+# Fins de ligne Unix forcées : un checkout Windows (core.autocrlf=true) livre le
+# script en CRLF, et « #!/bin/sh\r » est introuvable → le conteneur ne démarre pas.
+RUN sed -i 's/\r$//' /docker-entrypoint-mkm.sh && chmod +x /docker-entrypoint-mkm.sh
 
 # Dossier pour les certs générés runtime (peut être bind-mounted en volume)
 RUN mkdir -p /etc/nginx/certs && chown -R nginx:nginx /etc/nginx/certs

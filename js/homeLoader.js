@@ -999,7 +999,7 @@
       }
 
 function planRowHTML(plan) {
-        let icon = plan.type === "server" ? "🌐" : "💾";
+        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // 🧩 v2.7.0 : ☁️ = plan d'extension
         // Badge de persistance (plans locaux) — différencier visuellement les
         // modes de stockage (blob/fsHandle/pick).
         let badgeStorage = "";
@@ -2437,6 +2437,53 @@ function planRowHTML(plan) {
             } else {
               setStatus("Erreur : " + (e.message || e), true);
             }
+          }
+          return;
+        }
+
+        // 🧩 v2.7.0 — plan fourni par une extension (prise « source de plans ») :
+        // l'archive vient de l'extension ; une fois ouverte elle est gardée sur
+        // l'appareil (hors ligne), et l'effacement à la déconnexion la retire.
+        if (plan.type === "ext") {
+          setStatus("Chargement de " + plan.name + "…");
+          // 🧩 Écran de chargement central dès le début : un plan venu du serveur de
+          // l'installation peut peser des centaines de Mo (retour KARMA 04/10/2026 :
+          // « un long moment se passe, rien à l'écran »). Progression si l'extension
+          // l'annonce.
+          const _te = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+          if (typeof window._afficherOverlayChargement === "function") {
+            window._afficherOverlayChargement(_te("ext.chargement.debut", { nom: plan.name || plan.id }));
+          }
+          let _derniereMaj = 0;
+          const _progression = function(recus, total) {
+            const maintenant = Date.now();
+            if (maintenant - _derniereMaj < 250 && recus < total) return;
+            _derniereMaj = maintenant;
+            const mo = function(o) { return (o / 1048576).toFixed(o < 10485760 ? 1 : 0); };
+            const texte = total > 0
+              ? _te("ext.chargement.progres", { nom: plan.name || plan.id, pct: Math.floor(recus * 100 / total), recu: mo(recus), total: mo(total) })
+              : _te("ext.chargement.progresSansTotal", { nom: plan.name || plan.id, recu: mo(recus) });
+            if (typeof window._majOverlayChargement === "function") window._majOverlayChargement(texte);
+          };
+          try {
+            let blob = null;
+            try { blob = await window.KtaExtensions.chargerPlanExtension(plan.extId || plan.id, { progression: _progression }); }
+            catch (eExt) {
+              if (plan.storedBlob && typeof window._majOverlayChargement === "function") window._majOverlayChargement(_te("ext.chargement.copie"));
+              blob = plan.storedBlob ? await window.PlanRegistry.getBlob(plan.id) : null;
+            }
+            if (!blob) {
+              if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
+              return setStatus("Plan indisponible (serveur injoignable)", true);
+            }
+            const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
+            const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+            await chargerZipFichier(fichier, (segmented !== "auto") ? segmented : (plan.perfPreset || "auto"),
+                                    { planId: plan.id, typeRegistre: "ext", storeBlob: true, zipFile: fichier });
+            if (window.masquerLoader) window.masquerLoader();
+          } catch (e) {
+            if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
+            setStatus("Erreur : " + (e.message || e), true);
           }
           return;
         }

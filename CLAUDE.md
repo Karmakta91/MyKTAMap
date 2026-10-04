@@ -10,7 +10,7 @@
 
 ## 🔒 Frontière community ↔ pro (CRITIQUE)
 - **Frontière = « zéro FICHIER pro »** (révisée le 04/10/2026, `docs/architecture/community-server-line.md`). Le pro = les fichiers qui se **greffent** (PHP, JS de sync/comptes/multi-tenant, white-label…) : ils vivent dans le repo privé **`MyKTAMap-pro`**, jamais ici. Ce repo reste **utilisable entièrement sans serveur, gratuit, sans bridage**. **myktamap.fr n'aura jamais de backend.**
-- ✅ Autorisé ici : des **points d'extension neutres** (`window.KtaExtensions.register()`, interrupteur `config.serverConnection`, états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, garde unique, événements `mktm:*`), no-op sans extension. Contrat : §3 du doc ci-dessus. **Chantier 0 livré en v2.0.0** (`js/ktaExtensions.js` : lecture du champ, états OFF/INVALIDE/LICENCE/CONFIGURÉE, pastille du footer, ConfAdmin ; garde-fou `scripts/check-connexion-serveur.js`) ; le reste (chantiers 1 à 3) est cadré, pas codé — le chantier 3 ira sur **`karma_backend_dev`**, sur consigne de KARMA.
+- ✅ Autorisé ici : des **points d'extension neutres** (`window.KtaExtensions.register()`, interrupteur `config.serverConnection`, états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, garde unique, événements `mktm:*`), no-op sans extension. Contrat : §3 du doc ci-dessus. **Chantiers 0 à 3 livrés** (v2.0.0 → v2.7.4, sur **`Karma_dev`** — `karma_backend_dev` fusionnée le 04/10/2026) : `js/ktaExtensions.js` (états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, pastille, `register()` et toutes les prises — API v1 dans `community-server-line.md` §3), `js/ktaInstance.js` (index lu une fois avant les gates), `js/ktaUid.js` (identifiants stables). Garde-fous : `check-connexion-serveur.js`, `check-extensions.js`, `check-uid.js`. Une gate déléguée en échec n'ouvre JAMAIS la gate community.
 - ❌ Ne JAMAIS commiter de code serveur ni de module pro ici, et ne pas coder de feature pro sans valider — **par défaut tout est community**. Pas de commentaire-pointeur vers un fichier pro (`// TODO pro:`).
 - 🛡️ Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (refuse `*.php`, `pro/`, `backend/`, noms de modules pro ; activer 1×: `git config core.hooksPath .githooks`).
 
@@ -18,6 +18,7 @@
 - **Syntaxe** : `node -c fichier.js` (seul filet — pas de tests auto, pas de linter).
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
+- **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026, après 8 bumps de dev v2.0.1 → v2.7.4 pour une prod restée en v2.0.0) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod, juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.
 - **Bump = sync docs sur 4 axes** (sans MAJ = dette immédiate, à vérifier AVANT de considérer la release faite) :
   - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` + **`README_USER.es.md`** (modale Documentation — les TROIS sont servies, cf `interfaceDocs.js > DOC_AVAILABLE_LANGS` ; 🛡️ `scripts/check-doc-langues.js` (pré-commit, bloquant) vérifie qu'elles ont les **mêmes sections** et qu'aucune section traduite ne tombe **sous 70 % du FR** — mais il ne voit pas un contenu faux de bonne longueur : mettre à jour les 3 **dans le même commit** reste la règle) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
   - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
@@ -67,7 +68,7 @@
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | **Mode « plan orienté »** (la carte tourne pendant le suivi) | `docs/architecture/tracking.md` §plan orienté · `js/mapBearing.js` |
 | **Guidage de l'itinéraire** (« dans X m, tourner à gauche », feuille de route, urgence) | `docs/ETUDE_GUIDAGE.md` (décisions) · `docs/architecture/tracking.md` §Guidage · `js/itiGuidage.js` |
-| **Identifiant stable des objets** (`uid` + `updatedAt`, migration, références par nom) — chantier 1, pas encore codé | `docs/ETUDE_UID.md` (décisions) |
+| **Identifiant stable des objets** (`uid` + `updatedAt`, traces de suppression, fusion, photos/favoris/liaisons/Secours par uid) — chantier 1, livré v2.1.0 → v2.5.0 | `docs/ETUDE_UID.md` (décisions) · `js/ktaUid.js` · `scripts/check-uid.js` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |

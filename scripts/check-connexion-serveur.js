@@ -119,6 +119,12 @@ const CAS = [
   ["state inconnu", { state: "yes", api: OK.api, modules: [] }, "invalide"],
   ["state absent", { api: OK.api, modules: [] }, "invalide"],
   ["api en http://", { state: "on", api: "http://api.exemple.org", modules: [] }, "invalide"],
+  ["api même site « /api/ »", { state: "on", api: "/api/", modules: [] }, "on"],
+  ["api même site « / »", { state: "on", api: "/", modules: [] }, "on"],
+  ["api protocole-relatif « //x/api »", { state: "on", api: "//cdn.exemple.org/api", modules: [] }, "invalide"],
+  ["api chemin sans « / » initial", { state: "on", api: "api/", modules: [] }, "invalide"],
+  ["api chemin avec paramètre", { state: "on", api: "/api/?x=1", modules: [] }, "invalide"],
+  ["api chemin avec espace", { state: "on", api: "/a pi/", modules: [] }, "invalide"],
   ["api absente", { state: "on", modules: [] }, "invalide"],
   ["api vide après https://", { state: "on", api: "https://", modules: [] }, "invalide"],
   ["modules absent", { state: "on", api: OK.api }, "invalide"],
@@ -130,6 +136,12 @@ const CAS = [
   ["module absolu", { state: "on", api: OK.api, modules: ["/pro/m.js"] }, "invalide"],
   ["module sans .js", { state: "on", api: OK.api, modules: ["pro/m"] }, "invalide"],
   ["module non texte", { state: "on", api: OK.api, modules: [42] }, "invalide"],
+  ["module versionné ?v=", { state: "on", api: OK.api, modules: ["pro/m.js?v=0.2.0"] }, "on"],
+  ["module : autre paramètre que v", { state: "on", api: OK.api, modules: ["pro/m.js?x=1"] }, "invalide"],
+  ["module : version vide", { state: "on", api: OK.api, modules: ["pro/m.js?v="] }, "invalide"],
+  ["module : deux paramètres", { state: "on", api: OK.api, modules: ["pro/m.js?v=1&x=2"] }, "invalide"],
+  ["module : version avec espace", { state: "on", api: OK.api, modules: ["pro/m.js?v=1 2"] }, "invalide"],
+  ["module : version avant .js", { state: "on", api: OK.api, modules: ["pro/m?v=1.js"] }, "invalide"],
   ["21 modules", { state: "on", api: OK.api, modules: Array.from({ length: 21 }, (_, i) => "pro/m" + i + ".js") }, "invalide"]
 ];
 if (K && validerCA) {
@@ -194,8 +206,11 @@ if (K) {
 // ═════════ 6. CÂBLAGE ═════════
 t("main.js transmet la config quand l'index a répondu (true)",
   /_appliquerConnexionServeur\(window\.KIOSK_CONFIG, true\)/.test(MAIN));
-t("🩸 main.js déclare l'index INJOIGNABLE (false) sur un non-2xx (404 synthétique du SW hors ligne)",
-  /if \(!r\.ok\) \{[\s\S]{0,700}_appliquerConnexionServeur\(null, false\)/.test(MAIN));
+t("🩸 main.js déclare l'index INJOIGNABLE (false) quand il n'a pas répondu (non-2xx = 404 synthétique du SW, cf ktaInstance)",
+  /if \(!idx\) \{[\s\S]{0,700}_appliquerConnexionServeur\(null, false\)/.test(MAIN) &&
+  /if \(!r\.ok\) return null;/.test(fs.readFileSync("js/ktaInstance.js", "utf8")));
+t("🔌 l'état de connexion est connu AVANT la gate (v2.6.0)",
+  /if \(_instanceBoot\) _appliquerConnexionServeur\(_instanceBoot\.config, _instanceBoot\.repondu\);/.test(MAIN));
 t("main.js déclare l'index injoignable (false) sur une erreur réseau",
   /catch\(e\) \{\s*console\.warn\("\[Main\] lecture data\/index\.json :", e\);\s*_appliquerConnexionServeur\(null, false\);/.test(MAIN));
 t("homeLoader repeint l'icône après avoir réécrit le bouton du pied de page replié",
@@ -211,8 +226,20 @@ t("la pastille et le bloc d'état existent dans index.html",
 t("le module est précaché (sw.js > ASSETS_TO_CACHE)", /"\.\/js\/ktaExtensions\.js"/.test(SW));
 t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   PROF.indexOf("myktamap_server_connection_v1") < 0);
-t("🩸 le module ne fait AUCUNE requête (ni fetch, ni XHR, ni beacon, ni socket)",
-  !/\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(MOD.replace(/\/\/.*$/gm, "")));
+// v2.7.0 (chantier 3) : le module porte le GARDE des requêtes d'extension.
+// Règle : un seul fetch, dans requete() ; jamais de XHR/beacon/socket ; le
+// module ne contacte JAMAIS le serveur de lui-même (seule une extension
+// l'appelle), et en OFF requete refuse avant tout envoi (cf check-extensions).
+{
+  const sansComm = MOD.replace(/\/\/.*$/gm, "");
+  const nFetch = (sansComm.match(/\bfetch\s*\(/g) || []).length;
+  const d = sansComm.indexOf("function requete(");
+  let corps = "";
+  if (d >= 0) { const o = sansComm.indexOf("{", d); let pr = 0;
+    for (let k = o; k < sansComm.length; k++) { if (sansComm[k] === "{") pr++; else if (sansComm[k] === "}") { pr--; if (pr === 0) { corps = sansComm.slice(d, k + 1); break; } } } }
+  t("🩸 un seul fetch dans le module, et il vit dans requete() (le garde)", nFetch === 1 && /\bfetch\s*\(/.test(corps));
+  t("🩸 ni XHR, ni beacon, ni socket dans le module", !/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(sansComm));
+}
 t("ConfAdmin refuse l'export tant que le champ est invalide",
   /\$\("caDownload"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA) &&
   /\$\("caCopy"\)\.addEventListener\("click", function\(\) \{\s*if \(!_connexionSaisie\(\)\.valide\) return;/.test(CA));

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.0.0";
+const CACHE_NAME = "myktamap-cache-v2.7.4";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -47,6 +47,13 @@ const CACHE_NAME = "myktamap-cache-v2.0.0";
 // et les servir.
 const PLAN_CACHE_PREFIX = "myktamap-plan-";
 function _estCachePlan(cle) { return typeof cle === "string" && cle.indexOf(PLAN_CACHE_PREFIX) === 0; }
+// 🧩 v2.7.0 (chantier 3) — caches des modules greffés : chaque module remplit et
+// versionne SON cache « myktamap-ext-<module> » ; l'activation du SW le garde
+// (une release community ne doit pas vider le hors-ligne d'un module, et une
+// release du module n'impose pas de bumper CACHE_NAME). Jamais dans
+// ASSETS_TO_CACHE : sur myktamap.fr, ces caches n'existent pas.
+const EXT_CACHE_PREFIX = "myktamap-ext-";
+function _estCacheExt(cle) { return typeof cle === "string" && cle.indexOf(EXT_CACHE_PREFIX) === 0; }
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -128,6 +135,8 @@ const ASSETS_TO_CACHE = [
   "./js/proLicense.js",
   // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
   "./js/ktaExtensions.js",
+  // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
+  "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
   "./lib/fonts/kalam-700-splash.woff2",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
@@ -171,6 +180,8 @@ const ASSETS_TO_CACHE = [
   // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle
   // marche aussi en mode offline.
   "./js/refonteInterface.js",
+  // 🏛️ v2.6.0 : config d'instance lue une fois avant les gates.
+  "./js/ktaInstance.js",
   "./js/unlockGate.js",
   // 🆕 v1.9.4 : code d'accès local optionnel (PIN/biométrie). Indispensable
   // offline (la gate s'affiche au boot avant tout fetch réseau, donc le
@@ -548,7 +559,7 @@ self.addEventListener("activate", (event) => {
       return Promise.all(
         keys
           // 💾 v1.87.0 : les caches de plan hors-ligne SURVIVENT au bump.
-          .filter((key) => key !== CACHE_NAME && !_estCachePlan(key))
+          .filter((key) => key !== CACHE_NAME && !_estCachePlan(key) && !_estCacheExt(key))
           .map((key) => {
             console.log("[SW] Suppression ancien cache :", key);
             return caches.delete(key);
@@ -1012,6 +1023,19 @@ self.addEventListener("fetch", (event) => {
   // CHAQUE requete, donc handler fetch mort et cache hors-ligne contourne.
   // Toute branche ajoutee plus bas doit pouvoir lire reqUrl sans y penser.
   const reqUrl = event.request.url || "";
+
+  // 🧩 v2.7.1 — JAMAIS DE CACHE POUR UNE REQUÊTE D'EXTENSION OU AUTHENTIFIÉE.
+  // Une installation peut servir le backend d'un module greffé à la même
+  // adresse que l'app : sans cette règle, ses réponses (données de compte,
+  // synchro) seraient mises en cache par le SW, servies périmées hors ligne et
+  // conservées sur l'appareil. Le garde KtaExtensions.requete marque ses
+  // requêtes (en-tête X-Kta-Ext) ; une requête portant Authorization ne se met
+  // jamais en cache non plus (sémantique HTTP). On ne répond pas : le réseau
+  // seul décide, comme sans SW.
+  try {
+    const h = event.request.headers;
+    if (h && (h.get("X-Kta-Ext") || h.get("Authorization"))) return;
+  } catch (e) { /* en-têtes illisibles : on continue normalement */ }
 
   // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
   // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les

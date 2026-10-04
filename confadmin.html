@@ -228,7 +228,7 @@
       <input type="text" id="caCnxApi" placeholder="adresse de l'API, ex. https://api.exemple.org" maxlength="200"
              autocomplete="off" spellcheck="false"
              style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px;">
-      <textarea id="caCnxModules" rows="3" placeholder="modules, un chemin par ligne, sur le même site que l'app (ex. pro/sync.js)"
+      <textarea id="caCnxModules" rows="3" placeholder="modules, un chemin par ligne, sur le même site que l'app (ex. pro/sync.js ou pro/sync.js?v=1.2.0)"
                 spellcheck="false"
                 style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:420px; font-family:monospace;"></textarea>
       <div id="caCnxEtat" style="font-size:12px; color:#8892a4;"></div>
@@ -777,8 +777,12 @@
     if (sc.state === "off") return { etat: "off", raison: "désactivé par l'instance" };
     if (sc.state !== "on") return { etat: "invalide", raison: "state doit valoir \"on\" ou \"off\"" };
 
-    if (typeof sc.api !== "string" || !/^https:\/\/[^\s/?#]+/i.test(sc.api.trim())) {
-      return { etat: "invalide", raison: "api doit être une adresse https://" };
+    // api : une adresse https:// (autre domaine possible, règle D) OU un chemin du
+    // MÊME site (« /api/ ») — résolu à l'adresse de l'app au moment de l'appel :
+    // l'installation marche alors par localhost, par IP ou par nom de domaine.
+    if (typeof sc.api !== "string" ||
+        !(/^https:\/\/[^\s/?#]+/i.test(sc.api.trim()) || /^\/(?!\/)[^\s?#]*$/.test(sc.api.trim()))) {
+      return { etat: "invalide", raison: "api doit être une adresse https:// ou un chemin du même site (/api/)" };
     }
     if (!Array.isArray(sc.modules)) {
       return { etat: "invalide", raison: "modules doit être une liste" };
@@ -788,7 +792,7 @@
     }
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];
-      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js$/.test(m) ||
+      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js(\?v=[A-Za-z0-9._-]{1,32})?$/.test(m) ||
           m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }

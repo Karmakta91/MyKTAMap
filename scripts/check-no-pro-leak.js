@@ -68,6 +68,9 @@ const FORBIDDEN_PATTERNS = [
   { rx: /\bX-MKTM-Token\b/g,              label: "header auth jwt pro"        },
   { rx: /\/v1\/secours\b/g,               label: "endpoint backend pro"       },
   { rx: /\/v1\/health\b/g,                label: "endpoint backend pro"       },
+  // Clé privée (ex. celle qui signe les licences) : n'entre JAMAIS dans ce dépôt public.
+  { rx: /BEGIN (EC |RSA |ENCRYPTED )?PRIVATE KEY/g, label: "clé privée (signature des licences ?)" },
+  { rx: /"d"\s*:\s*"[A-Za-z0-9_-]{40,}"/g, label: "clé privée JWK (champ d)" },
 ];
 
 // ============================================================
@@ -85,6 +88,8 @@ const FORBIDDEN_FILES = [
   { rx: /^README_PRO\.md$/,            label: "README pro" },
   { rx: /^ROADMAP_PRO\.md$/,           label: "roadmap pro privée" },
   { rx: /^Licence-pro\.json$/,         label: "licence client nominative" },
+  { rx: /\.(pem|key|p8|p12|pfx)$/i,    label: "fichier de clé (jamais de clé privée ici)" },
+  { rx: /(^|\/)signer-licence\.js$/,   label: "outil de signature des licences (dépôt pro interne)" },
 ];
 
 // ============================================================

@@ -124,8 +124,8 @@
       </div>
       <!-- 2️⃣ v2.0.0 (KARMA) — identité de la série 2.x, comme les écrans d'accueil
            qui changent avec chaque version de Windows : un « 2 » doré, de biais, qui
-           mord légèrement sur le « p » de « MyKTAMap », et un fin cadre doré autour de
-           l'écran. Depuis v2.0.0, le splash n'affiche plus « -pro », même en édition pro
+           mord légèrement sur le « p » de « MyKTAMap » (cadre d'écran retiré en v2.7.3).
+           Depuis v2.0.0, le splash n'affiche plus « -pro », même en édition pro
            (décision KARMA) : le suffixe reste dans l'en-tête de l'accueil. Rempli et montré par main.js > _splashStart
            depuis la version majeure : rien ne s'affiche avant la v2. -->
       <div id="splashTitle"><span class="kta-titre-base-cadre"><span class="kta-titre-base">MyKTAMap</span><span id="splashMajeure" aria-hidden="true" hidden></span></span></div>
@@ -308,6 +308,9 @@
        pour que main.js puisse vérifier l'auth dès initApp. Ne charge que
        le module (l'affichage de l'overlay est déclenché par main.js après
        le splash). -->
+  <!-- 🏛️ v2.6.0 : config d'instance lue UNE fois, avant les gates (chantier 2) —
+       la gate, le kiosque, le connecteur et la découverte des plans la partagent. -->
+  <script src="js/ktaInstance.js"></script>
   <script src="js/unlockGate.js"></script>
   <!-- 🆕 v1.9.4 : code d'accès local optionnel (PIN + biométrie). Chargé
        APRÈS unlockGate.js car le PIN est une couche par-dessus la barrière
@@ -1185,6 +1188,10 @@
 
   <!-- APP JS -->
   <script src="js/config.js" defer></script>
+  <!-- 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt), avant
+       tous les modules qui créent des objets (utils, road, zones, structures, editor…).
+       Décisions : docs/ETUDE_UID.md. Aucune requête, aucun stockage. -->
+  <script src="js/ktaUid.js" defer></script>
   <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
        (traces / zones / structures). Place EN AMONT de tous ses consommateurs
        (utils, road, zones, structures, exporter, puis kmz/gpx aux vagues

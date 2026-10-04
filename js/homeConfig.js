@@ -26,6 +26,16 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
+        // 🧩 Bloc « Installation » en tête (ex. gérer les comptes, pour un admin) :
+        // actions fournies par l'extension de l'installation, recalculées à chaque ouverture.
+        if (configModal && window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
+          const ancien = configModal.querySelector(".kta-ext-compte");
+          if (ancien) ancien.remove();
+          const corpsCfg = configModal.querySelector(".kta-loader-config-corps");
+          const bloc = window.KtaExtensions.blocActionsCompte("config",
+            window.I18n ? window.I18n.t("config.compteTitre") : "Installation");
+          if (bloc && corpsCfg) corpsCfg.insertBefore(bloc, corpsCfg.firstChild);
+        }
         // 🆕 v1.10.0-hotfix1 : si on est in-app (plan chargé, loader masqué),
         // on doit aussi afficher le loader pour que la modale Config soit
         // visible dans son contexte (sinon elle apparaît au-dessus de la
