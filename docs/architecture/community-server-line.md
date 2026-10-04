@@ -199,7 +199,22 @@ navigateur.
    AI_CONTEXT, aide intégrée.
 1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
-2. Lecture unique de l'index avant les gates : community.
+2. **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) :
+   - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on
+     démarre sur la **dernière config mémorisée** (règle B). Aujourd'hui la lecture n'a aucun
+     délai maximal ;
+   - rangé dans **un objet de config d'instance partagé**, que lisent la gate (`accessHash`),
+     le kiosque, le connecteur et la découverte des plans. `_hashInstance()` cesse de
+     relire l'index : une requête de moins à l'ouverture de la gate, aucune de plus ailleurs ;
+   - la licence n'est attendue avant la gate (2 s max) **que si `state: "on"`** :
+     myktamap.fr et toute instance en OFF ne sont pas ralentis ;
+   - **rotation du mot de passe d'instance à effet immédiat** : la revalidation passe avant
+     la gate, donc au lancement, jamais en pleine session. 🩸 Une config **mémorisée** (index
+     injoignable) appelle `revaliderInstance(…, false)` : elle ne révoque jamais rien ;
+   - à réécrire à la livraison : les invariants « rotation au démarrage SUIVANT » et
+     « l'index n'est demandé que depuis la saisie de la gate » du §5, et les contrôles de
+     `scripts/check-gate-instance.js` qui figent l'ordre actuel (`_hashInstance`, position
+     de `revaliderInstance`).
 3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
 
