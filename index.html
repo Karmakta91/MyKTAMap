@@ -122,14 +122,13 @@
           <circle cx="110" cy="110" r="104" fill="none" stroke-linecap="round" stroke-dasharray="90 565"></circle>
         </svg>
       </div>
-      <div id="splashTitle"><span class="kta-titre-base">MyKTAMap</span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span></div>
+      <!-- 2️⃣ v2.0.0 (KARMA) — identité de la série 2.x, comme les écrans d'accueil
+           qui changent avec chaque version de Windows : un « 2 » doré, de biais, au-dessus
+           à droite de « MyKTAMap » (au-dessus de « -pro » s'il est là, sans le gêner), et un
+           fin cadre doré autour de l'écran. Rempli et montré par main.js > _splashStart
+           depuis la version majeure : rien ne s'affiche avant la v2. -->
+      <div id="splashTitle"><span class="kta-titre-base-cadre"><span class="kta-titre-base">MyKTAMap</span><span id="splashMajeure" aria-hidden="true" hidden></span></span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span></div>
       <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
-      <!-- ✍️ v2.0.0 (KARMA) — la ligne manuscrite de la série 2.x, qui s'écrit à
-           chaque démarrage comme la signature KARMA. Masquée par défaut :
-           main.js > _splashStart ne la montre que si la version majeure vaut 2
-           (une v3 doit changer le texte, sinon elle souhaiterait la bienvenue
-           dans la v2). Police : sous-ensemble de Kalam embarqué (lib/fonts/). -->
-      <div id="splashEre" data-i18n="home.splash.ere" aria-hidden="true" hidden>Bienvenue dans la v2</div>
     </div>
 
     <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
