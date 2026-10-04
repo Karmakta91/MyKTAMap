@@ -75,12 +75,14 @@ qui parle au serveur.
   d'API n'est pas un secret : l'index est public et c'est assumé.
 - `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`).
 
-**Les 4 états** :
+**Les états** :
 
 | État | Condition | Affichage (footer) | Modules greffés / requêtes |
 |---|---|---|---|
-| **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | « Connexion serveur : désactivée » | Jamais chargés ; garde bloquant |
+| **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | 🔌 « Serveur : désactivé » | Jamais chargés ; garde bloquant |
+| **INVALIDE** | Champ mal formé : pas un objet, `state` inconnu, `api` hors `https://`, module hors de l'origine de l'app (raison exacte journalisée `[Connexion]`) | « Configuration invalide » (décision KARMA, contre la reco d'un repli silencieux en OFF) | Jamais chargés ; garde bloquant |
 | **LICENCE** | `"on"` mais aucune licence pro de source `"server"` | « Licence requise » | Jamais chargés |
+| **CONFIGURÉE** | `"on"` + licence serveur, mais aucun module ne s'est encore déclaré | « Configurée, aucun module » | Personne ne sonde le serveur (règle C) : c'est l'état normal de tout le chantier 0 |
 | **ON** | `"on"` + licence serveur + backend qui répond | « Connecté » | Chargés ; requêtes autorisées |
 | **DOWN** | `"on"` + licence serveur, backend injoignable — ou index injoignable alors que la dernière config connue était `"on"` | « Serveur injoignable » | Chargés (depuis leur cache) ; rien ne part, travail en local |
 
@@ -116,7 +118,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 
 | Point | Rôle | Pourquoi community |
 |---|---|---|
-| État de connexion + badge footer | Les 4 états, l'événement `mktm:*`, le badge **affiché partout, myktamap.fr compris** | Transparence active : la garantie se voit au lieu de se chercher dans l'audit |
+| État de connexion + badge footer | Les états (OFF, INVALIDE, LICENCE, CONFIGURÉE, ON, DOWN), l'événement `mktm:*`, le badge **affiché partout, myktamap.fr compris** | Transparence active : la garantie se voit au lieu de se chercher dans l'audit |
 | Chargeur de modules | Lit `modules`, vérifie la règle E, injecte les scripts même origine | L'instance garde l'`index.html` community tel quel : zéro fork |
 | Garde unique | Toute requête d'extension passe par lui ; hors ON il refuse avant envoi | Même leçon que `ktaKiosqueServeurSeul()` : le verrou est au goulot |
 | Gate déléguée | Un module peut remplacer la gate d'entrée (code communautaire / `accessHash`) par son propre écran | Décision KARMA : sur une instance connectée, le compte remplace la gate |
@@ -185,6 +187,16 @@ navigateur.
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
 **Ordre des chantiers** :
+0. **Connecteur — release v2.0.0** (amorce la transition) : lecture de `serverConnection`
+   dans `_chargerIndexServeur()` (après les gates, comme le kiosque) + mémorisation de la
+   dernière config connue (règle B) ; états OFF / INVALIDE / LICENCE / CONFIGURÉE ;
+   événement `mktm:*` ; **pastille collée au badge de version** du footer du HOME (même
+   groupe que la pastille hors-ligne, visible footer replié), icône + mot court,
+   **cliquable** → petite modale « aucune donnée ne quitte ton appareil » + lien vers
+   l'audit réseau ; bloc ConfAdmin replié avec la même validation que l'app. **Aucune
+   requête vers l'API** (rien ne la sonde avant le chantier 3). Doc de transparence dans
+   la **même** release : phrase NETWORK_AUDIT recadrée sur le domaine, 3 README_USER,
+   AI_CONTEXT, aide intégrée.
 1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
    myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
 2. Lecture unique de l'index avant les gates : community.
