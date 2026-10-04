@@ -275,7 +275,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /KtaExtensions\.compte\(\)/.test(HP) && /addEventListener\("mktm:compte-changed"/.test(HP));
     t("🩸 carte profil : le compte n'est JAMAIS écrit dans le profil local", !/setSurnom\([^)]*_compte/.test(HP));
     t("modale profil : pseudo verrouillé quand un compte est connecté", /surnomInput\.readOnly = true/.test(HP));
-    t("modale profil : actions du compte en TÊTE", /blocActionsCompte\("profil"/.test(HP) && /insertBefore\(blocCompte, corpsProfil\.firstChild\)/.test(HP));
+    t("modale profil : actions du compte après la photo, avant le grade", /blocActionsCompte\("profil"/.test(HP) && /insertBefore\(blocCompte, grade\)/.test(HP));
     t("panneau Configuration : bloc « Installation » en tête", /blocActionsCompte\("config"/.test(lire("js/homeConfig.js")));
     const assets = (SW.match(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/) || [""])[0];
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));

@@ -154,7 +154,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
 - **Actions du compte** : la prise `actionsCompte(lieu)` (« profil » | « config ») rend les actions à proposer ; la
-  fenêtre « Mon profil » les montre **en tête**, sous le compte connecté, et le panneau ⚙️ Configuration dans un bloc
+  fenêtre « Mon profil » les montre **après la photo et le pseudo, avant le grade**, et le panneau ⚙️ Configuration dans un bloc
   « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
   10 au plus, action protégée ; sans extension, rien n'apparaît.
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
