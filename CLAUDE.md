@@ -67,6 +67,7 @@
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | **Mode « plan orienté »** (la carte tourne pendant le suivi) | `docs/architecture/tracking.md` §plan orienté · `js/mapBearing.js` |
 | **Guidage de l'itinéraire** (« dans X m, tourner à gauche », feuille de route, urgence) | `docs/ETUDE_GUIDAGE.md` (décisions) · `docs/architecture/tracking.md` §Guidage · `js/itiGuidage.js` |
+| **Identifiant stable des objets** (`uid` + `updatedAt`, migration, références par nom) — chantier 1, pas encore codé | `docs/ETUDE_UID.md` (décisions) |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |

@@ -186,7 +186,7 @@ navigateur.
 
 **Ordre des chantiers** :
 1. Ids + horodatages + migration : **release community** sur `Karma_dev`, livrée seule sur
-   myktamap.fr, utile en soi.
+   myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
 2. Lecture unique de l'index avant les gates : community.
 3. Points d'extension + `check-extensions.js` : branche `karma_backend_dev`.
 4. Modules greffés et backend : repo `MyKTAMap-pro`.
