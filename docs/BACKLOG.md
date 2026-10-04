@@ -133,6 +133,19 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
+## 🔒 Affichage de données d'autres comptes — XSS et CSP (04/10/2026)
+
+Contexte : sur une **installation reliée** (synchro), l'app affiche des noms et des notes écrits par d'autres comptes ;
+avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie accepte `script-src 'unsafe-inline'`.
+Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
+synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
+
+- 🔴 **Audit XSS** : tout champ texte d'un objet, d'un plan ou d'un dossier rendu par `innerHTML` doit passer par
+  l'échappement (fiche d'un point : fait). À vérifier : recherche, listes de l'accueil, légende, exports PNG/PDF/KMZ,
+  Mode Secours, Carnet, éditeur de données. Test navigateur avec `<img src=x onerror=…>` dans chaque champ. **M.**
+- 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
+  `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
+
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
 Livré : bug incognito (`67846d5`), suppression du mode hors-ligne strict (`6a85b5b`), 🆘 Dépannage (`c923dcb`),
