@@ -4344,12 +4344,14 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   animation: splashTextIn 0.6s ease-out 0.45s both;
 }
 
-/* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » doré, de biais,
+/* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » bleu interaction
+   (#8cb4ff, les pointes bleues de la rose ; contraste voulu avec le doré du titre), de biais,
    au-dessus à droite de « MyKTAMap », et un fin cadre doré autour de l'écran —
    comme les accueils qui changent à chaque version de Windows, sans toucher
    à la philosophie du splash (rose, arc, titre, signature, 3,5 s).
-   - Le chiffre est posé sur le cadre de « MyKTAMap », pas sur le titre entier :
-     il reste au-dessus de « -pro » quand l'édition pro l'affiche.
+   - Le chiffre est posé sur le cadre de « MyKTAMap » et mord légèrement sur la
+     panse du « p » (choix KARMA). Le splash n'affiche plus « -pro » depuis
+     v2.0.0, même en édition pro : rien ne vient se loger à sa droite.
    - Il vit HORS de .kta-titre-base, dont le clip-path de révélation le couperait.
    - Il « tampe » après la révélation du titre (fin à ~1,45 s) : 0,5 s dès 1,5 s.
    Police embarquée (sous-ensemble Kalam 700, chiffres seuls, OFL) : la CSP
@@ -4367,15 +4369,15 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 #splashMajeure {
   position: absolute;
-  top: -0.62em;
-  right: -0.55em;
+  top: -0.1em;
+  right: -0.4em;
   font-family: "KTA Main", "Segoe Script", "Bradley Hand", cursive;
   font-weight: 700;
   font-size: 1.15em;
   line-height: 1;
   letter-spacing: 0;
-  color: #f4c542;
-  text-shadow: 0 2px 16px rgba(244, 197, 66, 0.35);
+  color: #8cb4ff;
+  text-shadow: 0 2px 16px rgba(140, 180, 255, 0.45);
   transform: rotate(-12deg);
   opacity: 0;
   animation: kta-splash-majeure 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.5s forwards;
@@ -4406,7 +4408,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   to   { opacity: 1; transform: scale(1); }
 }
 html.kta-theme-light #splashMajeure {
-  color: #b8860b !important;
+  color: #1e5f99 !important;
   text-shadow: none;
 }
 html.kta-theme-light #splashOverlay.kta-splash-majeure::before {
