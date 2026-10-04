@@ -65,7 +65,7 @@ photos restent locales et exportables).
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
-> `ajouterBoutonAccueil({ icone, titre, action })` · `importAutorise()` /
+> `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
@@ -153,9 +153,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
-- **Bouton d'accueil** : `ajouterBoutonAccueil({ icone, titre, action })` loge un point d'entrée dans la barre du
-  haut de l'accueil, avant 📖 / ⚙️, au même style (`loader-btn-help`). Il fait partie de l'accueil, donc disparaît en
-  mode carte. Texte seulement (icône 1-4 caractères, titre 80), action protégée, 3 boutons au plus.
+- **Actions du compte** : la prise `actionsCompte(lieu)` (« profil » | « config ») rend les actions à proposer ; la
+  fenêtre « Mon profil » les montre **en tête**, sous le compte connecté, et le panneau ⚙️ Configuration dans un bloc
+  « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
+  10 au plus, action protégée ; sans extension, rien n'apparaît.
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets

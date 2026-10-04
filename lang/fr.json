@@ -1584,6 +1584,8 @@
   "home.profile.importBtn": "📥 Importer un profil",
   "home.profile.moduleUnavailable": "Module UserProfile non disponible.",
   "home.profile.nicknameHint": "Le surnom est local à cet appareil. Il sert juste à personnaliser ton accueil et à signer tes exports de profil.",
+  "home.profile.compteTitre": "👤 Compte de cette installation",
+  "config.compteTitre": "🏛️ Installation",
   "home.profile.nicknameAccount": "Pseudo de ton compte sur cette installation : il se change auprès de la personne qui la gère.",
   "home.profile.nicknameLabel": "Surnom",
   "home.profile.nicknamePlaceholder": "Ex: Karma, Spéléo42, etc.",

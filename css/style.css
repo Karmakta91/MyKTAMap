@@ -22678,3 +22678,9 @@ body.kta-theme-light #planLoaderBox .kta-tx-magenta { color: #a0147a !important;
 .kta-readme-modal-overlay select option { background: #1a1f2e; color: #e8eaf0; }
 body.kta-theme-light .kta-readme-modal-overlay select option,
 html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8eb; color: #2a2620; }
+
+/* 🧩 Actions du compte d'une installation reliée (Mon profil, Configuration) —
+   bloc fourni par KtaExtensions.blocActionsCompte. */
+.kta-ext-compte { margin-bottom: 12px; }
+.kta-ext-compte-titre { font-weight: 700; color: #f4c542; margin-bottom: 8px; }
+.kta-ext-compte-btn { width: 100%; margin-bottom: 6px; }

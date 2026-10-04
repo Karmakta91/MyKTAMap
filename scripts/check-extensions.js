@@ -230,23 +230,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
   }
 
-  // ═════════ 6 quater. BOUTON D'ACCUEIL ═════════
+  // ═════════ 6 quater. ACTIONS DU COMPTE ═════════
   {
-    const { K, w } = nouveauContexte(null);
-    t("sans barre d'accueil : aucun bouton (null)", K.ajouterBoutonAccueil({ icone: "👤", action() {} }) === null);
-    const inseres = [];
-    const parent = { insertBefore: (b, ref) => inseres.push({ b, ref }) };
-    const aide = { id: "loaderHelpBtn", parentNode: parent };
-    w.document.getElementById = (id) => (id === "loaderHelpBtn" ? aide : null);
-    w.document.createElement = () => { const el = { listeners: {}, addEventListener(k, f) { this.listeners[k] = f; } }; return el; };
-    const b = K.ajouterBoutonAccueil({ icone: "👤", titre: "Compte", action() { throw new Error("x"); } });
-    t("bouton inséré AVANT 📖, au style de la barre", b && inseres.length === 1 && inseres[0].ref === aide && b.className === "loader-btn-help kta-ext-btn");
-    t("🩸 icône rendue en TEXTE (jamais de HTML)", b.textContent === "👤" && b.innerHTML === undefined);
-    let casse = false; try { b.listeners.click({}); } catch (e) { casse = true; }
-    t("🩸 une action qui plante ne casse rien", !casse);
-    t("icône trop longue refusée", K.ajouterBoutonAccueil({ icone: "ABCDE", action() {} }) === null);
-    K.ajouterBoutonAccueil({ icone: "2", action() {} }); K.ajouterBoutonAccueil({ icone: "3", action() {} });
-    t("3 boutons au plus", K.ajouterBoutonAccueil({ icone: "4", action() {} }) === null);
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune action, aucun bloc", K.actionsCompte("profil").length === 0 && K.blocActionsCompte("config", "x") === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "a", apiVersion: 1, actionsCompte: (lieu) => lieu === "config"
+      ? [{ libelle: "Gérer les comptes", action() {} }, { libelle: "", action() {} }, { libelle: "sans action" }, null]
+      : [{ libelle: "x".repeat(99), action() {} }] });
+    t("actions nettoyées (libellé vide / sans action / null écartés)", K2.actionsCompte("config").length === 1);
+    t("libellé borné à 60", K2.actionsCompte("profil")[0].libelle.length === 60);
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "b", apiVersion: 1, actionsCompte: () => { throw new Error("x"); } });
+    t("🩸 erreur de l'extension → aucune action", K3.actionsCompte("config").length === 0);
   }
 
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
@@ -279,6 +275,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /KtaExtensions\.compte\(\)/.test(HP) && /addEventListener\("mktm:compte-changed"/.test(HP));
     t("🩸 carte profil : le compte n'est JAMAIS écrit dans le profil local", !/setSurnom\([^)]*_compte/.test(HP));
     t("modale profil : pseudo verrouillé quand un compte est connecté", /surnomInput\.readOnly = true/.test(HP));
+    t("modale profil : actions du compte en TÊTE", /blocActionsCompte\("profil"/.test(HP) && /insertBefore\(blocCompte, corpsProfil\.firstChild\)/.test(HP));
+    t("panneau Configuration : bloc « Installation » en tête", /blocActionsCompte\("config"/.test(lire("js/homeConfig.js")));
     const assets = (SW.match(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/) || [""])[0];
     t("🩸 aucun module greffé (pro/) précaché par community", assets.length > 0 && !/["']\.?\/?pro\//.test(assets));
   }

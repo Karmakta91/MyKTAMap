@@ -451,31 +451,44 @@
     };
   }
 
-  // ── Bouton dans la barre du haut de l'accueil ──
-  // Une extension peut y loger UN point d'entrée (ex. le compte de l'installation),
-  // à côté de 📖 Documentation et ⚙️ Configuration, avec le même style. Il fait
-  // partie de l'accueil : il disparaît avec lui en mode carte. Texte seulement
-  // (icône 1-4 caractères, titre 80 max), action protégée (une erreur ne casse
-  // rien). 3 boutons au plus. Rend le bouton créé, ou null (barre absente, refus).
-  const MAX_BOUTONS = 3;
-  let _nbBoutons = 0;
-  function ajouterBoutonAccueil(def) {
-    if (!def || typeof def.action !== "function" || typeof def.icone !== "string") return null;
-    const icone = def.icone.trim();
-    if (!icone || Array.from(icone).length > 4 || _nbBoutons >= MAX_BOUTONS) return null;
-    const ref = document.getElementById("loaderHelpBtn");
-    if (!ref || !ref.parentNode) return null;
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "loader-btn-help kta-ext-btn";
-    b.textContent = icone;
-    if (typeof def.titre === "string") b.title = def.titre.slice(0, 80);
-    b.addEventListener("click", function (ev) {
-      try { def.action(ev, b); } catch (e) { console.warn("[Extensions] bouton d'accueil :", e); }
+  // ── Actions du compte (Mon profil, Configuration) ──
+  // L'extension fournit, selon le LIEU (« profil » | « config »), les actions à
+  // proposer : la fenêtre « Mon profil » les montre en tête, sous le compte
+  // connecté ; le panneau ⚙️ Configuration dans un bloc « Installation » (ex. gérer
+  // les comptes, pour un admin). Texte seulement (60 car.), 10 au plus, action
+  // protégée ; erreur ou forme inattendue = aucune action.
+  function actionsCompte(lieu) {
+    const ext = _prise("actionsCompte");
+    if (!ext || typeof ext.actionsCompte !== "function") return [];
+    try {
+      const l = ext.actionsCompte(lieu);
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 10).map(function (a) { return { libelle: a.libelle.trim().slice(0, 60), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] actionsCompte :", e); return []; }
+  }
+  // Bloc prêt à insérer (même rendu dans les deux fenêtres) ; null s'il n'y a rien à montrer.
+  function blocActionsCompte(lieu, titre) {
+    const actions = actionsCompte(lieu);
+    const c = compte();
+    if (!actions.length && !(lieu === "profil" && c)) return null;
+    const bloc = document.createElement("div");
+    bloc.className = "kta-aide-section kta-ext-compte";
+    const h = document.createElement("div");
+    h.className = "kta-ext-compte-titre";
+    h.textContent = String(titre || "") + (c ? " — " + c.pseudo + (c.libelle ? " · " + c.libelle : "") : "");
+    bloc.appendChild(h);
+    actions.forEach(function (a) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "loader-btn-secondary kta-ext-compte-btn";
+      b.textContent = a.libelle;
+      b.addEventListener("click", function () {
+        try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
+      });
+      bloc.appendChild(b);
     });
-    ref.parentNode.insertBefore(b, ref);
-    _nbBoutons++;
-    return b;
+    return bloc;
   }
 
   // ── Changements reçus (synchro entrante) ──
@@ -594,7 +607,8 @@
     compte: compte,
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
-    ajouterBoutonAccueil: ajouterBoutonAccueil,
+    actionsCompte: actionsCompte,
+    blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,

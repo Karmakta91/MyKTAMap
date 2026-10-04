@@ -1081,6 +1081,13 @@
           const p = hint && hint.nextElementSibling;
           if (p && p.classList.contains("kta-profile-details-hint")) p.textContent = _t("home.profile.nicknameAccount");
         }
+        // 🧩 Compte de l'installation : en TÊTE de la fenêtre, le compte connecté et ses
+        // actions (gestion, hors ligne, données perso, déconnexion — fournies par l'extension).
+        if (window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
+          const blocCompte = window.KtaExtensions.blocActionsCompte("profil", _t("home.profile.compteTitre"));
+          const corpsProfil = document.querySelector("#kta-profile-details-modal .kta-profile-details-corps");
+          if (blocCompte && corpsProfil) corpsProfil.insertBefore(blocCompte, corpsProfil.firstChild);
+        }
         let _originalSurnom = surnomInput.value;
         surnomInput.addEventListener("input", function() {
           saveBtn.style.display = (surnomInput.value !== _originalSurnom) ? "" : "none";

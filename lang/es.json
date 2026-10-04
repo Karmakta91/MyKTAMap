@@ -1584,6 +1584,8 @@
   "home.profile.importBtn": "📥 Importar un perfil",
   "home.profile.moduleUnavailable": "Módulo UserProfile no disponible.",
   "home.profile.nicknameHint": "El apodo es local a este dispositivo. Solo personaliza tu inicio y firma tus exportaciones de perfil.",
+  "home.profile.compteTitre": "👤 Cuenta en esta instalación",
+  "config.compteTitre": "🏛️ Instalación",
   "home.profile.nicknameAccount": "Nombre de tu cuenta en esta instalación: pídele el cambio a la persona que la gestiona.",
   "home.profile.nicknameLabel": "Apodo",
   "home.profile.nicknamePlaceholder": "Ej: Karma, Espeleo42, etc.",

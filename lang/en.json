@@ -1584,6 +1584,8 @@
   "home.profile.importBtn": "📥 Import a profile",
   "home.profile.moduleUnavailable": "UserProfile module unavailable.",
   "home.profile.nicknameHint": "The nickname is local to this device. It only personalizes your home screen and signs your profile exports.",
+  "home.profile.compteTitre": "👤 Account on this installation",
+  "config.compteTitre": "🏛️ Installation",
   "home.profile.nicknameAccount": "Your account name on this installation: ask the person who manages it to change it.",
   "home.profile.nicknameLabel": "Nickname",
   "home.profile.nicknamePlaceholder": "E.g. Karma, Caver42, etc.",
