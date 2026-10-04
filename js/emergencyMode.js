@@ -87,6 +87,14 @@
   // son chemin en mode urgence") : layers polylines roads + itinéraire
   // rendus sur le minimap. Stockés pour cleanup au destroy.
   let _miniRoadLayers      = [];
+  // 🩸 v2.7.5 (KARMA : « en XL, l'itinéraire ne se met pas à jour quand on fait
+  // des Je suis ici ») — les tracés n'étaient dessinés qu'à l'ouverture. Le
+  // recalage (`_couperDerriere`), un recalcul ou un effacement REMPLACENT
+  // l'objet itinéraire dans `getRoads()` sans émettre d'événement : le tick
+  // compare donc l'objet (et sa longueur) à celui dessiné. `undefined` = pas
+  // encore dessiné ; `null` = dessiné sans itinéraire.
+  let _miniItiRef          = undefined;
+  let _miniItiLen          = 0;
   // 🆕 v1.10.2-fix5 (KARMA "pareil pour zone et structure") : layers
   // zones (polygons) + structures (polygons + polylines fronts).
   let _miniZoneLayers      = [];
@@ -570,6 +578,7 @@
       _updateMiniMap(pos);
     }
     _majPointsSiNiveauChange();
+    _majRoadsSiChange();
 
     // 🧭 Heading (boussole)
     // 🧭 v1.37.0 — Bascule de getCurrentHeading() (Nord vrai) vers
@@ -1604,8 +1613,30 @@
   // Styles cohérents avec road.js (vert / violet / jaune / cyan / magenta)
   // mais épaisseur réduite et opacité bumpée pour rester lisible par-dessus
   // l'image base désaturée.
+  function _itineraireActif() {
+    const r = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
+    return r.find(function(x) { return x && x.type === "itinerary" && !x._preview; }) || null;
+  }
+  // Redessine les tracés quand l'itinéraire a changé (appelé par le tick).
+  // Les tracés restent au-dessus des zones et structures : ils sont rajoutés
+  // en dernier dans le même volet, comme à l'ouverture.
+  function _majRoadsSiChange() {
+    if (!_miniMap || _miniItiRef === undefined) return;
+    const it = _itineraireActif();
+    const len = it && Array.isArray(it.points) ? it.points.length : 0;
+    if (it === _miniItiRef && len === _miniItiLen) return;
+    const pc = window.PLAN_CONFIG;
+    const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+    if (imgH <= 0) return;
+    _miniRoadLayers.forEach(function(layer) { try { layer.remove(); } catch(e) {} });
+    _miniRoadLayers = [];
+    _addRoadsToMiniMap(imgH);
+  }
+
   function _addRoadsToMiniMap(imgH) {
     if (!_miniMap || typeof L === "undefined") return;
+    _miniItiRef = _itineraireActif();
+    _miniItiLen = _miniItiRef && Array.isArray(_miniItiRef.points) ? _miniItiRef.points.length : 0;
     // Collecte session + tous les embedded (visibles ET masqués)
     const session  = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
     const embedded = (typeof window.getAllEmbeddedRoads === "function" ? window.getAllEmbeddedRoads() : []) || [];
@@ -1848,6 +1879,7 @@
       });
     }
     _cleanLayers(_miniRoadLayers);      _miniRoadLayers = [];
+    _miniItiRef = undefined;            _miniItiLen = 0;
     _cleanLayers(_miniZoneLayers);      _miniZoneLayers = [];
     _cleanLayers(_miniStructureLayers); _miniStructureLayers = [];
     _retirerPointsMiniMap();
