@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.7.1` (04/10/2026)
+## 📦 Version courante — `v2.7.2` (04/10/2026)
+
+> 🧩 **v2.7.2 — Un module greffé peut porter sa version (`pro/x.js?v=…`)** : sa mise à jour n'attend plus une release community.
 
 > 🧩 **v2.7.1 — Le Service Worker ne met jamais en cache une requête de backend** (marquée `X-Kta-Ext` ou authentifiée) : prérequis d'un backend servi à la même adresse que l'app.
 
@@ -529,6 +531,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.7.2 (04/10/2026) — Version des modules greffés (branche `karma_backend_dev`)
+
+- 🩸 **Origine** : test du module de connexion du chantier 4 — le SW met en cache un module au premier chargement et le sert ensuite depuis ce cache (règle par défaut), et le connecteur refusait tout suffixe au chemin (`pro/connexion.js?v=0.2.0` → état « invalide »). Une nouvelle version d'un module n'arrivait donc qu'au bump suivant de `CACHE_NAME`.
+- 🔧 **Correctif** (décision KARMA 1:a) : `serverConnection.modules` accepte un seul suffixe, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max). Changer la version change l'URL, donc l'entrée de cache. ConfAdmin porte la même règle (copie, alignement vérifié par le garde-fou).
+- 🛡️ `check-connexion-serveur.js` : 6 cas de plus (versionné accepté ; autre paramètre, version vide, deux paramètres, espace, suffixe avant `.js` refusés).
 
 #### v2.7.1 (04/10/2026) — Requêtes de backend jamais en cache (branche `karma_backend_dev`)
 

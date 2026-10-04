@@ -130,6 +130,12 @@ const CAS = [
   ["module absolu", { state: "on", api: OK.api, modules: ["/pro/m.js"] }, "invalide"],
   ["module sans .js", { state: "on", api: OK.api, modules: ["pro/m"] }, "invalide"],
   ["module non texte", { state: "on", api: OK.api, modules: [42] }, "invalide"],
+  ["module versionné ?v=", { state: "on", api: OK.api, modules: ["pro/m.js?v=0.2.0"] }, "on"],
+  ["module : autre paramètre que v", { state: "on", api: OK.api, modules: ["pro/m.js?x=1"] }, "invalide"],
+  ["module : version vide", { state: "on", api: OK.api, modules: ["pro/m.js?v="] }, "invalide"],
+  ["module : deux paramètres", { state: "on", api: OK.api, modules: ["pro/m.js?v=1&x=2"] }, "invalide"],
+  ["module : version avec espace", { state: "on", api: OK.api, modules: ["pro/m.js?v=1 2"] }, "invalide"],
+  ["module : version avant .js", { state: "on", api: OK.api, modules: ["pro/m?v=1.js"] }, "invalide"],
   ["21 modules", { state: "on", api: OK.api, modules: Array.from({ length: 21 }, (_, i) => "pro/m" + i + ".js") }, "invalide"]
 ];
 if (K && validerCA) {

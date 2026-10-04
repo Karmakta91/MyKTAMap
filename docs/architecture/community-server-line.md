@@ -82,7 +82,8 @@ qui parle au serveur.
   paragraphe seul.
 - `api` : origine du backend. Elle peut différer de celle de l'app (règle D). Une adresse
   d'API n'est pas un secret : l'index est public et c'est assumé.
-- `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`).
+- `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
+  remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
 
 **Les états** :
 
@@ -143,6 +144,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
+- **Version d'un module** : le SW met en cache un module au premier chargement et le sert ensuite depuis
+  ce cache (règle par défaut, à l'URL exacte). Une nouvelle version passe donc par un **nouveau chemin**
+  dans `index.json` (`pro/connexion.js?v=0.3.0`) — l'index, lui, est relu sur le réseau d'abord. Sans
+  suffixe, la mise à jour n'arriverait qu'au prochain bump de `CACHE_NAME` community.
 - **Service Worker** : les modules greffés ne sont **jamais** dans `ASSETS_TO_CACHE`. Ils
   doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
   cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de

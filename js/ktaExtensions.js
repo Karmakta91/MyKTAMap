@@ -14,7 +14,7 @@
 // Contrat complet : docs/architecture/community-server-line.md §3.
 //
 // L'instance déclare dans `data/index.json > config.serverConnection` :
-//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js"] }
+//   { "state": "on" | "off", "api": "https://…", "modules": ["chemin/module.js?v=1.0.0"] }
 //
 // États produits ici :
 //   off        — champ absent ou "off" (myktamap.fr : aucun backend, jamais)
@@ -82,8 +82,11 @@
     for (let i = 0; i < sc.modules.length; i++) {
       const m = sc.modules[i];
       // Même origine que l'app (script-src 'self') : chemin relatif, sans
-      // schéma, sans « // », sans remontée, terminé par .js.
-      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js$/.test(m) ||
+      // schéma, sans « // », sans remontée, terminé par .js. Un seul suffixe
+      // permis : « ?v=<version> » (v2.7.2). Le SW sert les modules depuis son
+      // cache (URL exacte) : changer la version change l'URL, donc la nouvelle
+      // version d'un module arrive sans attendre une release community.
+      if (typeof m !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.js(\?v=[A-Za-z0-9._-]{1,32})?$/.test(m) ||
           m.indexOf("..") >= 0 || m.indexOf("//") >= 0) {
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
