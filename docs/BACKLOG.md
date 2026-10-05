@@ -43,6 +43,13 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
 
 - 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
+- 🟡 **Pendant un déplacement, des éléments n'apparaissent qu'au relâcher — case « 👁️ Ne rendre que les éléments
+  visibles » décochée** (constaté le 05/10/2026, pas une régression : comportement présent avant v2.9.0). Deux causes
+  indépendantes de la case : (1) les tracés et zones sont en **canvas** (`map.js` `preferCanvas: true`) — Leaflet ne les
+  dessine que sur l'écran + 10 % et redessine à la fin du geste ; (2) **tuiles** de l'image posées seulement près de
+  l'écran (`tiling.js`, v1.98.23). La case n'ajoute donc presque rien de visible, d'où la question de sa **pertinence**.
+  Pistes : marge du renderer élargie (`L.canvas({ padding: 0.5 })`) et des tuiles, à mesurer sur relevé lourd
+  (mémoire, fluidité) ; puis garder, fusionner dans ULTRA, ou retirer la case. **À trancher par KARMA.**
 
 ## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
 
