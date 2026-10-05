@@ -4373,6 +4373,7 @@
   "session.modal.titre": "Previous session restored",
   "session.toast.storageFull": "Phone storage is full — the session can no longer be saved automatically. Remember to export your session (📤 Export) so you don't lose anything.",
   "session.toast.cleared": "Session cleared.",
+  "session.toast.portailsGardes": "🌀 {n} portal point(s) kept: they carry a link to another map.",
   "session.toast.clearedSnap": "Session cleared — snapshot kept in 📦 Backups (📊 Session details)",
   "session.toast.filtresRestaures": "≡ {n} filter(s) of this map restored: some items are hidden — ≡ Filters → Show all to see everything",
   "session.unit.measureDist": "distance measurement",

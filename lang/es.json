@@ -4373,6 +4373,7 @@
   "session.modal.titre": "Sesión anterior restaurada",
   "session.toast.storageFull": "Espacio de almacenamiento del smartphone saturado — la sesión ya no se puede guardar automáticamente. Acuérdate de exportar tu sesión (📤 Exportar) para no perder nada.",
   "session.toast.cleared": "Sesión borrada.",
+  "session.toast.portailsGardes": "🌀 {n} punto(s) portal conservado(s): llevan un enlace a otro plano.",
   "session.toast.clearedSnap": "Sesión borrada — snapshot guardado en 📦 Backups (📊 Detalles de la sesión)",
   "session.toast.filtresRestaures": "≡ {n} filtro(s) de este plano restaurado(s): hay elementos ocultos — ≡ Filtros → Mostrar todo para verlo todo",
   "session.unit.measureDist": "medición de distancia",
