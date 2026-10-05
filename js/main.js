@@ -242,8 +242,12 @@ async function _decouvrirPlansExtension() {
   liste.forEach(function(p) {
     if (!p || !p.id) return;
     const id = window.ktaIdRegistreExtension(p.id);
-    window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
-      version: p.version || null });
+    const entree = { id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id), version: p.version || null };
+    // Mode fourni par l'extension (lu dans le ZIP) : badge juste avant la 1re ouverture. Comme
+    // pour les plans du site, seulement « vrai » — jamais d'écrasement d'un réglage de l'utilisateur.
+    if (p.tiledV2 === true) entree.tiledV2 = true;
+    if (p.multiLevel === true) entree.multiLevel = true;
+    window.PlanRegistry.addOrUpdate(entree);
     if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
   });
   if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");

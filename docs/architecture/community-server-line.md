@@ -179,6 +179,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
   2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+- **Mode d'un plan ☁️** : `plans.lister()` peut donner `tiledV2` / `multiLevel` (booléens, lus dans le ZIP par
+  l'extension) — inscrits au registre seulement s'ils valent `true`, comme les plans du site : badge V2 / M-LVL
+  juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).
 - **Rangement et hors ligne d'un plan ☁️** (v2.9.0) : `plans.ranger(idExt, dossierExt | null) → Promise<bool>` diffuse le
   rangement fait à l'accueil (refus = le rangement reste local) ; `plans.horsLigne: { etat(idExt) → "garde"|"perime"|"absent",
   garder(idExt) → Promise<bool> }` alimente le bouton de la ligne (💾 garder / ⬇️ nouvelle version / ✅ gardé, sans action).
