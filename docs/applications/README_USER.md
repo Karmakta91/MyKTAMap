@@ -128,7 +128,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau).
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches.
 
 ---
 
@@ -1040,18 +1040,19 @@ L'accueil garde tous les plans que tu as chargés, depuis un serveur ou depuis t
 | 🌐 | Plan proposé par le serveur |
 | 💾 | Plan ZIP chargé depuis ton appareil |
 | ✅ | Plan **mémorisé dans l'app** : rechargement immédiat, même hors connexion |
-| 📁 | Plan non mémorisé : il faut re-sélectionner son ZIP à chaque chargement |
+| 📁 | Plan non mémorisé : il faut re-sélectionner son ZIP à chaque chargement — le **💾** de sa ligne le mémorise après coup |
 | 🔐 | Ancienne entrée « accès permanent » : à la prochaine re-sélection, elle passe en ✅ |
 
 La mémorisation se règle dans **⚙️ Configuration** (« 💾 Mémoriser le plan dans l'app au premier chargement », activé au départ).
 
 **Sur chaque ligne :**
+- **💾** (plan 📁 non mémorisé) : redemande son ZIP, vérifie que c'est le bon plan et le mémorise, sans l'ouvrir.
 - **⭐** épingle le plan en tête de liste (re-clic pour le retirer).
 - **ℹ️** ouvre la fiche du plan : ses informations (version, auteur, taille, mode, dates…), un **✏️ nom d'affichage** local (40 caractères, vide = nom d'origine), ses **🏷️ Tags du plan** (séparés par des virgules, 12 au plus), le **Tuilage de ce plan** pour les très grandes images non découpées, la **💾 Disponibilité hors-ligne** d'un plan serveur, et **🗑️ Retirer de la liste**. Retirer un plan ne touche pas au ZIP sur ton disque, mais efface son archive mémorisée, sa session, son géoréférencement, ses photos et ses sauvegardes ; ses PDF d'histoire restent dans 📔 Mon carnet → 📖 Récits, sauf si tu coches leur suppression.
 
 **Au-dessus de la liste :**
 - **🔎 Filtrer par nom…** filtre pendant la frappe.
-- **🌐 Afficher les plans serveur** masque ou réaffiche les plans découverts sur le serveur (rien n'est supprimé, le choix est gardé).
+- **🌐 Afficher les plans du site** masque ou réaffiche les plans posés sur le site (rien n'est supprimé, le choix est gardé).
 - Dès qu'un plan porte une étiquette, des **puces-filtres** apparaissent : touche-en une ou plusieurs pour ne voir que ces plans.
 
 > 🌐 Les plans d'un serveur peuvent arriver déjà étiquetés. Dès que tu modifies les étiquettes d'un plan, ce sont les tiennes qui comptent, même vides. Pour retrouver celles du serveur, retire le plan de la liste : il sera redécouvert avec.
@@ -1098,7 +1099,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre où rien n'est enregistré ;
   - **🔐 Code d'accès local** (PIN, Face ID) : voir « 🔭 Pour aller plus loin » ;
   - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
-  - **📚 Plans serveur** : **🚫 Ne pas charger les plans serveur au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
+  - **📚 Plans du site** : **🚫 Ne pas charger les plans du site au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
