@@ -1466,6 +1466,19 @@ function planRowHTML(plan) {
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                         '</div>' : '') +
               offlineHtml +
+              // ☁️ Plan LOCAL + installation reliée qui sait publier (prise publierPlan) :
+              // l'envoyer sur l'installation, sans repasser par le Générateur.
+              ((plan.type !== "ext" && plan.type !== "server" && window.KtaExtensions &&
+                typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("publierPlan"))
+                ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                    '<div style="font-weight:600; margin-bottom:6px;">☁️ ' + escapeHtml(_t("home.plans.info.publishTitle")) + '</div>' +
+                    '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">☁️ ' +
+                      escapeHtml(_t("home.plans.info.publishBtn")) + '</button>' +
+                    '<div id="kta-plan-publish-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
+                    '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                      escapeHtml(_t("home.plans.info.publishHint")) + '</div>' +
+                  '</div>'
+                : '') +
               // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
               // (le ✕ de la liste est retiré : clic accidentel trop facile).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
@@ -1668,6 +1681,38 @@ function planRowHTML(plan) {
         }
 
         // ✏️ v1.79.1 — renommage d'affichage (vide = retour au nom d'origine)
+        // ☁️ Publication d'un plan local sur l'installation reliée : l'archive gardée sur
+        // l'appareil si elle existe, sinon le fichier ZIP choisi par l'utilisateur.
+        const btnPublish = document.getElementById("kta-plan-publish");
+        if (btnPublish) {
+          btnPublish.addEventListener("click", async function() {
+            const st = document.getElementById("kta-plan-publish-status");
+            const dire = function(txt, cls) { if (st) { st.textContent = txt; st.className = cls || ""; } };
+            const envoyer = async function(blob) {
+              btnPublish.disabled = true;
+              dire(_t("home.plans.info.publishEnCours"), "kta-tx-muted");
+              try {
+                await window.KtaExtensions.publierPlan({ blob: blob, nom: window.PlanRegistry.displayName(plan) });
+                dire(_t("home.plans.info.publishOk"), "kta-tx-ok");
+              } catch (e) {
+                console.warn("[Loader] publication :", e);
+                dire(_t("home.plans.info.publishEchec") + " " + String((e && e.message) || e).slice(0, 120), "kta-tx-err");
+                btnPublish.disabled = false;
+              }
+            };
+            let blob = null;
+            if (plan.storedBlob && typeof window.PlanRegistry.getBlob === "function") {
+              try { blob = await window.PlanRegistry.getBlob(plan.id); } catch (e) { blob = null; }
+            }
+            if (blob) { envoyer(blob); return; }
+            const input = document.createElement("input");
+            input.type = "file"; input.accept = ".zip,application/zip";
+            input.addEventListener("change", function() { if (input.files && input.files[0]) envoyer(input.files[0]); });
+            dire(_t("home.plans.info.publishChoisir"), "kta-tx-muted");
+            input.click();
+          });
+        }
+
         const btnRename = document.getElementById("kta-plan-rename-save");
         if (btnRename) {
           btnRename.addEventListener("click", function() {

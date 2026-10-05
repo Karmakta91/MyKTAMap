@@ -250,6 +250,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(ext\.actionsObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
   }
 
+  // ═════════ 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ═════════
+  {
+    const HLp = lire("js/homeLoader.js");
+    t("fiche ℹ️ : « Publier sur l'installation » seulement pour un plan local ET si une extension sait publier",
+      /plan\.type !== "ext" && plan\.type !== "server" && window\.KtaExtensions &&[\s\S]{0,120}aPrise\("publierPlan"\)/.test(HLp));
+    t("…l'envoi passe par la prise (archive gardée, sinon fichier choisi)",
+      /window\.KtaExtensions\.publierPlan\(\{ blob: blob/.test(HLp) && /input\.accept = "\.zip,application\/zip"/.test(HLp));
+  }
+
   // ═════════ 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ═════════
   {
     const { K, w } = nouveauContexte(null);
