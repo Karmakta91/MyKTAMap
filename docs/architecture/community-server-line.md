@@ -179,6 +179,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
   2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+- **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
+  fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
+  navigation). L'app ne fournit que `itineraireActuel()` — `{ points: [[x, y, niveau]], etapes: [[x, y, faite]] }`
+  (étapes sans l'origine tracker), ou `null` sans itinéraire actif — et `afficherItineraires(liste)`
+  (`js/ktaPresences.js` : calque distinct, pointillés jaunes atténués hors niveau, étapes ○ / ✓, étiquette
+  « 🧭 pseudo » à l'arrivée, rien de cliquable ; 200 itinéraires, 5000 points, 100 étapes max). Actions neutres
+  pour un panneau : `KtaPresences.cadrerItineraire(id)`, `masquerItineraire(id, bool)`. `itinerairePublie()` /
+  `basculerItineraire()` : une erreur de l'extension = non publié. Sans extension : pas de bouton, rien n'est lu.
 - **Mode d'un plan ☁️** : `plans.lister()` peut donner `tiledV2` / `multiLevel` (booléens, lus dans le ZIP par
   l'extension) — inscrits au registre seulement s'ils valent `true`, comme les plans du site : badge V2 / M-LVL
   juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).

@@ -22726,3 +22726,9 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
 .kta-presence-ancienne .kta-presence-pastille { background: #8892a4; }
 .kta-presence-ancienne .kta-presence-etiquette { color: #8892a4; }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* 🧭 Itinéraire publié par un autre : étiquette au point d'arrivée */
+.kta-presence-iti-icone { background: none; border: none; }
+.kta-presence-iti-etiquette {
+  display: inline-block; transform: translate(8px, -50%); white-space: nowrap; font-size: 11px; padding: 1px 6px;
+  border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #f4c542; border: 1px solid #f4c542; pointer-events: none;
+}

@@ -322,7 +322,7 @@
     _extensions.push(ext);
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -722,6 +722,45 @@
     catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
   }
 
+  // ── Itinéraire publié (montré à l'équipe du plan, opt-in) ──
+  // L'extension `itineraire: { publie(), basculer() }` publie l'itinéraire actif UNIQUEMENT
+  // quand l'utilisateur l'a choisi (bouton de la fenêtre Itinéraire). L'app fournit une lecture
+  // (itineraireActuel) et un affichage (afficherItineraires, js/ktaPresences.js).
+  // Sans extension : pas de bouton, rien n'est lu.
+  function itinerairePublie() {
+    const ext = _prise("itineraire");
+    if (!ext || !ext.itineraire || typeof ext.itineraire.publie !== "function") return false;
+    try { return ext.itineraire.publie() === true; } catch (e) { return false; }
+  }
+  function basculerItineraire() {
+    const ext = _prise("itineraire");
+    if (!ext || !ext.itineraire || typeof ext.itineraire.basculer !== "function") return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.itineraire.basculer()).then(function () { return itinerairePublie(); },
+        function (e) { console.warn("[Extensions] itineraire :", e); return itinerairePublie(); });
+    } catch (e) { console.warn("[Extensions] itineraire :", e); return Promise.resolve(itinerairePublie()); }
+  }
+  // Itinéraire actif du plan ouvert : { points: [[x, y, niveau]], etapes: [[x, y, faite]] }, ou null.
+  function itineraireActuel() {
+    try {
+      if (!window.map || typeof window.getRoads !== "function") return null;
+      const r = (window.getRoads() || []).find(function (o) { return o && o.type === "itinerary" && !o._preview; });
+      if (!r || !Array.isArray(r.points) || r.points.length < 2) return null;
+      const n = function (v) { return Number.isInteger(v) ? v : null; };
+      return {
+        points: r.points.filter(function (p) { return p && isFinite(p.x) && isFinite(p.y); })
+          .map(function (p) { return [p.x, p.y, n(p.level)]; }),
+        etapes: (Array.isArray(r.waypoints) ? r.waypoints : [])
+          .filter(function (w) { return w && isFinite(w.x) && isFinite(w.y) && w.source !== "tracker"; })
+          .map(function (w) { return [w.x, w.y, w.done === true]; })
+      };
+    } catch (e) { return null; }
+  }
+  function afficherItineraires(liste) {
+    try { return window.KtaPresences ? window.KtaPresences.afficherItineraires(liste) : 0; }
+    catch (e) { console.warn("[Extensions] afficherItineraires :", e); return 0; }
+  }
+
   // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne, plan par plan ──
   // L'extension déclare plans.ranger(idExt, dossierExt|null) → Promise<bool> et
   // plans.horsLigne = { etat(idExt) → Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }.
@@ -911,6 +950,10 @@
     basculerPresence: basculerPresence,
     positionTracker: positionTracker,
     afficherPresences: afficherPresences,
+    itinerairePublie: itinerairePublie,
+    basculerItineraire: basculerItineraire,
+    itineraireActuel: itineraireActuel,
+    afficherItineraires: afficherItineraires,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,

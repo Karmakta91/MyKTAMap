@@ -1695,6 +1695,14 @@ function _bindAvoidSectionHandlers() {
   _rafraichirListeAvoidZones();
 }
 
+function _itiPartageDispo() {
+  const X = window.KtaExtensions;
+  return !!(X && typeof X.aPrise === "function" && X.aPrise("itineraire"));
+}
+function _itiPartageLibelle() {
+  return window.I18n.t(window.KtaExtensions.itinerairePublie() ? "iti.partage.btnOn" : "iti.partage.btnOff");
+}
+
 window.ouvrirItinerairModal = function() {
   // Si une modale existe déjà, on la ferme et reset l'état
   const existing = document.getElementById("kta-itinerary-modal");
@@ -1790,7 +1798,27 @@ window.ouvrirItinerairModal = function() {
           ? '<button id="kta-iti-feuille" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
               ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
           : '') +
+        // 🧭 Installation reliée seulement (prise neutre `itineraire`) : montrer l'itinéraire à l'équipe.
+        (_itiPartageDispo()
+          ? '<button id="kta-iti-partage" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
+              ' style="width:100%; margin-top:6px;">' + _itiPartageLibelle() + '</button>'
+          : '') +
       '</div>';
+  }
+  if (!window._itiPartageBound) {
+    window._itiPartageBound = true;
+    document.addEventListener("click", function (e) {
+      const b = e.target && e.target.closest && e.target.closest("#kta-iti-partage");
+      if (!b || !_itiPartageDispo()) return;
+      b.disabled = true;
+      window.KtaExtensions.basculerItineraire().then(function (publie) {
+        b.disabled = false;
+        b.textContent = _itiPartageLibelle();
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(window.I18n.t(publie ? "iti.partage.toastOn" : "iti.partage.toastOff"), "info");
+        }
+      });
+    });
   }
   if (!window._itiFeuilleBound) {
     window._itiFeuilleBound = true;

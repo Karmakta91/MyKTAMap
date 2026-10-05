@@ -308,6 +308,35 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
   }
 
+  // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans extension : itinéraire non publié, pas de bouton (aPrise faux)",
+      K.itinerairePublie() === false && K.aPrise("itineraire") === false);
+    t("sans extension : basculer ne publie rien (→ false)", (await K.basculerItineraire()) === false);
+    t("sans carte : aucun itinéraire lu", K.itineraireActuel() === null);
+    w.map = {};
+    w.getRoads = () => [{ type: "galerie", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }];
+    t("pas d'itinéraire actif → null", K.itineraireActuel() === null);
+    w.getRoads = () => [{ type: "itinerary", points: [{ x: 1, y: 2, level: -1 }, { x: 3, y: 4 }],
+      waypoints: [{ x: 1, y: 2, source: "tracker" }, { x: 3, y: 4, done: true }] }];
+    const it = K.itineraireActuel();
+    t("itinéraire actif → points + niveau, étapes sans l'origine tracker",
+      it && it.points.length === 2 && it.points[0][2] === -1 && it.points[1][2] === null &&
+      it.etapes.length === 1 && it.etapes[0][2] === true);
+    t("affichage sans module de rendu → 0, sans erreur", K.afficherItineraires([{ id: "a", pseudo: "b", points: [[1, 2], [3, 4]] }]) === 0);
+    let pub = false;
+    K.register({ nom: "i1", apiVersion: 1, itineraire: { publie: () => pub, basculer: () => { pub = !pub; } } });
+    t("extension déclarée : bouton proposé, bascule effective",
+      K.aPrise("itineraire") && (await K.basculerItineraire()) === true && K.itinerairePublie());
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "i2", apiVersion: 1, itineraire: { publie: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → non publié, aucune exception",
+      K2.itinerairePublie() === false && (await K2.basculerItineraire()) === false);
+    t("bouton 🧭 de la fenêtre Itinéraire : seulement si une extension a la prise « itineraire »",
+      /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
+  }
+
   // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
   {
     const { K, w } = nouveauContexte(null);
