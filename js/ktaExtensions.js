@@ -783,6 +783,20 @@
       }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
     } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
   }
+  // Badge d'un plan d'extension dans la liste de l'accueil (ex. « 👥 2 », activité de l'installation) :
+  // { texte (8 car.), titre (160 car.) }, rendu en texte ; l'extension annonce un changement par
+  // l'événement `mktm:plans-badges-changes`. Erreur ou forme inattendue = pas de badge.
+  function badgePlan(registreId) {
+    const ext = _prise("badgePlan");
+    const id = _idExtension(registreId);
+    if (!ext || typeof ext.badgePlan !== "function" || !id) return null;
+    try {
+      const b = ext.badgePlan(id);
+      if (!b || typeof b.texte !== "string" || !b.texte.trim()) return null;
+      return { texte: b.texte.trim().slice(0, 8), titre: typeof b.titre === "string" ? b.titre.trim().slice(0, 160) : "" };
+    } catch (e) { console.warn("[Extensions] badgePlan :", e); return null; }
+  }
+
   // Ligne d'information fournie par l'extension (ex. « Créé par X · modifié par Y ») : texte
   // seulement, 120 caractères au plus ; l'app n'écrit jamais d'auteur elle-même (community anonyme).
   function infoObjet(uid) {
@@ -861,6 +875,7 @@
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
+    badgePlan: badgePlan,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

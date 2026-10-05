@@ -6389,6 +6389,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   cursor: help;
 }
 .plan-row-badge-stored { color: #6ce28a; }
+.kta-plan-row-ext-badge { color: #8cb4ff; font-size: 11px; white-space: nowrap; }   /* 🧩 badge d'une installation (activité) */
 .plan-row-badge-fs     { color: #8cb4ff; }
 .plan-row-badge-pick   { color: #c0c8d8; opacity: 0.7; }
 

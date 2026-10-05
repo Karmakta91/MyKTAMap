@@ -213,6 +213,9 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   { mode: "remplacer" })` (même identifiant = remplacé) ou `secoursAppliquer(id, partiel)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+- **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
+  plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
+  changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).
 - **Info sur la fiche d'un objet** : `infoObjet(uid) → string` (synchrone, 120 car., rendue en texte) — ex. « Créé par X ·
   modifié par Y ». L'app n'écrit jamais d'auteur elle-même : les objets restent anonymes dans la session et les exports.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil

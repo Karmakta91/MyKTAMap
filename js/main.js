@@ -2380,6 +2380,10 @@ window.proposerRedemarrageLangue = function() {
     await decouvrirPlansServeur(_idxServeur);
   }
   try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
+  // Badges des plans d'extension changés (activité) : la liste est redessinée, sans relecture.
+  window.addEventListener("mktm:plans-badges-changes", function() {
+    if (typeof window.refreshPlansList === "function" && !(typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche())) window.refreshPlansList();
+  });
   // Un plan publié (ou retiré) par une extension en cours de route : la liste est relue.
   window.addEventListener("mktm:plans-extension-changes", function() {
     _decouvrirPlansExtension().then(function() {

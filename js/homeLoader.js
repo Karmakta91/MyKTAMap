@@ -1107,6 +1107,11 @@ function planRowHTML(plan) {
             badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="' + _homeT("home.plans.badge.pick", "Re-sélection requise au chargement") + '">📁</span>';
           }
         }
+        // 🧩 Badge fourni par une installation reliée (ex. « 👥 2 » : qui a ce plan ouvert) — texte échappé.
+        if (plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.badgePlan === "function") {
+          const bx = window.KtaExtensions.badgePlan(plan.id);
+          if (bx) badgeStorage += '<span class="plan-row-badge kta-plan-row-ext-badge" title="' + escapeHtml(bx.titre) + '">' + escapeHtml(bx.texte) + '</span>';
+        }
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
         // Si aucun flag → badge V1 implicite (mode classique).
