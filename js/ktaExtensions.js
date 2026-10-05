@@ -95,12 +95,22 @@
         return { etat: "invalide", raison: "module hors de l'origine de l'app : " + String(m).slice(0, 80) };
       }
     }
-    return {
+    // transparence (facultatif) : la page de transparence de l'installation, sur le MÊME
+    // site que l'app (chemin relatif .html, mêmes règles qu'un module). La pastille y
+    // mène dès que l'état n'est pas OFF (cadrage : ce que l'installation fait de tes données).
+    if (sc.transparence !== undefined && (typeof sc.transparence !== "string" ||
+        !/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/.test(sc.transparence) ||
+        sc.transparence.indexOf("..") >= 0 || sc.transparence.indexOf("//") >= 0)) {
+      return { etat: "invalide", raison: "transparence doit être une page .html du même site (ex. pro/transparence.html)" };
+    }
+    const v = {
       etat: "on",
       raison: "",
       api: sc.api.trim(),
       modules: sc.modules.slice()
     };
+    if (sc.transparence) v.transparence = sc.transparence;
+    return v;
   }
 
   // ── Règle E : « on » n'aboutit qu'avec une licence de source "server" ──
@@ -242,6 +252,12 @@
     if (chip && !chip._ktaCable) {
       chip._ktaCable = true;
       chip.addEventListener("click", function () {
+        // Installation reliée qui publie sa page de transparence : c'est elle qui dit ce
+        // que l'installation fait des données (la doc community ne le sait pas).
+        if (_etat !== "off" && _connexion && _connexion.transparence) {
+          window.open(_connexion.transparence, "_blank", "noopener");
+          return;
+        }
         if (typeof window._ouvrirNetDocModal === "function") window._ouvrirNetDocModal();
       });
     }
@@ -304,8 +320,9 @@
       return false;
     }
     _extensions.push(ext);
+    if (ext.actionsObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -451,7 +468,11 @@
   function publierPlan(args) {
     const ext = _prise("publierPlan");
     if (!ext) return Promise.reject(new Error("aucune publication disponible"));
-    return Promise.resolve().then(function () { return ext.publierPlan(args); });
+    return Promise.resolve().then(function () { return ext.publierPlan(args); }).then(function (r) {
+      // Le plan publié rejoint tout de suite la liste de l'accueil (avant : au démarrage suivant).
+      try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+      return r;
+    });
   }
 
   // ── Journal des changements (information) ──
@@ -609,6 +630,126 @@
     try { window.dispatchEvent(new CustomEvent("mktm:compte-changed")); } catch (e) { /* rien */ }
   }
 
+  // ── Présence sur le plan ouvert (tracking à plusieurs, opt-in) ──
+  // L'extension `presence: { actif(), basculer() }` publie la position de l'utilisateur
+  // UNIQUEMENT quand il l'a choisi (tuile 📡 du tracker). L'app ne fournit qu'une
+  // lecture (positionTracker) et un affichage (afficherPresences, js/ktaPresences.js).
+  // Sans extension : pas de tuile, rien n'est lu.
+  function presenceActive() {
+    const ext = _prise("presence");
+    if (!ext || !ext.presence || typeof ext.presence.actif !== "function") return false;
+    try { return ext.presence.actif() === true; } catch (e) { return false; }
+  }
+  function basculerPresence() {
+    const ext = _prise("presence");
+    if (!ext || !ext.presence || typeof ext.presence.basculer !== "function") return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.presence.basculer()).then(function () { return presenceActive(); },
+        function (e) { console.warn("[Extensions] presence :", e); return presenceActive(); });
+    } catch (e) { console.warn("[Extensions] presence :", e); return Promise.resolve(presenceActive()); }
+  }
+  // Position du tracker sur le plan ouvert, ou null tant qu'elle ne veut rien dire
+  // (ni suivi en cours ni position confirmée : ce serait le point de départ du plan).
+  function positionTracker() {
+    try {
+      if (!window.map || typeof window.getTrackingPosition !== "function") return null;
+      const e = typeof window.getTrackingPositionEtat === "function" ? window.getTrackingPositionEtat() : {};
+      if (!e.suiviActif && !e.confirmee) return null;
+      const p = window.getTrackingPosition();
+      if (!p || !isFinite(p.x) || !isFinite(p.y)) return null;
+      const n = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
+      return { x: p.x, y: p.y, niveau: Number.isInteger(n) ? n : null, suiviActif: !!e.suiviActif, ts: Date.now() };
+    } catch (e) { return null; }
+  }
+  function afficherPresences(liste) {
+    try { return window.KtaPresences ? window.KtaPresences.afficher(liste) : 0; }
+    catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
+  }
+
+  // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne, plan par plan ──
+  // L'extension déclare plans.ranger(idExt, dossierExt|null) → Promise<bool> et
+  // plans.horsLigne = { etat(idExt) → Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }.
+  // Un dossier de l'installation porte, dans le registre, un id local : main.js donne la
+  // correspondance (associerDossiersExtension). Un dossier créé sur l'appareil n'est jamais diffusé.
+  let _dossiersRegistre = {};
+  function associerDossiersExtension(table) {
+    _dossiersRegistre = (table && typeof table === "object") ? Object.assign({}, table) : {};
+  }
+  function dossierExtension(dossierRegistreId) {
+    return (dossierRegistreId && _dossiersRegistre[dossierRegistreId]) || null;
+  }
+  function _idExtension(registreId) {
+    const e = window.PlanRegistry && typeof window.PlanRegistry.findById === "function" ? window.PlanRegistry.findById(registreId) : null;
+    return e && e.type === "ext" && e.extId ? String(e.extId) : null;
+  }
+  function rangerPlanExtension(registreId, dossierRegistreId) {
+    const ext = _prise("plans");
+    if (!ext || typeof ext.plans.ranger !== "function") return Promise.resolve(false);
+    const id = _idExtension(registreId);
+    const d = dossierRegistreId ? dossierExtension(dossierRegistreId) : null;
+    if (!id || (dossierRegistreId && !d)) return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.plans.ranger(id, d)).then(function (r) { return r === true; }, function () { return false; });
+    } catch (e) { console.warn("[Extensions] ranger :", e); return Promise.resolve(false); }
+  }
+  function _horsLigne() {
+    const ext = _prise("plans");
+    const h = ext && ext.plans.horsLigne;
+    return h && typeof h.etat === "function" && typeof h.garder === "function" ? h : null;
+  }
+  function horsLigneExtensionDisponible() { return !!_horsLigne(); }
+  function etatHorsLigneExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve(null);
+    try {
+      return Promise.resolve(h.etat(id)).then(function (e) { return ["garde", "perime", "absent"].indexOf(e) >= 0 ? e : null; },
+        function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function garderPlanExtension(registreId) {
+    const h = _horsLigne(), id = _idExtension(registreId);
+    if (!h || !id) return Promise.resolve(false);
+    try { return Promise.resolve(h.garder(id)).then(function (r) { return r === true; }, function () { return false; }); }
+    catch (e) { return Promise.resolve(false); }
+  }
+
+  // ── Actions d'extension sur la fiche d'un objet de session ──
+  // L'extension déclare actionsObjet(uid) → [{ libelle, action }] (synchrone, ex. « Historique »).
+  // Les fiches portent data-kta-uid ; un observateur, posé SEULEMENT si la prise existe,
+  // ajoute les boutons à l'ouverture d'une fiche. Sans extension : rien n'est observé.
+  function actionsObjet(uid) {
+    const ext = _prise("actionsObjet");
+    if (!ext || typeof ext.actionsObjet !== "function" || typeof uid !== "string" || !uid) return [];
+    try {
+      const l = ext.actionsObjet(uid);
+      return (Array.isArray(l) ? l : []).filter(function (a) {
+        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
+      }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
+    } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
+  }
+  function _hydraterFiche(racine) {
+    if (!racine || racine.querySelector(".kta-popup-ext")) return;
+    const actions = actionsObjet(racine.getAttribute("data-kta-uid"));
+    if (!actions.length) return;
+    const zone = document.createElement("div");
+    zone.className = "kta-popup-actions kta-popup-ext";
+    actions.forEach(function (a) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "kta-popup-btn"; b.textContent = a.libelle;
+      b.addEventListener("click", function (ev) { ev.stopPropagation(); try { a.action(); } catch (e) { console.warn("[Extensions] action :", e); } });
+      zone.appendChild(b);
+    });
+    racine.appendChild(zone);
+  }
+  let _observateurFiches = null;
+  function _observerFiches() {
+    if (_observateurFiches || typeof MutationObserver !== "function" || !document.body) return;
+    _observateurFiches = new MutationObserver(function () {
+      document.querySelectorAll(".leaflet-popup-content [data-kta-uid]").forEach(_hydraterFiche);
+    });
+    _observateurFiches.observe(document.body, { childList: true, subtree: true });
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -631,6 +772,17 @@
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
     actionsCompte: actionsCompte,
+    presenceActive: presenceActive,
+    basculerPresence: basculerPresence,
+    positionTracker: positionTracker,
+    afficherPresences: afficherPresences,
+    associerDossiersExtension: associerDossiersExtension,
+    dossierExtension: dossierExtension,
+    rangerPlanExtension: rangerPlanExtension,
+    horsLigneExtensionDisponible: horsLigneExtensionDisponible,
+    etatHorsLigneExtension: etatHorsLigneExtension,
+    garderPlanExtension: garderPlanExtension,
+    actionsObjet: actionsObjet,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

@@ -40,11 +40,12 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
 | Dossiers de « Mes plans » proposés | `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` — verrouillés tant que déclarés, libérés (jamais supprimés) sinon ; l'utilisateur déplace toujours ses plans | v1.95.0 |
 | Ouvrir la liste en mode Dossiers | `index.json > config.plansViewDefault: "folders"` — seulement tant que l'utilisateur n'a pas choisi lui-même | v1.95.0 |
+| Ne pas charger les plans du site au démarrage | `index.json > config.sitePlansHiddenDefault: true` — défaut de « Ne pas charger les plans du site » (⚙️ Configuration) tant que l'utilisateur n'a pas choisi ; sans effet avec `serverPlansOnly` (installation où les plans vivent en base, demande KARMA 05/10/2026) | v2.9.0 |
 
 **Règle des 2 flags** : `serverPlansOnly` et `disableGenerator` sont les DEUX SEULS
-flags de comportement kiosque (`plansViewDefault`, v1.95.0, n'en est pas un : c'est un
-DÉFAUT d'affichage, que le premier clic de l'utilisateur sur le sélecteur remplace pour
-toujours — décision KARMA 9 de l'étude du 16/09/2026). Tout flag supplémentaire = topo + décision KARMA
+flags de comportement kiosque. `plansViewDefault` (v1.95.0) et `sitePlansHiddenDefault` n'en sont pas : ce sont
+des DÉFAUTS d'affichage, que le premier choix de l'utilisateur (sélecteur Tout | Dossiers, case de ⚙️ Configuration)
+remplace pour toujours — décision KARMA 9 de l'étude du 16/09/2026. Tout flag supplémentaire = topo + décision KARMA
 consignée ici. Les flags sont du **désencombrement d'interface** (déclutter), PAS de
 la sécurité ni du bridage : contournables via la console, et c'est assumé — les
 données de l'utilisateur final lui appartiennent toujours (sessions, carnet, notes,
@@ -55,7 +56,7 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.7.4)** : identifiants stables, lecture unique de l'index avant
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.9.0)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
@@ -93,6 +94,10 @@ qui parle au serveur.
   Une adresse d'API n'est pas un secret : l'index est public et c'est assumé.
 - `modules` : chemins des scripts greffés, **même origine que l'app** (`script-src 'self'`) : relatif, sans
   remontée, terminé par `.js`, avec un seul suffixe permis, `?v=<version>` (lettres, chiffres, `. _ -`, 32 max).
+- `transparence` (facultatif) : page de transparence de l'installation, **même site**, chemin relatif terminé
+  par `.html` (mêmes règles qu'un module, sans suffixe). Dès que l'état n'est pas OFF, la pastille ouvre cette
+  page au lieu de l'audit réseau community (qui ne sait pas ce que l'installation fait des données). Champ dans
+  ConfAdmin ; `valider()` et sa copie ConfAdmin le gardent (concordance vérifiée par `check-connexion-serveur.js`).
 
 **Les états** :
 
@@ -166,6 +171,25 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets
   reçus sont copiés ; la session est sauvegardée. Sans plan ouvert : `null`. C'est le pendant entrant de
   `changementsDepuis(ts)`.
+- **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
+  `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
+  tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
+  suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
+  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère + pseudo + ancienneté, grisé
+  après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
+  2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
+  l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+- **Rangement et hors ligne d'un plan ☁️** (v2.9.0) : `plans.ranger(idExt, dossierExt | null) → Promise<bool>` diffuse le
+  rangement fait à l'accueil (refus = le rangement reste local) ; `plans.horsLigne: { etat(idExt) → "garde"|"perime"|"absent",
+  garder(idExt) → Promise<bool> }` alimente le bouton de la ligne (💾 garder / ⬇️ nouvelle version / ✅ gardé, sans action).
+  Un plan ☁️ ouvert est gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour.
+- **Publier un plan local** (v2.9.0) : la fiche ℹ️ d'un plan local appelle `publierPlan({ blob, nom })` (archive gardée,
+  sinon ZIP choisi), puis propose de remplacer la copie locale : `PlanRegistry.transferAssociatedData(ancien, nouveau)`
+  déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
+  registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
+  relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
+  portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
   de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent

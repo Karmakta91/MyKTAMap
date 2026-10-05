@@ -104,6 +104,19 @@ window.Favoris = (function() {
     _emit();
   }
 
+  // Les favoris d'un plan passent sous un autre id (copie locale remplacée par
+  // sa version publiée). Fusion si la cible en a déjà. → nombre déplacé.
+  function transfererPlan(ancienId, nouveauId) {
+    const src = _store.byPlan[ancienId];
+    if (!ancienId || !nouveauId || ancienId === nouveauId || !Array.isArray(src) || !src.length) return 0;
+    _store.byPlan[nouveauId] = (_store.byPlan[nouveauId] || []).concat(src);
+    delete _store.byPlan[ancienId];
+    if (_currentPlanId === ancienId) _currentPlanId = nouveauId;
+    _save();
+    _emit();
+    return src.length;
+  }
+
   function _currentList() {
     if (!_currentPlanId) return [];
     return _store.byPlan[_currentPlanId] || [];
@@ -427,6 +440,7 @@ window.Favoris = (function() {
   return {
     loadPlan:        loadPlan,
     migrerVersUid:   migrerVersUid,   // 🆔 v2.4.0
+    transfererPlan:  transfererPlan,
     getAll:          getAll,
     isFav:           isFav,
     findByPointId:   findByPointId,

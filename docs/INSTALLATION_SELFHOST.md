@@ -694,4 +694,4 @@ chargement (badge clignotant en bas de la home).
 
 *Document maintenu pour la version v1.28.x de MyKTAMap édition
 communautaire. Pour la version pro (multi-tenant, SSO, hébergement
-managé), voir [pro.myktamap.fr](https://pro.myktamap.fr).*
+managé), voir [pro.myktamap.fr/presentation](https://pro.myktamap.fr/presentation/).*

@@ -176,6 +176,19 @@
     return false;
   }
 
+  // Les liaisons d'un plan passent sous un autre id (copie locale remplacée par
+  // sa version publiée). → nombre de côtés réécrits.
+  function transfererPlan(ancienId, nouveauId) {
+    if (!ancienId || !nouveauId || ancienId === nouveauId) return 0;
+    const reg = _load();
+    let n = 0;
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(k) { if (l[k] && l[k].planId === ancienId) { l[k].planId = nouveauId; n++; } });
+    });
+    if (n) _save(reg);
+    return n;
+  }
+
   // Fusionne des liaisons importées (export session / autre appareil).
   // Dédup par id ; les liens sans id valide sont ignorés.
   function importLinks(links) {
@@ -1467,6 +1480,7 @@
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,
+    transfererPlan:       transfererPlan,
     buildPopupHtml:       function(point, layerId) { return buildPopupHtml(point, layerId); },
     ouvrirCreation:       ouvrirCreation,
     naviguerVers:         naviguerVers,

@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab).
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it.
 
 ---
 
@@ -1040,18 +1040,19 @@ The home screen keeps every map you have loaded, from a server or from your devi
 | 🌐 | Map offered by the server |
 | 💾 | ZIP map loaded from your device |
 | ✅ | Map **stored in the app**: instant reload, even offline |
-| 📁 | Map not stored: its ZIP must be re-selected at each load |
+| 📁 | Map not stored: its ZIP must be re-selected at each load — the **💾** on its row stores it afterwards |
 | 🔐 | Old “permanent access” entry: at the next re-selection, it becomes ✅ |
 
 Storing is set in **⚙️ Configuration** (“💾 Store the map in the app on first load”, on by default).
 
 **On each row:**
+- **💾** (📁 map not stored): asks for its ZIP again, checks it is the same map and stores it, without opening it.
 - **⭐** pins the map at the top of the list (click again to unpin).
 - **ℹ️** opens the map's record: its information (version, author, size, mode, dates…), a local **✏️ display name** (40 characters, empty = original name), its **🏷️ Map tags** (comma-separated, 12 at most), the **Tiling for this map** for very large images that were not split, the **💾 Offline availability** of a server map, and **🗑️ Remove from list**. Removing a map does not touch the ZIP on your disk, but deletes its stored archive, its session, its georeferencing, its photos and its backups; its history PDFs stay in 📔 My logbook → 📖 Stories, unless you tick their deletion.
 
 **Above the list:**
 - **🔎 Filter by name…** filters as you type.
-- **🌐 Show server maps** hides or shows again the maps discovered on the server (nothing is deleted, the choice is kept).
+- **🌐 Show site maps** hides or shows again the maps placed on the site (nothing is deleted, the choice is kept).
 - As soon as a map carries a tag, **filter chips** appear: tap one or more to see only those maps.
 
 > 🌐 A server's maps may arrive already tagged. As soon as you edit a map's tags, yours are the ones that count, even empty. To get the server's tags back, remove the map from the list: it will be rediscovered with them.
@@ -1098,7 +1099,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🕵️ Incognito mode**: opens a new window where nothing is saved;
   - **🔐 Local access code** (PIN, Face ID): see “🔭 Going further”;
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
-  - **📚 Server maps**: **🚫 Don't load server maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
+  - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
@@ -1729,7 +1730,7 @@ If the author gave you a **`Licence-pro.json`** file, it turns on the pro editio
 - **On the very first launch**, on the welcome screen, **📂 Import my pro licence** takes you straight into pro mode.
 - On an instance where the administrator installed the license on the server, your profile simply shows ✓, with no button.
 
-A malformed file is refused with a message. The file is read in your browser and sent nowhere.
+A licence is **signed by the author** and issued for one address and a set period: a modified or expired file, or one issued for another address, is refused with a message. The file is read and checked in your browser and sent nowhere.
 
 > ⚖️ The license is **personal**: sharing it with an unauthorised third party breaches the contract made with the author.
 

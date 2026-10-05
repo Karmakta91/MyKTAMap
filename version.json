@@ -1,8 +1,8 @@
 {
-  "version": "v2.7.4",
-  "released": "2026-10-04",
+  "version": "v2.9.0",
+  "released": "2026-10-05",
   "notes": [
-    "🧩 Les installations indépendantes peuvent désormais brancher leur propre base de données, avec des comptes. Rien ne change sur myktamap.fr, qui n'en a pas et n'en aura jamais : tes données restent sur ton appareil.",
-    "📖 La documentation et l'aide ont été réécrites : plus courtes, plus simples, rangées dans l'ordre où tu en as besoin."
+    "💾 Un plan chargé sans être mémorisé peut l'être après coup : touche le 💾 de sa ligne dans « Mes plans ». La case « plans serveur » s'appelle désormais « plans du site ».",
+    "🧩 Sur les installations reliées à une base de données : publier un plan déjà chargé, garder un plan ☁️ hors ligne depuis sa ligne, partager sa position sur un plan. Rien ne change sur myktamap.fr."
   ]
 }

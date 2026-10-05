@@ -639,6 +639,24 @@
     });
   }
 
+  // Toutes les photos d'un plan passent sous un autre id de plan (copie locale
+  // remplacée par sa version publiée). Seul `planId` change. → nombre déplacé.
+  function changerPlan(ancienId, nouveauId) {
+    if (!ancienId || !nouveauId || ancienId === nouveauId) return Promise.resolve(0);
+    return getAllPhotosForPlan(ancienId).then(function(recs) {
+      if (!recs.length) return 0;
+      return _tx("readwrite", function(store) {
+        return Promise.all(recs.map(function(rec) {
+          rec.planId = String(nouveauId);
+          return _reqPromise(store.put(rec));
+        })).then(function() { return recs.length; });
+      });
+    }).catch(function(e) {
+      console.warn("[Photos] changerPlan erreur :", e);
+      return 0;
+    });
+  }
+
   // Migration douce, idempotente. `points` = TOUS les points du plan
   // ({ uid?, id }), session ET calques — les points sans uid comptent pour
   // l'ambiguïté. Une photo rangée sous un nom porté par UN SEUL point, qui a
@@ -741,6 +759,7 @@
     renamePointId:           renamePointId,
     getPhotosForPointRef:    getPhotosForPointRef,   // 🆔 v2.3.0
     setPhotoPointId:         setPhotoPointId,
+    changerPlan:             changerPlan,
     migrerPhotosPlan:        migrerPhotosPlan,
     restorePhoto:            restorePhoto,
     clearAll:                clearAll,

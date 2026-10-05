@@ -61,6 +61,28 @@ t("la vérification est exposée pour les tests (_verifierSignature)", typeof ve
   const autreCle = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey;
   const fausse = Object.assign({}, base, { signature: crypto.sign("sha256", Buffer.from(canonique(base)), { key: autreCle, dsaEncoding: "ieee-p1363" }).toString("base64") });
   t("🩸 signée par une AUTRE clé → refusée", (await verifier(fausse)) === false);
+  // 3. Hors ligne : la licence connue de l'appareil n'est PAS effacée (04/10/2026, KARMA hors
+  // wifi → gate community). Seule une absence déclarée par le serveur (404) la retire.
+  const SW = fs.readFileSync("sw.js", "utf8");
+  t("🩸 Service Worker : hors ligne, /Licence-pro.json répond 503 « hors ligne », jamais 404",
+    /Licence-pro[\s\S]{0,900}status: 503,\s*headers: \{[^}]*"X-Kta-Hors-Ligne": "1"/.test(SW));
+  const lic = signer(Object.assign({}, base, { domaines: ["*"] }));
+  async function apresReponse(status) {
+    const st = { "__mktm_pro_license__": JSON.stringify(lic) };
+    const w2 = Object.assign({}, w, {
+      localStorage: { getItem: (k) => (k in st ? st[k] : null), setItem: (k, v) => { st[k] = String(v); }, removeItem: (k) => { delete st[k]; } },
+      fetch: () => Promise.resolve({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve({}) }),
+    });
+    w2.window = w2;
+    vm.createContext(w2);
+    vm.runInContext(SRC.replace(m[1], JSON.stringify(jwkEssai)), w2, { filename: "proLicense.js" });
+    await new Promise((r) => setTimeout(r, 300));
+    return "__mktm_pro_license__" in st;
+  }
+  t("🩸 hors ligne (503 du Service Worker) : licence de l'appareil gardée", (await apresReponse(503)) === true);
+  t("serveur en panne (500) : licence gardée", (await apresReponse(500)) === true);
+  t("absence déclarée (404) : licence serveur retirée", (await apresReponse(404)) === false);
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 licences : seules les licences signées par la clé de KARMA, valides et pour la bonne adresse, activent le mode pro");

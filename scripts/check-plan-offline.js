@@ -365,8 +365,10 @@ async function _fraicheur() {
 // n'existe pas. Un cache purgé le fait repasser en « télécharger » tout seul.
 {
   const HL2 = sansCommentaires(fs.readFileSync("js/homeLoader.js", "utf8"));
-  t("💾 le bouton n'est rendu que pour les plans SERVEUR",
-    /plan\.type === "server" \? `<button class="plan-row-btn kta-plan-row-dl"/.test(HL2));
+  // Plans SERVEUR (data/) et plans ☁️ d'une installation reliée QUAND une extension sait les
+  // garder (prise plans.horsLigne) — jamais un plan local (il est déjà sur l'appareil).
+  t("💾 le bouton n'est rendu que pour les plans SERVEUR (et ☁️ si une extension sait les garder)",
+    /plan\.type === "server" \|\| \(plan\.type === "ext" && window\.KtaExtensions &&\s*window\.KtaExtensions\.horsLigneExtensionDisponible\(\)\) \? `<button class="plan-row-btn kta-plan-row-dl"/.test(HL2));
   t("🩸 …et il naît CACHÉ (pas de bouton fantôme avant de connaître l'état)",
     /kta-plan-row-dl" data-off="\?" hidden/.test(HL2));
   t("💾 les quatre états sont câblés",

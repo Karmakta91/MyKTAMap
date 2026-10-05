@@ -205,6 +205,8 @@
        « on » n'aboutit qu'avec une licence de source serveur). Aucune requête.
        Contrat : docs/architecture/community-server-line.md §3. -->
   <script src="js/ktaExtensions.js"></script>
+  <!-- 📡 Présences d'une installation reliée (affichage seulement, prise neutre). -->
+  <script src="js/ktaPresences.js" defer></script>
 
   <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
        Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
@@ -457,9 +459,10 @@
 
             <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
             <div class="loader-plans-filters">
-              <label class="loader-plans-filter-row" data-i18n-title="home.plans.showServerTitle" title="Masquer les plans découverts automatiquement sur le serveur (data/index.json)">
+              <label class="loader-plans-filter-row" data-i18n-title="home.plans.showServerTitle" title="Plans posés sur le site (data/index.json), lus au démarrage">
                 <input type="checkbox" id="loaderShowServerPlans" checked>
-                <span data-i18n="home.plans.showServer">🌐 Afficher les plans serveur</span>
+                <span data-i18n="home.plans.showServer">🌐 Afficher les plans du site</span>
+                <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span>
               </label>
             </div>
             <!-- 🏷️ v1.78.0 : organisation de la liste (KARMA 1+3+4) — filtre par
@@ -633,7 +636,7 @@
         <div class="kta-loader-credits kta-loader-contact">
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
-          <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
+          <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr/presentation/" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
           <!-- 🆕 v1.56.0 — ré-accès aux Conditions d'utilisation (consultation, non bloquant) -->
           · ⚖️ <a href="#" onclick="if(window.LegalGate){window.LegalGate.ouvrirConsultation();}return false;" data-i18n="legal.footer.link">Conditions d'utilisation</a>
         </div>
@@ -967,10 +970,11 @@
              Reload requis pour effet immédiat (sinon les plans serveur déjà
              chargés au boot courant restent). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.serverPlansTitle">📚 Plans serveur</div>
+          <div class="kta-perf-titre"><span data-i18n="home.cfg.serverPlansTitle">📚 Plans du site</span>
+            <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></div>
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(180, 140, 255, 0.06); border-color: rgba(180, 140, 255, 0.30);">
             <input type="checkbox" id="loaderSkipServerPlansCb">
-            <span data-i18n-html="home.cfg.skipServerPlans"><strong>🚫 Ne pas charger les plans serveur au démarrage</strong> — désactive l'auto-discovery (<code>data/index.json</code>) au boot et masque le toggle "Afficher plans serveur" du home. Les plans <strong>type "serveur"</strong> seront aussi exclus des statistiques agrégées du bandeau profil. <em>⚠️ Reload requis pour effet complet.</em></span>
+            <span data-i18n-html="home.cfg.skipServerPlans"><strong>🚫 Ne pas charger les plans du site au démarrage</strong> — ignore la liste des plans posés sur le site (<code>data/index.json</code>) et masque la case « Afficher les plans du site » de l'accueil. Ces plans 🌐 sont aussi exclus des statistiques du bandeau profil. <em>⚠️ Rechargement requis pour un effet complet.</em></span>
           </label>
         </div>
 

@@ -368,7 +368,7 @@ if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
 
 ---
 
-### 77. Mécanisme de licence pro — Licence-pro.json + import manuel (v1.28.2 → v1.28.5 — 2026-05-30)
+### 77. Mécanisme de licence pro — Licence-pro.json signée + import manuel
 
 4 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
 sans casser la philo offline-first ni l'audit réseau.
@@ -408,27 +408,36 @@ Tous les éléments à basculer sont wrappés dans l'un ou l'autre. Pas de chang
 NETWORK_AUDIT.html embarque sa propre logique de détection inline (mini-script qui lit la classe sur `html`)
 car la page est statique et peut être ouverte hors contexte de l'app principale.
 
-#### 77.3 Format `Licence-pro.json`
+#### 77.3 Format `Licence-pro.json` — licence SIGNÉE
 
 ```json
 {
   "instance":     "pro",                              // REQUIS
   "license_hash": "MKTM-LIC-<32 hex chars>",          // REQUIS pour import manuel
-  "client":       "Acme SpeleSecours",                // optionnel — futur affichage
-  "license_id":   "MKTM-2026-001",                    // optionnel — traçabilité interne
-  "license_type": "annual" | "perpetual" | "free-grimp", // optionnel
-  "issued_at":    "2026-05-30",                       // optionnel
-  "valid_until":  "2027-05-30"                        // optionnel
+  "client":       "Acme SpeleSecours",
+  "license_id":   "MKTM-2026-001",
+  "license_type": "annual" | "test" | …,
+  "domaines":     ["carto.club.org"],                 // REQUIS — noms d'hôte couverts ; "*" = licence de test
+  "issued_at":    "2026-05-30",
+  "valid_until":  "2027-05-30",                       // vérifié : expirée = refusée
+  "signature":    "<base64>"                          // REQUIS — ECDSA P-256 / SHA-256, brute r||s
 }
 ```
 
-**Validation hash** : regex stricte `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`. Génération côté KARMA :
-`echo "MKTM-LIC-$(openssl rand -hex 16)"`. Le hash est nominatif (lié à 1 client/contrat).
+**Une licence n'active le mode pro que si** (`_verifierSignature`) : sa `signature` est valide pour la **clé
+publique** embarquée (`CLE_PUBLIQUE_JWK`, WebCrypto), elle n'est pas expirée, et ses `domaines` couvrent
+`location.hostname` (ou `"*"`). Forme signée = la licence **sans** `signature`, clés triées récursivement
+(même canonisation côté émetteur). Sans WebCrypto (contexte non sécurisé), aucune licence n'est acceptée.
+Vérifiée au fetch serveur (avant mémorisation), à l'import manuel (`license.err.signature`) et au démarrage
+pour les licences mémorisées (retirées si invalides). La clé privée qui signe ne vit **jamais** dans ce dépôt
+(`check-no-pro-leak.js` refuse `.pem`, `BEGIN … PRIVATE KEY`, JWK à champ `d`, `signer-licence.js`).
 
-**Backward compat** : les fichiers servis côté serveur SANS `license_hash` (déploiements legacy v1.28.2/3
-faits avant l'introduction du hash) sont acceptés avec warning console seulement. L'import manuel en
-revanche **exige** un hash bien formé (= toute licence livrée aux clients à partir de v1.28.4 doit en
-contenir un).
+**Validation hash** (en plus de la signature) : regex stricte `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`, exigée à
+l'import manuel. Le hash et la licence sont nominatifs (1 client/contrat).
+
+🛡️ `scripts/check-licence.js` (pré-commit, bloquant) **exécute** la vérification avec une clé d'essai
+substituée : signée valide / `*` acceptées ; altérée, sans signature, expirée, autre domaine, autre clé
+refusées ; clé embarquée publique (pas de `d`, pas de PEM privé).
 
 #### 77.4 Service Worker — bypass cache total
 

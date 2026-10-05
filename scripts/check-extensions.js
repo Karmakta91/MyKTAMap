@@ -202,6 +202,105 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("pseudo vide → aucun compte", K4.compte() === null);
   }
 
+  // ═════════ 6 bis ter. RANGEMENT DIFFUSÉ + HORS LIGNE D'UN PLAN ☁️ ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    w.PlanRegistry = { findById: (id) => (id === "ext_a" ? { id, type: "ext", extId: "A" } : id === "loc" ? { id, type: "local" } : null) };
+    t("sans extension : rien n'est diffusé, pas de bouton hors ligne",
+      (await K.rangerPlanExtension("ext_a", null)) === false && K.horsLigneExtensionDisponible() === false &&
+      (await K.etatHorsLigneExtension("ext_a")) === null);
+    const appels = [];
+    K.register({ nom: "r1", apiVersion: 1, plans: { lister: () => Promise.resolve([]), charger: () => Promise.reject(new Error("x")),
+      ranger: (id, d) => { appels.push([id, d]); return Promise.resolve(true); },
+      horsLigne: { etat: () => Promise.resolve("perime"), garder: () => Promise.resolve(true) } } });
+    K.associerDossiersExtension({ f_secteur: "D1" });
+    t("dossier de l'installation : rangé côté serveur avec les ids de l'extension",
+      (await K.rangerPlanExtension("ext_a", "f_secteur")) === true && JSON.stringify(appels[0]) === '["A","D1"]');
+    t("sortir d'un dossier de l'installation : dossier null envoyé", (await K.rangerPlanExtension("ext_a", null)) === true && appels[1][1] === null);
+    t("🩸 dossier créé sur l'appareil : JAMAIS diffusé", (await K.rangerPlanExtension("ext_a", "f_perso")) === false && appels.length === 2);
+    t("plan local : jamais envoyé à l'extension", (await K.rangerPlanExtension("loc", "f_secteur")) === false && appels.length === 2);
+    t("hors ligne d'un plan ☁️ : état et copie via l'extension",
+      K.horsLigneExtensionDisponible() && (await K.etatHorsLigneExtension("ext_a")) === "perime" && (await K.garderPlanExtension("ext_a")) === true);
+    const { K: K2, w: w2 } = nouveauContexte(null);
+    w2.PlanRegistry = w.PlanRegistry;
+    K2.register({ nom: "r2", apiVersion: 1, plans: { lister: () => [], charger: () => null, ranger: () => { throw new Error("x"); },
+      horsLigne: { etat: () => "n'importe quoi", garder: () => Promise.reject(new Error("y")) } } });
+    K2.associerDossiersExtension({ f_secteur: "D1" });
+    t("🩸 extension en erreur : refus, état inconnu, aucune exception",
+      (await K2.rangerPlanExtension("ext_a", "f_secteur")) === false && (await K2.etatHorsLigneExtension("ext_a")) === null &&
+      (await K2.garderPlanExtension("ext_a")) === false);
+  }
+
+  // ═════════ 6 bis quinquies. ACTIONS SUR LA FICHE D'UN OBJET ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune action sur les fiches", K.actionsObjet("pt_x").length === 0);
+    K.register({ nom: "ao", apiVersion: 1, actionsObjet: (uid) => [{ libelle: "  🕘 Historique  ", action: () => uid },
+      { libelle: "", action: () => 1 }, { libelle: "sans action" }, "n'importe quoi"] });
+    const l = K.actionsObjet("pt_x");
+    t("actions nettoyées (libellé, fonction), formes inattendues écartées", l.length === 1 && l[0].libelle === "🕘 Historique");
+    t("uid absent → aucune action", K.actionsObjet("").length === 0);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ao2", apiVersion: 1, actionsObjet: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → aucune action, aucune exception", K2.actionsObjet("pt_x").length === 0);
+    const U = lire("js/utils.js");
+    t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
+      /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
+    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions",
+      /if \(ext\.actionsObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+  }
+
+  // ═════════ 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ═════════
+  {
+    const HLp = lire("js/homeLoader.js");
+    t("fiche ℹ️ : « Publier sur l'installation » seulement pour un plan local ET si une extension sait publier",
+      /plan\.type !== "ext" && plan\.type !== "server" && window\.KtaExtensions &&[\s\S]{0,120}aPrise\("publierPlan"\)/.test(HLp));
+    t("…l'envoi passe par la prise (archive gardée, sinon fichier choisi)",
+      /window\.KtaExtensions\.publierPlan\(\{ blob: blob/.test(HLp) && /input\.accept = "\.zip,application\/zip"/.test(HLp));
+  }
+
+  // ═════════ 6 bis quater. PLAN PUBLIÉ : LA LISTE EST RELUE ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    const evts = [];
+    w.dispatchEvent = (e) => { evts.push(e.type); return true; };
+    K.register({ nom: "pub", apiVersion: 1, publierPlan: () => Promise.resolve({ id: "x" }) });
+    await K.publierPlan({ blob: null, nom: "n" });
+    t("publication réussie → mktm:plans-extension-changes (le plan rejoint l'accueil sans redémarrer)",
+      evts.indexOf("mktm:plans-extension-changes") >= 0);
+    t("…et l'accueil relit la liste à cet événement",
+      /addEventListener\("mktm:plans-extension-changes"[\s\S]{0,200}_decouvrirPlansExtension\(\)/.test(lire("js/main.js")));
+  }
+
+  // ═════════ 6 bis bis. PRÉSENCE (tracking à plusieurs, opt-in) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans extension : présence inactive, pas de tuile (aPrise faux)", K.presenceActive() === false && K.aPrise("presence") === false);
+    t("sans extension : basculer ne publie rien (→ false)", (await K.basculerPresence()) === false);
+    t("sans carte : aucune position lue", K.positionTracker() === null);
+    w.map = {};
+    w.getTrackingPosition = () => ({ x: 10, y: 20 });
+    w.getTrackerLevel = () => -1;
+    w.getTrackingPositionEtat = () => ({ suiviActif: false, confirmee: false });
+    t("🩸 ni suivi ni position confirmée → null (jamais le point de départ du plan publié)", K.positionTracker() === null);
+    w.getTrackingPositionEtat = () => ({ suiviActif: true, confirmee: false });
+    const p = K.positionTracker();
+    t("suivi en cours → position + niveau", p && p.x === 10 && p.y === 20 && p.niveau === -1 && p.suiviActif === true);
+    t("affichage sans module de rendu → 0, sans erreur", K.afficherPresences([{ id: "a", pseudo: "b", x: 1, y: 2 }]) === 0);
+    let actif = false;
+    K.register({ nom: "p1", apiVersion: 1, presence: { actif: () => actif, basculer: () => { actif = !actif; } } });
+    t("extension déclarée : tuile proposée, bascule effective", K.aPrise("presence") && (await K.basculerPresence()) === true && K.presenceActive());
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "p2", apiVersion: 1, presence: { actif: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → présence inactive, aucune exception", K2.presenceActive() === false && (await K2.basculerPresence()) === false);
+    const IF = lire("js/interface.js");
+    t("tuile 📡 du tracker : seulement si une extension a la prise « presence »",
+      /X\.aPrise\("presence"\)/.test(IF) && /_groupes\.tracker\.dynamicSousActions = function/.test(IF));
+    const PR = lire("js/ktaPresences.js");
+    t("🩸 présences : affichage seulement (aucune requête réseau dans le module)", !/fetch\(|XMLHttpRequest|WebSocket/.test(PR));
+    t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
+  }
+
   // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
   {
     const { K, w } = nouveauContexte(null);
@@ -281,8 +380,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /window\.KtaExtensions\.importAutorise === "function" &&\s*!window\.KtaExtensions\.importAutorise\(\)\) return true;/.test(MAIN));
     t("export de profil : les archives de plans passent par la prise", /window\.KtaExtensions\.exportAutorise\(p\.id\)/.test(PROF));
     t("plans d'extension : inscrits en type « ext » après la découverte serveur", /_decouvrirPlansExtension\(\)/.test(MAIN) && /type: "ext", extId:/.test(MAIN));
-    t("plans d'extension : ouverts via la prise, gardés sur l'appareil, type conservé",
-      /if \(plan\.type === "ext"\) \{/.test(HL) && /typeRegistre: "ext", storeBlob: true/.test(HL) && /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
+    // Gardé selon « Mémoriser le plan dans l'app » ; une copie DÉJÀ gardée est toujours mise à
+    // jour (sinon l'ancienne passerait pour la version courante).
+    t("plans d'extension : ouverts via la prise, gardés selon le réglage (copie existante toujours à jour), type conservé",
+      /if \(plan\.type === "ext"\) \{/.test(HL) &&
+      /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
+      /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
     t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
     t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&

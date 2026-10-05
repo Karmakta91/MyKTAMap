@@ -2449,6 +2449,26 @@ function initInterface() {
     }
   }
   window.ktaDemarrerSuivi = function() { _demarrerSuivi(null); };
+  // 📡 Tuile « Partager ma position sur ce plan » : seulement si une installation
+  // reliée sait publier une présence (prise neutre `presence`, js/ktaExtensions.js).
+  function _tuilePresence() {
+    const X = window.KtaExtensions;
+    if (!X || typeof X.aPrise !== "function" || !X.aPrise("presence")) return null;
+    return {
+      icone: "📡",
+      titre: window.I18n.t("ui.subaction.presence"),
+      section: "suivi",
+      isActive: function() { return X.presenceActive() === true; },
+      onClick: function(btnSub) {
+        X.basculerPresence().then(function(actif) {
+          if (btnSub) btnSub.classList.toggle("kta-actif", actif);
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t(actif ? "presence.toast.on" : "presence.toast.off"), "info");
+          }
+        });
+      }
+    };
+  }
   _creerGroupeAccordeon({
     id: "tracker",
     iconePrincipale: "🧭",
@@ -2559,6 +2579,16 @@ function initInterface() {
             // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
 // tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
 _setGroupeModeActif("tracker", isTracking, null);
+// Liste du tracker recalculée à chaque ouverture : la tuile 📡 n'existe que si une
+// extension la propose (elle peut se déclarer après la construction du groupe).
+if (_groupes.tracker) {
+  _groupes.tracker.dynamicSousActions = function() {
+    const l = (_groupes.tracker.sousActionsConfig || []).slice();
+    const p = _tuilePresence();
+    if (p) l.push(p);
+    return l;
+  };
+}
             return;
           }
           modeRecalage = true;

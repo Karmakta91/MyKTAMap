@@ -940,6 +940,7 @@
         absent:    { txt: "⬇️", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
         incomplet: { txt: "⬇️", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
         partiel:   { txt: "↻",  cle: "home.plans.offline.rowRetry",    repli: "Disponible, mais des fichiers manquent — réessayer" },
+        perime:    { txt: "⬇️", cle: "home.plans.offline.rowPerime",   repli: "Nouvelle version sur le serveur — la télécharger" },
         complet:   { txt: "↻",  cle: "home.plans.offline.rowUpdate",   repli: "Disponible hors-ligne — mettre à jour" }
       };
 
@@ -949,15 +950,34 @@
         btn.textContent = meta.txt;
         btn.title       = _homeT(meta.cle, meta.repli);
         btn.dataset.off = etat;
-        btn.classList.toggle("kta-dl-ok", etat === "complet");
+        btn.classList.toggle("kta-dl-ok", etat === "complet" || etat === "extGarde");
         btn.classList.toggle("kta-dl-partiel", etat === "partiel" || etat === "incomplet");
         btn.hidden = false;
       }
 
       // Un SEUL caches.keys() pour toute la liste (cf PlanOffline.statuts).
+      // ☁️ Plans d'une installation reliée : l'état vient de l'extension (sa copie gardée).
+      // Gardé = un CONSTAT (✅, sans action) : l'ancien « ↻ mettre à jour » ne faisait rien.
+      const _ETAT_EXT = { garde: "extGarde", perime: "perime", absent: "extAbsent" };
+      _ETATS_DL.extGarde  = { txt: "✅", cle: "home.plans.offline.rowExtGarde",  repli: "Gardé sur l'appareil, à jour" };
+      _ETATS_DL.extAbsent = { txt: "💾", cle: "home.plans.offline.rowExtAbsent", repli: "Garder sur l'appareil (hors ligne)" };
+      // Plan LOCAL dont l'archive n'est pas mémorisée (📁) : la mémoriser après coup.
+      _ETATS_DL.localPick = { txt: "💾", cle: "home.plans.offline.rowMemoriser", repli: "Mémoriser ce plan dans l'app" };
       async function _rafraichirBoutonsHorsLigne() {
+        const X = window.KtaExtensions;
+        Array.from(document.querySelectorAll(".kta-plan-row-dl")).forEach(function (b) {
+          const row = b.closest(".plan-row");
+          const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
+          if (p && p.type === "local") { _peindreBoutonDl(b, "localPick"); return; }
+          if (!p || p.type !== "ext" || !X || typeof X.etatHorsLigneExtension !== "function") return;
+          X.etatHorsLigneExtension(p.id).then(function (e) { if (e) _peindreBoutonDl(b, _ETAT_EXT[e]); else b.hidden = true; });
+        });
         if (!window.PlanOffline || !window.PlanOffline.supporte()) return;
-        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl"));
+        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl")).filter(function (b) {
+          const row = b.closest(".plan-row");
+          const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
+          return p && p.type === "server";
+        });
         if (!btns.length) return;
         const ids = btns.map(function (b) {
           const row = b.closest(".plan-row");
@@ -976,6 +996,18 @@
       // progression : pas de modale, on reste dans la liste.
       async function _lancerHorsLigneLigne(planId, btn) {
         const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
+        if (plan && plan.type === "local" && !plan.storedBlob) { _memoriserApresCoup(plan); return; }
+        if (plan && plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.garderPlanExtension === "function") {
+          if (btn.dataset.off === "extGarde") return;   // déjà gardé et à jour : rien à faire
+          btn.disabled = true; btn.textContent = "…";
+          const ok = await window.KtaExtensions.garderPlanExtension(planId);
+          btn.disabled = false;
+          if (!ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_homeT("home.plans.offline.rowExtEchec", "Téléchargement impossible (serveur injoignable ou stockage plein)"), "warn");
+          }
+          _rafraichirBoutonsHorsLigne();
+          return;
+        }
         if (!plan || plan.type !== "server" || !window.PlanOffline) return;
         const avant = { txt: btn.textContent, title: btn.title };
         btn.disabled = true;
@@ -996,6 +1028,69 @@
         btn.disabled = false;
         // On RELIT le cache plutôt que de croire le résultat retourné.
         _rafraichirBoutonsHorsLigne();
+      }
+
+      // 💾 Mémoriser APRÈS COUP un plan local chargé sans copie (réglage « Mémoriser le
+      // plan dans l'app » décoché) : on redemande son ZIP — le navigateur ne l'a pas
+      // gardé —, on vérifie que c'est bien ce plan (nom), puis on range la copie. Le
+      // plan n'est pas ouvert.
+      async function _memoriserApresCoup(plan) {
+        const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+        const toast = function(m, ty) { if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, ty); };
+        const file = await new Promise(function(resolve) {
+          const input = document.createElement("input");
+          input.type = "file"; input.accept = ".zip,application/zip";
+          input.onchange = function() { resolve(input.files[0] || null); };
+          input.click();
+        });
+        if (!file) return;
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const entree = zip.file(/(^|\/)plan-config\.json$/)[0];
+          if (!entree) throw new Error("plan-config.json introuvable");
+          const cfg = JSON.parse(await entree.async("string"));
+          const nomZip = String((cfg.plan && cfg.plan.name) || "").trim();
+          const nomPlan = String(plan.name || "").trim();
+          if (nomZip && nomPlan && nomZip !== nomPlan) { await _afficherModaleNomZipKO(nomZip, nomPlan); return; }
+          if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
+          const r = await window.PlanRegistry.saveBlob(plan.id, file);
+          if (!r || !r.ok) throw new Error((r && r.error) || "stockage refusé");
+          window.PlanRegistry.addOrUpdate({ id: plan.id, storedBlob: true, originalFilename: file.name, fileSize: file.size });
+          toast(t("home.plans.offline.memoriseOk"), "info");
+        } catch (e) {
+          console.warn("[Loader] mémorisation après coup :", e);
+          toast(t("home.plans.offline.memoriseEchec") + " " + String((e && e.message) || e).slice(0, 100), "warn");
+        }
+        if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+      }
+
+      // ☁️ Après « Publier ce plan » : remplacer la copie locale par la version ☁️.
+      // Les données de l'appareil (session, photos, favoris, liaisons, calage) passent
+      // sur la version ☁️ ; la synchro de l'extension les envoie à la première
+      // ouverture (tout objet plus récent que le dernier envoi — aucun pour un plan neuf).
+      async function _basculerVersPublie(planLocal, planPublie) {
+        const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+        const toast = function(m, ty) { if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, ty); };
+        const PR = window.PlanRegistry;
+        if (!planPublie || !planPublie.id || typeof window.ktaIdRegistreExtension !== "function" ||
+            typeof PR.transferAssociatedData !== "function") return false;
+        if (window._currentLoadedPlanId === planLocal.id && typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche()) return false;
+        const oui = await window.ktaConfirm(
+          t("home.plans.info.basculeMsg", { nom: escapeHtml(PR.displayName(planLocal)) }),
+          { titre: t("home.plans.info.basculeTitre"), okLabel: t("home.plans.info.basculeOk") });
+        if (!oui) return false;
+        // L'entrée ☁️ arrive par la relecture de la liste (événement de publication).
+        const idExt = window.ktaIdRegistreExtension(planPublie.id);
+        for (let i = 0; i < 40 && !PR.findById(idExt); i++) await new Promise(function(r) { setTimeout(r, 250); });
+        if (!PR.findById(idExt)) { toast(t("home.plans.info.basculeEchec"), "warn"); return false; }
+        const bilan = await PR.transferAssociatedData(planLocal.id, idExt);
+        if (!bilan.ok) { toast(t("home.plans.info.basculeEchec"), "warn"); return false; }
+        if (planLocal.pinned) PR.setPinned(idExt, true);
+        PR.remove(planLocal.id);   // entrée + archive locale ; ses sauvegardes de session suivent la purge des orphelins
+        if (typeof PR.purgeAssociatedData === "function") { try { await PR.purgeAssociatedData(planLocal.id); } catch (e) { /* rien */ } }
+        console.log("[Loader] ☁️ copie locale remplacée par la version publiée :", planLocal.id, "→", idExt, bilan);
+        toast(t("home.plans.info.basculeOkToast", { photos: bilan.photos }), "info");
+        return true;
       }
 
 function planRowHTML(plan) {
@@ -1076,7 +1171,10 @@ function planRowHTML(plan) {
             </div>
             <div class="plan-row-actions">
               ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
-              ${plan.type === "server" ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
+              ${(plan.type === "local" && !plan.storedBlob) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="localPick"
+                title="${_homeT("home.plans.offline.rowMemoriser", "Mémoriser ce plan dans l'app")}">💾</button>` : ""}
+              ${plan.type === "server" || (plan.type === "ext" && window.KtaExtensions &&
+                window.KtaExtensions.horsLigneExtensionDisponible()) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
                 title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
             </div>
@@ -1124,8 +1222,17 @@ function planRowHTML(plan) {
       // les users qui n'ont jamais touché cette pref).
       // 🔍 Exposé global pour permettre à main.js d'y accéder au boot.
       const LS_SKIP_SERVER = "myktamap_skip_server_plans_v1";
+      // Jamais choisi par l'utilisateur → défaut de l'instance : `index.json >
+      // config.sitePlansHiddenDefault: true` (installation où tout vit en base).
+      // Sans effet en kiosque `serverPlansOnly` (les plans du site y sont les seuls).
       window._loaderSkipServerPlans = function() {
-        return localStorage.getItem(LS_SKIP_SERVER) === "true";
+        let v = null;
+        try { v = localStorage.getItem(LS_SKIP_SERVER); } catch (e) { v = null; }
+        if (v === null) {
+          const cfg = window.KIOSK_CONFIG || {};
+          return cfg.sitePlansHiddenDefault === true && cfg.serverPlansOnly !== true;
+        }
+        return v === "true";
       };
       function _loaderSetSkipServerPlans(value) {
         localStorage.setItem(LS_SKIP_SERVER, value ? "true" : "false");
@@ -1441,6 +1548,19 @@ function planRowHTML(plan) {
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                         '</div>' : '') +
               offlineHtml +
+              // ☁️ Plan LOCAL + installation reliée qui sait publier (prise publierPlan) :
+              // l'envoyer sur l'installation, sans repasser par le Générateur.
+              ((plan.type !== "ext" && plan.type !== "server" && window.KtaExtensions &&
+                typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("publierPlan"))
+                ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                    '<div style="font-weight:600; margin-bottom:6px;">☁️ ' + escapeHtml(_t("home.plans.info.publishTitle")) + '</div>' +
+                    '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">☁️ ' +
+                      escapeHtml(_t("home.plans.info.publishBtn")) + '</button>' +
+                    '<div id="kta-plan-publish-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
+                    '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                      escapeHtml(_t("home.plans.info.publishHint")) + '</div>' +
+                  '</div>'
+                : '') +
               // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
               // (le ✕ de la liste est retiré : clic accidentel trop facile).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
@@ -1643,6 +1763,76 @@ function planRowHTML(plan) {
         }
 
         // ✏️ v1.79.1 — renommage d'affichage (vide = retour au nom d'origine)
+        // ☁️ Publication d'un plan local sur l'installation reliée : l'archive gardée sur
+        // l'appareil si elle existe, sinon le fichier ZIP choisi par l'utilisateur.
+        const btnPublish = document.getElementById("kta-plan-publish");
+        if (btnPublish) {
+          btnPublish.addEventListener("click", async function() {
+            const st = document.getElementById("kta-plan-publish-status");
+            const dire = function(txt, cls) { if (st) { st.textContent = txt; st.className = cls || ""; } };
+            const reussi = async function(publie, cleTexte) {
+              dire(_t(cleTexte || "home.plans.info.publishOk"), "kta-tx-ok");
+              if (await _basculerVersPublie(plan, publie)) {
+                modal.remove();
+                if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+              }
+            };
+            const envoyer = async function(blob) {
+              btnPublish.disabled = true;
+              const nom = window.PlanRegistry.displayName(plan);
+              // Un gros plan sur une connexion lente : plusieurs minutes. Le temps qui
+              // défile montre que l'app travaille (retour KARMA 05/10 : « ça répond pas »).
+              const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+              const t0 = Date.now();
+              const tic = function() {
+                const s = Math.round((Date.now() - t0) / 1000);
+                dire(_t("home.plans.info.publishEnCours", { mo: mo, duree: Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") }), "kta-tx-muted");
+              };
+              tic();
+              const minuteur = setInterval(tic, 1000);
+              // Plans ☁️ connus AVANT l'envoi : si la réponse se perd en route (relais qui
+              // coupe une réponse longue), un plan NOUVEAU de ce nom prouve que l'envoi a abouti.
+              let avant = null;
+              try { avant = new Set((await window.KtaExtensions.listerPlansExtension()).map(function(p) { return String(p.id); })); }
+              catch (e) { avant = null; }
+              let publie = null, erreur = null;
+              try { publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: nom }); }
+              catch (e) { erreur = e; }
+              clearInterval(minuteur);
+              if (publie) { await reussi(publie); return; }
+              console.warn("[Loader] publication :", erreur);
+              dire(_t("home.plans.info.publishEchec") + " " + String((erreur && erreur.message) || erreur).slice(0, 120), "kta-tx-err");
+              btnPublish.disabled = false;
+              if (!avant) return;
+              // Vérification en arrière-plan (3 min) : l'erreur reste affichée tant que
+              // rien ne prouve le contraire ; un refus définitif ne fait donc rien attendre.
+              for (let i = 0; i < 36 && btnPublish.isConnected; i++) {
+                await new Promise(function(r) { setTimeout(r, 5000); });
+                let l = [];
+                try { l = await window.KtaExtensions.listerPlansExtension(); } catch (e) { l = []; }
+                const arrive = l.find(function(p) { return !avant.has(String(p.id)) && String(p.name || "").trim() === nom.trim(); });
+                if (arrive) {
+                  console.warn("[Loader] publication : réponse perdue, mais le plan est arrivé :", arrive.id);
+                  btnPublish.disabled = true;
+                  try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+                  await reussi({ id: arrive.id, nom: arrive.name }, "home.plans.info.publishRattrape");
+                  return;
+                }
+              }
+            };
+            let blob = null;
+            if (plan.storedBlob && typeof window.PlanRegistry.getBlob === "function") {
+              try { blob = await window.PlanRegistry.getBlob(plan.id); } catch (e) { blob = null; }
+            }
+            if (blob) { envoyer(blob); return; }
+            const input = document.createElement("input");
+            input.type = "file"; input.accept = ".zip,application/zip";
+            input.addEventListener("change", function() { if (input.files && input.files[0]) envoyer(input.files[0]); });
+            dire(_t("home.plans.info.publishChoisir"), "kta-tx-muted");
+            input.click();
+          });
+        }
+
         const btnRename = document.getElementById("kta-plan-rename-save");
         if (btnRename) {
           btnRename.addEventListener("click", function() {
@@ -1789,6 +1979,9 @@ function planRowHTML(plan) {
                            && window._loaderSkipServerPlans();
         const showServer = !skipServer && _loaderShowServerPlans();
         const filtered = showServer ? all : all.filter(function(p) { return p.type !== "server"; });
+        const _horsBase = !!(window.KtaExtensions && typeof window.KtaExtensions.aPrise === "function" &&
+          window.KtaExtensions.aPrise("plans"));
+        document.querySelectorAll(".kta-hors-base").forEach(function(el) { el.hidden = !_horsBase; });
 
         // Sync visuelle de la checkbox (au cas où refreshPlansList est appelé
         // sans que le checkbox ait été coché manuellement, ex: au boot).
@@ -2295,8 +2488,28 @@ function planRowHTML(plan) {
 
       function _deplacerPlans(ids, fid) {
         const PR = window.PlanRegistry;
+        const X = window.KtaExtensions;
+        const avant = {};
+        ids.forEach(function(id) { avant[id] = PR.planFolderId(PR.findById(id)); });
         let n = 0;
         ids.forEach(function(id) { if (PR.setPlanFolder(id, fid || null, "user")) n++; });
+        // ☁️ Plan d'une installation reliée, rangé dans (ou sorti d') un dossier DE
+        // L'INSTALLATION : rangé pour tous ceux qui voient ce plan, si le compte en a le
+        // droit. Sinon (droit, hors ligne, dossier de l'appareil) : rangement local seul.
+        if (X && typeof X.rangerPlanExtension === "function") {
+          const diffuses = ids.filter(function(id) {
+            const e = PR.findById(id);
+            return e && e.type === "ext" && (fid ? !!X.dossierExtension(fid) : !!X.dossierExtension(avant[id]));
+          });
+          if (diffuses.length) {
+            Promise.all(diffuses.map(function(id) { return X.rangerPlanExtension(id, fid || null); })).then(function(r) {
+              const ok = r.filter(Boolean).length;
+              if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+                window.OOMGuard.showToast(window.I18n.t("home.plans.folders.toastDiffuse", { n: ok }), "info");
+              }
+            });
+          }
+        }
         if (fid) PR.setFolderCollapsed(fid, false);   // on voit où le plan est arrivé
         _plansSelection.clear();
         _plansSelectMode = false;                       // un déplacement clôt la sélection
@@ -2479,7 +2692,8 @@ function planRowHTML(plan) {
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
             await chargerZipFichier(fichier, (segmented !== "auto") ? segmented : (plan.perfPreset || "auto"),
-                                    { planId: plan.id, typeRegistre: "ext", storeBlob: true, zipFile: fichier });
+                                    { planId: plan.id, typeRegistre: "ext", zipFile: fichier,
+                                      storeBlob: !!plan.storedBlob || window.ktaMemoriserPlanActif() });
             if (window.masquerLoader) window.masquerLoader();
           } catch (e) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();

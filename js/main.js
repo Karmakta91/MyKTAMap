@@ -232,12 +232,16 @@ function _ktaInstanceIndisponible() {
 // inscrits au registre en `type: "ext"`, ouverts par KtaExtensions.charger
 // PlanExtension (homeLoader). Une extension qui ne répond pas = aucun plan
 // ajouté (prise d'information : erreur ignorée).
+// Id du registre d'un plan d'extension (☁️) — seule fabrique, aussi lue par l'accueil.
+window.ktaIdRegistreExtension = function(extId) {
+  return "ext_" + String(extId).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+};
 async function _decouvrirPlansExtension() {
   if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
   const liste = await window.KtaExtensions.listerPlansExtension();
   liste.forEach(function(p) {
     if (!p || !p.id) return;
-    const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    const id = window.ktaIdRegistreExtension(p.id);
     window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
       version: p.version || null });
     if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
@@ -255,9 +259,16 @@ async function _decouvrirPlansExtension() {
     const table = window.PlanRegistry.applyIndexFolders(deIndex.concat(dossiers.map(function(d) {
       return Object.assign({}, d, { id: "ext_" + d.id });
     })));
+    // Correspondance dossier du registre → dossier de l'extension : un plan rangé à la main
+    // dans un dossier de l'installation y est rangé pour tous (si le compte en a le droit).
+    if (typeof window.KtaExtensions.associerDossiersExtension === "function") {
+      const corresp = {};
+      dossiers.forEach(function(d) { const r = table["ext_" + d.id]; if (r) corresp[r] = String(d.id); });
+      window.KtaExtensions.associerDossiersExtension(corresp);
+    }
     liste.forEach(function(p) {
       if (!p || !p.id || typeof window.PlanRegistry.setPlanFolder !== "function") return;
-      const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const id = window.ktaIdRegistreExtension(p.id);
       const cible = p.dossier ? (table["ext_" + p.dossier] || null) : null;
       const e = window.PlanRegistry.findById(id);
       if (cible) window.PlanRegistry.setPlanFolder(id, cible, "index");
@@ -344,6 +355,12 @@ function _appliquerConfigKiosque() {
   // (décision KARMA 9), SEULEMENT si l'utilisateur n'a jamais choisi : son
   // choix, une fois fait, prime toujours. On ne l'écrit pas dans le registre
   // (ce serait un choix qu'il n'a pas fait) : homeLoader lit ce défaut.
+  // Plans du site (data/index.json) non chargés par défaut — installation où tout vit
+  // en base. Même doctrine que plansViewDefault : le choix de l'utilisateur prime
+  // (lu par homeLoader > _loaderSkipServerPlans, rien n'est écrit ici).
+  if (cfg.sitePlansHiddenDefault === true && cfg.serverPlansOnly !== true) {
+    console.log("[Main] Instance : plans du site masqués par défaut (sitePlansHiddenDefault)");
+  }
   if (cfg.plansViewDefault === "folders" || cfg.plansViewDefault === "all") {
     window._ktaPlansViewParDefaut = cfg.plansViewDefault;
     const dejaChoisi = !!(window.PlanRegistry && window.PlanRegistry.hasPlansViewChoice && window.PlanRegistry.hasPlansViewChoice());
@@ -2354,6 +2371,12 @@ window.proposerRedemarrageLangue = function() {
     await decouvrirPlansServeur(_idxServeur);
   }
   try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
+  // Un plan publié (ou retiré) par une extension en cours de route : la liste est relue.
+  window.addEventListener("mktm:plans-extension-changes", function() {
+    _decouvrirPlansExtension().then(function() {
+      if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+    }).catch(function(e) { console.warn("[Main] plans d'extension :", e); });
+  });
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
   // le charger automatiquement comme avant

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.7.4";
+const CACHE_NAME = "myktamap-cache-v2.9.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -135,6 +135,7 @@ const ASSETS_TO_CACHE = [
   "./js/proLicense.js",
   // 🔌 v2.0.0 : connexion serveur de l'instance (état + pastille), aucune requête.
   "./js/ktaExtensions.js",
+  "./js/ktaPresences.js",
   // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
   "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
@@ -1080,14 +1081,16 @@ self.addEventListener("fetch", (event) => {
   //  - Sur instance pro : 200 attendu → mode pro activé côté client
   //  - Si un déployeur retire le fichier, le mode pro doit s'éteindre
   //    instantanément au prochain check (pas de cache LRU qui le maintient).
-  // Le `cache: "no-store"` force la requête vers le réseau, le `catch` retourne
-  // un 404 explicite si offline (= revient en mode community gracieusement).
+  // Le `cache: "no-store"` force la requête vers le réseau. Hors ligne, le `catch`
+  // répond 503 marqué `X-Kta-Hors-Ligne` — PAS 404 : un 404 voulait dire « pas de
+  // licence » et effaçait celle de l'appareil (04/10/2026, KARMA hors wifi : gate
+  // community au lieu du dernier compte, état « licence requise » au lieu de « injoignable »).
   if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
         .catch(() => new Response("", {
-          status: 404,
-          headers: { "Content-Type": "application/json" }
+          status: 503,
+          headers: { "Content-Type": "application/json", "X-Kta-Hors-Ligne": "1" }
         }))
     );
     return;

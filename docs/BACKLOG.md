@@ -133,6 +133,34 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
+## 🔒 Affichage de données d'autres comptes — XSS et CSP (04/10/2026)
+
+Contexte : sur une **installation reliée** (synchro), l'app affiche des noms et des notes écrits par d'autres comptes ;
+avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie accepte `script-src 'unsafe-inline'`.
+Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
+synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
+
+- 🔴 **XSS — audit fait le 05/10/2026, correction à faire.** **Prouvé** en navigateur (test d'attaque du dépôt pro) :
+  le **nom** et la **1re étiquette d'un point** s'exécutent à l'ouverture de sa fiche — `utils.js > buildPointPopupHtml`
+  bâtit ses boutons avec des `onclick="…"` où le nom n'est échappé que pour le JS (`'`, `\`), pas pour l'attribut (`"`).
+  Concerne aussi myktamap.fr (ZIP de plan ou session partagés). **Lu, non prouvé** : `interPlanLinks.js` (mêmes `onclick`) ;
+  contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère, sans clic ; légende, filtres,
+  favoris, exports), couleurs et libellés de `customLegend`, libellés de calques ; affichages ponctuels
+  (`interfaceItineraire.js` modale éviter, `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`,
+  infobulle `secoursMode.js`, `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 1 `onclick` →
+  `data-*` + écouteurs à l'ouverture (comme `attacherNotePopup`) ; 2 valider le plan-config à l'entrée (couleur `#hex`,
+  URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
+- 🔴 **« Tout réinitialiser » ne ferme pas la session d'une installation reliée** (constaté le 05/10/2026). Le jeton
+  de renouvellement vit dans un cookie `HttpOnly`, que le code de la page ne peut ni lire ni effacer : après le reset,
+  le module de connexion se reconnecte seul (vécu : retour direct sur le compte Admin). Sur un appareil partagé, un
+  reset ne déconnecte donc pas. Correctif retenu à l'analyse : prise neutre `avantReinitialisation()` appelée par le
+  reset (`interfaceMaintenance.js`) et par la suppression de profil (`homeProfile.js`) AVANT d'effacer, attente bornée
+  (3 s, un serveur injoignable ne bloque jamais le reset), no-op sans extension ; l'extension y révoque sa session.
+  + avertir dans la modale du reset si des modifications ☁️ ne sont pas envoyées. Contrat dans
+  `community-server-line.md` §3 + `check-extensions`. **S.**
+- 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
+  `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
+
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
 Livré : bug incognito (`67846d5`), suppression du mode hors-ligne strict (`6a85b5b`), 🆘 Dépannage (`c923dcb`),
