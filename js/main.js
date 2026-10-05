@@ -1532,14 +1532,19 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     const id = meta.planId || window.PlanRegistry.genLocalId(planName, planVer);
     window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
 
+    // 🧩 Plan d'extension (☁️) : son nom et sa version sont ceux de l'installation (renommé dans
+    // la gestion, version serveur) — le nom inscrit dans le ZIP les écrasait à chaque ouverture
+    // (« renommé, puis l'ancien nom revient une fois le plan ouvert », retour KARMA 05/10/2026).
+    const _estExt = meta.typeRegistre === "ext";
+    const _existant = _estExt && typeof window.PlanRegistry.findById === "function" ? window.PlanRegistry.findById(id) : null;
     const entry = {
       id: id,
       // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
       // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
       // la déconnexion ne le retrouverait plus).
-      type: meta.typeRegistre === "ext" ? "ext" : "local",
-      name: planName,
-      version: planVer || null,
+      type: _estExt ? "ext" : "local",
+      name: (_existant && _existant.name) ? _existant.name : planName,
+      version: (_existant && _existant.version) ? _existant.version : (planVer || null),
       author: rawConfig.plan.author || null,
       originalFilename: meta.zipFile?.name || null,
       fileSize: meta.zipFile?.size || null,

@@ -385,7 +385,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("plans d'extension : ouverts via la prise, gardés selon le réglage (copie existante toujours à jour), type conservé",
       /if \(plan\.type === "ext"\) \{/.test(HL) &&
       /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
-      /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
+      /const _estExt = meta\.typeRegistre === "ext";/.test(MAIN) && /type: _estExt \? "ext" : "local"/.test(MAIN));
+    t("plans d'extension : à l'ouverture, nom et version de l'installation gardés (pas ceux du ZIP)",
+      /name: \(_existant && _existant\.name\) \? _existant\.name : planName/.test(MAIN));
     {
       const EXT = lire("js/ktaExtensions.js");
       t("multi-comptes : seules les familles touchées sont réécrites, dessin en cours repris par uid",
