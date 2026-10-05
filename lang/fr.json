@@ -645,7 +645,7 @@
   "filter.status.levels": "niveaux",
   "filter.badge.actifs": "≡ Filtres — {n} catégorie(s) filtrée(s) : des éléments sont masqués sur la carte",
   "filter.badge.aucun": "≡ Filtres — tout est affiché",
-  "gate.contact": "📷 <a href=\"https://instagram.com/karma_kta\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">@karma_kta</a> &middot; ✉️ <a href=\"mailto:contact@myktamap.fr\" class=\"kta-tx-accent\">contact@myktamap.fr</a> <span class=\"kta-licence-community\">&middot; 💼 <a href=\"https://pro.myktamap.fr\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">Licence pro</a></span>",
+  "gate.contact": "📷 <a href=\"https://instagram.com/karma_kta\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">@karma_kta</a> &middot; ✉️ <a href=\"mailto:contact@myktamap.fr\" class=\"kta-tx-accent\">contact@myktamap.fr</a> <span class=\"kta-licence-community\">&middot; 💼 <a href=\"https://pro.myktamap.fr/presentation/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">Licence pro</a></span>",
   "gate.docBtn": "📖 Lire la documentation",
   "gate.docTitle": "Consulter la documentation utilisateur",
   "gate.err.crypto": "Erreur crypto : {err}",

@@ -645,7 +645,7 @@
   "filter.status.levels": "levels",
   "filter.badge.actifs": "≡ Filters — {n} filtered category(ies): some items are hidden on the map",
   "filter.badge.aucun": "≡ Filters — everything is shown",
-  "gate.contact": "📷 <a href=\"https://instagram.com/karma_kta\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">@karma_kta</a> &middot; ✉️ <a href=\"mailto:contact@myktamap.fr\" class=\"kta-tx-accent\">contact@myktamap.fr</a> <span class=\"kta-licence-community\">&middot; 💼 <a href=\"https://pro.myktamap.fr\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">Pro licence</a></span>",
+  "gate.contact": "📷 <a href=\"https://instagram.com/karma_kta\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">@karma_kta</a> &middot; ✉️ <a href=\"mailto:contact@myktamap.fr\" class=\"kta-tx-accent\">contact@myktamap.fr</a> <span class=\"kta-licence-community\">&middot; 💼 <a href=\"https://pro.myktamap.fr/presentation/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"kta-tx-accent\">Pro licence</a></span>",
   "gate.docBtn": "📖 Read the documentation",
   "gate.docTitle": "Read the user documentation",
   "gate.err.crypto": "Crypto error: {err}",
