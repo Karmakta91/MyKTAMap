@@ -505,6 +505,7 @@ function _resoudreStructureEnCours() {
   }
 }
 function toggleStructureMode(type) {
+  if (window.modeStructure !== type && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
   // Changement de type ou désactivation du même type : la structure en cours
   // est validée si elle a assez de points, abandonnée sinon.
   if (currentStructure && window.modeStructure !== type) _resoudreStructureEnCours();

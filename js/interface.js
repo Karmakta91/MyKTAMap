@@ -3790,6 +3790,7 @@ function _desactiverModeSuppressionTrace() {
 
 window.activerModeSuppressionTraceClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allRoads = window.getRoads ? (window.getRoads() || []) : [];
   // 🪜 v169 (Karma_dev) : jonction incluse dans les tracés supprimables au clic
@@ -3924,6 +3925,7 @@ function _desactiverModeSuppressionZone() {
 
 window.activerModeSuppressionZoneClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allZones = window.getZones ? (window.getZones() || []) : [];
   const supprimables = allZones.filter(function(z) {
@@ -4055,6 +4057,7 @@ function _desactiverModeSuppressionStructure() {
 
 window.activerModeSuppressionStructureClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allStructures = window.getStructures ? (window.getStructures() || []) : [];
   // Selectionnables = structures avec assez de points (min 2 polyline, 3 polygon)

@@ -414,6 +414,15 @@
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
   function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+  // Lecture seule d'un plan d'extension (droit « lire ») : l'extension le dit ; une erreur
+  // = lecture seule (règle des permissions). Plan local ou du site : jamais.
+  function lectureSeule(registreId) {
+    const ext = _prise("lectureSeule");
+    const id = _idExtension(registreId);
+    if (!ext || !id) return false;
+    try { return ext.lectureSeule(id) === true; }
+    catch (e) { console.warn("[Extensions] « lectureSeule » a échoué → lecture seule :", e); return true; }
+  }
 
   // ── Gate déléguée ──
   // Rend null si aucune extension ne fournit de gate, sinon une promesse qui
@@ -560,18 +569,49 @@
       tombstones: Array.isArray(lot.tombstones) ? lot.tombstones : []
     };
     const r = window.KtaUid.fusionnerCalques([local, distant]);
+    // Familles réellement touchées : un objet reçu, ou une trace qui vise un objet d'ici.
+    // Les autres ne sont pas réécrites (une réécriture ferme la fiche ouverte et coupe
+    // le dessin en cours — retour de l'audit multi-utilisateur 05/10/2026).
+    const tracesRecues = new Set(distant.tombstones.map(function (t) { return t && t.uid; }));
+    const touche = function (fam) {
+      return distant[fam].length > 0 || local[fam].some(function (o) { return o && tracesRecues.has(o.uid); });
+    };
+    distant.data.concat(distant.roads, distant.zones, distant.structures).forEach(function (o) { if (o && o.uid) _recusADistance.add(o.uid); });
     const traces = new Map();
     local.tombstones.concat(distant.tombstones).forEach(function (t) {
       if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
     });
     window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
-    window.setEditorPoints(r.data);
-    if (window.setRoads) window.setRoads(r.roads.concat(horsFusion));
-    if (window.setZones) window.setZones(r.zones);
-    if (window.setStructures) window.setStructures(r.structures);
-    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
+    // Le tracé / la zone / la structure EN COURS de dessin est retrouvé par son uid après
+    // réécriture (sinon le clic suivant démarrait un nouvel objet).
+    const enCours = function (getter) { const o = typeof window[getter] === "function" ? window[getter]() : null; return o && o.uid ? o.uid : null; };
+    const reprendre = function (setter, liste, uid) {
+      if (uid && typeof window[setter] === "function") window[setter](liste.findIndex(function (o) { return o && o.uid === uid; }));
+    };
+    const cRoad = enCours("getCurrentRoad"), cZone = enCours("getCurrentZone"), cStruct = enCours("getCurrentStructure");
+    const touches = { data: touche("data"), roads: touche("roads"), zones: touche("zones"), structures: touche("structures") };
+    if (touches.data) window.setEditorPoints(r.data);
+    if (touches.roads && window.setRoads) { const l = r.roads.concat(horsFusion); window.setRoads(l); reprendre("setCurrentRoadByIndex", l, cRoad); }
+    if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
+    if (touches.structures && window.setStructures) { window.setStructures(r.structures); reprendre("setCurrentStructureByIndex", r.structures, cStruct); }
+    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures;
+    // ⏪ L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle
+    // effacerait chez tout le monde ce que les autres viennent d'ajouter. L'historique
+    // d'annulation repart donc de zéro (le message ne paraît que s'il y avait de quoi annuler).
+    if (!rien && window.HistoryManager && typeof window.HistoryManager.reset === "function") {
+      const avait = typeof window.HistoryManager.canUndo === "function" && (window.HistoryManager.canUndo() ||
+        (typeof window.HistoryManager.canRedo === "function" && window.HistoryManager.canRedo()));
+      window.HistoryManager.reset();
+      if (avait && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(_t("ext.sync.annulationVidee"), "info", { groupe: "ext-annulation" });
+      }
+    }
+    if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
     return { fusionnes: r.fusionnes, supprimes: r.supprimes };
   }
+  // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
+  const _recusADistance = new Set();
+  function recuADistance(uid) { return !!uid && _recusADistance.has(uid); }
 
   // ── Effacement à la déconnexion ──
   // Retire les plans fournis par une extension (registre `type: "ext"`), leur
@@ -780,6 +820,8 @@
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
+    lectureSeule: lectureSeule,
+    recuADistance: recuADistance,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
@@ -792,5 +834,25 @@
     apiBase: _apiBase,
     ETATS: ETATS.slice(),
     LS_MEMO: LS_MEMO
+  };
+
+  // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
+  // Export du plan OUVERT (session, KMZ, GPX, image/PDF, ZIP du plan) : refusé = message.
+  window.ktaExportPlanRefuse = function () {
+    const id = window._currentLoadedPlanId;
+    // Seulement plan affiché : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
+    if (!id || exportAutorise(id)) return false;
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t("ext.export.refuse"), "warn");
+    return true;
+  };
+  // Modifier le plan OUVERT (outils de dessin, fiche d'un point) : refusé = message.
+  window.ktaEditionRefusee = function (silencieux) {
+    const id = window._currentLoadedPlanId;
+    if (!id || !lectureSeule(id)) return false;
+    if (!silencieux && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule" });
+    }
+    return true;
   };
 })();

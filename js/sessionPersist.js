@@ -487,6 +487,9 @@
       } catch(e) { console.warn("[SessionPersist] liberation des calques :", e); }
     }
     _lastHash = null;
+    // Une installation reliée en déduit qu'il faut tout relire (sinon les objets des
+    // autres ne revenaient jamais). No-op sans écouteur.
+    try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: _currentPlanId || null } })); } catch(e) {}
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
     // l'user clique "🗑️ Effacer la session" dans la modale de feedback
     // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait

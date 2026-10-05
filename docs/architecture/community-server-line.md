@@ -188,6 +188,18 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Plusieurs comptes sur un plan** (05/10/2026, audit multi-utilisateur) — sans extension, rien ne change :
+  - `appliquerChangements` ne réécrit que les familles touchées (sinon fiche fermée, dessin coupé) ; le tracé /
+    la zone / la structure **en cours** est repris par son uid ; l'historique d'annulation **repart de zéro**
+    après une réception (⏪ remet une photo complète d'une famille : il effaçait chez tous les ajouts des autres).
+  - `recuADistance(uid)` : la fiche d'édition d'un point demande « garder ma version ? » si le point a été
+    modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
+  - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
+    dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
+  - Goulot `window.ktaExportPlanRefuse()` (plan affiché seulement) : `exportAutorise` vaut désormais pour
+    l'export de session (JSON, ZIP, KMZ, GPX) et l'export image/PDF, plus seulement l'export de profil.
+  - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
+    d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
   d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
   FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,

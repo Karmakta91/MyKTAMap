@@ -1272,7 +1272,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   //   - ligne "édition" : ✏️ Modifier (ouvre la modale unifiée avec photos)
   //   - ligne "destruction" : 🗑️ Supprimer (rouge, séparée pour ne pas être
   //     confondue avec une action neutre)
-  const showSessionActions = isEditorSession === true;
+  const showSessionActions = isEditorSession === true &&
+    !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni ✏️ ni 🗑️
   const editRow = showSessionActions
     ? '<div class="kta-popup-actions">' +
         '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' +

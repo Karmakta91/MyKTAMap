@@ -387,6 +387,18 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
       /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
     {
+      const EXT = lire("js/ktaExtensions.js");
+      t("multi-comptes : seules les familles touchées sont réécrites, dessin en cours repris par uid",
+        /if \(touches\.roads && window\.setRoads\)/.test(EXT) && /reprendre\("setCurrentRoadByIndex"/.test(EXT));
+      t("🩸 multi-comptes : l'historique d'annulation repart de zéro après une réception", /window\.HistoryManager\.reset\(\)/.test(EXT));
+      t("lecture seule : prise lectureSeule, erreur = lecture seule, plan local jamais",
+        /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
+      t("export : le goulot ktaExportPlanRefuse garde l'export de session et l'export image",
+        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")));
+      t("session effacée / restaurée : événement mktm:session-cleared",
+        /mktm:session-cleared/.test(lire("js/sessionPersist.js")) && /mktm:session-cleared/.test(lire("js/sessionBackups.js")));
+    }
+    {
       const SEC = lire("js/secoursMode.js");
       const del = SEC.slice(SEC.indexOf("function deleteScenario("), SEC.indexOf("function deleteScenario(") + 1200);
       t("Mode Secours : une suppression voulue émet mktm:secours-scenario-deleted (persistance d'une installation)",

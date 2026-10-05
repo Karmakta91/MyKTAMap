@@ -475,6 +475,7 @@
 
   // ========== ENTRÉE PUBLIQUE ==========
   window.ouvrirExportSessionModal = function(initialTab, solo) {
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
     // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".

@@ -266,6 +266,7 @@ function initRoad() {
 // ACTIVER / DÉSACTIVER UN TYPE
 // =========================
 function toggleRoadMode(type) {
+  if (window.modeRoad !== type && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
   if (window.modeRoad === type) {
     window.modeRoad = null;
     currentRoad = null;
