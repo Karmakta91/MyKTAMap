@@ -18,9 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.2` (05/10/2026)
+## 📦 Version courante — `v2.9.3` (05/10/2026)
 
-> 👥 **v2.9.2 — Panneau « Équipe » et activité sur les installations reliées** ; tuile 📡 retrouvée dans la fenêtre Tracker.
+> 🧭 **v2.9.3 — Itinéraire montré à l'équipe** sur les installations reliées (prise `itineraire`) ; v2.9.2 : panneau « 👥 Équipe ».
 
 > 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
@@ -549,6 +549,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.3 (05/10/2026) — Itinéraire montré à l'équipe (branche `Karma_dev`)
+
+- 🧭 **Prise `itineraire: { publie(), basculer() }`** : bouton « 🧭 Montrer mon itinéraire à l'équipe » dans la fenêtre Itinéraire (mode navigation), posé seulement si une extension le fournit. Lecture neutre `KtaExtensions.itineraireActuel()` (points + niveau, étapes ✓ sans l'origine tracker) ; affichage `afficherItineraires(liste)` dans `js/ktaPresences.js` (calque distinct, pointillés jaunes atténués hors niveau, étapes ○ / ✓, étiquette « 🧭 pseudo », rien de cliquable) ; actions `cadrerItineraire` / `masquerItineraire` pour un panneau (`884bb3e`).
+- 🛡️ `check-extensions` §6 ter : no-op sans extension, extension en erreur = non publié, bouton conditionné à la prise.
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
 
 #### v2.9.2 (05/10/2026) — Panneau « Équipe », activité (branche `Karma_dev`)
 
