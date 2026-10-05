@@ -355,6 +355,12 @@ function _appliquerConfigKiosque() {
   // (décision KARMA 9), SEULEMENT si l'utilisateur n'a jamais choisi : son
   // choix, une fois fait, prime toujours. On ne l'écrit pas dans le registre
   // (ce serait un choix qu'il n'a pas fait) : homeLoader lit ce défaut.
+  // Plans du site (data/index.json) non chargés par défaut — installation où tout vit
+  // en base. Même doctrine que plansViewDefault : le choix de l'utilisateur prime
+  // (lu par homeLoader > _loaderSkipServerPlans, rien n'est écrit ici).
+  if (cfg.sitePlansHiddenDefault === true && cfg.serverPlansOnly !== true) {
+    console.log("[Main] Instance : plans du site masqués par défaut (sitePlansHiddenDefault)");
+  }
   if (cfg.plansViewDefault === "folders" || cfg.plansViewDefault === "all") {
     window._ktaPlansViewParDefaut = cfg.plansViewDefault;
     const dejaChoisi = !!(window.PlanRegistry && window.PlanRegistry.hasPlansViewChoice && window.PlanRegistry.hasPlansViewChoice());

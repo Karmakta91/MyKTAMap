@@ -40,11 +40,12 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
 | Dossiers de « Mes plans » proposés | `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` — verrouillés tant que déclarés, libérés (jamais supprimés) sinon ; l'utilisateur déplace toujours ses plans | v1.95.0 |
 | Ouvrir la liste en mode Dossiers | `index.json > config.plansViewDefault: "folders"` — seulement tant que l'utilisateur n'a pas choisi lui-même | v1.95.0 |
+| Ne pas charger les plans du site au démarrage | `index.json > config.sitePlansHiddenDefault: true` — défaut de « Ne pas charger les plans du site » (⚙️ Configuration) tant que l'utilisateur n'a pas choisi ; sans effet avec `serverPlansOnly` (installation où les plans vivent en base, demande KARMA 05/10/2026) | Karma_dev |
 
 **Règle des 2 flags** : `serverPlansOnly` et `disableGenerator` sont les DEUX SEULS
-flags de comportement kiosque (`plansViewDefault`, v1.95.0, n'en est pas un : c'est un
-DÉFAUT d'affichage, que le premier clic de l'utilisateur sur le sélecteur remplace pour
-toujours — décision KARMA 9 de l'étude du 16/09/2026). Tout flag supplémentaire = topo + décision KARMA
+flags de comportement kiosque. `plansViewDefault` (v1.95.0) et `sitePlansHiddenDefault` n'en sont pas : ce sont
+des DÉFAUTS d'affichage, que le premier choix de l'utilisateur (sélecteur Tout | Dossiers, case de ⚙️ Configuration)
+remplace pour toujours — décision KARMA 9 de l'étude du 16/09/2026. Tout flag supplémentaire = topo + décision KARMA
 consignée ici. Les flags sont du **désencombrement d'interface** (déclutter), PAS de
 la sécurité ni du bridage : contournables via la console, et c'est assumé — les
 données de l'utilisateur final lui appartiennent toujours (sessions, carnet, notes,

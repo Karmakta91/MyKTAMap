@@ -156,6 +156,8 @@
       <button class="kta-ca-btn" id="caFolderAdd" type="button">➕ Ajouter un dossier</button>
       <label class="kta-ca-flag" style="margin:0;"><input type="checkbox" id="caFlagFoldersDefault">
         <span>Ouvrir « Mes plans » en mode <strong>Dossiers</strong> par défaut <small>(seulement tant que l'utilisateur n'a pas choisi lui-même)</small></span></label>
+      <label class="kta-ca-flag" style="margin:0;"><input type="checkbox" id="caFlagSitePlansHidden">
+        <span>Ne pas charger les <strong>plans du site</strong> (cette liste) au démarrage, par défaut <small>(installation où les plans vivent en base de données ; l'utilisateur peut les réafficher dans ⚙️ Configuration ; sans effet si « plans serveur uniquement »)</small></span></label>
     </div>
 
     <h2>🌀 2. Liaisons inter-plan (portails)</h2>
@@ -453,6 +455,7 @@
     _renderFolders(); _renderPlans(); _renderOut();
   });
   $("caFlagFoldersDefault").addEventListener("change", function() { _renderOut(); });
+  $("caFlagSitePlansHidden").addEventListener("change", function() { _renderOut(); });
   $("caPlansBody").addEventListener("click", function(e) {
     const x = e.target.getAttribute("data-x"), mv = e.target.getAttribute("data-mv");
     if (x != null) { _plans.splice(Number(x), 1); }
@@ -522,6 +525,7 @@
         });
         _plans.forEach(function(p) { if (p.folder && !_folders.some(function(x) { return x.id === p.folder; })) p.folder = ""; });
         $("caFlagFoldersDefault").checked = !!(d.config && d.config.plansViewDefault === "folders");
+        $("caFlagSitePlansHidden").checked = !!(d.config && d.config.sitePlansHiddenDefault === true);
         _renderFolders();
         const c = d.config || {};
         $("caSubtitle").value        = c.subtitle || "";
@@ -722,6 +726,7 @@
     // 📁 décision KARMA 9 : mode Dossiers par défaut (seulement s'il y a des dossiers)
     const fd = !!($("caFlagFoldersDefault") && $("caFlagFoldersDefault").checked) && _folders.length > 0;
     if (fd) { out.config = out.config || {}; out.config.plansViewDefault = "folders"; }
+    if ($("caFlagSitePlansHidden") && $("caFlagSitePlansHidden").checked) { out.config = out.config || {}; out.config.sitePlansHiddenDefault = true; }
     // 📁 dossiers déclarés : seulement s'il y en a (index identique sinon)
     const dossiersValides = _folders.filter(function(d) { return d.id && String(d.name || "").trim(); });
     if (dossiersValides.length) {

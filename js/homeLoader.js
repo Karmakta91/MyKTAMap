@@ -1222,8 +1222,17 @@ function planRowHTML(plan) {
       // les users qui n'ont jamais touché cette pref).
       // 🔍 Exposé global pour permettre à main.js d'y accéder au boot.
       const LS_SKIP_SERVER = "myktamap_skip_server_plans_v1";
+      // Jamais choisi par l'utilisateur → défaut de l'instance : `index.json >
+      // config.sitePlansHiddenDefault: true` (installation où tout vit en base).
+      // Sans effet en kiosque `serverPlansOnly` (les plans du site y sont les seuls).
       window._loaderSkipServerPlans = function() {
-        return localStorage.getItem(LS_SKIP_SERVER) === "true";
+        let v = null;
+        try { v = localStorage.getItem(LS_SKIP_SERVER); } catch (e) { v = null; }
+        if (v === null) {
+          const cfg = window.KIOSK_CONFIG || {};
+          return cfg.sitePlansHiddenDefault === true && cfg.serverPlansOnly !== true;
+        }
+        return v === "true";
       };
       function _loaderSetSkipServerPlans(value) {
         localStorage.setItem(LS_SKIP_SERVER, value ? "true" : "false");
