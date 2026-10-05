@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.9.1</strong> (5 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.9.2</strong> (5 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1135,6 +1135,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.9.2 (panneau Équipe, activité)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur : l’app demande qui a quel plan ouvert (l’« activité » : pseudo, plan, « en édition »), visible de ceux qui peuvent ouvrir ce plan. Ta position sur le plan (pas le GPS) reste partagée seulement si tu le choisis.</p>
   <h3>v2.9.1 (portails gardés, plusieurs comptes sur un plan)</h3>
   <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur (même site) : les modules déclarés par l’installation sont aussi gardés dans un cache durable du navigateur (téléchargés à la lecture de sa configuration, pour le hors ligne) ; « Tout réinitialiser » prévient d’abord le serveur pour fermer la session.</p>
   <h3>v2.9.0 (installations reliées : publier, garder hors ligne, présence)</h3>

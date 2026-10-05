@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.1",
+  "version": "v2.9.2",
   "released": "2026-10-05",
   "notes": [
-    "🌀 « Effacer la session » garde désormais les points qui portent une liaison vers un autre plan (portails) : la liaison ne reste plus orpheline.",
-    "🧩 Sur les installations reliées : travail à plusieurs plus sûr (annuler n'efface plus le travail des autres, lecture seule respectée, fiche modifiée par un autre signalée), reconnexion sans redemander le mot de passe. Rien ne change sur myktamap.fr."
+    "👥 Sur les installations reliées : un bouton « Équipe » sur la carte montre qui est sur le plan et où (position sur le plan partagée), avec centrer et suivre ; l'accueil indique qui a un plan ouvert.",
+    "📡 La tuile « Partager ma position sur ce plan » est bien dans la fenêtre Tracker. Rien ne change sur myktamap.fr."
   ]
 }

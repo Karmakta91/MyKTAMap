@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.1` (05/10/2026)
+## 📦 Version courante — `v2.9.2` (05/10/2026)
+
+> 👥 **v2.9.2 — Panneau « Équipe » et activité sur les installations reliées** ; tuile 📡 retrouvée dans la fenêtre Tracker.
 
 > 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
@@ -547,6 +549,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.2 (05/10/2026) — Panneau « Équipe », activité (branche `Karma_dev`)
+
+- 🩹 **Tuile 📡 « Partager ma position sur ce plan »** : le bloc qui l'ajoute à la fenêtre Tracker était inséré dans l'action « Mode recalage » — elle n'apparaissait qu'après un recalage (`ce18230`, retour KARMA capture téléphone).
+- 👥 **Prise `panneau`** : bouton à gauche sur la carte + fenêtre remplie par l'extension (ex. « 👥 Équipe »), posé seulement si une extension le fournit ; actions neutres `KtaPresences.centrer / suivre / masquerTrace` (`d82fb33`).
+- 🏷️ **Prise `badgePlan`** : badge d'une installation sur la ligne d'un plan ☁️ à l'accueil (activité « 👥 N » / « ✏️ N ») ; événement `mktm:plans-badges-changes` (`f2d94df`).
+- 📡 Messages du partage : « ta position sur le plan (celle de ton suivi, pas le GPS) » ×3 langues (`c74ad06`).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
 
 #### v2.9.1 (05/10/2026) — Portails gardés ; plusieurs comptes sur un plan (branche `Karma_dev`)
 
