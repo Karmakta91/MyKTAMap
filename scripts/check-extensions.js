@@ -248,6 +248,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
     t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions ou une info à montrer",
       /if \(ext\.actionsObjet \|\| ext\.infoObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+    t("🩸 panneau d'extension : bouton posé SEULEMENT si une extension fournit la prise (myktamap.fr : rien)",
+      /const _panneauExt = \(window\.KtaExtensions && typeof window\.KtaExtensions\.panneauExtension === "function"\)/.test(lire("js/interface.js")) &&
+      /if \(_panneauExt\) \{[\s\S]{0,600}_creerGroupeAccordeon\(_cfgPanneauExt\)/.test(lire("js/interface.js")));
     t("badge d'un plan d'extension : texte échappé (8 / 160 car.), plans ☁️ seulement",
       /\.slice\(0, 8\)/.test(lire("js/ktaExtensions.js")) && /kta-plan-row-ext-badge" title="' \+ escapeHtml\(bx\.titre\) \+ '">' \+ escapeHtml\(bx\.texte\)/.test(lire("js/homeLoader.js")));
     t("info d'objet : texte seulement (textContent), 120 caractères, jamais écrite par l'app",

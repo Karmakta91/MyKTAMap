@@ -213,6 +213,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   { mode: "remplacer" })` (même identifiant = remplacé) ou `secoursAppliquer(id, partiel)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+- **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
+  ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
+  `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :
+  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule).
+  Sans extension : ni bouton ni fenêtre.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
   changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).

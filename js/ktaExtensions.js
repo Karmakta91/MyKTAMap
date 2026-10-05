@@ -783,6 +783,54 @@
       }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
     } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
   }
+  // Panneau d'une extension sur la carte (ex. « 👥 Équipe ») : prise `panneau: { icone, titre,
+  // rendre(conteneur) }`. L'app pose un bouton à gauche sur la carte et ouvre une fenêtre dont
+  // l'extension remplit le corps (rendre est rappelé à chaque ouverture et par rafraichirPanneau()).
+  // Sans extension : ni bouton, ni fenêtre. Erreur de l'extension = fenêtre avec un message.
+  function panneauExtension() {
+    const ext = _prise("panneau");
+    const p = ext && ext.panneau;
+    if (!p || typeof p.rendre !== "function") return null;
+    return { icone: String(p.icone || "🧩").slice(0, 4), titre: String(p.titre || "").trim().slice(0, 40) || "Installation" };
+  }
+  let _panneauCorps = null;
+  function _rendrePanneau() {
+    const ext = _prise("panneau");
+    if (!_panneauCorps || !_panneauCorps.isConnected || !ext) return;
+    _panneauCorps.textContent = "";
+    try { ext.panneau.rendre(_panneauCorps); }
+    catch (e) { console.warn("[Extensions] panneau :", e); _panneauCorps.textContent = "⚠️ " + String((e && e.message) || e).slice(0, 120); }
+  }
+  function ouvrirPanneau() {
+    const info = panneauExtension();
+    if (!info) return false;
+    const ancien = document.getElementById("kta-ext-panneau");
+    if (ancien) ancien.remove();
+    const ov = document.createElement("div");
+    ov.className = "kta-readme-modal-overlay";
+    ov.id = "kta-ext-panneau";
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite kta-ext-panneau-boite";
+    const tete = document.createElement("div");
+    tete.className = "kta-readme-modal-header";
+    const titre = document.createElement("span");
+    titre.className = "kta-readme-modal-titre";
+    titre.textContent = info.icone + " " + info.titre;
+    const fermer = document.createElement("button");
+    fermer.className = "kta-readme-modal-close"; fermer.type = "button"; fermer.textContent = "✕";
+    fermer.addEventListener("click", function () { ov.remove(); });
+    tete.appendChild(titre); tete.appendChild(fermer);
+    _panneauCorps = document.createElement("div");
+    _panneauCorps.className = "kta-readme-modal-corps kta-ext-panneau-corps";
+    boite.appendChild(tete); boite.appendChild(_panneauCorps);
+    ov.appendChild(boite);
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    document.documentElement.appendChild(ov);
+    _rendrePanneau();
+    return true;
+  }
+  function rafraichirPanneau() { _rendrePanneau(); }
+
   // Badge d'un plan d'extension dans la liste de l'accueil (ex. « 👥 2 », activité de l'installation) :
   // { texte (8 car.), titre (160 car.) }, rendu en texte ; l'extension annonce un changement par
   // l'événement `mktm:plans-badges-changes`. Erreur ou forme inattendue = pas de badge.
@@ -876,6 +924,9 @@
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
     badgePlan: badgePlan,
+    panneauExtension: panneauExtension,
+    ouvrirPanneau: ouvrirPanneau,
+    rafraichirPanneau: rafraichirPanneau,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

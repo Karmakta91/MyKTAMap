@@ -10,6 +10,8 @@
   var _calque = null;
   var _liste = [];
   var _minuteur = null;
+  var _suivi = null;                 // id de la présence suivie (la carte se recentre à chaque mise à jour)
+  var _tracesMasquees = {};          // id → true : trace non dessinée
 
   function _t(cle, vars) { return window.I18n ? window.I18n.t(cle, vars) : cle; }
   function _coord(x, y) {
@@ -57,7 +59,7 @@
       // Autre niveau que ceux affichés : repère atténué (la personne n'est pas « ici »).
       var horsNiveau = p.niveau !== null && typeof window.passeFiltreNiveau === "function" &&
         !window.passeFiltreNiveau({ level: p.niveau });
-      if (p.trace.length > 1) {
+      if (p.trace.length > 1 && !_tracesMasquees[p.id]) {
         L.polyline(p.trace.map(function (q) { return _coord(q[0], q[1]); }), {
           color: "#8cb4ff", weight: 3, opacity: horsNiveau ? 0.2 : 0.55, dashArray: "6 6", interactive: false
         }).addTo(_calque);
@@ -78,6 +80,20 @@
       }).addTo(_calque);
     });
     _calque.addTo(map);
+    if (_suivi) { var s = _trouver(_suivi); if (s) _allerA(s, false); }
+  }
+
+  function _trouver(id) { for (var i = 0; i < _liste.length; i++) if (_liste[i].id === id) return _liste[i]; return null; }
+  // Recentre la carte sur une présence (niveau compris, en multi-niveau). zoomer : au moins le zoom 0.
+  function _allerA(p, zoomer) {
+    var map = window.map;
+    if (!map) return;
+    if (p.niveau !== null && window.APP_CONFIG && window.APP_CONFIG.multiLevel === true &&
+        window.APP_CONFIG.activeLevel !== p.niveau && typeof window.ktaSetActiveLevel === "function") {
+      try { window.ktaSetActiveLevel(p.niveau); } catch (e) { /* niveau absent */ }
+    }
+    var z = zoomer ? Math.max(map.getZoom(), 0) : map.getZoom();
+    try { map.setView(_coord(p.x, p.y), z, { animate: !zoomer }); } catch (e) { /* carte fermée */ }
   }
 
   // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …] }] ; [] efface.
@@ -92,6 +108,12 @@
 
   window.KtaPresences = {
     afficher: afficher,
+    // Actions neutres pour un panneau d'extension (« 👥 Équipe ») : jamais déclenchées par l'app seule.
+    centrer: function (id) { var p = _trouver(id); if (!p) return false; _allerA(p, true); return true; },
+    suivre: function (id) { _suivi = (id && _trouver(id)) ? id : null; if (_suivi) _allerA(_trouver(_suivi), true); return _suivi; },
+    suivi: function () { return _suivi; },
+    masquerTrace: function (id, masquer) { if (masquer) _tracesMasquees[id] = true; else delete _tracesMasquees[id]; _dessiner(); return !!masquer; },
+    traceMasquee: function (id) { return !!_tracesMasquees[id]; },
     nombre: function () { return _liste.length; },
     // Copie de ce qui est affiché (tests, diagnostic).
     liste: function () { return JSON.parse(JSON.stringify(_liste)); }
