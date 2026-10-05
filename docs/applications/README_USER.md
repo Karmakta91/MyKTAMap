@@ -738,7 +738,7 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 **Un objet précis** : sa bulle porte un bouton **🗑️ Supprimer** ; pour un point, c'est **🗑️ Supprimer ce point**. Pas de fenêtre de confirmation : tout s'annule avec ⏪ (`Ctrl+Z`).
 
-**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups).
+**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups). Les points qui portent une **liaison vers un autre plan** (portails) sont gardés : pour en retirer un, supprime le point lui-même.
 
 > ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis ≡ **Filtres**, puis exporte le calque corrigé.
 

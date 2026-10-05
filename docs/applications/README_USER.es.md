@@ -738,7 +738,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Un objeto concreto**: su ventana tiene un botón **🗑️ Eliminar**; para un punto, es **🗑️ Eliminar este punto**. Sin ventana de confirmación: todo se deshace con ⏪ (`Ctrl+Z`).
 
-**Todo el plano**: cuando vuelves a abrir un plano, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups).
+**Todo el plano**: cuando vuelves a abrir un plano, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro plano** (portales) se conservan: para quitar uno, elimina el propio punto.
 
 > ℹ️ Solo se borran **tus** objetos. Los del plano o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 

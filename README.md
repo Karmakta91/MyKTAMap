@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.0` (05/10/2026)
+## 📦 Version courante — `v2.9.1` (05/10/2026)
+
+> 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
 > 💾 **v2.9.0 — Installations reliées : publier, garder hors ligne, partager sa position** ; sur myktamap.fr : 💾 sur la ligne d'un plan non mémorisé pour le mémoriser après coup, « plans du site » au lieu de « plans serveur ». Regroupe les 13 commits livrés sans bump depuis v2.8.0 (déjà déployée sur prod et dev : sans ce bump, aucun appareil ne les aurait reçus).
 
@@ -545,6 +547,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.1 (05/10/2026) — Portails gardés ; plusieurs comptes sur un plan (branche `Karma_dev`)
+
+- 🌀 **Visible sur myktamap.fr** : « Effacer la session » garde les points de session qui portent une liaison inter-plan — le point disparaissait, la liaison restait orpheline et invisible (`cc9c63d`). Message « N point(s) portail gardé(s) » (×3 langues).
+- 🧩 **Plusieurs comptes sur un plan** (audit du 05/10, `dcd7fea`) — sans extension, rien ne change : l'historique d'annulation repart de zéro après une réception (⏪ effaçait chez tous les ajouts des autres) ; seules les familles touchées sont réécrites et le dessin en cours est repris par son uid ; fiche d'un point modifié ou supprimé par la synchro → « Garder ma version ? » ; prise `lectureSeule` (droit « lire » : ni ✏️ ni 🗑️, outils refusés) ; `exportAutorise` vaut pour l'export de session et l'export image (plan affiché) ; événement `mktm:session-cleared` (effacer, restaurer).
+- 🔏 **« Tout réinitialiser »** ferme la session d'une installation reliée avant l'effacement (prise `avantReinitialisation`, 3 s ; hors ligne : marque « déconnexion en attente ») — l'appli ne se reconnecte plus seule (`67547b2`).
+- 💾 **Service Worker** : modules d'une installation gardés dans un cache durable `myktamap-ext-modules`, préchargés à la lecture de l'index — plus d'« Installation indisponible » au 1er lancement hors ligne après une mise à jour (`3aaad1d`).
+- ☁️ Plan ☁️ ouvert : nom et version de l'installation gardés (`a6bfbf4`) ; mode V2 / multi-niveau fourni par l'extension avant la 1re ouverture (`208e781`) ; prise `infoObjet` (« Créé par X · modifié par Y » dans la fiche, `f29b44d`) ; événement `mktm:secours-scenario-deleted` (`0031ae9`).
+- 📖 README : édition installation sur demande (licence + accès au dépôt backend). Backlog : éléments affichés au relâcher pendant un déplacement (pertinence de « Ne rendre que les éléments visibles »).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
 
 #### v2.9.0 (05/10/2026) — Installations reliées : publier, garder hors ligne, présence (branche `Karma_dev`)
 

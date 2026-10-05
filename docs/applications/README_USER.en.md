@@ -738,7 +738,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **One specific object**: its popup has a **🗑️ Delete** button; for a point, it is **🗑️ Delete this point**. No confirmation window: everything can be undone with ⏪ (`Ctrl+Z`).
 
-**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups).
+**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself.
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
