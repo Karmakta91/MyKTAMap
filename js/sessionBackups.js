@@ -406,13 +406,6 @@ window.SessionBackups = (function() {
     }, PERIODIC_MS);
   }
 
-  function _stopTimer() {
-    if (_timerId) {
-      clearInterval(_timerId);
-      _timerId = null;
-    }
-  }
-
   // ─────────────────────────────────────────────
   // Init
   // ─────────────────────────────────────────────

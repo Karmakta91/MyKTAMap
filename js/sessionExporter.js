@@ -1250,7 +1250,6 @@
     if (_convDirection === "data2ed") {
       const dropZone  = document.getElementById("kta-conv-d2e-drop");
       const fileInput = document.getElementById("kta-conv-d2e-file");
-      const labelEl   = document.getElementById("kta-conv-d2e-drop-label");
       const erreurEl  = document.getElementById("kta-conv-d2e-erreur");
 
       if (dropZone && fileInput) {

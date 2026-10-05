@@ -1149,9 +1149,6 @@
     if (!box) return;
     box.style.display = "";
 
-    const inZone  = _matches.filter(function(m) { return m.inZone; });
-    const outZone = _matches.filter(function(m) { return !m.inZone; });
-
     let html = '<div class="kta-lost-section">';
     html += '<div class="kta-lost-section-titre">' + _t("lost.results.zone.titre") + '</div>';
     const pres = LOST_MODE_PRESETS[_currentPreset] || { icon: "?" };

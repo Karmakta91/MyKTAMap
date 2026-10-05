@@ -38,7 +38,6 @@
   // C est exactement le risque que documente docs/BACKLOG.md > « Lecon du faux
   // fix » : un symbole qui n apparait qu une fois passe pour mort.
   const HEADER_HEIGHT_MM  = 18;
-  const FOOTER_HEIGHT_MM  = 55;
   // JPEG quality du canvas → image PDF (compromis taille / qualité)
   const JPEG_QUALITY      = 0.88;
 
@@ -49,8 +48,7 @@
   // sur mobile. Limite raisonnable côté UI : scale ×1 par défaut pour A0.
   // `size`/`dims` = données pures (non traduisibles). L'orientation ("portrait"/
   // "paysage") est le SEUL fragment FR : on ne la fige plus dans `label`, on la
-  // résout au rendu via _formatLabel() (clés pdfexport.orient.*). Le label
-  // complet reste recomposé à la demande (size + orientation traduite + dims).
+  // résout au rendu (clés pdfexport.orient.*).
   const FORMATS = {
     "a0-portrait":  { format: "a0", orientation: "portrait",  size: "A0", dims: "841×1189 mm" },
     "a0-landscape": { format: "a0", orientation: "landscape", size: "A0", dims: "1189×841 mm" },
@@ -63,15 +61,6 @@
     "a4-portrait":  { format: "a4", orientation: "portrait",  size: "A4", dims: "210×297 mm"  },
     "a4-landscape": { format: "a4", orientation: "landscape", size: "A4", dims: "297×210 mm"  }
   };
-
-  // Recompose un label "A0 portrait (841×1189 mm)" au rendu : size + dims = données
-  // inline, orientation = fragment traduit (pdfexport.orient.portrait/paysage).
-  function _formatLabel(def) {
-    if (!def) return "";
-    const orientKey = def.orientation === "portrait" ? "portrait" : "paysage";
-    const orient = window.I18n.t("pdfexport.orient." + orientKey);
-    return def.size + " " + orient + " (" + def.dims + ")";
-  }
 
   // Tailles disponibles (pour le 1er radio "taille") et orientations (2e radio).
   // label/hint résolus au rendu via I18n (cf. afficherModale). On conserve un
@@ -783,12 +772,6 @@
            d.getFullYear() + " " +
            String(d.getHours()).padStart(2, "0") + ":" +
            String(d.getMinutes()).padStart(2, "0");
-  }
-
-  function _hexToRgb(hex) {
-    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
-    if (!m) return [128, 128, 128];
-    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
   }
 
   // ============================================================

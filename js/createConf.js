@@ -3699,7 +3699,6 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const dlFile  = _getFile(lid + "_file", dlId + ".json");
 
       if (!dlId) { _plannerErreur(window.I18n.t("gen.gen.idManquantData")); throw new Error("abort"); }

@@ -106,12 +106,7 @@
   // Méta-graphe des plans (BFS pour le message NO_DIRECT_LINK)
   // ---------------------------------------------------------------
   function _cheminDePlans(fromId, toId) {
-    const links = window.InterPlanLinks.getLinksForPlan ? null : null; // (registre lu ci-dessous)
-    const all = [];
-    // adjacence depuis le registre complet — via getLinksForPlan de chaque
-    // nœud serait circulaire ; on lit les liaisons des 2 plans + BFS global
-    // simple sur l'ensemble du registre (exposé indirectement : on collecte
-    // en balayant les liaisons de proche en proche).
+    // BFS de proche en proche sur les liaisons de chaque plan visité.
     const seen = {};
     const queue = [[fromId]];
     seen[fromId] = true;

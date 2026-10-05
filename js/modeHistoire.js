@@ -491,8 +491,6 @@
 
     // Wire note auto-save + view/edit toggle + toolbar MD (v1.34.30)
     const ta       = document.getElementById("kta-histoire-note");
-    const viewDiv  = document.getElementById("kta-histoire-note-view");
-    const editWrap = document.getElementById("kta-histoire-note-edit");
     const btnEdit  = document.getElementById("kta-histoire-note-edit-btn");
     const btnView  = document.getElementById("kta-histoire-note-view-btn");
     const status   = document.getElementById("kta-histoire-note-status");

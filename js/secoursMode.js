@@ -5433,7 +5433,6 @@
     }
 
     // Détection présence photos pour info checkbox
-    let totalPhotosInfo = null;
     if (window.MyKTAMapSecoursPhotos && window.MyKTAMapSecoursPhotos.isAvailable()) {
       window.MyKTAMapSecoursPhotos.countPhotosForScenario(scenarioId).then(function(n) {
         const hint = document.getElementById("kta-rapport-photos-hint");
@@ -6403,7 +6402,6 @@
       // se marchent dessus sur le canvas + double download.
       const btnGen = this;
       btnGen.disabled = true;
-      const originalText = btnGen.textContent;
       btnGen.textContent = t("secours.briefing.generation");
       const opts = {
         showPlan:    box.querySelector("#kta-bo-opt-plan").checked,
@@ -7294,7 +7292,6 @@
         pdf.text(t("secours.pdf.notesLibresSuite"), margin, y); y += 6;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
-      const info = _getStatutInfo(note.statut);
       const ts = new Date(note.ts).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       pdf.setFont(undefined, "bold");
       pdf.text("  " + (i + 1) + ". " + _statutLabelAscii(note.statut) + "  |  " + ts, margin, y); y += 4;
@@ -9187,7 +9184,6 @@
                _escHtml(g.nom) + ' (' + _escHtml(couleur.nom) + ')' +
              '</option>';
     }).join('');
-    const defaultEquipeId = (s.groupes && s.groupes.length > 0) ? s.groupes[0].id : "";
 
     const overlay = document.createElement("div");
     overlay.id = "kta-secours-lancer-modale";
