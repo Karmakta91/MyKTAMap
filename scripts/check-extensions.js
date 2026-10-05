@@ -395,6 +395,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
         /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
       t("export : le goulot ktaExportPlanRefuse garde l'export de session et l'export image",
         /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")));
+      const MAINT = lire("js/interfaceMaintenance.js");
+      t("🩸 Tout réinitialiser : la session d'une installation est fermée AVANT l'effacement (prise bornée à 3 s)",
+        MAINT.indexOf("avantReinitialisation()") > 0 && MAINT.indexOf("avantReinitialisation()") < MAINT.indexOf("localStorage.clear()") &&
+        /r\(false\); \}, 3000\)/.test(EXT));
+      t("Tout réinitialiser hors ligne : seule la marque « déconnexion en attente » survit à l'effacement",
+        MAINT.indexOf("CLE_DECONNEXION_EN_ATTENTE") > MAINT.indexOf("localStorage.clear()"));
       t("session effacée / restaurée : événement mktm:session-cleared",
         /mktm:session-cleared/.test(lire("js/sessionPersist.js")) && /mktm:session-cleared/.test(lire("js/sessionBackups.js")));
     }

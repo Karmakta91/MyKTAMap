@@ -198,6 +198,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
     dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
   - Goulot `window.ktaExportPlanRefuse()` (plan affiché seulement) : `exportAutorise` vaut désormais pour
     l'export de session (JSON, ZIP, KMZ, GPX) et l'export image/PDF, plus seulement l'export de profil.
+  - Prise `avantReinitialisation() → Promise<bool>` : « Tout réinitialiser » l'attend (3 s max) AVANT d'effacer —
+    l'extension y ferme sa session (cookie HttpOnly : la page ne peut pas l'effacer, l'appli se reconnectait
+    seule). `false` (hors ligne) → après l'effacement, seule la marque `KtaExtensions.CLE_DECONNEXION_EN_ATTENTE`
+    est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
   - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
     d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification

@@ -414,6 +414,22 @@
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
   function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+  // Avant un effacement complet de l'appareil (« Tout réinitialiser ») : l'extension ferme sa
+  // session (le cookie de session est HttpOnly : le code de la page ne peut pas l'effacer, et
+  // sans ça l'appli se reconnectait seule au démarrage suivant). Attente bornée à 3 s ; rend
+  // true si c'est fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement,
+  // la marque CLE_DECONNEXION_EN_ATTENTE que l'extension honore au démarrage suivant.
+  const CLE_DECONNEXION_EN_ATTENTE = "myktamap_ext_deconnexion_en_attente";
+  function avantReinitialisation() {
+    const ext = _prise("avantReinitialisation");
+    if (!ext || typeof ext.avantReinitialisation !== "function") return Promise.resolve(true);
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.avantReinitialisation(); }).then(function (r) { return r === true; }, function () { return false; }),
+      new Promise(function (r) { delai = setTimeout(function () { r(false); }, 3000); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
   // Lecture seule d'un plan d'extension (droit « lire ») : l'extension le dit ; une erreur
   // = lecture seule (règle des permissions). Plan local ou du site : jamais.
   function lectureSeule(registreId) {
@@ -821,6 +837,8 @@
     rangerPlanExtension: rangerPlanExtension,
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
     lectureSeule: lectureSeule,
+    avantReinitialisation: avantReinitialisation,
+    CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
     recuADistance: recuADistance,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
