@@ -256,13 +256,13 @@
             _esc(o.planName || o.planId) + ' · ' + _esc(o.pointNom || o.pointId || (o.x + "," + o.y)) +
           '</span>' +
           (dispo
-            ? '<button class="kta-popup-btn kta-ipl-go" type="button" ' +
-                "onclick=\"window.InterPlanLinks.naviguerVers('" + _esc(e.link.id) + "','" + e.mySide + "'); return false;\" " +
+            ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-kta-act="ipl-go" ' +
+                'data-kta-lien="' + _esc(e.link.id) + '" data-kta-cote="' + (e.mySide === "b" ? "b" : "a") + '" ' +
                 'title="' + _esc(_t("ipl.popup.goTitle")) + '">➜</button>'
             : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">⛔</span>') +
           (e.baked ? '' :
-            '<button class="kta-popup-btn kta-ipl-del" type="button" ' +
-              "onclick=\"window.InterPlanLinks.supprimerDepuisPopup('" + _esc(e.link.id) + "'); return false;\" " +
+            '<button class="kta-popup-btn kta-ipl-del" type="button" data-kta-act="ipl-del" ' +
+              'data-kta-lien="' + _esc(e.link.id) + '" ' +
               'title="' + _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>') +
         '</div>';
     });
@@ -270,14 +270,16 @@
     // Bouton de création — tout point est liable (6:a), y compris datalayer.
     // 🐛 v1.57.1 : level + 1er tag passés au snapshot (la bascule de niveau à
     // l'arrivée et le check filtre tag en dépendent).
-    const jsId  = String(point.id || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    const jsNom = String(point.nom || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
+    // 🔒 Valeurs en data-* échappés, action par l'écouteur de la fiche (utils.js > _ktaPopupAction) :
+    // jamais de donnée du point ou du plan dans un onclick (faille XSS du 05/10/2026).
     const source = (layerId === "editor") ? "session" : "data";
     const lvlArg = Number.isInteger(point.level) ? point.level : 0;
-    const tagArg = String((Array.isArray(point.tags) && point.tags[0]) || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const tagArg = String((Array.isArray(point.tags) && point.tags[0]) || "");
     const addBtn =
-      '<button class="kta-popup-btn kta-ipl-add" type="button" ' +
-        "onclick=\"window.InterPlanLinks.ouvrirCreation('" + jsId + "'," + (Number(point.x) || 0) + "," + (Number(point.y) || 0) + ",'" + jsNom + "','" + source + "'," + lvlArg + ",'" + tagArg + "','" + _esc(point.uid || "") + "'); return false;\" " +
+      '<button class="kta-popup-btn kta-ipl-add" type="button" data-kta-act="ipl-add" ' +
+        'data-kta-id="' + _esc(point.id || "") + '" data-kta-x="' + (Number(point.x) || 0) + '" data-kta-y="' + (Number(point.y) || 0) + '" ' +
+        'data-kta-nom="' + _esc(point.nom || "") + '" data-kta-source="' + source + '" data-kta-niveau="' + lvlArg + '" ' +
+        'data-kta-tag="' + _esc(tagArg) + '" data-kta-uid="' + _esc(point.uid || "") + '" ' +
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
         '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';

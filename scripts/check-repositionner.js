@@ -327,14 +327,17 @@ function pointDeBase() {
   const UTILS = fs.readFileSync("js/utils.js", "utf8");
   const LIENS = fs.readFileSync("js/interPlanLinks.js", "utf8");
 
-  t("câblage : le bouton est dans la popup d'un point",
-    UTILS.indexOf("window.repositionnerPointEditor(") >= 0);
+  // Depuis le correctif XSS (05/10/2026) : le bouton porte data-kta-act="repositionner",
+  // l'écouteur unique de la fiche (_ktaPopupAction) appelle repositionnerPointEditor.
+  t("câblage : le bouton est dans la popup d'un point, et son action appelle repositionnerPointEditor",
+    UTILS.indexOf('_act("repositionner")') >= 0 &&
+    /case "repositionner":\s+return appel\("repositionnerPointEditor"/.test(UTILS));
   // 🩸 Le bouton doit vivre dans `editRow`, gouverne par showSessionActions :
   // pose ailleurs, il apparaitrait sur les points de calque en lecture seule,
   // ou les points ne seraient pas dans listePoints -> bouton mort.
   const iEdit = UTILS.indexOf("const editRow = showSessionActions");
   const iDel  = UTILS.indexOf("const deleteRow = showSessionActions");
-  const iRepo = UTILS.indexOf("window.repositionnerPointEditor(");
+  const iRepo = UTILS.indexOf('_act("repositionner")');
   t("🩸 câblage : le bouton est dans `editRow` (réservé aux points de SESSION)",
     iEdit >= 0 && iDel > iEdit && iRepo > iEdit && iRepo < iDel);
 

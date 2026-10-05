@@ -92,6 +92,21 @@ natives).
   (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
   depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
 
+- 🔴 **Mode Secours à plusieurs appareils sur une installation reliée : l'exécution en cours est effacée** (étape 0
+  de l'étude « Secours avec l'installation », 05/10/2026 ; ✅ vérifié, code lu). Le relais en direct renvoie le
+  scénario entier, importé chez les autres en `mode: "remplacer"` ; or `secoursMode.js > _appliquerPayloadImport`
+  reconstruit le scénario **sans `execution`** et efface ses photos — le PC qui coche efface le tableau de l'équipe, et
+  l'inverse. Et `execution` mêle données communes et choix de l'appareil (`role`, `currentEquipeId`). Côté app :
+  option `garderExecution` de l'import + poste stocké **par appareil**. ⚠️ D'ici là : pas d'intervention réelle à
+  plusieurs appareils sur une installation reliée (un seul appareil : non concerné ; myktamap.fr : non concerné).
+  Repoussé par KARMA le 05/10 (après le multi-comptes). **S** pour la partie app.
+- **Secours relié aux comptes** (décisions KARMA du 05/10/2026, après l'étape 0) : équipe ↔ vrais comptes, lien gardé
+  par l'installation seulement (aucun nom réel dans le `.mkmsec` ni le KMZ) ; intervention déclenchée par Admin ou
+  Créateur, bandeau d'alerte + accusés « vu » ; tout membre coche les étapes, le chef seul déclare la rentrée, le PC
+  peut tout ; position sur le plan proposée en une touche au déclenchement ; pas de notification app fermée avant
+  l'étape 3 ; noms réels en option à l'export, journal 90 jours. Prises neutres à prévoir ici : `secoursMonPoste`,
+  `secoursPeutAvancer`, `secoursAppliquerEtape` + `mktm:secours-etape-changee`, `afficherAlerteSecours`. **L.**
+
 ⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
 `entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
 GPS (l'erreur d'un calage à 2 points n'est pas mesurable). Le moins cher des correctifs, et le seul qu'aucun code ne
@@ -147,16 +162,16 @@ avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie 
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- 🔴 **XSS — audit fait le 05/10/2026, correction à faire.** **Prouvé** en navigateur (test d'attaque du dépôt pro) :
-  le **nom** et la **1re étiquette d'un point** s'exécutent à l'ouverture de sa fiche — `utils.js > buildPointPopupHtml`
-  bâtit ses boutons avec des `onclick="…"` où le nom n'est échappé que pour le JS (`'`, `\`), pas pour l'attribut (`"`).
-  Concerne aussi myktamap.fr (ZIP de plan ou session partagés). **Lu, non prouvé** : `interPlanLinks.js` (mêmes `onclick`) ;
-  contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère, sans clic ; légende, filtres,
-  favoris, exports), couleurs et libellés de `customLegend`, libellés de calques ; affichages ponctuels
-  (`interfaceItineraire.js` modale éviter, `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`,
-  infobulle `secoursMode.js`, `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 1 `onclick` →
-  `data-*` + écouteurs à l'ouverture (comme `attacherNotePopup`) ; 2 valider le plan-config à l'entrée (couleur `#hex`,
-  URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
+- 🟠 **XSS — le cas prouvé est corrigé (05/10/2026), le reste est à faire.** ✅ La fiche d'un point
+  (`utils.js > buildPointPopupHtml`) et sa section liaisons (`interPlanLinks.js`) n'ont plus aucun `onclick` : chaque
+  bouton porte `data-kta-act` + des `data-*` échappés, un seul écouteur en capture (`_ktaPopupAction`) agit. Prouvé :
+  le test d'attaque du dépôt pro ne déclenche plus aucune charge, et chaque bouton de la fiche agit avec un nom piégé.
+  **Reste, lu non prouvé** : contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère ;
+  légende, filtres, favoris — `interface.js` liste ⭐ fait `src="' + url + '"`, exports), couleurs et libellés de
+  `customLegend`, libellés de calques ; affichages ponctuels (`interfaceItineraire.js` modale éviter,
+  `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`, infobulle `secoursMode.js`,
+  `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 2 valider le plan-config à l'entrée
+  (couleur `#hex`, URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
 

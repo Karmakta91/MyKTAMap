@@ -2133,6 +2133,23 @@ function initInterface() {
     });
   }
 
+  // PANNEAU D'UNE INSTALLATION RELIÉE (ex. « 👥 Équipe »), juste sous ⭐ Favoris (KARMA 05/10/2026) —
+  // seulement si une extension le fournit (prise neutre `panneau`) : sur myktamap.fr, aucun bouton.
+  const _panneauExt = (window.KtaExtensions && typeof window.KtaExtensions.panneauExtension === "function")
+    ? window.KtaExtensions.panneauExtension() : null;
+  // Déclaré par une variable (pas un littéral) : ce bouton n'existe que sur une installation reliée,
+  // il ne figure pas dans le tableau des groupes du guide public (scripts/check-doc-sidebar.js).
+  if (_panneauExt) {
+    const _cfgPanneauExt = {
+      id: "ext-panneau",
+      iconePrincipale: _panneauExt.icone,
+      titre: _panneauExt.titre,
+      position: "topleft",
+      soloAction: function() { window.KtaExtensions.ouvrirPanneau(); }
+    };
+    _creerGroupeAccordeon(_cfgPanneauExt);
+  }
+
   // ===== Watcher pour le contrôle des couches Leaflet =====
   // Quand le panneau des couches s'ouvre (clic ou hover), il s'agrandit en haut-droite
   // de la map. Mais le #map est position:fixed → stacking context isolé → le panneau
@@ -2186,23 +2203,6 @@ function initInterface() {
     position: "topleft",
     soloAction: function() { if (typeof window.afficherConfig === "function") window.afficherConfig(); }
   });
-
-  // 2ter. PANNEAU D'UNE INSTALLATION RELIÉE (ex. « 👥 Équipe ») — seulement si une extension le
-  // fournit (prise neutre `panneau`) : sur myktamap.fr, aucun bouton.
-  const _panneauExt = (window.KtaExtensions && typeof window.KtaExtensions.panneauExtension === "function")
-    ? window.KtaExtensions.panneauExtension() : null;
-  // Déclaré par une variable (pas un littéral) : ce bouton n'existe que sur une installation reliée,
-  // il ne figure pas dans le tableau des groupes du guide public (scripts/check-doc-sidebar.js).
-  if (_panneauExt) {
-    const _cfgPanneauExt = {
-      id: "ext-panneau",
-      iconePrincipale: _panneauExt.icone,
-      titre: _panneauExt.titre,
-      position: "topleft",
-      soloAction: function() { window.KtaExtensions.ouvrirPanneau(); }
-    };
-    _creerGroupeAccordeon(_cfgPanneauExt);
-  }
 
   // 2bis. RECHERCHE (solo)
   _creerGroupeAccordeon({

@@ -1238,12 +1238,15 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // Echappement HTML pour le contenu affiche
   const safeName = nom.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const safeDesc = desc.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  // Echappement string JS pour le 'nom' passe en argument inline (entre apostrophes)
-  const jsName = nom.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
   const id     = String(point.id || "");
-  const jsId   = id.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
   const x = Number(point.x) || 0;
   const y = Number(point.y) || 0;
+  // 🔒 Aucune donnée du point dans un gestionnaire inline (faille XSS prouvée le 05/10/2026 :
+  // un « " » dans le nom sortait de l'attribut onclick). Chaque bouton porte data-kta-act +
+  // des data-* échappés pour l'attribut ; un seul écouteur (_ktaPopupAction, plus bas) agit.
+  const _act = function(action) {
+    return 'data-kta-act="' + action + '" data-kta-id="' + _escAttr(id) + '" data-kta-x="' + x + '" data-kta-y="' + y + '" ';
+  };
   // 🆕 v1.16.0 step 3 — Favori : layerInfo passé par les callers
   // (editor.js → { layerId: "editor", layerLabel: "Mes ajouts" }, utils.js
   // ajouterPointsDepuisJSON → { layerId: <data layer id>, layerLabel: <label> }).
@@ -1276,16 +1279,14 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni ✏️ ni 🗑️
   const editRow = showSessionActions
     ? '<div class="kta-popup-actions">' +
-        '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' +
-          'onclick="window.modifierPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+        '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' + _act("modifier") +
           'title="' + window.I18n.t("poi.editPoint") + '">' +
           window.I18n.t("poi.editBtn") +
         '</button>' +
         // 📌 v1.85.0 (KARMA « si le POI a ete mal mis ») : arme le picker
         // « clic carte » de editor.js. Classe generique volontaire : la
         // reposition n'est pas l'edition, elle n'emprunte pas sa teinte.
-        '<button class="kta-popup-btn" type="button" ' +
-          'onclick="window.repositionnerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+        '<button class="kta-popup-btn" type="button" ' + _act("repositionner") +
           'title="' + window.I18n.t("poi.movePoint") + '">' +
           window.I18n.t("poi.moveBtn") +
         '</button>' +
@@ -1293,8 +1294,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     : '';
   const deleteRow = showSessionActions
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
-        '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
-          'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+        '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' + _act("supprimer") +
           'title="' + window.I18n.t("poi.deletePoint") + '">' +
           window.I18n.t("poi.deleteBtn") +
         '</button>' +
@@ -1305,7 +1305,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // window.attachPopupPhotos appelé depuis _ajouterMarker et
   // ajouterPointsDepuisJSON). Vide par défaut → caché en CSS via :empty
   // pour ne pas créer d'espace blanc si pas de photos.
-  const photosSlot = '<div class="kta-popup-photos" data-pointid="' + jsId + '"></div>';
+  const photosSlot = '<div class="kta-popup-photos" data-pointid="' + _escAttr(id) + '"></div>';
 
   // 🆕 v1.21.2 (KARMA "si georef fait, on rajoute, juste aprés descriptions
   // les coordonée GPS du point") : ligne coords GPS si le plan est calibré.
@@ -1320,9 +1320,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     gpsLineHtml =
       '<div class="kta-popup-gps" title="' + window.I18n.t("poi.gpsComputed") + '">' +
         '<span class="kta-popup-gps-icon">🌐</span>' +
-        '<code class="kta-popup-gps-val">' + gpsStr + '</code>' +
-        '<button class="kta-popup-gps-copy" type="button" ' +
-          'onclick="window.kta_copierGps(\'' + gpsAttr.replace(/'/g, "\\'") + '\'); return false;" ' +
+        '<code class="kta-popup-gps-val">' + window.ktaEsc(gpsStr) + '</code>' +
+        '<button class="kta-popup-gps-copy" type="button" data-kta-act="gps" data-kta-gps="' + gpsAttr + '" ' +
           'title="' + window.I18n.t("poi.copyGps") + '">📋</button>' +
       '</div>';
   }
@@ -1337,8 +1336,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   let ttsBtnHtml = "";
   if (safeDesc && window.VoiceTts && typeof window.VoiceTts.isSupported === "function" && window.VoiceTts.isSupported()) {
     ttsBtnHtml = '<button class="kta-popup-tts-btn" type="button" ' +
-                   'data-tts-text="' + _escAttr(desc) + '" ' +
-                   'onclick="window.kta_lireNotePopup(this); return false;" ' +
+                   'data-tts-text="' + _escAttr(desc) + '" data-kta-act="tts" ' +
                    'title="' + window.I18n.t("poi.readNote") + '">' +
                    '🔊' +
                  '</button>';
@@ -1362,18 +1360,17 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            gpsLineHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
-             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
-               'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
+             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
-             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
-               'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
+             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") +
+               'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
                window.I18n.t("poi.goThereBtn") +
              '</button>' +
-             '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
-               'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
+             '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' + _act("etape") +
+               'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
                window.I18n.t("poi.addWaypointBtn") +
              '</button>' +
@@ -1382,9 +1379,10 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              // Au clic, window.toggleFavoriPoint mute l'état + rafraîchit le
              // libellé du bouton in-place (pas de re-render du popup entier).
              '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
-               'data-fav-pointid="' + _escAttr(jsId) + '" ' +
-               'data-fav-pointuid="' + _escAttr(point.uid || "") + '" ' +
-               'onclick="window.toggleFavoriPoint(\'' + jsId + '\',' + x + ',' + y + ",'" + jsName + "','" + _firstTag + "','" + _layerId + "','" + _escAttr(_layerLabel) + "','" + _escAttr(point.uid || "") + "'); return false;\" " +
+               'data-fav-pointid="' + _escAttr(id) + '" ' +
+               'data-fav-pointuid="' + _escAttr(point.uid || "") + '" ' + _act("favori") +
+               'data-kta-nom="' + _escAttr(nom) + '" data-kta-tag="' + _escAttr(_firstTag) + '" ' +
+               'data-kta-calque="' + _escAttr(_layerId) + '" data-kta-calque-label="' + _escAttr(_layerLabel) + '" ' +
                'title="' + (isFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle")) + '">' +
                (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
@@ -1395,6 +1393,43 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
          '</div>';
 }
 window.buildPointPopupHtml = buildPointPopupHtml;
+
+// 🔒 Actions de la fiche d'un point (data-kta-act) : UN écouteur, en CAPTURE — la popup Leaflet
+// arrête la propagation des clics (disableClickPropagation), un écouteur en bulle ne les verrait pas.
+// Les valeurs viennent des data-* (texte, jamais évalué).
+function _ktaPopupAction(e) {
+  const b = e.target && e.target.closest && e.target.closest(".kta-popup-point [data-kta-act]");
+  if (!b) return;
+  e.preventDefault();
+  const d = b.dataset, x = Number(d.ktaX) || 0, y = Number(d.ktaY) || 0, id = d.ktaId || "";
+  const appel = function(nom) {
+    const f = window[nom];
+    if (typeof f !== "function") { console.warn("[Popup] action indisponible :", nom); return; }
+    return f.apply(window, Array.prototype.slice.call(arguments, 1));
+  };
+  switch (d.ktaAct) {
+    case "modifier":      return appel("modifierPointEditor", id, x, y);
+    case "repositionner": return appel("repositionnerPointEditor", id, x, y);
+    case "supprimer":     return appel("supprimerPointEditor", id, x, y);
+    case "gps":           return appel("kta_copierGps", d.ktaGps || "");
+    case "tts":           return appel("kta_lireNotePopup", b);
+    case "ici":           return appel("recalerTrackerSurPoint", x, y);
+    case "aller":         return appel("itineraireYAller", x, y, d.ktaNom || "");
+    case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");
+    case "favori":        return appel("toggleFavoriPoint", id, x, y, d.ktaNom || "", d.ktaTag || "default",
+                                       d.ktaCalque || "data", d.ktaCalqueLabel || "", d.favPointuid || "");
+  }
+  // Liaisons inter-plan (section de la fiche, js/interPlanLinks.js)
+  const L = window.InterPlanLinks;
+  if (!L) return;
+  if (d.ktaAct === "ipl-go") return L.naviguerVers(d.ktaLien || "", d.ktaCote === "b" ? "b" : "a");
+  if (d.ktaAct === "ipl-del") return L.supprimerDepuisPopup(d.ktaLien || "");
+  if (d.ktaAct === "ipl-add") {
+    return L.ouvrirCreation(id, x, y, d.ktaNom || "", d.ktaSource === "session" ? "session" : "data",
+      parseInt(d.ktaNiveau, 10) || 0, d.ktaTag || "", d.ktaUid || "");
+  }
+}
+document.addEventListener("click", _ktaPopupAction, true);
 
 // 🆕 v1.34.26 — Helper global vibration haptique (Web Vibration API).
 // Point d'entrée UNIQUE pour tous les modules qui veulent faire vibrer le
