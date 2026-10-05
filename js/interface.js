@@ -2579,16 +2579,6 @@ function initInterface() {
             // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
 // tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
 _setGroupeModeActif("tracker", isTracking, null);
-// Liste du tracker recalculée à chaque ouverture : la tuile 📡 n'existe que si une
-// extension la propose (elle peut se déclarer après la construction du groupe).
-if (_groupes.tracker) {
-  _groupes.tracker.dynamicSousActions = function() {
-    const l = (_groupes.tracker.sousActionsConfig || []).slice();
-    const p = _tuilePresence();
-    if (p) l.push(p);
-    return l;
-  };
-}
             return;
           }
           modeRecalage = true;
@@ -2735,6 +2725,18 @@ if (_groupes.tracker) {
       }
     ]
   });
+  // 📡 Liste du tracker recalculée à chaque ouverture : la tuile « Partager ma position sur ce plan »
+  // n'existe que si une extension la propose (elle peut se déclarer après la construction du groupe).
+  // 🩸 Posé ici, à la construction : il était inséré par erreur DANS l'action « Mode recalage »,
+  // donc la tuile n'apparaissait qu'après un recalage (retour KARMA 05/10/2026).
+  if (_groupes.tracker) {
+    _groupes.tracker.dynamicSousActions = function() {
+      const l = (_groupes.tracker.sousActionsConfig || []).slice();
+      const p = _tuilePresence();
+      if (p) l.push(p);
+      return l;
+    };
+  }
 
   // 7. MESURE
   _creerGroupeAccordeon({
