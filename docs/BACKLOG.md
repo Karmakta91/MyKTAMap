@@ -140,9 +140,16 @@ avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie 
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- 🔴 **Audit XSS** : tout champ texte d'un objet, d'un plan ou d'un dossier rendu par `innerHTML` doit passer par
-  l'échappement (fiche d'un point : fait). À vérifier : recherche, listes de l'accueil, légende, exports PNG/PDF/KMZ,
-  Mode Secours, Carnet, éditeur de données. Test navigateur avec `<img src=x onerror=…>` dans chaque champ. **M.**
+- 🔴 **XSS — audit fait le 05/10/2026, correction à faire.** **Prouvé** en navigateur (test d'attaque du dépôt pro) :
+  le **nom** et la **1re étiquette d'un point** s'exécutent à l'ouverture de sa fiche — `utils.js > buildPointPopupHtml`
+  bâtit ses boutons avec des `onclick="…"` où le nom n'est échappé que pour le JS (`'`, `\`), pas pour l'attribut (`"`).
+  Concerne aussi myktamap.fr (ZIP de plan ou session partagés). **Lu, non prouvé** : `interPlanLinks.js` (mêmes `onclick`) ;
+  contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère, sans clic ; légende, filtres,
+  favoris, exports), couleurs et libellés de `customLegend`, libellés de calques ; affichages ponctuels
+  (`interfaceItineraire.js` modale éviter, `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`,
+  infobulle `secoursMode.js`, `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 1 `onclick` →
+  `data-*` + écouteurs à l'ouverture (comme `attacherNotePopup`) ; 2 valider le plan-config à l'entrée (couleur `#hex`,
+  URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
 
