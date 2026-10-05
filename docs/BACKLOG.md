@@ -162,18 +162,44 @@ avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie 
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- 🟠 **XSS — le cas prouvé est corrigé (05/10/2026), le reste est à faire.** ✅ La fiche d'un point
-  (`utils.js > buildPointPopupHtml`) et sa section liaisons (`interPlanLinks.js`) n'ont plus aucun `onclick` : chaque
-  bouton porte `data-kta-act` + des `data-*` échappés, un seul écouteur en capture (`_ktaPopupAction`) agit. Prouvé :
-  le test d'attaque du dépôt pro ne déclenche plus aucune charge, et chaque bouton de la fiche agit avec un nom piégé.
-  **Reste, lu non prouvé** : contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère ;
-  légende, filtres, favoris — `interface.js` liste ⭐ fait `src="' + url + '"`, exports), couleurs et libellés de
-  `customLegend`, libellés de calques ; affichages ponctuels (`interfaceItineraire.js` modale éviter,
-  `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`, infobulle `secoursMode.js`,
-  `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 2 valider le plan-config à l'entrée
-  (couleur `#hex`, URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
+- ✅ **XSS — corrigé le 05/10/2026, gardé par `scripts/check-xss.js` (pré-commit bloquant).** Fiche d'un point et
+  section liaisons sans gestionnaire inline (écouteur unique en capture) ; plan-config filtré à l'ouverture, ZIP comme
+  site (`ktaAssainirPlanConfig` : icônes sans `" < > \``, `data:image/` seulement ; nom / auteur / version ; libellés
+  et identifiants de calques) ; légende personnalisée filtrée dans `_normalize` (couleurs `ktaCouleurSure`, libellés,
+  icônes, id) ; sinks ponctuels échappés (`lostMode`, `interfaceDistanceTotale`, `tableEditor`, `sessionExporter`
+  recherche KMZ, infobulle Secours, modale « éviter » de l'itinéraire, descriptions du KMZ). Prouvé : test d'attaque du
+  dépôt pro (aucune charge exécutée), aucune icône ni calque des plans réels écartés par les filtres. **Reste** : un seul
+  `window.ktaEsc` au lieu des copies locales (cosmétique, au fil de l'eau).
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
+
+## 🔎 Audits du 05/10/2026 — à traiter
+
+Rapports : [`audits/2026-10-05_audit-ui-v2.md`](audits/2026-10-05_audit-ui-v2.md) (bugs UI) et
+[`audits/2026-10-05_audit-code-mort-js-v1.md`](audits/2026-10-05_audit-code-mort-js-v1.md) (code mort). N° 1 de
+l'audit UI (régression du correctif XSS : actions d'extension en double dans la fiche) corrigé le jour même.
+
+- 🔴 **Lecture seule contournable** (installation reliée, droit « lire ») — ✅ code lu, non reproduit : le contrôle
+  `ktaEditionRefusee()` est dans `toggleEdition()` (`editor.js`), que **personne n'appelle** ; le vrai bouton ✏️
+  (`interface.js` ~2911) et le clic carte de l'éditeur n'ont pas ce contrôle → un point peut être posé. La fiche d'un
+  tracé / zone / structure garde aussi description, Convertir et 🗑️ ; le Tableur et la conversion n'ont pas de garde.
+  Le serveur refuse l'envoi (l'objet est mis de côté), mais l'écran ment. **S-M.**
+- 🟠 **L'équipe d'un plan passe sur le plan suivant** : `KtaPresences` jamais remis à zéro au changement de plan
+  (présences, suivi, itinéraires redessinés à leurs anciennes coordonnées) ; aucun signal de changement de plan pour
+  l'extension. `KtaPresences.reinitialiser()` dans `_libererRessourcesPlanPrecedent` + événement. Le panneau 👥 reste
+  aussi ouvert sur l'accueil. **S.**
+- 🟠 **`sitePlansHiddenDefault`** : case de l'accueil sans effet, case de Configuration fausse tant que l'utilisateur n'a
+  pas choisi (`homeLoader.js` `_syncSkipServerPlansUI` à rappeler après lecture de la config). **S.**
+- 🟡 Audit UI n° 6-12 : atténuation hors niveau des présences pas recalculée au changement de niveau ; pastille d'un
+  pseudo-emoji « � » ; FR en dur (ouverture d'un plan ☁️, « Mémoriser », titre de repli « Installation ») ;
+  « (hors base de données) » coupé à 390 px ; liste de l'accueil redessinée à chaque badge ; publication depuis le
+  Générateur sans retour (alert natif, nom non échappé dans `ktaConfirm`) ; observateur des fiches sur tout `body`.
+- 🧹 **Code mort** : 19 suppressions sûres (~45 lignes, variables locales oubliées surtout) — liste 🟢 du rapport ;
+  `toggleEdition` **à ne pas supprimer** avant le correctif lecture seule. À arbitrer (KARMA) : `setShowRoadIntersections`,
+  `telechargerMesureJSON` (36 l., plus aucun bouton), `getRuntimeAssetJson`, `PERF_AUTO_META`/`PERF_OFF_META`,
+  `ROAD_INTERSECTION_MAX_ROADS` ; les « wrappers compat » `_chargerTagsCalque`/`_renderTagsCalque` sont privés à une
+  IIFE (la raison de les garder ne tient pas) ; `gate.lockout.escalade` jamais affichée (oubli d'affichage probable).
+- 📄 Docs dérivées : `secours.md` cite `getItiTempsMinutes` (le Secours a son propre modèle de durée).
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
@@ -243,7 +269,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 ### 🟡 À vérifier avant de toucher
 - Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action`, `.plan-card` ×4, `.kta-modal-btn-*`, `.kta-mesure-distance`, `.drag-over`, `.kta-rd-total-pill`, `style-secours.css` — contrôle runtime (`querySelectorAll(...).length === 0`)
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
-- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
+- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)

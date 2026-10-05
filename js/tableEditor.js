@@ -842,7 +842,7 @@
           // Géométrie : résumé non éditable « N points »
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
         } else if (Array.isArray(v)) {
-          contenu = v.join(", ");
+          contenu = _escapeHtml(v.join(", "));
         } else if (v === undefined || v === null) {
           contenu = '<span style="opacity:0.4;">—</span>';
         } else {

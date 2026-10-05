@@ -276,13 +276,13 @@ window.ouvrirRoadsDistanceFloater = function() {
           '</p>' +
           // F14 : lignes GÉNÉRÉES depuis les types présents (built-in +
           // customs), au lieu de 3 lignes écrites à la main. L'id DOM garde le
-          // type brut — les ids `cust-…` sont des tokens sûrs ([a-z0-9-]).
+          // type brut, échappé : un type vient des données (session partagée, autre compte) — 🔒 05/10/2026.
           _rdTypesPresents().map(function(type) {
             return '<label class="kta-rd-row">' +
-              '<input type="checkbox" id="kta-rd-chk-' + type + '"' + (_rdFiltres[type] !== false ? ' checked' : '') + '>' +
+              '<input type="checkbox" id="kta-rd-chk-' + window.ktaEsc(type) + '"' + (_rdFiltres[type] !== false ? ' checked' : '') + '>' +
               '<span class="kta-rd-swatch" style="background:' + _rdSwatch(type) + ';"></span>' +
-              '<span class="kta-rd-label">' + _rdLabelType(type) + '</span>' +
-              '<span class="kta-rd-count" id="kta-rd-cnt-' + type + '">—</span>' +
+              '<span class="kta-rd-label">' + window.ktaEsc(_rdLabelType(type)) + '</span>' +
+              '<span class="kta-rd-count" id="kta-rd-cnt-' + window.ktaEsc(type) + '">—</span>' +
             '</label>';
           }).join('') +
           '<div class="kta-rd-total-wrap">' +

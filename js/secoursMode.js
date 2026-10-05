@@ -4709,7 +4709,7 @@
         fillOpacity: 0.95
       });
       const lbl = ctx.lastKnownPoint.label
-                  ? t("secours.overlay.dernierePositionLabel", { label: ctx.lastKnownPoint.label })
+                  ? t("secours.overlay.dernierePositionLabel", { label: _escHtml(ctx.lastKnownPoint.label) })
                   : t("secours.overlay.dernierePosition");
       cm.bindTooltip(lbl, { permanent: false });
       cm.addTo(_overlayLayer);

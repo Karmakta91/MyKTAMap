@@ -1240,9 +1240,8 @@ function _rafraichirListeAvoidZones() {
     return;
   }
   const prefs = _getItiAvoidPrefs();
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  // 🔒 05/10/2026 : guillemets compris (le type part dans data-ztype="…").
+  const _esc = window.ktaEsc;
   el.innerHTML = types.map(function(z) {
     const checked = prefs.zones.indexOf(z.type) >= 0;
     const cnt = ' <span style="opacity:.6; font-size:11px;">(' + z.count + ')</span>';
@@ -1467,7 +1466,7 @@ function _rafraichirListeAvoidPoints() {
     return;
   }
   function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   el.innerHTML = prefs.points.map(function(p, idx) {
     return '<div class="kta-iti-avoid-chip">' +
@@ -1506,7 +1505,7 @@ async function _rafraichirChipsAvoidTags() {
     return;
   }
   function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   el2.innerHTML = available.map(function(tag) {
     const active = prefs.tags.indexOf(tag) >= 0;
@@ -1556,7 +1555,7 @@ function _bindAvoidSectionHandlers() {
           return;
         }
         function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
         searchRes.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
@@ -2309,7 +2308,7 @@ window.ouvrirItinerairModal = function() {
       let fallbackHtml = "";
       if (result.usedFallback && Array.isArray(result.avoidedThrough) && result.avoidedThrough.length > 0) {
         function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
         const noms = result.avoidedThrough.map(function(ap) {
           return _esc(ap.label || ap.id || window.I18n.t("iti.avoid.pointFallback"));

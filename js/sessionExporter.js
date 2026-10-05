@@ -3739,7 +3739,7 @@
         try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
         if (input.value.trim() !== q) return;
         if (results.length === 0) {
-          list.innerHTML = '<div class="kta-kmz-search-empty">' + t("export.search.empty", { q: q }) + '</div>';
+          list.innerHTML = '<div class="kta-kmz-search-empty">' + t("export.search.empty", { q: window.ktaEsc(q) }) + '</div>';
           return;
         }
         list.innerHTML = results.slice(0, 10).map(function(it, i) {
@@ -3752,10 +3752,10 @@
             metaParts.push("x=" + p.x + ", y=" + p.y);
           }
           const meta = metaParts.length > 0
-            ? '<span class="kta-kmz-search-meta">(' + metaParts.join(" · ") + ')</span>'
+            ? '<span class="kta-kmz-search-meta">(' + window.ktaEsc(metaParts.join(" · ")) + ')</span>'
             : '';
           return '<div class="kta-kmz-search-item" data-idx="' + i + '">' +
-                   '<strong>' + nom + '</strong>' + meta +
+                   '<strong>' + window.ktaEsc(nom) + '</strong>' + meta +
                  '</div>';
         }).join("");
         list.querySelectorAll(".kta-kmz-search-item").forEach(function(row, i) {

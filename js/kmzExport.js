@@ -660,7 +660,9 @@
       // CDATA ne nécessite pas d'XML-escape mais on doit éviter de fermer le
       // CDATA prématurément si la description contenait littéralement "]]>"
       // (très rare, mais défensif).
-      const html = s.replace(/]]>/g, "]]]]><![CDATA[>").replace(/\n/g, "<br/>");
+      // 🔒 05/10/2026 (audit XSS) : le texte est échappé (Google Earth rend la description en HTML ;
+      // une note partagée ne doit pas y devenir du balisage). « ]]> » ne peut plus survivre à l'échappement.
+      const html = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>");
       return '<description><![CDATA[' + html + ']]></description>';
     }
 

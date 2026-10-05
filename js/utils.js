@@ -1426,7 +1426,7 @@ function _ktaPopupAction(e) {
   if (d.ktaAct === "ipl-del") return L.supprimerDepuisPopup(d.ktaLien || "");
   if (d.ktaAct === "ipl-add") {
     return L.ouvrirCreation(id, x, y, d.ktaNom || "", d.ktaSource === "session" ? "session" : "data",
-      parseInt(d.ktaNiveau, 10) || 0, d.ktaTag || "", d.ktaUid || "");
+      parseInt(d.ktaNiveau, 10) || 0, d.ktaTag || "", d.ktaPointUid || "");
   }
 }
 document.addEventListener("click", _ktaPopupAction, true);

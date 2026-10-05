@@ -382,6 +382,7 @@ window._extractLazyAsset = _extractLazyAsset;
 
 function cloneAndResolvePlanConfig(rawConfig) {
   const resolved = JSON.parse(JSON.stringify(rawConfig));
+  ktaAssainirPlanConfig(resolved, "plan importé");   // 🔒 hoisting : défini plus bas
   if (resolved.plan?.baseImage)
     resolved.plan.baseImage = getRuntimeAssetUrl(resolved.plan.baseImage) || resolved.plan.baseImage;
   if (resolved.plan?.collisionImage)
@@ -711,14 +712,64 @@ function resolveServerPath(p, baseDir) {
 // le catalogue built-in reprend alors la main tout seul.
 // ⚠️ On ne touche PAS au fichier du plan : seule la config en mémoire est
 // nettoyée, et le warn dit lequel régénérer.
+// 🔒 05/10/2026 (audit XSS) : une valeur d'icône finit dans `src="…"` (repères, légende, filtres,
+// favoris, exports). Les caractères qui sortent d'un attribut ou d'une URL (" < > ` \, contrôles)
+// la rendent impossible, et un data-URI doit être une IMAGE.
 function ktaCheminIconePlausible(v) {
   if (typeof v !== "string") return false;
   const s = v.trim();
-  if (!s) return false;
-  if (s.indexOf("data:") === 0 || s.indexOf("blob:") === 0) return true;
+  if (!s || /["<>`\\\u0000-\u001f]/.test(s)) return false;   // ' admise : encodeURIComponent la laisse (SVG intégrés)
+  if (s.indexOf("blob:") === 0) return true;
+  if (s.indexOf("data:") === 0) return /^data:image\/[a-z0-9.+-]+[;,]/i.test(s);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^https?:/i.test(s)) return false;   // javascript:, file:…
   return /\.(png|jpe?g|svg|webp|gif|bmp|ico|avif)$/i.test(s);
 }
 window.ktaCheminIconePlausible = ktaCheminIconePlausible;
+
+// 🔒 05/10/2026 (audit XSS) — un plan-config ou une session viennent d'un fichier PARTAGÉ : leurs
+// couleurs et libellés finissent dans du HTML (pastilles `style="background:…"`, titres, listes).
+// Couleur : #hex, rgb()/rgba()/hsl()/hsla() numériques, ou un nom simple — sinon null (le canon
+// reprend la main). Texte : sans < > " ` (rien qui ouvre une balise ou sorte d'un attribut).
+function ktaCouleurSure(v) {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (/^#[0-9a-f]{3,8}$/i.test(s)) return s;
+  if (/^(rgb|rgba|hsl|hsla)\([0-9\s.,%deg]+\)$/i.test(s)) return s;
+  if (/^[a-z]{3,20}$/i.test(s)) return s;
+  return null;
+}
+function ktaTexteSur(v, max) {
+  if (v === null || v === undefined) return v;
+  return String(v).replace(/[<>"`]/g, "").slice(0, max || 200);
+}
+window.ktaCouleurSure = ktaCouleurSure;
+window.ktaTexteSur = ktaTexteSur;
+
+// Assainit un plan-config EN MÉMOIRE (le fichier n'est pas touché) : icônes, libellés et
+// identifiants de calques, nom du plan. Appelé par les deux chemins d'ouverture (ZIP et site).
+function ktaAssainirPlanConfig(config, ou) {
+  if (!config || typeof config !== "object") return config;
+  nettoyerIconesConfig(config, ou);
+  if (config.plan && typeof config.plan === "object") {
+    ["name", "author", "version"].forEach(function(k) {   // titre fixe de la carte, liste des plans
+      if (typeof config.plan[k] === "string") config.plan[k] = ktaTexteSur(config.plan[k], 200);
+    });
+  }
+  ["imageLayers", "dataLayers"].forEach(function(cle) {
+    if (!Array.isArray(config[cle])) return;
+    config[cle] = config[cle].filter(function(l) {
+      if (!l || typeof l !== "object") return false;
+      if (l.id !== undefined && !/^[\w.:-]{1,80}$/.test(String(l.id))) {
+        console.warn("[Config] 🔒 calque à l'identifiant impossible ignoré (" + (ou || "plan") + ")");
+        return false;
+      }
+      if (typeof l.label === "string") l.label = ktaTexteSur(l.label, 120);
+      return true;
+    });
+  });
+  return config;
+}
+window.ktaAssainirPlanConfig = ktaAssainirPlanConfig;
 
 function nettoyerIconesConfig(config, ou) {
   if (!config || !config.icons || typeof config.icons !== "object") return config;
@@ -848,6 +899,9 @@ async function loadAppConfig(planPath) {
     let config = await response.json();
     if (!config?.plan) throw new Error("plan-config.json invalide");
 
+    // 🔒 Libellés, calques et icônes assainis avant tout usage (les icônes le sont aussi par
+    // resolveServerPaths, pour ses autres appelants).
+    ktaAssainirPlanConfig(config, "plan serveur " + baseDir);
     // Résoudre les chemins relatifs au dossier du plan
     config = resolveServerPaths(config, baseDir);
 

@@ -279,7 +279,7 @@
       '<button class="kta-popup-btn kta-ipl-add" type="button" data-kta-act="ipl-add" ' +
         'data-kta-id="' + _esc(point.id || "") + '" data-kta-x="' + (Number(point.x) || 0) + '" data-kta-y="' + (Number(point.y) || 0) + '" ' +
         'data-kta-nom="' + _esc(point.nom || "") + '" data-kta-source="' + source + '" data-kta-niveau="' + lvlArg + '" ' +
-        'data-kta-tag="' + _esc(tagArg) + '" data-kta-uid="' + _esc(point.uid || "") + '" ' +
+        'data-kta-tag="' + _esc(tagArg) + '" data-kta-point-uid="' + _esc(point.uid || "") + '" ' +   // pas data-kta-uid : réservé à la fiche (prises d'extension)
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
         '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';
