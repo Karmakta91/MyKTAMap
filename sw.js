@@ -54,6 +54,36 @@ function _estCachePlan(cle) { return typeof cle === "string" && cle.indexOf(PLAN
 // ASSETS_TO_CACHE : sur myktamap.fr, ces caches n'existent pas.
 const EXT_CACHE_PREFIX = "myktamap-ext-";
 function _estCacheExt(cle) { return typeof cle === "string" && cle.indexOf(EXT_CACHE_PREFIX) === 0; }
+// Modules déclarés par `index.json > config.serverConnection.modules` : gardés dans un cache
+// DURABLE (préfixe ext, survit aux releases) et préchargés dès que l'index est lu en ligne.
+// Sans ça, le 1er lancement hors ligne après une mise à jour = « Installation indisponible »
+// (le cache principal, vidé au bump, était le seul à les tenir). Sans modules déclarés
+// (myktamap.fr) : ce cache n'existe pas.
+const MODULES_EXT_CACHE = EXT_CACHE_PREFIX + "modules";
+function _garderModulesDeclares(texteIndex) {
+  let mods = [];
+  try {
+    const cfg = (JSON.parse(texteIndex) || {}).config || {};
+    const sc = cfg.serverConnection || {};
+    mods = Array.isArray(sc.modules) ? sc.modules : [];
+  } catch (e) { return Promise.resolve(); }
+  if (!mods.length) return Promise.resolve();   // aucun module déclaré : aucun cache créé
+  const urls = mods.filter(function(m) { return typeof m === "string" && m && m.indexOf("://") < 0 && m.indexOf("//") !== 0; })
+    .slice(0, 20)
+    .map(function(m) { try { return new URL(m, self.registration.scope).href; } catch (e) { return null; } })
+    .filter(function(u) { return u && new URL(u).origin === self.location.origin; });
+  return caches.open(MODULES_EXT_CACHE).then(function(cache) {
+    return cache.keys().then(function(cles) {
+      const voulues = new Set(urls);
+      const purges = cles.filter(function(r) { return !voulues.has(r.url); }).map(function(r) { return cache.delete(r); });
+      const presentes = new Set(cles.map(function(r) { return r.url; }));
+      const ajouts = urls.filter(function(u) { return !presentes.has(u); }).map(function(u) {
+        return fetch(u, { cache: "no-store" }).then(function(r) { if (r && r.ok) return cache.put(u, r); }).catch(function() {});
+      });
+      return Promise.all(purges.concat(ajouts));
+    });
+  }).catch(function() {});
+}
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -1262,6 +1292,7 @@ self.addEventListener("fetch", (event) => {
         const networkResp = await Promise.race([networkPromise, timeoutPromise]);
         if (networkResp && networkResp.ok) {
           try { cache.put(event.request, networkResp.clone()); } catch(e) {}
+          try { networkResp.clone().text().then(_garderModulesDeclares).catch(function() {}); } catch(e) {}
           return networkResp;
         }
         throw new Error("non-ok status " + (networkResp && networkResp.status));
@@ -1286,6 +1317,13 @@ self.addEventListener("fetch", (event) => {
       // 💾 v1.87.0 : miss du cache principal → on regarde les caches de plan
       // hors-ligne avant de sortir sur le réseau.
       .then(function(r) { return r || _matchCachesPlan(event.request); })
+      // Module d'extension déclaré (cache durable, cf _garderModulesDeclares).
+      .then(function(r) {
+        if (r) return r;
+        return caches.has(MODULES_EXT_CACHE).then(function(existe) {
+          return existe ? caches.open(MODULES_EXT_CACHE).then(function(c) { return c.match(event.request); }) : null;
+        }).catch(function() { return null; });
+      })
       .then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
