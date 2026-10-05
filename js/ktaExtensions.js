@@ -320,7 +320,7 @@
       return false;
     }
     _extensions.push(ext);
-    if (ext.actionsObjet) _observerFiches();
+    if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
       ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
@@ -783,9 +783,26 @@
       }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
     } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
   }
+  // Ligne d'information fournie par l'extension (ex. « Créé par X · modifié par Y ») : texte
+  // seulement, 120 caractères au plus ; l'app n'écrit jamais d'auteur elle-même (community anonyme).
+  function infoObjet(uid) {
+    const ext = _prise("infoObjet");
+    if (!ext || typeof ext.infoObjet !== "function" || typeof uid !== "string" || !uid) return "";
+    try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
+    catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
+  }
   function _hydraterFiche(racine) {
-    if (!racine || racine.querySelector(".kta-popup-ext")) return;
-    const actions = actionsObjet(racine.getAttribute("data-kta-uid"));
+    if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
+    racine.setAttribute("data-kta-ext", "1");
+    const uid = racine.getAttribute("data-kta-uid");
+    const info = infoObjet(uid);
+    if (info) {
+      const ligne = document.createElement("div");
+      ligne.className = "kta-popup-ext-info";
+      ligne.textContent = info;
+      racine.appendChild(ligne);
+    }
+    const actions = actionsObjet(uid);
     if (!actions.length) return;
     const zone = document.createElement("div");
     zone.className = "kta-popup-actions kta-popup-ext";
@@ -843,6 +860,7 @@
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
+    infoObjet: infoObjet,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

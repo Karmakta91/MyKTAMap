@@ -246,8 +246,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const U = lire("js/utils.js");
     t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
       /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
-    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions",
-      /if \(ext\.actionsObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions ou une info à montrer",
+      /if \(ext\.actionsObjet \|\| ext\.infoObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+    t("info d'objet : texte seulement (textContent), 120 caractères, jamais écrite par l'app",
+      /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }
 
   // ═════════ 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ═════════

@@ -213,6 +213,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   { mode: "remplacer" })` (même identifiant = remplacé) ou `secoursAppliquer(id, partiel)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+- **Info sur la fiche d'un objet** : `infoObjet(uid) → string` (synchrone, 120 car., rendue en texte) — ex. « Créé par X ·
+  modifié par Y ». L'app n'écrit jamais d'auteur elle-même : les objets restent anonymes dans la session et les exports.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
   de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent
