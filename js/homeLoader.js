@@ -1761,20 +1761,54 @@ function planRowHTML(plan) {
           btnPublish.addEventListener("click", async function() {
             const st = document.getElementById("kta-plan-publish-status");
             const dire = function(txt, cls) { if (st) { st.textContent = txt; st.className = cls || ""; } };
+            const reussi = async function(publie, cleTexte) {
+              dire(_t(cleTexte || "home.plans.info.publishOk"), "kta-tx-ok");
+              if (await _basculerVersPublie(plan, publie)) {
+                modal.remove();
+                if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+              }
+            };
             const envoyer = async function(blob) {
               btnPublish.disabled = true;
-              dire(_t("home.plans.info.publishEnCours"), "kta-tx-muted");
-              try {
-                const publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: window.PlanRegistry.displayName(plan) });
-                dire(_t("home.plans.info.publishOk"), "kta-tx-ok");
-                if (await _basculerVersPublie(plan, publie)) {
-                  modal.remove();
-                  if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+              const nom = window.PlanRegistry.displayName(plan);
+              // Un gros plan sur une connexion lente : plusieurs minutes. Le temps qui
+              // défile montre que l'app travaille (retour KARMA 05/10 : « ça répond pas »).
+              const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+              const t0 = Date.now();
+              const tic = function() {
+                const s = Math.round((Date.now() - t0) / 1000);
+                dire(_t("home.plans.info.publishEnCours", { mo: mo, duree: Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") }), "kta-tx-muted");
+              };
+              tic();
+              const minuteur = setInterval(tic, 1000);
+              // Plans ☁️ connus AVANT l'envoi : si la réponse se perd en route (relais qui
+              // coupe une réponse longue), un plan NOUVEAU de ce nom prouve que l'envoi a abouti.
+              let avant = null;
+              try { avant = new Set((await window.KtaExtensions.listerPlansExtension()).map(function(p) { return String(p.id); })); }
+              catch (e) { avant = null; }
+              let publie = null, erreur = null;
+              try { publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: nom }); }
+              catch (e) { erreur = e; }
+              clearInterval(minuteur);
+              if (publie) { await reussi(publie); return; }
+              console.warn("[Loader] publication :", erreur);
+              dire(_t("home.plans.info.publishEchec") + " " + String((erreur && erreur.message) || erreur).slice(0, 120), "kta-tx-err");
+              btnPublish.disabled = false;
+              if (!avant) return;
+              // Vérification en arrière-plan (3 min) : l'erreur reste affichée tant que
+              // rien ne prouve le contraire ; un refus définitif ne fait donc rien attendre.
+              for (let i = 0; i < 36 && btnPublish.isConnected; i++) {
+                await new Promise(function(r) { setTimeout(r, 5000); });
+                let l = [];
+                try { l = await window.KtaExtensions.listerPlansExtension(); } catch (e) { l = []; }
+                const arrive = l.find(function(p) { return !avant.has(String(p.id)) && String(p.name || "").trim() === nom.trim(); });
+                if (arrive) {
+                  console.warn("[Loader] publication : réponse perdue, mais le plan est arrivé :", arrive.id);
+                  btnPublish.disabled = true;
+                  try { window.dispatchEvent(new CustomEvent("mktm:plans-extension-changes")); } catch (e) { /* rien */ }
+                  await reussi({ id: arrive.id, nom: arrive.name }, "home.plans.info.publishRattrape");
+                  return;
                 }
-              } catch (e) {
-                console.warn("[Loader] publication :", e);
-                dire(_t("home.plans.info.publishEchec") + " " + String((e && e.message) || e).slice(0, 120), "kta-tx-err");
-                btnPublish.disabled = false;
               }
             };
             let blob = null;

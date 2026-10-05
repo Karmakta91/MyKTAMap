@@ -150,6 +150,14 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
   infobulle `secoursMode.js`, `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 1 `onclick` →
   `data-*` + écouteurs à l'ouverture (comme `attacherNotePopup`) ; 2 valider le plan-config à l'entrée (couleur `#hex`,
   URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
+- 🔴 **« Tout réinitialiser » ne ferme pas la session d'une installation reliée** (constaté le 05/10/2026). Le jeton
+  de renouvellement vit dans un cookie `HttpOnly`, que le code de la page ne peut ni lire ni effacer : après le reset,
+  le module de connexion se reconnecte seul (vécu : retour direct sur le compte Admin). Sur un appareil partagé, un
+  reset ne déconnecte donc pas. Correctif retenu à l'analyse : prise neutre `avantReinitialisation()` appelée par le
+  reset (`interfaceMaintenance.js`) et par la suppression de profil (`homeProfile.js`) AVANT d'effacer, attente bornée
+  (3 s, un serveur injoignable ne bloque jamais le reset), no-op sans extension ; l'extension y révoque sa session.
+  + avertir dans la modale du reset si des modifications ☁️ ne sont pas envoyées. Contrat dans
+  `community-server-line.md` §3 + `check-extensions`. **S.**
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
 
