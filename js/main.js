@@ -232,12 +232,16 @@ function _ktaInstanceIndisponible() {
 // inscrits au registre en `type: "ext"`, ouverts par KtaExtensions.charger
 // PlanExtension (homeLoader). Une extension qui ne répond pas = aucun plan
 // ajouté (prise d'information : erreur ignorée).
+// Id du registre d'un plan d'extension (☁️) — seule fabrique, aussi lue par l'accueil.
+window.ktaIdRegistreExtension = function(extId) {
+  return "ext_" + String(extId).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+};
 async function _decouvrirPlansExtension() {
   if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
   const liste = await window.KtaExtensions.listerPlansExtension();
   liste.forEach(function(p) {
     if (!p || !p.id) return;
-    const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    const id = window.ktaIdRegistreExtension(p.id);
     window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
       version: p.version || null });
     if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
@@ -264,7 +268,7 @@ async function _decouvrirPlansExtension() {
     }
     liste.forEach(function(p) {
       if (!p || !p.id || typeof window.PlanRegistry.setPlanFolder !== "function") return;
-      const id = "ext_" + String(p.id).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const id = window.ktaIdRegistreExtension(p.id);
       const cible = p.dossier ? (table["ext_" + p.dossier] || null) : null;
       const e = window.PlanRegistry.findById(id);
       if (cible) window.PlanRegistry.setPlanFolder(id, cible, "index");

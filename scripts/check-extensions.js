@@ -380,8 +380,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /window\.KtaExtensions\.importAutorise === "function" &&\s*!window\.KtaExtensions\.importAutorise\(\)\) return true;/.test(MAIN));
     t("export de profil : les archives de plans passent par la prise", /window\.KtaExtensions\.exportAutorise\(p\.id\)/.test(PROF));
     t("plans d'extension : inscrits en type « ext » après la découverte serveur", /_decouvrirPlansExtension\(\)/.test(MAIN) && /type: "ext", extId:/.test(MAIN));
-    t("plans d'extension : ouverts via la prise, gardés sur l'appareil, type conservé",
-      /if \(plan\.type === "ext"\) \{/.test(HL) && /typeRegistre: "ext", storeBlob: true/.test(HL) && /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
+    // Gardé selon « Mémoriser le plan dans l'app » ; une copie DÉJÀ gardée est toujours mise à
+    // jour (sinon l'ancienne passerait pour la version courante).
+    t("plans d'extension : ouverts via la prise, gardés selon le réglage (copie existante toujours à jour), type conservé",
+      /if \(plan\.type === "ext"\) \{/.test(HL) &&
+      /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
+      /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
     t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
     t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&

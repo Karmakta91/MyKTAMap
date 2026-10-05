@@ -216,6 +216,46 @@
     return bilan;
   }
 
+  // ☁️ TRANSFERT des données associées d'un plan vers un autre id : la copie
+  // locale d'un plan publié est remplacée par sa version ☁️ (même archive).
+  // Session (LS, planId réécrit), calage, photos, favoris, liaisons. Refusé si
+  // la cible a déjà une session : on n'écrase jamais. Les sauvegardes de
+  // session restent à l'ancien id (purgées avec lui) — instantanés du passé.
+  async function transferAssociatedData(ancienId, nouveauId) {
+    const bilan = { ok: false, session: false, calib: false, photos: 0, favoris: 0, liaisons: 0 };
+    if (!ancienId || !nouveauId || ancienId === nouveauId) return bilan;
+    const cleS = function(id) { return "myktamap_session_v1_" + id; };
+    try {
+      if (localStorage.getItem(cleS(nouveauId)) != null) { bilan.raison = "cible-occupee"; return bilan; }
+      const brut = localStorage.getItem(cleS(ancienId));
+      if (brut != null) {
+        let txt = brut;
+        try { const o = JSON.parse(brut); if (o && typeof o === "object") { o.planId = nouveauId; txt = JSON.stringify(o); } }
+        catch (e) { /* illisible : copié tel quel */ }
+        localStorage.setItem(cleS(nouveauId), txt);
+        localStorage.removeItem(cleS(ancienId));
+        bilan.session = true;
+      }
+      const cal = localStorage.getItem("myktamap_kmz_calib_" + ancienId);
+      if (cal != null && localStorage.getItem("myktamap_kmz_calib_" + nouveauId) == null) {
+        localStorage.setItem("myktamap_kmz_calib_" + nouveauId, cal);
+        localStorage.removeItem("myktamap_kmz_calib_" + ancienId);
+        bilan.calib = true;
+      }
+    } catch (e) { bilan.raison = "stockage"; return bilan; }
+    if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.changerPlan === "function") {
+      try { bilan.photos = (await window.MyKTAMapPhotos.changerPlan(ancienId, nouveauId)) || 0; } catch (e) {}
+    }
+    if (window.Favoris && typeof window.Favoris.transfererPlan === "function") {
+      try { bilan.favoris = window.Favoris.transfererPlan(ancienId, nouveauId) || 0; } catch (e) {}
+    }
+    if (window.InterPlanLinks && typeof window.InterPlanLinks.transfererPlan === "function") {
+      try { bilan.liaisons = window.InterPlanLinks.transfererPlan(ancienId, nouveauId) || 0; } catch (e) {}
+    }
+    bilan.ok = true;
+    return bilan;
+  }
+
   function removeAll() {
     init();
     _data.plans = [];
@@ -938,6 +978,7 @@
     addOrUpdate:          addOrUpdate,
     reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
     purgeAssociatedData:  purgeAssociatedData,  // 🧹 v1.79.3 — session/géoref/photos/backups d'un plan
+    transferAssociatedData: transferAssociatedData, // ☁️ copie locale → version publiée
     setPinned:            setPinned,   // 🏷️ v1.78.0
     setTags:              setTags,     // 🏷️ v1.78.0
     setDisplayName:       setDisplayName, // ✏️ v1.79.1

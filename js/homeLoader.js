@@ -950,19 +950,25 @@
         btn.textContent = meta.txt;
         btn.title       = _homeT(meta.cle, meta.repli);
         btn.dataset.off = etat;
-        btn.classList.toggle("kta-dl-ok", etat === "complet");
+        btn.classList.toggle("kta-dl-ok", etat === "complet" || etat === "extGarde");
         btn.classList.toggle("kta-dl-partiel", etat === "partiel" || etat === "incomplet");
         btn.hidden = false;
       }
 
       // Un SEUL caches.keys() pour toute la liste (cf PlanOffline.statuts).
       // ☁️ Plans d'une installation reliée : l'état vient de l'extension (sa copie gardée).
-      const _ETAT_EXT = { garde: "complet", perime: "perime", absent: "absent" };
+      // Gardé = un CONSTAT (✅, sans action) : l'ancien « ↻ mettre à jour » ne faisait rien.
+      const _ETAT_EXT = { garde: "extGarde", perime: "perime", absent: "extAbsent" };
+      _ETATS_DL.extGarde  = { txt: "✅", cle: "home.plans.offline.rowExtGarde",  repli: "Gardé sur l'appareil, à jour" };
+      _ETATS_DL.extAbsent = { txt: "💾", cle: "home.plans.offline.rowExtAbsent", repli: "Garder sur l'appareil (hors ligne)" };
+      // Plan LOCAL dont l'archive n'est pas mémorisée (📁) : la mémoriser après coup.
+      _ETATS_DL.localPick = { txt: "💾", cle: "home.plans.offline.rowMemoriser", repli: "Mémoriser ce plan dans l'app" };
       async function _rafraichirBoutonsHorsLigne() {
         const X = window.KtaExtensions;
         Array.from(document.querySelectorAll(".kta-plan-row-dl")).forEach(function (b) {
           const row = b.closest(".plan-row");
           const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
+          if (p && p.type === "local") { _peindreBoutonDl(b, "localPick"); return; }
           if (!p || p.type !== "ext" || !X || typeof X.etatHorsLigneExtension !== "function") return;
           X.etatHorsLigneExtension(p.id).then(function (e) { if (e) _peindreBoutonDl(b, _ETAT_EXT[e]); else b.hidden = true; });
         });
@@ -990,7 +996,9 @@
       // progression : pas de modale, on reste dans la liste.
       async function _lancerHorsLigneLigne(planId, btn) {
         const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
+        if (plan && plan.type === "local" && !plan.storedBlob) { _memoriserApresCoup(plan); return; }
         if (plan && plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.garderPlanExtension === "function") {
+          if (btn.dataset.off === "extGarde") return;   // déjà gardé et à jour : rien à faire
           btn.disabled = true; btn.textContent = "…";
           const ok = await window.KtaExtensions.garderPlanExtension(planId);
           btn.disabled = false;
@@ -1020,6 +1028,69 @@
         btn.disabled = false;
         // On RELIT le cache plutôt que de croire le résultat retourné.
         _rafraichirBoutonsHorsLigne();
+      }
+
+      // 💾 Mémoriser APRÈS COUP un plan local chargé sans copie (réglage « Mémoriser le
+      // plan dans l'app » décoché) : on redemande son ZIP — le navigateur ne l'a pas
+      // gardé —, on vérifie que c'est bien ce plan (nom), puis on range la copie. Le
+      // plan n'est pas ouvert.
+      async function _memoriserApresCoup(plan) {
+        const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+        const toast = function(m, ty) { if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, ty); };
+        const file = await new Promise(function(resolve) {
+          const input = document.createElement("input");
+          input.type = "file"; input.accept = ".zip,application/zip";
+          input.onchange = function() { resolve(input.files[0] || null); };
+          input.click();
+        });
+        if (!file) return;
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const entree = zip.file(/(^|\/)plan-config\.json$/)[0];
+          if (!entree) throw new Error("plan-config.json introuvable");
+          const cfg = JSON.parse(await entree.async("string"));
+          const nomZip = String((cfg.plan && cfg.plan.name) || "").trim();
+          const nomPlan = String(plan.name || "").trim();
+          if (nomZip && nomPlan && nomZip !== nomPlan) { await _afficherModaleNomZipKO(nomZip, nomPlan); return; }
+          if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
+          const r = await window.PlanRegistry.saveBlob(plan.id, file);
+          if (!r || !r.ok) throw new Error((r && r.error) || "stockage refusé");
+          window.PlanRegistry.addOrUpdate({ id: plan.id, storedBlob: true, originalFilename: file.name, fileSize: file.size });
+          toast(t("home.plans.offline.memoriseOk"), "info");
+        } catch (e) {
+          console.warn("[Loader] mémorisation après coup :", e);
+          toast(t("home.plans.offline.memoriseEchec") + " " + String((e && e.message) || e).slice(0, 100), "warn");
+        }
+        if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+      }
+
+      // ☁️ Après « Publier ce plan » : remplacer la copie locale par la version ☁️.
+      // Les données de l'appareil (session, photos, favoris, liaisons, calage) passent
+      // sur la version ☁️ ; la synchro de l'extension les envoie à la première
+      // ouverture (tout objet plus récent que le dernier envoi — aucun pour un plan neuf).
+      async function _basculerVersPublie(planLocal, planPublie) {
+        const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+        const toast = function(m, ty) { if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(m, ty); };
+        const PR = window.PlanRegistry;
+        if (!planPublie || !planPublie.id || typeof window.ktaIdRegistreExtension !== "function" ||
+            typeof PR.transferAssociatedData !== "function") return false;
+        if (window._currentLoadedPlanId === planLocal.id && typeof window.ktaPlanAffiche === "function" && window.ktaPlanAffiche()) return false;
+        const oui = await window.ktaConfirm(
+          t("home.plans.info.basculeMsg", { nom: escapeHtml(PR.displayName(planLocal)) }),
+          { titre: t("home.plans.info.basculeTitre"), okLabel: t("home.plans.info.basculeOk") });
+        if (!oui) return false;
+        // L'entrée ☁️ arrive par la relecture de la liste (événement de publication).
+        const idExt = window.ktaIdRegistreExtension(planPublie.id);
+        for (let i = 0; i < 40 && !PR.findById(idExt); i++) await new Promise(function(r) { setTimeout(r, 250); });
+        if (!PR.findById(idExt)) { toast(t("home.plans.info.basculeEchec"), "warn"); return false; }
+        const bilan = await PR.transferAssociatedData(planLocal.id, idExt);
+        if (!bilan.ok) { toast(t("home.plans.info.basculeEchec"), "warn"); return false; }
+        if (planLocal.pinned) PR.setPinned(idExt, true);
+        PR.remove(planLocal.id);   // entrée + archive locale ; ses sauvegardes de session suivent la purge des orphelins
+        if (typeof PR.purgeAssociatedData === "function") { try { await PR.purgeAssociatedData(planLocal.id); } catch (e) { /* rien */ } }
+        console.log("[Loader] ☁️ copie locale remplacée par la version publiée :", planLocal.id, "→", idExt, bilan);
+        toast(t("home.plans.info.basculeOkToast", { photos: bilan.photos }), "info");
+        return true;
       }
 
 function planRowHTML(plan) {
@@ -1100,6 +1171,8 @@ function planRowHTML(plan) {
             </div>
             <div class="plan-row-actions">
               ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
+              ${(plan.type === "local" && !plan.storedBlob) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="localPick"
+                title="${_homeT("home.plans.offline.rowMemoriser", "Mémoriser ce plan dans l'app")}">💾</button>` : ""}
               ${plan.type === "server" || (plan.type === "ext" && window.KtaExtensions &&
                 window.KtaExtensions.horsLigneExtensionDisponible()) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
                 title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
@@ -1692,8 +1765,12 @@ function planRowHTML(plan) {
               btnPublish.disabled = true;
               dire(_t("home.plans.info.publishEnCours"), "kta-tx-muted");
               try {
-                await window.KtaExtensions.publierPlan({ blob: blob, nom: window.PlanRegistry.displayName(plan) });
+                const publie = await window.KtaExtensions.publierPlan({ blob: blob, nom: window.PlanRegistry.displayName(plan) });
                 dire(_t("home.plans.info.publishOk"), "kta-tx-ok");
+                if (await _basculerVersPublie(plan, publie)) {
+                  modal.remove();
+                  if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+                }
               } catch (e) {
                 console.warn("[Loader] publication :", e);
                 dire(_t("home.plans.info.publishEchec") + " " + String((e && e.message) || e).slice(0, 120), "kta-tx-err");
@@ -1859,6 +1936,9 @@ function planRowHTML(plan) {
                            && window._loaderSkipServerPlans();
         const showServer = !skipServer && _loaderShowServerPlans();
         const filtered = showServer ? all : all.filter(function(p) { return p.type !== "server"; });
+        const _horsBase = !!(window.KtaExtensions && typeof window.KtaExtensions.aPrise === "function" &&
+          window.KtaExtensions.aPrise("plans"));
+        document.querySelectorAll(".kta-hors-base").forEach(function(el) { el.hidden = !_horsBase; });
 
         // Sync visuelle de la checkbox (au cas où refreshPlansList est appelé
         // sans que le checkbox ait été coché manuellement, ex: au boot).
@@ -2569,7 +2649,8 @@ function planRowHTML(plan) {
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
             await chargerZipFichier(fichier, (segmented !== "auto") ? segmented : (plan.perfPreset || "auto"),
-                                    { planId: plan.id, typeRegistre: "ext", storeBlob: true, zipFile: fichier });
+                                    { planId: plan.id, typeRegistre: "ext", zipFile: fichier,
+                                      storeBlob: !!plan.storedBlob || window.ktaMemoriserPlanActif() });
             if (window.masquerLoader) window.masquerLoader();
           } catch (e) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
