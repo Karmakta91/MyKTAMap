@@ -1484,6 +1484,7 @@
 
   // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
     if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();

@@ -179,23 +179,16 @@ Rapports : [`audits/2026-10-05_audit-ui-v2.md`](audits/2026-10-05_audit-ui-v2.md
 [`audits/2026-10-05_audit-code-mort-js-v1.md`](audits/2026-10-05_audit-code-mort-js-v1.md) (code mort). N° 1 de
 l'audit UI (régression du correctif XSS : actions d'extension en double dans la fiche) corrigé le jour même.
 
-- 🔴 **Lecture seule contournable** (installation reliée, droit « lire ») — ✅ code lu, non reproduit : le contrôle
-  `ktaEditionRefusee()` est dans `toggleEdition()` (`editor.js`), que **personne n'appelle** ; le vrai bouton ✏️
-  (`interface.js` ~2911) et le clic carte de l'éditeur n'ont pas ce contrôle → un point peut être posé. La fiche d'un
-  tracé / zone / structure garde aussi description, Convertir et 🗑️ ; le Tableur et la conversion n'ont pas de garde.
-  Le serveur refuse l'envoi (l'objet est mis de côté), mais l'écran ment. **S-M.**
-- 🟠 **L'équipe d'un plan passe sur le plan suivant** : `KtaPresences` jamais remis à zéro au changement de plan
-  (présences, suivi, itinéraires redessinés à leurs anciennes coordonnées) ; aucun signal de changement de plan pour
-  l'extension. `KtaPresences.reinitialiser()` dans `_libererRessourcesPlanPrecedent` + événement. Le panneau 👥 reste
-  aussi ouvert sur l'accueil. **S.**
-- 🟠 **`sitePlansHiddenDefault`** : case de l'accueil sans effet, case de Configuration fausse tant que l'utilisateur n'a
-  pas choisi (`homeLoader.js` `_syncSkipServerPlansUI` à rappeler après lecture de la config). **S.**
-- 🟡 Audit UI n° 6-12 : atténuation hors niveau des présences pas recalculée au changement de niveau ; pastille d'un
-  pseudo-emoji « � » ; FR en dur (ouverture d'un plan ☁️, « Mémoriser », titre de repli « Installation ») ;
+- ✅ Corrigés le 05/10/2026 (scénario pro `lectureSeuleEtSortie`, `check-extensions` §6 bis ter) : **lecture seule
+  contournable** (bouton ✏️, clic carte, fiche d'un tracé / zone / structure, conversion, Tableur) ; **équipe de l'ancien
+  plan redessinée sur le nouveau** et panneau 👥 resté ouvert (`KtaExtensions.quitterPlan` + `mktm:plan-ferme`) ;
+  **`sitePlansHiddenDefault`** (cases resynchronisées une fois la config de l'installation lue) ; atténuation hors
+  niveau recalculée au changement de niveau ; pastille d'un pseudo-emoji.
+- 🟡 Audit UI n° 8-12 : FR en dur (ouverture d'un plan ☁️, « Mémoriser », titre de repli « Installation ») ;
   « (hors base de données) » coupé à 390 px ; liste de l'accueil redessinée à chaque badge ; publication depuis le
   Générateur sans retour (alert natif, nom non échappé dans `ktaConfirm`) ; observateur des fiches sur tout `body`.
-- 🧹 **Code mort** : 19 suppressions sûres (~45 lignes, variables locales oubliées surtout) — liste 🟢 du rapport ;
-  `toggleEdition` **à ne pas supprimer** avant le correctif lecture seule. À arbitrer (KARMA) : `setShowRoadIntersections`,
+- 🧹 **Code mort** : les 19 suppressions sûres sont faites (05/10/2026). `toggleEdition` (editor.js) n'a toujours aucun
+  appelant : la lecture seule est désormais gardée au vrai bouton, il peut partir. À arbitrer (KARMA) : `setShowRoadIntersections`,
   `telechargerMesureJSON` (36 l., plus aucun bouton), `getRuntimeAssetJson`, `PERF_AUTO_META`/`PERF_OFF_META`,
   `ROAD_INTERSECTION_MAX_ROADS` ; les « wrappers compat » `_chargerTagsCalque`/`_renderTagsCalque` sont privés à une
   IIFE (la raison de les garder ne tient pas) ; `gate.lockout.escalade` jamais affichée (oubli d'affichage probable).

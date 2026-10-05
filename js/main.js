@@ -170,6 +170,8 @@ async function _chargerIndexServeur() {
     }
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
+    // Défauts de l'installation (ex. sitePlansHiddenDefault) connus seulement maintenant : l'accueil se resynchronise.
+    if (typeof window.refreshPlansList === "function") { try { window.refreshPlansList(); } catch(e) {} }
     _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
     // 🔑 La revalidation du mot de passe d'instance a lieu AVANT la gate
@@ -1073,6 +1075,11 @@ function _libererRessourcesPlanPrecedent() {
     try { window.Journal.onPlanUnload(); } catch(e) {}
   }
 
+  // 🧩 Installation reliée : panneau d'extension fermé, présences / itinéraires de l'ancien plan effacés.
+  if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
+    try { window.KtaExtensions.quitterPlan("plan"); } catch(e) {}
+  }
+
   // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
   // plan. Bug bench : après un switch DIRECT (sélecteur du titre, sans goTo),
   // la mini-pastille ↩️ survivait sur le NOUVEAU plan avec une pile de retour
@@ -1761,6 +1768,9 @@ function afficherLoader() {
   }
   const itiFantome = document.getElementById("kta-itinerary-modal");
   if (itiFantome) { try { itiFantome.remove(); } catch(e) {} }
+  if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
+    try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
+  }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";

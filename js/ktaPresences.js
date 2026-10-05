@@ -74,7 +74,7 @@
       el.className = "kta-presence" + (ancienne ? " kta-presence-ancienne" : "") + (horsNiveau ? " kta-presence-hors-niveau" : "");
       var pastille = document.createElement("span");
       pastille.className = "kta-presence-pastille";
-      pastille.textContent = p.pseudo.charAt(0).toUpperCase();
+      pastille.textContent = (Array.from(p.pseudo)[0] || "?").toUpperCase();
       var etiquette = document.createElement("span");
       etiquette.className = "kta-presence-etiquette";
       etiquette.textContent = p.pseudo + " · " + _age(p.ts) + (p.niveau !== null ? " · N" + p.niveau : "");
@@ -186,8 +186,19 @@
     return _liste.length;
   }
 
+  // Sortie du plan (changement de plan, retour à l'accueil) : tout ce qui appartenait à l'ancien plan
+  // disparaît — présences, itinéraires, suivi, masquages, minuteur. Sans ça, l'équipe de l'ancien plan
+  // était redessinée sur le nouveau à ses anciennes coordonnées (audit UI du 05/10/2026).
+  function reinitialiser() {
+    clearInterval(_minuteur); _minuteur = null;
+    _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
+    _vider(); _viderItis();
+  }
+
   window.KtaPresences = {
     afficher: afficher,
+    reinitialiser: reinitialiser,
+    redessiner: function () { _dessiner(); _dessinerItis(); },   // changement de niveau affiché
     // Actions neutres pour un panneau d'extension (« 👥 Équipe ») : jamais déclenchées par l'app seule.
     centrer: function (id) { var p = _trouver(id); if (!p) return false; _allerA(p, true); return true; },
     suivre: function (id) { _suivi = (id && _trouver(id)) ? id : null; if (_suivi) _allerA(_trouver(_suivi), true); return _suivi; },

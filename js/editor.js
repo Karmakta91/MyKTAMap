@@ -77,6 +77,7 @@ function initEditor() {
   }
   _editorClickHandler = function(e) {
     if (!window.modeEdition) return;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) { window.modeEdition = false; return; }   // 🔒 lecture seule
     if (document.getElementById("kta-poi-modal")) return; // évite double clic
 
     const lat = e.latlng.lat;

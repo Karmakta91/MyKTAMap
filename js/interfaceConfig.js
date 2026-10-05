@@ -2135,6 +2135,10 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 // Chaque module expose _applyLevelFilterTo*() qui itere ses markers et
 // applique setOpacity selon le filtre courant.
 window.appliquerFiltreNiveau = function() {
+  // 📡 Présences / itinéraires d'une installation reliée : atténuation « hors niveau » recalculée.
+  if (window.KtaPresences && typeof window.KtaPresences.redessiner === "function") {
+    try { window.KtaPresences.redessiner(); } catch(e) {}
+  }
   // Roads + zones de session : re-render complet (filtre applique au build)
   if (typeof window.renderRoads === "function") {
     try { window.renderRoads(); } catch(e) {}

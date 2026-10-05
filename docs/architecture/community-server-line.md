@@ -187,6 +187,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   « 🧭 pseudo » à l'arrivée, rien de cliquable ; 200 itinéraires, 5000 points, 100 étapes max). Actions neutres
   pour un panneau : `KtaPresences.cadrerItineraire(id)`, `masquerItineraire(id, bool)`. `itinerairePublie()` /
   `basculerItineraire()` : une erreur de l'extension = non publié. Sans extension : pas de bouton, rien n'est lu.
+- **Sortie du plan affiché** : `KtaExtensions.quitterPlan(vers)`, appelée par `main.js` au changement de plan
+  (`"plan"`) et au retour à l'accueil (`"accueil"`) — ferme le panneau d'extension, remet à zéro
+  `KtaPresences` (présences, itinéraires, suivi, masquages) et émet **`mktm:plan-ferme`** `{ vers }` pour que
+  l'extension oublie l'ancien plan sans attendre. Au changement de niveau affiché, `KtaPresences.redessiner()`
+  recalcule l'atténuation « hors niveau ».
+- **Lecture seule** (`lectureSeule`) : gardée au bouton ✏️ (`interface.js`), au clic carte de l'éditeur, aux tracés /
+  zones / structures, à la fiche d'un objet (mode lecture), à `KtaConvertir` (convertir, supprimer, lot) et au
+  remplacement de session du Tableur. `check-extensions` §6 bis ter vérifie chaque câblage.
 - **Mode d'un plan ☁️** : `plans.lister()` peut donner `tiledV2` / `multiLevel` (booléens, lus dans le ZIP par
   l'extension) — inscrits au registre seulement s'ils valent `true`, comme les plans du site : badge V2 / M-LVL
   juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).

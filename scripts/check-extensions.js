@@ -308,6 +308,35 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
   }
 
+  // ═════════ 6 bis ter. LECTURE SEULE et SORTIE DE PLAN (audit du 05/10/2026) ═════════
+  {
+    const IF = lire("js/interface.js");
+    const iEd = IF.indexOf('id: "edition"');
+    const bloc = iEd >= 0 ? IF.slice(iEd, IF.indexOf("});", iEd)) : "";
+    t("🩸 bouton ✏️ (le VRAI, interface.js) : la lecture seule l'empêche de s'armer",
+      /ktaEditionRefusee\(\)\)\s*return;\s*window\.modeEdition = true;/.test(bloc));
+    t("🩸 clic carte de l'éditeur : refusé en lecture seule", /_editorClickHandler = function\(e\) \{[\s\S]{0,120}ktaEditionRefusee/.test(lire("js/editor.js")));
+    t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
+      /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
+    const CV = lire("js/convertirObjet.js");
+    t("🩸 conversion / suppression d'objet : gardées à l'entrée",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir("].every((f) =>
+        new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
+    const { K, w } = nouveauContexte(null);
+    let evts = 0;
+    w.addEventListener = w.addEventListener || function () {};
+    w.dispatchEvent = function (e) { if (e && e.type === "mktm:plan-ferme") evts++; return true; };
+    w.CustomEvent = w.CustomEvent || function (type, o) { this.type = type; this.detail = o && o.detail; };
+    let reinit = 0;
+    w.KtaPresences = { reinitialiser: () => { reinit++; } };
+    let sansErreur = true;
+    try { K.quitterPlan("accueil"); } catch (e) { sansErreur = false; }
+    t("sortie de plan : présences remises à zéro, événement mktm:plan-ferme, sans erreur", sansErreur && reinit === 1 && evts === 1);
+    const MA = lire("js/main.js");
+    t("…appelée au changement de plan ET au retour à l'accueil",
+      /KtaExtensions\.quitterPlan\("plan"\)/.test(MA) && /KtaExtensions\.quitterPlan\("accueil"\)/.test(MA));
+  }
+
   // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
   {
     const { K, w } = nouveauContexte(null);

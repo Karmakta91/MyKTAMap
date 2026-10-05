@@ -1992,6 +1992,13 @@ function planRowHTML(plan) {
         // sans que le checkbox ait été coché manuellement, ex: au boot).
         const cbServer = document.getElementById("loaderShowServerPlans");
         if (cbServer) cbServer.checked = showServer;
+        // Même sync pour « Ne pas afficher les plans du site » : son défaut peut venir de la config de
+        // l'installation (sitePlansHiddenDefault), lue APRÈS le premier rendu — sans ça, la case de
+        // Configuration restait décochée et la rangée de l'accueil visible mais sans effet (audit 05/10/2026).
+        const cbSkip = document.getElementById("loaderSkipServerPlansCb");
+        if (cbSkip) cbSkip.checked = skipServer;
+        const rangeeFiltres = document.querySelector(".loader-plans-filters");
+        if (rangeeFiltres) rangeeFiltres.style.display = skipServer ? "none" : "";
 
         // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
         // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).

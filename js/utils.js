@@ -925,7 +925,14 @@ window._kta_syncAllNoteUiForModeChange = function() {
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
-  const mode = (opts.mode === "readonly") ? "readonly" : "edit";
+  const _modeDemande = (opts.mode === "readonly") ? "readonly" : "edit";
+  // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : la fiche d'un tracé / zone /
+  // structure s'affiche en lecture (ni note modifiable, ni Convertir, ni 🗑️). Réévalué à chaque ouverture.
+  let mode = _modeDemande;
+  const _majMode = function() {
+    mode = (_modeDemande === "edit" && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) ? "readonly" : _modeDemande;
+  };
+  _majMode();
 
   function _esc(s) {
     return String(s == null ? "" : s)
@@ -943,7 +950,9 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       const corps = current
         ? '<div class="kta-note-popup-readonly-text">' + _esc(current) + '</div>'
         : '<div class="kta-note-popup-readonly-empty"><em>(aucune note)</em></div>';
-      return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode">' +
+      const _uidLu = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;   // « créé par », historique
+      return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
+               (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
                '<b>' + _esc(titreType) + '</b>' +
                '<div class="kta-note-popup-readonly-label">📖 Note (lecture seule)</div>' +
                corps +
@@ -999,6 +1008,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   // de la popup, et content est rebuilt à chaque ouverture si on a forcé
   // setPopupContent avant.
   layer.on("popupopen", function(evt) {
+    _majMode();
     // Re-render le contenu pour avoir la valeur à jour (au cas où elle a
     // changé depuis le bind initial — peut arriver après undo/redo).
     const fresh = _renderPopupHtml();

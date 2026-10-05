@@ -869,6 +869,18 @@
     return true;
   }
   function rafraichirPanneau() { _rendrePanneau(); }
+  function fermerPanneau() {
+    const ov = document.getElementById("kta-ext-panneau");
+    if (ov) ov.remove();
+    _panneauCorps = null;
+  }
+  // Sortie du plan affiché (main.js : changement de plan, retour à l'accueil) : le panneau se ferme,
+  // les présences et itinéraires de l'ancien plan s'effacent, l'extension est prévenue (mktm:plan-ferme).
+  function quitterPlan(versOu) {
+    fermerPanneau();
+    try { if (window.KtaPresences) window.KtaPresences.reinitialiser(); } catch (e) { /* rien */ }
+    try { window.dispatchEvent(new CustomEvent("mktm:plan-ferme", { detail: { vers: versOu || "plan" } })); } catch (e) { /* rien */ }
+  }
 
   // Badge d'un plan d'extension dans la liste de l'accueil (ex. « 👥 2 », activité de l'installation) :
   // { texte (8 car.), titre (160 car.) }, rendu en texte ; l'extension annonce un changement par
@@ -970,6 +982,8 @@
     panneauExtension: panneauExtension,
     ouvrirPanneau: ouvrirPanneau,
     rafraichirPanneau: rafraichirPanneau,
+    fermerPanneau: fermerPanneau,
+    quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,

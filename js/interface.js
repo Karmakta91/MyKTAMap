@@ -2923,6 +2923,9 @@ _setGroupeModeActif("tracker", isTracking, null);
         delete _modesActifs["edition"];
         return;
       }
+      // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : le mode ne s'arme pas.
+      // Le contrôle était dans editor.js > toggleEdition, que ce bouton n'appelle pas (audit 05/10/2026).
+      if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
       window.modeEdition = true;
       btn.classList.add("kta-group-mode-actif");
       grp.modeActif = true;
