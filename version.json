@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.3",
+  "version": "v2.9.4",
   "released": "2026-10-05",
   "notes": [
-    "🌀 « Effacer la session » garde désormais les points qui portent une liaison vers un autre plan (portails) : la liaison ne reste plus orpheline.",
-    "👥 Sur les installations reliées : travail à plusieurs plus sûr, bouton « Équipe » sur la carte (qui est sur le plan, sa position sur le plan) et itinéraire que l'on peut montrer à l'équipe. Rien ne change sur myktamap.fr."
+    "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. « Effacer la session » garde aussi les points qui portent une liaison vers un autre plan.",
+    "👥 Sur les installations reliées : bouton « Équipe » sur la carte (qui est sur le plan, sa position sur le plan), itinéraire que l'on peut montrer à l'équipe, plans en lecture seule respectés partout. Rien ne change sur myktamap.fr."
   ]
 }

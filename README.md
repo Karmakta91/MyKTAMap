@@ -18,9 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.3` (05/10/2026)
+## 📦 Version courante — `v2.9.4` (05/10/2026)
 
-> 🧭 **v2.9.3 — Itinéraire montré à l'équipe** sur les installations reliées (prise `itineraire`) ; v2.9.2 : panneau « 👥 Équipe ».
+> 🔒 **v2.9.4 — Correctif XSS** (fiche d'un point, entrées d'un plan et d'une légende, `check-xss`), lecture seule gardée partout, audits UI et code mort du 05/10 ; v2.9.3 : itinéraire montré à l'équipe.
 
 > 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
@@ -549,6 +549,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.4 (05/10/2026) — Sécurité XSS, lecture seule, audits UI et code mort (branche `Karma_dev`)
+
+- 🔒 **XSS** (prouvé par le test d'attaque du dépôt pro, concernait aussi myktamap.fr via un ZIP ou une session partagés) : fiche d'un point et section liaisons sans gestionnaire inline — `data-kta-act` + écouteur unique en capture `_ktaPopupAction` (`33e1c3e`) ; plan-config filtré à l'ouverture, ZIP comme site (`ktaAssainirPlanConfig`, `ktaCouleurSure`, `ktaTexteSur`, `ktaCheminIconePlausible` durci), légende personnalisée filtrée dans `_normalize`, sinks ponctuels échappés (`lostMode`, distance totale, tableur, recherche KMZ, infobulle Secours, modale « éviter », descriptions KMZ) ; garde-fou **`scripts/check-xss.js`** (pré-commit, bloquant) (`a8f1485`).
+- 🧩 Régression du 1er correctif (audit UI n° 1) : le bouton « Lier » portait `data-kta-uid` → actions d'extension en double ; renommé `data-kta-point-uid`.
+- 🔒 **Lecture seule** gardée au vrai bouton ✏️, au clic carte, à la fiche d'un tracé / zone / structure (mode lecture), à `KtaConvertir` et au Tableur — le contrôle vivait dans `toggleEdition()`, sans appelant (`93cbd23`).
+- 👥 **Sortie de plan** : `KtaExtensions.quitterPlan` + événement `mktm:plan-ferme` — l'équipe de l'ancien plan n'est plus redessinée sur le nouveau, panneau fermé ; présences redessinées au changement de niveau. `sitePlansHiddenDefault` : cases resynchronisées après lecture de la config.
+- 👥 Bouton 👥 Équipe juste sous ⭐ Favoris.
+- 🧹 Code mort : 19 suppressions sûres (`822e900`). Audits rangés : `docs/audits/2026-10-05_audit-ui-v2.md`, `…_audit-code-mort-js-v1.md`.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.3 (05/10/2026) — Itinéraire montré à l'équipe (branche `Karma_dev`)
 
