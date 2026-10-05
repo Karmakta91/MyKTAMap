@@ -386,6 +386,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /if \(plan\.type === "ext"\) \{/.test(HL) &&
       /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
       /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
+    {
+      const SEC = lire("js/secoursMode.js");
+      const del = SEC.slice(SEC.indexOf("function deleteScenario("), SEC.indexOf("function deleteScenario(") + 1200);
+      t("Mode Secours : une suppression voulue émet mktm:secours-scenario-deleted (persistance d'une installation)",
+        /mktm:secours-scenario-deleted/.test(del));
+      const fifo = SEC.slice(SEC.indexOf("function _saveScenarios("), SEC.indexOf("function _saveScenarios(") + 1500);
+      t("🩸 Mode Secours : la purge FIFO (limite locale) n'émet PAS de suppression", !/secours-scenario-deleted/.test(fifo));
+    }
     t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
     t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&

@@ -188,6 +188,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
+  d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
+  FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,
+  { mode: "remplacer" })` (même identifiant = remplacé) ou `secoursAppliquer(id, partiel)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil

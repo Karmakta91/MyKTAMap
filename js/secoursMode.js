@@ -984,6 +984,13 @@
     }
     _saveScenarios();
     _notify();
+    // Pendant de `mktm:secours-scenario-mutated` : une suppression VOULUE (pas la purge
+    // FIFO des 10 scénarios, qui n'est qu'une limite de stockage local). No-op sans écouteur.
+    try {
+      window.dispatchEvent(new CustomEvent("mktm:secours-scenario-deleted", {
+        detail: { scenarioId: id, planExternalId: window._currentLoadedPlanId || null, ts: _nowIso() }
+      }));
+    } catch(e) { /* anciens navigateurs : rien */ }
     return true;
   }
 
