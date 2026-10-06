@@ -581,6 +581,11 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 > garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
 > choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
 > réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue **avec ses photos** (`deletePhotosForScenario`, relecture R8 : sinon elles revenaient dans le rapport suivant et comptaient dans le quota), l'aperçu le dit dès qu'une exécution existe, en cours ou terminée.
+> **Installation reliée (étude Secours, étapes 1-3)** : intervention déclenchée côté installation ; le Mode Secours
+> expose des prises neutres (boutons et infos d'extension, garde `secoursPeutAvancer` sur étape / départ / rentrée
+> comptée / rappel, événements `mktm:secours-etape-changee` et `-suivi-change`, `appliquerEtapeDistante`,
+> `appliquerSuiviDistant`, `rejoindre`) — contrat : `community-server-line.md` §3. Sans extension : aucun changement.
+>
 > `importerScenario(input, {mode, garderExecution})` : sans `mode`, un existant part en **copie** (jamais d'écrasement
 > implicite) ; `garderExecution` (relais en direct d'une installation reliée) **fusionne** l'exécution au lieu de l'effacer
 > (`_fusionnerExecutionDirect` : étape la plus récente par `majAt` — posé par `updateEtape` —, sinon la plus grave ; main

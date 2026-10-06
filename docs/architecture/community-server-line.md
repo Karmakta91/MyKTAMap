@@ -235,6 +235,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   fusionnée, jamais effacée** : par étape, la modification la plus récente (`majAt`) gagne, sinon la plus grave ; main
   courante et notes libres unies ; rôle et équipe suivie restent ceux de l'appareil ; sans exécution ici, rien n'est créé
   (`check-secours-relais.js`). Sans `garderExecution`, « remplacer » efface l'exécution (import de fichier, annoncé par l'aperçu).
+- **Mode Secours relié aux comptes** (étude Secours, étapes 1-3) : `secoursActions(ctx)` → boutons posés dans le
+  Mode Secours (en-tête du scénario, carte d'une équipe, vue Live ; `ctx = { scenarioId, vue, equipeId?, role? }`),
+  `secoursInfoEquipe(scenarioId, equipeId)` → texte sur la carte d'équipe, `secoursPeutAvancer(scenarioId, equipeId,
+  quoi)` (etape / depart / rentree / rappel ; sans prise : oui, prise en erreur : **non**, refus dit par un toast).
+  `afficherAlerteSecours({ id, titre, texte, actions, sonner? })` / `retirerAlerteSecours(id)` : bandeau rouge
+  persistant (son + vibration). Sortants : `mktm:secours-etape-changee` / `mktm:secours-suivi-change` ; entrants :
+  `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` (la plus récente gagne, jamais ré-émis) ;
+  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb).
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte

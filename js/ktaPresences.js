@@ -39,7 +39,9 @@
       return {
         id: p.id, pseudo: p.pseudo.trim().slice(0, 40) || "?", x: p.x, y: p.y,
         niveau: Number.isInteger(p.niveau) ? p.niveau : null,
-        ts: _fini(p.ts) ? p.ts : Date.now(), trace: trace
+        ts: _fini(p.ts) ? p.ts : Date.now(), trace: trace,
+        // Couleur facultative (ex. équipe d'une intervention Secours) : #rrggbb seulement.
+        couleur: (typeof p.couleur === "string" && /^#[0-9a-f]{6}$/i.test(p.couleur)) ? p.couleur : null
       };
     });
   }
@@ -75,6 +77,7 @@
       var pastille = document.createElement("span");
       pastille.className = "kta-presence-pastille";
       pastille.textContent = (Array.from(p.pseudo)[0] || "?").toUpperCase();
+      if (p.couleur && !ancienne) pastille.style.background = p.couleur;
       var etiquette = document.createElement("span");
       etiquette.className = "kta-presence-etiquette";
       etiquette.textContent = p.pseudo + " · " + _age(p.ts) + (p.niveau !== null ? " · N" + p.niveau : "");
