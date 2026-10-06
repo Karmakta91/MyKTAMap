@@ -15535,7 +15535,7 @@ body.kta-theme-light #loadPlanBtn,
 body.kta-theme-light #importListBtn,
 body.kta-theme-light #exportListBtn,
 body.kta-theme-light #loaderPlannerBtn,
-body.kta-theme-light #loaderResetBtn,
+/* #loaderResetBtn absent exprès : il garde le style « danger » clair (.loader-btn-danger) */
 body.kta-theme-light #loaderForceUpdateBtn,
 body.kta-theme-light #loaderDepannageBtn,
 body.kta-theme-light #loaderAlertBtn,
