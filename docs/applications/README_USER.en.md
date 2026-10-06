@@ -1400,7 +1400,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 #### 📤 2. Handing over before going down
 
-- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario**. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
+- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
 - **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone, steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
@@ -1455,7 +1455,7 @@ The 🚑 **free rescuer** has neither route nor steps: they add notes, each with
 
 A step set to **Casualty found** gives a position: the step's position, level included. **📍 Refine on the map** adjusts it. A **red ✚** marks it on the map, for everyone; the operator sees it in a banner at the top of their view, and the report prints it first.
 
-**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed).
+**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water and rubble ticked by default) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
 
 #### 🚒 4. External rescue services
 

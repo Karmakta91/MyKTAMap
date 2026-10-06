@@ -1400,7 +1400,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 #### 📤 2. Transmettre avant de descendre
 
-- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario**. L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
+- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
 - **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone, étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
@@ -1455,7 +1455,7 @@ Le 🚑 **secouriste libre** n'a ni parcours ni étapes : il ajoute des notes, c
 
 Une étape passée en **Victime trouvée** donne une position : celle de l'étape, niveau compris. **📍 Préciser sur la carte** l'ajuste. Un **✚ rouge** la marque sur la carte, pour tous ; l'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier.
 
-**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé).
+**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé). Avant le calcul, les **options brancard** : zones à éviter (eau et remblais cochés d'office) et, en dernier recours, passage par les zones inaccessibles. Si aucun chemin n'évite ces zones, la fenêtre le dit.
 
 #### 🚒 4. Secours extérieurs
 

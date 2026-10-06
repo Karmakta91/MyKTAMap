@@ -1400,7 +1400,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 
 #### 📤 2. Transmitir antes de bajar
 
-- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario**. La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
+- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario** — o, más rápido, suelta el archivo en **📦 Añadir un mapa** en la pantalla de inicio: la app abre el plano correcto, muestra la vista previa y propone lanzar como «Equipo». La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
 - ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
 - **Sin conexión**: al lanzar, la app avisa si el plano no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del plano** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
 - **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona, etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
@@ -1455,7 +1455,7 @@ El 🚑 **socorrista libre** no tiene recorrido ni etapas: añade notas, cada un
 
 Una etapa marcada como **Víctima encontrada** da una posición: la de la etapa, nivel incluido. **📍 Precisar en el mapa** la ajusta. Un **✚ rojo** la marca en el mapa, para todos; el operador la ve en una banda en la cabecera de su vista, y el informe la imprime en primer lugar.
 
-**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del plano y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado).
+**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del plano y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua y escombros marcados por defecto) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
 
 #### 🚒 4. Rescate exterior
 

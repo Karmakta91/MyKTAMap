@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.7` (06/10/2026)
+## 📦 Version courante — `v2.9.8` (06/10/2026)
+
+> 🚑 **v2.9.8 — Mode Secours sur le terrain** : options brancard pour « Évacuer » (zones à éviter, inaccessibles en dernier recours), scénario reçu déposé à l'accueil → plan ouvert, import, rôle « Équipe » ; doc réseau exacte (OpenStreetMap listé), finitions i18n et thème clair.
 
 > 👥 **v2.9.7 — Effectif d'équipe automatique** (Mode Secours) : saisi, sinon le plus grand de « membres nommés » et « comptes reliés » (prise `secoursNbComptesEquipe`), source affichée, alerte si la saisie est plus basse.
 
@@ -551,6 +553,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.8 (06/10/2026) — Mode Secours sur le terrain, doc réseau exacte (branche `Karma_dev`)
+
+- 🚑 **Options brancard pour « Évacuer »** (reste de l'audit Secours A3) : fenêtre avant le calcul (types de zones du plan, eau et remblais cochés ; zones inaccessibles levables en dernier recours, case décochée). Contraintes portées du classement des sorties au tracé et à ses recalculs (`road.evacuation`) ; les accès du scénario survivent au recalcul. Sortie atteinte seulement en traversant une zone évitée : classée après, et dit. **Correctif** : une sortie dont la galerie est coupée par une zone était calée sur une autre galerie et son chemin s'arrêtait court — l'écart compte désormais dans la distance (`a3af6b7`, `check-guidage` §12).
+- 📥 **Fichier de secours déposé à l'accueil** : le contenu des `.json` est sondé (les messageries renomment) — un scénario ne part plus à la conversion SIG ; plan retrouvé (id, puis nom + version), chargé, aperçu → import (ids d'origine) → « 🚀 Lancer » avec « Équipe » présélectionné ; plan absent : message qui le nomme ; rapport : « à importer depuis le plan ouvert » (`0bf7d96`).
+- 🔒 **Doc réseau exacte** : la liste « exhaustive » de la fenêtre réseau cite OpenStreetMap ; politique de sécurité décrite telle qu'elle est servie ; écran PIN temporaire dans `security-legal.md` (`5c7fac3`).
+- 🌍 « Sauver la note » traduit, ES « Modo urgencia » partout (`e7248fc`) · 🎨 bouton reset de 🆘 Dépannage rouge en thème clair (`0012e08`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.7 (06/10/2026) — Effectif d'équipe automatique (branche `Karma_dev`)
 
