@@ -676,7 +676,6 @@
   "gate.licence.moduleUnavailable": "❌ Licence management module unavailable. Reload the page.",
   "gate.licence.instanceProtegee": "This instance requires its own password: a pro license does not grant access here. Enter the password above.",
   "gate.licence.refused": "❌ Licence refused: {msg}",
-  "gate.lockout.escalade": "The delay grows with each run of 5 wrong codes (10 min, 1 h, 6 h, 24 h). A correct code resets everything.",
   "gate.lockout.hint": "The delay grows with each run of errors (10 min, 1 h, 6 h, 24 h); a correct code resets everything. If you legitimately know the code, wait for the delay to end. Otherwise, contact the author:",
   "gate.lockout.msg": "Access temporarily locked after 5 wrong codes.",
   "gate.lockout.titre": "🚫 Too many attempts",

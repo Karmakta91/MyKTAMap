@@ -178,11 +178,10 @@ l'audit UI (régression du correctif XSS : actions d'extension en double dans la
   **`sitePlansHiddenDefault`** (cases resynchronisées une fois la config de l'installation lue) ; atténuation hors
   niveau recalculée au changement de niveau ; pastille d'un pseudo-emoji.
 - ✅ Audit UI n° 8-12 corrigés le 06/10/2026 (FR en dur, « hors base » à 390 px, badges mis à jour sur place, publication du Générateur avec avancement et nom échappé, observateur des fiches regroupé par image).
-- 🧹 **Code mort** : les 19 suppressions sûres sont faites (05/10/2026). `toggleEdition` (editor.js) n'a toujours aucun
-  appelant : la lecture seule est désormais gardée au vrai bouton, il peut partir. À arbitrer (KARMA) : `setShowRoadIntersections`,
-  `telechargerMesureJSON` (36 l., plus aucun bouton), `getRuntimeAssetJson`, `PERF_AUTO_META`/`PERF_OFF_META`,
-  `ROAD_INTERSECTION_MAX_ROADS` ; les « wrappers compat » `_chargerTagsCalque`/`_renderTagsCalque` sont privés à une
-  IIFE (la raison de les garder ne tient pas) ; `gate.lockout.escalade` jamais affichée (oubli d'affichage probable).
+- 🧹 **Code mort** : soldé le 06/10/2026 — 19 suppressions sûres, puis les arbitrages (toggleEdition,
+  setShowRoadIntersections, telechargerMesureJSON, getRuntimeAssetJson, PERF_AUTO_META/PERF_OFF_META,
+  ROAD_INTERSECTION_MAX_ROADS, wrappers `_chargerTagsCalque`/`_renderTagsCalque`, clé `gate.lockout.escalade` doublon de
+  `gate.lockout.hint`). Reste ouvert : `planBlob` (createConf, écrit jamais lu — vérifier une révocation oubliée).
 - 📄 Docs dérivées : `secours.md` cite `getItiTempsMinutes` (le Secours a son propre modèle de durée).
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
@@ -256,7 +255,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
-`_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
+`_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 
 ---
 

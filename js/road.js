@@ -357,7 +357,6 @@ function _roadIntersectionMaxRoads() {
   if (window.PerfUltra && window.PerfUltra.get("noIntersect")) return 50;
   return 500;
 }
-const ROAD_INTERSECTION_MAX_ROADS = 500; // gardé pour rétro-compat des logs
 
 // =========================
 // 🚀 PerfUltra : décimation polylines (Ramer-Douglas-Peucker)
@@ -452,7 +451,7 @@ function _bboxIntersect(a, b, margin) {
 
 // Calcule toutes les intersections entre toutes les routes (y compris même type).
 // Détection :
-//   0) PRE-CHECK : skip total si > ROAD_INTERSECTION_MAX_ROADS (garde-fou anti-freeze).
+//   0) PRE-CHECK : skip total au-delà de _roadIntersectionMaxRoads() (500, 50 en ULTRA — garde-fou anti-freeze).
 //   0bis) PRE-CHECK : pour chaque paire, AABB intersect ? Sinon skip toute la paire.
 //   1) Croisement franc segment×segment (algo paramétrique strict)
 //   2) Proximité d'une extrémité d'une route avec un segment d'une autre

@@ -45,14 +45,7 @@ const EDITOR_TAG_LABELS = {
 
 const EDITOR_EXCLURE = ["default", "track"];
 
-// =========================
-// ACTIVER / DÉSACTIVER
-// =========================
-function toggleEdition() {
-  if (!window.modeEdition && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
-  window.modeEdition = !window.modeEdition;
-  console.log("[Editor] Mode édition :", window.modeEdition);
-}
+// Le mode édition s'arme par le bouton ✏️ (interface.js), qui porte la garde lecture seule.
 
 // =========================
 // INIT
@@ -1087,7 +1080,6 @@ window.renderEditorPoints = function() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.toggleEdition          = toggleEdition;
 window.initEditor             = initEditor;
 window.removeLastEditorPoint  = removeLastEditorPoint;
 window.getEditorPoints        = function() { return listePoints; };

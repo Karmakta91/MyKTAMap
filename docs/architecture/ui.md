@@ -333,9 +333,10 @@ Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé da
 
 ##### 41.15.3 Toggle showRoadIntersections (fix6/fix7)
 
-`APP_CONFIG.showRoadIntersections` (default true) persisté dans `localStorage > app_user_prefs`. Setter `window.setShowRoadIntersections(value)` qui persiste + appelle `renderRoads()` à chaud.
-
-Toggle accessible depuis ⚙️ Réglages (mode carte) → groupe « 🎨 Affichage », **par plan** depuis v1.36.2 (`#cfg_show_intersections` → `setPlanShowsIntersections`) ; il a été **retiré du HOME**. (Historique : la phrase inverse a été vraie entre v1.9.2 et v1.36.2.)
+Réglage **par plan** : ⚙️ Réglages (mode carte) → groupe « 🎨 Affichage » (`#cfg_show_intersections` →
+`setPlanShowsIntersections`, clé `myktamap_plan_prefs_<planId>.showRoadIntersections`, cascade plan → global →
+défaut). Plus de réglage global ni de bouton sur l'accueil. Calcul sauté au-delà de `_roadIntersectionMaxRoads()`
+(500 tracés, 50 en ULTRA).
 
 > 🎛️ **v1.46.3 — Refonte ergo des modales config (HOME + PLAN)** : sections réorganisées par **groupes thématiques** (en-têtes `config.group.*` via `I18n.t`/`data-i18n`, **même ordre dans les 2 modales**) : 🌍 Application · 📐 Plan (échelle/Nord/géoréf **regroupés**) · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité · 🛠️ Système. **Déplacement de blocs uniquement** (tous les `id`/handlers préservés : PLAN `cfg_*`, HOME `loader*`). Échelle (m/px) extraite de « Détection des pas » → groupe calibration (proximité géoréf, demande KARMA). Doublons en-tête/section retirés (Affichage, Mode Perf ULTRA). M-LVL (`_renderMultiLevelSection`) toujours dormant. Fusion tri-langue : `scripts/merge-i18n-frags3.js`.
 

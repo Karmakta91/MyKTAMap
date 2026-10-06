@@ -270,11 +270,6 @@ function getRuntimeAssetUrl(path) {
   return e ? e.url : null;
 }
 
-function getRuntimeAssetJson(path) {
-  const e = getRuntimeAsset(path);
-  return e ? e.json : null;
-}
-
 function resetRuntimeAssets() {
   Object.values(window.RUNTIME_ASSETS).forEach(function(entry) {
     if (entry?.url?.startsWith("blob:")) {
@@ -983,29 +978,6 @@ function setDebugMode(value) {
 }
 
 // =========================
-// HELPER : TOGGLE AFFICHAGE CERCLES D'INTERSECTION (v1.9.2)
-// =========================
-// Setter unifié appelé par les 2 toggles (⚙️ Réglages map mode + ⚙️
-// Configuration loader). Met à jour APP_CONFIG, persiste, et re-render
-// les roads à chaud si on est en mode carte (renderRoads dispo).
-// Pas de reload nécessaire — l'effet est immédiat.
-function setShowRoadIntersections(value) {
-  const newValue = !!value;
-  APP_CONFIG.showRoadIntersections = newValue;
-  window.APP_CONFIG = APP_CONFIG;
-  sauvegarderPrefsUtilisateur();
-  console.log("[Config] showRoadIntersections →", APP_CONFIG.showRoadIntersections);
-  // Re-render des roads à chaud — disponible UNIQUEMENT en mode carte
-  // (après chargement d'un plan). Skip silencieux si appelé depuis le
-  // loader (renderRoads pas encore défini).
-  if (typeof window.renderRoads === "function") {
-    try { window.renderRoads(); } catch(e) {
-      console.warn("[Config] renderRoads() failed:", e);
-    }
-  }
-}
-
-// =========================
 // HELPER PER-PLAN : showRoadIntersections (v1.36.2)
 // =========================
 // KARMA feedback : "enleve l'option du home, met le dans la config du plan
@@ -1539,7 +1511,6 @@ window.loadAppConfig               = loadAppConfig;
 window.buildAppConfigFromPlan      = buildAppConfigFromPlan;
 window.sauvegarderPrefsUtilisateur = sauvegarderPrefsUtilisateur;
 window.setDebugMode                = setDebugMode;
-window.setShowRoadIntersections    = setShowRoadIntersections;
 // 🆕 v1.36.2 — helpers per-plan pour showRoadIntersections (option déplacée
 // de Configuration home → Réglages map mode, persistée par plan)
 window.getPlanShowsIntersections   = getPlanShowsIntersections;
@@ -1555,7 +1526,6 @@ window.normalizePath               = normalizePath;
 window.getBaseName                 = getBaseName;
 window.getRuntimeAsset             = getRuntimeAsset;
 window.getRuntimeAssetUrl          = getRuntimeAssetUrl;
-window.getRuntimeAssetJson         = getRuntimeAssetJson;
 window.registerAsset               = registerAsset;
 window.resetRuntimeAssets          = resetRuntimeAssets;
 window.findMatchingFile            = findMatchingFile;

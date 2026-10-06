@@ -676,7 +676,6 @@
   "gate.licence.moduleUnavailable": "❌ Módulo de gestión de licencias no disponible. Recarga la página.",
   "gate.licence.instanceProtegee": "Esta instancia exige su propia contraseña: una licencia pro no da acceso aquí. Introduce la contraseña de arriba.",
   "gate.licence.refused": "❌ Licencia rechazada: {msg}",
-  "gate.lockout.escalade": "El plazo crece con cada serie de 5 códigos erróneos (10 min, 1 h, 6 h, 24 h). Un código correcto lo reinicia todo.",
   "gate.lockout.hint": "El plazo crece con cada serie de errores (10 min, 1 h, 6 h, 24 h); un código correcto lo reinicia todo. Si conoces legítimamente el código, espera a que termine el plazo. Si no, contacta con el autor:",
   "gate.lockout.msg": "Acceso bloqueado temporalmente tras 5 códigos incorrectos.",
   "gate.lockout.titre": "🚫 Demasiados intentos",
