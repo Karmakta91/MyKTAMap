@@ -1338,6 +1338,8 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 >
 > **Prerequisites**: the **same map** on every phone, available **offline** — there is no network underground.
 >
+> **Connected installation**: teams are linked to **accounts** (leader ★), the operation is **triggered** (alert on every phone, “Join my post”) and the board is shared step by step — what is ticked underground is sent when the network returns. Phone and radio remain the official channel.
+>
 > **Prepare it in advance**: set up one or two scenarios on your usual maps before any incident. On the day, the app has to be ready in 30 seconds.
 
 To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚨 Rescue mode — Search plans (teams + zones)**.

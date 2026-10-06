@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.5` (06/10/2026)
+## 📦 Version courante — `v2.9.6` (06/10/2026)
+
+> 🚑 **v2.9.6 — Mode Secours relié aux comptes** (prises neutres : boutons et infos d'extension, garde, alerte, rejoindre, événements par étape), multi-comptes étape 3 (prise `appliquerItineraire`), fiche d'équipe Secours sur trois lignes.
 
 > 🔁 **v2.9.5 — Secours à plusieurs appareils** (relais qui fusionne l'intervention, `check-secours-relais`), **export filtré** par période et auteur, audit UI n° 8-12, code mort soldé ; v2.9.4 : correctif XSS.
 
@@ -549,6 +551,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.6 (06/10/2026) — Secours relié aux comptes, multi-comptes étape 3 (branche `Karma_dev`)
+
+- 🚑 **Prises Secours** (étude Secours, étapes 1-3 — logique côté installation) : `secoursActions` (boutons en-tête / carte d'équipe / vue Live), `secoursInfoEquipe`, `secoursPeutAvancer` (garde sur étape, départ, rentrée comptée, rappel ; prise en erreur = refus), `afficherAlerteSecours` / `retirerAlerteSecours` (bandeau rouge, son + vibration), événements `mktm:secours-etape-changee` / `-suivi-change`, `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` / `rejoindre` (`6a50de9`) ; couleur facultative des présences (`c41751a`).
+- 🧭 **Prise `appliquerItineraire`** : un itinéraire reçu (attribué par un chef d'équipe) devient l'itinéraire actif (`768c882`).
+- 🩹 **Fiche d'équipe Secours** : chef, effectif et retour impératif sur trois lignes, champs nombre / heure au thème (retour KARMA, capture téléphone) (`e761fc2`).
+- 🧹 Ménage : backlog soldée, audits du 05/10 archivés (`archive-docs-2026-10-06`), `secours.md` à jour sur le modèle de durée (`a95bf3b`).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
 
 #### v2.9.5 (06/10/2026) — Secours à plusieurs appareils, export filtré, finitions (branche `Karma_dev`)
 

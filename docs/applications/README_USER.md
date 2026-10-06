@@ -1338,6 +1338,8 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 >
 > **Prérequis** : le **même plan** sur chaque téléphone, disponible **hors-ligne** — il n'y a pas de réseau sous terre.
 >
+> **Installation reliée** : les équipes se relient à des **comptes** (chef ★), l'intervention se **déclenche** (alerte sur chaque téléphone, « Rejoindre mon poste ») et le tableau se partage étape par étape — ce qui est coché sous terre part au retour du réseau. Le téléphone et la radio restent le canal officiel.
+>
 > **Prépare-le à froid** : monte un ou deux scénarios sur tes plans habituels avant tout incident. Le jour J, l'app doit être prête en 30 secondes.
 
 Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚨 Mode Secours — Plans de recherche (équipes + zones)**.

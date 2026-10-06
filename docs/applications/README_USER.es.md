@@ -1338,6 +1338,8 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 >
 > **Requisitos**: el **mismo plano** en cada teléfono, disponible **sin conexión** — bajo tierra no hay red.
 >
+> **Instalación conectada**: los equipos se vinculan a **cuentas** (jefe ★), la intervención se **activa** (alerta en cada teléfono, «Unirme a mi puesto») y el tablero se comparte etapa por etapa: lo marcado bajo tierra se envía al volver la red. El teléfono y la radio siguen siendo el canal oficial.
+>
 > **Prepáralo en frío**: monta uno o dos escenarios en tus planos habituales antes de cualquier incidente. El día D, la app tiene que estar lista en 30 segundos.
 
 Para abrirlo: menú **🧭 Tracker** → abajo, sobre fondo rojo, **🚨 Modo Rescate — Mapas de búsqueda (equipos + zonas)**.
