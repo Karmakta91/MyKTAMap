@@ -904,6 +904,18 @@
     try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
     catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
   }
+  // Auteur d'un objet de session (installation reliée) : prise `auteurObjet(uid) → { createur, modifiePar }`.
+  // Sert au filtre « auteur » de l'export ; sans extension : null (le filtre auteur n'est pas proposé).
+  function auteurObjet(uid) {
+    const ext = _prise("auteurObjet");
+    if (!ext || typeof ext.auteurObjet !== "function" || typeof uid !== "string" || !uid) return null;
+    try {
+      const a = ext.auteurObjet(uid);
+      if (!a || typeof a !== "object") return null;
+      const txt = function (v) { return typeof v === "string" && v.trim() ? v.trim().slice(0, 40) : null; };
+      return { createur: txt(a.createur), modifiePar: txt(a.modifiePar) };
+    } catch (e) { console.warn("[Extensions] auteurObjet :", e); return null; }
+  }
   function _hydraterFiche(racine) {
     if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
     racine.setAttribute("data-kta-ext", "1");
@@ -966,6 +978,7 @@
     basculerItineraire: basculerItineraire,
     itineraireActuel: itineraireActuel,
     afficherItineraires: afficherItineraires,
+    auteurObjet: auteurObjet,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,

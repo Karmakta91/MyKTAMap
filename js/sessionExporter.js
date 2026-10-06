@@ -23,6 +23,9 @@
   }
 
   let _modal = null;
+  // 🔎 Filtre d'export (onglets Complet et Avancé) : ne garder que les annotations d'une période et/ou
+  // d'un auteur (« ce qu'a relevé B cette semaine »). Remis à zéro à chaque ouverture de la fenêtre.
+  let _filtre = { du: "", au: "", auteur: "" };
   let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern" | "fusion"
 
   // 🔗 Fusion de datalayers (v1.55.0) : ingère N fichiers data layer (.json/.zip),
@@ -469,6 +472,11 @@
       .kta-fusion-warn { margin-top: 8px; padding: 8px 10px; border-radius: 6px;
         background: rgba(244,197,66,0.12); border: 1px solid rgba(244,197,66,0.4);
         color: #f4c542; font-size: 0.86em; }
+      .kta-ses-filtre { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #2a3144; border-radius: 8px; }
+      .kta-ses-filtre-titre { font-weight: 700; color: #f4c542; margin-bottom: 6px; font-size: 0.92em; }
+      .kta-ses-filtre-ligne { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.9em; }
+      .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select { margin-left: 4px; }
+      .kta-ses-filtre-bilan { margin-top: 6px; font-size: 0.82em; color: #8892a4; }
     `;
     document.head.appendChild(s);
   }
@@ -478,6 +486,7 @@
     if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
+    _filtre = { du: "", au: "", auteur: "" };
     // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
@@ -493,16 +502,96 @@
   // exporter.js). Plus aucun module externe ne dépend de cet injecteur,
   // les styles .kta-ses-* restent purement internes à sessionExporter.
 
+  // ========== FILTRE (période / auteur) ==========
+  function _filtreActif() {
+    return (_activeTab === "full" || _activeTab === "advanced") && !!(_filtre.du || _filtre.au || _filtre.auteur);
+  }
+  function _auteurDe(o) {
+    const X = window.KtaExtensions;
+    const a = (X && typeof X.auteurObjet === "function" && o && o.uid) ? X.auteurObjet(o.uid) : null;
+    return a && a.createur ? a.createur : null;
+  }
+  function _horodatage(o) {
+    const v = o && o.updatedAt;
+    if (typeof v === "number" && isFinite(v)) return v;
+    const p = Date.parse(v || (o && o.date_update) || "");
+    return isFinite(p) ? p : null;
+  }
+  // Un objet sans date (ou sans auteur connu) n'est pas retenu par un filtre qui porte sur ce critère :
+  // on ne peut pas affirmer qu'il en fait partie.
+  function _garder(o) {
+    if (!o) return false;
+    if (_filtre.du || _filtre.au) {
+      const ts = _horodatage(o);
+      if (ts === null) return false;
+      if (_filtre.du && ts < new Date(_filtre.du + "T00:00:00").getTime()) return false;
+      if (_filtre.au && ts > new Date(_filtre.au + "T23:59:59.999").getTime()) return false;
+    }
+    if (_filtre.auteur && _auteurDe(o) !== _filtre.auteur) return false;
+    return true;
+  }
+  function _filtrer(liste) {
+    const l = Array.isArray(liste) ? liste : [];
+    return _filtreActif() ? l.filter(_garder) : l;
+  }
+  function _brut() {
+    return [].concat(window.getEditorPoints ? (window.getEditorPoints() || []) : [],
+      window.getRoads ? (window.getRoads() || []).filter(function(r) { return r && r.type !== "itinerary"; }) : [],
+      window.getZones ? (window.getZones() || []) : [], window.getStructures ? (window.getStructures() || []) : []);
+  }
+  function _htmlFiltre() {
+    const X = window.KtaExtensions;
+    const parAuteur = !!(X && typeof X.aPrise === "function" && X.aPrise("auteurObjet"));
+    const tous = _brut();
+    let optAuteurs = "";
+    if (parAuteur) {
+      const noms = {};
+      tous.forEach(function(o) { const a = _auteurDe(o); if (a) noms[a] = true; });
+      optAuteurs = '<option value="">' + window.ktaEsc(t("export.filtre.tous")) + '</option>' +
+        Object.keys(noms).sort().map(function(n) {
+          return '<option value="' + window.ktaEsc(n) + '"' + (n === _filtre.auteur ? " selected" : "") + '>' + window.ktaEsc(n) + '</option>';
+        }).join("");
+    }
+    const retenus = _filtreActif() ? tous.filter(_garder).length : tous.length;
+    return '<div class="kta-ses-filtre" id="kta-ses-filtre">' +
+        '<div class="kta-ses-filtre-titre">🔎 ' + window.ktaEsc(t("export.filtre.titre")) + '</div>' +
+        '<div class="kta-ses-filtre-ligne">' +
+          '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
+          '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
+          (parAuteur ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) + ' <select id="ses_filtre_auteur">' + optAuteurs + '</select></label>' : '') +
+          (_filtreActif() ? '<button type="button" class="kta-ses-btn" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
+        '</div>' +
+        '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
+          ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : t("export.filtre.aide")) + '</div>' +
+      '</div>';
+  }
+  function _brancherFiltre(modal) {
+    modal.addEventListener("change", function(e) {
+      const id = e.target && e.target.id;
+      if (id === "ses_filtre_du") _filtre.du = e.target.value || "";
+      else if (id === "ses_filtre_au") _filtre.au = e.target.value || "";
+      else if (id === "ses_filtre_auteur") _filtre.auteur = e.target.value || "";
+      else return;
+      _renderTab();
+    });
+    modal.addEventListener("click", function(e) {
+      if (!e.target || e.target.id !== "ses_filtre_raz") return;
+      _filtre = { du: "", au: "", auteur: "" };
+      _renderTab();
+    });
+  }
+
   // ========== COMPTAGES ==========
   function _compter() {
     return {
-      points:    window.getEditorPoints  ? window.getEditorPoints()  : [],
-      roads:     window.getRoads         ? window.getRoads()         : [],
-      zones:     window.getZones         ? window.getZones()         : [],
+      // 🔎 Annotations filtrées par période / auteur (onglets Complet et Avancé seulement).
+      points:    _filtrer(window.getEditorPoints  ? window.getEditorPoints()  : []),
+      roads:     _filtrer(window.getRoads         ? window.getRoads()         : []),
+      zones:     _filtrer(window.getZones         ? window.getZones()         : []),
       // 🆕 v1.9.3-A1.a : structures (piliers + murs) incluses dans
       // l'export session. Rétrocompat : si getStructures n'existe pas
       // (ancien build), retourne array vide → pas de breakage.
-      structures: window.getStructures   ? window.getStructures()    : [],
+      structures: _filtrer(window.getStructures   ? window.getStructures()    : []),
       // 🆕 v1.9.3-A1.b.2.5 (KARMA "qu'il soit exporter dans l'export
       // session") : mesure de distance dans l'export. Avant, elle était
       // explicitement EXCLUE du mode Full / Avancé (commentaire ligne 5
@@ -680,6 +769,7 @@
     `;
     document.documentElement.appendChild(modal);
     _modal = modal;
+    _brancherFiltre(modal);
 
     function fermer() {
       if (_modal) _modal.remove();
@@ -824,7 +914,7 @@
     // 🆕 v1.9.3-B1d : section 📸 Photos. Le compteur exact est rempli en
     // async après render via _kta_majCompteurPhotosFull (cf. _afficherModale).
     // En attendant, on affiche "Chargement…" pour ne pas bloquer le render.
-    return `
+    return _htmlFiltre() + `
       <div class="kta-ses-intro">
         ${t("export.full.intro")}
         <br><span style="color:#8892a4;">${t("export.full.introDetail")}</span>
@@ -914,7 +1004,7 @@
       }).join("");
     }
 
-    return `
+    return _htmlFiltre() + `
       <div class="kta-ses-intro">
         ${t("export.adv.intro")}
       </div>

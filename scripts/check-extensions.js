@@ -337,6 +337,21 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /KtaExtensions\.quitterPlan\("plan"\)/.test(MA) && /KtaExtensions\.quitterPlan\("accueil"\)/.test(MA));
   }
 
+  // ═════════ 6 bis quater. AUTEUR D'UN OBJET (filtre « Créé par » de l'export) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : auteurObjet → null, filtre auteur non proposé", K.auteurObjet("pt_x") === null && K.aPrise("auteurObjet") === false);
+    K.register({ nom: "au1", apiVersion: 1, auteurObjet: (uid) => (uid === "pt_a" ? { createur: " Bob ", modifiePar: 12 } : null) });
+    const a = K.auteurObjet("pt_a");
+    t("extension : auteur nettoyé (texte seulement)", a && a.createur === "Bob" && a.modifiePar === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "au2", apiVersion: 1, auteurObjet: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → null, aucune exception", K2.auteurObjet("pt_a") === null);
+    const SE = lire("js/sessionExporter.js");
+    t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
+      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
+  }
+
   // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
   {
     const { K, w } = nouveauContexte(null);

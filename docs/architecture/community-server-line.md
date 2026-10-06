@@ -187,6 +187,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   « 🧭 pseudo » à l'arrivée, rien de cliquable ; 200 itinéraires, 5000 points, 100 étapes max). Actions neutres
   pour un panneau : `KtaPresences.cadrerItineraire(id)`, `masquerItineraire(id, bool)`. `itinerairePublie()` /
   `basculerItineraire()` : une erreur de l'extension = non publié. Sans extension : pas de bouton, rien n'est lu.
+- **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
+  « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
 - **Sortie du plan affiché** : `KtaExtensions.quitterPlan(vers)`, appelée par `main.js` au changement de plan
   (`"plan"`) et au retour à l'accueil (`"accueil"`) — ferme le panneau d'extension, remet à zéro
   `KtaPresences` (présences, itinéraires, suivi, masquages) et émet **`mktm:plan-ferme`** `{ vers }` pour que

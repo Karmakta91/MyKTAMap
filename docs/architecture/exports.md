@@ -13,6 +13,15 @@
 
 ---
 
+### 4. Export de session filtré — période et auteur (`js/sessionExporter.js`)
+
+Onglets **Complet** et **Avancé** : bloc « 🔎 Ne garder que » — du / au (date de dernière modification, `updatedAt`)
+et, sur une installation reliée, « Créé par » (prise `auteurObjet`, `community-server-line.md` §3). Le filtre agit dans
+`_compter()` sur les **annotations** (points, tracés, zones, structures) : résumé, photos des points retenus et fichier
+exporté suivent ; suivi, mesures et notes partent tels quels. Un objet sans date (ou sans auteur connu) n'est pas retenu
+par un filtre qui porte sur ce critère. Remis à zéro à chaque ouverture ; les autres onglets (conversion, fusion, KMZ,
+GPX) ne sont pas filtrés.
+
 ### 5. Légende exportée — 5 groupes équilibrés (depuis 06/05/2026)
 
 Sections (cohérent avec la légende d'aide) :
