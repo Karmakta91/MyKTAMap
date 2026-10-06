@@ -800,6 +800,8 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   color: #c8d0e0;
 }
 .kta-secours-groupe-row input[type="text"],
+.kta-secours-groupe-row input[type="number"],
+.kta-secours-groupe-row input[type="time"],
 .kta-secours-groupe-row select {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
@@ -2967,7 +2969,6 @@ body.kta-theme-light .kta-secours-rappel-badge, html.kta-theme-light .kta-secour
 body.kta-theme-light .kta-secours-mc-h, html.kta-theme-light .kta-secours-mc-h { color: #1e5f99 !important; }
 
 /* B9 (vague 7) : chef / effectif, personnes manquantes */
-.kta-secours-b9-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .kta-secours-retour--manquant { background: rgba(255, 30, 30, 0.28); border: 2px solid #ff3b3b; color: #fff; font-weight: 800; }
 body.kta-theme-light .kta-secours-retour--manquant, html.kta-theme-light .kta-secours-retour--manquant { background: #fdd4d0 !important; color: #8a0f0f !important; border-color: #b71c1c !important; }
 
