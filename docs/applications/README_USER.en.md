@@ -1372,7 +1372,7 @@ A scenario is edited in three blocks: **📝 Incident context**, **🚨 Teams**,
 **➕ Add a team**, then on its card:
 
 - **Name** (leave empty: Alpha, Bravo, Charlie…) and **🎨 Colour**, from 10 fixed colours;
-- **👥 Members** (separated by commas), **👤 Leader**, **Headcount** — the headcount is what lets you count who is back at the return;
+- **👥 Members** (separated by commas), **👤 Leader**, **Headcount** — the headcount is what lets you count who is back at the return. Left empty, it equals the number of named members (or, on a connected installation, of linked accounts if there are more); the line below says where the figure comes from and warns if your entry is lower. Enter it when people go down without an account or a name;
 - **Mandatory return**: a time set by the leader (light autonomy, shift change); it takes precedence over the estimated duration for late alerts;
 - reference **Level** on a multi-level map (or "No level" if the team changes floors);
 - **📍 Surface GPS** (optional, see § 4).

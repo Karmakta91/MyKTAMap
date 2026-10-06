@@ -18,11 +18,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.6` (06/10/2026)
+## 📦 Version courante — `v2.9.7` (06/10/2026)
+
+> 👥 **v2.9.7 — Effectif d'équipe automatique** (Mode Secours) : saisi, sinon le plus grand de « membres nommés » et « comptes reliés » (prise `secoursNbComptesEquipe`), source affichée, alerte si la saisie est plus basse.
 
 > 🚑 **v2.9.6 — Mode Secours relié aux comptes** (prises neutres : boutons et infos d'extension, garde, alerte, rejoindre, événements par étape), multi-comptes étape 3 (prise `appliquerItineraire`), fiche d'équipe Secours sur trois lignes.
-
-> 🔁 **v2.9.5 — Secours à plusieurs appareils** (relais qui fusionne l'intervention, `check-secours-relais`), **export filtré** par période et auteur, audit UI n° 8-12, code mort soldé ; v2.9.4 : correctif XSS.
 
 > 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
@@ -551,6 +551,11 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.7 (06/10/2026) — Effectif d'équipe automatique (branche `Karma_dev`)
+
+- 👥 **Effectif d'une équipe Secours** : saisi s'il l'est, sinon le plus grand de « membres nommés » et « comptes reliés » (nouvelle prise neutre `secoursNbComptesEquipe`, 0 sans extension ou en erreur). Le champ propose la valeur calculée, une ligne dit d'où vient le chiffre, et alerte (orange) si la saisie est plus basse que ce qui est connu. Bilan, appel des remontés, rapport et PDF suivent le même effectif. Sans installation reliée : comportement d'avant (`dc388e3`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.6 (06/10/2026) — Secours relié aux comptes, multi-comptes étape 3 (branche `Karma_dev`)
 

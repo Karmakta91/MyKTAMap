@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.6",
+  "version": "v2.9.7",
   "released": "2026-10-06",
   "notes": [
     "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. Nouveau : l'export de session peut ne garder qu'une période, et « Effacer la session » garde les portails.",
-    "👥 Sur les installations reliées : bouton « Équipe », itinéraire montré à l'équipe, positions sur le plan visibles du groupe, et Mode Secours relié aux comptes (intervention déclenchée, alerte, tableau partagé entre appareils)."
+    "👥 Sur les installations reliées : bouton « Équipe », itinéraire montré à l'équipe, positions sur le plan visibles du groupe, et Mode Secours relié aux comptes (intervention déclenchée, alerte, tableau partagé entre appareils, effectif d'équipe calculé depuis les comptes reliés)."
   ]
 }

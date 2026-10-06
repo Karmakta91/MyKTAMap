@@ -1372,7 +1372,7 @@ Le scénario s'édite en trois blocs : **📝 Contexte de l'incident**, **🚨 �
 **➕ Ajouter une équipe**, puis sur sa fiche :
 
 - **Nom** (laisse vide : Alpha, Bravo, Charlie…) et **🎨 Couleur**, parmi 10 couleurs fixes ;
-- **👥 Membres** (séparés par des virgules), **👤 Chef**, **Effectif** — c'est l'effectif qui permet de compter les présents à la rentrée ;
+- **👥 Membres** (séparés par des virgules), **👤 Chef**, **Effectif** — c'est l'effectif qui permet de compter les présents à la rentrée. Laissé vide, il vaut le nombre de membres nommés (ou, sur une installation reliée, de comptes reliés s'ils sont plus nombreux) ; la ligne dessous dit d'où vient le chiffre et alerte si ta saisie est plus basse. Saisis-le quand des personnes descendent sans compte ni prénom ;
 - **Retour impératif** : heure fixée par le chef (autonomie des éclairages, relève), elle prime sur la durée estimée pour les alertes de retard ;
 - **Niveau** de référence sur un plan multiniveau (ou « Sans niveau » si l'équipe change d'étage) ;
 - **📍 GPS surface** (facultatif, cf. § 4).

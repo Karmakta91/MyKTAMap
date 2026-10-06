@@ -1372,7 +1372,7 @@ El escenario se edita en tres bloques: **📝 Contexto del incidente**, **🚨 E
 **➕ Añadir un equipo**, y luego en su ficha:
 
 - **Nombre** (déjalo vacío: Alpha, Bravo, Charlie…) y **🎨 Color**, entre 10 colores fijos;
-- **👥 Miembros** (separados por comas), **👤 Jefe**, **Efectivo** — el efectivo es lo que permite contar a los presentes al regresar;
+- **👥 Miembros** (separados por comas), **👤 Jefe**, **Efectivo** — el efectivo es lo que permite contar a los presentes al regresar. Si se deja vacío, vale el número de miembros nombrados (o, en una instalación conectada, de cuentas vinculadas si son más); la línea de abajo indica de dónde sale la cifra y avisa si tu valor es menor. Introdúcelo cuando bajen personas sin cuenta ni nombre;
 - **Regreso obligatorio**: hora fijada por el jefe (autonomía de las luces, relevo); prevalece sobre la duración estimada para las alertas de retraso;
 - **Nivel** de referencia en un plano multinivel (o «Sin nivel» si el equipo cambia de planta);
 - **📍 GPS superficie** (opcional, ver § 4).
