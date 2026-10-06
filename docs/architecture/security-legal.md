@@ -43,14 +43,14 @@
 - **Détection DevTools conditionnée à `APP_CONFIG.debugMode === true`** : si debug ON, polling 2s heuristique outer/inner > 280px → toast `.kta-devtools-warn` (badge "DEBUG" pour signaler la nature outil-dev). Si debug OFF, aucune polling, zéro overhead. Toggle live du mode debug fonctionne (pas besoin de reload). Skip si une modale charte est ouverte (anti faux positif sur transitions viewport).
 - Toujours dans `ASSETS_TO_CACHE` du SW.
 
-**Headers copyright** dans les fichiers JS critiques : `main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`. Format `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */`. Si quelqu'un copie un fichier isolé, le copyright le suit.
+**En-tête de licence** sur **tous** les scripts servis (`js/*.js` + `sw.js`) : bloc `/*! MyKTAMap (c) 2026 Flavien VIDAL … CC BY-NC-SA 4.0 … */` (le `/*!` survit à une minification). Si quelqu'un copie un fichier isolé, le copyright le suit. 🛡️ `scripts/check-entete-licence.js` (pré-commit, bloquant, auto-testé) exige « Flavien VIDAL » et « CC BY-NC-SA » dans les 15 premières lignes ; l'en-tête à copier est dans son commentaire de tête. `scripts/` (outillage, jamais servi) n'est pas concerné.
 
 **Mentions visibles utilisateur** :
 - Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
 - Splash : signature `karma.png` (pseudo artistique, déjà en place)
 - Meta tags `<head>` : `author`, `copyright`, `license`
 
-**Pour ajouter un nouveau fichier JS** : ajouter le header copyright en tête (8 lignes max). Utile surtout pour les algorithmes métier (genre pathfinder).
+**Pour ajouter un nouveau fichier JS** : copier l'en-tête de licence en tête (sinon le pré-commit refuse).
 
 **Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
 

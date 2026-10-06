@@ -1,3 +1,9 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
 // 📡 Présences sur le plan ouvert — affichage seulement (prise neutre).
 // Une installation reliée (extension) fournit la position des AUTRES personnes qui ont
 // choisi de partager la leur sur ce plan ; ce module les dessine : un repère avec le

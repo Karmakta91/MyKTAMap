@@ -561,3 +561,8 @@ node scripts/check-guidage.js || exit $?
 # sécurité fausse en EN/ES. Mêmes sections dans le même ordre + aucune section
 # traduite sous 70 % du FR. S'auto-teste sur des guides sabotés. BLOQUANT.
 node scripts/check-doc-langues.js || exit $?
+
+# ©️ 07/10/2026 — En-tête de licence (auteur + CC BY-NC-SA 4.0) sur tout script
+# servi (js/*.js + sw.js). Posé en une fois le 09/05 puis plus exigé : 24
+# modules nés depuis n'en avaient jamais eu. S'auto-teste. BLOQUANT.
+node scripts/check-entete-licence.js || exit $?
