@@ -254,6 +254,30 @@
       // 🗺️ GeoTIFF : un plan scanne puis cale dans QGIS. Meme lecon que le SIG
       // en v1.75.2 — l'accueil est l'endroit evident ou deposer un fichier, et
       // un .tif y tombait sur « le fichier doit etre une archive .zip ».
+      // 🚑 06/10/2026 — un fichier du Mode Secours (.mkmsec.json, rapport) déposé ici partait
+      // à la conversion SIG (tout .json y va). On lit le DÉBUT du contenu (les messageries
+      // renomment) : un « myktamap-secours-… » part au Mode Secours, le reste au SIG.
+      function _routerSig(f) {
+        if (typeof window.afficherImporterSig === "function") {
+          zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+          window.afficherImporterSig(f);
+        } else {
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+        }
+      }
+      function _routerJson(f) {
+        const SM = window.SecoursMode;
+        if (!SM || typeof SM.ouvrirDepuisAccueil !== "function" || typeof f.slice !== "function") { _routerSig(f); return; }
+        f.slice(0, 4096).text().then(function(debut) {
+          if (debut.indexOf('"myktamap-secours-') < 0) { _routerSig(f); return null; }
+          return f.text().then(function(txt) { return SM.ouvrirDepuisAccueil(txt, f.name); }).then(function(r) {
+            if (!r) { _routerSig(f); return; }
+            zipFileName.textContent = r.ok ? "🚑 " + f.name : "";
+            if (r.message) setStatus(r.message, !r.ok);
+          });
+        }).catch(function(e) { console.warn("[HomeLoader] lecture du .json :", e); _routerSig(f); });
+      }
+
       function _estGeoTiff(nomMinuscule) {
         return nomMinuscule.endsWith(".tif") || nomMinuscule.endsWith(".tiff");
       }
@@ -302,12 +326,7 @@
         // le comportement actuel.
         if (_estFichierSig(lower)) {
           zipFileInput.value = "";
-          if (typeof window.afficherImporterSig === "function") {
-            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
-            window.afficherImporterSig(f);
-          } else {
-            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
-          }
+          if (lower.endsWith(".json")) _routerJson(f); else _routerSig(f);
           return;
         }
         if (_estGeoTiff(lower)) {
@@ -357,12 +376,7 @@
           }
         } else if (_estFichierSig(lower)) {
           // 🗺️ v1.75.2 — même routage que la sélection par clic (cf. plus haut).
-          if (typeof window.afficherImporterSig === "function") {
-            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
-            window.afficherImporterSig(f);
-          } else {
-            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
-          }
+          if (lower.endsWith(".json")) _routerJson(f); else _routerSig(f);
         } else if (_estGeoTiff(lower)) {
           // 🗺️ GeoTIFF — même routage que la sélection par clic (cf. plus haut).
           if (_routerGeoTiff(f)) {

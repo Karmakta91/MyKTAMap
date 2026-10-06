@@ -9461,11 +9461,45 @@
     return s + "s";
   }
 
+  // Modale « 🚀 Lancer » puis lancement (bouton du scénario, ou fichier reçu à l'accueil
+  // avec `pre = { role: "equipe" }`).
+  function _ouvrirLancement(sid, pre) {
+    _afficherModaleLancer(sid, function(opts) {
+      const lancer = async function() {
+        lancerExecution(sid, opts);
+        _switchView("live");
+        const lignes = [t("secours.toast.planLance")];
+        // Demande KARMA (30/09) : en mode équipe, se retrouver à l'entrée de son équipe.
+        const place = (opts && opts.role === "equipe" && opts.currentEquipeId) ? _placerAEntree(sid, opts.currentEquipeId) : null;
+        if (place) lignes.push(place);
+        const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
+        if (horsLigne) lignes.push(horsLigne);
+        // Contrôle des engagés : sans effectif, la rentrée ne compte personne.
+        let sansEff = null;
+        if (opts && opts.role === "operateur") {
+          const inc = _bilanEngages(get(sid)).inconnus;
+          if (inc.length) { sansEff = t("secours.bilan.lancementSansEffectif", { n: inc.length, noms: inc.join(", ") }); lignes.push(sansEff); }
+        }
+        _toast(lignes.join("\n"), (place || horsLigne || sansEff) ? "warn" : "info");
+      };
+      // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
+      // photos (reçues des équipes comprises) — on le dit avant.
+      if (get(sid) && get(sid).execution && typeof window.ktaConfirm === "function") {
+        window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
+      } else {
+        lancer();
+      }
+    }, pre);
+  }
+
   // Modale de sélection rôle + équipe avant lancement.
   // onConfirm({role, currentEquipeId}) appelé si user valide ; sinon noop au cancel.
-  function _afficherModaleLancer(scenarioId, onConfirm) {
+  // `pre` (facultatif) : { role } présélectionné — « Équipe » quand on arrive d'un fichier reçu.
+  function _afficherModaleLancer(scenarioId, onConfirm, pre) {
     const s = get(scenarioId);
     if (!s) return;
+    const roleInitial = (pre && ["operateur", "equipe", "secouriste"].indexOf(pre.role) >= 0) ? pre.role : "operateur";
+    const coche = function(r) { return r === roleInitial ? " checked" : ""; };
     const existing = document.getElementById("kta-secours-lancer-modale");
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
@@ -9490,7 +9524,7 @@
           '<p style="margin:0 0 14px 0;">' + t("secours.lancer.intro") + '</p>' +
           '<div class="kta-secours-lancer-roles">' +
             '<label class="kta-secours-lancer-role-row">' +
-              '<input type="radio" name="kta-lancer-role" value="operateur" checked>' +
+              '<input type="radio" name="kta-lancer-role" value="operateur"' + coche("operateur") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
                 '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.opTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
@@ -9499,19 +9533,19 @@
               '</div>' +
             '</label>' +
             '<label class="kta-secours-lancer-role-row">' +
-              '<input type="radio" name="kta-lancer-role" value="equipe">' +
+              '<input type="radio" name="kta-lancer-role" value="equipe"' + coche("equipe") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
                 '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.equipeTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
                   t("secours.lancer.equipeDesc") +
                 '</div>' +
-                '<select id="kta-lancer-equipe-select" class="kta-secours-lancer-equipe-select" disabled>' +
+                '<select id="kta-lancer-equipe-select" class="kta-secours-lancer-equipe-select"' + (roleInitial === "equipe" ? "" : " disabled") + '>' +
                   groupesOpts +
                 '</select>' +
               '</div>' +
             '</label>' +
             '<label class="kta-secours-lancer-role-row">' +
-              '<input type="radio" name="kta-lancer-role" value="secouriste">' +
+              '<input type="radio" name="kta-lancer-role" value="secouriste"' + coche("secouriste") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
                 '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.secTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
@@ -10598,37 +10632,7 @@
       });
       // 🆕 v1.24.0 Phase 3 — Handlers du bandeau "Lancer le plan"
       corps.querySelectorAll('[data-action="ouvrir-lancer-modale"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          _afficherModaleLancer(s.id, function(opts) {
-            // Test terrain (30/09) : UN message au lancement. Quatre messages successifs
-            // (lancé, placé, retard, hors-ligne) masquaient « Suivre mon parcours » ~10 s,
-            // et en réglage « Essentielles » le placement (info) n'était jamais vu.
-            const lancer = async function() {
-              lancerExecution(s.id, opts);
-              _switchView("live");
-              const lignes = [t("secours.toast.planLance")];
-              // Demande KARMA (30/09) : en mode équipe, se retrouver à l'entrée de son équipe.
-              const place = (opts && opts.role === "equipe" && opts.currentEquipeId) ? _placerAEntree(s.id, opts.currentEquipeId) : null;
-              if (place) lignes.push(place);
-              const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
-              if (horsLigne) lignes.push(horsLigne);
-              // Contrôle des engagés : sans effectif, la rentrée ne compte personne.
-              let sansEff = null;
-              if (opts && opts.role === "operateur") {
-                const inc = _bilanEngages(get(s.id)).inconnus;
-                if (inc.length) { sansEff = t("secours.bilan.lancementSansEffectif", { n: inc.length, noms: inc.join(", ") }); lignes.push(sansEff); }
-              }
-              _toast(lignes.join("\n"), (place || horsLigne || sansEff) ? "warn" : "info");
-            };
-            // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
-            // photos (reçues des équipes comprises) — on le dit avant.
-            if (s.execution && typeof window.ktaConfirm === "function") {
-              window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
-            } else {
-              lancer();
-            }
-          });
-        });
+        btn.addEventListener("click", function() { _ouvrirLancement(s.id); });
       });
       corps.querySelectorAll('[data-action="reprendre-live"]').forEach(function(btn) {
         btn.addEventListener("click", function() { _switchView("live"); });
@@ -13009,9 +13013,117 @@
   // Initialisation : charge les scénarios pour le plan courant.
   // Appelé par main.js > lancerApplication après onPlanLoaded.
   // Idempotent : peut être appelé plusieurs fois sans effet de bord.
+  // ============================================================
+  // 🚑 FICHIER REÇU À L'ACCUEIL (demande KARMA 03/10, livré 06/10/2026)
+  // ============================================================
+  // Un équipier reçoit un .mkmsec.json (messagerie, mail) et le dépose sur « 📦 Ajouter un
+  // plan » : l'accueil lit le CONTENU (les messageries renomment), retrouve le plan dans
+  // le registre (id, puis nom + version : l'id diffère entre local_… et server_…), le
+  // charge, puis enchaîne aperçu → import (identifiants d'origine gardés) → rôle « Équipe »
+  // présélectionné. Plan absent : arrêt qui nomme plan et version attendus, jamais « le plus
+  // proche ». Autre version seulement : on demande. Homonymes : l'utilisateur choisit.
+  // Rapport ou observations : à importer depuis le plan ouvert (on le dit).
+  // Rend une Promise : null = pas un fichier du Mode Secours (l'accueil poursuit son
+  // routage), sinon { ok, message? }.
+  const ACCUEIL_TTL_MS = 10 * 60 * 1000;
+  let _accueilEnAttente = null;   // { texte, nom, planId, at }
+  function _nomNorm(x) { return String(x || "").trim().toLowerCase(); }
+  function _choisirPlanAccueil(plans, titre) {
+    return new Promise(function(resolve) {
+      const overlay = document.createElement("div");
+      overlay.className = "kta-readme-modal-overlay";
+      overlay.style.zIndex = "100001";
+      const R = window.PlanRegistry;
+      overlay.innerHTML =
+        '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
+          '<div class="kta-readme-modal-header">' +
+            '<span class="kta-readme-modal-titre">' + _escHtml(titre) + '</span>' +
+            '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+          '</div>' +
+          '<div class="kta-readme-modal-corps">' +
+            plans.map(function(p, i) {
+              const nom = R && typeof R.displayName === "function" ? R.displayName(p) : (p.name || p.id);
+              return '<button class="kta-btn kta-btn-secondary" style="display:block;width:100%;margin:6px 0;text-align:left" data-i="' + i + '">' +
+                _escHtml(nom + (p.version ? " — " + p.version : "") + " (" + (p.type === "server" ? "☁️" : "📦") + ")") + '</button>';
+            }).join("") +
+            '<div class="kta-secours-form-actions"><button class="kta-btn kta-btn-ghost" data-action="cancel">' +
+              _escHtml(t("secours.btn.annuler")) + '</button></div>' +
+          '</div>' +
+        '</div>';
+      document.documentElement.appendChild(overlay);
+      function fin(v) { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(v); }
+      overlay.addEventListener("click", function(e) {
+        if (e.target === overlay) return fin(null);
+        const b = e.target.closest && e.target.closest("[data-i],[data-action='cancel']");
+        if (!b) return;
+        fin(b.hasAttribute("data-i") ? plans[parseInt(b.getAttribute("data-i"), 10)] : null);
+      });
+    });
+  }
+  async function ouvrirDepuisAccueil(texte, nomFichier) {
+    let payload;
+    try { payload = JSON.parse(texte); } catch (e) { return null; }
+    const type = payload && typeof payload.type === "string" ? payload.type : "";
+    if (type.indexOf("myktamap-secours-") !== 0) return null;
+    if (type !== "myktamap-secours-scenario") return { ok: false, message: t("secours.accueil.rapport") };
+    const pf = payload.plan || {};
+    const R = window.PlanRegistry;
+    const plans = R && typeof R.getAll === "function" ? R.getAll() : [];
+    let cible = pf.id ? plans.find(function(p) { return p.id === pf.id; }) : null;
+    if (!cible) {
+      const memeNom = plans.filter(function(p) { return !!_nomNorm(pf.name) && _nomNorm(p.name) === _nomNorm(pf.name); });
+      const memeVersion = memeNom.filter(function(p) { return _nomNorm(p.version) === _nomNorm(pf.version); });
+      if (memeVersion.length === 1) cible = memeVersion[0];
+      else if (memeVersion.length > 1) cible = await _choisirPlanAccueil(memeVersion, t("secours.accueil.choisirHomonyme"));
+      else if (memeNom.length) {
+        const ok = typeof window.ktaConfirm === "function" ? await window.ktaConfirm(_escHtml(t("secours.accueil.autreVersion",
+          { nom: pf.name, attendue: pf.version || "?", dispo: memeNom.map(function(p) { return p.version || "?"; }).join(", ") }))) : false;
+        if (!ok) return { ok: false, message: t("secours.accueil.annule") };
+        cible = memeNom.length === 1 ? memeNom[0] : await _choisirPlanAccueil(memeNom, t("secours.accueil.choisirVersion"));
+      }
+      if (!cible && !memeNom.length) {
+        return { ok: false, message: t("secours.accueil.planAbsent", { nom: pf.name || "?", version: pf.version || "?" }) };
+      }
+      if (!cible) return { ok: false, message: t("secours.accueil.annule") };
+    }
+    if (typeof window.chargerPlanDuRegistre !== "function") return { ok: false, message: t("secours.accueil.planAbsent", { nom: pf.name || "?", version: pf.version || "?" }) };
+    _accueilEnAttente = { texte: texte, nom: nomFichier || "", planId: cible.id, at: Date.now() };
+    console.log("[SecoursMode] Fichier reçu à l'accueil → ouverture du plan", cible.id);
+    window.chargerPlanDuRegistre(cible.id);   // plan local sans copie : passe par « Plan introuvable »
+    return { ok: true, message: t("secours.accueil.ouverture", { nom: R.displayName ? R.displayName(cible) : (cible.name || cible.id) }) };
+  }
+  // Appelé par init() : attend la fin du splash (et la restauration de session), puis
+  // aperçu → import → lancement en « Équipe ». Abandonné si un autre plan s'est ouvert.
+  function _consommerAccueil() {
+    const a = _accueilEnAttente;
+    if (!a) return;
+    // Le registre et la config du plan ne portent pas toujours le même nom : on compare l'id chargé.
+    if (Date.now() - a.at > ACCUEIL_TTL_MS || window._currentLoadedPlanId !== a.planId) { _accueilEnAttente = null; return; }
+    _accueilEnAttente = null;
+    let essais = 0;
+    (function attendre() {
+      if ((document.getElementById("splashOverlay") || !window.map) && essais++ < 100) { setTimeout(attendre, 300); return; }
+      setTimeout(async function() {
+        let parsed;
+        try { parsed = await _parsePayloadMkmsec(a.texte); }
+        catch (e) { parsed = { ok: false, error: t("secours.import.errException", { message: (e && e.message) || String(e) }) }; }
+        if (!parsed.ok) { _afficherResultatImport({ ok: false, error: parsed.error }, a.nom); return; }
+        _afficherPreviewImport(parsed.payload, parsed.warning, a.nom, function(confirmer, mode) {
+          if (!confirmer) return;
+          const applied = _appliquerPayloadImport(parsed.payload, mode);
+          if (!applied || !applied.scenario) { _afficherResultatImport({ ok: false, error: t("secours.accueil.echec") }, a.nom); return; }
+          _currentScenarioId = applied.scenario.id;
+          ouvrir(applied.scenario.id);
+          _ouvrirLancement(applied.scenario.id, { role: "equipe" });
+        });
+      }, 800);   // après le recentrage de la restauration de session (motif InterPlanLinks)
+    })();
+  }
+
   function init() {
     _loadScenarios();
     console.log("[SecoursMode] Init — " + _scenarios.length + " scénario(s) chargé(s) pour ce plan");
+    _consommerAccueil();
     // Intervention en cours sur ce plan → zone, tracé et pastille dès l'ouverture
     // (après la main : la carte et ses tracés finissent de se monter).
     setTimeout(function() {
@@ -13043,6 +13155,7 @@
   window.SecoursMode = {
     // Cycle de vie
     init:                   init,
+    ouvrirDepuisAccueil:    ouvrirDepuisAccueil,   // fichier reçu déposé à l'accueil
     reset:                  reset,
     // UI
     ouvrir:                 ouvrir,
