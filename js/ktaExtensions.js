@@ -802,6 +802,14 @@
     try { const t = ext.secoursInfoEquipe(scenarioId, equipeId); return typeof t === "string" ? t.trim().slice(0, 200) : ""; }
     catch (e) { console.warn("[Extensions] secoursInfoEquipe :", e); return ""; }
   }
+  // Nombre de comptes reliés à une équipe (installation reliée) : entre dans l'effectif automatique.
+  // Sans prise ou en erreur : 0 (l'effectif retombe sur les membres nommés ou la saisie).
+  function secoursNbComptesEquipe(scenarioId, equipeId) {
+    const ext = _prise("secoursNbComptesEquipe");
+    if (!ext) return 0;
+    try { const n = ext.secoursNbComptesEquipe(scenarioId, equipeId); return Number.isInteger(n) && n > 0 && n < 100 ? n : 0; }
+    catch (e) { console.warn("[Extensions] secoursNbComptesEquipe :", e); return 0; }
+  }
   function secoursPeutAvancer(scenarioId, equipeId, quoi) {
     const ext = _prise("secoursPeutAvancer");
     if (!ext) return true;
@@ -1096,6 +1104,7 @@
     secoursActions: secoursActions,
     secoursInfoEquipe: secoursInfoEquipe,
     secoursPeutAvancer: secoursPeutAvancer,
+    secoursNbComptesEquipe: secoursNbComptesEquipe,
     afficherAlerteSecours: afficherAlerteSecours,
     retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,

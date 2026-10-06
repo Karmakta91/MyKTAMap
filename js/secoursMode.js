@@ -1715,11 +1715,51 @@
     return (ex.suivi && ex.suivi[k] && ex.suivi[k][gid]) || null;
   }
   function _equipeEngagee(s, g) { return _getEtapesEquipe(s, g.id).length > 0; }
-  // B9 : effectif = saisi, sinon nombre de membres nommés (null si inconnu).
-  function _effectif(g) {
-    if (g && Number.isInteger(g.effectif) && g.effectif > 0) return g.effectif;
-    const n = (g && Array.isArray(g.membres)) ? g.membres.length : 0;
-    return n > 0 ? n : null;
+  // B9 + 06/10/2026 (décision KARMA) — effectif = personnes qui DESCENDENT. Saisi s'il l'est ; sinon le plus
+  // grand de « membres nommés » et « comptes reliés » (installation reliée). Jamais déduit des seuls comptes
+  // quand une saisie existe : une équipe de 4 avec un seul téléphone a 1 compte mais 4 personnes à remonter.
+  function _scenarioDuGroupe(g) {
+    for (let i = 0; i < _scenarios.length; i++) if ((_scenarios[i].groupes || []).indexOf(g) >= 0) return _scenarios[i];
+    return null;
+  }
+  function _nbComptesEquipe(g) {
+    const X = _X();
+    if (!g || !X || typeof X.secoursNbComptesEquipe !== "function") return 0;
+    const s = _scenarioDuGroupe(g);
+    return s ? X.secoursNbComptesEquipe(s.id, g.id) : 0;
+  }
+  // { n, source: "saisi"|"comptes"|"membres"|null, membres, comptes }
+  function _effectifDetail(g) {
+    const membres = (g && Array.isArray(g.membres)) ? g.membres.length : 0;
+    const comptes = _nbComptesEquipe(g);
+    if (g && Number.isInteger(g.effectif) && g.effectif > 0) return { n: g.effectif, source: "saisi", membres: membres, comptes: comptes };
+    if (!membres && !comptes) return { n: null, source: null, membres: 0, comptes: 0 };
+    return comptes > membres ? { n: comptes, source: "comptes", membres: membres, comptes: comptes }
+                             : { n: membres, source: "membres", membres: membres, comptes: comptes };
+  }
+  function _effectif(g) { return _effectifDetail(g).n; }
+  // Ligne sous le champ : d'où vient le chiffre, et alerte si la saisie est plus basse que ce qu'on sait.
+  function _htmlAideEffectif(g) {
+    const d = _effectifDetail(g);
+    let txt, cls = "kta-tx-muted";
+    if (d.source === "saisi") {
+      const connu = Math.max(d.membres, d.comptes);
+      if (connu > d.n) {
+        cls = "kta-tx-warn";
+        txt = t("secours.b9.effAlerte", { n: d.n, m: connu, quoi: t(d.comptes >= d.membres ? "secours.b9.effQuoiComptes" : "secours.b9.effQuoiMembres") });
+      } else txt = t("secours.b9.effSaisi", { n: d.n });
+    } else if (d.source === "comptes") txt = t("secours.b9.effComptes", { n: d.n });
+    else if (d.source === "membres") txt = t("secours.b9.effMembres", { n: d.n });
+    else txt = t("secours.b9.effInconnu");
+    return '<div class="kta-secours-effectif-aide ' + cls + '" data-effectif-aide="' + _escAttr(g.id) + '">' + _escHtml(txt) + '</div>';
+  }
+  function _majAideEffectif(scenarioId, gid) {
+    const s = get(scenarioId);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
+    const el = g && document.querySelector('[data-effectif-aide="' + gid.replace(/"/g, "") + '"]');
+    if (el) el.outerHTML = _htmlAideEffectif(g);
+    const inp = g && document.querySelector('[data-action="edit-effectif"][data-gid="' + gid.replace(/"/g, "") + '"]');
+    if (inp) inp.placeholder = String(Math.max(g.membres ? g.membres.length : 0, _nbComptesEquipe(g)) || "");
   }
   function _chef(g) {
     const m = (g && Array.isArray(g.membres)) ? g.membres : [];
@@ -9164,8 +9204,10 @@
                   '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.b9.effectifLabel") + '</label>' +
                     '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1"' +
-                      ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
+                      ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' +
+                      (Math.max((g.membres || []).length, _nbComptesEquipe(g)) || '') + '">' +
                   '</div>' +
+                  _htmlAideEffectif(g) +
                   '<div class="kta-secours-groupe-row">' +
                     '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
                     '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
@@ -10870,12 +10912,16 @@
         inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { heureRetour: inp.value || null }); });
       });
       corps.querySelectorAll('[data-action="edit-effectif"]').forEach(function(inp) {
-        inp.addEventListener("change", function() { updateGroupe(s.id, inp.getAttribute("data-gid"), { effectif: inp.value }); });
+        inp.addEventListener("change", function() {
+          updateGroupe(s.id, inp.getAttribute("data-gid"), { effectif: inp.value });
+          _majAideEffectif(s.id, inp.getAttribute("data-gid"));
+        });
       });
       corps.querySelectorAll('[data-action="edit-membres"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
           const arr = inp.value.split(",").map(function(x) { return x.trim(); }).filter(Boolean);
           updateGroupe(s.id, inp.getAttribute("data-gid"), { membres: arr });
+          _majAideEffectif(s.id, inp.getAttribute("data-gid"));
         });
       });
       // 🆕 v1.41.0 E — Edit GPS surface équipe. Parse "lat, lng" → {lat, lng}.

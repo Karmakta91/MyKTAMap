@@ -239,6 +239,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   Mode Secours (en-tête du scénario, carte d'une équipe, vue Live ; `ctx = { scenarioId, vue, equipeId?, role? }`),
   `secoursInfoEquipe(scenarioId, equipeId)` → texte sur la carte d'équipe, `secoursPeutAvancer(scenarioId, equipeId,
   quoi)` (etape / depart / rentree / rappel ; sans prise : oui, prise en erreur : **non**, refus dit par un toast).
+  `secoursNbComptesEquipe(scenarioId, equipeId)` → nombre de comptes reliés (sans prise ou en erreur : 0) : l'effectif
+  d'une équipe = saisi, sinon le plus grand de « membres nommés » et « comptes reliés » ; saisie plus basse = alerte.
   `afficherAlerteSecours({ id, titre, texte, actions, sonner? })` / `retirerAlerteSecours(id)` : bandeau rouge
   persistant (son + vibration). Sortants : `mktm:secours-etape-changee` / `mktm:secours-suivi-change` ; entrants :
   `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` (la plus récente gagne, jamais ré-émis) ;

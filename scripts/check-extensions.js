@@ -370,6 +370,12 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     K2.register({ nom: "se2", apiVersion: 1, secoursPeutAvancer: () => { throw new Error("x"); }, secoursActions: () => { throw new Error("y"); } });
     t("🩸 garde en erreur → REFUS (une permission qui échoue ne laisse pas passer) ; boutons en erreur → aucun",
       K2.secoursPeutAvancer("s", "g", "etape") === false && K2.secoursActions({}).length === 0);
+    const { K: K3 } = nouveauContexte(null);
+    const nbSans = K3.secoursNbComptesEquipe("s", "g");
+    K3.register({ nom: "se3", apiVersion: 1, secoursNbComptesEquipe: (s, g) => (g === "g" ? 3 : g === "e" ? (() => { throw new Error("z"); })() : -2) });
+    t("effectif : comptes reliés = 0 sans extension, entier valide avec, 0 si négatif ou en erreur",
+      nbSans === 0 && K3.secoursNbComptesEquipe("s", "g") === 3 && K3.secoursNbComptesEquipe("s", "x") === 0 &&
+      K3.secoursNbComptesEquipe("s", "e") === 0);
     const SM = lire("js/secoursMode.js");
     t("Mode Secours : chaque avancée passe par la garde (étape, départ/rentrée/rappel, rentrée comptée, rappel)",
       /if \(!_peut\(scenarioId, equipeId, "etape"\)\) return null;/.test(SM) && /_peut\(scenarioId, gid, \{ departAt: "depart"/.test(SM) &&
