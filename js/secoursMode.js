@@ -2797,6 +2797,58 @@
     }, 50);
   }
 
+  // 🚑 Options brancard de « Évacuer » (A3, reste livré le 06/10/2026). Les types de zones
+  // du plan (session + embarquées) sont proposés ; eau et remblais cochés d'office. Les zones
+  // inaccessibles restent infranchissables sauf case cochée (dernier recours, décochée).
+  // Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la fenêtre
+  // de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
+  const BRANCARD_COCHES = ["eau", "remblais"];
+  function _demanderOptionsBrancard(onChoix) {
+    const types = typeof window.getAvoidableZoneTypes === "function" ? (window.getAvoidableZoneTypes() || []) : [];
+    const nbInacc = [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
+                              Array.isArray(window._ktaDataPolygons) ? window._ktaDataPolygons : [])
+      .filter(function(z) { return z && z.type === "inaccessible"; }).length;
+    const old = document.getElementById("kta-secours-brancard-modal");
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-brancard-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    const lignes = types.map(function(z) {
+      return '<label class="kta-secours-brancard-ligne"><input type="checkbox" data-ztype="' + _escAttr(z.type) + '"' +
+        (BRANCARD_COCHES.indexOf(z.type) >= 0 ? " checked" : "") + '> ' +
+        _escHtml(t("secours.brancard.eviter", { label: z.label || z.type, n: z.count })) + '</label>';
+    }).join("");
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">' + _escHtml(t("secours.brancard.titre")) + '</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-form-hint">' + _escHtml(t("secours.brancard.intro")) + '</div>' +
+          (lignes || '<div class="kta-secours-form-hint kta-tx-muted">' + _escHtml(t("secours.brancard.aucuneZone")) + '</div>') +
+          (nbInacc ? '<label class="kta-secours-brancard-ligne kta-tx-warn"><input type="checkbox" data-inacc="1"> ' +
+            _escHtml(t("secours.brancard.inacc", { n: nbInacc })) + '</label>' : '') +
+          '<div class="kta-secours-form-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + _escHtml(t("secours.btn.annuler")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + _escHtml(t("secours.brancard.calculer")) + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    function _close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
+    overlay.querySelector('[data-action="confirm"]').addEventListener("click", function() {
+      const zones = [].slice.call(overlay.querySelectorAll("input[data-ztype]:checked"))
+        .map(function(i) { return i.getAttribute("data-ztype"); });
+      const inacc = overlay.querySelector("input[data-inacc]");
+      _close();
+      onChoix({ avoidZones: zones, respecterInaccessibles: !(inacc && inacc.checked) });
+    });
+  }
+
   // 🆕 v1.23.2 Phase 2 / Feature G (KARMA roadmap §65.12 "Recherche unifiée
   // Ctrl+K → assigner à équipe en 2 clics") : mini-modale qui ouvre depuis
   // searchPoints.js quand l'user clique le bouton 📌 sur un résultat point.
@@ -11170,12 +11222,17 @@
           _toast(t("secours.victime.sortieIndispo"), "error");
           return;
         }
-        fermer();   // la zone et le tracé restent (intervention en cours)
-        // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
-        // du plan (un seul sur le plan du test) — jusqu'à 6,5 fois la distance d'un retour
-        // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
-        // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
-        window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level, { sortiesSupp: _sortiesScenario(s), origine: "victime" });
+        // Options brancard d'abord (éviter l'eau, les remblais… ; lever les inaccessibles en
+        // dernier recours), puis la Sortie d'urgence depuis la victime.
+        _demanderOptionsBrancard(function(contraintes) {
+          fermer();   // la zone et le tracé restent (intervention en cours)
+          // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
+          // du plan (un seul sur le plan du test) — jusqu'à 6,5 fois la distance d'un retour
+          // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
+          // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
+          window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level,
+            { sortiesSupp: _sortiesScenario(s), origine: "victime", contraintes: contraintes });
+        });
       });
     });
     corps.querySelectorAll('[data-action="victime-preciser"]').forEach(function(btn) {

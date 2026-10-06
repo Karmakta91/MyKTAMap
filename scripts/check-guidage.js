@@ -208,6 +208,67 @@ async function bandeau() {
   w.APP_CONFIG.smartNav = false;
 }
 
+// Sortie d'urgence lancée depuis une victime en (100, 500) ; deux accès du scénario :
+// A (500, 500) tout droit, à travers une zone d'eau ; B (900, 500) par un détour au nord.
+async function evacuationBrancard() {
+  const roads = [R("principal", [[100, 500], [500, 500]]),
+                 R("principal", [[100, 500], [100, 200], [900, 200], [900, 500]])];
+  const eau = { type: "eau", level: 0, points: [{ x: 250, y: 450 }, { x: 350, y: 450 }, { x: 350, y: 550 }, { x: 250, y: 550 }] };
+  const w = bac(roads);
+  let zones = [eau], trace = null;
+  w.getZones = () => zones;
+  const corps = { innerHTML: "" };
+  const modal = { id: "", className: "", innerHTML: "", parentNode: null, addEventListener() {},
+                  querySelector: () => corps };
+  w.document = { createElement: () => modal, getElementById: () => ({ addEventListener() {} }),
+                 documentElement: { appendChild(el) { el.parentNode = { removeChild() {} }; } },
+                 addEventListener() {}, removeEventListener() {} };
+  w.requestAnimationFrame = f => f();
+  w.setTimeout = setTimeout;
+  w.itineraireYAller = (x, y, nom, o) => { trace = { x: x, y: y, o: o }; };
+  vm.runInContext("var window = this;" + fs.readFileSync(path.join(ROOT, "js/sortieUrgence.js"), "utf8"), vm.createContext(w));
+  const supp = [{ x: 500, y: 500, nom: "A" }, { x: 900, y: 500, nom: "B" }];
+  async function evacuer(contraintes) {
+    corps.innerHTML = ""; trace = null;
+    w.SortieUrgence.declencherDepuis(100, 500, 0, { sortiesSupp: supp, origine: "victime", contraintes: contraintes });
+    for (let i = 0; i < 100 && !/kta-sortie-principal/.test(corps.innerHTML); i++) await new Promise(r => setTimeout(r, 5));
+    w.SortieUrgence._tracerMeilleure();
+    return { html: corps.innerHTML, trace: trace };
+  }
+  let r = await evacuer(null);
+  t("évacuation sans options : la plus courte (A, à travers l'eau), aucune ligne brancard",
+    r.trace && r.trace.x === 500 && !/sortie.brancard/.test(r.html));
+  r = await evacuer({ avoidZones: ["eau"], respecterInaccessibles: true });
+  t("brancard « éviter l'eau » : B (détour) passe devant A", r.trace && r.trace.x === 900);
+  t("brancard : la fenêtre rappelle ce qui est évité, sans alerte (B respecte)",
+    /sortie.brancard.evite/.test(r.html) && !/sortie.brancard.contourne/.test(r.html));
+  t("brancard : le tracé reçoit les contraintes et les accès du scénario (recalculs compris)",
+    r.trace.o.evacuation && r.trace.o.evacuation.contraintes.avoidZones[0] === "eau" &&
+    r.trace.o.evacuation.supp === supp && r.trace.o.urgence === true);
+  zones = [eau, { type: "eau", level: 0, points: [{ x: 50, y: 450 }, { x: 150, y: 450 }, { x: 150, y: 550 }, { x: 50, y: 550 }] }];
+  r = await evacuer({ avoidZones: ["eau"], respecterInaccessibles: true });
+  t("brancard : victime dans l'eau → chemin quand même, et la fenêtre dit qu'il traverse une zone évitée",
+    r.trace && /sortie.brancard.contourne/.test(r.html));
+  zones = [{ type: "inaccessible", level: 0, points: [{ x: 250, y: 450 }, { x: 350, y: 450 }, { x: 350, y: 550 }, { x: 250, y: 550 }] }];
+  r = await evacuer({ avoidZones: [], respecterInaccessibles: true });
+  t("inaccessibles respectés (défaut) : A barré → B", r.trace && r.trace.x === 900);
+  r = await evacuer({ avoidZones: [], respecterInaccessibles: false });
+  t("inaccessibles levés (dernier recours) : A redevient la plus proche, et c'est écrit",
+    r.trace && r.trace.x === 500 && /sortie.brancard.inaccLeve/.test(r.html));
+  // Recalcul en route : relancerDepuis relit road.evacuation.
+  w.getRoads = () => [{ type: "itinerary", evacuation: { contraintes: { avoidZones: [], respecterInaccessibles: true }, supp: supp } }];
+  corps.innerHTML = ""; trace = null;
+  w.SortieUrgence.relancerDepuis({ x: 100, y: 500 });
+  for (let i = 0; i < 100 && !/kta-sortie-principal/.test(corps.innerHTML); i++) await new Promise(r2 => setTimeout(r2, 5));
+  w.SortieUrgence._tracerMeilleure();
+  t("recalcul en route : mêmes options brancard et mêmes accès (A barré → B)", trace && trace.x === 900 &&
+    trace.o.evacuation && trace.o.evacuation.supp === supp);
+  const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
+  t("câblage : « Y aller » et la replanification suivent les contraintes de l'évacuation",
+    ii.includes("_optsEvitement(avoidPrefs, evC)") && ii.includes("if (opts.evacuation) newRoad.evacuation = opts.evacuation;") &&
+    (ii.match(/if \(road\.evacuation\) newRoad\.evacuation = road\.evacuation;/g) || []).length === 2);
+}
+
 (async function main() {
   // 1) Croisement en T, on tourne : un seul virage franc, à droite
   //    (cap est → cap sud : sud est à droite de l'est, y croît vers le bas).
@@ -518,6 +579,10 @@ async function bandeau() {
 
   // 11) BANDEAU EN DIRECT (lot 2) — simulation de marche, faux DOM minimal
   await bandeau();
+
+  // 12) ÉVACUATION — options brancard (Mode Secours « 🚑 Évacuer », 06/10/2026) : moteur et
+  // Sortie d'urgence RÉELS ; seuls le DOM de la modale et itineraireYAller sont simulés.
+  await evacuationBrancard();
 
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 guidage : tout passe");
   process.exit(ko ? 1 : 0);

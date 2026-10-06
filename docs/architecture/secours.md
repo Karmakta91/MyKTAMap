@@ -1616,7 +1616,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 
 ## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
 
-- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés.
+- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés. **Options brancard** d'abord (`_demanderOptionsBrancard`) : types de zones du plan (eau et remblais cochés d'office), case « lever les inaccessibles » décochée → `contraintes: { avoidZones, respecterInaccessibles }`, portées jusqu'au tracé et à ses recalculs (`road.evacuation`) — détail : `multilevel-pathfinding.md` (encadré inaccessibles).
 - **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf → « à ouvrir par la surface ».
 - **Engagés** : `_bilanEngages(s)` (équipes de la phase courante) → `{ engages, sousTerre, manquants, inconnus[] }`. `_demanderRemontes` : valeur jamais préremplie. `_chef(g)` : chef libre si pas de membres.
 - **Durées** : `reglagesDuree.vitesseApprocheKmh` (défaut 3). `_dureeEquipeMin(s, distM, nbWp, { g, path, raccords })` : part du trajet hors polygone à la vitesse d'approche, le reste + raccords (étape × 2) à la vitesse de fouille. `g.heureRetour` « HH:MM » → `_heureRetourMs` (prochaine occurrence après le départ) prime dans `_etatRetour` (`imperatif: true`).

@@ -70,8 +70,11 @@ natives).
 - **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
   recadré — sur un grand plan réel, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
   zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
-- **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
-  lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
+- 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
+  brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
+  désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart
+  > 10 m est signalé. À trancher : même alerte en mode classique (un POI de sortie peut aussi être loin d'une galerie
+  sur un plan peu tracé). ✅ vérifié (bac `check-guidage` §12). **S**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des

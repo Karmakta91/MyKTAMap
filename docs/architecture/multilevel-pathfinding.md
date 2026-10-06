@@ -507,9 +507,16 @@ historique).
 
 ⚠️ **Volontairement limité à `computeRoute`.** `computeReachable` (Mode Secours /
 Perdu) garde les zones inaccessibles en toutes circonstances : une préférence de
-confort n'a pas à élargir un périmètre de secours. `interPlanRoute`,
-`secoursMode` et `sortieUrgence` ne passent pas l'option — ils héritent donc du
-comportement sûr, et c'est intentionnel.
+confort n'a pas à élargir un périmètre de secours. `interPlanRoute` et la Sortie
+d'urgence lancée par 🚨 ne passent pas l'option — ils héritent du comportement sûr.
+**Seule exception : « 🚑 Évacuer » du Mode Secours** (options brancard) — l'opérateur
+choisit les types de zones à éviter (eau et remblais cochés d'office) et peut lever les
+inaccessibles par une case **décochée par défaut** (dernier recours, nommé comme tel).
+Les contraintes vont `SortieUrgence.declencherDepuis(…, { contraintes })` → classement des
+sorties → `itineraireYAller(…, { evacuation })` → `road.evacuation`, relu par les recalculs
+(`_replanifierDepuis`, `SortieUrgence.relancerDepuis`). Une sortie atteinte seulement en
+traversant une zone « à éviter » (passe 2 du moteur) est classée après celles qui la
+respectent, et la fenêtre le dit.
 
 ---
 

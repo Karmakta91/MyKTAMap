@@ -812,6 +812,7 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   font-family: inherit;
   font-size: 12px;
 }
+.kta-secours-brancard-ligne { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; cursor: pointer; }
 .kta-secours-effectif-aide { font-size: 11px; margin: -2px 0 2px 98px; line-height: 1.35; }
 .kta-secours-groupe-stats {
   display: flex;

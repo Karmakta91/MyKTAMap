@@ -2017,6 +2017,11 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
   color: #8892a4;
   margin: -6px 0 12px;
 }
+.kta-sortie-brancard {
+  font-size: 12px;
+  color: #f4c542;
+  margin: -6px 0 12px;
+}
 .kta-sortie-alt-sep {
   list-style: none;
   font-size: 11px;
@@ -22017,6 +22022,7 @@ body.kta-theme-light #kta-osm-mes-floater {
    (audit ergonomie Q4/B1). Sélecteur dual body/html : la modale est appendée
    à documentElement (cf ui.md §90.4). */
 body.kta-theme-light .kta-sortie-origine,
+body.kta-theme-light .kta-sortie-brancard,
 html.kta-theme-light .kta-sortie-origine,
 body.kta-theme-light .kta-sortie-alt-sep,
 html.kta-theme-light .kta-sortie-alt-sep {

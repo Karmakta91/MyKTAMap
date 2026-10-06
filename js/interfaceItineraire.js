@@ -216,6 +216,24 @@ function _confirmRemplacerItineraire(onConfirm) {
 // position confirmée → on part de la position du tracker sans question ;
 // jamais confirmée (= encore le départ du plan) → picker partagé « Où es-tu ? »
 // qui recale le tracker, puis on revient ici avec l'origine.
+// Options d'évitement du moteur : préférences de l'itinéraire, ou contraintes d'une
+// évacuation (Mode Secours, options brancard) qui les remplacent entièrement.
+function _optsEvitement(avoidPrefs, evC) {
+  if (evC) {
+    return { avoidPoints: [], avoidTags: [], avoidRadius: 0,
+             avoidZones: Array.isArray(evC.avoidZones) ? evC.avoidZones : [],
+             respecterInaccessibles: evC.respecterInaccessibles !== false };
+  }
+  return {
+    avoidPoints: avoidPrefs.points || [],
+    avoidTags:   avoidPrefs.tags   || [],
+    avoidZones:  avoidPrefs.zones  || [],
+    // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+    respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
+    avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+  };
+}
+
 window.itineraireYAller = function(x, y, nom, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
   opts = opts || {};
@@ -270,15 +288,11 @@ window.itineraireYAller = function(x, y, nom, opts) {
       // pour cohérence avec la modale itineraire (l'user voudrait probablement
       // les memes preferences).
       const avoidPrefs = _getItiAvoidPrefs();
+      // 🚑 Évacuation (Mode Secours, options brancard) : les contraintes du classement des
+      // sorties remplacent les préférences de l'itinéraire classique.
+      const evC = opts.evacuation && opts.evacuation.contraintes;
       const result = await _withItiComputeLoader(function() {
-        return window.Pathfinder.computeRoute(waypoints, {
-          avoidPoints: avoidPrefs.points || [],
-          avoidTags:   avoidPrefs.tags   || [],
-          avoidZones:  avoidPrefs.zones  || [],
-          // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
-          respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
-        });
+        return window.Pathfinder.computeRoute(waypoints, _optsEvitement(avoidPrefs, evC));
       });
 
       // Cree la road itineraire (sans flag _preview : on enregistre direct)
@@ -291,6 +305,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
       // D'URGENCE est marqué — bandeau sans croix, affiché même réglé sur
       // « Jamais », et « Recalculer » y vise la sortie la plus proche.
       if (opts.urgence) newRoad.urgence = true;
+      if (opts.evacuation) newRoad.evacuation = opts.evacuation;
 
       // Remove ancien itineraire + add le nouveau
       const currentRoads = window.getRoads ? window.getRoads() : [];
@@ -974,6 +989,7 @@ function _couperDerriere(road, x, y) {
     raccords: raccords, carrefours: carrefours
   };
   if (road.urgence) newRoad.urgence = true;
+  if (road.evacuation) newRoad.evacuation = road.evacuation;
   if (road.secours) newRoad.secours = road.secours;
   if (road.suite) newRoad.suite = road.suite;   // inter-plans : la suite après le portail
 
@@ -1138,7 +1154,9 @@ async function _replanifierDepuis(px, py) {
     // 🧭 Parcours d'une équipe de secours : on garde SES évitements (les zones des
     // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
     const sec = road.secours || null;
+    const evC = road.evacuation && road.evacuation.contraintes;
     const result = await _withItiComputeLoader(function() {
+      if (evC) return window.Pathfinder.computeRoute([origin].concat(restantes), _optsEvitement(avoidPrefs, evC));
       return window.Pathfinder.computeRoute([origin].concat(restantes), {
         avoidPoints: sec ? (sec.avoidPoints || []) : (avoidPrefs.points || []),
         avoidTags:   sec ? [] : (avoidPrefs.tags   || []),
@@ -1158,6 +1176,7 @@ async function _replanifierDepuis(px, py) {
     }, _champsGuidage(result));
     // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
+    if (road.evacuation) newRoad.evacuation = road.evacuation;   // garde ses options brancard
     if (road.secours) newRoad.secours = road.secours;   // reste le parcours de l'équipe
     if (road.suite) newRoad.suite = road.suite;         // inter-plans : la suite après le portail
     const filtered = (window.getRoads ? window.getRoads() : [])
