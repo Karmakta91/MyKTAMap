@@ -2,7 +2,7 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier ménage : 30/09/2026.** Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> **Dernier ménage : 06/10/2026** (précédent : 30/09/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
@@ -92,14 +92,6 @@ natives).
   (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
   depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
 
-- **Secours relié aux comptes** (décisions KARMA du 05/10/2026 ; l'étape 0 — relais qui gardait mal l'exécution — est
-  corrigée le 06/10/2026, `check-secours-relais.js`) : équipe ↔ vrais comptes, lien gardé
-  par l'installation seulement (aucun nom réel dans le `.mkmsec` ni le KMZ) ; intervention déclenchée par Admin ou
-  Créateur, bandeau d'alerte + accusés « vu » ; tout membre coche les étapes, le chef seul déclare la rentrée, le PC
-  peut tout ; position sur le plan proposée en une touche au déclenchement ; pas de notification app fermée avant
-  l'étape 3 ; noms réels en option à l'export, journal 90 jours. Prises neutres à prévoir ici : `secoursMonPoste`,
-  `secoursPeutAvancer`, `secoursAppliquerEtape` + `mktm:secours-etape-changee`, `afficherAlerteSecours`. **L.**
-
 ⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
 `entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
 GPS (l'erreur d'un calage à 2 points n'est pas mesurable). Le moins cher des correctifs, et le seul qu'aucun code ne
@@ -155,34 +147,10 @@ avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie 
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- ✅ **XSS — corrigé le 05/10/2026, gardé par `scripts/check-xss.js` (pré-commit bloquant).** Fiche d'un point et
-  section liaisons sans gestionnaire inline (écouteur unique en capture) ; plan-config filtré à l'ouverture, ZIP comme
-  site (`ktaAssainirPlanConfig` : icônes sans `" < > \``, `data:image/` seulement ; nom / auteur / version ; libellés
-  et identifiants de calques) ; légende personnalisée filtrée dans `_normalize` (couleurs `ktaCouleurSure`, libellés,
-  icônes, id) ; sinks ponctuels échappés (`lostMode`, `interfaceDistanceTotale`, `tableEditor`, `sessionExporter`
-  recherche KMZ, infobulle Secours, modale « éviter » de l'itinéraire, descriptions du KMZ). Prouvé : test d'attaque du
-  dépôt pro (aucune charge exécutée), aucune icône ni calque des plans réels écartés par les filtres. **Reste** : un seul
-  `window.ktaEsc` au lieu des copies locales (cosmétique, au fil de l'eau).
+- ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
+  corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
-
-## 🔎 Audits du 05/10/2026 — à traiter
-
-Rapports : [`audits/2026-10-05_audit-ui-v2.md`](audits/2026-10-05_audit-ui-v2.md) (bugs UI) et
-[`audits/2026-10-05_audit-code-mort-js-v1.md`](audits/2026-10-05_audit-code-mort-js-v1.md) (code mort). N° 1 de
-l'audit UI (régression du correctif XSS : actions d'extension en double dans la fiche) corrigé le jour même.
-
-- ✅ Corrigés le 05/10/2026 (scénario pro `lectureSeuleEtSortie`, `check-extensions` §6 bis ter) : **lecture seule
-  contournable** (bouton ✏️, clic carte, fiche d'un tracé / zone / structure, conversion, Tableur) ; **équipe de l'ancien
-  plan redessinée sur le nouveau** et panneau 👥 resté ouvert (`KtaExtensions.quitterPlan` + `mktm:plan-ferme`) ;
-  **`sitePlansHiddenDefault`** (cases resynchronisées une fois la config de l'installation lue) ; atténuation hors
-  niveau recalculée au changement de niveau ; pastille d'un pseudo-emoji.
-- ✅ Audit UI n° 8-12 corrigés le 06/10/2026 (FR en dur, « hors base » à 390 px, badges mis à jour sur place, publication du Générateur avec avancement et nom échappé, observateur des fiches regroupé par image).
-- 🧹 **Code mort** : soldé le 06/10/2026 — 19 suppressions sûres, puis les arbitrages (toggleEdition,
-  setShowRoadIntersections, telechargerMesureJSON, getRuntimeAssetJson, PERF_AUTO_META/PERF_OFF_META,
-  ROAD_INTERSECTION_MAX_ROADS, wrappers `_chargerTagsCalque`/`_renderTagsCalque`, clé `gate.lockout.escalade` doublon de
-  `gate.lockout.hint`). Reste ouvert : `planBlob` (createConf, écrit jamais lu — vérifier une révocation oubliée).
-- 📄 Docs dérivées : `secours.md` cite `getItiTempsMinutes` (le Secours a son propre modèle de durée).
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
@@ -235,7 +203,7 @@ correspondance) et `GpxImport.genererCanvasVierge` (plan sans image de fond). Un
 de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français —
 *[Supposition]* de Claude.
 
-## 🧹 Code mort — ce qui reste de l'audit du 09/08/2026
+## 🧹 Code mort — ce qui reste (audits du 09/08 et du 05/10/2026, archivés)
 
 > Ce qui est ouvert (🟡), ce qui ne doit jamais être supprimé (📌) et les deux leçons qui protègent le prochain
 > nettoyage. ⚠️ Les numéros de ligne ont dérivé : les re-vérifier avant d'agir.
@@ -252,6 +220,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 ### 🟡 À vérifier avant de toucher
 - Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action`, `.plan-card` ×4, `.kta-modal-btn-*`, `.kta-mesure-distance`, `.drag-over`, `.kta-rd-total-pill`, `style-secours.css` — contrôle runtime (`querySelectorAll(...).length === 0`)
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
+- `planBlob` (`createConf.js`) : écrit, jamais lu — vérifier qu'aucune révocation d'URL n'a été oubliée avant de le retirer
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA

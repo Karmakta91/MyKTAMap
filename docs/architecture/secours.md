@@ -429,9 +429,13 @@ Refactor `TEMPS_PAUSE_PAR_POINT_MIN` (hardcoded 15 min interface.js) en localSto
 
 Helpers `_getItiPauseEnabled / _setItiPauseEnabled / _getItiPauseMinutes / _setItiPauseMinutes` exposés globalement via `window.getItiPauseEnabled / window.getItiPauseMinutes / window.getItiTempsMinutes`.
 
-`_tempsItineraireMinutes` lit dynamiquement. Section "🛑 Pause entre les arrêts" dans modale Itinéraire avec checkbox + input + hint "S'applique aussi au Mode Secours 🚨".
+`_tempsItineraireMinutes` lit dynamiquement. Section "🛑 Pause entre les arrêts" dans la modale Itinéraire.
 
-`secoursMode.js > _recalculerItineraireGroupe` + `_recalculerItineraireGroupeAsync` utilisent `window.getItiTempsMinutes(distM, nbWp)` au lieu de fallback historique `distM / 0.5 / 60`.
+⚠️ **État actuel : le Mode Secours ne lit PAS ces réglages.** Ses durées ont leur propre modèle (audit Secours 4.1,
+décision KARMA du 29/09/2026), qui voyage dans le `.mkmsec` : `secoursMode.js > _reglagesDuree(s)` (vitesse de fouille
+1,5 km/h, vitesse d'approche 3 km/h, pause par étape 0 min, marge de retard 30 min — modifiables par scénario) et
+`_dureeEquipeMin(s, distM, nbWaypoints, geo)` (approche hors de la zone à la vitesse de marche, fouille dans la zone,
+raccords à vol d'oiseau comptés).
 
 #### 66.8 Bonus — Fix georef format mismatch
 
@@ -453,7 +457,7 @@ Le Folder Secours d'origine listait tous les Placemarks à plat dans le folder �
 
 #### 66.11 Bonus — Auto-calc itinéraires avant export KMZ
 
-Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Promise-based qui réutilise `window.getItiTempsMinutes` + résout silencieusement `true`/`false`.
+Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Promise-based (durée par `_dureeEquipeMin`), résout silencieusement `true`/`false`.
 
 À l'entrée de `exporterKMZ` : `Promise.allSettled(groupesACalc.map(_recalculerItineraireGroupeAsync))` avant `await fetch image plan` puis `KmzExport.genererKmz`. Toast cascade `⏳ Calcul auto de N itinéraires → ⏳ Génération KMZ → ✓ KMZ exporté`.
 
@@ -499,7 +503,7 @@ ID du modal target stable depuis la création — vérifier dans le module conce
 
 - ❌ Réintroduire format NESTÉ `calib.pointA.plan` / `calib.pointA.gps` — il faut **flat** `calib.pointA.x` / `calib.pointA.lat` (cf §66.8)
 - ❌ Mute `LostMode.getState()` retour — c'est un snapshot défensif, l'appelant ne doit pas écrire dedans
-- ❌ Hardcoder TEMPS_PAUSE_PAR_POINT_MIN à 15 ailleurs — utiliser `window.getItiPauseMinutes` ou `window.getItiTempsMinutes`
+- ❌ Hardcoder une durée de pause ou une vitesse : itinéraire → `window.getItiPauseMinutes` / `getItiTempsMinutes` ; Secours → `_reglagesDuree(s)` / `_dureeEquipeMin`
 - ❌ Ajouter une feature G qui modifie `searchPoints.js > findByQuery` sans vérifier que les autres consumers (Pathfinder, modale itinéraire) restent fonctionnels — la recherche autocomplete intégrée dans picker waypoint suffit pour MVP
 
 #### 65.12 Roadmap phases suivantes (validées KARMA)
@@ -619,7 +623,7 @@ function _appliquerPayloadImport(payload) {    // injection seule
 
 Setters globaux exposés dans `interface.js` (en plus des getters depuis v1.23.0) : `window.setItiPauseEnabled(bool)` + `window.setItiPauseMinutes(number)` (clamp [0, 120]). Permet à Mode Secours (et tout module futur) de modifier les prefs sans dupliquer logique localStorage.
 
-**Bloc UI « 🛑 Pause entre les arrêts »** dans section 📝 Contexte vue Edit Mode Secours (après bloc heatmap) : checkbox + input number 0-120 min + hint « S'applique aussi à l'itinéraire principal ». Au change → persiste localStorage + **recalcule auto les durées de toutes les équipes du scénario** via `_recalculerToutesDureesEquipes(scenarioId)` qui itère équipes avec `distanceM > 0`, calcule nb waypoints effectif, appelle `window.getItiTempsMinutes(distM, nbWp)`. Toast unique résumé.
+**Bloc UI « 🛑 Pause entre les arrêts »** dans section 📝 Contexte vue Edit Mode Secours (après bloc heatmap) : checkbox + input number 0-120 min + hint « S'applique aussi à l'itinéraire principal ». Au change → **recalcule les durées de toutes les équipes du scénario** via `_recalculerToutesDureesEquipes(scenarioId)` (équipes avec `distanceM > 0`, durée par `_dureeEquipeMin` et les réglages du scénario). Toast unique résumé.
 
 **Cohérence cross-feature** : mêmes localStorage keys (`myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes`) entre modale Itinéraire et Mode Secours → si l'user change la pause depuis Mode Secours, l'itinéraire principal recalcule sa durée au prochain affichage.
 

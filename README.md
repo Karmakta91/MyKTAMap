@@ -565,7 +565,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - 🔒 **Lecture seule** gardée au vrai bouton ✏️, au clic carte, à la fiche d'un tracé / zone / structure (mode lecture), à `KtaConvertir` et au Tableur — le contrôle vivait dans `toggleEdition()`, sans appelant (`93cbd23`).
 - 👥 **Sortie de plan** : `KtaExtensions.quitterPlan` + événement `mktm:plan-ferme` — l'équipe de l'ancien plan n'est plus redessinée sur le nouveau, panneau fermé ; présences redessinées au changement de niveau. `sitePlansHiddenDefault` : cases resynchronisées après lecture de la config.
 - 👥 Bouton 👥 Équipe juste sous ⭐ Favoris.
-- 🧹 Code mort : 19 suppressions sûres (`822e900`). Audits rangés : `docs/audits/2026-10-05_audit-ui-v2.md`, `…_audit-code-mort-js-v1.md`.
+- 🧹 Code mort : 19 suppressions sûres (`822e900`). Audits du 05/10 (bugs UI v2, code mort JS) : soldés, archivés sous le tag `archive-docs-2026-10-06`.
 - 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.3 (05/10/2026) — Itinéraire montré à l'équipe (branche `Karma_dev`)
