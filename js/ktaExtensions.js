@@ -775,6 +775,92 @@
       return true;
     } catch (e) { console.warn("[Extensions] appliquerItineraire :", e); return false; }
   }
+  // ── Mode Secours avec une installation reliée (étude Secours, étapes 1-3) — prises neutres ──
+  // secoursActions(ctx) → [{ libelle, action, danger? }] : boutons posés par le Mode Secours (en-tête du
+  //   scénario, carte d'une équipe, vue Live). ctx = { scenarioId, vue: "edition"|"live", equipeId?, role? }.
+  // secoursInfoEquipe(scenarioId, equipeId) → texte (ex. comptes de l'équipe) affiché sur la carte.
+  // secoursPeutAvancer(scenarioId, equipeId, quoi) → bool, quoi ∈ etape|depart|rentree|rappel :
+  //   sans prise = oui ; prise en erreur = NON (une permission qui échoue ne laisse pas passer).
+  function secoursActions(ctx) {
+    const out = [];
+    _extensions.forEach(function (ext) {
+      if (typeof ext.secoursActions !== "function") return;
+      try {
+        const l = ext.secoursActions(Object.assign({}, ctx || {}));
+        (Array.isArray(l) ? l : []).forEach(function (a) {
+          if (a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function") {
+            out.push({ libelle: a.libelle.trim().slice(0, 60), action: a.action, danger: a.danger === true });
+          }
+        });
+      } catch (e) { console.warn("[Extensions] secoursActions :", e); }
+    });
+    return out.slice(0, 8);
+  }
+  function secoursInfoEquipe(scenarioId, equipeId) {
+    const ext = _prise("secoursInfoEquipe");
+    if (!ext) return "";
+    try { const t = ext.secoursInfoEquipe(scenarioId, equipeId); return typeof t === "string" ? t.trim().slice(0, 200) : ""; }
+    catch (e) { console.warn("[Extensions] secoursInfoEquipe :", e); return ""; }
+  }
+  function secoursPeutAvancer(scenarioId, equipeId, quoi) {
+    const ext = _prise("secoursPeutAvancer");
+    if (!ext) return true;
+    try { return ext.secoursPeutAvancer(scenarioId, equipeId, quoi) === true; }
+    catch (e) { console.warn("[Extensions] secoursPeutAvancer :", e); return false; }
+  }
+  // Bandeau d'alerte Secours (intervention déclenchée…) : persistant en haut de l'écran, texte échappé,
+  // boutons fournis par l'extension. Son + vibration à la première apparition (ou si `sonner`).
+  // { id, titre, texte, actions: [{ libelle, action }], sonner? } ; retirerAlerteSecours(id).
+  function _bip() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      [0, 0.35, 0.7].forEach(function (t0) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.25, ctx.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + 0.3);
+        o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + 0.3);
+      });
+      setTimeout(function () { try { ctx.close(); } catch (e) { /* rien */ } }, 1500);
+    } catch (e) { /* pas de son : la vibration et le bandeau restent */ }
+  }
+  function afficherAlerteSecours(a) {
+    if (!a || typeof a.id !== "string" || !a.id) return false;
+    let box = document.getElementById("kta-alerte-secours");
+    const neuve = !box || box.getAttribute("data-alerte-id") !== a.id;
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "kta-alerte-secours";
+      box.setAttribute("role", "alert");
+      document.documentElement.appendChild(box);
+    }
+    box.setAttribute("data-alerte-id", a.id);
+    box.textContent = "";
+    const titre = document.createElement("div"); titre.className = "kta-alerte-secours-titre";
+    titre.textContent = String(a.titre || "").slice(0, 120);
+    const texte = document.createElement("div"); texte.className = "kta-alerte-secours-texte";
+    texte.textContent = String(a.texte || "").slice(0, 400);
+    const actions = document.createElement("div"); actions.className = "kta-alerte-secours-actions";
+    (Array.isArray(a.actions) ? a.actions : []).slice(0, 5).forEach(function (x) {
+      if (!x || typeof x.action !== "function") return;
+      const b = document.createElement("button"); b.type = "button"; b.className = "kta-btn kta-btn-small";
+      b.textContent = String(x.libelle || "").slice(0, 50);
+      b.addEventListener("click", function () { try { x.action(); } catch (e) { console.warn("[Extensions] alerte :", e); } });
+      actions.appendChild(b);
+    });
+    box.appendChild(titre); box.appendChild(texte); box.appendChild(actions);
+    if (neuve || a.sonner === true) {
+      _bip();
+      if (window.kta_vibrate && typeof window.kta_vibrate.urgence === "function") window.kta_vibrate.urgence([500, 200, 500, 200, 500]);
+      else if (navigator.vibrate) { try { navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) { /* rien */ } }
+    }
+    return true;
+  }
+  function retirerAlerteSecours(id) {
+    const box = document.getElementById("kta-alerte-secours");
+    if (box && (!id || box.getAttribute("data-alerte-id") === id)) box.remove();
+  }
   function afficherItineraires(liste) {
     try { return window.KtaPresences ? window.KtaPresences.afficherItineraires(liste) : 0; }
     catch (e) { console.warn("[Extensions] afficherItineraires :", e); return 0; }
@@ -1007,6 +1093,11 @@
     itineraireActuel: itineraireActuel,
     afficherItineraires: afficherItineraires,
     appliquerItineraire: appliquerItineraire,
+    secoursActions: secoursActions,
+    secoursInfoEquipe: secoursInfoEquipe,
+    secoursPeutAvancer: secoursPeutAvancer,
+    afficherAlerteSecours: afficherAlerteSecours,
+    retirerAlerteSecours: retirerAlerteSecours,
     auteurObjet: auteurObjet,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,

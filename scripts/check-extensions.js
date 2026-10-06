@@ -354,6 +354,30 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
   }
 
+  // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucun bouton Secours, aucun texte, tout est permis",
+      K.secoursActions({ scenarioId: "s" }).length === 0 && K.secoursInfoEquipe("s", "g") === "" && K.secoursPeutAvancer("s", "g", "etape") === true);
+    K.register({ nom: "se1", apiVersion: 1,
+      secoursActions: () => [{ libelle: " Déclencher ", action: () => {} }, { libelle: "", action: () => {} }, { libelle: "x" }],
+      secoursInfoEquipe: () => "Comptes : A ★", secoursPeutAvancer: (s, g, q) => q !== "rentree" });
+    const a = K.secoursActions({ scenarioId: "s" });
+    t("extension : boutons valides seulement (libellé + action)", a.length === 1 && a[0].libelle === "Déclencher");
+    t("extension : info d'équipe et garde", K.secoursInfoEquipe("s", "g") === "Comptes : A ★" &&
+      K.secoursPeutAvancer("s", "g", "etape") === true && K.secoursPeutAvancer("s", "g", "rentree") === false);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "se2", apiVersion: 1, secoursPeutAvancer: () => { throw new Error("x"); }, secoursActions: () => { throw new Error("y"); } });
+    t("🩸 garde en erreur → REFUS (une permission qui échoue ne laisse pas passer) ; boutons en erreur → aucun",
+      K2.secoursPeutAvancer("s", "g", "etape") === false && K2.secoursActions({}).length === 0);
+    const SM = lire("js/secoursMode.js");
+    t("Mode Secours : chaque avancée passe par la garde (étape, départ/rentrée/rappel, rentrée comptée, rappel)",
+      /if \(!_peut\(scenarioId, equipeId, "etape"\)\) return null;/.test(SM) && /_peut\(scenarioId, gid, \{ departAt: "depart"/.test(SM) &&
+      /if \(!_peut\(sid, gid, "rentree"\)\) return false;/.test(SM) && /if \(!_peut\(sid, null, "rappel"\)\) return false;/.test(SM));
+    t("🩸 un changement reçu n'est jamais ré-émis (pas de boucle entre appareils)",
+      /function _emettre\(nom, detail\) \{\n\s*if \(_appliqueDistant\) return;/.test(SM));
+  }
+
   // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
   {
     const { K, w } = nouveauContexte(null);

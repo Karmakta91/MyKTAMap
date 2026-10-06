@@ -1403,6 +1403,121 @@
     return s;
   }
 
+  // ── 🧩 Installation reliée (étude Secours, étapes 1-3) : prises NEUTRES ──
+  // Sans extension : aucun bouton, aucun texte, tout est permis, aucun événement n'a d'écouteur.
+  const _actionsExt = new Map(); let _actionsExtSeq = 0;
+  function _X() { return window.KtaExtensions || null; }
+  function _htmlActionsExt(ctx) {
+    const X = _X();
+    if (!X || typeof X.secoursActions !== "function") return "";
+    const liste = X.secoursActions(ctx);
+    if (!liste.length) return "";
+    return '<div class="kta-secours-ext-actions">' + liste.map(function(a) {
+      const id = "x" + (++_actionsExtSeq);
+      _actionsExt.set(id, a.action);
+      if (_actionsExt.size > 300) _actionsExt.delete(_actionsExt.keys().next().value);
+      return '<button type="button" class="kta-btn kta-btn-xs ' + (a.danger ? "kta-btn-danger" : "kta-btn-secondary") +
+        '" data-kta-secours-ext="' + id + '">' + _escHtml(a.libelle) + '</button>';
+    }).join("") + '</div>';
+  }
+  function _htmlInfoEquipeExt(scenarioId, equipeId) {
+    const X = _X();
+    const txt = (X && typeof X.secoursInfoEquipe === "function") ? X.secoursInfoEquipe(scenarioId, equipeId) : "";
+    return txt ? '<div class="kta-secours-ext-info">' + _escHtml(txt) + '</div>' : "";
+  }
+  document.addEventListener("click", function(e) {
+    const b = e.target && e.target.closest && e.target.closest("[data-kta-secours-ext]");
+    if (!b) return;
+    const f = _actionsExt.get(b.getAttribute("data-kta-secours-ext"));
+    if (typeof f !== "function") return;
+    e.preventDefault(); e.stopPropagation();
+    try { f(); } catch (err) { console.warn("[SecoursMode] action d'extension :", err); }
+  });
+  // Garde : l'extension peut réserver une action (ex. seul le chef déclare la rentrée). Refus = dit.
+  function _peut(scenarioId, equipeId, quoi) {
+    const X = _X();
+    if (!X || typeof X.secoursPeutAvancer !== "function" || X.secoursPeutAvancer(scenarioId, equipeId, quoi)) return true;
+    _toast(t("secours.ext.refuse"), "warn");
+    return false;
+  }
+  let _appliqueDistant = false;   // changement reçu d'un autre appareil : pas de ré-émission
+  function _emettre(nom, detail) {
+    if (_appliqueDistant) return;
+    try { window.dispatchEvent(new CustomEvent(nom, { detail: detail })); } catch (e) { /* rien */ }
+  }
+  function _copieEtape(et) {
+    return { idx: et.idx, wid: et.wid || null, type: et.type, statut: et.statut, observations: et.observations || "",
+      startedAt: et.startedAt || null, completedAt: et.completedAt || null, victimePos: et.victimePos || null,
+      photoIds: Array.isArray(et.photoIds) ? et.photoIds.slice() : [], majAt: et.majAt || null };
+  }
+  function _emettreSuivi(s, gid) {
+    const su = _suiviEquipe(s, gid) || {};
+    _emettre("mktm:secours-suivi-change", { scenarioId: s.id, equipeId: gid, phase: _phaseCour(s),
+      suivi: { departAt: su.departAt || null, rentreeAt: su.rentreeAt || null, rappelAt: su.rappelAt || null,
+        remontes: Number.isInteger(su.remontes) ? su.remontes : null, majAt: _nowIso() } });
+  }
+  // Re-rendu après un changement reçu, sauf si l'utilisateur est en train d'écrire dans la fenêtre.
+  function _rafraichirApresDistant(scenarioId) {
+    if (!_modal || scenarioId !== _currentScenarioId) return;
+    const a = document.activeElement;
+    if (a && _modal.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    if (_activeView === "live" || _activeView === "edit") _switchView(_activeView);
+  }
+  // Étape reçue (relais d'une installation reliée) : la plus récente (majAt) gagne ; photos unies.
+  function appliquerEtapeDistante(scenarioId, equipeId, etape) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.etapes || !etape) return false;
+    const arr = s.execution.etapes[equipeId];
+    if (!Array.isArray(arr)) return false;
+    const et = (etape.wid && arr.find(function(x) { return x && x.wid === etape.wid; })) ||
+               (Number.isInteger(etape.idx) ? arr[etape.idx] : null);
+    if (!et) return false;
+    const tl = Date.parse(et.majAt || "") || 0, tr = Date.parse(etape.majAt || "") || 0;
+    if (tr && tl && tr <= tl) {
+      // Plus ancienne ici : seules ses photos peuvent compléter l'étape.
+      const plus = (etape.photoIds || []).filter(function(id) { return (et.photoIds || []).indexOf(id) < 0; });
+      if (!plus.length) return false;
+      et.photoIds = (et.photoIds || []).concat(plus);
+    } else {
+      const info = TABLEAU_STATUTS.find(function(x) { return x.id === etape.statut; });
+      if (info) et.statut = info.id;
+      if (typeof etape.observations === "string") et.observations = etape.observations.slice(0, 2000);
+      ["startedAt", "completedAt"].forEach(function(k) { if (k in etape) et[k] = etape[k] || null; });
+      if ("victimePos" in etape) et.victimePos = etape.victimePos || null;
+      et.photoIds = Array.from(new Set((et.photoIds || []).concat(Array.isArray(etape.photoIds) ? etape.photoIds : [])));
+      et.majAt = etape.majAt || _nowIso();
+    }
+    _appliqueDistant = true;
+    try { _commitMutation(s); } finally { _appliqueDistant = false; }
+    _rafraichirApresDistant(scenarioId);
+    return true;
+  }
+  // Suivi d'équipe reçu (départ / rentrée / rappel / remontés) : un horodatage déjà posé ici n'est pas effacé.
+  function appliquerSuiviDistant(scenarioId, equipeId, phase, suivi) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !suivi) return false;
+    const ex = s.execution, k = String(Number.isInteger(phase) ? phase : _phaseCour(s));
+    ex.suivi = ex.suivi || {}; ex.suivi[k] = ex.suivi[k] || {};
+    const su = ex.suivi[k][equipeId] = ex.suivi[k][equipeId] || {};
+    ["departAt", "rentreeAt", "rappelAt"].forEach(function(c) { if (suivi[c] && !su[c]) su[c] = suivi[c]; });
+    if (Number.isInteger(suivi.remontes)) su.remontes = suivi.remontes;
+    _appliqueDistant = true;
+    try { _commitMutation(s); } finally { _appliqueDistant = false; }
+    _rafraichirApresDistant(scenarioId);
+    return true;
+  }
+  // Rejoindre son poste (intervention déclenchée sur une installation reliée) : ouvre le scénario, lance
+  // (ou reprend) l'exécution avec ce rôle et cette équipe, vue Live.
+  function rejoindre(scenarioId, opts) {
+    if (!get(scenarioId)) return false;
+    opts = opts || {};
+    const role = ["operateur", "equipe", "secouriste"].indexOf(opts.role) >= 0 ? opts.role : "operateur";
+    ouvrir(scenarioId);
+    lancerExecution(scenarioId, { role: role, currentEquipeId: role === "equipe" ? (opts.equipeId || null) : null });
+    _switchView("live");
+    return true;
+  }
+
   // Update partiel d'une étape d'équipe (whitelist anti-pollution).
   // Champs mutables : observations, statut, photoIds, startedAt, completedAt.
   function updateEtape(scenarioId, equipeId, etapeIdx, partial) {
@@ -1412,6 +1527,7 @@
     if (!Array.isArray(arr) || etapeIdx < 0 || etapeIdx >= arr.length) return null;
     const et = arr[etapeIdx];
     if (!partial || typeof partial !== "object") return et;
+    if (!_peut(scenarioId, equipeId, "etape")) return null;   // 🧩 réservé (installation reliée)
     if ("observations" in partial && typeof partial.observations === "string") {
       et.observations = partial.observations.slice(0, 2000);
     }
@@ -1442,6 +1558,7 @@
       if (et.victimePos) _journaliser(s, "secours.mc.victimePos", { equipe: _nomEquipe(s, equipeId), pos: _lblPos(et.victimePos) });
     }
     _commitMutation(s);
+    _emettre("mktm:secours-etape-changee", { scenarioId: s.id, equipeId: equipeId, etape: _copieEtape(et) });
     // 🆕 v1.29.0 C3 — Watcher auto-détection (KARMA C3.2:a + C3.2:c hybride) :
     // si la mutation vient de compléter une étape sortie ET que toutes les
     // équipes participantes de la phase active ont leur sortie completée,
@@ -1720,6 +1837,7 @@
   async function _rappeler(sid, gids) {
     const s = get(sid);
     if (!s || !gids.length) { _toast(t("secours.rappel.aucune"), "info"); return false; }
+    if (!_peut(sid, null, "rappel")) return false;   // 🧩 PC seulement (installation reliée)
     const noms = (s.groupes || []).filter(function(g) { return gids.indexOf(g.id) >= 0; })
                                   .map(function(g) { return _escHtml(g.nom); }).join(", ");
     const msg = t("secours.rappel.confirm", { n: gids.length, equipes: noms, h: _heureCourte(_nowIso()) });
@@ -1735,6 +1853,7 @@
       _journaliser(s2, "secours.mc.rappel", { equipe: _nomEquipe(s2, gid) });
     });
     _commitMutation(s2);
+    gids.forEach(function(gid) { _emettreSuivi(s2, gid); });
     _toast(t("secours.rappel.fait", { n: gids.length }), "info");
     return true;
   }
@@ -1746,6 +1865,7 @@
     const s = get(sid);
     const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
     if (!g) return false;
+    if (!_peut(sid, gid, "rentree")) return false;   // 🧩 chef de l'équipe ou PC (installation reliée)
     const eff = _effectif(g);
     const su0 = _suiviEquipe(s, gid) || {};
     const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
@@ -1771,6 +1891,7 @@
     _journaliser(s2, manque > 0 ? "secours.mc.manquants" : (premiere ? "secours.mc.rentree" : "secours.mc.remontesCorrige"),
                  { equipe: g.nom, n: manque, remontes: su.remontes, effectif: eff || "?" });
     _commitMutation(s2);
+    _emettreSuivi(s2, gid);
     if (manque > 0) {
       _toast(t("secours.b9.toastManquants", { equipe: g.nom, n: manque }), "error");
       // 📳 Soumis au réglage Vibration (décision KARMA 01/10/2026). Seules les
@@ -1783,10 +1904,12 @@
   function marquerSuivi(scenarioId, gid, champ) {
     const s = get(scenarioId);
     if (!s || !_estExecutionActive(s) || ["departAt", "rentreeAt", "rappelAt"].indexOf(champ) < 0) return;
+    if (!_peut(scenarioId, gid, { departAt: "depart", rentreeAt: "rentree", rappelAt: "rappel" }[champ])) return;
     _suiviEquipe(s, gid, true)[champ] = _nowIso();
     _journaliser(s, { departAt: "secours.mc.depart", rentreeAt: "secours.mc.rentree", rappelAt: "secours.mc.rappel" }[champ],
                  { equipe: _nomEquipe(s, gid) });
     _commitMutation(s);
+    _emettreSuivi(s, gid);
   }
   // Rang d'affichage : les équipes en retard d'abord.
   const RANG_RETOUR = { manquant: -1, rouge: 0, orange: 1, ok: 2, inconnu: 3, rentree: 4 };
@@ -8873,6 +8996,7 @@
     //                       + bouton "Arrêter le plan"
     // Sinon                → bouton CTA jaune "🚀 Lancer le plan de secours"
     html += _renderLancerBandeau(s);
+    html += _htmlActionsExt({ scenarioId: s.id, vue: "edition" });   // 🧩 installation reliée
 
     // Section 1 — Contexte
     html += '<details class="kta-secours-section" open>' +
@@ -9024,19 +9148,25 @@
                     '<label>' + t("secours.groupe.membresLabel") + '</label>' +
                     '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="' + _escAttr(t("secours.groupe.membresPlaceholder")) + '" maxlength="200">' +
                   '</div>' +
-                  // B9 (vague 7) : chef d'équipe (parmi les membres) + effectif.
-                  '<div class="kta-secours-groupe-row kta-secours-b9-row">' +
+                  // B9 (vague 7) : chef d'équipe (parmi les membres), effectif, retour impératif — une ligne
+                  // chacun, comme « Membres » (retour KARMA 06/10/2026 : entassés sur une ligne, ils se
+                  // repliaient n'importe où sur téléphone).
+                  '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.b9.chefLabel") + '</label>' +
                     ((g.membres || []).length
                       ? '<select data-action="edit-chef" data-gid="' + _escAttr(g.id) + '">' +
                           (g.membres || []).map(function(m) {
                             return '<option value="' + _escAttr(m) + '"' + (m === _chef(g) ? ' selected' : '') + '>' + _escHtml(m) + '</option>';
                           }).join('') + '</select>'
-                      : '<input type="text" data-action="edit-chef" data-gid="' + _escAttr(g.id) + '" maxlength="60" style="width:10em;"' +
+                      : '<input type="text" data-action="edit-chef" data-gid="' + _escAttr(g.id) + '" maxlength="60"' +
                         ' value="' + _escAttr(g.chef || "") + '" placeholder="' + _escAttr(t("secours.b9.chefPlaceholder")) + '">') +
+                  '</div>' +
+                  '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.b9.effectifLabel") + '</label>' +
-                    '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1" style="width:5em;"' +
+                    '<input type="number" data-action="edit-effectif" data-gid="' + _escAttr(g.id) + '" min="1" max="99" step="1"' +
                       ' value="' + (Number.isInteger(g.effectif) ? g.effectif : '') + '" placeholder="' + ((g.membres || []).length || '') + '">' +
+                  '</div>' +
+                  '<div class="kta-secours-groupe-row">' +
                     '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
                     '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
                   '</div>' +
@@ -9082,6 +9212,8 @@
                     : '') +
                   // 🆕 v1.22.0-fix2 : section Parcours avec entrée + intermédiaires[] + sortie
                   _renderParcoursSection(g) +
+                  _htmlInfoEquipeExt(scenario.id, g.id) +
+                  _htmlActionsExt({ scenarioId: scenario.id, vue: "edition", equipeId: g.id }) +
                   '<div class="kta-secours-groupe-actions">' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
                     // 🆕 v1.22.0-fix4 (KARMA "on peut avoir un bouton tous les
@@ -9358,9 +9490,11 @@
              '</div>';
     }
     const role = s.execution.role;
-    if (role === "equipe")     return _renderLiveViewEquipe(s);
-    if (role === "operateur")  return _renderLiveViewOperateur(s);
-    if (role === "secouriste") return _renderLiveViewSecouriste(s);
+    const ext = _htmlActionsExt({ scenarioId: s.id, vue: "live", role: role,
+      equipeId: role === "equipe" ? s.execution.currentEquipeId : null });   // 🧩 installation reliée
+    if (role === "equipe")     return ext + _renderLiveViewEquipe(s);
+    if (role === "operateur")  return ext + _renderLiveViewOperateur(s);
+    if (role === "secouriste") return ext + _renderLiveViewSecouriste(s);
     return '<div class="kta-secours-live-error"><p>' + t("secours.live.roleInconnu", { role: _escHtml(role) }) + '</p></div>';
   }
 
@@ -9768,7 +9902,7 @@
                '<div class="kta-secours-op-card-titre">' +
                  '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
                  _escHtml(g.nom) +
-               '</div>' +
+               '</div>' + _htmlInfoEquipeExt(s.id, g.id) +
                '<div class="kta-secours-op-card-meta">' + t("secours.opCard.parcoursNonDefini") + '</div>' +
              '</div>';
     }
@@ -9822,7 +9956,7 @@
                    _escHtml(g.nom) +
                    (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">' + t("secours.opCard.badgeTerminee") + '</span>' : '') +
                    (hasImported ? ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opCard.importeChipTitle")) + '">' + t("secours.opCard.importeChip") + '</span>' : '') +
-                 '</div>' +
+                 '</div>' + _htmlInfoEquipeExt(s.id, g.id) +
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
                    '<span class="kta-secours-op-card-progress-label">' +
@@ -12871,6 +13005,10 @@
     // 🩸 29/09/2026 — tracés de la zone d'une équipe (empreintes stables, cf _cleTrace).
     // Seule façon correcte de lire `zoneRoadIds` hors du module (kmzExport).
     marquerSuivi:           marquerSuivi,   // A4 / rappel (départ, rentrée, rappel)
+    // 🧩 Installation reliée (étude Secours, étapes 1-3) — neutres, appelées par une extension :
+    rejoindre:              rejoindre,
+    appliquerEtapeDistante: appliquerEtapeDistante,
+    appliquerSuiviDistant:  appliquerSuiviDistant,
     tracesZone:             _tracesZone,
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,

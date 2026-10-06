@@ -427,6 +427,7 @@
   "export.adv.zonesRemblais": "⬛ Remblais",
   "export.btn.cancel": "Annuler",
   "export.btn.download": "Télécharger",
+  "secours.ext.refuse": "🔒 Action réservée à un autre poste de l'intervention (chef d'équipe ou PC).",
   "home.plans.offline.errSansConfig": "plan-config.json introuvable dans ce ZIP",
   "home.plans.offline.errStockage": "stockage refusé",
   "home.statut.erreur": "Erreur : {msg}",

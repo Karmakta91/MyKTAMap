@@ -427,6 +427,7 @@
   "export.adv.zonesRemblais": "⬛ Backfill",
   "export.btn.cancel": "Cancel",
   "export.btn.download": "Download",
+  "secours.ext.refuse": "🔒 Action reserved for another role in the operation (team leader or command post).",
   "home.plans.offline.errSansConfig": "plan-config.json not found in this ZIP",
   "home.plans.offline.errStockage": "storage refused",
   "home.statut.erreur": "Error: {msg}",

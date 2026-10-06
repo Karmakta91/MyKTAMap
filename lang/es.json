@@ -427,6 +427,7 @@
   "export.adv.zonesRemblais": "⬛ Escombros",
   "export.btn.cancel": "Cancelar",
   "export.btn.download": "Descargar",
+  "secours.ext.refuse": "🔒 Acción reservada a otro puesto de la intervención (jefe de equipo o PC).",
   "home.plans.offline.errSansConfig": "plan-config.json no encontrado en este ZIP",
   "home.plans.offline.errStockage": "almacenamiento rechazado",
   "home.statut.erreur": "Error: {msg}",

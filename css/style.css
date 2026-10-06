@@ -22728,6 +22728,18 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
 .kta-presence-hors-niveau { opacity: 0.4; }
 /* 🧭 Itinéraire publié par un autre : étiquette au point d'arrivée */
 .kta-presence-iti-icone { background: none; border: none; }
+/* 🚨 Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */
+#kta-alerte-secours {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99998; padding: 10px 16px calc(10px + env(safe-area-inset-top, 0px));
+  padding-top: calc(10px + env(safe-area-inset-top, 0px)); background: #b3261e; color: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.kta-alerte-secours-titre { font-weight: 800; font-size: 16px; }
+.kta-alerte-secours-texte { font-size: 13px; margin: 4px 0 8px; }
+.kta-alerte-secours-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kta-alerte-secours-actions .kta-btn { background: #fff; color: #b3261e; border: none; font-weight: 700; }
+/* 🧩 Boutons et infos fournis par une extension dans le Mode Secours */
+.kta-secours-ext-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.kta-secours-ext-info { font-size: 12px; color: #8cb4ff; margin: 4px 0; }
 .kta-presence-iti-etiquette {
   display: inline-block; transform: translate(8px, -50%); white-space: nowrap; font-size: 11px; padding: 1px 6px;
   border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #f4c542; border: 1px solid #f4c542; pointer-events: none;
