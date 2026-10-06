@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.4",
-  "released": "2026-10-05",
+  "version": "v2.9.5",
+  "released": "2026-10-06",
   "notes": [
-    "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. « Effacer la session » garde aussi les points qui portent une liaison vers un autre plan.",
-    "👥 Sur les installations reliées : bouton « Équipe » sur la carte (qui est sur le plan, sa position sur le plan), itinéraire que l'on peut montrer à l'équipe, plans en lecture seule respectés partout. Rien ne change sur myktamap.fr."
+    "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. Nouveau : l'export de session peut ne garder qu'une période, et « Effacer la session » garde les portails.",
+    "👥 Sur les installations reliées : bouton « Équipe », itinéraire montré à l'équipe, export filtré par auteur, Mode Secours fiable à plusieurs appareils, lecture seule respectée partout."
   ]
 }

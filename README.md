@@ -18,9 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.4` (05/10/2026)
+## 📦 Version courante — `v2.9.5` (06/10/2026)
 
-> 🔒 **v2.9.4 — Correctif XSS** (fiche d'un point, entrées d'un plan et d'une légende, `check-xss`), lecture seule gardée partout, audits UI et code mort du 05/10 ; v2.9.3 : itinéraire montré à l'équipe.
+> 🔁 **v2.9.5 — Secours à plusieurs appareils** (relais qui fusionne l'intervention, `check-secours-relais`), **export filtré** par période et auteur, audit UI n° 8-12, code mort soldé ; v2.9.4 : correctif XSS.
 
 > 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
@@ -549,6 +549,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.5 (06/10/2026) — Secours à plusieurs appareils, export filtré, finitions (branche `Karma_dev`)
+
+- 🔁 **Secours, étape 0** : le relais en direct importait le scénario reçu en « remplacer », qui effaçait l'intervention en cours (et ses photos) sur l'autre appareil. `importerScenario(…, { garderExecution })` → `_fusionnerExecutionDirect` : étape la plus récente (`majAt`, posé par `updateEtape`), sinon la plus grave ; main courante et notes libres unies ; rôle / équipe suivie propres à l'appareil. Garde-fou **`scripts/check-secours-relais.js`** (`3ea163f`).
+- 🔎 **Export filtré** (onglets Complet et Avancé) : « Ne garder que » du / au (dernière modification) et « Créé par » (prise `auteurObjet`) ; agit dans `_compter()` sur les annotations (`88fd448`).
+- 🎨 **Audit UI n° 8-12** : textes traduits, « hors base » à 390 px, badges de l'accueil mis à jour sur place (`ktaMajBadgesExtension`), publication du Générateur avec avancement et nom échappé, observateur des fiches regroupé par image (`ce4cc49`).
+- 🧹 **Code mort soldé** : 9 symboles sans appelant + 1 clé i18n en double (`a6fe9ad`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.4 (05/10/2026) — Sécurité XSS, lecture seule, audits UI et code mort (branche `Karma_dev`)
 
