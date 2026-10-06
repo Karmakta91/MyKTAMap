@@ -2648,6 +2648,7 @@
   "meminsp.titre": "📊 Estado de la memoria — Inspector",
   "netaudit.whitelist.blob": "URLs blob: (referencias locales al navegador — usadas por el teselado V2 para servir teselas de imagen desde el ZIP en memoria; sin fuga de red posible)",
   "netaudit.whitelist.data": "URLs data: (base64 en línea — iconos SVG incrustados en el código, exportaciones de imagen; sin fuga de red posible)",
+  "netaudit.whitelist.osm": "OpenStreetMap (tile.openstreetmap.org) — mapa de fondo de la Vista OSM, solo lectura (imágenes de teselas, no se envía nada); desactivado si desmarcas «🗺️ Vista OSM»",
   "netaudit.whitelist.sameOrigin": "Mismo origen — la propia app servida desde {origin} (incluye el ping de salud del servidor {origin}/ping.html, cuerpo esperado \"OK\", usado antes de Forzar actualización / Reinicio para verificar DNS / SSL / Nginx en una sola llamada)",
   "north.btn.cancel": "❌ Cancelar",
   "north.btn.restart": "↺ Reiniciar",

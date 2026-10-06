@@ -36,6 +36,7 @@
  *   - Même origine (l'app elle-même servie depuis location.origin), dont
  *     le ping santé serveur <origin>/ping.html (body "OK").
  *   - blob: et data: (références locales au navigateur, aucun réseau).
+ *   - tile.openstreetmap.org (fond de la Vue OSM, lecture seule, opt-out).
  *
  * Ordre de chargement critique
  * ----------------------------
@@ -99,15 +100,18 @@
         "body attendu \"OK\", utilisé avant Force update / Reset pour vérifier " +
         "DNS / SSL / Nginx en un seul appel)",
       "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
-      "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
+      "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)",
+      "OpenStreetMap (tile.openstreetmap.org) — fond de carte de la Vue OSM, en lecture seule, coupé si tu décoches « 🗺️ Vue OSM »"
     ];
     const sameOrigin = _t("netaudit.whitelist.sameOrigin", { origin: origin });
     const blob       = _t("netaudit.whitelist.blob");
     const data       = _t("netaudit.whitelist.data");
+    const osm        = _t("netaudit.whitelist.osm");
     return [
       sameOrigin != null ? sameOrigin : fr[0],
       blob       != null ? blob       : fr[1],
-      data       != null ? data       : fr[2]
+      data       != null ? data       : fr[2],
+      osm        != null ? osm        : fr[3]
     ];
   }
 

@@ -229,10 +229,12 @@ Aide visuelle pour repérer rapidement les anomalies dans le journal (toute cat�
 
 Double protection : en plus du module JS, le serveur Nginx envoie un header `Content-Security-Policy` strict. Directives clés :
 ```
-connect-src 'self' https://www.gstatic.com    ← LA garantie anti-exfiltration
+connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
+                                              ← LA garantie anti-exfiltration (OSM = tuiles en lecture, Vue OSM)
 script-src 'self' 'unsafe-inline'             ← compromis assumé (cf. ci-dessous)
 style-src 'self' 'unsafe-inline'              ← idem (style="..." inline partout)
-img-src 'self' data: blob:                    ← blob: nécessaire pour tuiles V2 ZIP
+img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
+                                              ← blob: tuiles V2 ZIP ; OSM : fond de la Vue OSM
 worker-src 'self' blob:                       ← Service Worker
 frame-ancestors 'none'                        ← anti-clickjacking
 ```
@@ -257,7 +259,7 @@ Une CSP `script-src 'self'` strict refuse tout ça. 3 options pour résoudre :
 | Hashes SHA-256 par bloc | Très haut (cauchemar maintenance, change à chaque tweak) | Marginal |
 | Externalisation totale + suppression de tous les `onclick` | Refonte massive (~50+ sites) | Marginal |
 
-**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src 'self' https://www.gstatic.com` qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
+**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src` (même origine, `blob:` et les tuiles OpenStreetMap seulement) qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
 
 Conditions qui rendent ce compromis safe pour CE projet :
 - Aucun input user n'est jamais placé en `innerHTML` directement (tout passe par `textContent` ou `_escapeHtml`)
@@ -334,10 +336,10 @@ Module `js/pinLock.js` (~450 lignes IIFE) → `window.MyKTAMapPinLock`.
 - Clavier physique : chiffres + Backspace + Enter (Échap **bloqué** — l'user doit unlock)
 - Affichage "N tentative(s) restante(s)" avec classe `kta-pin-gate-attempts-warn` si ≤ 2
 
-**UI Lockout** (`_afficherLockoutUI()`) — screen rouge dramatique :
-- Pas de bouton de sortie (force l'user à reset via la home)
-- Message "🚫 Trop de tentatives" + explication "Comment sortir ?" → ⚙️ Configuration → 💥 Tout réinitialiser
-- Phrase en italique "Verrouillage de sécurité actif après plusieurs tentatives échouées." (ton pro depuis v1.26.3)
+**UI Lockout** (`_afficherLockoutUI()`) — verrou **temporaire** (décision KARMA 13/09/2026) :
+- ⏳ compte à rebours (`pin.lockout.attente`) ; à l'expiration, retour automatique au pavé — jamais de réinitialisation
+  demandée. Paliers 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), phrase d'escalade (`pin.lockout.escalade`)
+- Pas de bouton de sortie ; seul le bouton 📖 Documentation reste ouvert par-dessus le verrou
 
 **UI activation/modification/désactivation** — `index.html` modale ⚙️ Configuration loader (choix 7:b "loader uniquement") :
 - Pas de section dans ⚙️ Réglages map mode (par design — cohérent avec la philo "réglages critiques dans le loader")
@@ -502,7 +504,7 @@ AUCUNE nouvelle surface réseau côté community :
 - Sur `myktamap.fr` (community pur) : le serveur retourne 404 → mode community préservé
 - L'import manuel utilise `FileReader` (lecture locale du disque) — le fichier n'est **jamais envoyé** au serveur
 - Pas de directive CSP ajoutée, pas de nouveau service tiers
-- `connect-src` reste `'self'` + `https://www.gstatic.com` (ping)
+- `connect-src` inchangé (même origine, `blob:`, tuiles OpenStreetMap)
 
 Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail audit.
 

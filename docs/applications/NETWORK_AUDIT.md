@@ -758,8 +758,9 @@ Tu peux vérifier la CSP appliquée :
 3. Clic sur la première requête (le HTML de la page)
 4. Onglet **Headers** → cherche `Content-Security-Policy`
 
-La directive clé est `connect-src 'self';` — le
-navigateur n'acceptera pas d'envoyer des données ailleurs.
+La directive clé est `connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org` — le
+navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la
+Vue OSM, rien ne lui est envoyé).
 
 Le fichier de configuration Nginx exact est versionné dans le dépôt sous
 `docs/nginx-csp-config.conf` (visible à toute personne ayant accès au

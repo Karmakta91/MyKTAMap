@@ -1045,8 +1045,8 @@
     <li>Onglet <strong>Headers</strong> → cherche <code>Content-Security-Policy</code></li>
   </ol>
 
-  <p>La directive clé est <code>connect-src 'self' blob:;</code> —
-  le navigateur n'acceptera pas d'envoyer des données ailleurs.</p>
+  <p>La directive clé est <code>connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org</code> —
+  le navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la Vue OSM, rien ne lui est envoyé).</p>
 
   <h2>🧰 Stockage local — où vivent tes données</h2>
 

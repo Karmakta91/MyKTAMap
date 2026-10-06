@@ -2635,6 +2635,7 @@
   "meminsp.titre": "📊 État mémoire — Inspecteur",
   "netaudit.whitelist.blob": "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
   "netaudit.whitelist.data": "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)",
+  "netaudit.whitelist.osm": "OpenStreetMap (tile.openstreetmap.org) — fond de carte de la Vue OSM, en lecture seule (images de tuiles, rien n'est envoyé) ; coupé si tu décoches « 🗺️ Vue OSM »",
   "netaudit.whitelist.sameOrigin": "Même origine — l'app elle-même servie depuis {origin} (inclut le ping santé serveur {origin}/ping.html, body attendu \"OK\", utilisé avant Force update / Reset pour vérifier DNS / SSL / Nginx en un seul appel)",
   "north.btn.cancel": "❌ Annuler",
   "north.btn.restart": "↺ Recommencer",

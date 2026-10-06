@@ -2635,6 +2635,7 @@
   "meminsp.titre": "📊 Memory state — Inspector",
   "netaudit.whitelist.blob": "blob: URLs (browser-local references — used by V2 tiling to serve image tiles from the in-memory ZIP; no possible network leak)",
   "netaudit.whitelist.data": "data: URLs (inline base64 — SVG icons embedded in the code, image exports; no possible network leak)",
+  "netaudit.whitelist.osm": "OpenStreetMap (tile.openstreetmap.org) — background map of the OSM View, read-only (tile images, nothing is sent); turned off if you untick “🗺️ OSM View”",
   "netaudit.whitelist.sameOrigin": "Same origin — the app itself served from {origin} (includes the server health ping {origin}/ping.html, expected body \"OK\", used before Force update / Reset to check DNS / SSL / Nginx in a single call)",
   "north.btn.cancel": "❌ Cancel",
   "north.btn.restart": "↺ Restart",
