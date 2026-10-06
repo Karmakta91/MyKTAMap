@@ -1821,8 +1821,15 @@
 
     // Pour l'aperçu : taille modeste pour rapidité
     const scale = isApercu ? Math.min(800 / baseW, 1) : opts.resol;
-    const W = Math.round(baseW * scale);
-    const H = Math.round(baseH * scale);
+    // 🖨️ 07/10/2026 — `opts.region` ({ x, y, w, h }, unités plan) : seul ce rectangle est
+    // rendu, à l'échelle `scale` (cartes PDF du Mode Secours). Le fond vient des tuiles V2
+    // si le plan en a (ktaDessinerRegionTuiles), sinon d'un sous-rectangle de l'image de
+    // base ; tout le reste se dessine en coordonnées plan, décalées par une translation.
+    const region = (!isApercu && opts.region && opts.region.w > 0 && opts.region.h > 0) ? opts.region : null;
+    const Wplan = Math.round(baseW * scale);
+    const Hplan = Math.round(baseH * scale);
+    const W = region ? Math.max(1, Math.round(region.w * scale)) : Wplan;
+    const H = region ? Math.max(1, Math.round(region.h * scale)) : Hplan;
 
     // Set des tags effectivement utilisés sur le plan exporté
     // (rempli au fil de la boucle data + editor, puis passé à la légende)
@@ -1925,11 +1932,26 @@
     // L'utilisateur a explicitement demandé à NE PAS afficher l'image
     // du plan — on respecte ça en sautant le baseImage drawImage.
     if (!skipBaseImage) {
-      try {
-        const baseImg = await loadImage(config.plan.baseImage);
-        ctx.drawImage(baseImg, 0, 0, W, H);
-      } catch(e) { console.warn("[Export] base image :", e); }
+      let fondFait = false;
+      if (region && typeof window.ktaDessinerRegionTuiles === "function") {
+        try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
+        catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
+      }
+      if (!fondFait) {
+        try {
+          const baseImg = await loadImage(config.plan.baseImage);
+          if (region) {
+            // L'image de base peut être une version réduite (plan tuilé V1) : ratio mesuré.
+            const rx = (baseImg.naturalWidth || baseW) / baseW, ry = (baseImg.naturalHeight || baseH) / baseH;
+            ctx.drawImage(baseImg, region.x * rx, region.y * ry, region.w * rx, region.h * ry, 0, 0, W, H);
+          } else {
+            ctx.drawImage(baseImg, 0, 0, W, H);
+          }
+        } catch(e) { console.warn("[Export] base image :", e); }
+      }
     }
+    // Région : tout ce qui suit se dessine en coordonnées plan × scale, décalées.
+    if (region) { ctx.save(); ctx.translate(-region.x * scale, -region.y * scale); }
 
     // ---------- calques d'image cochés ----------
     // 🆕 v1.9.3-A1.b.3 : idem pour les image layers (calques tuiles V2,
@@ -1950,10 +1972,10 @@
           // sur la map. Sinon : drawImage stretching plan principal (v1.37.x).
           const calibrated = (layerCfg.calibration && window.ImageLayerCalibration
                               && typeof window.ImageLayerCalibration.drawCalibratedImageLayer === "function")
-            ? window.ImageLayerCalibration.drawCalibratedImageLayer(ctx, img, layerCfg.calibration, W, H)
+            ? window.ImageLayerCalibration.drawCalibratedImageLayer(ctx, img, layerCfg.calibration, Wplan, Hplan)
             : false;
           if (!calibrated) {
-            ctx.drawImage(img, 0, 0, W, H);
+            ctx.drawImage(img, 0, 0, Wplan, Hplan);
           }
         } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
       }
@@ -2524,6 +2546,7 @@
     }
 
     // ---------- légende intégrée ----------
+    if (region) ctx.restore();
     if (opts.legende) {
       await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache, tagsUtilises);
     }
@@ -3095,6 +3118,7 @@
       format:      "png",
       resol:       userOpts.scale || 1,
       bg:          userOpts.bg    || "image",
+      region:      userOpts.region || null,   // { x, y, w, h } unités plan : ne rendre que ce rectangle
       imageLayers: {},
       dataLayers:  {}
     };

@@ -216,3 +216,18 @@ Les **validateurs** (`ETag`, `Last-Modified`) sont retenus **au téléchargement
 **Règle posée** : le `plan-config.json` fait autorité (il est *dans* le plan) ; `index.json` n'est qu'un indice utile **avant** le premier chargement. L'origine est tracée (`versionSrc`), et on n'écrit jamais `null`.
 
 🛡️ Vérifié par `scripts/check-plan-offline.js` §7-8 (qui **exécute** `verifierMaj` sur quatre scénarios, dont les deux où elle doit **refuser de conclure**) et `scripts/check-tiling.js` §12.
+
+## 9. Rendre une région depuis les tuiles *(07/10/2026)*
+
+`window.ktaDessinerRegionTuiles(ctx, pc, region, echelle)` peint **une région** du fond d'un plan V2 dans un
+contexte 2D (origine = coin haut-gauche de la région, `echelle` = pixels par unité plan), au niveau le moins
+détaillé qui suffit (z = 0 dès que l'échelle dépasse 0,5). Même grille que le générateur (rangée k = 1 en bas ;
+rangée du haut collée en bas de sa tuile) ; tuiles lues dans `RUNTIME_ASSETS` (avec leurs **propres** URL, révoquées
+à la fin — celles de la carte sont libérées par son LRU — et réextraction des ZIP paresseux) ou par HTTP
+(`ktaResoudreRacineTuiles`, donc aussi hors-ligne via le cache du plan). Au-delà de 600 tuiles, un niveau moins
+détaillé est pris. Rend `{ ok, tuiles, manquantes, z }` ; `ok: false` sur un plan non tuilé V2.
+
+Sert à l'option `region` de l'export (`exporter.js`) : les **cartes PDF du Mode Secours** ne rendent plus le plan
+entier sous 16 Mpx (limite des canvas de Safari iOS) — leur mémoire est bornée par la carte, plus par le plan.
+Gardé par `check-tiling.js` § 18 (placement des tuiles, niveau choisi, révocation, câblage). Le chemin d'une tuile
+dans le ZIP n'est écrit qu'à un endroit : `_cheminTuileZipExt` (§ 6 du même contrôle).

@@ -67,9 +67,6 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
 natives).
 
-- **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
-  recadré — sur un grand plan réel, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
-  zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
 - 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
   brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
   désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart

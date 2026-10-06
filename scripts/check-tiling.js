@@ -182,8 +182,8 @@ t("le premier rendu est capturé AVANT la boucle (currentLevel est réaffecté a
 }
 
 // ───────── 6. le chemin des tuiles ZIP n'est écrit qu'une fois ─────────
-t("le chemin d'une tuile ZIP a UN seul point de vérité (_cheminTuileZip)",
-  /function _cheminTuileZip\(/.test(CODE) &&
+t("le chemin d'une tuile ZIP a UN seul point de vérité (_cheminTuileZipExt)",
+  /function _cheminTuileZipExt\(/.test(CODE) &&
   (CODE.match(/"data\/tiles\/z"/g) || []).length === 1);
 
 // ───────── 7. « off » sur un gros plan V1 est annoncé ─────────
@@ -616,7 +616,7 @@ Promise.all([
   t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
 }).catch(function (e) {
   t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
-}).then(_osmServeur).then(_lruZip).then(function () {
+}).then(_osmServeur).then(_lruZip).then(_regionTuiles).then(function () {
   console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);
@@ -682,5 +682,74 @@ function _lruZip() {
     t("🧠 des URL ont bien été révoquées (" + revoquees + ")", revoquees === z3.length);
   }).catch(function (e) {
     t("§17 le bac à sable du LRU s'exécute sans planter — " + (e && e.message), false);
+  });
+}
+
+// ───────── 18. 🖨️ RÉGION PEINTE DEPUIS LES TUILES (cartes PDF du Mode Secours) ─────────
+// 🩸 07/10/2026 : les cartes PDF rendaient le plan ENTIER sous 16 Mpx puis recadraient —
+// sur un grand plan, ~20 % de la résolution, noms de galeries illisibles (test terrain du
+// 30/09). `ktaDessinerRegionTuiles` ne peint que la région demandée, depuis les tuiles.
+// Bac à sable : faux plan 1300 × 1100 (tuiles partielles en haut et à droite), faux ZIP,
+// fausse Image, contexte qui ENREGISTRE les drawImage. On vérifie quelles tuiles sont lues,
+// OÙ elles sont posées (rangée k = 1 en bas, rangée du haut collée en bas de sa tuile),
+// le niveau choisi selon l'échelle, et que chaque URL créée est révoquée.
+// Falsification : inverser le sens des rangées, ou oublier le décalage de la région → rouge.
+function _regionTuiles() {
+  const vm18 = require("vm");
+  const W = 1300, H = 1100, TS = 512;
+  const assets = {};
+  for (let z = -3; z <= 0; z++) {
+    const sc = Math.pow(2, -z);
+    const cols = Math.ceil(Math.ceil(W / sc) / TS), rows = Math.ceil(Math.ceil(H / sc) / TS);
+    for (let k = 1; k <= rows; k++) for (let c = 0; c < cols; c++) {
+      const chemin = "data/tiles/z" + z + "/x" + c + "_y" + (-k) + ".jpg";
+      if (!(z === 0 && c === 1 && k === 3)) assets[chemin] = { file: { chemin: chemin }, url: null };   // 1 tuile absente
+    }
+  }
+  const crees = [], revoquees = [];
+  function FausseImage() { this.naturalWidth = TS; this.naturalHeight = TS; }
+  Object.defineProperty(FausseImage.prototype, "src", { set: function (v) { this._src = v; const self = this; setTimeout(function () { self.onload && self.onload(); }, 0); }, get: function () { return this._src; } });
+  const win = {
+    console: { log() {}, warn() {}, error() {} },
+    RUNTIME_ASSETS: assets, Image: FausseImage, Blob: function () {},
+    URL: { createObjectURL: function (f) { const u = "blob:" + f.chemin; crees.push(u); return u; }, revokeObjectURL: function (u) { revoquees.push(u); } },
+    fetch: function () { return Promise.reject(new Error("pas de réseau")); },
+    navigator: {}, requestAnimationFrame: function (f) { return setTimeout(f, 0); },
+    L: {}, map: null, setTimeout: setTimeout
+  };
+  win.window = win;
+  const ctx = vm18.createContext(win);
+  vm18.runInContext("var window = this; var navigator = this.navigator; var URL = this.URL; var Image = this.Image; var Blob = this.Blob;" +
+                    fs.readFileSync("js/tiling.js", "utf8"), ctx);
+  const pc = { plan: { tiledV2: true, imageWidth: W, imageHeight: H, baseImage: "blob:base" },
+               tiling: { version: 2, tileSize: TS, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 } };
+  const ctxRec = () => { const d = []; return { d: d, drawImage: function (img, x, y, w, h) { d.push({ src: img._src, x: x, y: y, w: w, h: h }); } }; };
+  const c1 = ctxRec();
+  return win.ktaDessinerRegionTuiles(c1, pc, { x: 100, y: 50, w: 600, h: 400 }, 1).then(function (r) {
+    const de = (col, k) => c1.d.find(e => e.src === "blob:data/tiles/z0/x" + col + "_y-" + k + ".jpg");
+    t("🖨️ région à l'échelle 1 → tuiles pleine résolution (z0), seules celles qui la touchent (4, dont 1 absente)",
+      r.ok === true && r.z === 0 && r.tuiles === 4 && r.manquantes === 1 && c1.d.length === 3);
+    const a = de(0, 3), b = de(1, 2);
+    t("🖨️ rangée du HAUT (partielle, k=3) posée au-dessus du plan, décalée de la région (-100, -486)",
+      !!a && a.x === -100 && a.y === -486 && a.w === 512 && a.h === 512, a);
+    t("🖨️ tuile (col 1, k=2) posée à (412, 26) : rangée k=1 en BAS, origine = coin de la région", !!b && b.x === 412 && b.y === 26, b);
+    t("🧠 chaque URL créée pour la région est révoquée (" + crees.length + ")", crees.length === 3 && revoquees.length === 3);
+    const c2 = ctxRec();
+    return win.ktaDessinerRegionTuiles(c2, pc, { x: 0, y: 0, w: 1300, h: 1100 }, 0.3).then(function (r2) {
+      t("🖨️ échelle 0,3 → niveau z-1 (le moins détaillé qui suffit), tuiles réduites de moitié en taille",
+        r2.z === -1 && c2.d.length > 0 && c2.d.every(e => /\/z-1\//.test(e.src) && Math.abs(e.w - 512 * 2 * 0.3) < 1e-6));
+      return win.ktaDessinerRegionTuiles(ctxRec(), { plan: { imageWidth: W, imageHeight: H } }, { x: 0, y: 0, w: 10, h: 10 }, 1);
+    }).then(function (r3) {
+      t("🖨️ plan non tuilé V2 → ok:false (l'export retombe sur l'image de base)", r3.ok === false);
+    });
+  }).then(function () {
+    const EXP = fs.readFileSync("js/exporter.js", "utf8"), SM = fs.readFileSync("js/secoursMode.js", "utf8");
+    t("🖨️ export : une région se dessine translatée, et la légende après restauration",
+      /if \(region\) \{ ctx\.save\(\); ctx\.translate\(-region\.x \* scale, -region\.y \* scale\); \}/.test(EXP) &&
+      /if \(region\) ctx\.restore\(\);\s*\n\s*if \(opts\.legende\)/.test(EXP) && EXP.indexOf("window.ktaDessinerRegionTuiles(ctx, config, region, scale)") >= 0);
+    t("🖨️ Mode Secours : page d'équipe, carte des accès et mini-carte rendent leur SEULE région (plus de plan entier plafonné)",
+      (SM.match(/await _rendreRegionPlan\(/g) || []).length === 3 && SM.indexOf("_echelleCanvasPlan") < 0);
+  }).catch(function (e) {
+    t("§18 le bac à sable de la région s'exécute sans planter — " + (e && e.message), false);
   });
 }
