@@ -5178,6 +5178,8 @@
   "ui.zone.tooFewBody": "A zone is a closed polygon. Place <strong>at least 3 points</strong> on the map before closing it.",
   "ui.zone.tooFewTitle": "Not enough points",
   "update.alreadyLatest": "✅ You are already using the latest version ({version}).",
+  "utils.note.save": "💾 Save the note",
+  "utils.note.placeholder": "Free note (multiple lines allowed)…",
   "utils.copied": "✓ Copied!",
   "utils.copiedPrefix": "📋 Copied: {txt}",
   "utils.export.noPlanConfig": "Plan configuration not found",

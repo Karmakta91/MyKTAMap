@@ -964,12 +964,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
              '<b>' + _esc(titreType) + '</b>' +
              '<div class="kta-note-popup-wrap">' +
                '<textarea class="kta-note-popup-textarea" rows="4" ' +
-                 'placeholder="Note libre (multilignes possibles)…">' +
+                 'placeholder="' + _esc(window.I18n ? window.I18n.t("utils.note.placeholder") : "Note libre (multilignes possibles)…") + '">' +
                  _esc(current) +
                '</textarea>' +
                '<div class="kta-popup-actions kta-note-popup-actions">' +
                  '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
-                   '💾 Sauver la note' +
+                   _esc(window.I18n ? window.I18n.t("utils.note.save") : "💾 Sauver la note") +
                  '</button>' +
                  // 🔄 v1.82.0 — RECLASSER L'OBJET. Un vecteur importé du SIG peut
                  // avoir été rangé dans la mauvaise famille : un front de taille qui
