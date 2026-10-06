@@ -756,6 +756,25 @@
       };
     } catch (e) { return null; }
   }
+  // Itinéraire REÇU (ex. attribué par un chef d'équipe, installation reliée) : devient l'itinéraire actif,
+  // après acceptation par l'utilisateur côté extension. { points: [[x, y, niveau]], etapes: [[x, y, faite]] }.
+  // Entrées non conformes écartées ; sans carte ni module Itinéraire : false.
+  function appliquerItineraire(it) {
+    try {
+      if (!it || !Array.isArray(it.points) || !window.map || typeof window.itineraireActiverRoad !== "function") return false;
+      const fini = function (v) { return typeof v === "number" && isFinite(v); };
+      const pts = it.points.filter(function (q) { return Array.isArray(q) && fini(q[0]) && fini(q[1]); }).slice(0, 5000)
+        .map(function (q) { const p = { x: q[0], y: q[1] }; if (Number.isInteger(q[2])) p.level = q[2]; return p; });
+      if (pts.length < 2) return false;
+      const etapes = (Array.isArray(it.etapes) ? it.etapes : []).filter(function (q) { return Array.isArray(q) && fini(q[0]) && fini(q[1]); })
+        .slice(0, 100).map(function (q) { return { x: q[0], y: q[1], source: "click", done: q[2] === true }; });
+      // Départ en tête : la fenêtre Itinéraire passe en navigation à partir de 2 étapes.
+      const waypoints = [{ x: pts[0].x, y: pts[0].y, source: "click" }].concat(etapes);
+      if (waypoints.length < 2) waypoints.push({ x: pts[pts.length - 1].x, y: pts[pts.length - 1].y, source: "click" });
+      window.itineraireActiverRoad({ type: "itinerary", points: pts, waypoints: waypoints });
+      return true;
+    } catch (e) { console.warn("[Extensions] appliquerItineraire :", e); return false; }
+  }
   function afficherItineraires(liste) {
     try { return window.KtaPresences ? window.KtaPresences.afficherItineraires(liste) : 0; }
     catch (e) { console.warn("[Extensions] afficherItineraires :", e); return 0; }
@@ -987,6 +1006,7 @@
     basculerItineraire: basculerItineraire,
     itineraireActuel: itineraireActuel,
     afficherItineraires: afficherItineraires,
+    appliquerItineraire: appliquerItineraire,
     auteurObjet: auteurObjet,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,

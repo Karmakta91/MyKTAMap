@@ -379,6 +379,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     K2.register({ nom: "i2", apiVersion: 1, itineraire: { publie: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
     t("🩸 extension en erreur → non publié, aucune exception",
       K2.itinerairePublie() === false && (await K2.basculerItineraire()) === false);
+    const { K: K3, w: w3 } = nouveauContexte(null);
+    t("itinéraire reçu sans carte → false", K3.appliquerItineraire({ points: [[0, 0], [1, 1]] }) === false);
+    let pose = null;
+    w3.map = {}; w3.itineraireActiverRoad = (r) => { pose = r; };
+    t("🩸 itinéraire reçu invalide (un seul point) → false, rien de posé", K3.appliquerItineraire({ points: [[0, 0], ["x", 1]] }) === false && pose === null);
+    t("itinéraire reçu valide → posé (points + niveau, départ en tête des étapes)",
+      K3.appliquerItineraire({ points: [[0, 0, -1], [5, 5, -1]], etapes: [[5, 5, false]] }) === true &&
+      pose && pose.type === "itinerary" && pose.points[0].level === -1 && pose.waypoints.length === 2);
     t("bouton 🧭 de la fenêtre Itinéraire : seulement si une extension a la prise « itineraire »",
       /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
   }
