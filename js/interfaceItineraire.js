@@ -216,6 +216,24 @@ function _confirmRemplacerItineraire(onConfirm) {
 // position confirmée → on part de la position du tracker sans question ;
 // jamais confirmée (= encore le départ du plan) → picker partagé « Où es-tu ? »
 // qui recale le tracker, puis on revient ici avec l'origine.
+// Options d'évitement du moteur : préférences de l'itinéraire, ou contraintes d'une
+// évacuation (Mode Secours, options brancard) qui les remplacent entièrement.
+function _optsEvitement(avoidPrefs, evC) {
+  if (evC) {
+    return { avoidPoints: [], avoidTags: [], avoidRadius: 0,
+             avoidZones: Array.isArray(evC.avoidZones) ? evC.avoidZones : [],
+             respecterInaccessibles: evC.respecterInaccessibles !== false };
+  }
+  return {
+    avoidPoints: avoidPrefs.points || [],
+    avoidTags:   avoidPrefs.tags   || [],
+    avoidZones:  avoidPrefs.zones  || [],
+    // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+    respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
+    avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+  };
+}
+
 window.itineraireYAller = function(x, y, nom, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
   opts = opts || {};
@@ -270,15 +288,11 @@ window.itineraireYAller = function(x, y, nom, opts) {
       // pour cohérence avec la modale itineraire (l'user voudrait probablement
       // les memes preferences).
       const avoidPrefs = _getItiAvoidPrefs();
+      // 🚑 Évacuation (Mode Secours, options brancard) : les contraintes du classement des
+      // sorties remplacent les préférences de l'itinéraire classique.
+      const evC = opts.evacuation && opts.evacuation.contraintes;
       const result = await _withItiComputeLoader(function() {
-        return window.Pathfinder.computeRoute(waypoints, {
-          avoidPoints: avoidPrefs.points || [],
-          avoidTags:   avoidPrefs.tags   || [],
-          avoidZones:  avoidPrefs.zones  || [],
-          // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
-          respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
-          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
-        });
+        return window.Pathfinder.computeRoute(waypoints, _optsEvitement(avoidPrefs, evC));
       });
 
       // Cree la road itineraire (sans flag _preview : on enregistre direct)
@@ -291,6 +305,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
       // D'URGENCE est marqué — bandeau sans croix, affiché même réglé sur
       // « Jamais », et « Recalculer » y vise la sortie la plus proche.
       if (opts.urgence) newRoad.urgence = true;
+      if (opts.evacuation) newRoad.evacuation = opts.evacuation;
 
       // Remove ancien itineraire + add le nouveau
       const currentRoads = window.getRoads ? window.getRoads() : [];
@@ -974,6 +989,7 @@ function _couperDerriere(road, x, y) {
     raccords: raccords, carrefours: carrefours
   };
   if (road.urgence) newRoad.urgence = true;
+  if (road.evacuation) newRoad.evacuation = road.evacuation;
   if (road.secours) newRoad.secours = road.secours;
   if (road.suite) newRoad.suite = road.suite;   // inter-plans : la suite après le portail
 
@@ -1138,7 +1154,9 @@ async function _replanifierDepuis(px, py) {
     // 🧭 Parcours d'une équipe de secours : on garde SES évitements (les zones des
     // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
     const sec = road.secours || null;
+    const evC = road.evacuation && road.evacuation.contraintes;
     const result = await _withItiComputeLoader(function() {
+      if (evC) return window.Pathfinder.computeRoute([origin].concat(restantes), _optsEvitement(avoidPrefs, evC));
       return window.Pathfinder.computeRoute([origin].concat(restantes), {
         avoidPoints: sec ? (sec.avoidPoints || []) : (avoidPrefs.points || []),
         avoidTags:   sec ? [] : (avoidPrefs.tags   || []),
@@ -1158,6 +1176,7 @@ async function _replanifierDepuis(px, py) {
     }, _champsGuidage(result));
     // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
+    if (road.evacuation) newRoad.evacuation = road.evacuation;   // garde ses options brancard
     if (road.secours) newRoad.secours = road.secours;   // reste le parcours de l'équipe
     if (road.suite) newRoad.suite = road.suite;         // inter-plans : la suite après le portail
     const filtered = (window.getRoads ? window.getRoads() : [])
@@ -1240,9 +1259,8 @@ function _rafraichirListeAvoidZones() {
     return;
   }
   const prefs = _getItiAvoidPrefs();
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  // 🔒 05/10/2026 : guillemets compris (le type part dans data-ztype="…").
+  const _esc = window.ktaEsc;
   el.innerHTML = types.map(function(z) {
     const checked = prefs.zones.indexOf(z.type) >= 0;
     const cnt = ' <span style="opacity:.6; font-size:11px;">(' + z.count + ')</span>';
@@ -1467,7 +1485,7 @@ function _rafraichirListeAvoidPoints() {
     return;
   }
   function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   el.innerHTML = prefs.points.map(function(p, idx) {
     return '<div class="kta-iti-avoid-chip">' +
@@ -1506,7 +1524,7 @@ async function _rafraichirChipsAvoidTags() {
     return;
   }
   function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   el2.innerHTML = available.map(function(tag) {
     const active = prefs.tags.indexOf(tag) >= 0;
@@ -1556,7 +1574,7 @@ function _bindAvoidSectionHandlers() {
           return;
         }
         function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
         searchRes.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
@@ -1695,6 +1713,14 @@ function _bindAvoidSectionHandlers() {
   _rafraichirListeAvoidZones();
 }
 
+function _itiPartageDispo() {
+  const X = window.KtaExtensions;
+  return !!(X && typeof X.aPrise === "function" && X.aPrise("itineraire"));
+}
+function _itiPartageLibelle() {
+  return window.I18n.t(window.KtaExtensions.itinerairePublie() ? "iti.partage.btnOn" : "iti.partage.btnOff");
+}
+
 window.ouvrirItinerairModal = function() {
   // Si une modale existe déjà, on la ferme et reset l'état
   const existing = document.getElementById("kta-itinerary-modal");
@@ -1790,7 +1816,27 @@ window.ouvrirItinerairModal = function() {
           ? '<button id="kta-iti-feuille" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
               ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
           : '') +
+        // 🧭 Installation reliée seulement (prise neutre `itineraire`) : montrer l'itinéraire à l'équipe.
+        (_itiPartageDispo()
+          ? '<button id="kta-iti-partage" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
+              ' style="width:100%; margin-top:6px;">' + _itiPartageLibelle() + '</button>'
+          : '') +
       '</div>';
+  }
+  if (!window._itiPartageBound) {
+    window._itiPartageBound = true;
+    document.addEventListener("click", function (e) {
+      const b = e.target && e.target.closest && e.target.closest("#kta-iti-partage");
+      if (!b || !_itiPartageDispo()) return;
+      b.disabled = true;
+      window.KtaExtensions.basculerItineraire().then(function (publie) {
+        b.disabled = false;
+        b.textContent = _itiPartageLibelle();
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(window.I18n.t(publie ? "iti.partage.toastOn" : "iti.partage.toastOff"), "info");
+        }
+      });
+    });
   }
   if (!window._itiFeuilleBound) {
     window._itiFeuilleBound = true;
@@ -2281,7 +2327,7 @@ window.ouvrirItinerairModal = function() {
       let fallbackHtml = "";
       if (result.usedFallback && Array.isArray(result.avoidedThrough) && result.avoidedThrough.length > 0) {
         function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
         const noms = result.avoidedThrough.map(function(ap) {
           return _esc(ap.label || ap.id || window.I18n.t("iti.avoid.pointFallback"));

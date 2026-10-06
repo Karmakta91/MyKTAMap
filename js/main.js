@@ -170,6 +170,8 @@ async function _chargerIndexServeur() {
     }
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
+    // Défauts de l'installation (ex. sitePlansHiddenDefault) connus seulement maintenant : l'accueil se resynchronise.
+    if (typeof window.refreshPlansList === "function") { try { window.refreshPlansList(); } catch(e) {} }
     _appliquerConnexionServeur(window.KIOSK_CONFIG, true);
 
     // 🔑 La revalidation du mot de passe d'instance a lieu AVANT la gate
@@ -242,8 +244,12 @@ async function _decouvrirPlansExtension() {
   liste.forEach(function(p) {
     if (!p || !p.id) return;
     const id = window.ktaIdRegistreExtension(p.id);
-    window.PlanRegistry.addOrUpdate({ id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id),
-      version: p.version || null });
+    const entree = { id: id, type: "ext", extId: String(p.id), name: String(p.name || p.id), version: p.version || null };
+    // Mode fourni par l'extension (lu dans le ZIP) : badge juste avant la 1re ouverture. Comme
+    // pour les plans du site, seulement « vrai » — jamais d'écrasement d'un réglage de l'utilisateur.
+    if (p.tiledV2 === true) entree.tiledV2 = true;
+    if (p.multiLevel === true) entree.multiLevel = true;
+    window.PlanRegistry.addOrUpdate(entree);
     if (Array.isArray(p.tags) && typeof window.PlanRegistry.setTags === "function") window.PlanRegistry.setTags(id, p.tags, "index");
   });
   if (liste.length) console.log("[Main] " + liste.length + " plan(s) fourni(s) par une extension");
@@ -1069,6 +1075,11 @@ function _libererRessourcesPlanPrecedent() {
     try { window.Journal.onPlanUnload(); } catch(e) {}
   }
 
+  // 🧩 Installation reliée : panneau d'extension fermé, présences / itinéraires de l'ancien plan effacés.
+  if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
+    try { window.KtaExtensions.quitterPlan("plan"); } catch(e) {}
+  }
+
   // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
   // plan. Bug bench : après un switch DIRECT (sélecteur du titre, sans goTo),
   // la mini-pastille ↩️ survivait sur le NOUVEAU plan avec une pile de retour
@@ -1532,14 +1543,19 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     const id = meta.planId || window.PlanRegistry.genLocalId(planName, planVer);
     window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
 
+    // 🧩 Plan d'extension (☁️) : son nom et sa version sont ceux de l'installation (renommé dans
+    // la gestion, version serveur) — le nom inscrit dans le ZIP les écrasait à chaque ouverture
+    // (« renommé, puis l'ancien nom revient une fois le plan ouvert », retour KARMA 05/10/2026).
+    const _estExt = meta.typeRegistre === "ext";
+    const _existant = _estExt && typeof window.PlanRegistry.findById === "function" ? window.PlanRegistry.findById(id) : null;
     const entry = {
       id: id,
       // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
       // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
       // la déconnexion ne le retrouverait plus).
-      type: meta.typeRegistre === "ext" ? "ext" : "local",
-      name: planName,
-      version: planVer || null,
+      type: _estExt ? "ext" : "local",
+      name: (_existant && _existant.name) ? _existant.name : planName,
+      version: (_existant && _existant.version) ? _existant.version : (planVer || null),
       author: rawConfig.plan.author || null,
       originalFilename: meta.zipFile?.name || null,
       fileSize: meta.zipFile?.size || null,
@@ -1752,6 +1768,9 @@ function afficherLoader() {
   }
   const itiFantome = document.getElementById("kta-itinerary-modal");
   if (itiFantome) { try { itiFantome.remove(); } catch(e) {} }
+  if (window.KtaExtensions && typeof window.KtaExtensions.quitterPlan === "function") {
+    try { window.KtaExtensions.quitterPlan("accueil"); } catch(e) {}
+  }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";
@@ -2371,6 +2390,10 @@ window.proposerRedemarrageLangue = function() {
     await decouvrirPlansServeur(_idxServeur);
   }
   try { await _decouvrirPlansExtension(); } catch(e) { console.warn("[Main] plans d'extension :", e); }
+  // Badges des plans d'extension changés (activité) : seuls les emplacements de badge sont mis à jour.
+  window.addEventListener("mktm:plans-badges-changes", function() {
+    if (typeof window.ktaMajBadgesExtension === "function") window.ktaMajBadgesExtension();
+  });
   // Un plan publié (ou retiré) par une extension en cours de route : la liste est relue.
   window.addEventListener("mktm:plans-extension-changes", function() {
     _decouvrirPlansExtension().then(function() {

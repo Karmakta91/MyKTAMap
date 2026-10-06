@@ -128,7 +128,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau).
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁 Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h.
 
 ---
 
@@ -738,7 +738,7 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 **Un objet précis** : sa bulle porte un bouton **🗑️ Supprimer** ; pour un point, c'est **🗑️ Supprimer ce point**. Pas de fenêtre de confirmation : tout s'annule avec ⏪ (`Ctrl+Z`).
 
-**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups).
+**Tout le plan** : quand tu rouvres un plan, la fenêtre « Session précédente restaurée » propose **🗑️ Effacer la session** (points, tracés, zones, structures, mesures et tracé du suivi ; une copie reste dans 📦 Backups). Les points qui portent une **liaison vers un autre plan** (portails) sont gardés : pour en retirer un, supprime le point lui-même.
 
 > ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis ≡ **Filtres**, puis exporte le calque corrigé.
 
@@ -972,6 +972,7 @@ Tous les exports sont dans le groupe **⬆️ Enregistrer** de la barre latéral
 
 - **🚀 Full** — toute la session en un fichier, à réimporter plus tard : points, tracés, zones, structures, mesures et suivi du tracker (position, chemin, chronologie : le replay fonctionne après réimport). `.json`, ou `.zip` si tu coches les photos. L'option **🛡️ Anonymiser pour partage public** remplace les noms par des codes et retire le suivi.
 - **🎨 Avancé** — tu choisis : points (par icône, y compris « sans tag »), tracés, zones et structures (par type), mesures, tracker (un compteur montre ce qu'il contient). Sortie en **un seul fichier session** réimportable, ou en **ZIP multi-fichiers** (un par catégorie).
+- **🔎 Ne garder que** (en tête de 🚀 Full et 🎨 Avancé) — limite les points, tracés, zones et structures à une **période** (date de leur dernière modification) et, sur une installation reliée, à leur auteur (**Créé par**) ; un compteur dit combien partent. Suivi, mesures et notes partent tels quels.
 - **🔄 Conversion** — transforme ta session en **calque de données** à intégrer à un plan (voir « 🏗️ Créer ou modifier un plan »). Même choix par catégorie et par icône ; granularité **Basique** (un fichier par catégorie) ou **Fine** (un fichier par type). Le tracker n'est jamais converti : une dérive figée dans un plan tromperait ses futurs utilisateurs. Une fois converties, ces données ne se modifient plus depuis l'app.
 - **🔗 Fusion** — regroupe plusieurs calques de données (`.json` ou `.zip`, issus de plusieurs sessions) en un seul jeu par catégorie. Un aperçu donne les totaux et signale les identifiants de points en double (gardés tels quels). Aussi accessible sans plan ouvert : **📊 Éditeur de données → 🔗 Fusionner des calques de données**.
 - **📡 Export externe** — KMZ ou GPX, voir plus bas.
@@ -1337,6 +1338,8 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 >
 > **Prérequis** : le **même plan** sur chaque téléphone, disponible **hors-ligne** — il n'y a pas de réseau sous terre.
 >
+> **Installation reliée** : les équipes se relient à des **comptes** (chef ★), l'intervention se **déclenche** (alerte sur chaque téléphone, « Rejoindre mon poste ») et le tableau se partage étape par étape — ce qui est coché sous terre part au retour du réseau. Le téléphone et la radio restent le canal officiel.
+>
 > **Prépare-le à froid** : monte un ou deux scénarios sur tes plans habituels avant tout incident. Le jour J, l'app doit être prête en 30 secondes.
 
 Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚨 Mode Secours — Plans de recherche (équipes + zones)**.
@@ -1369,7 +1372,7 @@ Le scénario s'édite en trois blocs : **📝 Contexte de l'incident**, **🚨 �
 **➕ Ajouter une équipe**, puis sur sa fiche :
 
 - **Nom** (laisse vide : Alpha, Bravo, Charlie…) et **🎨 Couleur**, parmi 10 couleurs fixes ;
-- **👥 Membres** (séparés par des virgules), **👤 Chef**, **Effectif** — c'est l'effectif qui permet de compter les présents à la rentrée ;
+- **👥 Membres** (séparés par des virgules), **👤 Chef**, **Effectif** — c'est l'effectif qui permet de compter les présents à la rentrée. Laissé vide, il vaut le nombre de membres nommés (ou, sur une installation reliée, de comptes reliés s'ils sont plus nombreux) ; la ligne dessous dit d'où vient le chiffre et alerte si ta saisie est plus basse. Saisis-le quand des personnes descendent sans compte ni prénom ;
 - **Retour impératif** : heure fixée par le chef (autonomie des éclairages, relève), elle prime sur la durée estimée pour les alertes de retard ;
 - **Niveau** de référence sur un plan multiniveau (ou « Sans niveau » si l'équipe change d'étage) ;
 - **📍 GPS surface** (facultatif, cf. § 4).
@@ -1397,7 +1400,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 #### 📤 2. Transmettre avant de descendre
 
-- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario**. L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
+- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
 - **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone, étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
@@ -1452,7 +1455,7 @@ Le 🚑 **secouriste libre** n'a ni parcours ni étapes : il ajoute des notes, c
 
 Une étape passée en **Victime trouvée** donne une position : celle de l'étape, niveau compris. **📍 Préciser sur la carte** l'ajuste. Un **✚ rouge** la marque sur la carte, pour tous ; l'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier.
 
-**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé).
+**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé). Avant le calcul, les **options brancard** : zones à éviter (eau et remblais cochés d'office) et, en dernier recours, passage par les zones inaccessibles. Si aucun chemin n'évite ces zones, la fenêtre le dit.
 
 #### 🚒 4. Secours extérieurs
 

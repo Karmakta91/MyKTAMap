@@ -1319,7 +1319,6 @@
   // Pattern identique à osmView.js > _buildProjection.
   function _buildProjection(georef) {
     if (!georef || !window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
-    const pA = georef.pointA, pB = georef.pointB;
     let t;
     try {
       t = window.KmzExport.buildTransformCalib(georef);   // 📐 v1.73.0 : pointC optionnel propagé (affine)

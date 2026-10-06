@@ -188,16 +188,42 @@ window.LegendCustomization = (function() {
     // NI de sidebar au boot. Trouvé par le checkup destructif M3 (05/08),
     // avant qu'un utilisateur ne le trouve.
     const s = (state && typeof state === "object") ? state : {};
+    // 🔒 05/10/2026 (audit XSS) : libellés, couleurs et icônes finissent dans du HTML (pastilles,
+    // légende, filtres) ; un plan ou une session partagés ne sont pas crus sur parole.
+    const texte = function(v) { return typeof window.ktaTexteSur === "function" ? window.ktaTexteSur(v, 120) : String(v).replace(/[<>"`]/g, ""); };
+    const couleur = function(v) {
+      if (typeof window.ktaCouleurSure === "function") return window.ktaCouleurSure(v);
+      return (typeof v === "string" && /^#[0-9a-f]{3,8}$/i.test(v.trim())) ? v.trim() : null;
+    };
+    const dict = function(o, fn) {
+      const out = {};
+      if (o && typeof o === "object" && !Array.isArray(o)) {
+        Object.keys(o).forEach(function(k) { const v = fn(o[k]); if (v !== null && v !== undefined && v !== "") out[k] = v; });
+      }
+      return out;
+    };
+    const ID_SUR = /^[\w.:-]{1,80}$/;
     return {
-      labels:        (s.labels && typeof s.labels === "object" && !Array.isArray(s.labels)) ? s.labels : {},
+      labels:        dict(s.labels, function(v) { return typeof v === "string" ? texte(v) : null; }),
       hidden:        _hiddenEnObjet(s.hidden),
-      colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
-      borders:       (s.borders && typeof s.borders === "object" && !Array.isArray(s.borders)) ? s.borders : {},
+      colors:        dict(s.colors, couleur),
+      borders:       dict(s.borders, couleur),
       removedPlan:   Array.isArray(s.removedPlan) ? s.removedPlan.filter(function(x) { return typeof x === "string"; }) : [],
       customEntries: (Array.isArray(s.customEntries) ? s.customEntries : []).filter(function(e) {
-        // une entrée exploitable a AU MINIMUM un id string ; le reste des
-        // champs est déjà défendu à la lecture (repli par catégorie, etc.)
-        return e && typeof e === "object" && typeof e.id === "string" && e.id;
+        // une entrée exploitable a AU MINIMUM un id sûr (il sert de clé et d'attribut)
+        return e && typeof e === "object" && typeof e.id === "string" && ID_SUR.test(e.id) &&
+          (e.category === undefined || ID_SUR.test(String(e.category)));
+      }).map(function(e) {
+        const c = Object.assign({}, e);
+        if (c.label !== undefined) c.label = texte(c.label);
+        ["lineColor", "fillColor", "borderColor", "color"].forEach(function(k) {
+          if (c[k] !== undefined && c[k] !== null) c[k] = couleur(c[k]);
+        });
+        if (c.iconUrl !== undefined && c.iconUrl !== null &&
+            !(typeof window.ktaCheminIconePlausible === "function" && window.ktaCheminIconePlausible(c.iconUrl))) {
+          delete c.iconUrl;
+        }
+        return c;
       })
     };
   }

@@ -2133,6 +2133,23 @@ function initInterface() {
     });
   }
 
+  // PANNEAU D'UNE INSTALLATION RELIÉE (ex. « 👥 Équipe »), juste sous ⭐ Favoris (KARMA 05/10/2026) —
+  // seulement si une extension le fournit (prise neutre `panneau`) : sur myktamap.fr, aucun bouton.
+  const _panneauExt = (window.KtaExtensions && typeof window.KtaExtensions.panneauExtension === "function")
+    ? window.KtaExtensions.panneauExtension() : null;
+  // Déclaré par une variable (pas un littéral) : ce bouton n'existe que sur une installation reliée,
+  // il ne figure pas dans le tableau des groupes du guide public (scripts/check-doc-sidebar.js).
+  if (_panneauExt) {
+    const _cfgPanneauExt = {
+      id: "ext-panneau",
+      iconePrincipale: _panneauExt.icone,
+      titre: _panneauExt.titre,
+      position: "topleft",
+      soloAction: function() { window.KtaExtensions.ouvrirPanneau(); }
+    };
+    _creerGroupeAccordeon(_cfgPanneauExt);
+  }
+
   // ===== Watcher pour le contrôle des couches Leaflet =====
   // Quand le panneau des couches s'ouvre (clic ou hover), il s'agrandit en haut-droite
   // de la map. Mais le #map est position:fixed → stacking context isolé → le panneau
@@ -2579,16 +2596,6 @@ function initInterface() {
             // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
 // tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
 _setGroupeModeActif("tracker", isTracking, null);
-// Liste du tracker recalculée à chaque ouverture : la tuile 📡 n'existe que si une
-// extension la propose (elle peut se déclarer après la construction du groupe).
-if (_groupes.tracker) {
-  _groupes.tracker.dynamicSousActions = function() {
-    const l = (_groupes.tracker.sousActionsConfig || []).slice();
-    const p = _tuilePresence();
-    if (p) l.push(p);
-    return l;
-  };
-}
             return;
           }
           modeRecalage = true;
@@ -2735,6 +2742,18 @@ if (_groupes.tracker) {
       }
     ]
   });
+  // 📡 Liste du tracker recalculée à chaque ouverture : la tuile « Partager ma position sur ce plan »
+  // n'existe que si une extension la propose (elle peut se déclarer après la construction du groupe).
+  // 🩸 Posé ici, à la construction : il était inséré par erreur DANS l'action « Mode recalage »,
+  // donc la tuile n'apparaissait qu'après un recalage (retour KARMA 05/10/2026).
+  if (_groupes.tracker) {
+    _groupes.tracker.dynamicSousActions = function() {
+      const l = (_groupes.tracker.sousActionsConfig || []).slice();
+      const p = _tuilePresence();
+      if (p) l.push(p);
+      return l;
+    };
+  }
 
   // 7. MESURE
   _creerGroupeAccordeon({
@@ -2904,6 +2923,9 @@ if (_groupes.tracker) {
         delete _modesActifs["edition"];
         return;
       }
+      // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : le mode ne s'arme pas.
+      // (Avant le 05/10/2026, le contrôle vivait dans une fonction que ce bouton n'appelait pas.)
+      if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
       window.modeEdition = true;
       btn.classList.add("kta-group-mode-actif");
       grp.modeActif = true;
@@ -3790,6 +3812,7 @@ function _desactiverModeSuppressionTrace() {
 
 window.activerModeSuppressionTraceClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allRoads = window.getRoads ? (window.getRoads() || []) : [];
   // 🪜 v169 (Karma_dev) : jonction incluse dans les tracés supprimables au clic
@@ -3924,6 +3947,7 @@ function _desactiverModeSuppressionZone() {
 
 window.activerModeSuppressionZoneClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allZones = window.getZones ? (window.getZones() || []) : [];
   const supprimables = allZones.filter(function(z) {
@@ -4055,6 +4079,7 @@ function _desactiverModeSuppressionStructure() {
 
 window.activerModeSuppressionStructureClic = function() {
   if (!window.map) return;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
 
   const allStructures = window.getStructures ? (window.getStructures() || []) : [];
   // Selectionnables = structures avec assez de points (min 2 polyline, 3 polygon)

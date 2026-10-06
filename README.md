@@ -8,11 +8,25 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
+> 🧩 **Édition installation (backend)** — comptes, plans partagés en base, synchronisation entre appareils, Mode Secours
+> partagé : elle se greffe sur cette application, qui reste **entièrement utilisable sans serveur**. Elle demande une
+> **licence pro** (`Licence-pro.json`) et un **accès au dépôt backend** (privé), fournis **sur demande** : Instagram
+> [@karma_kta](https://www.instagram.com/karma_kta/) ou [contact@myktamap.fr](mailto:contact@myktamap.fr).
+> Présentation : [pro.myktamap.fr/presentation](https://pro.myktamap.fr/presentation/).
+
 **🗺️ Architecture générale** (gate → home → écran plan, modules JS, clés de stockage — légende : 🟡 hub · ⬛ 100 % offline · 🔵 accès réseau opt-in · 🔴 sécurité/secours) :
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.0` (05/10/2026)
+## 📦 Version courante — `v2.9.8` (06/10/2026)
+
+> 🚑 **v2.9.8 — Mode Secours sur le terrain** : options brancard pour « Évacuer » (zones à éviter, inaccessibles en dernier recours), scénario reçu déposé à l'accueil → plan ouvert, import, rôle « Équipe » ; doc réseau exacte (OpenStreetMap listé), finitions i18n et thème clair.
+
+> 👥 **v2.9.7 — Effectif d'équipe automatique** (Mode Secours) : saisi, sinon le plus grand de « membres nommés » et « comptes reliés » (prise `secoursNbComptesEquipe`), source affichée, alerte si la saisie est plus basse.
+
+> 🚑 **v2.9.6 — Mode Secours relié aux comptes** (prises neutres : boutons et infos d'extension, garde, alerte, rejoindre, événements par étape), multi-comptes étape 3 (prise `appliquerItineraire`), fiche d'équipe Secours sur trois lignes.
+
+> 🌀 **v2.9.1 — Portails gardés à l'effacement de session ; travail à plusieurs plus sûr sur les installations reliées** (annulation, dessin en cours, fiche modifiée par un autre, lecture seule, export réservé, « Tout réinitialiser » qui ferme la session, modules gardés hors ligne).
 
 > 💾 **v2.9.0 — Installations reliées : publier, garder hors ligne, partager sa position** ; sur myktamap.fr : 💾 sur la ligne d'un plan non mémorisé pour le mémoriser après coup, « plans du site » au lieu de « plans serveur ». Regroupe les 13 commits livrés sans bump depuis v2.8.0 (déjà déployée sur prod et dev : sans ce bump, aucun appareil ne les aurait reçus).
 
@@ -539,6 +553,69 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.8 (06/10/2026) — Mode Secours sur le terrain, doc réseau exacte (branche `Karma_dev`)
+
+- 🚑 **Options brancard pour « Évacuer »** (reste de l'audit Secours A3) : fenêtre avant le calcul (types de zones du plan, eau et remblais cochés ; zones inaccessibles levables en dernier recours, case décochée). Contraintes portées du classement des sorties au tracé et à ses recalculs (`road.evacuation`) ; les accès du scénario survivent au recalcul. Sortie atteinte seulement en traversant une zone évitée : classée après, et dit. **Correctif** : une sortie dont la galerie est coupée par une zone était calée sur une autre galerie et son chemin s'arrêtait court — l'écart compte désormais dans la distance (`a3af6b7`, `check-guidage` §12).
+- 📥 **Fichier de secours déposé à l'accueil** : le contenu des `.json` est sondé (les messageries renomment) — un scénario ne part plus à la conversion SIG ; plan retrouvé (id, puis nom + version), chargé, aperçu → import (ids d'origine) → « 🚀 Lancer » avec « Équipe » présélectionné ; plan absent : message qui le nomme ; rapport : « à importer depuis le plan ouvert » (`0bf7d96`).
+- 🔒 **Doc réseau exacte** : la liste « exhaustive » de la fenêtre réseau cite OpenStreetMap ; politique de sécurité décrite telle qu'elle est servie ; écran PIN temporaire dans `security-legal.md` (`5c7fac3`).
+- 🌍 « Sauver la note » traduit, ES « Modo urgencia » partout (`e7248fc`) · 🎨 bouton reset de 🆘 Dépannage rouge en thème clair (`0012e08`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.9.7 (06/10/2026) — Effectif d'équipe automatique (branche `Karma_dev`)
+
+- 👥 **Effectif d'une équipe Secours** : saisi s'il l'est, sinon le plus grand de « membres nommés » et « comptes reliés » (nouvelle prise neutre `secoursNbComptesEquipe`, 0 sans extension ou en erreur). Le champ propose la valeur calculée, une ligne dit d'où vient le chiffre, et alerte (orange) si la saisie est plus basse que ce qui est connu. Bilan, appel des remontés, rapport et PDF suivent le même effectif. Sans installation reliée : comportement d'avant (`dc388e3`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.9.6 (06/10/2026) — Secours relié aux comptes, multi-comptes étape 3 (branche `Karma_dev`)
+
+- 🚑 **Prises Secours** (étude Secours, étapes 1-3 — logique côté installation) : `secoursActions` (boutons en-tête / carte d'équipe / vue Live), `secoursInfoEquipe`, `secoursPeutAvancer` (garde sur étape, départ, rentrée comptée, rappel ; prise en erreur = refus), `afficherAlerteSecours` / `retirerAlerteSecours` (bandeau rouge, son + vibration), événements `mktm:secours-etape-changee` / `-suivi-change`, `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` / `rejoindre` (`6a50de9`) ; couleur facultative des présences (`c41751a`).
+- 🧭 **Prise `appliquerItineraire`** : un itinéraire reçu (attribué par un chef d'équipe) devient l'itinéraire actif (`768c882`).
+- 🩹 **Fiche d'équipe Secours** : chef, effectif et retour impératif sur trois lignes, champs nombre / heure au thème (retour KARMA, capture téléphone) (`e761fc2`).
+- 🧹 Ménage : backlog soldée, audits du 05/10 archivés (`archive-docs-2026-10-06`), `secours.md` à jour sur le modèle de durée (`a95bf3b`).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
+
+#### v2.9.5 (06/10/2026) — Secours à plusieurs appareils, export filtré, finitions (branche `Karma_dev`)
+
+- 🔁 **Secours, étape 0** : le relais en direct importait le scénario reçu en « remplacer », qui effaçait l'intervention en cours (et ses photos) sur l'autre appareil. `importerScenario(…, { garderExecution })` → `_fusionnerExecutionDirect` : étape la plus récente (`majAt`, posé par `updateEtape`), sinon la plus grave ; main courante et notes libres unies ; rôle / équipe suivie propres à l'appareil. Garde-fou **`scripts/check-secours-relais.js`** (`3ea163f`).
+- 🔎 **Export filtré** (onglets Complet et Avancé) : « Ne garder que » du / au (dernière modification) et « Créé par » (prise `auteurObjet`) ; agit dans `_compter()` sur les annotations (`88fd448`).
+- 🎨 **Audit UI n° 8-12** : textes traduits, « hors base » à 390 px, badges de l'accueil mis à jour sur place (`ktaMajBadgesExtension`), publication du Générateur avec avancement et nom échappé, observateur des fiches regroupé par image (`ce4cc49`).
+- 🧹 **Code mort soldé** : 9 symboles sans appelant + 1 clé i18n en double (`a6fe9ad`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.9.4 (05/10/2026) — Sécurité XSS, lecture seule, audits UI et code mort (branche `Karma_dev`)
+
+- 🔒 **XSS** (prouvé par le test d'attaque du dépôt pro, concernait aussi myktamap.fr via un ZIP ou une session partagés) : fiche d'un point et section liaisons sans gestionnaire inline — `data-kta-act` + écouteur unique en capture `_ktaPopupAction` (`33e1c3e`) ; plan-config filtré à l'ouverture, ZIP comme site (`ktaAssainirPlanConfig`, `ktaCouleurSure`, `ktaTexteSur`, `ktaCheminIconePlausible` durci), légende personnalisée filtrée dans `_normalize`, sinks ponctuels échappés (`lostMode`, distance totale, tableur, recherche KMZ, infobulle Secours, modale « éviter », descriptions KMZ) ; garde-fou **`scripts/check-xss.js`** (pré-commit, bloquant) (`a8f1485`).
+- 🧩 Régression du 1er correctif (audit UI n° 1) : le bouton « Lier » portait `data-kta-uid` → actions d'extension en double ; renommé `data-kta-point-uid`.
+- 🔒 **Lecture seule** gardée au vrai bouton ✏️, au clic carte, à la fiche d'un tracé / zone / structure (mode lecture), à `KtaConvertir` et au Tableur — le contrôle vivait dans `toggleEdition()`, sans appelant (`93cbd23`).
+- 👥 **Sortie de plan** : `KtaExtensions.quitterPlan` + événement `mktm:plan-ferme` — l'équipe de l'ancien plan n'est plus redessinée sur le nouveau, panneau fermé ; présences redessinées au changement de niveau. `sitePlansHiddenDefault` : cases resynchronisées après lecture de la config.
+- 👥 Bouton 👥 Équipe juste sous ⭐ Favoris.
+- 🧹 Code mort : 19 suppressions sûres (`822e900`). Audits du 05/10 (bugs UI v2, code mort JS) : soldés, archivés sous le tag `archive-docs-2026-10-06`.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.9.3 (05/10/2026) — Itinéraire montré à l'équipe (branche `Karma_dev`)
+
+- 🧭 **Prise `itineraire: { publie(), basculer() }`** : bouton « 🧭 Montrer mon itinéraire à l'équipe » dans la fenêtre Itinéraire (mode navigation), posé seulement si une extension le fournit. Lecture neutre `KtaExtensions.itineraireActuel()` (points + niveau, étapes ✓ sans l'origine tracker) ; affichage `afficherItineraires(liste)` dans `js/ktaPresences.js` (calque distinct, pointillés jaunes atténués hors niveau, étapes ○ / ✓, étiquette « 🧭 pseudo », rien de cliquable) ; actions `cadrerItineraire` / `masquerItineraire` pour un panneau (`884bb3e`).
+- 🛡️ `check-extensions` §6 ter : no-op sans extension, extension en erreur = non publié, bouton conditionné à la prise.
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
+
+#### v2.9.2 (05/10/2026) — Panneau « Équipe », activité (branche `Karma_dev`)
+
+- 🩹 **Tuile 📡 « Partager ma position sur ce plan »** : le bloc qui l'ajoute à la fenêtre Tracker était inséré dans l'action « Mode recalage » — elle n'apparaissait qu'après un recalage (`ce18230`, retour KARMA capture téléphone).
+- 👥 **Prise `panneau`** : bouton à gauche sur la carte + fenêtre remplie par l'extension (ex. « 👥 Équipe »), posé seulement si une extension le fournit ; actions neutres `KtaPresences.centrer / suivre / masquerTrace` (`d82fb33`).
+- 🏷️ **Prise `badgePlan`** : badge d'une installation sur la ligne d'un plan ☁️ à l'accueil (activité « 👥 N » / « ✏️ N ») ; événement `mktm:plans-badges-changes` (`f2d94df`).
+- 📡 Messages du partage : « ta position sur le plan (celle de ton suivi, pas le GPS) » ×3 langues (`c74ad06`).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
+
+#### v2.9.1 (05/10/2026) — Portails gardés ; plusieurs comptes sur un plan (branche `Karma_dev`)
+
+- 🌀 **Visible sur myktamap.fr** : « Effacer la session » garde les points de session qui portent une liaison inter-plan — le point disparaissait, la liaison restait orpheline et invisible (`cc9c63d`). Message « N point(s) portail gardé(s) » (×3 langues).
+- 🧩 **Plusieurs comptes sur un plan** (audit du 05/10, `dcd7fea`) — sans extension, rien ne change : l'historique d'annulation repart de zéro après une réception (⏪ effaçait chez tous les ajouts des autres) ; seules les familles touchées sont réécrites et le dessin en cours est repris par son uid ; fiche d'un point modifié ou supprimé par la synchro → « Garder ma version ? » ; prise `lectureSeule` (droit « lire » : ni ✏️ ni 🗑️, outils refusés) ; `exportAutorise` vaut pour l'export de session et l'export image (plan affiché) ; événement `mktm:session-cleared` (effacer, restaurer).
+- 🔏 **« Tout réinitialiser »** ferme la session d'une installation reliée avant l'effacement (prise `avantReinitialisation`, 3 s ; hors ligne : marque « déconnexion en attente ») — l'appli ne se reconnecte plus seule (`67547b2`).
+- 💾 **Service Worker** : modules d'une installation gardés dans un cache durable `myktamap-ext-modules`, préchargés à la lecture de l'index — plus d'« Installation indisponible » au 1er lancement hors ligne après une mise à jour (`3aaad1d`).
+- ☁️ Plan ☁️ ouvert : nom et version de l'installation gardés (`a6bfbf4`) ; mode V2 / multi-niveau fourni par l'extension avant la 1re ouverture (`208e781`) ; prise `infoObjet` (« Créé par X · modifié par Y » dans la fiche, `f29b44d`) ; événement `mktm:secours-scenario-deleted` (`0031ae9`).
+- 📖 README : édition installation sur demande (licence + accès au dépôt backend). Backlog : éléments affichés au relâcher pendant un déplacement (pertinence de « Ne rendre que les éléments visibles »).
+- 🔒 **Audit réseau** : sur myktamap.fr, aucune requête ni domaine nouveau.
 
 #### v2.9.0 (05/10/2026) — Installations reliées : publier, garder hors ligne, présence (branche `Karma_dev`)
 

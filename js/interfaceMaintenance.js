@@ -699,6 +699,13 @@ function _resetFlowConfirmation() {
       document.documentElement.appendChild(overlayWait);
 
       try {
+        // 0) Installation reliée : sa session est fermée AVANT l'effacement (sinon l'appli se
+        //    reconnectait seule). Sans extension : rien, immédiat.
+        let sessionFermee = true;
+        if (window.KtaExtensions && typeof window.KtaExtensions.avantReinitialisation === "function") {
+          try { sessionFermee = await window.KtaExtensions.avantReinitialisation(); } catch(e) { sessionFermee = false; }
+        }
+
         // 1) Service Worker
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
@@ -713,6 +720,11 @@ function _resetFlowConfirmation() {
 
         // 3) localStorage — wipe complet (tous les préfixes connus + clés inattendues)
         try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage.clear :", e); }
+        // Session d'une installation reliée pas fermée (hors ligne) : seule marque gardée, pour que
+        // l'extension la ferme au retour du réseau au lieu de se reconnecter.
+        if (!sessionFermee && window.KtaExtensions && window.KtaExtensions.CLE_DECONNEXION_EN_ATTENTE) {
+          try { localStorage.setItem(window.KtaExtensions.CLE_DECONNEXION_EN_ATTENTE, "1"); } catch(e) {}
+        }
 
         // 4) sessionStorage
         try { sessionStorage.clear(); } catch(e) { console.warn("[Reset] sessionStorage.clear :", e); }

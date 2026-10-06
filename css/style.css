@@ -1845,6 +1845,27 @@ body.kta-lost-click-mode .leaflet-container {
   font-size: 12px;
   line-height: 1.4;
 }
+/* 🧩 Panneau d'une extension (prise `panneau`, ex. « 👥 Équipe ») : fenêtre compacte, contenu de l'extension. */
+.kta-ext-panneau-boite { max-width: 460px; height: auto; max-height: 82vh; }
+.kta-ext-panneau-corps { font-size: 13px; }
+.kta-equipe-moi { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 8px; color: #c8d0e0; }
+.kta-equipe-ligne { padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.kta-equipe-nom { color: #e8eaf0; }
+.kta-equipe-nom span, .kta-equipe-pos { color: #8892a4; }
+.kta-equipe-pos { font-size: 12px; margin-top: 2px; }
+.kta-equipe-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.kta-equipe-vide { color: #8892a4; }
+body.kta-theme-light .kta-equipe-nom, html.kta-theme-light .kta-equipe-nom { color: var(--kta-light-text) !important; }
+body.kta-theme-light .kta-equipe-moi, html.kta-theme-light .kta-equipe-moi { color: var(--kta-light-text) !important; }
+/* 🧩 Ligne fournie par une extension (ex. « Créé par X »), prise infoObjet. */
+.kta-popup-ext-info {
+  margin-top: 6px;
+  color: #8892a4;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.35;
+}
 
 /* =========================
    v1.34.19 — MODE HISTOIRE — Bouton 📖 status bar + modale 2 onglets
@@ -1994,6 +2015,11 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
 .kta-sortie-origine {
   font-size: 12px;
   color: #8892a4;
+  margin: -6px 0 12px;
+}
+.kta-sortie-brancard {
+  font-size: 12px;
+  color: #f4c542;
   margin: -6px 0 12px;
 }
 .kta-sortie-alt-sep {
@@ -6381,6 +6407,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   cursor: help;
 }
 .plan-row-badge-stored { color: #6ce28a; }
+.kta-plan-row-ext-badge { color: #8cb4ff; font-size: 11px; white-space: nowrap; }   /* 🧩 badge d'une installation (activité) */
 .plan-row-badge-fs     { color: #8cb4ff; }
 .plan-row-badge-pick   { color: #c0c8d8; opacity: 0.7; }
 
@@ -15012,6 +15039,10 @@ body.kta-theme-light .kta-popup-point .kta-popup-desc,
 html.kta-theme-light .kta-popup-point .kta-popup-desc {
   color: var(--kta-light-text-muted) !important;
 }
+body.kta-theme-light .kta-popup-ext-info,
+html.kta-theme-light .kta-popup-ext-info {
+  color: var(--kta-light-text-muted) !important;
+}
 /* 🆕 v1.21.2 : ligne coords GPS du popup point — adapté pour le clair. */
 body.kta-theme-light .kta-popup-point .kta-popup-gps,
 html.kta-theme-light .kta-popup-point .kta-popup-gps {
@@ -15509,7 +15540,7 @@ body.kta-theme-light #loadPlanBtn,
 body.kta-theme-light #importListBtn,
 body.kta-theme-light #exportListBtn,
 body.kta-theme-light #loaderPlannerBtn,
-body.kta-theme-light #loaderResetBtn,
+/* #loaderResetBtn absent exprès : il garde le style « danger » clair (.loader-btn-danger) */
 body.kta-theme-light #loaderForceUpdateBtn,
 body.kta-theme-light #loaderDepannageBtn,
 body.kta-theme-light #loaderAlertBtn,
@@ -21991,6 +22022,7 @@ body.kta-theme-light #kta-osm-mes-floater {
    (audit ergonomie Q4/B1). Sélecteur dual body/html : la modale est appendée
    à documentElement (cf ui.md §90.4). */
 body.kta-theme-light .kta-sortie-origine,
+body.kta-theme-light .kta-sortie-brancard,
 html.kta-theme-light .kta-sortie-origine,
 body.kta-theme-light .kta-sortie-alt-sep,
 html.kta-theme-light .kta-sortie-alt-sep {
@@ -22700,3 +22732,21 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
 .kta-presence-ancienne .kta-presence-pastille { background: #8892a4; }
 .kta-presence-ancienne .kta-presence-etiquette { color: #8892a4; }
 .kta-presence-hors-niveau { opacity: 0.4; }
+/* 🧭 Itinéraire publié par un autre : étiquette au point d'arrivée */
+.kta-presence-iti-icone { background: none; border: none; }
+/* 🚨 Bandeau d'alerte Secours d'une installation reliée (KtaExtensions.afficherAlerteSecours) */
+#kta-alerte-secours {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99998; padding: 10px 16px calc(10px + env(safe-area-inset-top, 0px));
+  padding-top: calc(10px + env(safe-area-inset-top, 0px)); background: #b3261e; color: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.kta-alerte-secours-titre { font-weight: 800; font-size: 16px; }
+.kta-alerte-secours-texte { font-size: 13px; margin: 4px 0 8px; }
+.kta-alerte-secours-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kta-alerte-secours-actions .kta-btn { background: #fff; color: #b3261e; border: none; font-weight: 700; }
+/* 🧩 Boutons et infos fournis par une extension dans le Mode Secours */
+.kta-secours-ext-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.kta-secours-ext-info { font-size: 12px; color: #8cb4ff; margin: 4px 0; }
+.kta-presence-iti-etiquette {
+  display: inline-block; transform: translate(8px, -50%); white-space: nowrap; font-size: 11px; padding: 1px 6px;
+  border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #f4c542; border: 1px solid #f4c542; pointer-events: none;
+}

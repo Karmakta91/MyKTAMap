@@ -276,8 +276,7 @@
   }
   let _liaisonsReprises = null; // liaisons d'un index.json rechargé (cf _construire)
   let _links = [];          // liaisons source (objets du registre, intacts)
-  let _linksOrigine = "";   // libellé de provenance
-  const _linkSel = {};      // linkId → bool (cochée)
+    const _linkSel = {};      // linkId → bool (cochée)
   const _mapping = {};      // planId d'origine → id de pack ("" = ignorer)
   const _planNamesVus = {}; // planId d'origine → dernier planName vu (affichage mapping)
 
@@ -604,7 +603,7 @@
   function _poserLiaisons(reg, origine) {
     const links = (reg && Array.isArray(reg.links)) ? reg.links : [];
     if (!links.length) { _statut($("caLinksStatus"), "Aucune liaison trouvée (" + origine + ")", true); return; }
-    _links = links; _linksOrigine = origine;
+    _links = links;
     links.forEach(function(l) {
       [l.a, l.b].forEach(function(s) {
         if (s && s.planId && !(s.planId in _planNamesVus)) _planNamesVus[s.planId] = s.planName || s.planId;

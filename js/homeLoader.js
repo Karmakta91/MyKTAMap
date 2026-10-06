@@ -254,6 +254,30 @@
       // 🗺️ GeoTIFF : un plan scanne puis cale dans QGIS. Meme lecon que le SIG
       // en v1.75.2 — l'accueil est l'endroit evident ou deposer un fichier, et
       // un .tif y tombait sur « le fichier doit etre une archive .zip ».
+      // 🚑 06/10/2026 — un fichier du Mode Secours (.mkmsec.json, rapport) déposé ici partait
+      // à la conversion SIG (tout .json y va). On lit le DÉBUT du contenu (les messageries
+      // renomment) : un « myktamap-secours-… » part au Mode Secours, le reste au SIG.
+      function _routerSig(f) {
+        if (typeof window.afficherImporterSig === "function") {
+          zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+          window.afficherImporterSig(f);
+        } else {
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+        }
+      }
+      function _routerJson(f) {
+        const SM = window.SecoursMode;
+        if (!SM || typeof SM.ouvrirDepuisAccueil !== "function" || typeof f.slice !== "function") { _routerSig(f); return; }
+        f.slice(0, 4096).text().then(function(debut) {
+          if (debut.indexOf('"myktamap-secours-') < 0) { _routerSig(f); return null; }
+          return f.text().then(function(txt) { return SM.ouvrirDepuisAccueil(txt, f.name); }).then(function(r) {
+            if (!r) { _routerSig(f); return; }
+            zipFileName.textContent = r.ok ? "🚑 " + f.name : "";
+            if (r.message) setStatus(r.message, !r.ok);
+          });
+        }).catch(function(e) { console.warn("[HomeLoader] lecture du .json :", e); _routerSig(f); });
+      }
+
       function _estGeoTiff(nomMinuscule) {
         return nomMinuscule.endsWith(".tif") || nomMinuscule.endsWith(".tiff");
       }
@@ -302,12 +326,7 @@
         // le comportement actuel.
         if (_estFichierSig(lower)) {
           zipFileInput.value = "";
-          if (typeof window.afficherImporterSig === "function") {
-            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
-            window.afficherImporterSig(f);
-          } else {
-            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
-          }
+          if (lower.endsWith(".json")) _routerJson(f); else _routerSig(f);
           return;
         }
         if (_estGeoTiff(lower)) {
@@ -357,12 +376,7 @@
           }
         } else if (_estFichierSig(lower)) {
           // 🗺️ v1.75.2 — même routage que la sélection par clic (cf. plus haut).
-          if (typeof window.afficherImporterSig === "function") {
-            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
-            window.afficherImporterSig(f);
-          } else {
-            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
-          }
+          if (lower.endsWith(".json")) _routerJson(f); else _routerSig(f);
         } else if (_estGeoTiff(lower)) {
           // 🗺️ GeoTIFF — même routage que la sélection par clic (cf. plus haut).
           if (_routerGeoTiff(f)) {
@@ -917,6 +931,19 @@
       // du dico pas-encore-chargé (course au window load) → t() warnait et
       // retournait la version humanisée. I18n.has() teste la présence réelle
       // de la clé (sans warn) : dico pas prêt OU clé absente → fallback FR.
+      function _htmlBadgeExtension(idPlan) {
+        const bx = window.KtaExtensions && typeof window.KtaExtensions.badgePlan === "function"
+          ? window.KtaExtensions.badgePlan(idPlan) : null;
+        return bx ? '<span class="plan-row-badge kta-plan-row-ext-badge" title="' + escapeHtml(bx.titre) + '">' +
+          escapeHtml(bx.texte) + '</span>' : "";
+      }
+      window.ktaMajBadgesExtension = function() {
+        document.querySelectorAll("[data-ext-badge-for]").forEach(function(slot) {
+          const html = _htmlBadgeExtension(slot.getAttribute("data-ext-badge-for"));
+          if (slot.innerHTML !== html) slot.innerHTML = html;
+        });
+      };
+
       function _homeT(key, fr) {
         if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
           return window.I18n.t(key);
@@ -1047,14 +1074,14 @@
         try {
           const zip = await JSZip.loadAsync(file);
           const entree = zip.file(/(^|\/)plan-config\.json$/)[0];
-          if (!entree) throw new Error("plan-config.json introuvable");
+          if (!entree) throw new Error(t("home.plans.offline.errSansConfig"));
           const cfg = JSON.parse(await entree.async("string"));
           const nomZip = String((cfg.plan && cfg.plan.name) || "").trim();
           const nomPlan = String(plan.name || "").trim();
           if (nomZip && nomPlan && nomZip !== nomPlan) { await _afficherModaleNomZipKO(nomZip, nomPlan); return; }
           if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
           const r = await window.PlanRegistry.saveBlob(plan.id, file);
-          if (!r || !r.ok) throw new Error((r && r.error) || "stockage refusé");
+          if (!r || !r.ok) throw new Error((r && r.error) || t("home.plans.offline.errStockage"));
           window.PlanRegistry.addOrUpdate({ id: plan.id, storedBlob: true, originalFilename: file.name, fileSize: file.size });
           toast(t("home.plans.offline.memoriseOk"), "info");
         } catch (e) {
@@ -1106,6 +1133,13 @@ function planRowHTML(plan) {
           } else {
             badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="' + _homeT("home.plans.badge.pick", "Re-sélection requise au chargement") + '">📁</span>';
           }
+        }
+        // 🧩 Badge fourni par une installation reliée (ex. « 👥 2 » : qui a ce plan ouvert) — texte échappé.
+        // Emplacement identifié : mis à jour seul quand l'activité change (window.ktaMajBadgesExtension),
+        // sans redessiner la liste entière (audit UI du 05/10/2026 : boutons qui clignotaient).
+        if (plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.badgePlan === "function") {
+          badgeStorage += '<span class="kta-plan-row-ext-badge-slot" data-ext-badge-for="' + escapeHtml(plan.id) + '">' +
+            _htmlBadgeExtension(plan.id) + '</span>';
         }
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
@@ -1987,6 +2021,13 @@ function planRowHTML(plan) {
         // sans que le checkbox ait été coché manuellement, ex: au boot).
         const cbServer = document.getElementById("loaderShowServerPlans");
         if (cbServer) cbServer.checked = showServer;
+        // Même sync pour « Ne pas afficher les plans du site » : son défaut peut venir de la config de
+        // l'installation (sitePlansHiddenDefault), lue APRÈS le premier rendu — sans ça, la case de
+        // Configuration restait décochée et la rangée de l'accueil visible mais sans effet (audit 05/10/2026).
+        const cbSkip = document.getElementById("loaderSkipServerPlansCb");
+        if (cbSkip) cbSkip.checked = skipServer;
+        const rangeeFiltres = document.querySelector(".loader-plans-filters");
+        if (rangeeFiltres) rangeeFiltres.style.display = skipServer ? "none" : "";
 
         // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
         // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).
@@ -2635,7 +2676,7 @@ function planRowHTML(plan) {
         if (!plan) return setStatus("Plan introuvable dans la liste", true);
 
         if (plan.type === "server") {
-          setStatus("Chargement de " + plan.name + "…");
+          setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
           try {
             // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
             // Sinon → on utilise le preset mémorisé pour ce plan (ou "auto" si jamais réglé).
@@ -2648,7 +2689,7 @@ function planRowHTML(plan) {
             if (e && e.code === "PLAN_NOT_FOUND") {
               afficherModalePlanIntrouvable(plan, "server");
             } else {
-              setStatus("Erreur : " + (e.message || e), true);
+              setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
             }
           }
           return;
@@ -2658,7 +2699,7 @@ function planRowHTML(plan) {
         // l'archive vient de l'extension ; une fois ouverte elle est gardée sur
         // l'appareil (hors ligne), et l'effacement à la déconnexion la retire.
         if (plan.type === "ext") {
-          setStatus("Chargement de " + plan.name + "…");
+          setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
           // 🧩 Écran de chargement central dès le début : un plan venu du serveur de
           // l'installation peut peser des centaines de Mo (retour KARMA 04/10/2026 :
           // « un long moment se passe, rien à l'écran »). Progression si l'extension
@@ -2687,7 +2728,7 @@ function planRowHTML(plan) {
             }
             if (!blob) {
               if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-              return setStatus("Plan indisponible (serveur injoignable)", true);
+              return setStatus(_homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"), true);
             }
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
@@ -2697,7 +2738,7 @@ function planRowHTML(plan) {
             if (window.masquerLoader) window.masquerLoader();
           } catch (e) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-            setStatus("Erreur : " + (e.message || e), true);
+            setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
           }
           return;
         }

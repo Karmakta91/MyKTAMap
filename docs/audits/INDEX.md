@@ -20,6 +20,9 @@ git show archive-docs-2026-09-30:docs/audits/2026-09-13_audit-ergonomie-v1.md
 git ls-tree -r --name-only archive-docs-2026-09-30 docs/
 ```
 
+Soldés le 06/10/2026 (bugs UI v2 et code mort JS du 05/10) : tag **`archive-docs-2026-10-06`** —
+`git show archive-docs-2026-10-06:docs/audits/2026-10-05_audit-ui-v2.md`.
+
 Règle : un audit reste ici tant qu'il a des lots ouverts ; soldé, il part en archive (un tag, pas un dossier).
 
 ## Historique (audits ouverts)

@@ -1500,7 +1500,6 @@
         const lic = window.MyKTAMapProLicense;
         const isPro = lic.isPro();
         const source = lic.getSource();
-        const data = lic.getData();
 
         let html = "";
         if (isPro) {

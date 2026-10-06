@@ -1050,9 +1050,9 @@
             const p = item.point;
             const div = document.createElement("div");
             div.className = "kta-lost-search-result";
-            div.innerHTML = '<strong>' + (p.nom || p.id || "?") + '</strong>' +
+            div.innerHTML = '<strong>' + _esc(p.nom || p.id || "?") + '</strong>' +
                             ' <span class="kta-lost-search-layer">(' +
-                            (item.layerLabel || item.layer || "—") + ')</span>';
+                            _esc(item.layerLabel || item.layer || "—") + ')</span>';
             div.addEventListener("click", function() {
               _selectionnerPosition({
                 x: p.x, y: p.y,
@@ -1136,7 +1136,7 @@
     _lastKnownPos = pos;
     const disp = document.getElementById("kta-lost-pos-display");
     if (disp) {
-      disp.innerHTML = '<span class="kta-lost-pos-label">✓ ' + pos.label +
+      disp.innerHTML = '<span class="kta-lost-pos-label">✓ ' + _esc(pos.label) +
                        '</span><span class="kta-lost-pos-coord"> ' +
                        _t("lost.pos.coordSuffix", { x: Math.round(pos.x), y: Math.round(pos.y) }) +
                        '</span>';
@@ -1148,9 +1148,6 @@
     const box = document.getElementById("kta-lost-results");
     if (!box) return;
     box.style.display = "";
-
-    const inZone  = _matches.filter(function(m) { return m.inZone; });
-    const outZone = _matches.filter(function(m) { return !m.inZone; });
 
     let html = '<div class="kta-lost-section">';
     html += '<div class="kta-lost-section-titre">' + _t("lost.results.zone.titre") + '</div>';

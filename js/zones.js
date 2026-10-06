@@ -212,6 +212,7 @@ function _resoudreZoneEnCours() {
   }
 }
 function toggleZoneMode(type) {
+  if (window.modeZone !== type && typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;
   // Changement de type ou désactivation du même type : la zone en cours est
   // fermée si elle est valide, abandonnée sinon (cf _resoudreZoneEnCours).
   if (currentZone && window.modeZone !== type) _resoudreZoneEnCours();

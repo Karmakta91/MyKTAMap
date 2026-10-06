@@ -246,8 +246,17 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const U = lire("js/utils.js");
     t("fiches de session : l'uid de l'objet est porté par la fiche (point + tracé/zone/structure)",
       /data-kta-uid="' \+ _escAttr\(point\.uid\)/.test(U) && /data-kta-uid="' \+ _esc\(_uid\)/.test(U));
-    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions",
-      /if \(ext\.actionsObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+    t("🩸 observateur des fiches posé SEULEMENT quand une extension a des actions ou une info à montrer",
+      /if \(ext\.actionsObjet \|\| ext\.infoObjet\) _observerFiches\(\);/.test(lire("js/ktaExtensions.js")));
+    t("🩸 panneau d'extension : bouton posé SEULEMENT si une extension fournit la prise (myktamap.fr : rien)",
+      /const _panneauExt = \(window\.KtaExtensions && typeof window\.KtaExtensions\.panneauExtension === "function"\)/.test(lire("js/interface.js")) &&
+      /if \(_panneauExt\) \{[\s\S]{0,600}_creerGroupeAccordeon\(_cfgPanneauExt\)/.test(lire("js/interface.js")));
+    t("badge d'un plan d'extension : texte échappé (8 / 160 car.), plans ☁️ seulement",
+      /\.slice\(0, 8\)/.test(lire("js/ktaExtensions.js")) && /kta-plan-row-ext-badge" title="' \+ escapeHtml\(bx\.titre\) \+ '">' \+\s*escapeHtml\(bx\.texte\)/.test(lire("js/homeLoader.js")));
+    t("badges : mis à jour sur place à l'événement (pas de liste redessinée)",
+      /mktm:plans-badges-changes"[\s\S]{0,200}ktaMajBadgesExtension\(\)/.test(lire("js/main.js")) && /data-ext-badge-for=/.test(lire("js/homeLoader.js")));
+    t("info d'objet : texte seulement (textContent), 120 caractères, jamais écrite par l'app",
+      /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }
 
   // ═════════ 6 bis sexies. PUBLIER UN PLAN LOCAL DEPUIS SA FICHE ═════════
@@ -299,6 +308,117 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const PR = lire("js/ktaPresences.js");
     t("🩸 présences : affichage seulement (aucune requête réseau dans le module)", !/fetch\(|XMLHttpRequest|WebSocket/.test(PR));
     t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
+  }
+
+  // ═════════ 6 bis ter. LECTURE SEULE et SORTIE DE PLAN (audit du 05/10/2026) ═════════
+  {
+    const IF = lire("js/interface.js");
+    const iEd = IF.indexOf('id: "edition"');
+    const bloc = iEd >= 0 ? IF.slice(iEd, IF.indexOf("});", iEd)) : "";
+    t("🩸 bouton ✏️ (le VRAI, interface.js) : la lecture seule l'empêche de s'armer",
+      /ktaEditionRefusee\(\)\)\s*return;\s*window\.modeEdition = true;/.test(bloc));
+    t("🩸 clic carte de l'éditeur : refusé en lecture seule", /_editorClickHandler = function\(e\) \{[\s\S]{0,120}ktaEditionRefusee/.test(lire("js/editor.js")));
+    t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
+      /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
+    const CV = lire("js/convertirObjet.js");
+    t("🩸 conversion / suppression d'objet : gardées à l'entrée",
+      ["function convertir(", "function supprimer(", "function convertirLot(", "function ouvrir("].every((f) =>
+        new RegExp(f.replace("(", "\\(") + "[^\\n]*\\n\\s*if \\(typeof window\\.ktaEditionRefusee").test(CV)));
+    const { K, w } = nouveauContexte(null);
+    let evts = 0;
+    w.addEventListener = w.addEventListener || function () {};
+    w.dispatchEvent = function (e) { if (e && e.type === "mktm:plan-ferme") evts++; return true; };
+    w.CustomEvent = w.CustomEvent || function (type, o) { this.type = type; this.detail = o && o.detail; };
+    let reinit = 0;
+    w.KtaPresences = { reinitialiser: () => { reinit++; } };
+    let sansErreur = true;
+    try { K.quitterPlan("accueil"); } catch (e) { sansErreur = false; }
+    t("sortie de plan : présences remises à zéro, événement mktm:plan-ferme, sans erreur", sansErreur && reinit === 1 && evts === 1);
+    const MA = lire("js/main.js");
+    t("…appelée au changement de plan ET au retour à l'accueil",
+      /KtaExtensions\.quitterPlan\("plan"\)/.test(MA) && /KtaExtensions\.quitterPlan\("accueil"\)/.test(MA));
+  }
+
+  // ═════════ 6 bis quater. AUTEUR D'UN OBJET (filtre « Créé par » de l'export) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : auteurObjet → null, filtre auteur non proposé", K.auteurObjet("pt_x") === null && K.aPrise("auteurObjet") === false);
+    K.register({ nom: "au1", apiVersion: 1, auteurObjet: (uid) => (uid === "pt_a" ? { createur: " Bob ", modifiePar: 12 } : null) });
+    const a = K.auteurObjet("pt_a");
+    t("extension : auteur nettoyé (texte seulement)", a && a.createur === "Bob" && a.modifiePar === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "au2", apiVersion: 1, auteurObjet: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → null, aucune exception", K2.auteurObjet("pt_a") === null);
+    const SE = lire("js/sessionExporter.js");
+    t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
+      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
+  }
+
+  // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucun bouton Secours, aucun texte, tout est permis",
+      K.secoursActions({ scenarioId: "s" }).length === 0 && K.secoursInfoEquipe("s", "g") === "" && K.secoursPeutAvancer("s", "g", "etape") === true);
+    K.register({ nom: "se1", apiVersion: 1,
+      secoursActions: () => [{ libelle: " Déclencher ", action: () => {} }, { libelle: "", action: () => {} }, { libelle: "x" }],
+      secoursInfoEquipe: () => "Comptes : A ★", secoursPeutAvancer: (s, g, q) => q !== "rentree" });
+    const a = K.secoursActions({ scenarioId: "s" });
+    t("extension : boutons valides seulement (libellé + action)", a.length === 1 && a[0].libelle === "Déclencher");
+    t("extension : info d'équipe et garde", K.secoursInfoEquipe("s", "g") === "Comptes : A ★" &&
+      K.secoursPeutAvancer("s", "g", "etape") === true && K.secoursPeutAvancer("s", "g", "rentree") === false);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "se2", apiVersion: 1, secoursPeutAvancer: () => { throw new Error("x"); }, secoursActions: () => { throw new Error("y"); } });
+    t("🩸 garde en erreur → REFUS (une permission qui échoue ne laisse pas passer) ; boutons en erreur → aucun",
+      K2.secoursPeutAvancer("s", "g", "etape") === false && K2.secoursActions({}).length === 0);
+    const { K: K3 } = nouveauContexte(null);
+    const nbSans = K3.secoursNbComptesEquipe("s", "g");
+    K3.register({ nom: "se3", apiVersion: 1, secoursNbComptesEquipe: (s, g) => (g === "g" ? 3 : g === "e" ? (() => { throw new Error("z"); })() : -2) });
+    t("effectif : comptes reliés = 0 sans extension, entier valide avec, 0 si négatif ou en erreur",
+      nbSans === 0 && K3.secoursNbComptesEquipe("s", "g") === 3 && K3.secoursNbComptesEquipe("s", "x") === 0 &&
+      K3.secoursNbComptesEquipe("s", "e") === 0);
+    const SM = lire("js/secoursMode.js");
+    t("Mode Secours : chaque avancée passe par la garde (étape, départ/rentrée/rappel, rentrée comptée, rappel)",
+      /if \(!_peut\(scenarioId, equipeId, "etape"\)\) return null;/.test(SM) && /_peut\(scenarioId, gid, \{ departAt: "depart"/.test(SM) &&
+      /if \(!_peut\(sid, gid, "rentree"\)\) return false;/.test(SM) && /if \(!_peut\(sid, null, "rappel"\)\) return false;/.test(SM));
+    t("🩸 un changement reçu n'est jamais ré-émis (pas de boucle entre appareils)",
+      /function _emettre\(nom, detail\) \{\n\s*if \(_appliqueDistant\) return;/.test(SM));
+  }
+
+  // ═════════ 6 ter. ITINÉRAIRE PUBLIÉ (montré à l'équipe, opt-in) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    t("sans extension : itinéraire non publié, pas de bouton (aPrise faux)",
+      K.itinerairePublie() === false && K.aPrise("itineraire") === false);
+    t("sans extension : basculer ne publie rien (→ false)", (await K.basculerItineraire()) === false);
+    t("sans carte : aucun itinéraire lu", K.itineraireActuel() === null);
+    w.map = {};
+    w.getRoads = () => [{ type: "galerie", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }];
+    t("pas d'itinéraire actif → null", K.itineraireActuel() === null);
+    w.getRoads = () => [{ type: "itinerary", points: [{ x: 1, y: 2, level: -1 }, { x: 3, y: 4 }],
+      waypoints: [{ x: 1, y: 2, source: "tracker" }, { x: 3, y: 4, done: true }] }];
+    const it = K.itineraireActuel();
+    t("itinéraire actif → points + niveau, étapes sans l'origine tracker",
+      it && it.points.length === 2 && it.points[0][2] === -1 && it.points[1][2] === null &&
+      it.etapes.length === 1 && it.etapes[0][2] === true);
+    t("affichage sans module de rendu → 0, sans erreur", K.afficherItineraires([{ id: "a", pseudo: "b", points: [[1, 2], [3, 4]] }]) === 0);
+    let pub = false;
+    K.register({ nom: "i1", apiVersion: 1, itineraire: { publie: () => pub, basculer: () => { pub = !pub; } } });
+    t("extension déclarée : bouton proposé, bascule effective",
+      K.aPrise("itineraire") && (await K.basculerItineraire()) === true && K.itinerairePublie());
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "i2", apiVersion: 1, itineraire: { publie: () => { throw new Error("x"); }, basculer: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → non publié, aucune exception",
+      K2.itinerairePublie() === false && (await K2.basculerItineraire()) === false);
+    const { K: K3, w: w3 } = nouveauContexte(null);
+    t("itinéraire reçu sans carte → false", K3.appliquerItineraire({ points: [[0, 0], [1, 1]] }) === false);
+    let pose = null;
+    w3.map = {}; w3.itineraireActiverRoad = (r) => { pose = r; };
+    t("🩸 itinéraire reçu invalide (un seul point) → false, rien de posé", K3.appliquerItineraire({ points: [[0, 0], ["x", 1]] }) === false && pose === null);
+    t("itinéraire reçu valide → posé (points + niveau, départ en tête des étapes)",
+      K3.appliquerItineraire({ points: [[0, 0, -1], [5, 5, -1]], etapes: [[5, 5, false]] }) === true &&
+      pose && pose.type === "itinerary" && pose.points[0].level === -1 && pose.waypoints.length === 2);
+    t("bouton 🧭 de la fenêtre Itinéraire : seulement si une extension a la prise « itineraire »",
+      /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
   }
 
   // ═════════ 6 ter. CHANGEMENTS REÇUS (synchro entrante) ═════════
@@ -385,7 +505,35 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("plans d'extension : ouverts via la prise, gardés selon le réglage (copie existante toujours à jour), type conservé",
       /if \(plan\.type === "ext"\) \{/.test(HL) &&
       /typeRegistre: "ext", zipFile: fichier,\s*storeBlob: !!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)/.test(HL) &&
-      /type: meta\.typeRegistre === "ext" \? "ext" : "local"/.test(MAIN));
+      /const _estExt = meta\.typeRegistre === "ext";/.test(MAIN) && /type: _estExt \? "ext" : "local"/.test(MAIN));
+    t("plans d'extension : à l'ouverture, nom et version de l'installation gardés (pas ceux du ZIP)",
+      /name: \(_existant && _existant\.name\) \? _existant\.name : planName/.test(MAIN));
+    {
+      const EXT = lire("js/ktaExtensions.js");
+      t("multi-comptes : seules les familles touchées sont réécrites, dessin en cours repris par uid",
+        /if \(touches\.roads && window\.setRoads\)/.test(EXT) && /reprendre\("setCurrentRoadByIndex"/.test(EXT));
+      t("🩸 multi-comptes : l'historique d'annulation repart de zéro après une réception", /window\.HistoryManager\.reset\(\)/.test(EXT));
+      t("lecture seule : prise lectureSeule, erreur = lecture seule, plan local jamais",
+        /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
+      t("export : le goulot ktaExportPlanRefuse garde l'export de session et l'export image",
+        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")));
+      const MAINT = lire("js/interfaceMaintenance.js");
+      t("🩸 Tout réinitialiser : la session d'une installation est fermée AVANT l'effacement (prise bornée à 3 s)",
+        MAINT.indexOf("avantReinitialisation()") > 0 && MAINT.indexOf("avantReinitialisation()") < MAINT.indexOf("localStorage.clear()") &&
+        /r\(false\); \}, 3000\)/.test(EXT));
+      t("Tout réinitialiser hors ligne : seule la marque « déconnexion en attente » survit à l'effacement",
+        MAINT.indexOf("CLE_DECONNEXION_EN_ATTENTE") > MAINT.indexOf("localStorage.clear()"));
+      t("session effacée / restaurée : événement mktm:session-cleared",
+        /mktm:session-cleared/.test(lire("js/sessionPersist.js")) && /mktm:session-cleared/.test(lire("js/sessionBackups.js")));
+    }
+    {
+      const SEC = lire("js/secoursMode.js");
+      const del = SEC.slice(SEC.indexOf("function deleteScenario("), SEC.indexOf("function deleteScenario(") + 1200);
+      t("Mode Secours : une suppression voulue émet mktm:secours-scenario-deleted (persistance d'une installation)",
+        /mktm:secours-scenario-deleted/.test(del));
+      const fifo = SEC.slice(SEC.indexOf("function _saveScenarios("), SEC.indexOf("function _saveScenarios(") + 1500);
+      t("🩸 Mode Secours : la purge FIFO (limite locale) n'émet PAS de suppression", !/secours-scenario-deleted/.test(fifo));
+    }
     t("Générateur : « Publier » seulement si une extension sait publier", /window\.KtaExtensions\.aPrise\("publierPlan"\)/.test(GEN));
     t("🩸 Service Worker : une requête d'extension (X-Kta-Ext) ou authentifiée (Authorization) n'est jamais interceptée ni cachée",
       /if \(h && \(h\.get\("X-Kta-Ext"\) \|\| h\.get\("Authorization"\)\)\) return;/.test(SW) &&

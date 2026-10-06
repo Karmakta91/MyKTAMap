@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab).
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁 Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h.
 
 ---
 
@@ -738,7 +738,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 **One specific object**: its popup has a **🗑️ Delete** button; for a point, it is **🗑️ Delete this point**. No confirmation window: everything can be undone with ⏪ (`Ctrl+Z`).
 
-**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups).
+**The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself.
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
@@ -972,6 +972,7 @@ All exports are in the **⬆️ Save** group of the sidebar. Before sharing an i
 
 - **🚀 Full** — the whole session in one file, to import again later: points, paths, zones, structures, measurements and tracker data (position, trail, timeline: replay works after re-import). `.json`, or `.zip` if you tick the photos. The **🛡️ Anonymize for public sharing** option replaces names with codes and removes the tracker data.
 - **🎨 Advanced** — you choose: points (by icon, including “no tag”), paths, zones and structures (by type), measurements, tracker (a counter shows what it holds). Output as a **📄 Single session file** that can be re-imported, or a **📦 Multi-file ZIP** (one per category).
+- **🔎 Keep only** (at the top of 🚀 Full and 🎨 Advanced) — limits points, paths, zones and structures to a **period** (date of their last change) and, on a connected installation, to their author (**Created by**); a counter shows how many go out. Tracking, measurements and notes are exported as they are.
 - **🔄 Conversion** — turns your session into a **data layer** to integrate into a map (see “🏗️ Create or modify a map”). Same choice by category and by icon; **Basic** granularity (one file per category) or **Fine** (one file per type). The tracker is never converted: a drift frozen into a map would mislead its future users. Once converted, this data can no longer be edited from the app.
 - **🔗 Merge** — combines several data layers (`.json` or `.zip`, from several sessions) into a single set per category. A preview gives the totals and flags duplicate point identifiers (kept as they are). Also available with no map open: **📊 Data editor → 🔗 Merge data layers**.
 - **📡 External export** — KMZ or GPX, see below.
@@ -1337,6 +1338,8 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 >
 > **Prerequisites**: the **same map** on every phone, available **offline** — there is no network underground.
 >
+> **Connected installation**: teams are linked to **accounts** (leader ★), the operation is **triggered** (alert on every phone, “Join my post”) and the board is shared step by step — what is ticked underground is sent when the network returns. Phone and radio remain the official channel.
+>
 > **Prepare it in advance**: set up one or two scenarios on your usual maps before any incident. On the day, the app has to be ready in 30 seconds.
 
 To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚨 Rescue mode — Search plans (teams + zones)**.
@@ -1369,7 +1372,7 @@ A scenario is edited in three blocks: **📝 Incident context**, **🚨 Teams**,
 **➕ Add a team**, then on its card:
 
 - **Name** (leave empty: Alpha, Bravo, Charlie…) and **🎨 Colour**, from 10 fixed colours;
-- **👥 Members** (separated by commas), **👤 Leader**, **Headcount** — the headcount is what lets you count who is back at the return;
+- **👥 Members** (separated by commas), **👤 Leader**, **Headcount** — the headcount is what lets you count who is back at the return. Left empty, it equals the number of named members (or, on a connected installation, of linked accounts if there are more); the line below says where the figure comes from and warns if your entry is lower. Enter it when people go down without an account or a name;
 - **Mandatory return**: a time set by the leader (light autonomy, shift change); it takes precedence over the estimated duration for late alerts;
 - reference **Level** on a multi-level map (or "No level" if the team changes floors);
 - **📍 Surface GPS** (optional, see § 4).
@@ -1397,7 +1400,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 #### 📤 2. Handing over before going down
 
-- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario**. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
+- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
 - **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone, steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
@@ -1452,7 +1455,7 @@ The 🚑 **free rescuer** has neither route nor steps: they add notes, each with
 
 A step set to **Casualty found** gives a position: the step's position, level included. **📍 Refine on the map** adjusts it. A **red ✚** marks it on the map, for everyone; the operator sees it in a banner at the top of their view, and the report prints it first.
 
-**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed).
+**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water and rubble ticked by default) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
 
 #### 🚒 4. External rescue services
 

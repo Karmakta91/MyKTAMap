@@ -196,7 +196,7 @@ for (const lang of ["fr", "en", "es"]) {
     "export.full.tracker", "config.confirm.reset", "config.georef.confirmClear", "config.journal.label", "config.journal.hint",
     "gen.confirm.abandon", "maint.reset_item_photos", "maint.reset_item_journal", "maint.reset_item_backups",
     "maint.reset_item_profile", "maint.reset_item_secours", "maint.btn_export_profile_first", "pin.err.lockoutTemp",
-    "pin.lockout.attente", "pin.lockout.escalade", "gate.lockout.attente", "gate.lockout.escalade"]
+    "pin.lockout.attente", "pin.lockout.escalade", "gate.lockout.attente"]
     .filter(k => typeof dico[k] !== "string");
   verif(manquantes.length === 0, "🌍 " + lang + " : clés du lot présentes" + (manquantes.length ? " — manquantes : " + manquantes.join(", ") : ""));
 }

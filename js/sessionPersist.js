@@ -487,6 +487,9 @@
       } catch(e) { console.warn("[SessionPersist] liberation des calques :", e); }
     }
     _lastHash = null;
+    // Une installation reliée en déduit qu'il faut tout relire (sinon les objets des
+    // autres ne revenaient jamais). No-op sans écouteur.
+    try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: _currentPlanId || null } })); } catch(e) {}
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
     // l'user clique "🗑️ Effacer la session" dans la modale de feedback
     // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait
@@ -773,7 +776,18 @@
     // 🆔 v2.2.0 — « Effacer la session » est une remise à zéro locale : les
     // traces de suppression partent aussi (décision KARMA Q1, 04/10/2026).
     if (window.KtaUid) window.KtaUid.setTombstones([]);
-    if (window.setEditorPoints)  window.setEditorPoints([]);
+    // 🌀 Un point de session qui porte une LIAISON INTER-PLAN (portail) est gardé :
+    // la liaison vit dans son propre registre, l'effacer laissait une liaison
+    // orpheline et invisible (retour KARMA 05/10/2026). Pour le retirer : supprimer
+    // le point (sa liaison part avec lui, InterPlanLinks.onPointDeleted).
+    let portails = [];
+    const IPL = window.InterPlanLinks;
+    if (IPL && typeof IPL.getLinksForPoint === "function" && typeof window.getEditorPoints === "function") {
+      portails = (window.getEditorPoints() || []).filter(function(p) {
+        try { return IPL.getLinksForPoint(_currentPlanId, p).length > 0; } catch(e) { return false; }
+      });
+    }
+    if (window.setEditorPoints)  window.setEditorPoints(portails);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
     // 🆕 v1.9.3-A1.a : structures purgées aussi lors d'un vidage
@@ -795,6 +809,7 @@
     if (typeof window.resetTrackingPosition === "function") {
       try { window.resetTrackingPosition(); } catch(e) {}
     }
+    return portails.length;
   }
 
   // ========== MODALE DE FEEDBACK ==========
@@ -875,11 +890,12 @@
               .catch(function() { return null; })
           : Promise.resolve(null);
         snap.then(function(entry) {
-          _viderEtatCourant();
+          const gardes = _viderEtatCourant();
           clear({ snapshotFait: true });
           fermer();
           if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared"), "info");
+            window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared") +
+              (gardes ? " " + _trModule("session.toast.portailsGardes", { n: gardes }) : ""), "info");
           }
         });
       };

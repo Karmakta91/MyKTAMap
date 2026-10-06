@@ -379,6 +379,8 @@ window.SessionBackups = (function() {
           "myktamap_session_v1_" + targetPlanId,
           JSON.stringify(entry.payload)
         );
+        // Session remplacée par une ancienne : une installation reliée relira tout (no-op sinon).
+        try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: targetPlanId, restauration: true } })); } catch(e) {}
         // 🆕 v1.16.1 : force PlanRegistry.lastPlanId pour que l'app
         // rouvre le bon plan au reload. Si le backup vient du plan
         // actuellement chargé → no-op (déjà à la bonne valeur).
@@ -402,13 +404,6 @@ window.SessionBackups = (function() {
     _timerId = setInterval(function() {
       snapshot("auto-periodic");
     }, PERIODIC_MS);
-  }
-
-  function _stopTimer() {
-    if (_timerId) {
-      clearInterval(_timerId);
-      _timerId = null;
-    }
   }
 
   // ─────────────────────────────────────────────

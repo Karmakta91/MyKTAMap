@@ -3699,7 +3699,6 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const dlFile  = _getFile(lid + "_file", dlId + ".json");
 
       if (!dlId) { _plannerErreur(window.I18n.t("gen.gen.idManquantData")); throw new Error("abort"); }
@@ -4159,16 +4158,34 @@ async function _genererZip() {
     // Créateur peut envoyer le plan généré au serveur de l'instance (brouillon
     // local → « Publier »). Sans extension : rien ne change.
     if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
+      // Audit UI du 05/10/2026 : nom échappé (ktaConfirm rend du HTML), avancement visible pendant
+      // l'envoi (un gros plan prend des minutes), fin annoncée par un toast plutôt qu'un alert().
+      const dire = function(m, ty) {
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(m, ty || "info");
+      };
+      let minuteur = null;
       try {
-        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: name }),
+        const publier = await window.ktaConfirm(window.I18n.t("ext.publier.question", { nom: window.ktaEsc(name) }),
                                                 { okLabel: window.I18n.t("ext.publier.ok") });
         if (publier) {
+          const mo = (blob.size / 1048576).toFixed(blob.size < 10485760 ? 1 : 0);
+          const t0 = Date.now();
+          const tic = function() {
+            const sec = Math.round((Date.now() - t0) / 1000);
+            btnGen.disabled = true;
+            btnGen.textContent = "☁️ " + window.I18n.t("home.plans.info.publishEnCours",
+              { mo: mo, duree: Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") });
+          };
+          tic();
+          minuteur = setInterval(tic, 1000);
           await window.KtaExtensions.publierPlan({ blob: blob, nom: name });
-          alert(window.I18n.t("ext.publier.fait"));
+          dire(window.I18n.t("ext.publier.fait"), "info");
         }
       } catch (e) {
         console.warn("[Planner] publication :", e);
-        alert(window.I18n.t("ext.publier.echec"));
+        dire(window.I18n.t("ext.publier.echec"), "warn");
+      } finally {
+        if (minuteur) clearInterval(minuteur);
       }
     }
 

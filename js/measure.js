@@ -357,48 +357,11 @@ function afficherDistance(d) {
   _afficherMesureValeur();
 }
 
-function telechargerMesureJSON() {
-  if (_pointsDistance.length === 0 && _pointsSurface.length === 0) {
-    alert(window.I18n.t("measure.alert.noMeasure"));
-    return;
-  }
-
-  // 🆕 v1.12.0-fix : export inclut les 2 mesures (si elles existent) dans
-  // un seul fichier. Format étendu rétro-compat (l'ancien `points` est
-  // gardé pour les anciens consommateurs, pointant sur la mesure du mode
-  // actif). Les 2 listes complètes sont dans `distance` et `surface`.
-  const activeArr = (_activeMode === "surface") ? _pointsSurface : _pointsDistance;
-  const data = {
-    type: "mesure",
-    mode: _activeMode,
-    points: activeArr.map(function(p) { return { x: Math.round(p.x), y: Math.round(p.y) }; }),
-    distance: {
-      points: _pointsDistance.map(function(p) { return { x: Math.round(p.x), y: Math.round(p.y) }; }),
-      distance_m: Number(calculDistance().toFixed(2))
-    },
-    surface: {
-      points: _pointsSurface.map(function(p) { return { x: Math.round(p.x), y: Math.round(p.y) }; }),
-      surface_m2: Number(calculSurface().toFixed(2))
-    },
-    date_export: new Date().toISOString().split("T")[0]
-  };
-
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "mesure_trace.json";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // EXPORT GLOBAL
 window.initMeasure              = initMeasure;
 window.resetMesure              = resetMesure;
 window.resetMesureMode          = resetMesureMode;   // 🆕 v1.12.0-fix
 window.removeLastMeasurePoint   = removeLastMeasurePoint;
-window.telechargerMesureJSON    = telechargerMesureJSON;
 
 // 🆕 v1.12.0-fix : 2 mesures coexistantes. L'API legacy continue de
 // fonctionner pour la rétrocompat SessionPersist :

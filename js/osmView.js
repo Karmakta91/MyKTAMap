@@ -391,7 +391,6 @@
     const g = _getEffectiveGeoref();
     if (!g) return null;
     if (typeof window.KmzExport !== "object" || typeof window.KmzExport.buildTransform !== "function") return null;
-    const pA = g.pointA, pB = g.pointB;
     let t;
     try {
       t = window.KmzExport.buildTransformCalib(g);   // 📐 v1.73.0 : pointC optionnel propagé (affine)

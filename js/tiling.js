@@ -43,20 +43,7 @@ const PERF_PRESETS = {
   }
 };
 
-// Métadonnées du mode "auto" — pas de params propres, utilise Équilibré quand il tile
-const PERF_AUTO_META = {
-  label:        "Auto",
-  emoji:        "🔄",
-  description:  "Découpe automatiquement les plans trop grands pour être affichés d’un bloc."
-};
-
-// Métadonnées du mode "off" — rendu direct via L.imageOverlay, pas de tiling du tout
-// ⚠️ Risque de crash sur Safari iOS pour images > 8192 px (drawImage qui échoue)
-const PERF_OFF_META = {
-  label:        "Désactivé",
-  emoji:        "💤",
-  description:  "Aucun découpage : image entière. Sans effet sur un plan déjà tuilé."
-};
+// Mode "off" (rendu direct via L.imageOverlay) : ⚠️ risque de crash sur Safari iOS pour images > 8192 px.
 
 // =========================
 // RÉSOLUTION DU PRESET
@@ -1098,8 +1085,6 @@ window.libererTuiles            = libererTuiles;
 window.tuilingNecessaire        = tuilingNecessaire;
 window.resoudrePerfPreset       = resoudrePerfPreset;
 window.PERF_PRESETS             = PERF_PRESETS;
-window.PERF_AUTO_META           = PERF_AUTO_META;
-window.PERF_OFF_META            = PERF_OFF_META;
 window.PERF_AUTO_TILE_THRESHOLD = PERF_AUTO_TILE_THRESHOLD;
 
 // Conservé pour rétro-compat (alias de PERF_AUTO_TILE_THRESHOLD)

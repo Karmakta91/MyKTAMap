@@ -212,11 +212,6 @@ function creerIcones(iconConfig) {
     return _mkIcon(iconConfig.default, 50, 50, 25, 25);
   }
 
-  // Helper rétro-compat (gardé pour le code interne — utilise _mkIcon désormais)
-  const mk = function(url, w, h, ax, ay) {
-    return _mkIcon(url, w, h, ax, ay);
-  };
-
   iconeDefault = makeDefaultIcon();
   // 🧭 v158/v159 : divIcon au lieu de L.icon pour permettre la rotation sans
   // casser le positionnement. Leaflet applique transform: translate3d(...) sur

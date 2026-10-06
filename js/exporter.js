@@ -131,6 +131,7 @@
   // ENTRÉE PUBLIQUE
   // =========================
   window.ouvrirExportModal = function() {
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
     if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();
@@ -588,12 +589,6 @@
     return infos;
   }
 
-  // Compatibilité : ancienne fonction _chargerTagsCalque qui ne retournait que les tags
-  async function _chargerTagsCalque(layerCfg) {
-    const infos = await _chargerInfosCalque(layerCfg);
-    return infos.tags;
-  }
-
   // Récupère le chemin de l'icône pour un tag, avec cascade :
   //   1. PLAN_CONFIG.icons[tag]  2. _iconMap[tag] (built-in fallback)
   function _iconePourTag(tag) {
@@ -610,12 +605,6 @@
     return String(s).replace(/[&<>"']/g, function(c) {
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
-  }
-
-  // Affiche les sous-cases tags pour un calque + branche la synchro parent/enfants
-  function _renderTagsCalque(layerCfg, tagsList) {
-    // Wrapper de compatibilité — appelle la nouvelle version sans roads/zones
-    _renderInfosCalque(layerCfg, { tags: tagsList || [], roadTypes: {}, zoneTypes: {} });
   }
 
   // Affiche les sous-cases (tags + types roads + types zones) pour un calque + branche les synchros

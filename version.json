@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.0",
-  "released": "2026-10-05",
+  "version": "v2.9.8",
+  "released": "2026-10-06",
   "notes": [
-    "💾 Un plan chargé sans être mémorisé peut l'être après coup : touche le 💾 de sa ligne dans « Mes plans ». La case « plans serveur » s'appelle désormais « plans du site ».",
-    "🧩 Sur les installations reliées à une base de données : publier un plan déjà chargé, garder un plan ☁️ hors ligne depuis sa ligne, partager sa position sur un plan. Rien ne change sur myktamap.fr."
+    "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. Nouveau : l'export de session peut ne garder qu'une période, et « Effacer la session » garde les portails. Mode Secours : options brancard pour évacuer une victime, et un scénario reçu s'ouvre directement depuis l'accueil.",
+    "👥 Sur les installations reliées : bouton « Équipe », itinéraire montré à l'équipe, positions sur le plan visibles du groupe, et Mode Secours relié aux comptes (intervention déclenchée, alerte, tableau partagé entre appareils, effectif d'équipe calculé depuis les comptes reliés)."
   ]
 }

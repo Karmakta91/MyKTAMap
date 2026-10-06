@@ -842,7 +842,7 @@
           // Géométrie : résumé non éditable « N points »
           contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
         } else if (Array.isArray(v)) {
-          contenu = v.join(", ");
+          contenu = _escapeHtml(v.join(", "));
         } else if (v === undefined || v === null) {
           contenu = '<span style="opacity:0.4;">—</span>';
         } else {
@@ -1484,6 +1484,7 @@
 
   // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
     if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();

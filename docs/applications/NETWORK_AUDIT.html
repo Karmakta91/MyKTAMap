@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.9.0</strong> (5 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v2.9.8</strong> (6 octobre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -1045,8 +1045,8 @@
     <li>Onglet <strong>Headers</strong> → cherche <code>Content-Security-Policy</code></li>
   </ol>
 
-  <p>La directive clé est <code>connect-src 'self' blob:;</code> —
-  le navigateur n'acceptera pas d'envoyer des données ailleurs.</p>
+  <p>La directive clé est <code>connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org</code> —
+  le navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la Vue OSM, rien ne lui est envoyé).</p>
 
   <h2>🧰 Stockage local — où vivent tes données</h2>
 
@@ -1135,6 +1135,22 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v2.9.8 (Mode Secours sur le terrain)</h3>
+  <p><strong>Aucune requête nouvelle, aucun domaine nouveau.</strong> Les options brancard et l’ouverture d’un scénario depuis l’accueil se calculent sur l’appareil, avec le plan déjà présent. La fenêtre « Que fait l’app sur le réseau ? » liste désormais aussi OpenStreetMap (fond de la Vue OSM, déjà autorisé), et la directive <code>connect-src</code> est citée telle qu’elle est servie.</p>
+  <h3>v2.9.7 (effectif d’équipe automatique)</h3>
+  <p><strong>Aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, l’effectif se calcule à partir des comptes déjà connus de l’appareil : rien n’est demandé de plus au serveur.</p>
+  <h3>v2.9.6 (Secours relié aux comptes)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur : pendant une intervention Secours déclenchée, les étapes cochées, départs et rentrées, accusés « vu » et <strong>photos d’étape</strong> sont envoyés à l’installation (gardés hors réseau, envoyés au retour) ; une position sur le plan partagée n’est remise qu’aux membres d’un groupe commun.</p>
+  <h3>v2.9.5 (Secours à plusieurs appareils, export filtré)</h3>
+  <p><strong>Aucune requête nouvelle, aucun domaine nouveau</strong>, ni sur <code>myktamap.fr</code> ni sur une installation reliée. Le filtre d’export travaille sur l’appareil. Sur une installation reliée, le partage en direct du Mode Secours (déjà existant) n’est plus relayé que pour les comptes qui ont le droit de modifier le plan.</p>
+  <h3>v2.9.4 (correctif de sécurité, lecture seule)</h3>
+  <p><strong>Aucune requête nouvelle, aucun domaine nouveau</strong>, ni sur <code>myktamap.fr</code> ni sur une installation reliée. Le contenu d’un plan ou d’une session partagés est désormais filtré à l’ouverture (adresses d’icônes, couleurs, libellés) : rien de ce qu’il contient ne peut s’exécuter dans l’app.</p>
+  <h3>v2.9.3 (itinéraire montré à l’équipe)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur, <strong>si tu le choisis</strong> (bouton 🧭 de la fenêtre Itinéraire) : ton itinéraire (le tracé et ses étapes, sur le plan) est envoyé et montré à ceux qui peuvent ouvrir ce plan, mis à jour à chaque étape, retiré quand tu l’effaces et au plus tard après 24 h.</p>
+  <h3>v2.9.2 (panneau Équipe, activité)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur : l’app demande qui a quel plan ouvert (l’« activité » : pseudo, plan, « en édition »), visible de ceux qui peuvent ouvrir ce plan. Ta position sur le plan (pas le GPS) reste partagée seulement si tu le choisis.</p>
+  <h3>v2.9.1 (portails gardés, plusieurs comptes sur un plan)</h3>
+  <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Sur une installation reliée, et seulement vers <strong>son</strong> serveur (même site) : les modules déclarés par l’installation sont aussi gardés dans un cache durable du navigateur (téléchargés à la lecture de sa configuration, pour le hors ligne) ; « Tout réinitialiser » prévient d’abord le serveur pour fermer la session.</p>
   <h3>v2.9.0 (installations reliées : publier, garder hors ligne, présence)</h3>
   <p><strong>Sur <code>myktamap.fr</code> : aucune requête nouvelle, aucun domaine nouveau.</strong> Mémoriser après coup un plan local relit le ZIP que tu choisis <strong>sur ton appareil</strong>. Sur une installation reliée à une base de données, et seulement vers <strong>son</strong> serveur (même site) : un plan local peut y être <strong>publié</strong> (son ZIP est envoyé, à ta demande) ; un plan ☁️ peut être gardé sur l’appareil depuis sa ligne ; <strong>partager ta position</strong> sur un plan est une <strong>case à cocher</strong> (rien ne part sans elle) ; la pastille peut mener à la page de transparence de l’installation (même site). Hors ligne, la licence de l’appareil n’est plus effacée : le Service Worker répond lui-même « hors ligne », sans requête.</p>
   <h3>v2.8.0 (licences signées, installations reliées)</h3>

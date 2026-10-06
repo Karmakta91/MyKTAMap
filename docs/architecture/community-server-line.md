@@ -56,7 +56,7 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.9.0)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.9.8)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
@@ -179,6 +179,30 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
   2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+- **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
+  fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
+  navigation). L'app ne fournit que `itineraireActuel()` — `{ points: [[x, y, niveau]], etapes: [[x, y, faite]] }`
+  (étapes sans l'origine tracker), ou `null` sans itinéraire actif — et `afficherItineraires(liste)`
+  (`js/ktaPresences.js` : calque distinct, pointillés jaunes atténués hors niveau, étapes ○ / ✓, étiquette
+  « 🧭 pseudo » à l'arrivée, rien de cliquable ; 200 itinéraires, 5000 points, 100 étapes max). Actions neutres
+  pour un panneau : `KtaPresences.cadrerItineraire(id)`, `masquerItineraire(id, bool)`. `itinerairePublie()` /
+  `basculerItineraire()` : une erreur de l'extension = non publié. Sans extension : pas de bouton, rien n'est lu.
+  `appliquerItineraire({ points, etapes })` : un itinéraire **reçu** (ex. attribué par un chef d'équipe, accepté par
+  l'utilisateur côté extension) devient l'itinéraire actif (`itineraireActiverRoad`, départ en tête des étapes) ;
+  entrées non conformes écartées, sans carte : `false`.
+- **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
+  « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+- **Sortie du plan affiché** : `KtaExtensions.quitterPlan(vers)`, appelée par `main.js` au changement de plan
+  (`"plan"`) et au retour à l'accueil (`"accueil"`) — ferme le panneau d'extension, remet à zéro
+  `KtaPresences` (présences, itinéraires, suivi, masquages) et émet **`mktm:plan-ferme`** `{ vers }` pour que
+  l'extension oublie l'ancien plan sans attendre. Au changement de niveau affiché, `KtaPresences.redessiner()`
+  recalcule l'atténuation « hors niveau ».
+- **Lecture seule** (`lectureSeule`) : gardée au bouton ✏️ (`interface.js`), au clic carte de l'éditeur, aux tracés /
+  zones / structures, à la fiche d'un objet (mode lecture), à `KtaConvertir` (convertir, supprimer, lot) et au
+  remplacement de session du Tableur. `check-extensions` §6 bis ter vérifie chaque câblage.
+- **Mode d'un plan ☁️** : `plans.lister()` peut donner `tiledV2` / `multiLevel` (booléens, lus dans le ZIP par
+  l'extension) — inscrits au registre seulement s'ils valent `true`, comme les plans du site : badge V2 / M-LVL
+  juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).
 - **Rangement et hors ligne d'un plan ☁️** (v2.9.0) : `plans.ranger(idExt, dossierExt | null) → Promise<bool>` diffuse le
   rangement fait à l'accueil (refus = le rangement reste local) ; `plans.horsLigne: { etat(idExt) → "garde"|"perime"|"absent",
   garder(idExt) → Promise<bool> }` alimente le bouton de la ligne (💾 garder / ⬇️ nouvelle version / ✅ gardé, sans action).
@@ -188,8 +212,51 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Plusieurs comptes sur un plan** (05/10/2026, audit multi-utilisateur) — sans extension, rien ne change :
+  - `appliquerChangements` ne réécrit que les familles touchées (sinon fiche fermée, dessin coupé) ; le tracé /
+    la zone / la structure **en cours** est repris par son uid ; l'historique d'annulation **repart de zéro**
+    après une réception (⏪ remet une photo complète d'une famille : il effaçait chez tous les ajouts des autres).
+  - `recuADistance(uid)` : la fiche d'édition d'un point demande « garder ma version ? » si le point a été
+    modifié ou supprimé par la synchro pendant l'édition (avant : modification écrasée sans le savoir).
+  - Prise `lectureSeule(idExt) → bool` (droit « lire ») : goulot `window.ktaEditionRefusee()` — ni ✏️ ni 🗑️
+    dans la fiche, outils de dessin et suppression au clic refusés (message). Erreur de la prise = lecture seule.
+  - Goulot `window.ktaExportPlanRefuse()` (plan affiché seulement) : `exportAutorise` vaut désormais pour
+    l'export de session (JSON, ZIP, KMZ, GPX) et l'export image/PDF, plus seulement l'export de profil.
+  - Prise `avantReinitialisation() → Promise<bool>` : « Tout réinitialiser » l'attend (3 s max) AVANT d'effacer —
+    l'extension y ferme sa session (cookie HttpOnly : la page ne peut pas l'effacer, l'appli se reconnectait
+    seule). `false` (hors ligne) → après l'effacement, seule la marque `KtaExtensions.CLE_DECONNEXION_EN_ATTENTE`
+    est posée ; l'extension la honore au démarrage (aucune reconnexion seule, session fermée au retour du réseau).
+  - Événement `mktm:session-cleared` (`{ planId, restauration? }`) : « Effacer la session » et la restauration
+    d'une sauvegarde — l'extension relit alors tout le plan (sinon les objets des autres ne revenaient jamais).
+- **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
+  d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
+  FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,
+  { mode: "remplacer", garderExecution: true })` — même identifiant = remplacé, mais l'**intervention en cours ici est
+  fusionnée, jamais effacée** : par étape, la modification la plus récente (`majAt`) gagne, sinon la plus grave ; main
+  courante et notes libres unies ; rôle et équipe suivie restent ceux de l'appareil ; sans exécution ici, rien n'est créé
+  (`check-secours-relais.js`). Sans `garderExecution`, « remplacer » efface l'exécution (import de fichier, annoncé par l'aperçu).
+- **Mode Secours relié aux comptes** (étude Secours, étapes 1-3) : `secoursActions(ctx)` → boutons posés dans le
+  Mode Secours (en-tête du scénario, carte d'une équipe, vue Live ; `ctx = { scenarioId, vue, equipeId?, role? }`),
+  `secoursInfoEquipe(scenarioId, equipeId)` → texte sur la carte d'équipe, `secoursPeutAvancer(scenarioId, equipeId,
+  quoi)` (etape / depart / rentree / rappel ; sans prise : oui, prise en erreur : **non**, refus dit par un toast).
+  `secoursNbComptesEquipe(scenarioId, equipeId)` → nombre de comptes reliés (sans prise ou en erreur : 0) : l'effectif
+  d'une équipe = saisi, sinon le plus grand de « membres nommés » et « comptes reliés » ; saisie plus basse = alerte.
+  `afficherAlerteSecours({ id, titre, texte, actions, sonner? })` / `retirerAlerteSecours(id)` : bandeau rouge
+  persistant (son + vibration). Sortants : `mktm:secours-etape-changee` / `mktm:secours-suivi-change` ; entrants :
+  `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` (la plus récente gagne, jamais ré-émis) ;
+  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb).
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+- **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
+  ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
+  `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :
+  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule).
+  Sans extension : ni bouton ni fenêtre.
+- **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
+  plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un
+  changement par `mktm:plans-badges-changes` (liste redessinée, sans relecture).
+- **Info sur la fiche d'un objet** : `infoObjet(uid) → string` (synchrone, 120 car., rendue en texte) — ex. « Créé par X ·
+  modifié par Y ». L'app n'écrit jamais d'auteur elle-même : les objets restent anonymes dans la session et les exports.
 - **Compte connecté** (v2.7.4) : la prise `compte()` d'une extension dit qui est connecté ; la carte profil
   de l'accueil affiche son `pseudo` et son `libelle` (rôle) à la place du surnom et du rang, et la modale
   verrouille le pseudo. **Rien n'est écrit dans le profil local** : surnom et photo de l'appareil reviennent

@@ -429,9 +429,13 @@ Refactor `TEMPS_PAUSE_PAR_POINT_MIN` (hardcoded 15 min interface.js) en localSto
 
 Helpers `_getItiPauseEnabled / _setItiPauseEnabled / _getItiPauseMinutes / _setItiPauseMinutes` exposés globalement via `window.getItiPauseEnabled / window.getItiPauseMinutes / window.getItiTempsMinutes`.
 
-`_tempsItineraireMinutes` lit dynamiquement. Section "🛑 Pause entre les arrêts" dans modale Itinéraire avec checkbox + input + hint "S'applique aussi au Mode Secours 🚨".
+`_tempsItineraireMinutes` lit dynamiquement. Section "🛑 Pause entre les arrêts" dans la modale Itinéraire.
 
-`secoursMode.js > _recalculerItineraireGroupe` + `_recalculerItineraireGroupeAsync` utilisent `window.getItiTempsMinutes(distM, nbWp)` au lieu de fallback historique `distM / 0.5 / 60`.
+⚠️ **État actuel : le Mode Secours ne lit PAS ces réglages.** Ses durées ont leur propre modèle (audit Secours 4.1,
+décision KARMA du 29/09/2026), qui voyage dans le `.mkmsec` : `secoursMode.js > _reglagesDuree(s)` (vitesse de fouille
+1,5 km/h, vitesse d'approche 3 km/h, pause par étape 0 min, marge de retard 30 min — modifiables par scénario) et
+`_dureeEquipeMin(s, distM, nbWaypoints, geo)` (approche hors de la zone à la vitesse de marche, fouille dans la zone,
+raccords à vol d'oiseau comptés).
 
 #### 66.8 Bonus — Fix georef format mismatch
 
@@ -453,7 +457,7 @@ Le Folder Secours d'origine listait tous les Placemarks à plat dans le folder �
 
 #### 66.11 Bonus — Auto-calc itinéraires avant export KMZ
 
-Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Promise-based qui réutilise `window.getItiTempsMinutes` + résout silencieusement `true`/`false`.
+Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Promise-based (durée par `_dureeEquipeMin`), résout silencieusement `true`/`false`.
 
 À l'entrée de `exporterKMZ` : `Promise.allSettled(groupesACalc.map(_recalculerItineraireGroupeAsync))` avant `await fetch image plan` puis `KmzExport.genererKmz`. Toast cascade `⏳ Calcul auto de N itinéraires → ⏳ Génération KMZ → ✓ KMZ exporté`.
 
@@ -499,7 +503,7 @@ ID du modal target stable depuis la création — vérifier dans le module conce
 
 - ❌ Réintroduire format NESTÉ `calib.pointA.plan` / `calib.pointA.gps` — il faut **flat** `calib.pointA.x` / `calib.pointA.lat` (cf §66.8)
 - ❌ Mute `LostMode.getState()` retour — c'est un snapshot défensif, l'appelant ne doit pas écrire dedans
-- ❌ Hardcoder TEMPS_PAUSE_PAR_POINT_MIN à 15 ailleurs — utiliser `window.getItiPauseMinutes` ou `window.getItiTempsMinutes`
+- ❌ Hardcoder une durée de pause ou une vitesse : itinéraire → `window.getItiPauseMinutes` / `getItiTempsMinutes` ; Secours → `_reglagesDuree(s)` / `_dureeEquipeMin`
 - ❌ Ajouter une feature G qui modifie `searchPoints.js > findByQuery` sans vérifier que les autres consumers (Pathfinder, modale itinéraire) restent fonctionnels — la recherche autocomplete intégrée dans picker waypoint suffit pour MVP
 
 #### 65.12 Roadmap phases suivantes (validées KARMA)
@@ -581,7 +585,15 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 > garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
 > choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
 > réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue **avec ses photos** (`deletePhotosForScenario`, relecture R8 : sinon elles revenaient dans le rapport suivant et comptaient dans le quota), l'aperçu le dit dès qu'une exécution existe, en cours ou terminée.
-> `importerScenario(input, {mode})` : sans `mode`, un existant part en **copie** (jamais d'écrasement implicite) ;
+> **Installation reliée (étude Secours, étapes 1-3)** : intervention déclenchée côté installation ; le Mode Secours
+> expose des prises neutres (boutons et infos d'extension, garde `secoursPeutAvancer` sur étape / départ / rentrée
+> comptée / rappel, événements `mktm:secours-etape-changee` et `-suivi-change`, `appliquerEtapeDistante`,
+> `appliquerSuiviDistant`, `rejoindre`) — contrat : `community-server-line.md` §3. Sans extension : aucun changement.
+>
+> `importerScenario(input, {mode, garderExecution})` : sans `mode`, un existant part en **copie** (jamais d'écrasement
+> implicite) ; `garderExecution` (relais en direct d'une installation reliée) **fusionne** l'exécution au lieu de l'effacer
+> (`_fusionnerExecutionDirect` : étape la plus récente par `majAt` — posé par `updateEtape` —, sinon la plus grave ; main
+> courante et notes libres unies ; rôle / équipe suivie propres à l'appareil ; photos gardées) ;
 > son `confirm()` de plan différent est passé à `ktaConfirm`. Test : harnais 2 appareils, 19 contrôles.
 
 **Fix Heatmap « ⚙️ Régler »** : bouton TOUJOURS visible tant que `window.MyKTAMapHeatmap` chargé (avant : condition fragile `_secoursHeatmapActive && isVisible()` faisait disparaître le bouton après cycles de rendu).
@@ -605,13 +617,15 @@ function _appliquerPayloadImport(payload) {    // injection seule
 
 **Modale preview `_afficherPreviewImport(payload, warning, sourceFilename, onDone)`** : affiche nom + fichier source + date export + version app + plan source + liste équipes (max 8 + « +N autres ») avec couleur OTAN + nb membres + niveau M-LVL + indicateurs zone/parcours. Bandeau orange détaillé si plan différent. Boutons ❌ Annuler / ✓ Importer. Backdrop click + Échap = annuler.
 
+**Fichier déposé à l'accueil** (`SecoursMode.ouvrirDepuisAccueil(texte, nomFichier)`, appelé par `homeLoader.js > _routerJson`) : tout `.json` de « 📦 Ajouter un plan » est sondé sur ses 4 premiers Ko (`"myktamap-secours-`, pas l'extension : les messageries renomment) ; le reste part à la conversion SIG. Scénario → plan retrouvé dans `PlanRegistry` (id, puis nom + version ; autre version seulement : `ktaConfirm` ; homonymes : choix) → `chargerPlanDuRegistre` ; l'attente `_accueilEnAttente` (id du plan, 10 min) est consommée par `init()` du plan **dont l'id correspond** (le nom du registre et celui de `PLAN_CONFIG` peuvent différer) : fin du splash + 800 ms, aperçu, import (ids d'origine), `_ouvrirLancement(sid, { role: "equipe" })`. Plan absent : message qui nomme plan et version, rien d'autre. Rapport / observations : message « à importer depuis le plan ouvert ». Pas de reprise après un arrêt brutal (choix du 06/10).
+
 **Mini-légende intégrée carte PDF** : helper `_drawTeamLegende(ctx, canvasW, canvasH, g, hexColor)` dessine bas-droite sur canvas 2D les éléments WYSIWYG présents pour CETTE équipe (zone polygon/roads, entrée, sortie/boucle, intermédiaires count, itinéraire). Box blanc semi-opaque + border, swatch 16×14px adapté au type. Rend le brief PDF auto-explicatif pour le secouriste terrain.
 
 #### 67.5 v1.23.6 — Pause configurable cross-feature accessible depuis Mode Secours
 
 Setters globaux exposés dans `interface.js` (en plus des getters depuis v1.23.0) : `window.setItiPauseEnabled(bool)` + `window.setItiPauseMinutes(number)` (clamp [0, 120]). Permet à Mode Secours (et tout module futur) de modifier les prefs sans dupliquer logique localStorage.
 
-**Bloc UI « 🛑 Pause entre les arrêts »** dans section 📝 Contexte vue Edit Mode Secours (après bloc heatmap) : checkbox + input number 0-120 min + hint « S'applique aussi à l'itinéraire principal ». Au change → persiste localStorage + **recalcule auto les durées de toutes les équipes du scénario** via `_recalculerToutesDureesEquipes(scenarioId)` qui itère équipes avec `distanceM > 0`, calcule nb waypoints effectif, appelle `window.getItiTempsMinutes(distM, nbWp)`. Toast unique résumé.
+**Bloc UI « 🛑 Pause entre les arrêts »** dans section 📝 Contexte vue Edit Mode Secours (après bloc heatmap) : checkbox + input number 0-120 min + hint « S'applique aussi à l'itinéraire principal ». Au change → **recalcule les durées de toutes les équipes du scénario** via `_recalculerToutesDureesEquipes(scenarioId)` (équipes avec `distanceM > 0`, durée par `_dureeEquipeMin` et les réglages du scénario). Toast unique résumé.
 
 **Cohérence cross-feature** : mêmes localStorage keys (`myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes`) entre modale Itinéraire et Mode Secours → si l'user change la pause depuis Mode Secours, l'itinéraire principal recalcule sa durée au prochain affichage.
 
@@ -1583,7 +1597,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 ## 👥 Vague 7a (v1.98.19, 30/09/2026) — main courante, chef / effectif / remontés, secouriste
 
 - **Main courante** : `s.execution.mainCourante[] = { at, cle, p, source? }` — clé i18n `secours.mc.*` + paramètres, traduits À L'AFFICHAGE (`_texteMc`) ; jamais de texte figé. Écriture : `_journaliser(s, cle, p, extra)` (sans commit, l'appelant commite). Plafond 2000 entrées. Fusion des rapports : clé `at|cle|p` pour dédoublonner ; notes du secouriste : `p.noteId`.
-- **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon nombre de membres). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
+- **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon le plus grand de « membres nommés » et « comptes reliés » — prise `secoursNbComptesEquipe`, 0 sans extension ; `_effectifDetail` rend aussi la source, affichée sous le champ, avec alerte `kta-tx-warn` si la saisie est plus basse). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
 - **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`.
 - **Secouriste** : `_parsePayloadReport` rend `{ ok, payload, secouriste: true }` → `_importerNotesSecouriste` (pas d'aperçu, pas de fusion d'étapes).
 
@@ -1604,7 +1618,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 
 ## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
 
-- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés.
+- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés. **Options brancard** d'abord (`_demanderOptionsBrancard`) : types de zones du plan (eau et remblais cochés d'office), case « lever les inaccessibles » décochée → `contraintes: { avoidZones, respecterInaccessibles }`, portées jusqu'au tracé et à ses recalculs (`road.evacuation`) — détail : `multilevel-pathfinding.md` (encadré inaccessibles).
 - **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf → « à ouvrir par la surface ».
 - **Engagés** : `_bilanEngages(s)` (équipes de la phase courante) → `{ engages, sousTerre, manquants, inconnus[] }`. `_demanderRemontes` : valeur jamais préremplie. `_chef(g)` : chef libre si pas de membres.
 - **Durées** : `reglagesDuree.vitesseApprocheKmh` (défaut 3). `_dureeEquipeMin(s, distM, nbWp, { g, path, raccords })` : part du trajet hors polygone à la vitesse d'approche, le reste + raccords (étape × 2) à la vitesse de fouille. `g.heureRetour` « HH:MM » → `_heureRetourMs` (prochaine occurrence après le départ) prime dans `_etatRetour` (`imperatif: true`).

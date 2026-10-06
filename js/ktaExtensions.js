@@ -320,9 +320,9 @@
       return false;
     }
     _extensions.push(ext);
-    if (ext.actionsObjet) _observerFiches();
+    if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -414,6 +414,31 @@
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
   function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
+  // Avant un effacement complet de l'appareil (« Tout réinitialiser ») : l'extension ferme sa
+  // session (le cookie de session est HttpOnly : le code de la page ne peut pas l'effacer, et
+  // sans ça l'appli se reconnectait seule au démarrage suivant). Attente bornée à 3 s ; rend
+  // true si c'est fait (ou sans extension), false sinon → l'appelant pose, APRÈS l'effacement,
+  // la marque CLE_DECONNEXION_EN_ATTENTE que l'extension honore au démarrage suivant.
+  const CLE_DECONNEXION_EN_ATTENTE = "myktamap_ext_deconnexion_en_attente";
+  function avantReinitialisation() {
+    const ext = _prise("avantReinitialisation");
+    if (!ext || typeof ext.avantReinitialisation !== "function") return Promise.resolve(true);
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.avantReinitialisation(); }).then(function (r) { return r === true; }, function () { return false; }),
+      new Promise(function (r) { delai = setTimeout(function () { r(false); }, 3000); })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+
+  // Lecture seule d'un plan d'extension (droit « lire ») : l'extension le dit ; une erreur
+  // = lecture seule (règle des permissions). Plan local ou du site : jamais.
+  function lectureSeule(registreId) {
+    const ext = _prise("lectureSeule");
+    const id = _idExtension(registreId);
+    if (!ext || !id) return false;
+    try { return ext.lectureSeule(id) === true; }
+    catch (e) { console.warn("[Extensions] « lectureSeule » a échoué → lecture seule :", e); return true; }
+  }
 
   // ── Gate déléguée ──
   // Rend null si aucune extension ne fournit de gate, sinon une promesse qui
@@ -560,18 +585,49 @@
       tombstones: Array.isArray(lot.tombstones) ? lot.tombstones : []
     };
     const r = window.KtaUid.fusionnerCalques([local, distant]);
+    // Familles réellement touchées : un objet reçu, ou une trace qui vise un objet d'ici.
+    // Les autres ne sont pas réécrites (une réécriture ferme la fiche ouverte et coupe
+    // le dessin en cours — retour de l'audit multi-utilisateur 05/10/2026).
+    const tracesRecues = new Set(distant.tombstones.map(function (t) { return t && t.uid; }));
+    const touche = function (fam) {
+      return distant[fam].length > 0 || local[fam].some(function (o) { return o && tracesRecues.has(o.uid); });
+    };
+    distant.data.concat(distant.roads, distant.zones, distant.structures).forEach(function (o) { if (o && o.uid) _recusADistance.add(o.uid); });
     const traces = new Map();
     local.tombstones.concat(distant.tombstones).forEach(function (t) {
       if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
     });
     window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
-    window.setEditorPoints(r.data);
-    if (window.setRoads) window.setRoads(r.roads.concat(horsFusion));
-    if (window.setZones) window.setZones(r.zones);
-    if (window.setStructures) window.setStructures(r.structures);
-    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
+    // Le tracé / la zone / la structure EN COURS de dessin est retrouvé par son uid après
+    // réécriture (sinon le clic suivant démarrait un nouvel objet).
+    const enCours = function (getter) { const o = typeof window[getter] === "function" ? window[getter]() : null; return o && o.uid ? o.uid : null; };
+    const reprendre = function (setter, liste, uid) {
+      if (uid && typeof window[setter] === "function") window[setter](liste.findIndex(function (o) { return o && o.uid === uid; }));
+    };
+    const cRoad = enCours("getCurrentRoad"), cZone = enCours("getCurrentZone"), cStruct = enCours("getCurrentStructure");
+    const touches = { data: touche("data"), roads: touche("roads"), zones: touche("zones"), structures: touche("structures") };
+    if (touches.data) window.setEditorPoints(r.data);
+    if (touches.roads && window.setRoads) { const l = r.roads.concat(horsFusion); window.setRoads(l); reprendre("setCurrentRoadByIndex", l, cRoad); }
+    if (touches.zones && window.setZones) { window.setZones(r.zones); reprendre("setCurrentZoneByIndex", r.zones, cZone); }
+    if (touches.structures && window.setStructures) { window.setStructures(r.structures); reprendre("setCurrentStructureByIndex", r.structures, cStruct); }
+    const rien = !touches.data && !touches.roads && !touches.zones && !touches.structures;
+    // ⏪ L'annulation remet une photo COMPLÈTE d'une famille : après une réception, elle
+    // effacerait chez tout le monde ce que les autres viennent d'ajouter. L'historique
+    // d'annulation repart donc de zéro (le message ne paraît que s'il y avait de quoi annuler).
+    if (!rien && window.HistoryManager && typeof window.HistoryManager.reset === "function") {
+      const avait = typeof window.HistoryManager.canUndo === "function" && (window.HistoryManager.canUndo() ||
+        (typeof window.HistoryManager.canRedo === "function" && window.HistoryManager.canRedo()));
+      window.HistoryManager.reset();
+      if (avait && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(_t("ext.sync.annulationVidee"), "info", { groupe: "ext-annulation" });
+      }
+    }
+    if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
     return { fusionnes: r.fusionnes, supprimes: r.supprimes };
   }
+  // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
+  const _recusADistance = new Set();
+  function recuADistance(uid) { return !!uid && _recusADistance.has(uid); }
 
   // ── Effacement à la déconnexion ──
   // Retire les plans fournis par une extension (registre `type: "ext"`), leur
@@ -666,6 +722,158 @@
     catch (e) { console.warn("[Extensions] afficherPresences :", e); return 0; }
   }
 
+  // ── Itinéraire publié (montré à l'équipe du plan, opt-in) ──
+  // L'extension `itineraire: { publie(), basculer() }` publie l'itinéraire actif UNIQUEMENT
+  // quand l'utilisateur l'a choisi (bouton de la fenêtre Itinéraire). L'app fournit une lecture
+  // (itineraireActuel) et un affichage (afficherItineraires, js/ktaPresences.js).
+  // Sans extension : pas de bouton, rien n'est lu.
+  function itinerairePublie() {
+    const ext = _prise("itineraire");
+    if (!ext || !ext.itineraire || typeof ext.itineraire.publie !== "function") return false;
+    try { return ext.itineraire.publie() === true; } catch (e) { return false; }
+  }
+  function basculerItineraire() {
+    const ext = _prise("itineraire");
+    if (!ext || !ext.itineraire || typeof ext.itineraire.basculer !== "function") return Promise.resolve(false);
+    try {
+      return Promise.resolve(ext.itineraire.basculer()).then(function () { return itinerairePublie(); },
+        function (e) { console.warn("[Extensions] itineraire :", e); return itinerairePublie(); });
+    } catch (e) { console.warn("[Extensions] itineraire :", e); return Promise.resolve(itinerairePublie()); }
+  }
+  // Itinéraire actif du plan ouvert : { points: [[x, y, niveau]], etapes: [[x, y, faite]] }, ou null.
+  function itineraireActuel() {
+    try {
+      if (!window.map || typeof window.getRoads !== "function") return null;
+      const r = (window.getRoads() || []).find(function (o) { return o && o.type === "itinerary" && !o._preview; });
+      if (!r || !Array.isArray(r.points) || r.points.length < 2) return null;
+      const n = function (v) { return Number.isInteger(v) ? v : null; };
+      return {
+        points: r.points.filter(function (p) { return p && isFinite(p.x) && isFinite(p.y); })
+          .map(function (p) { return [p.x, p.y, n(p.level)]; }),
+        etapes: (Array.isArray(r.waypoints) ? r.waypoints : [])
+          .filter(function (w) { return w && isFinite(w.x) && isFinite(w.y) && w.source !== "tracker"; })
+          .map(function (w) { return [w.x, w.y, w.done === true]; })
+      };
+    } catch (e) { return null; }
+  }
+  // Itinéraire REÇU (ex. attribué par un chef d'équipe, installation reliée) : devient l'itinéraire actif,
+  // après acceptation par l'utilisateur côté extension. { points: [[x, y, niveau]], etapes: [[x, y, faite]] }.
+  // Entrées non conformes écartées ; sans carte ni module Itinéraire : false.
+  function appliquerItineraire(it) {
+    try {
+      if (!it || !Array.isArray(it.points) || !window.map || typeof window.itineraireActiverRoad !== "function") return false;
+      const fini = function (v) { return typeof v === "number" && isFinite(v); };
+      const pts = it.points.filter(function (q) { return Array.isArray(q) && fini(q[0]) && fini(q[1]); }).slice(0, 5000)
+        .map(function (q) { const p = { x: q[0], y: q[1] }; if (Number.isInteger(q[2])) p.level = q[2]; return p; });
+      if (pts.length < 2) return false;
+      const etapes = (Array.isArray(it.etapes) ? it.etapes : []).filter(function (q) { return Array.isArray(q) && fini(q[0]) && fini(q[1]); })
+        .slice(0, 100).map(function (q) { return { x: q[0], y: q[1], source: "click", done: q[2] === true }; });
+      // Départ en tête : la fenêtre Itinéraire passe en navigation à partir de 2 étapes.
+      const waypoints = [{ x: pts[0].x, y: pts[0].y, source: "click" }].concat(etapes);
+      if (waypoints.length < 2) waypoints.push({ x: pts[pts.length - 1].x, y: pts[pts.length - 1].y, source: "click" });
+      window.itineraireActiverRoad({ type: "itinerary", points: pts, waypoints: waypoints });
+      return true;
+    } catch (e) { console.warn("[Extensions] appliquerItineraire :", e); return false; }
+  }
+  // ── Mode Secours avec une installation reliée (étude Secours, étapes 1-3) — prises neutres ──
+  // secoursActions(ctx) → [{ libelle, action, danger? }] : boutons posés par le Mode Secours (en-tête du
+  //   scénario, carte d'une équipe, vue Live). ctx = { scenarioId, vue: "edition"|"live", equipeId?, role? }.
+  // secoursInfoEquipe(scenarioId, equipeId) → texte (ex. comptes de l'équipe) affiché sur la carte.
+  // secoursPeutAvancer(scenarioId, equipeId, quoi) → bool, quoi ∈ etape|depart|rentree|rappel :
+  //   sans prise = oui ; prise en erreur = NON (une permission qui échoue ne laisse pas passer).
+  function secoursActions(ctx) {
+    const out = [];
+    _extensions.forEach(function (ext) {
+      if (typeof ext.secoursActions !== "function") return;
+      try {
+        const l = ext.secoursActions(Object.assign({}, ctx || {}));
+        (Array.isArray(l) ? l : []).forEach(function (a) {
+          if (a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function") {
+            out.push({ libelle: a.libelle.trim().slice(0, 60), action: a.action, danger: a.danger === true });
+          }
+        });
+      } catch (e) { console.warn("[Extensions] secoursActions :", e); }
+    });
+    return out.slice(0, 8);
+  }
+  function secoursInfoEquipe(scenarioId, equipeId) {
+    const ext = _prise("secoursInfoEquipe");
+    if (!ext) return "";
+    try { const t = ext.secoursInfoEquipe(scenarioId, equipeId); return typeof t === "string" ? t.trim().slice(0, 200) : ""; }
+    catch (e) { console.warn("[Extensions] secoursInfoEquipe :", e); return ""; }
+  }
+  // Nombre de comptes reliés à une équipe (installation reliée) : entre dans l'effectif automatique.
+  // Sans prise ou en erreur : 0 (l'effectif retombe sur les membres nommés ou la saisie).
+  function secoursNbComptesEquipe(scenarioId, equipeId) {
+    const ext = _prise("secoursNbComptesEquipe");
+    if (!ext) return 0;
+    try { const n = ext.secoursNbComptesEquipe(scenarioId, equipeId); return Number.isInteger(n) && n > 0 && n < 100 ? n : 0; }
+    catch (e) { console.warn("[Extensions] secoursNbComptesEquipe :", e); return 0; }
+  }
+  function secoursPeutAvancer(scenarioId, equipeId, quoi) {
+    const ext = _prise("secoursPeutAvancer");
+    if (!ext) return true;
+    try { return ext.secoursPeutAvancer(scenarioId, equipeId, quoi) === true; }
+    catch (e) { console.warn("[Extensions] secoursPeutAvancer :", e); return false; }
+  }
+  // Bandeau d'alerte Secours (intervention déclenchée…) : persistant en haut de l'écran, texte échappé,
+  // boutons fournis par l'extension. Son + vibration à la première apparition (ou si `sonner`).
+  // { id, titre, texte, actions: [{ libelle, action }], sonner? } ; retirerAlerteSecours(id).
+  function _bip() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      [0, 0.35, 0.7].forEach(function (t0) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.25, ctx.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + 0.3);
+        o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + 0.3);
+      });
+      setTimeout(function () { try { ctx.close(); } catch (e) { /* rien */ } }, 1500);
+    } catch (e) { /* pas de son : la vibration et le bandeau restent */ }
+  }
+  function afficherAlerteSecours(a) {
+    if (!a || typeof a.id !== "string" || !a.id) return false;
+    let box = document.getElementById("kta-alerte-secours");
+    const neuve = !box || box.getAttribute("data-alerte-id") !== a.id;
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "kta-alerte-secours";
+      box.setAttribute("role", "alert");
+      document.documentElement.appendChild(box);
+    }
+    box.setAttribute("data-alerte-id", a.id);
+    box.textContent = "";
+    const titre = document.createElement("div"); titre.className = "kta-alerte-secours-titre";
+    titre.textContent = String(a.titre || "").slice(0, 120);
+    const texte = document.createElement("div"); texte.className = "kta-alerte-secours-texte";
+    texte.textContent = String(a.texte || "").slice(0, 400);
+    const actions = document.createElement("div"); actions.className = "kta-alerte-secours-actions";
+    (Array.isArray(a.actions) ? a.actions : []).slice(0, 5).forEach(function (x) {
+      if (!x || typeof x.action !== "function") return;
+      const b = document.createElement("button"); b.type = "button"; b.className = "kta-btn kta-btn-small";
+      b.textContent = String(x.libelle || "").slice(0, 50);
+      b.addEventListener("click", function () { try { x.action(); } catch (e) { console.warn("[Extensions] alerte :", e); } });
+      actions.appendChild(b);
+    });
+    box.appendChild(titre); box.appendChild(texte); box.appendChild(actions);
+    if (neuve || a.sonner === true) {
+      _bip();
+      if (window.kta_vibrate && typeof window.kta_vibrate.urgence === "function") window.kta_vibrate.urgence([500, 200, 500, 200, 500]);
+      else if (navigator.vibrate) { try { navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) { /* rien */ } }
+    }
+    return true;
+  }
+  function retirerAlerteSecours(id) {
+    const box = document.getElementById("kta-alerte-secours");
+    if (box && (!id || box.getAttribute("data-alerte-id") === id)) box.remove();
+  }
+  function afficherItineraires(liste) {
+    try { return window.KtaPresences ? window.KtaPresences.afficherItineraires(liste) : 0; }
+    catch (e) { console.warn("[Extensions] afficherItineraires :", e); return 0; }
+  }
+
   // ── Plans d'extension : rangement DIFFUSÉ et copie hors ligne, plan par plan ──
   // L'extension déclare plans.ranger(idExt, dossierExt|null) → Promise<bool> et
   // plans.horsLigne = { etat(idExt) → Promise<"garde"|"perime"|"absent">, garder(idExt) → Promise<bool> }.
@@ -727,9 +935,112 @@
       }).slice(0, 4).map(function (a) { return { libelle: a.libelle.trim().slice(0, 40), action: a.action }; });
     } catch (e) { console.warn("[Extensions] actionsObjet :", e); return []; }
   }
+  // Panneau d'une extension sur la carte (ex. « 👥 Équipe ») : prise `panneau: { icone, titre,
+  // rendre(conteneur) }`. L'app pose un bouton à gauche sur la carte et ouvre une fenêtre dont
+  // l'extension remplit le corps (rendre est rappelé à chaque ouverture et par rafraichirPanneau()).
+  // Sans extension : ni bouton, ni fenêtre. Erreur de l'extension = fenêtre avec un message.
+  function panneauExtension() {
+    const ext = _prise("panneau");
+    const p = ext && ext.panneau;
+    if (!p || typeof p.rendre !== "function") return null;
+    return { icone: String(p.icone || "🧩").slice(0, 4), titre: String(p.titre || "").trim().slice(0, 40) || _t("ext.panneau.titreDefaut") };
+  }
+  let _panneauCorps = null;
+  function _rendrePanneau() {
+    const ext = _prise("panneau");
+    if (!_panneauCorps || !_panneauCorps.isConnected || !ext) return;
+    _panneauCorps.textContent = "";
+    try { ext.panneau.rendre(_panneauCorps); }
+    catch (e) { console.warn("[Extensions] panneau :", e); _panneauCorps.textContent = "⚠️ " + String((e && e.message) || e).slice(0, 120); }
+  }
+  function ouvrirPanneau() {
+    const info = panneauExtension();
+    if (!info) return false;
+    const ancien = document.getElementById("kta-ext-panneau");
+    if (ancien) ancien.remove();
+    const ov = document.createElement("div");
+    ov.className = "kta-readme-modal-overlay";
+    ov.id = "kta-ext-panneau";
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite kta-ext-panneau-boite";
+    const tete = document.createElement("div");
+    tete.className = "kta-readme-modal-header";
+    const titre = document.createElement("span");
+    titre.className = "kta-readme-modal-titre";
+    titre.textContent = info.icone + " " + info.titre;
+    const fermer = document.createElement("button");
+    fermer.className = "kta-readme-modal-close"; fermer.type = "button"; fermer.textContent = "✕";
+    fermer.addEventListener("click", function () { ov.remove(); });
+    tete.appendChild(titre); tete.appendChild(fermer);
+    _panneauCorps = document.createElement("div");
+    _panneauCorps.className = "kta-readme-modal-corps kta-ext-panneau-corps";
+    boite.appendChild(tete); boite.appendChild(_panneauCorps);
+    ov.appendChild(boite);
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    document.documentElement.appendChild(ov);
+    _rendrePanneau();
+    return true;
+  }
+  function rafraichirPanneau() { _rendrePanneau(); }
+  function fermerPanneau() {
+    const ov = document.getElementById("kta-ext-panneau");
+    if (ov) ov.remove();
+    _panneauCorps = null;
+  }
+  // Sortie du plan affiché (main.js : changement de plan, retour à l'accueil) : le panneau se ferme,
+  // les présences et itinéraires de l'ancien plan s'effacent, l'extension est prévenue (mktm:plan-ferme).
+  function quitterPlan(versOu) {
+    fermerPanneau();
+    try { if (window.KtaPresences) window.KtaPresences.reinitialiser(); } catch (e) { /* rien */ }
+    try { window.dispatchEvent(new CustomEvent("mktm:plan-ferme", { detail: { vers: versOu || "plan" } })); } catch (e) { /* rien */ }
+  }
+
+  // Badge d'un plan d'extension dans la liste de l'accueil (ex. « 👥 2 », activité de l'installation) :
+  // { texte (8 car.), titre (160 car.) }, rendu en texte ; l'extension annonce un changement par
+  // l'événement `mktm:plans-badges-changes`. Erreur ou forme inattendue = pas de badge.
+  function badgePlan(registreId) {
+    const ext = _prise("badgePlan");
+    const id = _idExtension(registreId);
+    if (!ext || typeof ext.badgePlan !== "function" || !id) return null;
+    try {
+      const b = ext.badgePlan(id);
+      if (!b || typeof b.texte !== "string" || !b.texte.trim()) return null;
+      return { texte: b.texte.trim().slice(0, 8), titre: typeof b.titre === "string" ? b.titre.trim().slice(0, 160) : "" };
+    } catch (e) { console.warn("[Extensions] badgePlan :", e); return null; }
+  }
+
+  // Ligne d'information fournie par l'extension (ex. « Créé par X · modifié par Y ») : texte
+  // seulement, 120 caractères au plus ; l'app n'écrit jamais d'auteur elle-même (community anonyme).
+  function infoObjet(uid) {
+    const ext = _prise("infoObjet");
+    if (!ext || typeof ext.infoObjet !== "function" || typeof uid !== "string" || !uid) return "";
+    try { const t = ext.infoObjet(uid); return typeof t === "string" ? t.trim().slice(0, 120) : ""; }
+    catch (e) { console.warn("[Extensions] infoObjet :", e); return ""; }
+  }
+  // Auteur d'un objet de session (installation reliée) : prise `auteurObjet(uid) → { createur, modifiePar }`.
+  // Sert au filtre « auteur » de l'export ; sans extension : null (le filtre auteur n'est pas proposé).
+  function auteurObjet(uid) {
+    const ext = _prise("auteurObjet");
+    if (!ext || typeof ext.auteurObjet !== "function" || typeof uid !== "string" || !uid) return null;
+    try {
+      const a = ext.auteurObjet(uid);
+      if (!a || typeof a !== "object") return null;
+      const txt = function (v) { return typeof v === "string" && v.trim() ? v.trim().slice(0, 40) : null; };
+      return { createur: txt(a.createur), modifiePar: txt(a.modifiePar) };
+    } catch (e) { console.warn("[Extensions] auteurObjet :", e); return null; }
+  }
   function _hydraterFiche(racine) {
-    if (!racine || racine.querySelector(".kta-popup-ext")) return;
-    const actions = actionsObjet(racine.getAttribute("data-kta-uid"));
+    if (!racine || racine.getAttribute("data-kta-ext") === "1") return;
+    racine.setAttribute("data-kta-ext", "1");
+    const uid = racine.getAttribute("data-kta-uid");
+    const info = infoObjet(uid);
+    if (info) {
+      const ligne = document.createElement("div");
+      ligne.className = "kta-popup-ext-info";
+      ligne.textContent = info;
+      racine.appendChild(ligne);
+    }
+    const actions = actionsObjet(uid);
     if (!actions.length) return;
     const zone = document.createElement("div");
     zone.className = "kta-popup-actions kta-popup-ext";
@@ -744,8 +1055,17 @@
   let _observateurFiches = null;
   function _observerFiches() {
     if (_observateurFiches || typeof MutationObserver !== "function" || !document.body) return;
+    // Une seule recherche par image affichée, limitée aux fiches pas encore traitées : un déplacement ou un
+    // zoom de la carte produit des centaines de mutations (audit UI du 05/10/2026).
+    let prevu = false;
+    const planifier = (typeof requestAnimationFrame === "function") ? requestAnimationFrame : function (f) { return setTimeout(f, 16); };
     _observateurFiches = new MutationObserver(function () {
-      document.querySelectorAll(".leaflet-popup-content [data-kta-uid]").forEach(_hydraterFiche);
+      if (prevu) return;
+      prevu = true;
+      planifier(function () {
+        prevu = false;
+        document.querySelectorAll(".leaflet-popup-content [data-kta-uid]:not([data-kta-ext])").forEach(_hydraterFiche);
+      });
     });
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }
@@ -776,13 +1096,36 @@
     basculerPresence: basculerPresence,
     positionTracker: positionTracker,
     afficherPresences: afficherPresences,
+    itinerairePublie: itinerairePublie,
+    basculerItineraire: basculerItineraire,
+    itineraireActuel: itineraireActuel,
+    afficherItineraires: afficherItineraires,
+    appliquerItineraire: appliquerItineraire,
+    secoursActions: secoursActions,
+    secoursInfoEquipe: secoursInfoEquipe,
+    secoursPeutAvancer: secoursPeutAvancer,
+    secoursNbComptesEquipe: secoursNbComptesEquipe,
+    afficherAlerteSecours: afficherAlerteSecours,
+    retirerAlerteSecours: retirerAlerteSecours,
+    auteurObjet: auteurObjet,
     associerDossiersExtension: associerDossiersExtension,
     dossierExtension: dossierExtension,
     rangerPlanExtension: rangerPlanExtension,
     horsLigneExtensionDisponible: horsLigneExtensionDisponible,
+    lectureSeule: lectureSeule,
+    avantReinitialisation: avantReinitialisation,
+    CLE_DECONNEXION_EN_ATTENTE: CLE_DECONNEXION_EN_ATTENTE,
+    recuADistance: recuADistance,
     etatHorsLigneExtension: etatHorsLigneExtension,
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
+    infoObjet: infoObjet,
+    badgePlan: badgePlan,
+    panneauExtension: panneauExtension,
+    ouvrirPanneau: ouvrirPanneau,
+    rafraichirPanneau: rafraichirPanneau,
+    fermerPanneau: fermerPanneau,
+    quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
     valider: valider,
     etatDe: etatDe,
@@ -792,5 +1135,25 @@
     apiBase: _apiBase,
     ETATS: ETATS.slice(),
     LS_MEMO: LS_MEMO
+  };
+
+  // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
+  // Export du plan OUVERT (session, KMZ, GPX, image/PDF, ZIP du plan) : refusé = message.
+  window.ktaExportPlanRefuse = function () {
+    const id = window._currentLoadedPlanId;
+    // Seulement plan affiché : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
+    if (!id || exportAutorise(id)) return false;
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t("ext.export.refuse"), "warn");
+    return true;
+  };
+  // Modifier le plan OUVERT (outils de dessin, fiche d'un point) : refusé = message.
+  window.ktaEditionRefusee = function (silencieux) {
+    const id = window._currentLoadedPlanId;
+    if (!id || !lectureSeule(id)) return false;
+    if (!silencieux && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule" });
+    }
+    return true;
   };
 })();

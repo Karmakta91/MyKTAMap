@@ -45,13 +45,7 @@ const EDITOR_TAG_LABELS = {
 
 const EDITOR_EXCLURE = ["default", "track"];
 
-// =========================
-// ACTIVER / DÉSACTIVER
-// =========================
-function toggleEdition() {
-  window.modeEdition = !window.modeEdition;
-  console.log("[Editor] Mode édition :", window.modeEdition);
-}
+// Le mode édition s'arme par le bouton ✏️ (interface.js), qui porte la garde lecture seule.
 
 // =========================
 // INIT
@@ -76,6 +70,7 @@ function initEditor() {
   }
   _editorClickHandler = function(e) {
     if (!window.modeEdition) return;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) { window.modeEdition = false; return; }   // 🔒 lecture seule
     if (document.getElementById("kta-poi-modal")) return; // évite double clic
 
     const lat = e.latlng.lat;
@@ -165,6 +160,7 @@ function afficherFormulaire(x, y, existingPoint) {
   if (existing) existing.remove();
 
   const isEdit = !!(existingPoint && typeof existingPoint === "object");
+  const _majOuverture = isEdit ? existingPoint.updatedAt : null;   // conflit : modifié ailleurs pendant l'édition ?
   const titreModale  = isEdit ? window.I18n.t("editor.modal.titleEdit") : window.I18n.t("editor.modal.titleAdd");
   const labelBouton  = isEdit ? window.I18n.t("editor.modal.btnSave")   : window.I18n.t("editor.modal.btnAdd");
   const tagInitial   = isEdit && existingPoint.tags && existingPoint.tags.length > 0
@@ -587,9 +583,26 @@ function afficherFormulaire(x, y, existingPoint) {
   // ============================================================
   // VALIDATION — save
   // ============================================================
-  btnValider.addEventListener("click", function() {
+  btnValider.addEventListener("click", async function() {
     const nom = inputNom.value.trim();
     if (!nom) { setErr(window.I18n.t("editor.err.nameRequired")); inputNom.focus(); return; }
+    // Installation reliée : le point a été remplacé (modifié ou supprimé par un autre compte)
+    // pendant l'édition — sans ça, l'enregistrement partait dans un objet qui n'était plus
+    // dans la liste, et se perdait en silence. Sans extension : rien ne change.
+    if (isEdit && existingPoint.uid && window.KtaExtensions && typeof window.KtaExtensions.recuADistance === "function" &&
+        window.KtaExtensions.recuADistance(existingPoint.uid)) {
+      const courant = listePoints.find(function(p) { return p && p.uid === existingPoint.uid; });
+      // Objet remplacé, supprimé, ou mis à jour sur place par la synchro depuis l'ouverture.
+      if (courant !== existingPoint || (courant && courant.updatedAt !== _majOuverture)) {
+        const ok = (typeof window.ktaConfirm === "function")
+          ? await window.ktaConfirm(window.I18n.t(courant ? "editor.conflit.modifie" : "editor.conflit.supprime"),
+              { okLabel: window.I18n.t("editor.conflit.garder"), cancelLabel: window.I18n.t("editor.conflit.abandonner") })
+          : true;
+        if (!ok) { fermer(); return; }
+        if (courant) existingPoint = courant;
+        else { listePoints.push(existingPoint); if (window.KtaUid) window.KtaUid.touch(existingPoint); }
+      }
+    }
 
     let tag = selectType.value;
 
@@ -1067,7 +1080,6 @@ window.renderEditorPoints = function() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.toggleEdition          = toggleEdition;
 window.initEditor             = initEditor;
 window.removeLastEditorPoint  = removeLastEditorPoint;
 window.getEditorPoints        = function() { return listePoints; };

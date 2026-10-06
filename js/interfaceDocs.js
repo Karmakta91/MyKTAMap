@@ -869,8 +869,6 @@ function afficherAide() {
   // 🆕 Lot 2 — le contenu vient des DICOS : l'Aide suit la langue de l'app,
   // comme le tutoriel depuis v1.79.4. Plus de booléen `aideEn`, plus de liste
   // de langues à tenir : la disponibilité par langue EST celle des dicos.
-  const _aideLang = (window.I18n && typeof window.I18n.getLang === "function")
-    ? window.I18n.getLang() : "fr";
 
   // 🆕 Lot 2 — PLUS DE SÉLECTEUR DE DRAPEAUX DANS L'AIDE. Elle suit désormais
   // la langue GLOBALE de l'app (dicos), donc un toggle local n'aurait plus de

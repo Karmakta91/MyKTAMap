@@ -2,7 +2,7 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier ménage : 30/09/2026.** Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> **Dernier ménage : 06/10/2026** (précédent : 30/09/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
@@ -43,6 +43,13 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
 
 - 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
+- 🟡 **Pendant un déplacement, des éléments n'apparaissent qu'au relâcher — case « 👁️ Ne rendre que les éléments
+  visibles » décochée** (constaté le 05/10/2026, pas une régression : comportement présent avant v2.9.0). Deux causes
+  indépendantes de la case : (1) les tracés et zones sont en **canvas** (`map.js` `preferCanvas: true`) — Leaflet ne les
+  dessine que sur l'écran + 10 % et redessine à la fin du geste ; (2) **tuiles** de l'image posées seulement près de
+  l'écran (`tiling.js`, v1.98.23). La case n'ajoute donc presque rien de visible, d'où la question de sa **pertinence**.
+  Pistes : marge du renderer élargie (`L.canvas({ padding: 0.5 })`) et des tuiles, à mesurer sur relevé lourd
+  (mémoire, fluidité) ; puis garder, fusionner dans ULTRA, ou retirer la case. **À trancher par KARMA.**
 
 ## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
 
@@ -63,27 +70,16 @@ natives).
 - **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
   recadré — sur un grand plan réel, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
   zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
-- **Options brancard pour « 🚑 Évacuer »** (reste de A3, livré en v1.98.16 sans elles) : éviter l'eau et les remblais,
-  lever les inaccessibles — brancher les zones à éviter dans le calcul de la Sortie d'urgence. **S-M**
+- 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
+  brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
+  désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart
+  > 10 m est signalé. À trancher : même alerte en mode classique (un POI de sortie peut aussi être loin d'une galerie
+  sur un plan peu tracé). ✅ vérifié (bac `check-guidage` §12). **S**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
   exercices le réclament **M**.
-- **Ouvrir un plan de secours depuis l'accueil** (demande KARMA, 03/10 ; audit par agent, lecture seule) : l'équipier qui reçoit
-  un `.mkmsec.json` doit aujourd'hui ouvrir le bon plan à la main, puis 🧭 Tracker → 🚨 Mode Secours → 📥 Importer → aperçu →
-  « Ouvrir le scénario » → 🚀 Lancer → rôle (~8 gestes). Pire : déposé sur « 📦 Ajouter un plan », le fichier part à la
-  conversion SIG (`homeLoader.js` `_estFichierSig` attrape tout `.json`). Cible : l'accueil lit le contenu
-  (`type: "myktamap-secours-scenario"`, pas l'extension — les messageries renomment), retrouve le plan dans `PlanRegistry`
-  (id, puis nom + version : l'id diffère entre `local_…` et `server_…`), le charge par `chargerPlanDuRegistre`, puis au
-  `SecoursMode.init()` qui suit enchaîne aperçu, import (identifiants d'origine gardés : sinon l'opérateur refuse le rapport)
-  et choix du rôle. Plan absent : arrêt avec un message qui nomme plan et version attendus, jamais « le plus proche ».
-  Homonymes : choix par l'utilisateur. Pièges : attendre la fin du splash et la restauration de session (motif « cible en
-  attente » d'`InterPlanLinks.goTo`) ; plan local sans copie dans l'app → passer par la fenêtre « Plan introuvable » (iOS
-  bloque un sélecteur de fichier ouvert par programme). Lots : L1 reconnaître et aiguiller (y compris le rapport d'équipe)
-  **S** · L2 enchaînement complet **M** · L3 reprise après arrêt brutal (`sessionStorage`, facultatif) **S**. À trancher :
-  1. plan d'une autre version (reco : demander) · 2. garder l'aperçu (reco : oui) · 3. rôle « Équipe » présélectionné
-  (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
-  depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
+- 🔬 **Deux interventions simultanées sur un même plan** (noté en cadrant l'ouverture depuis l'accueil, 03/10) : non vérifié.
 
 ⚠️ **Côté DATA (KARMA seul)** : taguer les vrais accès du plan et leur état (un seul accès ouvert tagué, aucun
 `entree_plan`) ; donner un niveau aux POI d'accès et aux 47 tracés qui n'en ont pas ; ajouter un 3ᵉ point de calage
@@ -140,24 +136,8 @@ avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie 
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- 🔴 **XSS — audit fait le 05/10/2026, correction à faire.** **Prouvé** en navigateur (test d'attaque du dépôt pro) :
-  le **nom** et la **1re étiquette d'un point** s'exécutent à l'ouverture de sa fiche — `utils.js > buildPointPopupHtml`
-  bâtit ses boutons avec des `onclick="…"` où le nom n'est échappé que pour le JS (`'`, `\`), pas pour l'attribut (`"`).
-  Concerne aussi myktamap.fr (ZIP de plan ou session partagés). **Lu, non prouvé** : `interPlanLinks.js` (mêmes `onclick`) ;
-  contenu du ZIP de plan injecté brut — URL d'icônes (`map.js` divIcon de chaque repère, sans clic ; légende, filtres,
-  favoris, exports), couleurs et libellés de `customLegend`, libellés de calques ; affichages ponctuels
-  (`interfaceItineraire.js` modale éviter, `sessionExporter.js` recherche KMZ, `tableEditor.js`, `interfaceDistanceTotale.js`,
-  infobulle `secoursMode.js`, `lostMode.js`) ; XML du KMZ (`kmzExport.js`, type/étiquette). Correctif : 1 `onclick` →
-  `data-*` + écouteurs à l'ouverture (comme `attacherNotePopup`) ; 2 valider le plan-config à l'entrée (couleur `#hex`,
-  URL http(s)/relative/`data:image`/`blob:`) ; 3 sinks ponctuels ; 4 un seul `window.ktaEsc`. **M.**
-- 🔴 **« Tout réinitialiser » ne ferme pas la session d'une installation reliée** (constaté le 05/10/2026). Le jeton
-  de renouvellement vit dans un cookie `HttpOnly`, que le code de la page ne peut ni lire ni effacer : après le reset,
-  le module de connexion se reconnecte seul (vécu : retour direct sur le compte Admin). Sur un appareil partagé, un
-  reset ne déconnecte donc pas. Correctif retenu à l'analyse : prise neutre `avantReinitialisation()` appelée par le
-  reset (`interfaceMaintenance.js`) et par la suppression de profil (`homeProfile.js`) AVANT d'effacer, attente bornée
-  (3 s, un serveur injoignable ne bloque jamais le reset), no-op sans extension ; l'extension y révoque sa session.
-  + avertir dans la modale du reset si des modifications ☁️ ne sont pas envoyées. Contrat dans
-  `community-server-line.md` §3 + `check-extensions`. **S.**
+- ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
+  corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
 - 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
   `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
 
@@ -212,7 +192,7 @@ correspondance) et `GpxImport.genererCanvasVierge` (plan sans image de fond). Un
 de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français —
 *[Supposition]* de Claude.
 
-## 🧹 Code mort — ce qui reste de l'audit du 09/08/2026
+## 🧹 Code mort — ce qui reste (audits du 09/08 et du 05/10/2026, archivés)
 
 > Ce qui est ouvert (🟡), ce qui ne doit jamais être supprimé (📌) et les deux leçons qui protègent le prochain
 > nettoyage. ⚠️ Les numéros de ligne ont dérivé : les re-vérifier avant d'agir.
@@ -229,10 +209,11 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 ### 🟡 À vérifier avant de toucher
 - Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action`, `.plan-card` ×4, `.kta-modal-btn-*`, `.kta-mesure-distance`, `.drag-over`, `.kta-rd-total-pill`, `style-secours.css` — contrôle runtime (`querySelectorAll(...).length === 0`)
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
-- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
+- `planBlob` (`createConf.js`) : écrit, jamais lu — vérifier qu'aucune révocation d'URL n'a été oubliée avant de le retirer
+- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
-`_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
+`_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 
 ---
 

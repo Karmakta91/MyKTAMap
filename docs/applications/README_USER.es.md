@@ -128,7 +128,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 - **📋 Ver el registro de red** — todas las peticiones de la app en directo, y si envían datos; se puede copiar, exportar o vaciar. Si una petición envía datos, o aparece una dirección externa distinta de OpenStreetMap (en rojo), **avisa al autor**: Instagram **@karma_kta** o **contact@myktamap.fr**.
 - **📖 ¿Qué hace la app en la red?** — la lista de direcciones que la app puede contactar y cómo comprobarlo con tu navegador (F12, pestaña Red).
-- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor. Con una cuenta de la instalación, tus acciones (contraseña, cerrar sesión) están arriba en **👤 Mi perfil**, y un administrador gestiona las cuentas desde **⚙️ Configuración**. **Cerrar sesión borra del dispositivo** los datos de esa cuenta (planos de la instalación, sesiones, fotos): lo que aún no se ha enviado se avisa antes. En una instalación así: la ficha ℹ️ de un plano local ofrece **☁️ Publicar este plano** y después **reemplazar tu copia local** por la versión ☁️ (tus anotaciones, fotos y favoritos la acompañan); el **💾** de la fila de un plano ☁️ lo guarda en tu dispositivo (**✅** = guardado y al día); en el tracker, **📡 Compartir mi posición en este plano** muestra tu marcador a los demás, solo si lo marcas.
+- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor. Con una cuenta de la instalación, tus acciones (contraseña, cerrar sesión) están arriba en **👤 Mi perfil**, y un administrador gestiona las cuentas desde **⚙️ Configuración**. **Cerrar sesión borra del dispositivo** los datos de esa cuenta (planos de la instalación, sesiones, fotos): lo que aún no se ha enviado se avisa antes. En una instalación así: la ficha ℹ️ de un plano local ofrece **☁️ Publicar este plano** y después **reemplazar tu copia local** por la versión ☁️ (tus anotaciones, fotos y favoritos la acompañan); el **💾** de la fila de un plano ☁️ lo guarda en tu dispositivo (**✅** = guardado y al día); en el tracker, **📡 Compartir mi posición en este plano** muestra tu marcador a los demás, solo si lo marcas (es tu posición **en el plano**, la de tu seguimiento: la app no usa el GPS). El botón **👥 Equipo**, a la izquierda del mapa, muestra quién está en el plano, si lo consulta o lo modifica, y su posición en el plano si la comparte (📍 Centrar, 👁 Seguir, 〰 trazo); en la pantalla de inicio, **👥 N** en un plano ☁️ indica que otros lo tienen abierto (**✏️**: en modificación). En la ventana **Itinerario**, **🧭 Mostrar mi itinerario al equipo** lo hace visible (en amarillo, solo lectura) para quienes ven el plano, actualizado en cada etapa, retirado cuando lo borras y a las 24 h.
 
 ---
 
@@ -738,7 +738,7 @@ Las uniones 🪜 se borran como los demás trazados.
 
 **Un objeto concreto**: su ventana tiene un botón **🗑️ Eliminar**; para un punto, es **🗑️ Eliminar este punto**. Sin ventana de confirmación: todo se deshace con ⏪ (`Ctrl+Z`).
 
-**Todo el plano**: cuando vuelves a abrir un plano, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups).
+**Todo el plano**: cuando vuelves a abrir un plano, la ventana «Sesión anterior restaurada» ofrece **🗑️ Borrar la sesión** (puntos, trazados, zonas, estructuras, mediciones y trazo del seguimiento; queda una copia en 📦 Backups). Los puntos que llevan un **enlace a otro plano** (portales) se conservan: para quitar uno, elimina el propio punto.
 
 > ℹ️ Solo se borran **tus** objetos. Los del plano o de una capa de datos son de solo lectura: abre primero su capa para modificarla desde ≡ **Filtros** y exporta después la capa corregida.
 
@@ -972,6 +972,7 @@ Todas las exportaciones están en el grupo **⬆️ Guardar** de la barra latera
 
 - **🚀 Completo** — toda la sesión en un archivo, para volver a importarla más tarde: puntos, trazados, zonas, estructuras, mediciones y seguimiento del tracker (posición, camino, cronología: el replay funciona tras reimportar). `.json`, o `.zip` si marcas las fotos. La opción **🛡️ Anonimizar para compartir públicamente** sustituye los nombres por códigos y quita el seguimiento.
 - **🎨 Avanzado** — tú eliges: puntos (por icono, incluido «sin etiqueta»), trazados, zonas y estructuras (por tipo), mediciones, tracker (un contador muestra lo que contiene). Salida en **📄 Un solo archivo de sesión** reimportable, o en **📦 ZIP multiarchivo** (uno por categoría).
+- **🔎 Conservar solo** (en cabecera de 🚀 Completo y 🎨 Avanzado) — limita los puntos, trazados, zonas y estructuras a un **periodo** (fecha de su última modificación) y, en una instalación conectada, a su autor (**Creado por**); un contador indica cuántos salen. Seguimiento, mediciones y notas se exportan tal cual.
 - **🔄 Conversión** — transforma tu sesión en **capa de datos** para integrarla en un plano (ver «🏗️ Crear o modificar un plano»). Misma elección por categoría y por icono; granularidad **Básico** (un archivo por categoría) o **Fino** (un archivo por tipo). El tracker nunca se convierte: una deriva fijada en un plano engañaría a sus futuros usuarios. Una vez convertidos, esos datos ya no se modifican desde la app.
 - **🔗 Fusión** — reúne varias capas de datos (`.json` o `.zip`, de varias sesiones) en un solo juego por categoría. Una vista previa da los totales y señala los identificadores de puntos duplicados (se conservan tal cual). También accesible sin plano abierto: **📊 Editor de datos → 🔗 Fusionar capas de datos**.
 - **📡 Exportación externa** — KMZ o GPX, ver más abajo.
@@ -1337,6 +1338,8 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 >
 > **Requisitos**: el **mismo plano** en cada teléfono, disponible **sin conexión** — bajo tierra no hay red.
 >
+> **Instalación conectada**: los equipos se vinculan a **cuentas** (jefe ★), la intervención se **activa** (alerta en cada teléfono, «Unirme a mi puesto») y el tablero se comparte etapa por etapa: lo marcado bajo tierra se envía al volver la red. El teléfono y la radio siguen siendo el canal oficial.
+>
 > **Prepáralo en frío**: monta uno o dos escenarios en tus planos habituales antes de cualquier incidente. El día D, la app tiene que estar lista en 30 segundos.
 
 Para abrirlo: menú **🧭 Tracker** → abajo, sobre fondo rojo, **🚨 Modo Rescate — Mapas de búsqueda (equipos + zonas)**.
@@ -1369,7 +1372,7 @@ El escenario se edita en tres bloques: **📝 Contexto del incidente**, **🚨 E
 **➕ Añadir un equipo**, y luego en su ficha:
 
 - **Nombre** (déjalo vacío: Alpha, Bravo, Charlie…) y **🎨 Color**, entre 10 colores fijos;
-- **👥 Miembros** (separados por comas), **👤 Jefe**, **Efectivo** — el efectivo es lo que permite contar a los presentes al regresar;
+- **👥 Miembros** (separados por comas), **👤 Jefe**, **Efectivo** — el efectivo es lo que permite contar a los presentes al regresar. Si se deja vacío, vale el número de miembros nombrados (o, en una instalación conectada, de cuentas vinculadas si son más); la línea de abajo indica de dónde sale la cifra y avisa si tu valor es menor. Introdúcelo cuando bajen personas sin cuenta ni nombre;
 - **Regreso obligatorio**: hora fijada por el jefe (autonomía de las luces, relevo); prevalece sobre la duración estimada para las alertas de retraso;
 - **Nivel** de referencia en un plano multinivel (o «Sin nivel» si el equipo cambia de planta);
 - **📍 GPS superficie** (opcional, ver § 4).
@@ -1397,7 +1400,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 
 #### 📤 2. Transmitir antes de bajar
 
-- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario**. La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
+- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario** — o, más rápido, suelta el archivo en **📦 Añadir un mapa** en la pantalla de inicio: la app abre el plano correcto, muestra la vista previa y propone lanzar como «Equipo». La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
 - ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
 - **Sin conexión**: al lanzar, la app avisa si el plano no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del plano** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
 - **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona, etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
@@ -1452,7 +1455,7 @@ El 🚑 **socorrista libre** no tiene recorrido ni etapas: añade notas, cada un
 
 Una etapa marcada como **Víctima encontrada** da una posición: la de la etapa, nivel incluido. **📍 Precisar en el mapa** la ajusta. Un **✚ rojo** la marca en el mapa, para todos; el operador la ve en una banda en la cabecera de su vista, y el informe la imprime en primer lugar.
 
-**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del plano y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado).
+**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del plano y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua y escombros marcados por defecto) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
 
 #### 🚒 4. Rescate exterior
 

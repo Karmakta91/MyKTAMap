@@ -149,6 +149,7 @@
   }
 
   function convertir(famille, obj, familleCible, typeCible) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     if (!obj || !famille || !familleCible || !typeCible) return false;
     const lire = {
       roads:      function () { return _lire("roads"); },
@@ -216,6 +217,7 @@
   // (`supprimerPointEditor`) qui s appuie sur Ctrl+Z. Le filet est donc le
   // snapshot d historique : sans lui, l objet serait perdu pour de bon.
   function supprimer(famille, obj) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     if (!obj || !famille) return false;
     const ecrire = _ecrivain(famille);
     if (typeof ecrire !== "function") {
@@ -256,6 +258,7 @@
   // SAUTÉS et comptés à part. L'alternative — masquer une cible parce qu'un
   // seul objet de la sélection l'a déjà — rendrait la liste incompréhensible.
   function convertirLot(items, familleCible, typeCible) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return { convertis: 0, sautes: 0, echecs: (items || []).length };   // 🔒 lecture seule
     const bilan = { convertis: 0, sautes: 0, echecs: 0 };
     if (!Array.isArray(items) || !items.length || !familleCible || !typeCible) return bilan;
     if (typeof _ecrivain(familleCible) !== "function") {
@@ -321,6 +324,7 @@
   }
 
   function ouvrir(famille, obj, opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
     if (!obj) return;
     opts = opts || {};
     const lot = Array.isArray(opts.lot) && opts.lot.length ? opts.lot : null;
