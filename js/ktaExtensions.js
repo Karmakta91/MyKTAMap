@@ -830,7 +830,7 @@
     const ext = _prise("panneau");
     const p = ext && ext.panneau;
     if (!p || typeof p.rendre !== "function") return null;
-    return { icone: String(p.icone || "🧩").slice(0, 4), titre: String(p.titre || "").trim().slice(0, 40) || "Installation" };
+    return { icone: String(p.icone || "🧩").slice(0, 4), titre: String(p.titre || "").trim().slice(0, 40) || _t("ext.panneau.titreDefaut") };
   }
   let _panneauCorps = null;
   function _rendrePanneau() {
@@ -942,8 +942,17 @@
   let _observateurFiches = null;
   function _observerFiches() {
     if (_observateurFiches || typeof MutationObserver !== "function" || !document.body) return;
+    // Une seule recherche par image affichée, limitée aux fiches pas encore traitées : un déplacement ou un
+    // zoom de la carte produit des centaines de mutations (audit UI du 05/10/2026).
+    let prevu = false;
+    const planifier = (typeof requestAnimationFrame === "function") ? requestAnimationFrame : function (f) { return setTimeout(f, 16); };
     _observateurFiches = new MutationObserver(function () {
-      document.querySelectorAll(".leaflet-popup-content [data-kta-uid]").forEach(_hydraterFiche);
+      if (prevu) return;
+      prevu = true;
+      planifier(function () {
+        prevu = false;
+        document.querySelectorAll(".leaflet-popup-content [data-kta-uid]:not([data-kta-ext])").forEach(_hydraterFiche);
+      });
     });
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }

@@ -252,7 +252,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /const _panneauExt = \(window\.KtaExtensions && typeof window\.KtaExtensions\.panneauExtension === "function"\)/.test(lire("js/interface.js")) &&
       /if \(_panneauExt\) \{[\s\S]{0,600}_creerGroupeAccordeon\(_cfgPanneauExt\)/.test(lire("js/interface.js")));
     t("badge d'un plan d'extension : texte échappé (8 / 160 car.), plans ☁️ seulement",
-      /\.slice\(0, 8\)/.test(lire("js/ktaExtensions.js")) && /kta-plan-row-ext-badge" title="' \+ escapeHtml\(bx\.titre\) \+ '">' \+ escapeHtml\(bx\.texte\)/.test(lire("js/homeLoader.js")));
+      /\.slice\(0, 8\)/.test(lire("js/ktaExtensions.js")) && /kta-plan-row-ext-badge" title="' \+ escapeHtml\(bx\.titre\) \+ '">' \+\s*escapeHtml\(bx\.texte\)/.test(lire("js/homeLoader.js")));
+    t("badges : mis à jour sur place à l'événement (pas de liste redessinée)",
+      /mktm:plans-badges-changes"[\s\S]{0,200}ktaMajBadgesExtension\(\)/.test(lire("js/main.js")) && /data-ext-badge-for=/.test(lire("js/homeLoader.js")));
     t("info d'objet : texte seulement (textContent), 120 caractères, jamais écrite par l'app",
       /ligne\.textContent = info;/.test(lire("js/ktaExtensions.js")) && /\.slice\(0, 120\)/.test(lire("js/ktaExtensions.js")));
   }

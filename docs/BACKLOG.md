@@ -177,9 +177,7 @@ l'audit UI (régression du correctif XSS : actions d'extension en double dans la
   plan redessinée sur le nouveau** et panneau 👥 resté ouvert (`KtaExtensions.quitterPlan` + `mktm:plan-ferme`) ;
   **`sitePlansHiddenDefault`** (cases resynchronisées une fois la config de l'installation lue) ; atténuation hors
   niveau recalculée au changement de niveau ; pastille d'un pseudo-emoji.
-- 🟡 Audit UI n° 8-12 : FR en dur (ouverture d'un plan ☁️, « Mémoriser », titre de repli « Installation ») ;
-  « (hors base de données) » coupé à 390 px ; liste de l'accueil redessinée à chaque badge ; publication depuis le
-  Générateur sans retour (alert natif, nom non échappé dans `ktaConfirm`) ; observateur des fiches sur tout `body`.
+- ✅ Audit UI n° 8-12 corrigés le 06/10/2026 (FR en dur, « hors base » à 390 px, badges mis à jour sur place, publication du Générateur avec avancement et nom échappé, observateur des fiches regroupé par image).
 - 🧹 **Code mort** : les 19 suppressions sûres sont faites (05/10/2026). `toggleEdition` (editor.js) n'a toujours aucun
   appelant : la lecture seule est désormais gardée au vrai bouton, il peut partir. À arbitrer (KARMA) : `setShowRoadIntersections`,
   `telechargerMesureJSON` (36 l., plus aucun bouton), `getRuntimeAssetJson`, `PERF_AUTO_META`/`PERF_OFF_META`,

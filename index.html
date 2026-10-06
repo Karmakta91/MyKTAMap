@@ -461,8 +461,10 @@
             <div class="loader-plans-filters">
               <label class="loader-plans-filter-row" data-i18n-title="home.plans.showServerTitle" title="Plans posés sur le site (data/index.json), lus au démarrage">
                 <input type="checkbox" id="loaderShowServerPlans" checked>
-                <span data-i18n="home.plans.showServer">🌐 Afficher les plans du site</span>
-                <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span>
+                <!-- Un seul bloc texte : la rangée est en flex, la mention « hors base » partait dans une
+                     3e colonne coupée sur deux lignes à 390 px (audit UI du 05/10/2026). -->
+                <span><span data-i18n="home.plans.showServer">🌐 Afficher les plans du site</span>
+                <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></span>
               </label>
             </div>
             <!-- 🏷️ v1.78.0 : organisation de la liste (KARMA 1+3+4) — filtre par

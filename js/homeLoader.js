@@ -917,6 +917,19 @@
       // du dico pas-encore-chargé (course au window load) → t() warnait et
       // retournait la version humanisée. I18n.has() teste la présence réelle
       // de la clé (sans warn) : dico pas prêt OU clé absente → fallback FR.
+      function _htmlBadgeExtension(idPlan) {
+        const bx = window.KtaExtensions && typeof window.KtaExtensions.badgePlan === "function"
+          ? window.KtaExtensions.badgePlan(idPlan) : null;
+        return bx ? '<span class="plan-row-badge kta-plan-row-ext-badge" title="' + escapeHtml(bx.titre) + '">' +
+          escapeHtml(bx.texte) + '</span>' : "";
+      }
+      window.ktaMajBadgesExtension = function() {
+        document.querySelectorAll("[data-ext-badge-for]").forEach(function(slot) {
+          const html = _htmlBadgeExtension(slot.getAttribute("data-ext-badge-for"));
+          if (slot.innerHTML !== html) slot.innerHTML = html;
+        });
+      };
+
       function _homeT(key, fr) {
         if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
           return window.I18n.t(key);
@@ -1047,14 +1060,14 @@
         try {
           const zip = await JSZip.loadAsync(file);
           const entree = zip.file(/(^|\/)plan-config\.json$/)[0];
-          if (!entree) throw new Error("plan-config.json introuvable");
+          if (!entree) throw new Error(t("home.plans.offline.errSansConfig"));
           const cfg = JSON.parse(await entree.async("string"));
           const nomZip = String((cfg.plan && cfg.plan.name) || "").trim();
           const nomPlan = String(plan.name || "").trim();
           if (nomZip && nomPlan && nomZip !== nomPlan) { await _afficherModaleNomZipKO(nomZip, nomPlan); return; }
           if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
           const r = await window.PlanRegistry.saveBlob(plan.id, file);
-          if (!r || !r.ok) throw new Error((r && r.error) || "stockage refusé");
+          if (!r || !r.ok) throw new Error((r && r.error) || t("home.plans.offline.errStockage"));
           window.PlanRegistry.addOrUpdate({ id: plan.id, storedBlob: true, originalFilename: file.name, fileSize: file.size });
           toast(t("home.plans.offline.memoriseOk"), "info");
         } catch (e) {
@@ -1108,9 +1121,11 @@ function planRowHTML(plan) {
           }
         }
         // 🧩 Badge fourni par une installation reliée (ex. « 👥 2 » : qui a ce plan ouvert) — texte échappé.
+        // Emplacement identifié : mis à jour seul quand l'activité change (window.ktaMajBadgesExtension),
+        // sans redessiner la liste entière (audit UI du 05/10/2026 : boutons qui clignotaient).
         if (plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.badgePlan === "function") {
-          const bx = window.KtaExtensions.badgePlan(plan.id);
-          if (bx) badgeStorage += '<span class="plan-row-badge kta-plan-row-ext-badge" title="' + escapeHtml(bx.titre) + '">' + escapeHtml(bx.texte) + '</span>';
+          badgeStorage += '<span class="kta-plan-row-ext-badge-slot" data-ext-badge-for="' + escapeHtml(plan.id) + '">' +
+            _htmlBadgeExtension(plan.id) + '</span>';
         }
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
@@ -2647,7 +2662,7 @@ function planRowHTML(plan) {
         if (!plan) return setStatus("Plan introuvable dans la liste", true);
 
         if (plan.type === "server") {
-          setStatus("Chargement de " + plan.name + "…");
+          setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
           try {
             // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
             // Sinon → on utilise le preset mémorisé pour ce plan (ou "auto" si jamais réglé).
@@ -2660,7 +2675,7 @@ function planRowHTML(plan) {
             if (e && e.code === "PLAN_NOT_FOUND") {
               afficherModalePlanIntrouvable(plan, "server");
             } else {
-              setStatus("Erreur : " + (e.message || e), true);
+              setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
             }
           }
           return;
@@ -2670,7 +2685,7 @@ function planRowHTML(plan) {
         // l'archive vient de l'extension ; une fois ouverte elle est gardée sur
         // l'appareil (hors ligne), et l'effacement à la déconnexion la retire.
         if (plan.type === "ext") {
-          setStatus("Chargement de " + plan.name + "…");
+          setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
           // 🧩 Écran de chargement central dès le début : un plan venu du serveur de
           // l'installation peut peser des centaines de Mo (retour KARMA 04/10/2026 :
           // « un long moment se passe, rien à l'écran »). Progression si l'extension
@@ -2699,7 +2714,7 @@ function planRowHTML(plan) {
             }
             if (!blob) {
               if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-              return setStatus("Plan indisponible (serveur injoignable)", true);
+              return setStatus(_homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"), true);
             }
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
@@ -2709,7 +2724,7 @@ function planRowHTML(plan) {
             if (window.masquerLoader) window.masquerLoader();
           } catch (e) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-            setStatus("Erreur : " + (e.message || e), true);
+            setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
           }
           return;
         }
