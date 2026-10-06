@@ -581,7 +581,10 @@ Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION =
 > garde scénario, équipes et phases ; il ne régénère que si le scénario est **déjà sur l'appareil** et que l'utilisateur
 > choisit **« Importer comme copie »** (ou un id absent / en double). **« Remplacer »** (défaut coché dans l'aperçu)
 > réécrit le scénario à sa place, mêmes ids — son exécution locale éventuelle est perdue **avec ses photos** (`deletePhotosForScenario`, relecture R8 : sinon elles revenaient dans le rapport suivant et comptaient dans le quota), l'aperçu le dit dès qu'une exécution existe, en cours ou terminée.
-> `importerScenario(input, {mode})` : sans `mode`, un existant part en **copie** (jamais d'écrasement implicite) ;
+> `importerScenario(input, {mode, garderExecution})` : sans `mode`, un existant part en **copie** (jamais d'écrasement
+> implicite) ; `garderExecution` (relais en direct d'une installation reliée) **fusionne** l'exécution au lieu de l'effacer
+> (`_fusionnerExecutionDirect` : étape la plus récente par `majAt` — posé par `updateEtape` —, sinon la plus grave ; main
+> courante et notes libres unies ; rôle / équipe suivie propres à l'appareil ; photos gardées) ;
 > son `confirm()` de plan différent est passé à `ktaConfirm`. Test : harnais 2 appareils, 19 contrôles.
 
 **Fix Heatmap « ⚙️ Régler »** : bouton TOUJOURS visible tant que `window.MyKTAMapHeatmap` chargé (avant : condition fragile `_secoursHeatmapActive && isVisible()` faisait disparaître le bouton après cycles de rendu).

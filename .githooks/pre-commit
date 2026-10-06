@@ -247,6 +247,10 @@ node scripts/check-repositionner.js || exit $?
 # filtres d'entrée d'un plan et d'une légende exécutés contre des charges d'attaque. BLOQUANT.
 node scripts/check-xss.js || exit $?
 
+# 🔁 Relais Secours en direct (05/10/2026) : l'intervention en cours n'est jamais effacée par le
+# scénario reçu d'un autre appareil, le poste reste celui de l'appareil. BLOQUANT.
+node scripts/check-secours-relais.js || exit $?
+
 # 🧭 Le tableau recapitulatif des groupes de la barre laterale (3 langues)
 # confronte a ce que interface.js declare vraiment. Rien ne faisait ce
 # rapprochement, d ou une doc qui a decrit pendant des MOIS une interface

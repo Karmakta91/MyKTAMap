@@ -92,15 +92,8 @@ natives).
   (reco : oui) · 4. reprise après arrêt (reco : non au départ) · 5. rapport déposé à l'accueil (reco : message « à importer
   depuis le plan ouvert »). Non vérifié : deux interventions simultanées sur un même plan. **M**
 
-- 🔴 **Mode Secours à plusieurs appareils sur une installation reliée : l'exécution en cours est effacée** (étape 0
-  de l'étude « Secours avec l'installation », 05/10/2026 ; ✅ vérifié, code lu). Le relais en direct renvoie le
-  scénario entier, importé chez les autres en `mode: "remplacer"` ; or `secoursMode.js > _appliquerPayloadImport`
-  reconstruit le scénario **sans `execution`** et efface ses photos — le PC qui coche efface le tableau de l'équipe, et
-  l'inverse. Et `execution` mêle données communes et choix de l'appareil (`role`, `currentEquipeId`). Côté app :
-  option `garderExecution` de l'import + poste stocké **par appareil**. ⚠️ D'ici là : pas d'intervention réelle à
-  plusieurs appareils sur une installation reliée (un seul appareil : non concerné ; myktamap.fr : non concerné).
-  Repoussé par KARMA le 05/10 (après le multi-comptes). **S** pour la partie app.
-- **Secours relié aux comptes** (décisions KARMA du 05/10/2026, après l'étape 0) : équipe ↔ vrais comptes, lien gardé
+- **Secours relié aux comptes** (décisions KARMA du 05/10/2026 ; l'étape 0 — relais qui gardait mal l'exécution — est
+  corrigée le 06/10/2026, `check-secours-relais.js`) : équipe ↔ vrais comptes, lien gardé
   par l'installation seulement (aucun nom réel dans le `.mkmsec` ni le KMZ) ; intervention déclenchée par Admin ou
   Créateur, bandeau d'alerte + accusés « vu » ; tout membre coche les étapes, le chef seul déclare la rentrée, le PC
   peut tout ; position sur le plan proposée en une touche au déclenchement ; pas de notification app fermée avant

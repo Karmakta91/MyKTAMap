@@ -1432,6 +1432,9 @@
     if ("completedAt" in partial) {
       et.completedAt = partial.completedAt;
     }
+    // 🔁 Horodatage de la dernière modification : départage deux appareils qui touchent la même étape
+    // (relais en direct d'une installation reliée — _fusionnerExecutionDirect).
+    et.majAt = _nowIso();
     if ("victimePos" in partial) {   // A3 : position précisée de la victime (ou null)
       const v = partial.victimePos;
       et.victimePos = (v && typeof v.x === "number" && typeof v.y === "number")
@@ -3036,7 +3039,62 @@
   // `mode` ne compte que si le scénario est DÉJÀ sur l'appareil :
   //   "remplacer" → même place, mêmes ids (plan mis à jour, rapports acceptés) ;
   //   "copie" (défaut) → nouveaux ids, comme avant — non destructif.
-  function _appliquerPayloadImport(payload, mode) {
+  // 🔁 Relais en direct (installation reliée, étude Secours étape 0, 05/10/2026) — le scénario reçu
+  // d'un autre appareil ne doit pas effacer l'intervention en cours ici. Fusion :
+  //   • champs de l'APPAREIL (rôle, équipe suivie…) : jamais repris de l'autre ;
+  //   • étapes : par équipe et par étape (wid, sinon idx), la modification la plus récente (majAt)
+  //     gagne ; à défaut d'horodatage, le statut le plus grave ;
+  //   • main courante et notes libres : union sans doublon ;
+  //   • le reste (phase, pause, fin) : la version reçue, la plus récente.
+  // Sans exécution ici, rien n'est créé (l'appareil choisit lui-même de rejoindre l'intervention).
+  const _CHAMPS_APPAREIL = ["role", "currentEquipeId", "_previousRole", "_previousEquipeId",
+    "_phaseReadyToastShownForIdx", "rapportExporteAt"];
+  function _fusionnerEtape(a, b) {
+    if (!a) return b; if (!b) return a;
+    const ta = Date.parse(a.majAt || "") || 0, tb = Date.parse(b.majAt || "") || 0;
+    if (ta !== tb) return tb > ta ? b : a;
+    const ga = _getStatutInfo(a.statut).severity || 0, gb = _getStatutInfo(b.statut).severity || 0;
+    return gb > ga ? b : a;
+  }
+  function _fusionnerEtapesEquipe(loc, rec) {
+    if (!Array.isArray(rec)) return loc;
+    if (!Array.isArray(loc)) return rec;
+    return rec.map(function(e, i) {
+      const l = (e && e.wid) ? loc.find(function(x) { return x && x.wid === e.wid; }) : loc[i];
+      return _fusionnerEtape(l || null, e);
+    });
+  }
+  function _unionPar(cle, a, b) {
+    const vus = {}, out = [];
+    (Array.isArray(a) ? a : []).concat(Array.isArray(b) ? b : []).forEach(function(x) {
+      const k = cle(x);
+      if (!vus[k]) { vus[k] = true; out.push(x); }
+    });
+    return out;
+  }
+  function _fusionnerExecutionDirect(locale, recue) {
+    if (!locale) return null;
+    if (!recue || typeof recue !== "object") return locale;
+    const out = JSON.parse(JSON.stringify(recue));
+    _CHAMPS_APPAREIL.forEach(function(k) { if (k in locale) out[k] = locale[k]; else delete out[k]; });
+    const et = {}, le = locale.etapes || {}, re = recue.etapes || {};
+    Object.keys(le).concat(Object.keys(re)).forEach(function(gid) {
+      if (gid in et) return;
+      if (gid === "_notes_libres") {
+        et[gid] = _unionPar(function(n) { return (n && n.id) || JSON.stringify(n); }, le[gid], re[gid]);
+      } else {
+        et[gid] = _fusionnerEtapesEquipe(le[gid], re[gid]);
+      }
+    });
+    out.etapes = et;
+    out.mainCourante = _unionPar(function(m) { return JSON.stringify([m && m.at, m && m.cle, m && m.p]); },
+      locale.mainCourante, recue.mainCourante)
+      .sort(function(x, y) { return String(x.at).localeCompare(String(y.at)); }).slice(-MC_MAX);
+    return out;
+  }
+
+  function _appliquerPayloadImport(payload, mode, opts) {
+    const garderExecution = !!(opts && opts.garderExecution);
     const sc = payload.scenario;
     const idxExistant = (typeof sc.id === "string" && sc.id)
       ? _scenarios.findIndex(function(s) { return s.id === sc.id; })
@@ -3108,7 +3166,11 @@
     _migrateScenarioV1ToPhases(cleanScenario);
     // Remplacer = même place dans la liste ; l'exécution locale éventuelle part
     // avec l'ancienne version (la modale d'aperçu l'a annoncé).
-    if (remplacer) {
+    if (remplacer && garderExecution && _scenarios[idxExistant].execution) {
+      // 🔁 Relais en direct : l'exécution en cours est fusionnée, ses photos restent.
+      cleanScenario.execution = _fusionnerExecutionDirect(_scenarios[idxExistant].execution, sc.execution);
+      _scenarios[idxExistant] = cleanScenario;
+    } else if (remplacer) {
       // 🩸 Relecture 29/09 (R8, décision KARMA 2:a) — les photos de l'exécution
       // effacée partent avec elle. Avant, mêmes ids gardés : elles revenaient dans
       // le rapport suivant et comptaient dans le quota de 5 par étape.
@@ -3133,6 +3195,8 @@
   // charte `ktaConfirm` depuis le 29/09/2026). Pour le flow UI complet, le picker.
   // `opts.mode` ("remplacer" | "copie") : cf `_appliquerPayloadImport` — sans lui,
   // un scénario déjà présent est importé en copie (jamais d'écrasement implicite).
+  // `opts.garderExecution` (avec "remplacer") : l'intervention en cours ici est FUSIONNÉE avec celle
+  // reçue au lieu d'être effacée (relais en direct d'une installation reliée).
   //
   // Retourne : { ok: bool, scenario?: object, remplace?: bool, warning?: string, error?: string }
   async function importerScenario(input, opts) {
@@ -3153,7 +3217,8 @@
         return { ok: false, error: t("secours.import.errAnnuleUser") };
       }
     }
-    const applied = _appliquerPayloadImport(parsed.payload, opts && opts.mode);
+    const applied = _appliquerPayloadImport(parsed.payload, opts && opts.mode,
+      { garderExecution: !!(opts && opts.garderExecution) });
     return { ok: true, scenario: applied.scenario, remplace: applied.remplace, warning: parsed.warning };
   }
 

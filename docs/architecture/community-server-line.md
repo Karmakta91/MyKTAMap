@@ -226,7 +226,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Mode Secours** : `mktm:secours-scenario-mutated` (`{ scenarioId, planExternalId, updatedAt }`) à chaque modification
   d'un scénario, `mktm:secours-scenario-deleted` (`{ scenarioId, planExternalId }`) à sa suppression **voulue** (la purge
   FIFO des 10 scénarios d'un plan n'émet rien : limite de stockage local). Entrant : `SecoursMode.importerScenario(paquet,
-  { mode: "remplacer" })` (même identifiant = remplacé) ou `secoursAppliquer(id, partiel)`.
+  { mode: "remplacer", garderExecution: true })` — même identifiant = remplacé, mais l'**intervention en cours ici est
+  fusionnée, jamais effacée** : par étape, la modification la plus récente (`majAt`) gagne, sinon la plus grave ; main
+  courante et notes libres unies ; rôle et équipe suivie restent ceux de l'appareil ; sans exécution ici, rien n'est créé
+  (`check-secours-relais.js`). Sans `garderExecution`, « remplacer » efface l'exécution (import de fichier, annoncé par l'aperçu).
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
