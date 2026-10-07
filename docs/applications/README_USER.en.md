@@ -1093,11 +1093,10 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
   - **🔆 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
-- **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”.
+- **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”. This is also where **🕵️ Incognito mode** lives: it opens a new window where nothing is saved (not available on an installation linked to a database, whose server records what you do).
 - **🔒 Privacy & security**:
   - **📔 Keep a logbook of my outings** (on, see “📔 My logbook”);
   - **💾 Store the map in the app on first load** (on);
-  - **🕵️ Incognito mode**: opens a new window where nothing is saved;
   - **🔐 Local access code** (PIN, Face ID): see “🔭 Going further”;
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).

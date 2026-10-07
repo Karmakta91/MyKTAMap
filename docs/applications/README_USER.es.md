@@ -1093,11 +1093,10 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **🧲 Imantación al dibujar** y su distancia: un clic cerca de un punto existente se engancha a él, para que tus galerías se unan de verdad;
   - **☀️ Tema claro**;
   - **🔆 Mantener la pantalla encendida** mientras la app está abierta. El tracker también propone activarlo al arrancar.
-- **🧩 Funciones opcionales** — Replay, mapa de calor, batería y vibración, todas desactivadas por defecto: ver «🔭 Para ir más lejos».
+- **🧩 Funciones opcionales** — Replay, mapa de calor, batería y vibración, todas desactivadas por defecto: ver «🔭 Para ir más lejos». Aquí está también el **🕵️ Modo incógnito**: abre una ventana nueva donde no se guarda nada (no disponible en una instalación conectada a una base de datos, cuyo servidor registra lo que haces).
 - **🔒 Privacidad y seguridad**:
   - **📔 Llevar un cuaderno de mis salidas** (activado, ver «📔 Mi cuaderno»);
   - **💾 Memorizar el plano en la app en la primera carga** (activado);
-  - **🕵️ Modo incógnito**: abre una ventana nueva donde no se guarda nada;
   - **🔐 Código de acceso local** (PIN, Face ID): ver «🔭 Para ir más lejos»;
   - **🔒 Privacidad y Auditoría**: **📋 Ver el registro de red**, **📖 ¿Qué hace la app en la red?** y la casilla **🗺️ Vista OSM** (ver «🔴 Advertencias importantes») — la app no envía ninguno de tus datos; el único sitio externo que contacta es OpenStreetMap (fondo de mapa de la Vista OSM), que esta casilla desactiva, y el registro de red te lo muestra;
   - **📚 Mapas del sitio**: **🚫 No cargar los mapas del sitio al arrancar**, si solo usas tus propios planos (tras recargar, desaparecen de la lista y de las estadísticas).

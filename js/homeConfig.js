@@ -109,6 +109,18 @@
         }
         function _refresh() {
           var actif = !!(window.IncognitoMode && window.IncognitoMode.active);
+          var indispo = !actif && !!(window.IncognitoMode && window.IncognitoMode.indisponible && window.IncognitoMode.indisponible());
+          btn.disabled = indispo;
+          btn.classList.toggle("kta-cfg-incognito-btn-indispo", indispo);
+          if (indispo) {
+            btn.classList.remove("kta-cfg-incognito-btn-quit");
+            icon.textContent  = "🕵️";
+            label.textContent = _t("home.privacy.incognitoRelieLabel", "Mode incognito indisponible ici");
+            hint.textContent  = _t("home.privacy.incognitoRelieHint",
+              "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur. " +
+              "Le mode incognito n'aurait donc pas de sens ici.");
+            return;
+          }
           if (actif) {
             btn.classList.add("kta-cfg-incognito-btn-quit");
             icon.textContent  = "✕";

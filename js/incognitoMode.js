@@ -68,6 +68,16 @@
     // du cache appelaient `isActive()`, qui n'existait pas : l'incognito ne les
     // coupait PAS, contrairement à la doc. La fonction rend l'état du boot.
     isActive: function() { return ACTIVE; },
+    // 07/10/2026 (KARMA) — Sur une INSTALLATION RELIÉE (connexion serveur configurée), l'incognito n'a pas de sens :
+    // ce qu'on fait est synchronisé et noté par le serveur (annotations, position partagée, connexion), et le
+    // coffre chiffré / les plans gardés hors ligne ont besoin d'IndexedDB, que ce mode bloque. Rend vrai dès que
+    // l'état de connexion n'est ni « off » ni « invalide ». Lu à l'appel (ktaExtensions se charge après ce module).
+    indisponible: function() {
+      try {
+        var e = window.KtaExtensions && typeof window.KtaExtensions.etat === "function" ? window.KtaExtensions.etat().etat : "off";
+        return e !== "off" && e !== "invalide";
+      } catch (err) { return false; }
+    },
     // Ouvre une nouvelle fenêtre dans le même origin avec ?incognito=1.
     // Conserve les autres params (ex: ?selfhost=…) pour le workflow combiné.
     //
@@ -78,6 +88,10 @@
     // tick auto-save → perte de la dernière modif. Le force:true bypass
     // le throttle "main thread busy".
     launch: function() {
+      if (window.IncognitoMode.indisponible()) {
+        console.warn("[Incognito] indisponible sur une installation reliée");
+        return;
+      }
       try {
         if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
           window.SessionPersist.save({ force: true });
@@ -103,6 +117,7 @@
     // direct (cas légitime : tester depuis un état "frais", l'user sait
     // déjà ce qu'est le mode incognito).
     confirmAndLaunch: function() {
+      if (window.IncognitoMode.indisponible()) return;   // installation reliée : cf indisponible()
       if (ACTIVE) {
         // Déjà en incognito → bypass confirm (cas légitime)
         window.IncognitoMode.launch();

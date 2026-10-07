@@ -836,6 +836,16 @@
               <span id="loaderVibrationHint" data-i18n-html="config.display.vibration.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
           </label>
         </div>
+        <!-- 🕵️ Mode incognito : dans les fonctionnalités optionnelles depuis le 07/10/2026 (KARMA). Grisé sur une
+             installation reliée (IncognitoMode.indisponible). -->
+        <div class="kta-aide-section" id="loaderIncognitoSection">
+          <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
+            <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
+            <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
+          </button>
+          <div id="loaderIncognitoHint" style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            <!-- Rempli dynamiquement par le script bind plus bas. -->
+          </div>
 
         <!-- ⚠️ v1.85.3 / v1.85.4 (audit KARMA) — LE GROUPE « 🚀 PERFORMANCE »
              A DISPARU DE CET ÉCRAN, en deux temps et pour deux raisons
@@ -896,14 +906,6 @@
           </label>
         </div>
 
-        <div class="kta-aide-section" id="loaderIncognitoSection">
-          <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
-            <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
-            <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
-          </button>
-          <div id="loaderIncognitoHint" style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            <!-- Rempli dynamiquement par le script bind plus bas. -->
-          </div>
         </div>
 
         <!-- 🔐 Code d'accès local (v1.9.4 — KARMA 7:b "loader uniquement").

@@ -1589,6 +1589,8 @@
   "home.privacy.incognitoQuitHint": "Closes this incognito window. <strong>All accumulated data</strong> (points, tracker, notes) <strong>will be lost</strong>. Your main session stays intact in its tab.<br><span class=\"kta-tx-violet\">If the browser blocks the close, the tab automatically reloads in normal mode.</span>",
   "home.privacy.incognitoQuitLabel": "Exit incognito mode",
   "home.privacy.incognitoStartHint": "Opens a new window where <strong>no data is saved</strong> (no photos, no tracker, no preferences). Ideal for exploring a map in a public demo, lending your session to someone else, or testing without polluting your local history. A purple border + a badge in the title are reminders of the context.<br><span class=\"kta-tx-violet\">On reload: everything is gone.</span>",
+  "home.privacy.incognitoRelieLabel": "Incognito mode not available here",
+  "home.privacy.incognitoRelieHint": "This installation is linked to a database: what you do is recorded by its server. Incognito mode would therefore make no sense here.",
   "home.privacy.incognitoStartLabel": "Start in incognito mode",
   "home.privacy.intro": "MyKTAMap is <strong>100% client-side</strong>: none of your data is sent to a server. You can verify it yourself.",
   "home.privacy.netDocBtn": "📖 What does the app do on the network?",

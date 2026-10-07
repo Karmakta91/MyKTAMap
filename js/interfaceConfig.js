@@ -1392,24 +1392,23 @@ function afficherConfig() {
               </span>
             </label>
           </div>
-        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
-        ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.privacy", "global")}
-
-        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
-             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
-             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
-             général, et le carnet est accessible depuis le home »). Il reste
-             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
-             réglages rapatriés en v1.85.3. -->
-
+        <!-- 🕵️ Dans les fonctionnalités optionnelles depuis le 07/10/2026 ; grisé sur une installation reliée. -->
         <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
              ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
              (activate) OU close la fenêtre courante si déjà incognito (quit).
              Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
              DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
              onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
-        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
+        ${(window.IncognitoMode && !window.IncognitoMode.active && window.IncognitoMode.indisponible && window.IncognitoMode.indisponible()) ? `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-indispo" type="button" id="cfg_incognito_btn" disabled>
+            <span style="font-size:18px;">🕵️</span>
+            <span><strong>${window.I18n.t("home.privacy.incognitoRelieLabel")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("home.privacy.incognitoRelieHint")}
+          </div>
+        </div>` : (window.IncognitoMode && window.IncognitoMode.active) ? `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">✕</span>
@@ -1428,6 +1427,17 @@ function afficherConfig() {
             ${window.I18n.t("config.incognito.start.desc")}
           </div>
         </div>`}
+        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.privacy", "global")}
+
+        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
+             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
+             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
+             général, et le carnet est accessible depuis le home »). Il reste
+             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
+             réglages rapatriés en v1.85.3. -->
+
 
         <!-- ════════ 8. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
         ${_cfgGroupeFin()}

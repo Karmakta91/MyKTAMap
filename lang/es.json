@@ -1589,6 +1589,8 @@
   "home.privacy.incognitoQuitHint": "Cierra esta ventana de incógnito. <strong>Todos los datos acumulados</strong> (puntos, tracker, notas) <strong>se perderán</strong>. Tu sesión principal permanece intacta en su pestaña.<br><span class=\"kta-tx-violet\">Si el navegador bloquea el cierre, la pestaña se recarga automáticamente en modo normal.</span>",
   "home.privacy.incognitoQuitLabel": "Salir del modo incógnito",
   "home.privacy.incognitoStartHint": "Abre una nueva ventana donde <strong>no se guarda ningún dato</strong> (ni fotos, ni tracker, ni preferencias). Ideal para explorar un mapa en demo pública, prestar tu sesión a un tercero o probar sin ensuciar tu historial local. El borde violeta + la insignia en el título recuerdan el contexto.<br><span class=\"kta-tx-violet\">Al recargar: todo desaparece.</span>",
+  "home.privacy.incognitoRelieLabel": "Modo incógnito no disponible aquí",
+  "home.privacy.incognitoRelieHint": "Esta instalación está conectada a una base de datos: lo que haces queda registrado en su servidor. Por eso el modo incógnito no tendría sentido aquí.",
   "home.privacy.incognitoStartLabel": "Iniciar en modo incógnito",
   "home.privacy.intro": "MyKTAMap es <strong>100% client-side</strong>: ninguno de tus datos se envía a un servidor. Puedes verificarlo tú mismo.",
   "home.privacy.netDocBtn": "📖 ¿Qué hace la app en la red?",

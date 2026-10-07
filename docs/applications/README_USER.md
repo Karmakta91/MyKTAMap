@@ -1093,11 +1093,10 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;
   - **🔆 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
-- **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ».
+- **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ». On y trouve aussi le **🕵️ Mode incognito** : il ouvre une nouvelle fenêtre où rien n'est enregistré (indisponible sur une installation reliée à une base de données, où le serveur enregistre ce que tu fais).
 - **🔒 Confidentialité & sécurité** :
   - **📔 Tenir un carnet de mes sorties** (activé, voir « 📔 Mon carnet ») ;
   - **💾 Mémoriser le plan dans l'app au premier chargement** (activé) ;
-  - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre où rien n'est enregistré ;
   - **🔐 Code d'accès local** (PIN, Face ID) : voir « 🔭 Pour aller plus loin » ;
   - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
   - **📚 Plans du site** : **🚫 Ne pas charger les plans du site au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).

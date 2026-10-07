@@ -1589,6 +1589,8 @@
   "home.privacy.incognitoQuitHint": "Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong> (points, tracker, notes) <strong>seront perdues</strong>. Ta session principale reste intacte dans son onglet.<br><span class=\"kta-tx-violet\">Si le navigateur bloque la fermeture, l'onglet recharge automatiquement en mode normal.</span>",
   "home.privacy.incognitoQuitLabel": "Quitter le mode incognito",
   "home.privacy.incognitoStartHint": "Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> (ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo publique, prêter ta session à un tiers ou tester sans polluer ton historique local. Bordure violette + badge dans le titre rappellent le contexte.<br><span class=\"kta-tx-violet\">Au reload : tout disparaît.</span>",
+  "home.privacy.incognitoRelieLabel": "Mode incognito indisponible ici",
+  "home.privacy.incognitoRelieHint": "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur. Le mode incognito n'aurait donc pas de sens ici.",
   "home.privacy.incognitoStartLabel": "Démarrer en mode incognito",
   "home.privacy.intro": "MyKTAMap est <strong>100% client-side</strong> : aucune de tes données n'est envoyée à un serveur. Tu peux le vérifier toi-même.",
   "home.privacy.netDocBtn": "📖 Que fait l'app sur le réseau ?",
