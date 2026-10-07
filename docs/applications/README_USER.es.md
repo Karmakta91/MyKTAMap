@@ -1122,7 +1122,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
   - **🧭 Posición inicial del tracker** *(este plano)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los planos)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);
   - **🧭 Navegación inteligente** *(este plano)*: ver «🔭 Para ir más lejos».
-- **🎨 Visualización** — **⚪ Mostrar círculos en las intersecciones** *(este plano)*; **🎤 Comandos de voz (BETA)** *(todos los planos)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
+- **🎨 Visualización** — **🎨 Fondo bajo el plano** *(este plano)*: negro, blanco o gris neutro bajo las partes transparentes del plano (por defecto: el que recomienda el plano, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este plano)*; **🎤 Comandos de voz (BETA)** *(todos los planos)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
 - **🚀 Rendimiento** *(este plano)* — el **🚀 Modo ULTRA** para los planos grandes que hacen fallar el teléfono (ver «🔭 Para ir más lejos»); en un plano multinivel, **🏗️ Mostrar todos los niveles al iniciar**.
 - **🧩 Funciones opcionales** y **🔒 Privacidad y seguridad** — las mismas casillas que en ⚙️ Configuración (opciones, modo incógnito).
 - **🛠️ Sistema y mantenimiento** — el **modo rendimiento** del plano, en modo lectura.
@@ -1527,7 +1527,8 @@ Si el plano tiene **fotos adjuntas a sus puntos** en tu dispositivo, la casilla 
 Para dibujar un plano **sin imagen de origen**, elige **Imagen en blanco** en lugar de **Desde una imagen** en **🖼️ Imágenes principales**:
 
 - **ancho** y **alto** de 500 a 12 000 px;
-- **color de fondo**: blanco, gris claro, gris oscuro o negro;
+- **color de fondo**: blanco, gris, negro, sepia o **🫥 transparente** (en la vista OSM se ve debajo el mapa de fondo; en modo mapa, el fondo elegido en los Ajustes);
+- **🎨 Fondo recomendado** (opcional): el fondo mostrado bajo las partes transparentes en modo mapa — cada uno puede cambiarlo en ⚙️ Ajustes › Visualización;
 - **🎨 Generar la imagen vacía** la instala como imagen principal.
 
 Termina el formulario y genera el ZIP como de costumbre; después dibuja pilares, frentes, trazados y puntos con las herramientas del mapa.

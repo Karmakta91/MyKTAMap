@@ -14205,6 +14205,11 @@ body.kta-theme-light {
 body.kta-theme-light .leaflet-container {
   background: var(--kta-light-bg) !important;
 }
+/* Fond sous le plan, choisi par plan (⚙️ Réglages › Affichage) ou conseillé par le plan (07/10/2026). Carte d'un
+   plan SEULEMENT (#map) : ni la Vue OSM, ni la mini-carte du mode XL. Gagne sur le thème (spécificité plus forte). */
+body.kta-fond-noir  #map.leaflet-container { background: #000000 !important; }
+body.kta-fond-blanc #map.leaflet-container { background: #ffffff !important; }
+body.kta-fond-gris  #map.leaflet-container { background: #808080 !important; }
 
 /* === Body / arrière-plan général === */
 body.kta-theme-light {

@@ -405,6 +405,11 @@ function afficherPlanner() {
                 <input type="radio" name="pl_vierge_color" value="sepia">
                 <span>📜 ${window.I18n.t("gen.couleur.sepia")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.sepiaHint")}</span></span>
               </label>
+              <!-- 🫥 07/10/2026 (KARMA) : fond transparent — le plan prend le fond de la Vue OSM, ou celui choisi en mode carte. -->
+              <label class="kta-export-radio-row" style="grid-column:1 / -1;">
+                <input type="radio" name="pl_vierge_color" value="transparent">
+                <span>🫥 ${window.I18n.t("gen.couleur.transparent")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.transparentHint")}</span></span>
+              </label>
             </div>
 
             <button id="pl_vierge_generate" class="kta-btn kta-btn-primary" type="button"
@@ -413,6 +418,19 @@ function afficherPlanner() {
             </button>
             <div id="pl_vierge_status" style="margin-top:8px; font-size:12px; color:#8892a4; min-height:18px;"></div>
           </div>
+
+          <!-- 🎨 07/10/2026 — Fond conseillé (plan.fondConseille) : vu dans l'app sous les parties transparentes du
+               plan ; l'utilisateur garde la main (⚙️ Réglages › Affichage). Absent = JSON identique à avant. -->
+          <div class="kta-planner-grille" style="margin-top:12px;">
+            <label class="kta-cfg-label" for="pl_fond">${window.I18n.t("gen.fond.label")}</label>
+            <select class="kta-cfg-input" id="pl_fond">
+              <option value="">${window.I18n.t("gen.fond.aucun")}</option>
+              <option value="noir">${window.I18n.t("config.fond.noir")}</option>
+              <option value="blanc">${window.I18n.t("config.fond.blanc")}</option>
+              <option value="gris">${window.I18n.t("config.fond.gris")}</option>
+            </select>
+          </div>
+          <p class="kta-planner-hint" style="margin:4px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.fond.hint")}</p>
         </div>
 
         <!-- v1.14.20-hotfix11 (KARMA capture : « dans générateur, met
@@ -1780,6 +1798,7 @@ function _preRemplirFormulaire(config) {
   sv("pl_version", plan.version     || "");
   sv("pl_author",  plan.author      || "");
   sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");   // 🏷️ 16/09/2026
+  sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");   // 🎨 07/10/2026
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
   sv("pl_startX",  t.startX        ?? 0);
@@ -2006,9 +2025,15 @@ function _genererImageVierge() {
     white: "#ffffff",
     gray:  "#e8e8e8",
     black: "#000000",
-    sepia: "#f4e4bc"
+    sepia: "#f4e4bc",
+    transparent: null      // 🫥 07/10/2026 : aucun remplissage — PNG entièrement transparent
   };
-  const fillColor = PALETTE[colorChoice] || PALETTE.white;
+  const fillColor = (colorChoice in PALETTE) ? PALETTE[colorChoice] : PALETTE.white;
+  // Un plan vierge transparent sans fond conseillé : on propose le blanc (lisible en mode carte), modifiable.
+  if (colorChoice === "transparent") {
+    const pf = document.getElementById("pl_fond");
+    if (pf && !pf.value) pf.value = "blanc";
+  }
 
   setStatus(window.I18n.t("gen.viergeGen.encours", { w: w, h: h }), "#8cb4ff");
 
@@ -2021,8 +2046,10 @@ function _genererImageVierge() {
       canvas.width  = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-      ctx.fillStyle = fillColor;
-      ctx.fillRect(0, 0, w, h);
+      if (fillColor) {
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(0, 0, w, h);
+      }
 
       // ───── Conversion en Blob PNG ─────
       canvas.toBlob(function(blob) {
@@ -3987,6 +4014,9 @@ async function _genererZip() {
     // 🏷️ 16/09/2026 — étiquettes proposées : écrites SEULEMENT si saisies,
     // sinon le champ est absent et le JSON reste identique à avant.
     if (tags.length)    planObj.tags = tags;
+    // 🎨 07/10/2026 — fond conseillé, écrit SEULEMENT s'il est choisi (absent = JSON identique à avant).
+    const _fond = (document.getElementById("pl_fond") || {}).value || "";
+    if (["noir", "blanc", "gris"].indexOf(_fond) >= 0) planObj.fondConseille = _fond;
     // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
     // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
     // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un

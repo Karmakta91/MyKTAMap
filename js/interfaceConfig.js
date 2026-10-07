@@ -1268,6 +1268,18 @@ function afficherConfig() {
                La pref est stockée par plan dans myktamap_plan_prefs_PLANID,
                avec fallback sur la pref globale historique. Le handler appelle
                window.setPlanShowsIntersections() qui persiste + re-render. -->
+          <!-- 🎨 07/10/2026 — Fond sous le plan, PAR PLAN (se voit sous un plan transparent). -->
+          <div class="kta-cfg-label" style="margin-top:4px;">${window.I18n.t("config.fond.label")}</div>
+          <select class="kta-cfg-input" id="cfg_fond_plan" style="margin-top:4px;">
+            <option value="">${(typeof window.getPlanFondConseille === "function" && window.getPlanFondConseille())
+              ? window.I18n.t("config.fond.defautConseil", { fond: window.I18n.t("config.fond." + window.getPlanFondConseille()) })
+              : window.I18n.t("config.fond.defautTheme")}</option>
+            <option value="noir">${window.I18n.t("config.fond.noir")}</option>
+            <option value="blanc">${window.I18n.t("config.fond.blanc")}</option>
+            <option value="gris">${window.I18n.t("config.fond.gris")}</option>
+          </select>
+          <div class="kta-perf-ultra-hint" style="margin:4px 0 10px;">${window.I18n.t("config.fond.hint")}</div>
+
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
@@ -1596,6 +1608,13 @@ function afficherConfig() {
   // L'option est PER-PLAN — déplacée de Configuration home suite feedback KARMA.
   // Lecture initiale via getPlanShowsIntersections() (fallback global → true).
   // Change handler : setPlanShowsIntersections() persiste LS per-plan + re-render.
+  const fondSel = document.getElementById("cfg_fond_plan");
+  if (fondSel) {
+    fondSel.value = (typeof window.getPlanFondChoisi === "function") ? window.getPlanFondChoisi() : "";
+    fondSel.addEventListener("change", function () {
+      if (typeof window.setPlanFond === "function") window.setPlanFond(null, fondSel.value);
+    });
+  }
   const showIntersectCb = document.getElementById("cfg_show_intersections");
   if (showIntersectCb) {
     try {

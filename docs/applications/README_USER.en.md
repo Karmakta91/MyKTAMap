@@ -1122,7 +1122,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
-- **🎨 Display** — **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
+- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
 - **🧩 Optional features** and **🔒 Privacy & security** — the same boxes as in ⚙️ Configuration (options, incognito mode).
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.
@@ -1527,7 +1527,8 @@ If the map has **photos attached to its points** on your device, the **📸 Incl
 To draw a map **without a source image**, choose **Blank image** instead of **From an image** in **🖼️ Main images**:
 
 - **width** and **height** from 500 to 12,000 px;
-- **background colour**: white, light grey, dark grey or black;
+- **background colour**: white, grey, black, sepia, or **🫥 transparent** (in the OSM view the background map shows through; in map mode, the background chosen in Settings);
+- **🎨 Suggested background** (optional): the background shown under transparent parts in map mode — anyone can change it in ⚙️ Settings › Display;
 - **🎨 Generate the blank image** installs it as the main image.
 
 Finish the form and generate the ZIP as usual, then draw pillars, working faces, paths and points with the map tools.

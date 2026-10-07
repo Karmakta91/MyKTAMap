@@ -135,8 +135,10 @@
           black: "#1a1a1a",
           sepia: "#d9c9a8"
         };
-        ctx.fillStyle = fills[color] || fills.sepia;
-        ctx.fillRect(0, 0, width, height);
+        if (color !== "transparent") {      // 🫥 07/10/2026 : transparent = aucun remplissage
+          ctx.fillStyle = fills[color] || fills.sepia;
+          ctx.fillRect(0, 0, width, height);
+        }
         canvas.toBlob(function(blob) {
           if (!blob) reject(new Error(window.I18n.t("gpx.err.canvasNull")));
           else resolve(blob);

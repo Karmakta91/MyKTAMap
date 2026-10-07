@@ -1856,7 +1856,8 @@
     const bg = opts.bg || "image";
     const skipBaseImage = (bg !== "image");
     if (bg === "image" || bg === "white") {
-      ctx.fillStyle = "#ffffff";
+      // Fond « image » : sous un plan transparent, celui choisi pour le plan (07/10/2026), sinon blanc comme avant.
+      ctx.fillStyle = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" && window.ktaCouleurFondPlan()) || "#ffffff";
       ctx.fillRect(0, 0, W, H);
     } else if (bg === "black") {
       ctx.fillStyle = "#000000";

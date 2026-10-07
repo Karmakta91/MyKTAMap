@@ -10,6 +10,11 @@
 > à `accessHash`, la gate se réaffichait en incognito. Ajoutée. `check-gate-instance.js` §10 exige désormais
 > que TOUTE clé de déverrouillage lue par la gate soit whitelistée en lecture incognito.
 >
+> 🕵️ **Incognito et installation reliée (07/10/2026)** : `IncognitoMode.indisponible()` est vrai dès qu'une connexion
+> serveur est configurée (état ni « off » ni « invalide ») — le serveur y enregistre l'activité (synchro, position,
+> connexion), la promesse « aucune trace » serait fausse, et le coffre / les plans gardés ont besoin d'IndexedDB, que le
+> shim bloque. Bouton grisé et expliqué (🧩 Fonctionnalités optionnelles), `launch()` / `confirmAndLaunch()` refusent.
+>
 > 🔒 **v1.90.8 / v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, ni
 > la licence importée par l'utilisateur (`"local"`, v1.90.8) ni celle servie par l'instance (`"server"`,
 > v1.90.9) n'ouvre la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser

@@ -1051,6 +1051,49 @@ function setPlanShowsIntersections(planId, value) {
 }
 
 // =========================
+// HELPER PER-PLAN : FOND SOUS LE PLAN (07/10/2026)
+// =========================
+// Sous un plan TRANSPARENT (PNG/WebP alpha, tuiles gardées en alpha depuis v1.62.0), on voyait le noir du conteneur
+// Leaflet — parfait en Vue OSM (le fond OSM passe dessous), moins lisible en mode carte. Réglage PAR PLAN (le bon
+// fond dépend du dessin) : pref `fondPlan` ; à défaut, le fond CONSEILLÉ par le plan (`plan.fondConseille`, écrit
+// par le Générateur) ; à défaut, « auto » = comme avant (noir, beige en thème clair). Sur un plan opaque, le fond ne
+// se voit qu'au-delà des bords et pendant le chargement des tuiles.
+const FONDS_PLAN = { noir: "#000000", blanc: "#ffffff", gris: "#808080" };
+// Choix explicite de l'utilisateur pour ce plan ("" = pas de choix : conseil du plan, sinon thème).
+function getPlanFondChoisi(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).fondPlan;
+  return FONDS_PLAN[v] ? v : "";
+}
+// Fond conseillé par le plan chargé ("" si aucun).
+function getPlanFondConseille() {
+  const c = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.fondConseille;
+  return FONDS_PLAN[c] ? c : "";
+}
+// Fond effectif : "noir" | "blanc" | "gris" | "auto".
+function getPlanFond(planId) {
+  return getPlanFondChoisi(planId) || getPlanFondConseille() || "auto";
+}
+// Couleur du fond effectif (null en « auto ») — sert aussi de fond par défaut à l'export image.
+function ktaCouleurFondPlan() {
+  return FONDS_PLAN[getPlanFond()] || null;
+}
+function ktaAppliquerFondPlan() {
+  const b = document.body; if (!b) return;
+  Object.keys(FONDS_PLAN).forEach(function (k) { b.classList.remove("kta-fond-" + k); });
+  const f = getPlanFond();
+  if (FONDS_PLAN[f]) b.classList.add("kta-fond-" + f);
+}
+function setPlanFond(planId, valeur) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (FONDS_PLAN[valeur]) prefs.fondPlan = valeur; else delete prefs.fondPlan;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] fondPlan (plan " + pid + ") →", valeur || "(défaut)");
+  ktaAppliquerFondPlan();
+}
+
+// =========================
 // HELPER PER-PLAN : NAVIGATION INTELLIGENTE (v1.85.3)
 // =========================
 // 🩸 POURQUOI ELLE CHANGE DE PORTÉE. « Caler la position sur les tracés »
@@ -1520,6 +1563,12 @@ window.setDebugMode                = setDebugMode;
 // 🆕 v1.36.2 — helpers per-plan pour showRoadIntersections (option déplacée
 // de Configuration home → Réglages map mode, persistée par plan)
 window.getPlanShowsIntersections   = getPlanShowsIntersections;
+window.getPlanFond                 = getPlanFond;
+window.getPlanFondChoisi           = getPlanFondChoisi;
+window.getPlanFondConseille        = getPlanFondConseille;
+window.setPlanFond                 = setPlanFond;
+window.ktaAppliquerFondPlan        = ktaAppliquerFondPlan;
+window.ktaCouleurFondPlan          = ktaCouleurFondPlan;
 window.setPlanShowsIntersections   = setPlanShowsIntersections;
 window.getPlanSmartNav             = getPlanSmartNav;    // 🧭 v1.85.3 — par plan
 window.setPlanSmartNav             = setPlanSmartNav;
