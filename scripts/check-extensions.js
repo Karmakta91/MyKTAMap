@@ -118,7 +118,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     d.K.signaler("on");
     d.w._fetch = () => Promise.reject(new TypeError("Load failed"));
     try { await d.K.requete("/v1/x"); } catch (e) { /* attendu */ }
-    t("📶 requête sans réponse du serveur (erreur réseau) → « down »", d.K.etat().etat === "down");
+    t("🩸 📶 un échec réseau isolé ne passe PAS en « down » (sinon la garde bloque tout jusqu'à la sonde suivante)",
+      d.K.etat().etat === "on");
     const e2 = nouveauContexte("server");
     e2.K.appliquerConfig(ON, true);
     e2.K.signaler("on");

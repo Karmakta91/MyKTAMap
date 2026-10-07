@@ -409,17 +409,11 @@
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
-    // 📶 Échec RÉSEAU (pas une réponse d'erreur : le serveur n'a pas répondu du tout) → « down ».
-    // Le module repasse en « on » quand sa sonde réussit (mktm:reseau-retour, sonde périodique).
-    // Une annulation volontaire (AbortError : délai, veilleur de téléchargement) ne compte pas.
-    return fetch(url.href, init).catch(function (e) {
-      if (!(e && e.name === "AbortError") && _signal !== "down" && (_etat === "on" || _etat === "configuree")) {
-        console.warn("[Extensions] requête sans réponse du serveur → injoignable :", e && e.message);
-        _signal = "down";
-        _recalculer();
-      }
-      throw e;
-    });
+    // 🩸 Un échec réseau isolé NE fait PAS passer en « down » (essayé le 07/10/2026, retiré) : la garde
+    // refusait alors toute requête jusqu'à la prochaine sonde du module (60 s) — synchro, positions et
+    // envois en attente bloqués après un simple raté (8 scénarios pro au rouge). L'état « down » vient
+    // du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
+    return fetch(url.href, init);
   }
 
   // 📶 Réseau de l'appareil : coupé → « injoignable » aussitôt ; revenu → on prévient les modules
