@@ -1093,11 +1093,10 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;
   - **🔆 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
-- **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ».
+- **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ». On y trouve aussi le **🕵️ Mode incognito** : il ouvre une nouvelle fenêtre où rien n'est enregistré (indisponible sur une installation reliée à une base de données, où le serveur enregistre ce que tu fais).
 - **🔒 Confidentialité & sécurité** :
   - **📔 Tenir un carnet de mes sorties** (activé, voir « 📔 Mon carnet ») ;
   - **💾 Mémoriser le plan dans l'app au premier chargement** (activé) ;
-  - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre où rien n'est enregistré ;
   - **🔐 Code d'accès local** (PIN, Face ID) : voir « 🔭 Pour aller plus loin » ;
   - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
   - **📚 Plans du site** : **🚫 Ne pas charger les plans du site au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
@@ -1123,7 +1122,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
   - **🧭 Navigation intelligente** *(ce plan)* : voir « 🔭 Pour aller plus loin ».
-- **🎨 Affichage** — **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
+- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
 - **🚀 Performance** *(ce plan)* — le **🚀 Mode ULTRA** pour les gros plans qui font planter le téléphone (voir « 🔭 Pour aller plus loin ») ; sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement**.
 - **🧩 Fonctionnalités optionnelles** et **🔒 Confidentialité & sécurité** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito).
 - **🛠️ Système & maintenance** — le **mode performance** du plan, en lecture seule.
@@ -1527,8 +1526,9 @@ Si le plan a des **photos attachées à ses points** sur ton appareil, la case *
 
 Pour dessiner un plan **sans image source**, choisis **Image vierge** au lieu de **Depuis une image** dans **🖼️ Images principales** :
 
-- **largeur** et **hauteur** de 500 à 12 000 px ;
-- **couleur de fond** : blanc, gris clair, gris foncé ou noir ;
+- **largeur** et **hauteur** de 500 à 12 000 px — sur iPhone / iPad, 16 Mpx au plus (environ 4 096 × 4 096), un plus grand fond se génère sur ordinateur (reprises du plan quand tu recharges un ZIP : pour rendre transparent le fond d'un plan déjà fait, choisis **🫥 transparent** et régénère) ;
+- **couleur de fond** : blanc, gris, noir, sépia, ou **🫥 transparent** (en Vue OSM, le fond de carte passe dessous ; en mode carte, le fond choisi dans les Réglages) ;
+- **🎨 Fond conseillé** (facultatif) : le fond à afficher sous les parties transparentes en mode carte — chacun peut le changer dans ⚙️ Réglages › Affichage ;
 - **🎨 Générer l'image vide** l'installe comme image principale.
 
 Termine le formulaire et génère le ZIP comme d'habitude, puis dessine piliers, fronts, tracés et points avec les outils de la carte.
@@ -1724,6 +1724,8 @@ Si ton serveur héberge des plans dans `data/` (par exemple `data/test1/`, `data
 ```
 
 La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme détaillée affiche les noms tout de suite.
+
+Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et déclare-le avec `"zip"` à la place de `"path"`, par exemple `{ "id": "test3", "zip": "data/test3.zip", "name": "Plan Test 3" }`. L'app le télécharge à l'ouverture, le garde sur l'appareil pour le hors-ligne (selon **Mémoriser le plan dans l'app**), et ne le retélécharge que s'il a changé. Sur la ligne du plan, 💾 le garde sans l'ouvrir, ✅ indique qu'il est gardé et à jour.
 
 ### 💼 Édition pro — importer une licence
 

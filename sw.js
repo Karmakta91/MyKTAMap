@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.10.0";
+const CACHE_NAME = "myktamap-cache-v2.10.2";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -1074,6 +1074,13 @@ self.addEventListener("fetch", (event) => {
     const h = event.request.headers;
     if (h && (h.get("X-Kta-Ext") || h.get("Authorization"))) return;
   } catch (e) { /* en-têtes illisibles : on continue normalement */ }
+
+  // 📦 07/10/2026 — PLAN ZIP DÉCLARÉ PAR L'INDEX (`"zip": "data/x.zip"`) : RÉSEAU SEUL.
+  // Le hors-ligne d'un tel plan est la copie gardée en IndexedDB (PlanRegistry.saveBlob),
+  // pas le cache du SW : sans cette sortie, la branche par défaut rangerait chaque archive
+  // (des centaines de Mo) une seconde fois dans CACHE_NAME, et la servirait cache-first —
+  // la requête conditionnelle de fraîcheur n'atteindrait jamais le serveur.
+  if (/\.zip(\?|$)/i.test(reqUrl)) return;
 
   // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
   // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les

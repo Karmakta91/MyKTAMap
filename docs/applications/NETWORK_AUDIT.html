@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v2.10.0</strong> (7 octobre 2026). Les notes par version sont dans une page à part : <a href="NETWORK_AUDIT_HISTORIQUE.html">Historique des versions</a>.<br>
+    Page de transparence technique. À jour pour la version <strong>v2.10.2</strong> (7 octobre 2026). Les notes par version sont dans une page à part : <a href="NETWORK_AUDIT_HISTORIQUE.html">Historique des versions</a>.<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment couper
     le seul site extérieur qu'elle contacte</strong> (OpenStreetMap, pour la Vue OSM).
@@ -311,6 +311,13 @@
         <td>Charge d'un plan serveur</td>
         <td>Lecture des fichiers d'un plan (image + JSON)</td>
         <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/&lt;chemin&gt;.zip</code> (déclaré par <code>data/index.json</code>, chemin relatif seulement)</td>
+        <td><code>GET</code> (conditionnel) · <code>HEAD</code></td>
+        <td>Ouverture d'un plan déclaré par son ZIP ; <code>HEAD</code> à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s)</td>
+        <td>Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304)</td>
+        <td><strong>Aucune</strong> (same-origin ; seuls <code>If-None-Match</code> / <code>If-Modified-Since</code> partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB)</td>
       </tr>
       <tr>
         <td><code>&lt;origin&gt;/docs/README_USER.md</code>, <code>docs/AI_CONTEXT.md</code>, <code>docs/NETWORK_AUDIT.*</code></td>

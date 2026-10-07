@@ -405,6 +405,11 @@ function afficherPlanner() {
                 <input type="radio" name="pl_vierge_color" value="sepia">
                 <span>📜 ${window.I18n.t("gen.couleur.sepia")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.sepiaHint")}</span></span>
               </label>
+              <!-- 🫥 07/10/2026 (KARMA) : fond transparent — le plan prend le fond de la Vue OSM, ou celui choisi en mode carte. -->
+              <label class="kta-export-radio-row" style="grid-column:1 / -1;">
+                <input type="radio" name="pl_vierge_color" value="transparent">
+                <span>🫥 ${window.I18n.t("gen.couleur.transparent")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.transparentHint")}</span></span>
+              </label>
             </div>
 
             <button id="pl_vierge_generate" class="kta-btn kta-btn-primary" type="button"
@@ -413,6 +418,19 @@ function afficherPlanner() {
             </button>
             <div id="pl_vierge_status" style="margin-top:8px; font-size:12px; color:#8892a4; min-height:18px;"></div>
           </div>
+
+          <!-- 🎨 07/10/2026 — Fond conseillé (plan.fondConseille) : vu dans l'app sous les parties transparentes du
+               plan ; l'utilisateur garde la main (⚙️ Réglages › Affichage). Absent = JSON identique à avant. -->
+          <div class="kta-planner-grille" style="margin-top:12px;">
+            <label class="kta-cfg-label" for="pl_fond">${window.I18n.t("gen.fond.label")}</label>
+            <select class="kta-cfg-input" id="pl_fond">
+              <option value="">${window.I18n.t("gen.fond.aucun")}</option>
+              <option value="noir">${window.I18n.t("config.fond.noir")}</option>
+              <option value="blanc">${window.I18n.t("config.fond.blanc")}</option>
+              <option value="gris">${window.I18n.t("config.fond.gris")}</option>
+            </select>
+          </div>
+          <p class="kta-planner-hint" style="margin:4px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.fond.hint")}</p>
         </div>
 
         <!-- v1.14.20-hotfix11 (KARMA capture : « dans générateur, met
@@ -1780,8 +1798,13 @@ function _preRemplirFormulaire(config) {
   sv("pl_version", plan.version     || "");
   sv("pl_author",  plan.author      || "");
   sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");   // 🏷️ 16/09/2026
+  sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");   // 🎨 07/10/2026
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
+  // 07/10/2026 (KARMA) : un ZIP rechargé donne aussi ses dimensions au plan vierge (pour régénérer un fond aux mêmes
+  // dimensions — sinon 4000 × 4000 par défaut et tout se décalait).
+  if (plan.imageWidth)  sv("pl_vierge_w", plan.imageWidth);
+  if (plan.imageHeight) sv("pl_vierge_h", plan.imageHeight);
   sv("pl_startX",  t.startX        ?? 0);
   sv("pl_startY",  t.startY        ?? 0);
   sv("pl_scale",   t.scale         ?? 4.9);
@@ -2000,15 +2023,33 @@ function _genererImageVierge() {
   document.getElementById("pl_vierge_w").value = w;
   document.getElementById("pl_vierge_h").value = h;
 
+  // 📱 07/10/2026 — Safari iOS refuse tout canvas de plus de 16 777 216 px (≈ 4096 × 4096) : toBlob rend null, sans
+  // autre signe. Avant, 4000 × 4000 par défaut passait juste ; depuis qu'un ZIP rechargé préremplit les dimensions du
+  // plan (un import SIG/KML fait souvent 8 000 à 12 000 px), ça casse. On le dit AVANT d'essayer, avec la voie qui
+  // marche (un ordinateur va jusqu'à 12 000 × 12 000) — plutôt que « mémoire ? » après coup.
+  const IOS_MAX_PX = 16777216;
+  const _ios = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (_ios && w * h > IOS_MAX_PX) {
+    setStatus(window.I18n.t("gen.viergeGen.tropGrandIos", { w: w, h: h, mpx: Math.round(w * h / 1e6) }), "#ff8c8c");
+    return;
+  }
+
   // ───── Couleur de fond ─────
   const colorChoice = (document.querySelector('input[name="pl_vierge_color"]:checked') || {}).value || "white";
   const PALETTE = {
     white: "#ffffff",
     gray:  "#e8e8e8",
     black: "#000000",
-    sepia: "#f4e4bc"
+    sepia: "#f4e4bc",
+    transparent: null      // 🫥 07/10/2026 : aucun remplissage — PNG entièrement transparent
   };
-  const fillColor = PALETTE[colorChoice] || PALETTE.white;
+  const fillColor = (colorChoice in PALETTE) ? PALETTE[colorChoice] : PALETTE.white;
+  // Un plan vierge transparent sans fond conseillé : on propose le blanc (lisible en mode carte), modifiable.
+  if (colorChoice === "transparent") {
+    const pf = document.getElementById("pl_fond");
+    if (pf && !pf.value) pf.value = "blanc";
+  }
 
   setStatus(window.I18n.t("gen.viergeGen.encours", { w: w, h: h }), "#8cb4ff");
 
@@ -2021,13 +2062,17 @@ function _genererImageVierge() {
       canvas.width  = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-      ctx.fillStyle = fillColor;
-      ctx.fillRect(0, 0, w, h);
+      if (fillColor) {
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(0, 0, w, h);
+      }
 
       // ───── Conversion en Blob PNG ─────
       canvas.toBlob(function(blob) {
         if (!blob) {
-          setStatus(window.I18n.t("gen.viergeGen.echecCanvas"), "#ff8c8c");
+          // Au-delà de ~16,7 Mpx, c'est presque toujours la limite de surface du navigateur (téléphone), pas la mémoire.
+          setStatus(window.I18n.t(w * h > IOS_MAX_PX ? "gen.viergeGen.tropGrand" : "gen.viergeGen.echecCanvas",
+            { w: w, h: h, mpx: Math.round(w * h / 1e6) }), "#ff8c8c");
           return;
         }
 
@@ -3987,6 +4032,9 @@ async function _genererZip() {
     // 🏷️ 16/09/2026 — étiquettes proposées : écrites SEULEMENT si saisies,
     // sinon le champ est absent et le JSON reste identique à avant.
     if (tags.length)    planObj.tags = tags;
+    // 🎨 07/10/2026 — fond conseillé, écrit SEULEMENT s'il est choisi (absent = JSON identique à avant).
+    const _fond = (document.getElementById("pl_fond") || {}).value || "";
+    if (["noir", "blanc", "gris"].indexOf(_fond) >= 0) planObj.fondConseille = _fond;
     // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
     // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
     // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un

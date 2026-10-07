@@ -14,6 +14,23 @@
   ```json
   { "plans": [{ "id": "test1", "path": "data/test1", "name": "Test 1" }] }
   ```
+- **📦 Plan déclaré par son ARCHIVE** (`"zip": "data/test1.zip"` à la place de `path`) — le ZIP est servi tel
+  quel, sans dossier décompressé (même fonctionnement qu'un plan d'extension) :
+  - `decouvrirPlansServeur` n'accepte qu'un chemin **relatif** `.zip` (`/^[\w./-]+\.zip$/`, ni `..`, ni `/`
+    initial, ni schéma) → `regEntry.zip` ; refusé = avertissement console, l'entrée retombe sur `path`.
+  - Ouverture (`chargerPlanDuRegistre`, branche `plan.zip` AVANT la branche dossier) : `_telechargerZipIndex`
+    télécharge avec progression (écran central) sous **veilleur d'inactivité** (`_veilleurTelechargement` :
+    15 s sans réponse, puis 20 s sans octet → annulé ; rien tenté si `navigator.onLine === false` ; même veilleur
+    pour les plans ☁️ d'extension), **conditionnel** si une copie est gardée (`If-None-Match` /
+    `If-Modified-Since` depuis `zipEtag` / `zipLastModified`) : 304 ou réseau absent → `PlanRegistry.getBlob` ;
+    404 → modale « plan introuvable ». Puis `chargerZipFichier(…, { typeRegistre: "server-zip" })`.
+  - `startImportedPlan` : `server-zip` **reste `type: "server"`** (l'index peut le retirer — l'élagage retire
+    aussi la copie via `PlanRegistry.remove`), nom de l'index, version du plan-config (`versionSrc: "plan"`).
+    La copie n'est rangée qu'après un téléchargement **frais**, selon « Mémoriser » (ou si une copie existait).
+  - Hors-ligne = la copie IndexedDB, **pas** `PlanOffline` : bouton de ligne 💾 / ✅ / ⬇️ (périmé, sonde HEAD
+    conditionnelle, une par plan et par 30 s), pas de bloc 💾 dans la fiche ℹ️ ; le SW laisse passer les `.zip`
+    (jamais dans `CACHE_NAME`). Les lecteurs « sans ouvrir » (liaisons, profil, aperçu OSM) lisent la copie
+    comme pour un plan local. Garde-fou : `check-plan-offline.js` §4 bis. ConfAdmin : colonne « Format ».
 - **🛠️ Format ÉTENDU kiosque (v1.73.0 — figé, généré par `confadmin.html`)** — `index.json` peut porter en plus :
   ```json
   {

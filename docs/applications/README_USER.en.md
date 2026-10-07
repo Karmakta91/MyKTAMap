@@ -1093,11 +1093,10 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
   - **🔆 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
-- **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”.
+- **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”. This is also where **🕵️ Incognito mode** lives: it opens a new window where nothing is saved (not available on an installation linked to a database, whose server records what you do).
 - **🔒 Privacy & security**:
   - **📔 Keep a logbook of my outings** (on, see “📔 My logbook”);
   - **💾 Store the map in the app on first load** (on);
-  - **🕵️ Incognito mode**: opens a new window where nothing is saved;
   - **🔐 Local access code** (PIN, Face ID): see “🔭 Going further”;
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
@@ -1123,7 +1122,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
-- **🎨 Display** — **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
+- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
 - **🧩 Optional features** and **🔒 Privacy & security** — the same boxes as in ⚙️ Configuration (options, incognito mode).
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.
@@ -1527,8 +1526,9 @@ If the map has **photos attached to its points** on your device, the **📸 Incl
 
 To draw a map **without a source image**, choose **Blank image** instead of **From an image** in **🖼️ Main images**:
 
-- **width** and **height** from 500 to 12,000 px;
-- **background colour**: white, light grey, dark grey or black;
+- **width** and **height** from 500 to 12,000 px — on iPhone / iPad, 16 Mpx at most (about 4,096 × 4,096), a larger background is generated on a computer (taken from the map when you reload a ZIP: to make an existing map's background transparent, pick **🫥 transparent** and regenerate);
+- **background colour**: white, grey, black, sepia, or **🫥 transparent** (in the OSM view the background map shows through; in map mode, the background chosen in Settings);
+- **🎨 Suggested background** (optional): the background shown under transparent parts in map mode — anyone can change it in ⚙️ Settings › Display;
 - **🎨 Generate the blank image** installs it as the main image.
 
 Finish the form and generate the ZIP as usual, then draw pillars, working faces, paths and points with the map tools.
@@ -1724,6 +1724,8 @@ If your server hosts maps in `data/` (for example `data/test1/`, `data/test2/`),
 ```
 
 The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form shows the names straight away.
+
+Even simpler: drop the map's ZIP as is (without unzipping it) and declare it with `"zip"` instead of `"path"`, for example `{ "id": "test3", "zip": "data/test3.zip", "name": "Test map 3" }`. The app downloads it when opened, keeps it on the device for offline use (according to **Store the map in the app**), and only downloads it again if it has changed. On the map's row, 💾 keeps it without opening it, ✅ shows it is kept and up to date.
 
 ### 💼 Pro edition — importing a license
 

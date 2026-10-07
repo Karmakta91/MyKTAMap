@@ -54,6 +54,10 @@
 
   // Même sanitisation que le moteur (main.js decouvrirPlansServeur)
   function _sanitId(s) { return String(s || "").replace(/[^a-z0-9_-]/gi, "_"); }
+  // 📦 07/10/2026 — même règle que l'app (main.js > decouvrirPlansServeur) : chemin relatif .zip,
+  // sans « .. » ni « / » initial. Une saisie refusée retombe sur data/<id>.zip.
+  function _zipValide(z) { return /^[\w./-]+\.zip$/i.test(z || "") && z.indexOf("..") < 0 && z.charAt(0) !== "/"; }
+  function _cheminZip(p) { return _zipValide(p.zip) ? p.zip : "data/" + p.id + ".zip"; }
   function _slug(s) {
     return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
       .replace(/\.zip$/i, "").replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "plan";
@@ -82,6 +86,9 @@
     const plan = cfg && cfg.plan ? cfg.plan : {};
     return {
       id:         _slug(file.name),
+      // 📦 par défaut, le plan est servi tel quel : son ZIP, sous son nom s'il est sûr pour une URL.
+      format:     "zip",
+      zip:        /^[\w.-]+\.zip$/i.test(file.name) ? "data/" + file.name : "",
       name:       plan.name || _slug(file.name),
       version:    plan.version || "",
       author:     plan.author || "",
@@ -119,6 +126,13 @@
         '<td><button class="kta-ca-mv" data-mv="-1" data-i="' + i + '" title="Monter">▲</button>' +
         '<button class="kta-ca-mv" data-mv="1" data-i="' + i + '" title="Descendre">▼</button></td>' +
         '<td><input type="text" data-f="id" data-i="' + i + '" value="' + _esc(p.id) + '"></td>' +
+        // 📦 Format : l'archive telle quelle (recommandé) ou un dossier décompressé (historique).
+        '<td style="width:170px;"><select data-f="format" data-i="' + i + '">' +
+          '<option value="zip"' + (p.format === "zip" ? " selected" : "") + '>📦 ZIP</option>' +
+          '<option value="dossier"' + (p.format !== "zip" ? " selected" : "") + '>📂 Dossier</option></select>' +
+          (p.format === "zip"
+            ? '<input type="text" data-f="zip" data-i="' + i + '" placeholder="data/' + _esc(p.id) + '.zip" title="Chemin du ZIP sur le serveur, relatif à l\'app" value="' + _esc(p.zip || "") + '" style="margin-top:4px;">'
+            : '<div class="kta-ca-chemin">' + _esc(p.path || ("data/" + p.id)) + '/</div>') + '</td>' +
         '<td><input type="text" data-f="name" data-i="' + i + '" value="' + _esc(p.name) + '"></td>' +
         '<td style="width:80px;"><input type="text" data-f="version" data-i="' + i + '" value="' + _esc(p.version) + '"></td>' +
         '<td style="width:110px;"><input type="text" data-f="author" data-i="' + i + '" value="' + _esc(p.author) + '"></td>' +
@@ -139,7 +153,13 @@
   });
   // 📁 la colonne Dossier est un <select> : événement change, pas input
   $("caPlansBody").addEventListener("change", function(e) {
-    if (e.target.getAttribute("data-f") !== "folder") return;
+    const f = e.target.getAttribute("data-f");
+    if (f === "format") {   // le champ de chemin change avec le format
+      _plans[Number(e.target.getAttribute("data-i"))].format = e.target.value;
+      _renderPlans(); _renderOut();
+      return;
+    }
+    if (f !== "folder") return;
     _plans[Number(e.target.getAttribute("data-i"))].folder = e.target.value;
     _renderOut();
   });
@@ -225,7 +245,7 @@
   drop.addEventListener("drop", function(e) { _ajouterZips(Array.from((e.dataTransfer || {}).files || [])); });
 
   $("caAddManual").addEventListener("click", function() {
-    _plans.push({ id: "plan-" + (_plans.length + 1), name: "Nouveau plan", version: "", author: "",
+    _plans.push({ id: "plan-" + (_plans.length + 1), format: "zip", zip: "", name: "Nouveau plan", version: "", author: "",
                   multiLevel: false, tiledV2: false, tags: "" });
     _renderPlans(); _renderMapping(); _renderOut();
   });
@@ -254,6 +274,10 @@
           if (!x || !x.id) return;
           _plans.push({
             id:         String(x.id),
+            // 📦 format et chemin d'origine conservés (un `path` personnalisé était perdu)
+            format:     x.zip ? "zip" : "dossier",
+            zip:        x.zip ? String(x.zip) : "",
+            path:       x.path ? String(x.path) : "",
             name:       String(x.name || x.id),
             version:    x.version ? String(x.version) : "",
             author:     x.author  ? String(x.author)  : "",
@@ -483,7 +507,8 @@
       });
     }
     out.plans = _plans.map(function(p) {
-      const e = { id: p.id, path: "data/" + p.id, name: p.name };
+      const e = p.format === "zip" ? { id: p.id, zip: _cheminZip(p), name: p.name }
+                                   : { id: p.id, path: p.path || ("data/" + p.id), name: p.name };
       if (p.version) e.version = p.version;
       if (p.author)  e.author  = p.author;
       const tg = _normTags(p.tags);

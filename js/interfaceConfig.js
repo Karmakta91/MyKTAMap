@@ -1268,6 +1268,18 @@ function afficherConfig() {
                La pref est stockée par plan dans myktamap_plan_prefs_PLANID,
                avec fallback sur la pref globale historique. Le handler appelle
                window.setPlanShowsIntersections() qui persiste + re-render. -->
+          <!-- 🎨 07/10/2026 — Fond sous le plan, PAR PLAN (se voit sous un plan transparent). -->
+          <div class="kta-cfg-label" style="margin-top:4px;">${window.I18n.t("config.fond.label")}</div>
+          <select class="kta-cfg-input" id="cfg_fond_plan" style="margin-top:4px;">
+            <option value="">${(typeof window.getPlanFondConseille === "function" && window.getPlanFondConseille())
+              ? window.I18n.t("config.fond.defautConseil", { fond: window.I18n.t("config.fond." + window.getPlanFondConseille()) })
+              : window.I18n.t("config.fond.defautTheme")}</option>
+            <option value="noir">${window.I18n.t("config.fond.noir")}</option>
+            <option value="blanc">${window.I18n.t("config.fond.blanc")}</option>
+            <option value="gris">${window.I18n.t("config.fond.gris")}</option>
+          </select>
+          <div class="kta-perf-ultra-hint" style="margin:4px 0 10px;">${window.I18n.t("config.fond.hint")}</div>
+
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
@@ -1392,24 +1404,23 @@ function afficherConfig() {
               </span>
             </label>
           </div>
-        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
-        ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.privacy", "global")}
-
-        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
-             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
-             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
-             général, et le carnet est accessible depuis le home »). Il reste
-             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
-             réglages rapatriés en v1.85.3. -->
-
+        <!-- 🕵️ Dans les fonctionnalités optionnelles depuis le 07/10/2026 ; grisé sur une installation reliée. -->
         <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
              ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
              (activate) OU close la fenêtre courante si déjà incognito (quit).
              Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
              DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
              onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
-        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
+        ${(window.IncognitoMode && !window.IncognitoMode.active && window.IncognitoMode.indisponible && window.IncognitoMode.indisponible()) ? `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-indispo" type="button" id="cfg_incognito_btn" disabled>
+            <span style="font-size:18px;">🕵️</span>
+            <span><strong>${window.I18n.t("home.privacy.incognitoRelieLabel")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("home.privacy.incognitoRelieHint")}
+          </div>
+        </div>` : (window.IncognitoMode && window.IncognitoMode.active) ? `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">✕</span>
@@ -1428,6 +1439,17 @@ function afficherConfig() {
             ${window.I18n.t("config.incognito.start.desc")}
           </div>
         </div>`}
+        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.privacy", "global")}
+
+        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
+             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
+             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
+             général, et le carnet est accessible depuis le home »). Il reste
+             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
+             réglages rapatriés en v1.85.3. -->
+
 
         <!-- ════════ 8. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
         ${_cfgGroupeFin()}
@@ -1586,6 +1608,13 @@ function afficherConfig() {
   // L'option est PER-PLAN — déplacée de Configuration home suite feedback KARMA.
   // Lecture initiale via getPlanShowsIntersections() (fallback global → true).
   // Change handler : setPlanShowsIntersections() persiste LS per-plan + re-render.
+  const fondSel = document.getElementById("cfg_fond_plan");
+  if (fondSel) {
+    fondSel.value = (typeof window.getPlanFondChoisi === "function") ? window.getPlanFondChoisi() : "";
+    fondSel.addEventListener("change", function () {
+      if (typeof window.setPlanFond === "function") window.setPlanFond(null, fondSel.value);
+    });
+  }
   const showIntersectCb = document.getElementById("cfg_show_intersections");
   if (showIntersectCb) {
     try {

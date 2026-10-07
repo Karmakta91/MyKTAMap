@@ -318,6 +318,38 @@ function _cheminTuileZipExt(z, col, k, ext) {
   return "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext;
 }
 
+// =========================
+// 🧩 TUILES DE BORD : MASQUER LE REMPLISSAGE (07/10/2026)
+// =========================
+// Le Générateur complète les tuiles du bord à 512 px : la rangée du HAUT a son contenu collé en bas (remplissage
+// en haut), la dernière COLONNE l'a collé à gauche (remplissage à droite). Plan opaque (JPEG) → remplissage NOIR ;
+// transparent → remplissage transparent. Posées à leur taille pleine, les tuiles d'un plan opaque montraient ce
+// noir au-delà des bords : rectangles sombres en Vue OSM (plan semi-transparent sur la carte), et en mode carte dès
+// que le fond n'est plus noir (fond par plan). On masque le remplissage À L'AFFICHAGE : tous les plans existants en
+// profitent, sans régénération.
+// Fractions (0..1) de la tuile occupées par le remplissage, à droite et en haut. scale = 2^-z (pixels plan par
+// pixel de tuile) ; k = rangée comptée depuis le BAS (k = 1), comme partout ailleurs.
+function ktaRemplissageTuile(planW, planH, tileSize, scale, col, k) {
+  const T = tileSize || 512;
+  const lvlW = Math.ceil((+planW || 0) / scale), lvlH = Math.ceil((+planH || 0) / scale);
+  const cw = Math.max(0, Math.min(T, lvlW - col * T));
+  const ch = Math.max(0, Math.min(T, lvlH - (k - 1) * T));
+  return { droite: (T - cw) / T, haut: (T - ch) / T };
+}
+// Masque le remplissage d'un overlay de tuile (L.imageOverlay ou rotated) : clip-path en pourcentages de l'image,
+// qui suit le zoom et la rotation sans recalcul. Posé à l'ajout (l'élément n'existe qu'une fois l'overlay ajouté).
+function ktaRognerTuile(overlay, r) {
+  if (!overlay || !r || !(r.droite > 0.0001 || r.haut > 0.0001)) return overlay;
+  const clip = "inset(" + (r.haut * 100).toFixed(4) + "% " + (r.droite * 100).toFixed(4) + "% 0 0)";
+  const poser = function () {
+    const el = overlay.getElement ? overlay.getElement() : overlay._image;
+    if (el) el.style.clipPath = clip;
+  };
+  if (overlay.on) overlay.on("add load", poser);
+  poser();
+  return overlay;
+}
+
 // Extension des tuiles d'après le manifest (webp/png = alpha, jpg = historique).
 function _extTuile(tilingManifest) {
   return (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tilingManifest) : "jpg";
@@ -508,8 +540,14 @@ async function ktaDessinerRegionTuiles(ctx, pc, region, echelle) {
       const img = u ? await charger(u) : null;
       if (!img) { manquantes++; continue; }
       const xPlan = col * pas, yPlan = H - k * pas;
-      ctx.drawImage(img, (xPlan - region.x) * echelle, (yPlan - region.y) * echelle,
-                    img.naturalWidth * ech * echelle, img.naturalHeight * ech * echelle);
+      // Remplissage des tuiles de bord (haut / droite) non dessiné : il est noir sur un plan opaque.
+      const rem = ktaRemplissageTuile(W, H, T, ech, col, k);
+      const nw = img.naturalWidth, nh = img.naturalHeight;
+      const sy = Math.round(nh * rem.haut), sw = Math.round(nw * (1 - rem.droite)), sh = nh - sy;
+      if (sw <= 0 || sh <= 0) continue;
+      ctx.drawImage(img, 0, sy, sw, sh,
+                    (xPlan - region.x) * echelle, (yPlan + sy * ech - region.y) * echelle,
+                    sw * ech * echelle, sh * ech * echelle);
     }
   }
   try {
@@ -736,6 +774,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
           // (cohérent avec le rendu Leaflet standard)
           pane: "tilePane"
         });
+        ktaRognerTuile(overlay, ktaRemplissageTuile(W, H, TILE_SIZE, scale, col, k));   // remplissage des bords masqué
         // 🏗️ v1.67.0 : le plan principal EST le niveau 0 — si le filtre
         // multi-niveau le masque, les tuiles du swap zoom restent hors map
         // (mais tracées dans activeOverlays pour le ré-affichage).
@@ -1190,5 +1229,7 @@ window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;
 window.ktaDessinerRegionTuiles  = ktaDessinerRegionTuiles;
+window.ktaRemplissageTuile      = ktaRemplissageTuile;
+window.ktaRognerTuile           = ktaRognerTuile;
 window.ktaCandidatsRacineTuiles = ktaCandidatsRacineTuiles;
 window.ktaResoudreRacineTuiles  = ktaResoudreRacineTuiles;

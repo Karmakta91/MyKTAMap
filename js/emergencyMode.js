@@ -1230,6 +1230,8 @@
               interactive: false,
               pane: "tilePane"  // SOUS les overlays vectoriels (roads/zones)
             });
+            // Remplissage noir des tuiles de bord masqué (07/10/2026).
+            if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(imgW, imgH, tileSize, scale, col, k));
             overlay.addTo(map);
             state.overlays.set(key, overlay);
           } catch(e) {

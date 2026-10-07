@@ -4394,9 +4394,12 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   text-transform: uppercase;
   /* 07/10/2026 (KARMA : « ne s'affiche pas de façon animée comme MyKTAMap ») — même révélation de gauche à
      droite que le mot « MyKTAMap » (kta-titre-base-reveal), enchaînée juste après lui (titre : 0,45 → 1,45 s).
-     Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte. */
+     Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte.
+     🎬 Ligne d'arrivée commune du splash (07/10/2026, KARMA : « titre et sous-titre doivent finir en même
+     temps, pareil pour KARMA et les autres ») : TOUS les textes finissent à 2,2 s — départs décalés, arrivée
+     ensemble ; le « 2 » claque juste après (2,2 → 2,6 s) ; la boussole garde son « nord trouvé » à 3,5 s. */
   animation: splashTextIn 0.6s ease-out 0.45s both,
-             kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.25s both;
+             kta-titre-base-reveal 1.3s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
 }
 
 /* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
@@ -4435,7 +4438,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
   transform: rotate(-12deg);
   opacity: 0;
-  animation: kta-splash-majeure 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.5s forwards;
+  animation: kta-splash-majeure 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 2.2s forwards;   /* après la ligne d'arrivée (2,2 s) */
 }
 #splashMajeure[hidden] { display: none; }
 @keyframes kta-splash-majeure {
@@ -4490,7 +4493,7 @@ html.kta-theme-light #splashMajeure {
   z-index: 2;
   user-select: none;
   pointer-events: none;
-  animation: splashTextIn 0.7s ease-out 0.85s both;
+  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 .splash-claude-mark {
   font-size: 19px;
@@ -4529,7 +4532,7 @@ html.kta-theme-light #splashMajeure {
   z-index: 2;
   user-select: none;
   pointer-events: none;
-  animation: splashTextIn 0.7s ease-out 0.85s both;
+  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 
 /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM (orphelin après extraction
@@ -4574,7 +4577,7 @@ html.kta-theme-light #splashMajeure {
   pointer-events: none;
   /* Animation : apparaît avec un léger delay après le contenu central.
      `splashTextIn` applique translateY → pas de conflit avec left/right. */
-  animation: splashTextIn 0.6s ease-out 1.0s both;
+  animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
   z-index: 2;
 }
 
@@ -4688,7 +4691,7 @@ body.kta-theme-light .splash-license-detail-pro {
      à l'autre tout en gardant des paliers visibles. Durée totale
      allongée à 1.8s pour donner du poids visuel. */
   clip-path: inset(0 100% 0 0);
-  animation: kta-splash-karma-reveal 1.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.8s forwards;
+  animation: kta-splash-karma-reveal 1.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.8s forwards;   /* finit à 2,2 s */
 }
 
 @keyframes kta-splash-karma-reveal {
@@ -4734,7 +4737,7 @@ body.kta-theme-light .splash-license-detail-pro {
   pointer-events: none;
   white-space: nowrap;
   /* Animation custom (opacity uniquement, pas de transform à conserver) */
-  animation: splashLeafletFadeIn 0.6s ease-out 1.0s both;
+  animation: splashLeafletFadeIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 
 @keyframes splashLeafletFadeIn {
@@ -5560,8 +5563,9 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
 }
 
 .loader-titre-tagline {
-  /* Même révélation que « MyKTAMap » dans l'en-tête (titre : 0,1 → 1,1 s), enchaînée juste après (07/10/2026). */
-  animation: kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
+  /* Même révélation que « MyKTAMap » dans l'en-tête, et même arrivée (titre : 0,1 → 1,1 s ; sous-titre : 0,4 →
+     1,1 s) — le « -pro » d'une installation arrive ensuite (1,4 s), comme le « 2 » du splash. */
+  animation: kta-titre-base-reveal 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.4s both;
   font-size: 11px;
   color: #f4c542;
   opacity: 0.75;
@@ -10724,6 +10728,7 @@ body.kta-instance-pro .kta-titre-suffix-pro {
    s'additionnent harmoniquement : translation Y + révélation X). */
 #splashTitle .kta-titre-base {
   animation-delay: 0.45s;
+  animation-duration: 1.75s;   /* 0,45 → 2,2 s : ligne d'arrivée commune du splash */
 }
 
 @keyframes kta-titre-base-reveal {
@@ -14200,6 +14205,11 @@ body.kta-theme-light {
 body.kta-theme-light .leaflet-container {
   background: var(--kta-light-bg) !important;
 }
+/* Fond sous le plan, choisi par plan (⚙️ Réglages › Affichage) ou conseillé par le plan (07/10/2026). Carte d'un
+   plan SEULEMENT (#map) : ni la Vue OSM, ni la mini-carte du mode XL. Gagne sur le thème (spécificité plus forte). */
+body.kta-fond-noir  #map.leaflet-container { background: #000000 !important; }
+body.kta-fond-blanc #map.leaflet-container { background: #ffffff !important; }
+body.kta-fond-gris  #map.leaflet-container { background: #808080 !important; }
 
 /* === Body / arrière-plan général === */
 body.kta-theme-light {
@@ -19671,6 +19681,14 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
   width: 100%;
   font-size: 13px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kta-cfg-incognito-btn-indispo,
+.kta-cfg-incognito-btn:disabled {   /* installation reliée (07/10/2026) : visible, expliqué, pas cliquable */
+  background: #2a3145;
+  color: #8892a4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 .kta-cfg-incognito-btn:hover {
   transform: translateY(-1px);

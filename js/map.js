@@ -433,6 +433,8 @@ async function initMapFromConfig() {
     fadeAnimation:        !_animOff,
     markerZoomAnimation:  !_animOff
   });
+  // Fond sous le plan (réglage par plan, ou conseillé par le plan) — 07/10/2026.
+  if (typeof window.ktaAppliquerFondPlan === "function") window.ktaAppliquerFondPlan();
   if (_animOff) console.log("[Map] 🚀 Animations Leaflet désactivées (PerfUltra.animOff)");
   map.setMaxBounds(_maxBounds);
   map.setMinZoom(_minZoom);

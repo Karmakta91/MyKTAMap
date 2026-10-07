@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.10.2 (plans servis en ZIP)** : **aucun domaine nouveau, rien d'envoyé.** Une installation peut déclarer un plan par son archive (`"zip": "data/x.zip"` dans `data/index.json`, chemin relatif sur le même site uniquement — une adresse externe est refusée). L'app la télécharge à l'ouverture, puis, si une copie est gardée sur l'appareil, ne la redemande que sous condition (`If-None-Match` / `If-Modified-Since`) et sonde sa fraîcheur par un `HEAD` à l'accueil. Sur myktamap.fr, qui ne déclare aucun plan ZIP, rien ne change.
+
+> **v2.10.1 (démarrage harmonisé, incognito à sa place)** : **aucune requête nouvelle, aucun domaine nouveau.** Fond choisi sous le plan, bords des tuiles masqués, animations du démarrage : tout est local. Le mode incognito devient indisponible sur une installation reliée à une base de données : il y promettait « aucune trace » alors que le serveur enregistre l'activité.
+
 > **v2.10.0 (plus aucun script inline, audit en deux pages)** : **aucune requête nouvelle, aucun domaine nouveau.** L'app ne contient plus de code écrit dans ses pages : le serveur peut n'autoriser que ses propres fichiers (`script-src 'self'`), règle envoyée pour l'instant en observation (`Content-Security-Policy-Report-Only`). La page d'audit ne garde que l'état actuel ; cet historique a sa page. Corrigé : l'audit disait la Vue OSM désactivée par défaut — elle est activée par défaut depuis la v1.90.2, et la page le dit désormais.
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)

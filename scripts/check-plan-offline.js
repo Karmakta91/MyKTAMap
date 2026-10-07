@@ -156,8 +156,39 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
     brancheComplet.indexOf("btnMaj") >= 0);
   t("🩸 cache perdu ou partiel → le bouton revient (état « incomplet » proposé)",
     /st\.etat === "incomplet"[\s\S]{0,600}btnCompleter/.test(HLC));
-  t("le bloc n'est proposé que pour les plans SERVEUR",
-    /plan\.type === "server" && window\.PlanOffline/.test(HLC));
+  t("le bloc n'est proposé que pour les plans SERVEUR à dossier (pas un plan ZIP de l'index)",
+    /plan\.type === "server" && !plan\.zip && window\.PlanOffline/.test(HLC));
+}
+
+// ───────── 4 bis. PLAN ZIP DÉCLARÉ PAR L'INDEX (`"zip": "data/x.zip"`) ─────────
+// Son hors-ligne est la copie gardée en IndexedDB, pas le cache du SW : chaque branche doit
+// le savoir, sinon il retombe sur le chemin « dossier » (fetch de <path>/plan-config.json → 404).
+{
+  const lire = function (f) { return fs.readFileSync(f, "utf8"); };
+  const HLZ = lire("js/homeLoader.js"), MZ = lire("js/main.js"), SWZ = lire("sw.js");
+  t("📦 index : `zip` accepté seulement en chemin relatif .zip (ni schéma, ni « .. », ni « / » initial)",
+    /\/\^\[\\w\.\/-\]\+\\\.zip\$\/i\.test\(entry\.zip\)/.test(MZ) && /entry\.zip\.indexOf\("\.\."\) < 0/.test(MZ) &&
+    /zip: zip,/.test(MZ));
+  t("📦 ouverture : branche dédiée AVANT la branche dossier, ouverte comme un ZIP en type « server-zip »",
+    HLZ.indexOf('if (plan.type === "server" && plan.zip) {') >= 0 &&
+    HLZ.indexOf('if (plan.type === "server" && plan.zip) {') < HLZ.indexOf("await window.chargerPlanServeur(plan.path, plan, presetPlan)") &&
+    /typeRegistre: "server-zip"/.test(HLZ));
+  t("📦 fraîcheur : requête conditionnelle (ETag / Last-Modified), 304 = copie gardée",
+    /If-None-Match/.test(HLZ) && /If-Modified-Since/.test(HLZ) && /rep\.status === 304\) return \{ statut: "aJour" \}/.test(HLZ));
+  t("📦 copie rangée seulement après un téléchargement FRAIS (jamais réécrite depuis elle-même)",
+    /storeBlob: frais && \(!!plan\.storedBlob \|\| window\.ktaMemoriserPlanActif\(\)\)/.test(HLZ) &&
+    /fromStoredBlob: !frais/.test(HLZ));
+  t("📦 après ouverture : il RESTE un plan « server » (l'index peut le retirer), validateurs gardés",
+    /type: _estExt \? "ext" : \(_estZipSrv \? "server" : "local"\)/.test(MZ) && /entry\.zipEtag = meta\.zipEtag/.test(MZ));
+  t("📦 ligne : exclu de PlanOffline (cache SW), état = sa copie gardée",
+    /p\.type === "server" && !p\.zip;/.test(HLZ) && /_telechargerZipIndex\(p, null, true, "HEAD", ctl/.test(HLZ) && /_sondesZip\[p\.id\]/.test(HLZ));
+  t("📦 SW : les .zip passent au réseau, jamais rangés dans CACHE_NAME",
+    /if \(\/\\\.zip\(\\\?\|\$\)\/i\.test\(reqUrl\)\) return;/.test(SWZ));
+  t("📦 changement de plan, liaisons, profil, aperçu OSM : pas de fetch de dossier pour un plan ZIP",
+    /plan\.type === "server" && !plan\.zip\) \{/.test(lire("js/interface.js")) &&
+    (lire("js/interPlanLinks.js").match(/plan\.path && !plan\.zip/g) || []).length === 2 &&
+    /path: plan\.zip \? null/.test(lire("js/homeProfile.js")) &&
+    /_plan\.type === "server" && !_plan\.zip/.test(lire("js/osmHomePreview.js")));
 }
 
 // ───────── 5. ON EXÉCUTE l'énumération des tuiles ─────────

@@ -56,11 +56,11 @@ photos restent locales et exportables).
 > ✅ **Livré en v2.0.0 (chantier 0)** : lecture de `serverConnection`, états OFF / INVALIDE /
 > LICENCE / CONFIGURÉE, mémorisation (règle B), pastille du pied de page, bloc ConfAdmin,
 > garde-fou `scripts/check-connexion-serveur.js` — code dans `js/ktaExtensions.js`.
-> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.10.0)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
+> ✅ **Chantiers 1 à 3 livrés (v2.1.0 → v2.10.2)** — licence pro signée, vérifiée par l'app (`security-legal.md` §77.3) : identifiants stables, lecture unique de l'index avant
 > les gates, et **toutes les prises** ci-dessous (`js/ktaExtensions.js`, garde-fou
 > `scripts/check-extensions.js`). Signatures (API v1) :
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
-> Promise<[{id,name,version?,tags?}]>, charger(id) → Promise<Blob ZIP> }, importAutorise() → bool,
+> Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
 > exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|null)` ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
@@ -68,6 +68,11 @@ photos restent locales et exportables).
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
+> 📶 **Réseau** : `offline` → état « down » aussitôt (la garde refuse, l'accueil rouvre la copie gardée) ; `online` →
+> événement `mktm:reseau-retour`, à la suite duquel le module sonde et `signaler("on"|"down")` ; une requête de la
+> garde **sans réponse** (erreur réseau, pas `AbortError`) passe aussi en « down » — au module de sonder pour en sortir.
+> ⏱️ `charger` reçoit `opts.signal` (AbortSignal) du veilleur d'inactivité de l'accueil (rien en 15 s, puis plus un
+> octet pendant 20 s → annulé) : le transmettre à sa requête ; l'accueil abandonne de toute façon (`Promise.race`).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
 > chiffrement sont des décisions pro : elles vivent dans `MyKTAMap-pro`.
 

@@ -50,13 +50,18 @@
   "plans": [
     { "id": "carrieres-nord", "path": "data/carrieres-nord", "name": "Carrières Nord",
       "version": "V2.1", "author": "Asso X", "multiLevel": true, "tiledV2": true,
-      "tags": ["calcaire", "carrière"] }
+      "tags": ["calcaire", "carrière"] },
+    { "id": "galerie-sud", "zip": "data/galerie-sud.zip", "name": "Galerie Sud" }
   ],
   "liaisons": { "version": 1, "links": [ /* généré par confadmin — ne pas écrire à la main */ ] }
 }
 ```
 
 - Tous les blocs sont **optionnels** sauf `plans`. Un champ inconnu est ignoré (vieilles versions comprises).
+- Un plan se déclare **par son ZIP** (`"zip"`, recommandé : déposez le fichier tel quel) **ou par un dossier**
+  (`"path"` : le ZIP décompressé). Un plan ZIP est téléchargé à l'ouverture, puis gardé sur l'appareil pour le
+  hors-ligne (réglage « Mémoriser ») ; aux ouvertures suivantes, il n'est retéléchargé que s'il a changé.
+  `zip` doit être un chemin relatif sur votre site (`data/x.zip`, `plans/x.zip`), sinon il est ignoré.
 - `subtitle` : remplace « Cartographie souterraine » (démarrage, accueil, en-tête des PDF exportés). Le nom MyKTAMap reste.
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.

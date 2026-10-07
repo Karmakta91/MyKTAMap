@@ -725,21 +725,34 @@ function _regionTuiles() {
                     fs.readFileSync("js/tiling.js", "utf8"), ctx);
   const pc = { plan: { tiledV2: true, imageWidth: W, imageHeight: H, baseImage: "blob:base" },
                tiling: { version: 2, tileSize: TS, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 } };
-  const ctxRec = () => { const d = []; return { d: d, drawImage: function (img, x, y, w, h) { d.push({ src: img._src, x: x, y: y, w: w, h: h }); } }; };
+  // drawImage à 9 arguments depuis le 07/10/2026 : la source est découpée (remplissage des tuiles de bord exclu).
+  const ctxRec = () => { const d = []; return { d: d, drawImage: function (img, sx, sy, sw, sh, x, y, w, h) {
+    if (x === undefined) { x = sx; y = sy; w = sw; h = sh; sx = 0; sy = 0; sw = img.naturalWidth; sh = img.naturalHeight; }
+    d.push({ src: img._src, sx: sx, sy: sy, sw: sw, sh: sh, x: x, y: y, w: w, h: h }); } }; };
   const c1 = ctxRec();
+  // Remplissage d'une tuile de bord : fractions attendues pour ce plan (1300 × 1100, tuiles 512).
+  const r00 = win.ktaRemplissageTuile(W, H, TS, 1, 2, 3), r01 = win.ktaRemplissageTuile(W, H, TS, 1, 0, 1);
+  t("🧩 tuile du coin haut-droit : 236 px de remplissage à droite (1300 − 1024 = 276 de contenu), 436 en haut ; tuile intérieure : aucun",
+    Math.abs(r00.droite - 236 / 512) < 1e-9 && Math.abs(r00.haut - 436 / 512) < 1e-9 && r01.droite === 0 && r01.haut === 0, [r00, r01]);
   return win.ktaDessinerRegionTuiles(c1, pc, { x: 100, y: 50, w: 600, h: 400 }, 1).then(function (r) {
     const de = (col, k) => c1.d.find(e => e.src === "blob:data/tiles/z0/x" + col + "_y-" + k + ".jpg");
     t("🖨️ région à l'échelle 1 → tuiles pleine résolution (z0), seules celles qui la touchent (4, dont 1 absente)",
       r.ok === true && r.z === 0 && r.tuiles === 4 && r.manquantes === 1 && c1.d.length === 3);
     const a = de(0, 3), b = de(1, 2);
-    t("🖨️ rangée du HAUT (partielle, k=3) posée au-dessus du plan, décalée de la région (-100, -486)",
-      !!a && a.x === -100 && a.y === -486 && a.w === 512 && a.h === 512, a);
+    // Plan de 1100 px de haut : la rangée du haut (k = 3) n'a que 76 px de contenu, collés EN BAS de la tuile ; les
+    // 436 px du dessus sont du remplissage (noir sur un plan opaque) — ni lus, ni dessinés.
+    t("🖨️ rangée du HAUT (partielle, k=3) : seuls ses 76 px de contenu, posés au bord haut du plan (-100, -50)",
+      !!a && a.sy === 436 && a.sh === 76 && a.x === -100 && a.y === -50 && a.w === 512 && a.h === 76, a);
     t("🖨️ tuile (col 1, k=2) posée à (412, 26) : rangée k=1 en BAS, origine = coin de la région", !!b && b.x === 412 && b.y === 26, b);
     t("🧠 chaque URL créée pour la région est révoquée (" + crees.length + ")", crees.length === 3 && revoquees.length === 3);
     const c2 = ctxRec();
     return win.ktaDessinerRegionTuiles(c2, pc, { x: 0, y: 0, w: 1300, h: 1100 }, 0.3).then(function (r2) {
-      t("🖨️ échelle 0,3 → niveau z-1 (le moins détaillé qui suffit), tuiles réduites de moitié en taille",
-        r2.z === -1 && c2.d.length > 0 && c2.d.every(e => /\/z-1\//.test(e.src) && Math.abs(e.w - 512 * 2 * 0.3) < 1e-6));
+      t("🖨️ échelle 0,3 → niveau z-1 (le moins détaillé qui suffit), tuiles intérieures réduites de moitié en taille",
+        r2.z === -1 && c2.d.length > 0 && c2.d.every(e => /\/z-1\//.test(e.src) && e.w <= 512 * 2 * 0.3 + 1e-6) &&
+        c2.d.some(e => Math.abs(e.w - 512 * 2 * 0.3) < 1e-6));
+      // 🩸 Rien au-delà des bords du plan (le remplissage noir des tuiles de bord débordait à droite et en haut).
+      t("🖨️ rien n'est dessiné au-delà des bords du plan (remplissage des tuiles de bord exclu)",
+        c2.d.every(e => (e.x + e.w) / 0.3 <= 1300 + 1e-6 && e.y >= -1e-6 && (e.y + e.h) / 0.3 <= 1100 + 1e-6), c2.d.map(e => [e.x, e.y, e.w, e.h]));
       return win.ktaDessinerRegionTuiles(ctxRec(), { plan: { imageWidth: W, imageHeight: H } }, { x: 0, y: 0, w: 10, h: 10 }, 1);
     }).then(function (r3) {
       t("🖨️ plan non tuilé V2 → ok:false (l'export retombe sur l'image de base)", r3.ok === false);
