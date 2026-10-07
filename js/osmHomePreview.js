@@ -2124,6 +2124,8 @@
           opacity: opacite,
           zIndex: zIndex
         }, paneNom ? { pane: paneNom } : {}));
+        // Remplissage noir des tuiles de bord masqué (07/10/2026).
+        if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(tilesData.planW, planH, tileSize, scale, t.col, t.k));
         overlay.addTo(groupe);
         rendered++;
       } catch(e) {
@@ -2329,6 +2331,7 @@
       try {
         const ov = L.imageOverlay.rotated(url, tl, tr, bl, Object.assign(
           { interactive: false, opacity: op, zIndex: zIdx }, pn ? { pane: pn.nom } : {}));
+        if (window.ktaRognerTuile) window.ktaRognerTuile(ov, window.ktaRemplissageTuile(planW, planH, tileSize, choix.scale, t.col, t.k));
         ov.addTo(groupe);
         nouvelles[cle] = { url: url, overlay: ov };
       } catch(e) {

@@ -2199,7 +2199,7 @@
 
         if (!_tileIntersectsBounds(tl, tr, bl, mapBounds)) continue;
 
-        aAjouter.push({ path, tl, tr, bl });
+        aAjouter.push({ path, tl, tr, bl, col, k });
 
         // Pre-extract lazy si l'asset a été évincé par le LRU Phase 2
         const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
@@ -2229,6 +2229,8 @@
       if (!url) continue;
       try {
         const overlay = L.imageOverlay.rotated(url, t.tl, t.tr, t.bl, { interactive: false });
+        // Remplissage noir des tuiles de bord masqué (les « petits carrés » autour d'un plan opaque) — 07/10/2026.
+        if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(planW, planH, tileSize, scale, t.col, t.k));
         overlay.addTo(_planLayer);
         if (overlay.setOpacity) overlay.setOpacity(_opacity);
         _tilesByPath[t.path] = { overlay: overlay, tl: t.tl, tr: t.tr, bl: t.bl };
