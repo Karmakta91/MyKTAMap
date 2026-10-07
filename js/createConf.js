@@ -2023,6 +2023,18 @@ function _genererImageVierge() {
   document.getElementById("pl_vierge_w").value = w;
   document.getElementById("pl_vierge_h").value = h;
 
+  // 📱 07/10/2026 — Safari iOS refuse tout canvas de plus de 16 777 216 px (≈ 4096 × 4096) : toBlob rend null, sans
+  // autre signe. Avant, 4000 × 4000 par défaut passait juste ; depuis qu'un ZIP rechargé préremplit les dimensions du
+  // plan (un import SIG/KML fait souvent 8 000 à 12 000 px), ça casse. On le dit AVANT d'essayer, avec la voie qui
+  // marche (un ordinateur va jusqu'à 12 000 × 12 000) — plutôt que « mémoire ? » après coup.
+  const IOS_MAX_PX = 16777216;
+  const _ios = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (_ios && w * h > IOS_MAX_PX) {
+    setStatus(window.I18n.t("gen.viergeGen.tropGrandIos", { w: w, h: h, mpx: Math.round(w * h / 1e6) }), "#ff8c8c");
+    return;
+  }
+
   // ───── Couleur de fond ─────
   const colorChoice = (document.querySelector('input[name="pl_vierge_color"]:checked') || {}).value || "white";
   const PALETTE = {
@@ -2058,7 +2070,9 @@ function _genererImageVierge() {
       // ───── Conversion en Blob PNG ─────
       canvas.toBlob(function(blob) {
         if (!blob) {
-          setStatus(window.I18n.t("gen.viergeGen.echecCanvas"), "#ff8c8c");
+          // Au-delà de ~16,7 Mpx, c'est presque toujours la limite de surface du navigateur (téléphone), pas la mémoire.
+          setStatus(window.I18n.t(w * h > IOS_MAX_PX ? "gen.viergeGen.tropGrand" : "gen.viergeGen.echecCanvas",
+            { w: w, h: h, mpx: Math.round(w * h / 1e6) }), "#ff8c8c");
           return;
         }
 

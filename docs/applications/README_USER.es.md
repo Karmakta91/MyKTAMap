@@ -1526,7 +1526,7 @@ Si el plano tiene **fotos adjuntas a sus puntos** en tu dispositivo, la casilla 
 
 Para dibujar un plano **sin imagen de origen**, elige **Imagen en blanco** en lugar de **Desde una imagen** en **🖼️ Imágenes principales**:
 
-- **ancho** y **alto** de 500 a 12 000 px (tomados del plano al recargar un ZIP: para hacer transparente el fondo de un plano ya hecho, elige **🫥 transparente** y vuelve a generar);
+- **ancho** y **alto** de 500 a 12 000 px — en iPhone / iPad, 16 Mpx como máximo (unos 4096 × 4096), un fondo mayor se genera en un ordenador (tomados del plano al recargar un ZIP: para hacer transparente el fondo de un plano ya hecho, elige **🫥 transparente** y vuelve a generar);
 - **color de fondo**: blanco, gris, negro, sepia o **🫥 transparente** (en la vista OSM se ve debajo el mapa de fondo; en modo mapa, el fondo elegido en los Ajustes);
 - **🎨 Fondo recomendado** (opcional): el fondo mostrado bajo las partes transparentes en modo mapa — cada uno puede cambiarlo en ⚙️ Ajustes › Visualización;
 - **🎨 Generar la imagen vacía** la instala como imagen principal.

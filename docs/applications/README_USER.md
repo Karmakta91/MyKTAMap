@@ -1526,7 +1526,7 @@ Si le plan a des **photos attachées à ses points** sur ton appareil, la case *
 
 Pour dessiner un plan **sans image source**, choisis **Image vierge** au lieu de **Depuis une image** dans **🖼️ Images principales** :
 
-- **largeur** et **hauteur** de 500 à 12 000 px (reprises du plan quand tu recharges un ZIP : pour rendre transparent le fond d'un plan déjà fait, choisis **🫥 transparent** et régénère) ;
+- **largeur** et **hauteur** de 500 à 12 000 px — sur iPhone / iPad, 16 Mpx au plus (environ 4 096 × 4 096), un plus grand fond se génère sur ordinateur (reprises du plan quand tu recharges un ZIP : pour rendre transparent le fond d'un plan déjà fait, choisis **🫥 transparent** et régénère) ;
 - **couleur de fond** : blanc, gris, noir, sépia, ou **🫥 transparent** (en Vue OSM, le fond de carte passe dessous ; en mode carte, le fond choisi dans les Réglages) ;
 - **🎨 Fond conseillé** (facultatif) : le fond à afficher sous les parties transparentes en mode carte — chacun peut le changer dans ⚙️ Réglages › Affichage ;
 - **🎨 Générer l'image vide** l'installe comme image principale.
