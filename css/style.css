@@ -8678,8 +8678,20 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
      pour les écrans < 340 px (jamais de débordement). */
   .loader-header { flex-wrap: wrap; row-gap: 6px; column-gap: 6px; }
   .loader-titre { min-width: 0; flex: 1 1 auto; }
-  .loader-titre-textes { min-width: 0; }
-  .loader-titre-tagline { display: none; }
+  /* 07/10/2026 (KARMA : « ça devrait être en petit en dessous de MyKTAMap ») — tagline RÉAFFICHÉE, mais elle
+     ne compte plus dans la largeur du lockup : width 0 + min-width 100 % = elle prend la largeur que le titre
+     a reçue (flex 1, tout l'espace laissé par les chips), sans jamais l'élargir → les chips restent sur la
+     même ligne. Sous-titre d'installation trop long (kiosque, 80 car.) : ellipse. Mesuré 320 → 412 px. */
+  .loader-titre-textes { min-width: 0; flex: 1 1 0; }
+  .loader-titre-tagline {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    margin-top: 1px;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .loader-titre-nom {
     overflow: hidden;
     text-overflow: ellipsis;
