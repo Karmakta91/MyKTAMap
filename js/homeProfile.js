@@ -2108,7 +2108,8 @@
               // `type` et `path` servent à retrouver le plan-config SANS ouvrir
               // le plan, quand l'utilisateur demande les noms manquants.
               type: plan.type,
-              path: plan.path || null,
+              // 📦 plan ZIP de l'index : pas de dossier à interroger, sa copie gardée fait foi.
+              path: plan.zip ? null : (plan.path || null),
               tags: Array.isArray(plan.tags) ? plan.tags.slice() : [],
               breakdowns: stats.breakdowns
             });

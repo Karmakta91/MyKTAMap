@@ -616,7 +616,7 @@
 
     // 2) Points des datalayers
     try {
-      if (plan.type === "server" && plan.path) {
+      if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
@@ -630,7 +630,7 @@
             });
           } catch(e) { /* layer illisible → skip */ }
         }
-      } else if (plan.type === "local" && window.PlanRegistry && window.JSZip) {
+      } else if ((plan.type === "local" || plan.zip) && window.PlanRegistry && window.JSZip) {
         const blob = await window.PlanRegistry.getBlob(plan.id);
         if (!blob && stats) stats.dataError = true;   // 🆕 v1.59.0 (U2) : ZIP absent d'IDB
         if (blob) {
@@ -712,7 +712,7 @@
     } catch(e) { console.warn("[InterPlanLinks] session routing " + plan.id + " illisible :", e); }
     // 2) Datalayers
     try {
-      if (plan.type === "server" && plan.path) {
+      if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
         if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
         const layers = (cfg && cfg.dataLayers) || [];
@@ -722,7 +722,7 @@
             _absorber(dj.roads, dj.zones);
           } catch(e) { /* layer illisible → skip */ }
         }
-      } else if (plan.type === "local" && window.PlanRegistry && window.JSZip) {
+      } else if ((plan.type === "local" || plan.zip) && window.PlanRegistry && window.JSZip) {
         const blob = await window.PlanRegistry.getBlob(plan.id);
         if (!blob && stats) stats.dataError = true;
         if (blob) {
@@ -974,7 +974,7 @@
         : null;
       _pendingConsumed = false;
       try {
-        if (plan.type === "server") {
+        if (plan.type === "server" && !plan.zip) {   // 📦 plan ZIP : chargerPlanDuRegistre
           await window.chargerPlanServeur(plan.path, plan);
         } else if (typeof window.chargerPlanDuRegistre === "function") {
           await window.chargerPlanDuRegistre(plan.id);

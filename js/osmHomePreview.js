@@ -1143,7 +1143,7 @@
     // été câblé dans ce module, qui n'a aucun chemin HTTP.
     const _plan = (window.PlanRegistry && typeof window.PlanRegistry.findById === "function")
       ? window.PlanRegistry.findById(planId) : null;
-    if (_plan && _plan.type === "server") {
+    if (_plan && _plan.type === "server" && !_plan.zip) {   // 📦 plan ZIP : sa copie gardée (plus bas)
       const dataSrv = await _loadPlanDataServeur(_plan);
       if (dataSrv) _planDataCache[planId] = dataSrv;
       return dataSrv;

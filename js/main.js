@@ -397,13 +397,23 @@ async function decouvrirPlansServeur(idxDeja) {
     plans.forEach(function(entry) {
       // Format détaillé : { id, path, name, version?, author?, multiLevel?, tiledV2? }
       // Format minimal : "test1" (string) → on déduit
-      let path, name, version, author, id, multiLevel, tiledV2;
+      let path, name, version, author, id, multiLevel, tiledV2, zip = null;
       if (typeof entry === "string") {
         path = "data/" + entry;
         name = entry;
         id   = window.PlanRegistry.genServerId(path);
       } else if (entry && typeof entry === "object") {
         path = entry.path || ("data/" + (entry.id || ""));
+        // 📦 07/10/2026 — un plan peut être déclaré par son ARCHIVE (`"zip": "data/x.zip"`) plutôt
+        // que par un dossier : l'app la télécharge et l'ouvre comme un ZIP importé (copie gardée
+        // sur l'appareil selon « Mémoriser »). Chemin relatif seulement : ni schéma, ni « .. »,
+        // ni chemin absolu — l'index ne doit pas faire télécharger ailleurs que sur l'installation.
+        if (typeof entry.zip === "string" && /^[\w./-]+\.zip$/i.test(entry.zip) &&
+            entry.zip.indexOf("..") < 0 && entry.zip.charAt(0) !== "/") {
+          zip = entry.zip;
+        } else if (entry.zip) {
+          console.warn("[Main] index.json : zip refusé (chemin relatif .zip attendu) :", entry.zip);
+        }
         name = entry.name || entry.id || path;
         version = entry.version || null;
         author  = entry.author  || null;
@@ -423,6 +433,7 @@ async function decouvrirPlansServeur(idxDeja) {
         id: id,
         type: "server",
         path: path,
+        zip: zip,
         name: name,
         author: author,
         discovered: true,
@@ -1547,15 +1558,21 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     // la gestion, version serveur) — le nom inscrit dans le ZIP les écrasait à chaque ouverture
     // (« renommé, puis l'ancien nom revient une fois le plan ouvert », retour KARMA 05/10/2026).
     const _estExt = meta.typeRegistre === "ext";
-    const _existant = _estExt && typeof window.PlanRegistry.findById === "function" ? window.PlanRegistry.findById(id) : null;
+    // 📦 07/10/2026 — plan déclaré par son archive dans data/index.json : il reste un plan
+    // « server » (l'index le gère, le retire, le renomme) ; son nom est celui de l'index, sa
+    // version celle du plan-config (règle v1.88.0 : le fichier DANS le plan fait autorité).
+    const _estZipSrv = meta.typeRegistre === "server-zip";
+    const _existant = (_estExt || _estZipSrv) && typeof window.PlanRegistry.findById === "function"
+      ? window.PlanRegistry.findById(id) : null;
     const entry = {
       id: id,
       // 🧩 v2.7.0 — un plan fourni par une extension garde son type « ext »
       // (sinon l'ouvrir le ferait passer pour un import local, et l'effacement à
       // la déconnexion ne le retrouverait plus).
-      type: _estExt ? "ext" : "local",
+      type: _estExt ? "ext" : (_estZipSrv ? "server" : "local"),
       name: (_existant && _existant.name) ? _existant.name : planName,
-      version: (_existant && _existant.version) ? _existant.version : (planVer || null),
+      version: (_estExt && _existant && _existant.version) ? _existant.version
+        : (planVer || (_existant && _existant.version) || null),
       author: rawConfig.plan.author || null,
       originalFilename: meta.zipFile?.name || null,
       fileSize: meta.zipFile?.size || null,
@@ -1566,6 +1583,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     // ne pas ecraser un user-override explicite (setMultiLevel(id, false)).
     if (rawConfig.plan.multiLevel === true) entry.multiLevel = true;
     if (rawConfig.plan.tiledV2    === true) entry.tiledV2    = true;
+    if (_estZipSrv && planVer) entry.versionSrc = "plan";
 
     // 15/09/2026 : plus de prise de référence disque (`meta.fsHandle`) — le
     // bouton 🔐 de l'accueil est retiré, la copie du ZIP est le seul mécanisme.
@@ -1582,6 +1600,9 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         const result = await window.PlanRegistry.saveBlob(id, meta.zipFile);
         if (result.ok) {
           entry.storedBlob = true;
+          // 📦 Plan ZIP de l'index : les validateurs HTTP de la copie gardée, pour la requête
+          // conditionnelle de la prochaine ouverture (304 = la copie est à jour).
+          if (_estZipSrv) { entry.zipEtag = meta.zipEtag || null; entry.zipLastModified = meta.zipLastModified || null; }
           console.log("[Loader] ZIP mémorisé dans IndexedDB :", id);
         } else {
           console.error("[Loader] Mémorisation ZIP échouée :", result.error);

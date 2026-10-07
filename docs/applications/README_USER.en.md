@@ -1725,6 +1725,8 @@ If your server hosts maps in `data/` (for example `data/test1/`, `data/test2/`),
 
 The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form shows the names straight away.
 
+Even simpler: drop the map's ZIP as is (without unzipping it) and declare it with `"zip"` instead of `"path"`, for example `{ "id": "test3", "zip": "data/test3.zip", "name": "Test map 3" }`. The app downloads it when opened, keeps it on the device for offline use (according to **Store the map in the app**), and only downloads it again if it has changed. On the map's row, 💾 keeps it without opening it, ✅ shows it is kept and up to date.
+
 ### 💼 Pro edition — importing a license
 
 If the author gave you a **`Licence-pro.json`** file, it turns on the pro edition **on this device**.

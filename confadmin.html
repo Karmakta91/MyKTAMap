@@ -81,6 +81,11 @@
   }
   .kta-ca-mv { background: none; border: none; color: #8892a4; cursor: pointer; font-size: 12px; padding: 1px 4px; }
   .kta-ca-mv:hover { color: #f4c542; }
+  .kta-ca-table select {
+    width: 100%; background: #1f2a47; border: 1px solid rgba(140,180,255,0.3); border-radius: 6px;
+    color: #e8eaf0; padding: 4px 6px; font-size: 13px;
+  }
+  .kta-ca-chemin { margin-top: 4px; font-size: 11px; color: #8892a4; font-family: monospace; word-break: break-all; }
   .kta-ca-status { font-size: 12.5px; color: #7ec97e; margin-top: 8px; }
   .kta-ca-status.kta-ca-err { color: #e07a6a; }
   .kta-ca-map-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
@@ -120,12 +125,14 @@
     <h2>📦 1. Plans du kiosque</h2>
     <p class="kta-ca-hint">Dépose les ZIPs générés par MyKTAMap (Générateur ou export). L'outil lit le
     <code>plan-config.json</code> de chacun pour pré-remplir id / nom / version / badges. L'<strong>id</strong>
-    devient le nom du dossier sur le serveur (<code>data/&lt;id&gt;/</code>) — modifiable, minuscules sans espace.</p>
+    identifie le plan (minuscules sans espace). <strong>Format</strong> : 📦 <strong>ZIP</strong> (recommandé) — le
+    ZIP est servi tel quel (<code>data/plan.zip</code>), téléchargé à l'ouverture et gardé sur l'appareil pour le
+    hors-ligne ; 📂 <strong>Dossier</strong> — le ZIP décompressé dans <code>data/&lt;id&gt;/</code>.</p>
     <div class="kta-ca-drop" id="caDrop">📥 Glisse tes ZIPs ici — ou clique pour choisir</div>
     <input type="file" id="caZipInput" accept=".zip" multiple style="display:none">
     <div id="caPlansStatus"></div>
     <table class="kta-ca-table" id="caPlansTable" style="display:none;">
-      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Tags</th><th>📁 Dossier</th><th>Badges</th><th></th></tr></thead>
+      <thead><tr><th></th><th>id</th><th>Format · chemin</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>📁 Rangement</th><th>Tags</th><th>Badges</th><th></th></tr></thead>
       <tbody id="caPlansBody"></tbody>
     </table>
     <div class="kta-ca-actions">
@@ -254,10 +261,12 @@
     </div>
     <p class="kta-ca-hint" style="margin-top:14px;"><strong>Déploiement :</strong></p>
     <ol class="kta-ca-deploy">
-      <li>Décompresse chaque ZIP dans <code>data/&lt;id&gt;/</code> (le dossier doit contenir <code>plan-config.json</code> à sa racine).</li>
+      <li>📦 Plan <strong>ZIP</strong> : dépose le fichier au chemin indiqué (ex. <code>data/plan.zip</code>), sans le décompresser.
+        📂 Plan <strong>Dossier</strong> : décompresse le ZIP dans <code>data/&lt;id&gt;/</code> (<code>plan-config.json</code> à sa racine).</li>
       <li>Dépose ce fichier en <code>data/index.json</code>.</li>
       <li>Sers le site en statique (aucun backend) — les plans apparaissent dans « 📚 Mes plans » avec le badge 🌐.</li>
-      <li>Hors-ligne : chaque plan doit avoir été ouvert <strong>une fois en ligne</strong> pour être disponible offline.</li>
+      <li>Hors-ligne : un plan ZIP ouvert une fois est gardé sur l'appareil (selon le réglage « Mémoriser ») ; un plan
+        Dossier se télécharge par le bouton ⬇️ de sa ligne.</li>
     </ol>
   </div>
 </div>

@@ -990,12 +990,27 @@
       _ETATS_DL.extAbsent = { txt: "💾", cle: "home.plans.offline.rowExtAbsent", repli: "Garder sur l'appareil (hors ligne)" };
       // Plan LOCAL dont l'archive n'est pas mémorisée (📁) : la mémoriser après coup.
       _ETATS_DL.localPick = { txt: "💾", cle: "home.plans.offline.rowMemoriser", repli: "Mémoriser ce plan dans l'app" };
+      const _sondesZip = {};
       async function _rafraichirBoutonsHorsLigne() {
         const X = window.KtaExtensions;
         Array.from(document.querySelectorAll(".kta-plan-row-dl")).forEach(function (b) {
           const row = b.closest(".plan-row");
           const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
           if (p && p.type === "local") { _peindreBoutonDl(b, "localPick"); return; }
+          // 📦 Plan ZIP de l'index : gardé ou pas ; s'il est gardé, une requête HEAD conditionnelle
+          // dit s'il est à jour (304) ou périmé (200). Hors ligne : on constate la copie.
+          if (p && p.type === "server" && p.zip) {
+            if (!p.storedBlob) { _peindreBoutonDl(b, "extAbsent"); return; }
+            // La liste se repeint plusieurs fois à l'affichage de l'accueil (mesuré : 3) : une
+            // seule sonde par plan toutes les 30 s.
+            const _s = _sondesZip[p.id];
+            const sonde = (_s && Date.now() - _s.t < 30000 && _s.etag === p.zipEtag) ? _s.pr
+              : (_sondesZip[p.id] = { t: Date.now(), etag: p.zipEtag, pr: _telechargerZipIndex(p, null, true, "HEAD") }).pr;
+            sonde.then(function (r) {
+              _peindreBoutonDl(b, r.statut === "frais" ? "perime" : "extGarde");
+            }).catch(function () { _peindreBoutonDl(b, "extGarde"); });
+            return;
+          }
           if (!p || p.type !== "ext" || !X || typeof X.etatHorsLigneExtension !== "function") return;
           X.etatHorsLigneExtension(p.id).then(function (e) { if (e) _peindreBoutonDl(b, _ETAT_EXT[e]); else b.hidden = true; });
         });
@@ -1003,7 +1018,7 @@
         const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl")).filter(function (b) {
           const row = b.closest(".plan-row");
           const p = row && window.PlanRegistry && window.PlanRegistry.findById(row.dataset.id);
-          return p && p.type === "server";
+          return p && p.type === "server" && !p.zip;   // 📦 plan ZIP : sa copie, pas le cache du SW
         });
         if (!btns.length) return;
         const ids = btns.map(function (b) {
@@ -1024,6 +1039,20 @@
       async function _lancerHorsLigneLigne(planId, btn) {
         const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
         if (plan && plan.type === "local" && !plan.storedBlob) { _memoriserApresCoup(plan); return; }
+        if (plan && plan.type === "server" && plan.zip) {
+          if (btn.dataset.off === "extGarde") return;   // gardé et à jour : rien à faire
+          btn.disabled = true; btn.textContent = "…";
+          let ok = false;
+          try { ok = await _garderZipIndex(plan); }
+          catch (e) { console.warn("[Loader] plan ZIP : garde impossible —", e && e.message); }
+          btn.disabled = false;
+          if (!ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_homeT("home.plans.offline.rowExtEchec",
+              "Téléchargement impossible (serveur injoignable ou stockage plein)"), "warn");
+          }
+          _rafraichirBoutonsHorsLigne();
+          return;
+        }
         if (plan && plan.type === "ext" && window.KtaExtensions && typeof window.KtaExtensions.garderPlanExtension === "function") {
           if (btn.dataset.off === "extGarde") return;   // déjà gardé et à jour : rien à faire
           btn.disabled = true; btn.textContent = "…";
@@ -1433,7 +1462,7 @@ function planRowHTML(plan) {
         pushRow(_t("home.plans.info.keyAuthor"),  plan.author);
         rows.push({ label: _t("home.plans.info.keyType"), value: typeLabel, mono: false });
         if (plan.type === "server") {
-          pushRow(_t("home.plans.info.keyServerPath"), plan.path, true);
+          pushRow(_t("home.plans.info.keyServerPath"), plan.zip || plan.path, true);
         } else if (plan.type === "local") {
           pushRow(_t("home.plans.info.keySourceFile"), plan.originalFilename, true);
           pushRow(_t("home.plans.info.keySize"),       plan.fileSize ? fmtSize(plan.fileSize) : null);
@@ -1524,7 +1553,7 @@ function planRowHTML(plan) {
         // jamais depuis un drapeau, sinon un cache purgé laisserait un bouton
         // fantôme annonçant « disponible » sur du vide (exigence KARMA).
         let offlineHtml = "";
-        if (plan.type === "server" && window.PlanOffline && window.PlanOffline.supporte()) {
+        if (plan.type === "server" && !plan.zip && window.PlanOffline && window.PlanOffline.supporte()) {
           offlineHtml =
             '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
               '<div style="font-weight:600; margin-bottom:6px;">💾 ' +
@@ -1621,7 +1650,7 @@ function planRowHTML(plan) {
         // fantôme ; si cache perdu il revient ». C'est gratuit ici précisément
         // parce qu'on ne mémorise AUCUN drapeau : une purge navigateur fait
         // retomber l'état sur « absent » toute seule, et le bouton revient.
-        if (plan.type === "server" && window.PlanOffline && window.PlanOffline.supporte()) {
+        if (plan.type === "server" && !plan.zip && window.PlanOffline && window.PlanOffline.supporte()) {
           const _fmtQuand = function (iso) {
             try { return new Date(iso).toLocaleString(); } catch (e) { return ""; }
           };
@@ -2670,10 +2699,113 @@ function planRowHTML(plan) {
       }
 
 
+      // 📦 07/10/2026 — PLAN DÉCLARÉ PAR SON ARCHIVE dans data/index.json (`"zip": "data/x.zip"`).
+      // Téléchargement avec progression. `conditionnel` : la copie gardée porte ses validateurs
+      // HTTP (ETag / Last-Modified) → 304 = « la copie est à jour », rien n'est retéléchargé.
+      // `cache: "no-store"` : nos en-têtes conditionnels font foi, pas le cache HTTP du navigateur
+      // (et le SW laisse passer les .zip, cf sw.js). Rend { statut: "frais"|"aJour"|"absent",
+      // blob, etag, lastModified } ; une erreur réseau remonte (l'appelant se rabat sur la copie).
+      async function _telechargerZipIndex(plan, progression, conditionnel, methode) {
+        const entetes = {};
+        if (conditionnel && plan.storedBlob) {
+          if (plan.zipEtag) entetes["If-None-Match"] = plan.zipEtag;
+          if (plan.zipLastModified) entetes["If-Modified-Since"] = plan.zipLastModified;
+        }
+        const rep = await fetch(plan.zip, { method: methode || "GET", headers: entetes, cache: "no-store" });
+        if (rep.status === 304) return { statut: "aJour" };
+        if (rep.status === 404 || rep.status === 410) return { statut: "absent" };
+        if (!rep.ok) throw new Error("HTTP " + rep.status);
+        const res = { statut: "frais", etag: rep.headers.get("ETag"), lastModified: rep.headers.get("Last-Modified") };
+        if (methode === "HEAD") return res;
+        const total = parseInt(rep.headers.get("Content-Length"), 10) || 0;
+        if (!rep.body || typeof rep.body.getReader !== "function") { res.blob = await rep.blob(); return res; }
+        const lecteur = rep.body.getReader(), morceaux = [];
+        let recus = 0;
+        for (;;) {
+          const r = await lecteur.read();
+          if (r.done) break;
+          morceaux.push(r.value); recus += r.value.length;
+          if (progression) progression(recus, total);
+        }
+        res.blob = new Blob(morceaux, { type: "application/zip" });
+        return res;
+      }
+
+      // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne.
+      async function _garderZipIndex(plan) {
+        const r = await _telechargerZipIndex(plan, null, true);
+        if (r.statut === "aJour") return true;
+        if (r.statut !== "frais" || !r.blob) return false;
+        if (window.PlanRegistry.requestPersistentStorage) await window.PlanRegistry.requestPersistentStorage();
+        const s = await window.PlanRegistry.saveBlob(plan.id, r.blob);
+        if (!s || !s.ok) return false;
+        window.PlanRegistry.addOrUpdate({ id: plan.id, storedBlob: true,
+          zipEtag: r.etag || null, zipLastModified: r.lastModified || null });
+        return true;
+      }
+
       // === CHARGER UN PLAN DEPUIS LE REGISTRE ===
       async function chargerPlanDuRegistre(id) {
         const plan = window.PlanRegistry.findById(id);
         if (!plan) return setStatus("Plan introuvable dans la liste", true);
+
+        // 📦 Plan ZIP de l'index : archive téléchargée (ou copie gardée si à jour / hors ligne),
+        // puis ouverte comme un ZIP importé — elle reste un plan « server » (startImportedPlan).
+        if (plan.type === "server" && plan.zip) {
+          setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
+          const _tz = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+          const _nom = plan.name || plan.id;
+          if (typeof window._afficherOverlayChargement === "function") {
+            window._afficherOverlayChargement(_tz("zipIndex.chargement.debut", { nom: _nom }));
+          }
+          let _derniereMajZ = 0;
+          const _progressionZ = function(recus, total) {
+            const maintenant = Date.now();
+            if (maintenant - _derniereMajZ < 250 && recus < total) return;
+            _derniereMajZ = maintenant;
+            const mo = function(o) { return (o / 1048576).toFixed(o < 10485760 ? 1 : 0); };
+            const texte = total > 0
+              ? _tz("ext.chargement.progres", { nom: _nom, pct: Math.floor(recus * 100 / total), recu: mo(recus), total: mo(total) })
+              : _tz("ext.chargement.progresSansTotal", { nom: _nom, recu: mo(recus) });
+            if (typeof window._majOverlayChargement === "function") window._majOverlayChargement(texte);
+          };
+          const _fermer = function() {
+            if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
+          };
+          try {
+            let r = null, blob = null, frais = false;
+            try { r = await _telechargerZipIndex(plan, _progressionZ, true); }
+            catch (eRes) { console.warn("[Loader] plan ZIP : réseau indisponible —", eRes && eRes.message); }
+            if (r && r.statut === "absent") {
+              _fermer();
+              afficherModalePlanIntrouvable(plan, "server");
+              return;
+            }
+            if (r && r.statut === "frais") { blob = r.blob; frais = true; }
+            else if (plan.storedBlob) {
+              if (!r && typeof window._majOverlayChargement === "function") {
+                window._majOverlayChargement(_tz("zipIndex.chargement.copie"));
+              }
+              blob = await window.PlanRegistry.getBlob(plan.id);
+            }
+            if (!blob) {
+              _fermer();
+              return setStatus(_tz("zipIndex.indispo"), true);
+            }
+            const fichier = new File([blob], (plan.zip.split("/").pop() || (_nom + ".zip")), { type: "application/zip" });
+            const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+            await chargerZipFichier(fichier, (segmented !== "auto") ? segmented : (plan.perfPreset || "auto"),
+                                    { planId: plan.id, typeRegistre: "server-zip", zipFile: fichier,
+                                      storeBlob: frais && (!!plan.storedBlob || window.ktaMemoriserPlanActif()),
+                                      fromStoredBlob: !frais,
+                                      zipEtag: r && r.etag, zipLastModified: r && r.lastModified });
+            if (window.masquerLoader) window.masquerLoader();
+          } catch (e) {
+            _fermer();
+            setStatus(_homeT("home.statut.erreur", "Erreur : {msg}").replace("{msg}", String(e.message || e)), true);
+          }
+          return;
+        }
 
         if (plan.type === "server") {
           setStatus(_homeT("home.statut.chargementDe", "Chargement de {nom}…").replace("{nom}", plan.name || plan.id));
@@ -2836,7 +2968,7 @@ function planRowHTML(plan) {
         const _nom = escapeHtml(window.PlanRegistry.displayName(plan));
         if (reason === "server") {
           titre = _t("home.plans.notFound.titleServer");
-          explication = _t("home.plans.notFound.bodyServer", { nom: _nom, path: escapeHtml(plan.path) });
+          explication = _t("home.plans.notFound.bodyServer", { nom: _nom, path: escapeHtml(plan.zip || plan.path) });
           canRetry = true;
         } else if (reason === "local-blob") {
           titre = _t("home.plans.notFound.titleBlob");

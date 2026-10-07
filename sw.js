@@ -1075,6 +1075,13 @@ self.addEventListener("fetch", (event) => {
     if (h && (h.get("X-Kta-Ext") || h.get("Authorization"))) return;
   } catch (e) { /* en-têtes illisibles : on continue normalement */ }
 
+  // 📦 07/10/2026 — PLAN ZIP DÉCLARÉ PAR L'INDEX (`"zip": "data/x.zip"`) : RÉSEAU SEUL.
+  // Le hors-ligne d'un tel plan est la copie gardée en IndexedDB (PlanRegistry.saveBlob),
+  // pas le cache du SW : sans cette sortie, la branche par défaut rangerait chaque archive
+  // (des centaines de Mo) une seconde fois dans CACHE_NAME, et la servirait cache-first —
+  // la requête conditionnelle de fraîcheur n'atteindrait jamais le serveur.
+  if (/\.zip(\?|$)/i.test(reqUrl)) return;
+
   // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
   // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les
   // fichiers d'un plan pré-téléchargé pour savoir s'ils ont changé côté

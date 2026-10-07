@@ -354,7 +354,8 @@ async function _chargerPlanDirect(plan) {
   const popup = document.getElementById("popupChangerPlan");
   if (popup) popup.remove();
 
-  if (plan.type === "server") {
+  // 📦 Un plan ZIP de l'index (`plan.zip`) n'a pas de dossier : il passe par chargerPlanDuRegistre.
+  if (plan.type === "server" && !plan.zip) {
     try {
       await window.chargerPlanServeur(plan.path, plan);
     } catch(e) {
@@ -365,7 +366,7 @@ async function _chargerPlanDirect(plan) {
     return;
   }
 
-  if (plan.type === "local") {
+  if (plan.type === "local" || plan.zip) {
     // Pour les plans locaux, on a besoin de la logique de chargerPlanDuRegistre
     // qui gère blob → fsHandle → re-sélection. Cette fonction est dans index.html.
     // On revient au loader pour que l'utilisateur puisse cliquer dessus,

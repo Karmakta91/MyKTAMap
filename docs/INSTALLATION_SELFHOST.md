@@ -393,6 +393,13 @@ Le fichier `index.json` doit ressembler à :
 }
 ```
 
+> 📦 **Plus simple : servir le ZIP tel quel.** Au lieu de décompresser, déposez l'archive (ex.
+> `data/mon-plan-3.zip`) et déclarez-la avec `"zip"` au lieu de `"path"` :
+> `{ "id": "mon-plan-3", "zip": "data/mon-plan-3.zip", "name": "Galerie Sud" }`. L'app la télécharge à
+> l'ouverture (avec progression) et la garde sur l'appareil pour le hors-ligne ; elle ne la retélécharge que si
+> le fichier a changé sur le serveur (ETag / Last-Modified, servis d'office par Nginx). `confadmin.html`
+> produit ce format par défaut.
+
 > ✅ **Depuis la v1.86.1, le ZIP se dézippe tel quel** — aucun chemin à réécrire. Avant, il fallait aplatir le dossier `data/` **et** réécrire chaque chemin du `plan-config.json` : sans ça, tout renvoyait 404 sauf le `plan-config.json` lui-même, sans message clair. Un déploiement déjà réécrit à la main continue de fonctionner à l'identique.
 >
 > ✅ **Icônes personnalisées** : prises en charge *(v1.87.2)*. À l'ouverture d'un plan serveur, chaque icône déclarée est **demandée au serveur** dans le dossier du plan : si elle s'y trouve, elle est utilisée ; sinon on garde celle de l'app, à la racine. Rien à faire. Détail : `docs/TILING.md` §5.

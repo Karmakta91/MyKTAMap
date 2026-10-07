@@ -1725,6 +1725,8 @@ Si ton serveur héberge des plans dans `data/` (par exemple `data/test1/`, `data
 
 La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme détaillée affiche les noms tout de suite.
 
+Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et déclare-le avec `"zip"` à la place de `"path"`, par exemple `{ "id": "test3", "zip": "data/test3.zip", "name": "Plan Test 3" }`. L'app le télécharge à l'ouverture, le garde sur l'appareil pour le hors-ligne (selon **Mémoriser le plan dans l'app**), et ne le retélécharge que s'il a changé. Sur la ligne du plan, 💾 le garde sans l'ouvrir, ✅ indique qu'il est gardé et à jour.
+
 ### 💼 Édition pro — importer une licence
 
 Si l'auteur t'a remis un fichier **`Licence-pro.json`**, il active l'édition pro **sur cet appareil**.
