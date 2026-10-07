@@ -762,6 +762,23 @@ La directive clé est `connect-src 'self' blob: https://tile.openstreetmap.org h
 navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la
 Vue OSM, rien ne lui est envoyé).
 
+**Deuxième directive : quel code a le droit de tourner (`script-src`).** Depuis le 7 octobre 2026, l'application ne
+contient plus aucun code écrit directement dans ses pages (`onclick="…"`, blocs `<script>`, liens `javascript:`) :
+tout son code vient de ses propres fichiers `.js`, et un contrôle automatique empêche d'en réintroduire. Le serveur
+peut donc demander au navigateur de **n'exécuter que les fichiers du site** (`script-src 'self'`) : un texte piégé
+qui passerait un jour entre les mailles de l'affichage (un nom de point, une note venue d'un autre compte) ne
+pourrait plus rien exécuter.
+
+- **En ce moment** : la règle en vigueur garde encore `script-src 'self' 'unsafe-inline'` (code inline toléré) ; la
+  règle stricte est envoyée **en observation**, dans un second en-tête `Content-Security-Policy-Report-Only` — rien
+  n'est bloqué, la console (F12) signale ce qui le serait. Selon l'installation, cet en-tête peut être absent.
+- **Prochaine étape** : la règle stricte devient la règle en vigueur.
+- **Une exception, voulue** : la page de secours `killsw.html` (réinitialiser le Service Worker quand l'app ne démarre
+  plus) garde son code dans la page — elle doit fonctionner même quand les fichiers de l'app sont inaccessibles. Elle
+  n'affiche aucune donnée.
+- Les styles écrits dans les pages (`style="…"`) restent autorisés (`style-src 'unsafe-inline'`) : un style ne peut pas
+  exécuter de code.
+
 Le fichier de configuration Nginx exact est versionné dans le dépôt sous
 `docs/nginx-csp-config.conf` (visible à toute personne ayant accès au
 code).

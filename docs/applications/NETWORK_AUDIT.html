@@ -1048,6 +1048,25 @@
   <p>La directive clé est <code>connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org</code> —
   le navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la Vue OSM, rien ne lui est envoyé).</p>
 
+  <p><strong>Deuxième directive : quel code a le droit de tourner (<code>script-src</code>).</strong> Depuis le 7 octobre 2026,
+  l’application ne contient plus aucun code écrit directement dans ses pages (<code>onclick="…"</code>, blocs <code>&lt;script&gt;</code>,
+  liens <code>javascript:</code>) : tout son code vient de ses propres fichiers <code>.js</code>, et un contrôle automatique empêche
+  d’en réintroduire. Le serveur peut donc demander au navigateur de <strong>n’exécuter que les fichiers du site</strong>
+  (<code>script-src 'self'</code>) : un texte piégé qui passerait un jour entre les mailles de l’affichage (un nom de point, une note
+  venue d’un autre compte) ne pourrait plus rien exécuter.</p>
+  <ul>
+    <li><strong>En ce moment</strong> : la règle en vigueur garde encore <code>script-src 'self' 'unsafe-inline'</code> (code inline
+    toléré) ; la règle stricte est envoyée <strong>en observation</strong>, dans un second en-tête
+    <code>Content-Security-Policy-Report-Only</code> — rien n’est bloqué, la console (F12) signale ce qui le serait. Selon
+    l’installation, cet en-tête peut être absent.</li>
+    <li><strong>Prochaine étape</strong> : la règle stricte devient la règle en vigueur.</li>
+    <li><strong>Une exception, voulue</strong> : la page de secours <code>killsw.html</code> (réinitialiser le Service Worker quand
+    l’app ne démarre plus) garde son code dans la page — elle doit fonctionner même quand les fichiers de l’app sont
+    inaccessibles. Elle n’affiche aucune donnée.</li>
+    <li>Les styles écrits dans les pages (<code>style="…"</code>) restent autorisés (<code>style-src 'unsafe-inline'</code>) : un
+    style ne peut pas exécuter de code.</li>
+  </ul>
+
   <h2>🧰 Stockage local — où vivent tes données</h2>
 
   <p>Toutes tes données sont <strong>strictement locales</strong> à ton appareil et à ton
