@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.9` (07/10/2026)
+## 📦 Version courante — `v2.10.0` (07/10/2026)
+
+> 🔒 **v2.10.0 — Plus aucun script inline, audit réseau réécrit** : l'app est prête pour une CSP `script-src 'self'` (règle stricte servie en observation, garde-fou `check-csp-inline`) ; la page « Audit réseau » ne garde que l'état actuel, l'historique des versions a sa page ; smoke de nouveau fiable.
 
 > 🖨️ **v2.9.9 — Cartes PDF nettes sur un grand plan** (Mode Secours : fiches d'équipe, carte des accès, mini-carte du rapport rendues depuis les tuiles, pleine résolution) ; sous-titre de l'accueil revenu sur mobile ; déploiement par Git, en-têtes de licence partout.
 
@@ -555,6 +557,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.10.0 (07/10/2026) — Plus aucun script inline, audit réseau réécrit (branche `Karma_dev`)
+
+- 🔒 **CSP `script-src 'self'` prête** : les 11 gestionnaires inline deviennent des écouteurs (sortie d'urgence, configuration, étape au clic, pied de page, images manquantes via `data-kta-echec`) ; 5 liens `javascript:` → `#` ; blocs `<script>` → `js/homeDemarrage.js`, `js/swRegister.js`, `js/confadmin.js`, `docs/applications/audit-pied.js`. `killsw.html` garde le sien (page de secours du SW, bloc nginx dédié). Garde-fou `check-csp-inline` (pre-commit, bloquant). Règle stricte servie en `Content-Security-Policy-Report-Only` (image + modèles nginx) ; bascule au backlog (`46c0980`).
+- 📄 **Audit réseau en deux pages** : `NETWORK_AUDIT` ne garde que l'état actuel (1 550 → 621 lignes en md) ; les notes par version, le journal Save Offline v1.43–v1.44 et la synthèse v1.21.4 passent dans `NETWORK_AUDIT_HISTORIQUE` (md + html). Corrigé au passage : la page disait la Vue OSM désactivée par défaut (faux depuis v1.90.2) ; elle l'annonce maintenant activée par défaut dans le corps. `script-src` expliqué (`03ec8df` + ce commit). Garde-fou de release : la note de version va dans l'historique.
+- 🧪 **Smoke fiable** : il acquitte les alertes en cours d'`alert.json` (l'alerte active bloquait les clics, smoke rouge sans rapport avec le code), sert la CSP stricte en vigueur, se replie sur Edge.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.9.9 (07/10/2026) — Cartes PDF nettes, déploiement par Git (branche `Karma_dev`)
 

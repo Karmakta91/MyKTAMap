@@ -46,6 +46,7 @@ const HORS_BIBLIO = new Set([
   "docs/applications/README_USER.es.md",   // modale 📚 Documentation
   "docs/applications/AI_CONTEXT.md",       // modale 🤖 Aide IA
   "docs/applications/NETWORK_AUDIT.md",    // modale 🔒 Audit réseau
+  "docs/applications/NETWORK_AUDIT_HISTORIQUE.md",   // historique de l'audit, lié depuis la page d'audit
   "docs/applications/CGU.md",              // écran légal
   "docs/applications/SELFHOST.md", "docs/applications/DOCKER_INSTALL.md",
   "docs/applications/DOCKER_INSTALL.en.md",

@@ -17,7 +17,7 @@
 // le premier `onclick="…"` vite écrit réintroduit la dépendance, et la CSP
 // stricte casse l'app ou doit être rouverte.
 //
-// RÈGLES, sur js/*.js, les pages *.html de la racine et lang/*.json :
+// RÈGLES, sur js/*.js, les pages *.html de la racine et de docs/applications/, et lang/*.json :
 //   1. aucun attribut gestionnaire (onclick=, onerror=, onload=… ) dans du HTML
 //      écrit ou généré → un écouteur (addEventListener / délégation, data-*) ;
 //   2. aucun lien `javascript:` (href ou .href) → "#" + preventDefault ;
@@ -87,9 +87,10 @@ if (rate.length || faux.length) {
 
 let fichiers;
 try {
+  // Pages servies : racine + docs/applications/ (pages d'audit, oubliées au premier passage — script de pied inline).
   fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "*.html", "lang/*.json"],
     { encoding: "utf8" }).split("\n").filter(Boolean)
-    .filter((f) => !f.includes("/") || /^(js|lang)\//.test(f));   // *.html : racine seulement
+    .filter((f) => !f.includes("/") || /^(js|lang)\//.test(f) || /^docs\/applications\/[^/]+\.html$/.test(f));
 } catch (e) {
   console.error("❌ [check-csp-inline] git ls-files impossible : " + e.message);
   process.exit(1);

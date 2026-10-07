@@ -445,7 +445,7 @@ la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la sect
 « 🗓️ Version actuelle » (digest des nouveautés) à jour à chaque release marquante, et
 NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
 gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
-| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html` | À chaque release (verdict réseau attendu par les users qui auditent) |
+| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `.html` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` + `.html` (note de la version, page à part depuis le 07/10/2026) | À chaque release (verdict réseau attendu par les users qui auditent) |
 | 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
 
@@ -456,7 +456,7 @@ ou SKIPé sur chacun des 4. Format type :
 ```
 Sync 4 axes docs (4)
   📱 In-app   : SKIP justifié (perf interne, aucun changement UX)
-  🔒 Audit    : NETWORK_AUDIT.md + .html — entrée v1.X.Y
+  🔒 Audit    : NETWORK_AUDIT.md + .html (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md + .html — entrée v1.X.Y
   📖 Dev      : README.md — MAJ "Version courante"
   🤖 Archi IA : perf-memory.md §X (pattern + gain + À NE PAS faire)
 ```
