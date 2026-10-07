@@ -4392,7 +4392,11 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   margin-top: 4px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  animation: splashTextIn 0.6s ease-out 0.45s both;
+  /* 07/10/2026 (KARMA : « ne s'affiche pas de façon animée comme MyKTAMap ») — même révélation de gauche à
+     droite que le mot « MyKTAMap » (kta-titre-base-reveal), enchaînée juste après lui (titre : 0,45 → 1,45 s).
+     Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte. */
+  animation: splashTextIn 0.6s ease-out 0.45s both,
+             kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.25s both;
 }
 
 /* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
@@ -5556,6 +5560,8 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
 }
 
 .loader-titre-tagline {
+  /* Même révélation que « MyKTAMap » dans l'en-tête (titre : 0,1 → 1,1 s), enchaînée juste après (07/10/2026). */
+  animation: kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
   font-size: 11px;
   color: #f4c542;
   opacity: 0.75;
