@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.10.0` (07/10/2026)
+## 📦 Version courante — `v2.10.1` (07/10/2026)
+
+> 🎨 **v2.10.1 — Fond sous le plan, bords propres, démarrage harmonisé** : fond noir / blanc / gris par plan sous les plans transparents (conseillé par le Générateur, plan vierge transparent) ; plus de remplissage noir des tuiles de bord (carrés sombres en Vue OSM) ; splash aux animations synchronisées ; incognito dans les options, indisponible sur une installation reliée.
 
 > 🔒 **v2.10.0 — Plus aucun script inline, audit réseau réécrit** : l'app est prête pour une CSP `script-src 'self'` (règle stricte servie en observation, garde-fou `check-csp-inline`) ; la page « Audit réseau » ne garde que l'état actuel, l'historique des versions a sa page ; smoke de nouveau fiable.
 
@@ -557,6 +559,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.10.1 (07/10/2026) — Fond sous le plan, bords propres, démarrage harmonisé (branche `Karma_dev`)
+
+- 🎨 **Fond sous le plan, par plan** (⚙️ Réglages › Affichage) : Par défaut / Noir / Blanc / Gris neutre, sous les parties transparentes ; défaut = `plan.fondConseille` (Générateur), sinon le thème ; l'export image le reprend. Générateur : champ « Fond conseillé », plan vierge « 🫥 Transparent » (`23f8ee9`) ; un ZIP rechargé préremplit les dimensions du plan vierge — rendre transparent le fond d'un plan existant (import SIG/KML, GPX) = « Transparent » + régénérer, sans décalage.
+- 🧩 **Tuiles de bord** : leur remplissage (noir sur un plan opaque) n'est plus affiché — fini les carrés sombres autour d'un plan opaque en Vue OSM, et les bandes noires en fond blanc. Masque à l'affichage (`ktaRognerTuile`) sur la carte, la Vue OSM, le widget de l'accueil, le mode XL et les PDF : tous les plans existants en profitent (`d64579a`).
+
+- 🎬 **Splash : une ligne d'arrivée** : « MyKTAMap » (0,45 s →), sous-titre (0,9 s →), KARMA (0,8 s →), crédit Claude, version, licence et librairies (1,2 s →) finissent tous à 2,2 s ; le « 2 » claque juste après (2,2 → 2,6 s), la boussole trouve le nord à 3,5 s. Avant : six fins de 1,45 à 3,5 s. Mesuré en navigateur (`43bbf81`).
+- ✍️ **« Cartographie souterraine » se révèle comme « MyKTAMap »** (gauche → droite), au splash et dans l'en-tête, en finissant avec le titre (`653e9a2`, `43bbf81`).
+- 🕵️ **Mode incognito** : dans 🧩 Fonctionnalités optionnelles (accueil et plan) ; `IncognitoMode.indisponible()` le grise sur une installation reliée — le serveur y enregistre ce qu'on fait, et le coffre / les plans gardés ont besoin d'IndexedDB ; `launch()` refuse (`43bbf81`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.10.0 (07/10/2026) — Plus aucun script inline, audit réseau réécrit (branche `Karma_dev`)
 

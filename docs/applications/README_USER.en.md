@@ -1526,7 +1526,7 @@ If the map has **photos attached to its points** on your device, the **📸 Incl
 
 To draw a map **without a source image**, choose **Blank image** instead of **From an image** in **🖼️ Main images**:
 
-- **width** and **height** from 500 to 12,000 px;
+- **width** and **height** from 500 to 12,000 px (taken from the map when you reload a ZIP: to make an existing map's background transparent, pick **🫥 transparent** and regenerate);
 - **background colour**: white, grey, black, sepia, or **🫥 transparent** (in the OSM view the background map shows through; in map mode, the background chosen in Settings);
 - **🎨 Suggested background** (optional): the background shown under transparent parts in map mode — anyone can change it in ⚙️ Settings › Display;
 - **🎨 Generate the blank image** installs it as the main image.

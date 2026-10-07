@@ -1801,6 +1801,10 @@ function _preRemplirFormulaire(config) {
   sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");   // 🎨 07/10/2026
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
+  // 07/10/2026 (KARMA) : un ZIP rechargé donne aussi ses dimensions au plan vierge (pour régénérer un fond aux mêmes
+  // dimensions — sinon 4000 × 4000 par défaut et tout se décalait).
+  if (plan.imageWidth)  sv("pl_vierge_w", plan.imageWidth);
+  if (plan.imageHeight) sv("pl_vierge_h", plan.imageHeight);
   sv("pl_startX",  t.startX        ?? 0);
   sv("pl_startY",  t.startY        ?? 0);
   sv("pl_scale",   t.scale         ?? 4.9);
