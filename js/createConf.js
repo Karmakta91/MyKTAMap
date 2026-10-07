@@ -5533,7 +5533,7 @@ async function _sigImpAnalyserFichier(file) {
 
     // Colonne du niveau. Pré-sélectionnée si une colonne s'appelle sans
     // ambiguïté « niveau » / « level » / « etage » : c'est le cas des fichiers
-    // produits par `scripts/decouper-atlas.js`, et l'oubli coûte cher (tout
+    // d'un atlas découpé (ancien outil decouper-atlas.js), et l'oubli coûte cher (tout
     // l'import se retrouve sur un seul niveau sans que rien ne le signale).
     const selN = document.getElementById("kta-sig-imp-niveau");
     selN.innerHTML = '<option value="">' + T("gen.sig.niveauAucun") + '</option>'

@@ -31,11 +31,13 @@
   - **Style** : **1-2 phrases courtes**, zéro jargon technique (pas de noms de fichier `js/...`, pas de constantes `LIKE_THIS`, pas de termes algorithmiques, pas de mention `O(N)`/`AbortController`/`viewportcull`/etc.). Ne mentionne **QUE** ce que l'user voit ou doit savoir.
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
-- **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
+- **Déploiement** : par KARMA, sur le VPS, avec deux scripts **hors dépôt** (`deploy-dev.sh` → dev.myktamap.fr sur
+  `Karma_dev`, `deploy-prod.sh` → myktamap.fr sur `main`) : clone Git hors du dossier web, `data/` jamais touché
+  (`docs/architecture/infra-versioning.md` §85). Plus de FTP. Claude ne déploie/push-main JAMAIS.
 - **Merge sur `main`** (KARMA uniquement) : `powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1`
   — vérifie l'arbre propre, la concordance des 3 sources de version, les garde-fous, l'écart avec le distant,
   puis **demande de confirmer les marches 2-4 de la porte** (aucun script n'ouvre un navigateur), merge, tague et
-  publie. `-DryRun` montre tout sans rien toucher. FTP prod ensuite : `scripts\deploy\deploy.ps1`.
+  publie. `-DryRun` montre tout sans rien toucher. Prod ensuite : `deploy-prod.sh` sur le VPS.
 - **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS

@@ -87,7 +87,7 @@ remplace.
 
 - **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
   (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
-- **FR en dur hors des modules audités** : le détecteur `scripts/find-hardcoded-fr.js` sort ~960 candidats (plancher
+- **FR en dur hors des modules audités** : l'ancien détecteur `find-hardcoded-fr.js` (retiré le 07/10/2026, dans l'historique Git) sortait ~960 candidats (plancher
   connu de faux positifs ~560) ; seuls Secours, guidage, accueil et Documentation ont été triés. Même politique que
   les popups : **au fil de l'eau**, quand on touche un module.
 - 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
@@ -257,7 +257,7 @@ fix de la v1.77.0.*
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |
 | **Journal des notifications (cloche)** | Enterré le 29/09 |
 | **Dossier « 🌐 Serveur » automatique** (Mes plans) | Enterré le 29/09 |
-| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. `scripts/decouper-atlas.js` est livré et suffit ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
+| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
 | **Test de l'import SIG sur de vrais exports QGIS** | Enterré le 29/09 (le harnais couvre parsers, CRS, Lambert 93) |
 | **Transparence des plans issus d'un scan** | Enterré le 29/09 : un JPEG n'a pas d'alpha ; l'opacité compense, c'est accepté |
 | **Plan orienté : indicateur de Nord, contre-rotation des tooltips, inertie du pan** | « Bien comme ça pour le moment » (KARMA, 29/09) |

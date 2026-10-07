@@ -291,7 +291,7 @@ lib/                            ← Librairies locales (aucun CDN)
 
 js/                             ← 112 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
-scripts/                        ← Outillage dev (check-no-pro-leak, find-hardcoded-fr…)
+scripts/                        ← Outillage dev : garde-fous check-*, smoke, merge-main
 .githooks/                      ← Hooks pre-commit (anti-fuite pro + 12 garde-fous) et commit-msg (guard de release)
 docker/                         ← Self-host (voir docs/architecture/docker-selfhost.md)
 ```

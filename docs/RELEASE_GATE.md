@@ -1,7 +1,7 @@
 # 🚦 RELEASE GATE — porte de mise en production
 
 > **Règle d'or : `main` = déployable.** La porte se franchit **avant le merge sur `main`** ;
-> le FTP prod peut ensuite se faire depuis `main` sans re-réfléchir.
+> le déploiement prod (`deploy-prod.sh` sur le VPS) peut ensuite se faire depuis `main` sans re-réfléchir.
 > Décideur unique des dérogations : **KARMA**. Claude prépare, vérifie, consigne — il ne déroge jamais lui-même.
 
 **Pourquoi cette porte existe** : à la v1.76.0, les 9 garde-fous automatiques étaient verts en
@@ -77,7 +77,7 @@ données de l'utilisateur, un échec là = pas de release, point.
 | 10 | | Ouvrir le Mode Secours | S'ouvre, données du plan présentes |
 | 11 | | Badge version footer + modale « Mise à jour » | **Bonne version**, notes du bump courant |
 | 12 | 🔒 | Kill SW (⚙️ Configuration → 🆘 Dépannage → 🆘 Ouvrir l'outil Kill SW, ou `killsw.html` directement) puis recharger | L'app revit sur la nouvelle version, URL propre |
-| 13 | | **Pages annexes à jour** : ouvrir l'Audit réseau (version en tête = version du bump) + vérifier en console l'absence de `[I18n] Clé manquante` | Attrape les **uploads FTP partiels** (`docs/` ou `lang/` non montés) — vécu 2× le 06/08 : Audit resté en v1.75.2, clés `home.profile.*` « manquantes » alors que le repo était sain |
+| 13 | | **Pages annexes à jour** : ouvrir l'Audit réseau (version en tête = version du bump) + vérifier en console l'absence de `[I18n] Clé manquante` | Attrape un **déploiement partiel ou oublié** (du temps du FTP : `docs/` ou `lang/` non montés) — vécu 2× le 06/08 : Audit resté en v1.75.2, clés `home.profile.*` « manquantes » alors que le repo était sain |
 
 > **Voie rapide hotfix** (bump de cache type v1.75.1, zéro changement fonctionnel) :
 > items 1, 2, 5, 11, 12 seulement — les 5 sont 🔒 ou version, aucun dérogeable.

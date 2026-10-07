@@ -55,8 +55,8 @@ const HORS_BIBLIO = new Set([
 // 🩸 08/09/2026 — UN DOC QUE GIT IGNORE N'EST PAS UN DOC DU PROJET. KARMA a
 // déposé un audit sécurité offensive (`docs/architecture/audit-serveur-*.md`)
 // qui décrit comment exfiltrer des données réelles : il est `.gitignore`, donc
-// il ne part ni sur GitHub, ni sur une branche, ni en prod (deploy.ps1 l'exclut
-// aussi). L'inscrire dans la bibliothèque in-app serait exactement le contraire
+// il ne part ni sur GitHub, ni sur une branche, ni sur un serveur (les sites se
+// déploient depuis Git). L'inscrire dans la bibliothèque in-app serait exactement le contraire
 // du but. On retire donc du scan tout ce que Git ignore — la règle « chaque doc
 // est dans le manifest » ne gouverne que les docs VERSIONNÉES. Un fichier
 // ignoré ne peut pas y figurer, et ne doit pas.

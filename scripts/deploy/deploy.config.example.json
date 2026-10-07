@@ -1,7 +1,0 @@
-{
-  "host": "TON-SERVEUR.example.com",
-  "user": "TON-UTILISATEUR",
-  "port": 22,
-  "remoteDev": "/data/www/dev.myktamap.fr",
-  "remoteProd": "/data/www/myktamap.fr"
-}
