@@ -238,7 +238,15 @@
     document.documentElement.appendChild(_modal);
     document.getElementById("kta-sortie-close").addEventListener("click", _fermerModale);
     _modal.addEventListener("click", function(e) {
-      if (e.target === _modal) _fermerModale();
+      if (e.target === _modal) { _fermerModale(); return; }
+      // Boutons du résultat : délégation (aucun gestionnaire inline — CSP sans 'unsafe-inline', 07/10/2026).
+      const b = e.target.closest && e.target.closest("[data-sortie-action]");
+      if (!b) return;
+      e.preventDefault();
+      const a = b.getAttribute("data-sortie-action");
+      if (a === "tracer") window.SortieUrgence._tracerMeilleure();
+      else if (a === "alternatives") window.SortieUrgence._toggleAlternatives();
+      else if (a === "index") window.SortieUrgence._tracerIndex(parseInt(b.getAttribute("data-idx"), 10));
     });
     document.addEventListener("keydown", _onKey);
   }
@@ -354,8 +362,7 @@
       '<div class="kta-sortie-origine">' + _texteOrigine(meta) + '</div>' +
       _htmlContraintes(meta, meilleure) +
       '<div class="kta-sortie-actions">' +
-        '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" ' +
-          'onclick="window.SortieUrgence._tracerMeilleure(); return false;">' +
+        '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" data-sortie-action="tracer">' +
           window.I18n.t("sortie.btn.tracer") +
         '</button>' +
       '</div>';
@@ -363,8 +370,7 @@
     if (resultats.length > 1) {
       html += (
         '<div class="kta-sortie-alternatives">' +
-          '<button type="button" class="kta-sortie-alt-toggle" ' +
-            'onclick="window.SortieUrgence._toggleAlternatives(); return false;">' +
+          '<button type="button" class="kta-sortie-alt-toggle" data-sortie-action="alternatives">' +
             window.I18n.t("sortie.btn.voirAutres", {
               n: (resultats.length - 1),
               s: (resultats.length - 1 > 1 ? "s" : "")
@@ -392,8 +398,7 @@
           : '';
         html += (
           '<li>' +
-            '<button type="button" class="kta-sortie-alt-item" data-idx="' + i + '" ' +
-              'onclick="window.SortieUrgence._tracerIndex(' + i + '); return false;">' +
+            '<button type="button" class="kta-sortie-alt-item" data-sortie-action="index" data-idx="' + i + '">' +
               '<strong>' + n + '</strong>' + lv + ' — ' + d + fb +
             '</button>' +
           '</li>'

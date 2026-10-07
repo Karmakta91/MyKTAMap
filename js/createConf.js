@@ -2133,7 +2133,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     <div class="kta-planner-icon-thumb" id="${id}_thumb">
       <img src="${_pathReel || ''}" alt="${tag}"
         style="width:28px;height:28px;object-fit:contain;display:block;"
-        onerror="this.style.opacity='0.2'">
+        data-kta-echec="0.2">
     </div>
     <input class="kta-cfg-input kta-planner-icon-tag" id="${id}_tag"
       type="text" value="${tag}" placeholder="${window.I18n.t("gen.icons.tagPlaceholder")}"

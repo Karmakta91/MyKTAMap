@@ -566,3 +566,5 @@ node scripts/check-doc-langues.js || exit $?
 # servi (js/*.js + sw.js). Posé en une fois le 09/05 puis plus exigé : 24
 # modules nés depuis n'en avaient jamais eu. S'auto-teste. BLOQUANT.
 node scripts/check-entete-licence.js || exit $?
+# CSP stricte (07/10/2026) : aucun script inline (onclick=, javascript:, <script> sans src) — killsw.html excepté.
+node scripts/check-csp-inline.js || exit $?

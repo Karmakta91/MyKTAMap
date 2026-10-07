@@ -331,9 +331,11 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 // quoi les lecteurs cesseraient de retomber sur le preset mémorisé du plan.
 {
   const vm3 = require("vm");
-  const d = IDX.indexOf("function getLoaderPerfPreset()");
-  const f = IDX.indexOf("window.setLoaderPerfPreset = setLoaderPerfPreset;", d);
-  t("le bloc des deux fonctions est extractible d'index.html", d >= 0 && f > d);
+  // Sorti d'index.html le 07/10/2026 (CSP stricte) : js/homeDemarrage.js.
+  const BOOT = fs.readFileSync("js/homeDemarrage.js", "utf8");
+  const d = BOOT.indexOf("function getLoaderPerfPreset()");
+  const f = BOOT.indexOf("window.setLoaderPerfPreset = setLoaderPerfPreset;", d);
+  t("le bloc des deux fonctions est extractible de js/homeDemarrage.js", d >= 0 && f > d);
   if (d >= 0 && f > d) {
     const win = { console: { log: () => {}, warn: () => {} } };
     win.window = win;
@@ -345,7 +347,7 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
       // le parse sur une regex tronquée — le garde-fou rougissait pour une
       // raison qui n'avait rien à voir avec ce qu'il teste.
       const ANC = "window.setLoaderPerfPreset = setLoaderPerfPreset;";
-      vm3.runInContext("var window = this;" + IDX.slice(d, f + ANC.length), ctx);
+      vm3.runInContext("var window = this;" + BOOT.slice(d, f + ANC.length), ctx);
       vus = [win.getLoaderPerfPreset(), win.getLoaderPerfPreset("off")];
       win.setLoaderPerfPreset("off");   // no-op : ne doit rien jeter
     } catch (e) { erreur = e; }

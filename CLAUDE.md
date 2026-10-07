@@ -48,7 +48,7 @@
 - Changer les couleurs de la charte, supprimer un tag built-in, reset `localStorage`/IndexedDB sans avertir l'user.
 
 ## 🧭 Conventions
-**JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. Logs préfixés `[Module]`. 2 espaces, lignes < 120.
+**JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. **Jamais de script inline** (`onclick=`, `onerror=`, `javascript:`, `<script>` sans `src`) : un écouteur (délégation + `data-*`) — la CSP vise `script-src 'self'` (`check-csp-inline.js`, bloquant). Logs préfixés `[Module]`. 2 espaces, lignes < 120.
 **CSS** : charte dark (`#1a1f2e`→`#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe **`kta-`**. Pas de Tailwind/SCSS. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.

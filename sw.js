@@ -330,6 +330,8 @@ const ASSETS_TO_CACHE = [
   "./js/homeLoader.js",
   "./js/homeProfile.js",
   "./js/homeConfig.js",
+  "./js/homeDemarrage.js",
+  "./js/swRegister.js",
   "./js/pathfinder.js",
   "./js/roadGraph.js",
   "./js/updateChecker.js",

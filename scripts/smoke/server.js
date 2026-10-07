@@ -33,6 +33,20 @@ const MIME = {
   ".woff2": "font/woff2"
 };
 
+// CSP STRICTE (07/10/2026) : la politique « Report-Only » de docker/nginx-docker.conf (scripts sans
+// 'unsafe-inline'), servie ici EN VIGUEUR. Un script inline oublié devient une erreur console — et le smoke
+// échoue déjà sur toute erreur console. Sans upgrade-insecure-requests (le serveur local est en HTTP).
+// killsw.html garde sa politique propre (script dans la page, voulu) : pas d'en-tête ici.
+// SMOKE_CSP=0 : servir SANS CSP (diagnostic : un échec vient-il de la CSP ou d'ailleurs ?).
+const CSP = process.env.SMOKE_CSP === "0" ? null : (function () {
+  try {
+    const conf = fs.readFileSync(path.join(RACINE, "docker", "nginx-docker.conf"), "utf8");
+    const m = conf.match(/add_header Content-Security-Policy-Report-Only "([^"]+)"/);
+    return m ? m[1].replace(/\s*upgrade-insecure-requests;?/, "").trim() : null;
+  } catch (e) { return null; }
+})();
+if (!CSP && process.env.SMOKE_CSP !== "0") console.log("[smoke-server] ⚠️ politique CSP stricte introuvable dans docker/nginx-docker.conf : servie sans CSP");
+
 const server = http.createServer(function (req, res) {
   const urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
   let fp = path.join(RACINE, urlPath === "/" ? "index.html" : urlPath);
@@ -42,7 +56,9 @@ const server = http.createServer(function (req, res) {
     if (!err && st.isDirectory()) fp = path.join(fp, "index.html");
     fs.readFile(fp, function (err2, data) {
       if (err2) { res.writeHead(404); res.end("404 " + urlPath); return; }
-      res.writeHead(200, { "Content-Type": MIME[path.extname(fp).toLowerCase()] || "application/octet-stream" });
+      const h = { "Content-Type": MIME[path.extname(fp).toLowerCase()] || "application/octet-stream" };
+      if (CSP && /\.html$/i.test(fp) && path.basename(fp) !== "killsw.html") h["Content-Security-Policy"] = CSP;
+      res.writeHead(200, h);
       res.end(data);
     });
   });

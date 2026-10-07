@@ -1441,6 +1441,13 @@ function _ktaPopupAction(e) {
 }
 document.addEventListener("click", _ktaPopupAction, true);
 
+// Image introuvable → estompée (data-kta-echec = opacité). Remplace les onerror="…" inline : la CSP stricte
+// (script-src sans 'unsafe-inline', 07/10/2026) les bloquerait. L'événement « error » ne remonte pas : capture.
+document.addEventListener("error", function(e) {
+  const t = e.target;
+  if (t && t.tagName === "IMG" && t.dataset && t.dataset.ktaEchec) t.style.opacity = t.dataset.ktaEchec;
+}, true);
+
 // 🆕 v1.34.26 — Helper global vibration haptique (Web Vibration API).
 // Point d'entrée UNIQUE pour tous les modules qui veulent faire vibrer le
 // device (waypoint atteint, confirmation action, alerte erreur, etc.).
