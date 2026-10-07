@@ -1005,7 +1005,13 @@
             // seule sonde par plan toutes les 30 s.
             const _s = _sondesZip[p.id];
             const sonde = (_s && Date.now() - _s.t < 30000 && _s.etag === p.zipEtag) ? _s.pr
-              : (_sondesZip[p.id] = { t: Date.now(), etag: p.zipEtag, pr: _telechargerZipIndex(p, null, true, "HEAD") }).pr;
+              : (_sondesZip[p.id] = { t: Date.now(), etag: p.zipEtag, pr: (function () {
+                  // Sonde bornée à 8 s : sans réponse, la copie est constatée (✅), le bouton ne reste pas caché.
+                  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+                  const delai = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+                  return _telechargerZipIndex(p, null, true, "HEAD", ctl ? ctl.signal : undefined)
+                    .finally(function () { clearTimeout(delai); });
+                })() }).pr;
             sonde.then(function (r) {
               _peindreBoutonDl(b, r.statut === "frais" ? "perime" : "extGarde");
             }).catch(function () { _peindreBoutonDl(b, "extGarde"); });
@@ -2705,13 +2711,13 @@ function planRowHTML(plan) {
       // `cache: "no-store"` : nos en-têtes conditionnels font foi, pas le cache HTTP du navigateur
       // (et le SW laisse passer les .zip, cf sw.js). Rend { statut: "frais"|"aJour"|"absent",
       // blob, etag, lastModified } ; une erreur réseau remonte (l'appelant se rabat sur la copie).
-      async function _telechargerZipIndex(plan, progression, conditionnel, methode) {
+      async function _telechargerZipIndex(plan, progression, conditionnel, methode, signal) {
         const entetes = {};
         if (conditionnel && plan.storedBlob) {
           if (plan.zipEtag) entetes["If-None-Match"] = plan.zipEtag;
           if (plan.zipLastModified) entetes["If-Modified-Since"] = plan.zipLastModified;
         }
-        const rep = await fetch(plan.zip, { method: methode || "GET", headers: entetes, cache: "no-store" });
+        const rep = await fetch(plan.zip, { method: methode || "GET", headers: entetes, cache: "no-store", signal: signal });
         if (rep.status === 304) return { statut: "aJour" };
         if (rep.status === 404 || rep.status === 410) return { statut: "absent" };
         if (!rep.ok) throw new Error("HTTP " + rep.status);
@@ -2730,6 +2736,37 @@ function planRowHTML(plan) {
         res.blob = new Blob(morceaux, { type: "application/zip" });
         return res;
       }
+
+      // ⏱️ 07/10/2026 — VEILLEUR D'INACTIVITÉ d'un téléchargement de plan (ZIP de l'index, plan ☁️).
+      // Retour KARMA (iPhone) : réseau perdu sur l'accueil → « Chargement du plan… » sans fin — la
+      // requête ne finissait ni par une réponse ni par une erreur. Pas de délai TOTAL (300 Mo en 4G
+      // faible, c'est légitime) : rien reçu en 15 s au départ, ou plus un octet pendant 20 s →
+      // abandon. `course(p)` rend la main même si celui qui télécharge ignore l'annulation.
+      const _VEILLE_DEBUT_MS = 15000, _VEILLE_INACTIF_MS = 20000;
+      function _veilleurTelechargement() {
+        const ctl = typeof AbortController === "function" ? new AbortController() : null;
+        let minuterie = null, fini = false, rejeter = null;
+        const expire = new Promise(function (_, rej) { rejeter = rej; });
+        expire.catch(function () { /* lue par course() */ });
+        const armer = function (ms) {
+          clearTimeout(minuterie);
+          minuterie = setTimeout(function () {
+            if (fini) return;
+            fini = true;
+            if (ctl) { try { ctl.abort(); } catch (e) { /* déjà fini */ } }
+            const err = new Error("téléchargement sans réponse"); err.code = "INACTIF";
+            rejeter(err);
+          }, ms);
+        };
+        armer(_VEILLE_DEBUT_MS);
+        return {
+          signal: ctl ? ctl.signal : undefined,
+          toucher: function () { if (!fini) armer(_VEILLE_INACTIF_MS); },
+          arreter: function () { fini = true; clearTimeout(minuterie); },
+          course: function (p) { return Promise.race([p, expire]); }
+        };
+      }
+      const _horsLigne = function () { return typeof navigator !== "undefined" && navigator.onLine === false; };
 
       // Range l'archive téléchargée comme copie gardée du plan (sans l'ouvrir) : bouton 💾 de la ligne.
       async function _garderZipIndex(plan) {
@@ -2773,9 +2810,18 @@ function planRowHTML(plan) {
             if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
           };
           try {
-            let r = null, blob = null, frais = false;
-            try { r = await _telechargerZipIndex(plan, _progressionZ, true); }
-            catch (eRes) { console.warn("[Loader] plan ZIP : réseau indisponible —", eRes && eRes.message); }
+            let r = null, blob = null, frais = false, coupe = false;
+            // Réseau coupé : on ne tente même pas (copie gardée directement).
+            const veille = _veilleurTelechargement();
+            try {
+              if (!_horsLigne()) {
+                r = await veille.course(_telechargerZipIndex(plan, function (a, b) { veille.toucher(); _progressionZ(a, b); },
+                                                             true, "GET", veille.signal));
+              }
+            } catch (eRes) {
+              coupe = !!(eRes && eRes.code === "INACTIF");
+              console.warn("[Loader] plan ZIP : réseau indisponible —", eRes && eRes.message);
+            } finally { veille.arreter(); }
             if (r && r.statut === "absent") {
               _fermer();
               afficherModalePlanIntrouvable(plan, "server");
@@ -2790,7 +2836,7 @@ function planRowHTML(plan) {
             }
             if (!blob) {
               _fermer();
-              return setStatus(_tz("zipIndex.indispo"), true);
+              return setStatus(coupe ? _tz("zipIndex.coupe", { nom: _nom }) : _tz("zipIndex.indispo"), true);
             }
             const fichier = new File([blob], (plan.zip.split("/").pop() || (_nom + ".zip")), { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
@@ -2852,15 +2898,22 @@ function planRowHTML(plan) {
             if (typeof window._majOverlayChargement === "function") window._majOverlayChargement(texte);
           };
           try {
-            let blob = null;
-            try { blob = await window.KtaExtensions.chargerPlanExtension(plan.extId || plan.id, { progression: _progression }); }
+            let blob = null, coupe = false;
+            const veille = _veilleurTelechargement();
+            try {
+              if (_horsLigne()) throw new Error("appareil hors ligne");
+              blob = await veille.course(window.KtaExtensions.chargerPlanExtension(plan.extId || plan.id, {
+                progression: function (r, t) { veille.toucher(); _progression(r, t); }, signal: veille.signal }));
+            }
             catch (eExt) {
+              coupe = !!(eExt && eExt.code === "INACTIF");
               if (plan.storedBlob && typeof window._majOverlayChargement === "function") window._majOverlayChargement(_te("ext.chargement.copie"));
               blob = plan.storedBlob ? await window.PlanRegistry.getBlob(plan.id) : null;
-            }
+            } finally { veille.arreter(); }
             if (!blob) {
               if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
-              return setStatus(_homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"), true);
+              return setStatus(coupe ? _te("ext.chargement.coupe", { nom: plan.name || plan.id })
+                : _homeT("home.statut.extIndispo", "Plan indisponible (serveur injoignable)"), true);
             }
             const fichier = new File([blob], (plan.name || plan.id) + ".zip", { type: "application/zip" });
             const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";

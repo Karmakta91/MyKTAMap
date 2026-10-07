@@ -19,7 +19,9 @@
   - `decouvrirPlansServeur` n'accepte qu'un chemin **relatif** `.zip` (`/^[\w./-]+\.zip$/`, ni `..`, ni `/`
     initial, ni schéma) → `regEntry.zip` ; refusé = avertissement console, l'entrée retombe sur `path`.
   - Ouverture (`chargerPlanDuRegistre`, branche `plan.zip` AVANT la branche dossier) : `_telechargerZipIndex`
-    télécharge avec progression (écran central), **conditionnel** si une copie est gardée (`If-None-Match` /
+    télécharge avec progression (écran central) sous **veilleur d'inactivité** (`_veilleurTelechargement` :
+    15 s sans réponse, puis 20 s sans octet → annulé ; rien tenté si `navigator.onLine === false` ; même veilleur
+    pour les plans ☁️ d'extension), **conditionnel** si une copie est gardée (`If-None-Match` /
     `If-Modified-Since` depuis `zipEtag` / `zipLastModified`) : 304 ou réseau absent → `PlanRegistry.getBlob` ;
     404 → modale « plan introuvable ». Puis `chargerZipFichier(…, { typeRegistre: "server-zip" })`.
   - `startImportedPlan` : `server-zip` **reste `type: "server"`** (l'index peut le retirer — l'élagage retire

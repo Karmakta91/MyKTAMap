@@ -41,8 +41,12 @@ function nouveauContexte(licence) {
                 createElement: () => ({ set src(v) { scripts.push(v); } }), head: { appendChild() {} } },
     MyKTAMapProLicense: { isPro: () => !!licence, getSource: () => licence || null },
     CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
-    addEventListener() {}, dispatchEvent() { return true; },
-    fetch: (url, init) => { appelsFetch.push(url); appelsFetch.dernierInit = init; return Promise.resolve({ ok: true, url: url }); },
+    // Écouteurs et événements gardés (section 📶) ; `w._fetch` remplace le réseau pour un test.
+    _ecoutes: {}, _emis: [],
+    addEventListener(type, fn) { (w._ecoutes[type] = w._ecoutes[type] || []).push(fn); },
+    dispatchEvent(e) { w._emis.push(e && e.type); return true; },
+    fetch: (url, init) => { appelsFetch.push(url); appelsFetch.dernierInit = init;
+                            return w._fetch ? w._fetch(url, init) : Promise.resolve({ ok: true, url: url }); },
     URL: URL, Headers: Headers, Promise: Promise, setTimeout: setTimeout, clearTimeout: clearTimeout
   };
   w.window = w;
@@ -90,6 +94,76 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     let rejete = false;
     try { await c3.K.gateDeleguee(); } catch (e) { rejete = true; }
     t("🩸 gate déléguée en échec → la promesse REJETTE (l'appelant n'ouvre rien)", rejete);
+  }
+
+  // ═════════ 📶 RÉSEAU PERDU / REVENU (07/10/2026, retour KARMA iPhone) ═════════
+  // Avant : l'état n'était établi qu'au démarrage — réseau perdu sur l'accueil = « connectée »
+  // affiché, et l'ouverture d'un plan ☁️ attendait sans fin.
+  {
+    const c = nouveauContexte("server");
+    c.K.appliquerConfig(ON, true);
+    c.K.signaler("on");
+    const ev = (type) => (c.w._ecoutes[type] || []).forEach((f) => f({ type: type }));
+    ev("offline");
+    t("📶 réseau coupé (événement offline) → « down » tout de suite, sans attendre le module", c.K.etat().etat === "down");
+    let refus = false;
+    try { await c.K.requete("/v1/x"); } catch (e) { refus = true; }
+    t("📶 réseau coupé : la garde refuse avant tout envoi (l'accueil rouvre la copie gardée)", refus && c.appelsFetch.length === 0);
+    ev("online");
+    t("📶 réseau revenu → les modules sont prévenus (mktm:reseau-retour) pour sonder le serveur",
+      c.w._emis.indexOf("mktm:reseau-retour") >= 0 && c.K.etat().etat === "on");
+
+    const d = nouveauContexte("server");
+    d.K.appliquerConfig(ON, true);
+    d.K.signaler("on");
+    d.w._fetch = () => Promise.reject(new TypeError("Load failed"));
+    try { await d.K.requete("/v1/x"); } catch (e) { /* attendu */ }
+    t("📶 requête sans réponse du serveur (erreur réseau) → « down »", d.K.etat().etat === "down");
+    const e2 = nouveauContexte("server");
+    e2.K.appliquerConfig(ON, true);
+    e2.K.signaler("on");
+    e2.w._fetch = () => { const x = new Error("annulée"); x.name = "AbortError"; return Promise.reject(x); };
+    try { await e2.K.requete("/v1/x"); } catch (e) { /* attendu */ }
+    t("📶 annulation volontaire (AbortError : délai, veilleur) → l'état ne bouge pas", e2.K.etat().etat === "on");
+    const off = nouveauContexte(null);
+    (off.w._ecoutes.offline || []).forEach((f) => f({ type: "offline" }));
+    t("📶 instance OFF : couper le réseau ne fabrique pas un « down »", off.K.etat().etat === "off");
+
+    // Le signal transmis à la source de plans (le veilleur de l'accueil annule par lui).
+    const p = nouveauContexte("server");
+    let recu = null;
+    p.K.register({ nom: "src", apiVersion: 1, plans: { lister: () => [], charger: (id, o) => { recu = o; return Promise.resolve("blob"); } } });
+    const sig = { aborted: false };
+    await p.K.chargerPlanExtension("a", { signal: sig, progression() {} });
+    t("📶 chargerPlanExtension transmet opts.signal à l'extension", recu && recu.signal === sig);
+  }
+
+  // ⏱️ Veilleur d'inactivité de l'accueil : EXÉCUTÉ (délais réduits), pas seulement lu.
+  {
+    const HL = lire("js/homeLoader.js");
+    const i = HL.indexOf("const _VEILLE_DEBUT_MS"), j = HL.indexOf("const _horsLigne");
+    const src = (i >= 0 && j > i) ? HL.slice(i, j).replace("_VEILLE_DEBUT_MS = 15000", "_VEILLE_DEBUT_MS = 40")
+      .replace("_VEILLE_INACTIF_MS = 20000", "_VEILLE_INACTIF_MS = 60") : "";
+    t("⏱️ veilleur trouvé, délais de 15 s (départ) et 20 s (inactivité)",
+      /_VEILLE_DEBUT_MS = 15000, _VEILLE_INACTIF_MS = 20000/.test(HL) && src.length > 0);
+    const ctx = vm.createContext({ setTimeout, clearTimeout, AbortController, Promise, Error });
+    vm.runInContext(src + "; this.V = _veilleurTelechargement;", ctx);
+    const v1 = ctx.V();
+    let code = null;
+    try { await v1.course(new Promise(() => {})); } catch (e) { code = e.code; }
+    t("⏱️ rien reçu → abandon (INACTIF) au lieu d'attendre sans fin, requête annulée", code === "INACTIF" && v1.signal.aborted);
+    const v2 = ctx.V();
+    let ok = null;
+    const lent = new Promise((r) => {
+      let n = 0;
+      const tic = setInterval(() => { v2.toucher(); if (++n === 8) { clearInterval(tic); r("fini"); } }, 25);
+    });
+    try { ok = await v2.course(lent); } catch (e) { ok = e.code; }
+    v2.arreter();
+    t("⏱️ téléchargement lent mais vivant (200 ms > délai, des octets toutes les 25 ms) → jamais coupé", ok === "fini");
+    t("⏱️ branches ZIP et ☁️ : veilleur + rien tenté hors ligne + message « connexion perdue »",
+      (HL.match(/veille\.course\(/g) || []).length === 2 && (HL.match(/_horsLigne\(\)/g) || []).length === 2 &&
+      /zipIndex\.coupe/.test(HL) && /ext\.chargement\.coupe/.test(HL) && /signal: veille\.signal/.test(HL));
   }
 
   // ═════════ 4. GARDE DES REQUÊTES ═════════

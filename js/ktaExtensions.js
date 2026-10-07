@@ -56,6 +56,7 @@
   let _raison = "";
   let _dejaEmis = false;
   let _signal = null;   // "on" | "down" | null — posé par un module greffé (signaler)
+  let _reseauCoupe = typeof navigator !== "undefined" && navigator.onLine === false;
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
   // 🩸 confadmin.html applique EXACTEMENT les mêmes règles :
@@ -170,6 +171,12 @@
     // Le signal d'un module ne vaut que sur une instance « configurée » (on +
     // licence serveur) : il ne peut jamais rallumer une instance OFF.
     if (_etat === "configuree" && _signal) _etat = _signal;
+    // 📶 07/10/2026 — Réseau coupé (mode avion, tunnel) : « injoignable » tout de suite, sans
+    // attendre le module. Avant, l'état n'était établi qu'au démarrage : perdre le réseau sur
+    // l'accueil laissait « connectée », et ouvrir un plan ☁️ partait sur le réseau et attendait
+    // sans fin (retour KARMA, iPhone). En « down », la garde refuse les requêtes : l'accueil
+    // rouvre aussitôt la copie gardée.
+    if ((_etat === "configuree" || _etat === "on") && _reseauCoupe) _etat = "down";
     _raison = _connexion.raison || "";
     peindre();
     if (_etat !== avant || !_dejaEmis) {
@@ -402,7 +409,28 @@
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
-    return fetch(url.href, init);
+    // 📶 Échec RÉSEAU (pas une réponse d'erreur : le serveur n'a pas répondu du tout) → « down ».
+    // Le module repasse en « on » quand sa sonde réussit (mktm:reseau-retour, sonde périodique).
+    // Une annulation volontaire (AbortError : délai, veilleur de téléchargement) ne compte pas.
+    return fetch(url.href, init).catch(function (e) {
+      if (!(e && e.name === "AbortError") && _signal !== "down" && (_etat === "on" || _etat === "configuree")) {
+        console.warn("[Extensions] requête sans réponse du serveur → injoignable :", e && e.message);
+        _signal = "down";
+        _recalculer();
+      }
+      throw e;
+    });
+  }
+
+  // 📶 Réseau de l'appareil : coupé → « injoignable » aussitôt ; revenu → on prévient les modules
+  // (mktm:reseau-retour), qui sondent le serveur et signalent « on » ou « down ».
+  if (typeof window !== "undefined" && window.addEventListener) {
+    window.addEventListener("offline", function () { _reseauCoupe = true; _recalculer(); });
+    window.addEventListener("online", function () {
+      _reseauCoupe = false;
+      _recalculer();
+      try { window.dispatchEvent(new CustomEvent("mktm:reseau-retour")); } catch (e) { /* rien */ }
+    });
   }
 
   // ── Prises de permission (synchrones) : une erreur = REFUS ──
@@ -468,7 +496,10 @@
     const progression = opts && typeof opts.progression === "function" ? function (r, t) {
       try { opts.progression(Number(r) || 0, Number(t) || 0); } catch (e) { /* affichage seulement */ }
     } : null;
-    return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression }); });
+    // opts.signal : le veilleur d'inactivité de l'accueil annule le téléchargement (AbortSignal),
+    // que l'extension transmet à sa requête. L'accueil n'en dépend pas : il abandonne de son côté.
+    const signal = opts && opts.signal ? opts.signal : undefined;
+    return Promise.resolve().then(function () { return ext.plans.charger(id, { progression: progression, signal: signal }); });
   }
 
   // Dossiers de l'instance fournis par la source de plans (prise facultative

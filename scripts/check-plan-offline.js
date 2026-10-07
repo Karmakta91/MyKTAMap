@@ -181,7 +181,7 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
   t("📦 après ouverture : il RESTE un plan « server » (l'index peut le retirer), validateurs gardés",
     /type: _estExt \? "ext" : \(_estZipSrv \? "server" : "local"\)/.test(MZ) && /entry\.zipEtag = meta\.zipEtag/.test(MZ));
   t("📦 ligne : exclu de PlanOffline (cache SW), état = sa copie gardée",
-    /p\.type === "server" && !p\.zip;/.test(HLZ) && /_telechargerZipIndex\(p, null, true, "HEAD"\)/.test(HLZ) && /_sondesZip\[p\.id\]/.test(HLZ));
+    /p\.type === "server" && !p\.zip;/.test(HLZ) && /_telechargerZipIndex\(p, null, true, "HEAD", ctl/.test(HLZ) && /_sondesZip\[p\.id\]/.test(HLZ));
   t("📦 SW : les .zip passent au réseau, jamais rangés dans CACHE_NAME",
     /if \(\/\\\.zip\(\\\?\|\$\)\/i\.test\(reqUrl\)\) return;/.test(SWZ));
   t("📦 changement de plan, liaisons, profil, aperçu OSM : pas de fetch de dossier pour un plan ZIP",
