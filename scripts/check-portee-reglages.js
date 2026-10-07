@@ -35,6 +35,8 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 const CFG = fs.readFileSync("js/config.js", "utf8");
 const UIC = fs.readFileSync("js/interfaceConfig.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
+// Fin du démarrage du HOME, sortie d'index.html le 07/10/2026 (CSP stricte) : mêmes fonctions, autre fichier.
+const BOOT = fs.readFileSync("js/homeDemarrage.js", "utf8");
 
 // ───────── 1. qui est GLOBAL : la persistance fait foi ─────────
 const GLOBAUX = new Set();
@@ -199,11 +201,11 @@ t("🖼️ …et son câblage aussi (pas de lecteur d'un DOM disparu)",
 // chargement de plan : les retirer aurait cassé ces appels. Renvoyer « auto »
 // fait retomber les lecteurs sur le preset MÉMORISÉ du plan — le but.
 t("🖼️ getLoaderPerfPreset survit et vaut toujours « auto »",
-  /function getLoaderPerfPreset\(\) \{ return "auto"; \}/.test(IDX) &&
-  /window\.getLoaderPerfPreset = getLoaderPerfPreset;/.test(IDX));
+  /function getLoaderPerfPreset\(\) \{ return "auto"; \}/.test(BOOT) &&
+  /window\.getLoaderPerfPreset = getLoaderPerfPreset;/.test(BOOT));
 t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement de langue)",
-  /function setLoaderPerfPreset\(\)/.test(IDX) &&
-  /window\.setLoaderPerfPreset = setLoaderPerfPreset;/.test(IDX));
+  /function setLoaderPerfPreset\(\)/.test(BOOT) &&
+  /window\.setLoaderPerfPreset = setLoaderPerfPreset;/.test(BOOT));
 
 // 🩸 ET IL EXISTE BIEN AILLEURS. Le retirer partout aurait ôté le seul moyen
 // de désactiver le tuilage sur un très gros plan V1 — un cas rare, mais réel.

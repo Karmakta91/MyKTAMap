@@ -258,6 +258,6 @@ Write-Host ""
 Write-Host "🎉 $vJson est sur main." -ForegroundColor Green
 Write-Host ""
 Write-Host "   Il reste le déploiement PROD, qui est manuel :" -ForegroundColor Yellow
-Write-Host "     powershell -ExecutionPolicy Bypass -File scripts\deploy\deploy.ps1" -ForegroundColor Yellow
+Write-Host "     sur le VPS : sh /data/scripts/deploy-prod.sh   (script hors dépôt)" -ForegroundColor Yellow
 Write-Host "   puis ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
 Write-Host ""

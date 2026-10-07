@@ -2490,7 +2490,8 @@
       );
       div.dataset.refonteSide = side;
       const a = L.DomUtil.create("a", "kta-refonte-collapse-btn", div);
-      a.href  = "javascript:void(0)";
+      a.href  = "#";   // pas « javascript: » (CSP stricte, 07/10/2026) ; le clic fait L.DomEvent.stop
+      a.setAttribute("role", "button");
       a.title = window.I18n.t("ui.refonte.btn_sidebar_collapse");
       a.setAttribute("aria-label", window.I18n.t("ui.refonte.btn_sidebar_collapse_aria", { side: side }));
       // État initial : déplié (5:b = pas de persistance, toujours

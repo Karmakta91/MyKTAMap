@@ -50,6 +50,15 @@ const LS_PREGATES = {
   "myktamap_pin_proposal_done_v1": "1",
   "myktamap_tutorial_seen_v1": "1"
 };
+// Les alertes EN COURS d'alert.json sont acquittées d'avance (07/10/2026) : une seule était codée en dur, et
+// l'alerte active du moment (live config) ouvrait sa modale au milieu du smoke, à un instant variable, et
+// bloquait les clics — smoke rouge avec ou sans changement de code. Acquit = released de l'alerte (alertChecker).
+try {
+  const live = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "alert.json"), "utf8"));
+  (Array.isArray(live.alerts) ? live.alerts : []).forEach(function (a) {
+    if (a && a.id && a.released) LS_PREGATES["myktamap_alert_seen_" + a.id] = a.released;
+  });
+} catch (e) { /* pas d'alert.json : rien à acquitter */ }
 
 const problemes = [];
 function pb(cat, msg) { problemes.push("[" + cat + "] " + msg); console.log("  ❌ " + cat + " : " + msg); }
@@ -86,7 +95,14 @@ const sondesIcones = [];
   } catch (e) {
     if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
     console.log("[smoke] headless shell absent → repli sur le Chromium complet (channel: chromium)");
-    navigateur = await chromium.launch({ channel: "chromium" });
+    try {
+      navigateur = await chromium.launch({ channel: "chromium" });
+    } catch (e2) {
+      if (!/Executable doesn't exist/i.test(String((e2 && e2.message) || ""))) throw e2;
+      // Aucun navigateur Playwright téléchargé : Edge, présent sur tout Windows (07/10/2026).
+      console.log("[smoke] Chromium Playwright absent → repli sur Microsoft Edge (channel: msedge)");
+      navigateur = await chromium.launch({ channel: "msedge" });
+    }
   }
   const contexte = await navigateur.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 800 } });
   const page = await contexte.newPage();

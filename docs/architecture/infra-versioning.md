@@ -445,7 +445,7 @@ la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la sect
 « 🗓️ Version actuelle » (digest des nouveautés) à jour à chaque release marquante, et
 NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
 gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
-| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html` | À chaque release (verdict réseau attendu par les users qui auditent) |
+| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `.html` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` + `.html` (note de la version, page à part depuis le 07/10/2026) | À chaque release (verdict réseau attendu par les users qui auditent) |
 | 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
 
@@ -456,7 +456,7 @@ ou SKIPé sur chacun des 4. Format type :
 ```
 Sync 4 axes docs (4)
   📱 In-app   : SKIP justifié (perf interne, aucun changement UX)
-  🔒 Audit    : NETWORK_AUDIT.md + .html — entrée v1.X.Y
+  🔒 Audit    : NETWORK_AUDIT.md + .html (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md + .html — entrée v1.X.Y
   📖 Dev      : README.md — MAJ "Version courante"
   🤖 Archi IA : perf-memory.md §X (pattern + gain + À NE PAS faire)
 ```
@@ -650,12 +650,28 @@ documentées ici pour la doctrine.
 - `AI_CONTEXT.md` ne porte **pas** de marqueur de version (il a `{{BUILD}}`, rempli à la génération) → seul « a bougé » est contrôlable. Un `AI_CONTEXT` touché pour une virgule passe.
 - `README_USER.md`/`.en.md` et `js/interfaceDocs.js` ne sont **pas** contrôlés : un hotfix peut légitimement n'avoir rien à leur dire, l'exiger produirait des faux positifs à répétition.
 - L'axe archi (`CLAUDE.md`, `docs/architecture/*`) est conditionnel par nature — non automatisable.
-- Il lit le **repo**, jamais le serveur : il ne remplace pas l'item 13 du smoke (marche 2 du gate), qui attrape les uploads FTP partiels.
+- Il lit le **repo**, jamais le serveur : il ne remplace pas l'item 13 du smoke (marche 2 du gate), qui attrape un déploiement partiel ou oublié.
 - `git commit --amend` sur un commit de release déjà bumpé ne le redéclenche pas (HEAD porte déjà la nouvelle version) — le commit d'origine, lui, est passé par la porte.
 
 **Éprouvé en le falsifiant** (règle du §83) : 5 scénarios rejoués sur l'index réel — pas de bump (silence), bump nu (9 ❌), dérogation qui ne débloque PAS le noyau, noyau vert + dérogation (passe avec avertissement), release complète (vert). Le test a d'ailleurs sorti un vrai défaut : le contrôle du journal visait la **première mention** de « Journal des versions » (le sommaire, ligne 53) au lieu du **titre de section** — un README correct aurait été refusé.
 
 ---
+
+### 85. Déploiement des sites — Git sur le VPS, sans FTP (07/10/2026)
+
+- Deux scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
+  `/data/www/dev.myktamap.fr` sur `Karma_dev` ; `deploy-prod.sh` → `/data/www/myktamap.fr` sur `main` (confirmation
+  `PROD`, après `merge-main.ps1`). Retour arrière : `deploy-prod.sh <commit ou tag>`.
+- Le dépôt vit **hors du dossier web** (`/data/git/<site>.git`, `core.worktree`) : aucun `.git` servi.
+- **Sparse checkout** : ne sont posés ni `data/`, ni `.claude/` / `.git*`, ni `scripts/`, `CLAUDE.md`, `Dockerfile`,
+  `docker/` ; en prod, `docs/` se réduit à `docs/applications/`.
+- 🩸 **`data/` n'est jamais écrit ni effacé** : `data/index.json` et le relevé fictif sont SUIVIS par Git et déjà présents
+  sur le serveur — Git ≥ 2.37 les « reprend » si on ne pose pas `sparse.expectFilesOutsideOfPatterns=true`, et une
+  mise à jour écraserait alors l'`index.json` du site (reproduit sur une copie). Les scripts posent ce réglage et
+  refusent tout déploiement si un fichier de `data/` perd son bit skip-worktree. `data/` reste géré à la main.
+- Mise à jour refusée si un fichier du site a été modifié à la main ; 1re installation : ancien site archivé (sans
+  `data/`), fichiers hors dépôt listés, jamais supprimés.
+- Remplace `scripts/deploy/deploy.ps1` (FTP), retiré le 07/10/2026.
 
 ## 📚 La bibliothèque de docs du mode Développeur — ce qui la garde honnête (06/09/2026)
 
@@ -678,8 +694,9 @@ Audit réseau, CGU → écran légal) et l'historique daté de `docs/audits/`.
 - Les docs ne sont **pas précachées** : la modale les lit en direct (`fetch(path, { cache: "no-store" })`) et **dit**
   quand ça échoue — hors ligne, ou `docs/` non téléversé. Le repli silencieux est déjà traité : un serveur PWA qui
   renvoie `index.html` en 200 pour un fichier absent est démasqué en testant si la réponse commence comme du HTML.
-- Le script de déploiement (`scripts/deploy/deploy.ps1`) téléverse `docs/` **en entier** : une nouvelle doc part donc
-  toute seule, sans geste supplémentaire.
+- **dev.myktamap.fr** reçoit `docs/` entier (déploiement Git, §85) : une nouvelle doc y part toute seule. **myktamap.fr**
+  ne reçoit que `docs/applications/` : en prod, la bibliothèque du mode Développeur dit que les docs d'architecture
+  sont absentes (repli déjà prévu), ce qui est voulu — elles se lisent sur GitHub.
 
 Un titre de la bibliothèque **porte sa date** quand la doc est un instantané (les audits i18n de juin 2026) : la
 bibliothèque ne doit pas faire passer une photo pour une référence courante.

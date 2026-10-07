@@ -1002,7 +1002,9 @@ function _creerGroupeAccordeon(config) {
 
     const btnPrincipal = L.DomUtil.create("a", "kta-group-toggle", div);
     btnPrincipal.innerHTML = config.iconePrincipale;
-    btnPrincipal.href      = "javascript:void(0)";
+    // "#" et non « javascript:void(0) », que la CSP stricte bloque (07/10/2026) ; chaque clic fait preventDefault.
+    btnPrincipal.href      = "#";
+    btnPrincipal.setAttribute("role", "button");
     btnPrincipal.title     = config.titre;
 
     const subActions = [];
@@ -1049,7 +1051,8 @@ function _creerGroupeAccordeon(config) {
         btnSub.innerHTML = (typeof sub.dynamicIcon === "function")
                              ? (sub.dynamicIcon() || sub.icone || "")
                              : sub.icone;
-        btnSub.href      = "javascript:void(0)";
+        btnSub.href      = "#";
+        btnSub.setAttribute("role", "button");
         btnSub.title     = (typeof sub.dynamicTitre === "function")
                              ? (sub.dynamicTitre() || sub.titre || "")
                              : sub.titre;
@@ -3556,7 +3559,8 @@ _setGroupeModeActif("tracker", isTracking, null);
         const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
         // L.DomUtil.create sans parent → on attache via insertBefore
         const btn = L.DomUtil.create("a", "kta-sub kta-hidden");
-        btn.href            = "javascript:void(0)";
+        btn.href            = "#";   // pas « javascript: » (CSP stricte, 07/10/2026) ; le clic fait L.DomEvent.stop
+        btn.setAttribute("role", "button");
         btn.title           = "✨ " + e.label;
         btn.dataset.customId = e.id;
         btn.dataset.subId    = "custom-" + e.id;

@@ -10,7 +10,7 @@
 
 ## 🔒 Frontière community ↔ pro (CRITIQUE)
 - **Frontière = « zéro FICHIER pro »** (révisée le 04/10/2026, `docs/architecture/community-server-line.md`). Le pro = les fichiers qui se **greffent** (PHP, JS de sync/comptes/multi-tenant, white-label…) : ils vivent dans le repo privé **`MyKTAMap-pro`**, jamais ici. Ce repo reste **utilisable entièrement sans serveur, gratuit, sans bridage**. **myktamap.fr n'aura jamais de backend.**
-- ✅ Autorisé ici : des **points d'extension neutres** (`window.KtaExtensions.register()`, interrupteur `config.serverConnection`, états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, garde unique, événements `mktm:*`), no-op sans extension. Contrat : §3 du doc ci-dessus. **Chantiers 0 à 3 livrés** (v2.0.0 → v2.9.8, sur **`Karma_dev`** — `karma_backend_dev` fusionnée le 04/10/2026) : `js/ktaExtensions.js` (états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, pastille, `register()` et toutes les prises — API v1 dans `community-server-line.md` §3), `js/ktaInstance.js` (index lu une fois avant les gates), `js/ktaUid.js` (identifiants stables). Garde-fous : `check-connexion-serveur.js`, `check-extensions.js`, `check-uid.js`, `check-licence.js` (licence pro **signée** ECDSA P-256 : clé **publique** seule ici ; clé privée et outil de signature vivent dans le pro interne, jamais ici — `check-no-pro-leak.js` les refuse). Une gate déléguée en échec n'ouvre JAMAIS la gate community.
+- ✅ Autorisé ici : des **points d'extension neutres** (`window.KtaExtensions.register()`, interrupteur `config.serverConnection`, états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, garde unique, événements `mktm:*`), no-op sans extension. Contrat : §3 du doc ci-dessus. **Chantiers 0 à 3 livrés** (v2.0.0 → v2.10.0, sur **`Karma_dev`** — `karma_backend_dev` fusionnée le 04/10/2026) : `js/ktaExtensions.js` (états OFF/INVALIDE/LICENCE/CONFIGURÉE/ON/DOWN, pastille, `register()` et toutes les prises — API v1 dans `community-server-line.md` §3), `js/ktaInstance.js` (index lu une fois avant les gates), `js/ktaUid.js` (identifiants stables). Garde-fous : `check-connexion-serveur.js`, `check-extensions.js`, `check-uid.js`, `check-licence.js` (licence pro **signée** ECDSA P-256 : clé **publique** seule ici ; clé privée et outil de signature vivent dans le pro interne, jamais ici — `check-no-pro-leak.js` les refuse). Une gate déléguée en échec n'ouvre JAMAIS la gate community.
 - ❌ Ne JAMAIS commiter de code serveur ni de module pro ici, et ne pas coder de feature pro sans valider — **par défaut tout est community**. Pas de commentaire-pointeur vers un fichier pro (`// TODO pro:`).
 - 🛡️ Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (refuse `*.php`, `pro/`, `backend/`, noms de modules pro ; activer 1×: `git config core.hooksPath .githooks`).
 
@@ -21,7 +21,7 @@
 - **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026, après 8 bumps de dev v2.0.1 → v2.7.4 pour une prod restée en v2.0.0) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod, juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.
 - **Bump = sync docs sur 4 axes** (sans MAJ = dette immédiate, à vérifier AVANT de considérer la release faite) :
   - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` + **`README_USER.es.md`** (modale Documentation — les TROIS sont servies, cf `interfaceDocs.js > DOC_AVAILABLE_LANGS` ; 🛡️ `scripts/check-doc-langues.js` (pré-commit, bloquant) vérifie qu'elles ont les **mêmes sections** et qu'aucune section traduite ne tombe **sous 70 % du FR** — mais il ne voit pas un contenu faux de bonne longueur : mettre à jour les 3 **dans le même commit** reste la règle) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
-  - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
+  - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `.html` (état actuel + en-tête « À jour pour la version ») et la note de version dans `NETWORK_AUDIT_HISTORIQUE.md` + `.html` (page à part depuis le 07/10/2026)
   - 📖 **Dev** : `README.md` (journal des versions)
   - 🤖 **Archi IA** : `CLAUDE.md` (si archi/règle changée) + `docs/architecture/<sujet>.md` (selon sujets impactés)
 - **`docs/architecture/` = l'ÉTAT ACTUEL, pas l'historique** (décision KARMA 30/09/2026) : **aucune section « Vague X (v1.NN) »** ni journal par version — l'historique vit dans `README.md` et les commits. En touchant un fichier, **réécrire** la partie concernée (et remettre au propre ce qu'on traverse), ne pas empiler. Un audit/étude **soldé** quitte `docs/` : tag Git d'archive (cf `docs/audits/INDEX.md`, tag `archive-docs-2026-09-30`), pas de dossier `archive/`.
@@ -31,11 +31,13 @@
   - **Style** : **1-2 phrases courtes**, zéro jargon technique (pas de noms de fichier `js/...`, pas de constantes `LIKE_THIS`, pas de termes algorithmiques, pas de mention `O(N)`/`AbortController`/`viewportcull`/etc.). Ne mentionne **QUE** ce que l'user voit ou doit savoir.
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
-- **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
+- **Déploiement** : par KARMA, sur le VPS, avec deux scripts **hors dépôt** (`deploy-dev.sh` → dev.myktamap.fr sur
+  `Karma_dev`, `deploy-prod.sh` → myktamap.fr sur `main`) : clone Git hors du dossier web, `data/` jamais touché
+  (`docs/architecture/infra-versioning.md` §85). Plus de FTP. Claude ne déploie/push-main JAMAIS.
 - **Merge sur `main`** (KARMA uniquement) : `powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1`
   — vérifie l'arbre propre, la concordance des 3 sources de version, les garde-fous, l'écart avec le distant,
   puis **demande de confirmer les marches 2-4 de la porte** (aucun script n'ouvre un navigateur), merge, tague et
-  publie. `-DryRun` montre tout sans rien toucher. FTP prod ensuite : `scripts\deploy\deploy.ps1`.
+  publie. `-DryRun` montre tout sans rien toucher. Prod ensuite : `deploy-prod.sh` sur le VPS.
 - **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
@@ -46,7 +48,7 @@
 - Changer les couleurs de la charte, supprimer un tag built-in, reset `localStorage`/IndexedDB sans avertir l'user.
 
 ## 🧭 Conventions
-**JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. Logs préfixés `[Module]`. 2 espaces, lignes < 120.
+**JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. **Jamais de script inline** (`onclick=`, `onerror=`, `javascript:`, `<script>` sans `src`) : un écouteur (délégation + `data-*`) — la CSP vise `script-src 'self'` (`check-csp-inline.js`, bloquant). Logs préfixés `[Module]`. 2 espaces, lignes < 120.
 **CSS** : charte dark (`#1a1f2e`→`#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe **`kta-`**. Pas de Tailwind/SCSS. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.

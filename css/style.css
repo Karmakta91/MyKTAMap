@@ -4392,7 +4392,11 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   margin-top: 4px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  animation: splashTextIn 0.6s ease-out 0.45s both;
+  /* 07/10/2026 (KARMA : « ne s'affiche pas de façon animée comme MyKTAMap ») — même révélation de gauche à
+     droite que le mot « MyKTAMap » (kta-titre-base-reveal), enchaînée juste après lui (titre : 0,45 → 1,45 s).
+     Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte. */
+  animation: splashTextIn 0.6s ease-out 0.45s both,
+             kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.25s both;
 }
 
 /* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
@@ -5556,6 +5560,8 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
 }
 
 .loader-titre-tagline {
+  /* Même révélation que « MyKTAMap » dans l'en-tête (titre : 0,1 → 1,1 s), enchaînée juste après (07/10/2026). */
+  animation: kta-titre-base-reveal 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
   font-size: 11px;
   color: #f4c542;
   opacity: 0.75;
@@ -8678,8 +8684,20 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
      pour les écrans < 340 px (jamais de débordement). */
   .loader-header { flex-wrap: wrap; row-gap: 6px; column-gap: 6px; }
   .loader-titre { min-width: 0; flex: 1 1 auto; }
-  .loader-titre-textes { min-width: 0; }
-  .loader-titre-tagline { display: none; }
+  /* 07/10/2026 (KARMA : « ça devrait être en petit en dessous de MyKTAMap ») — tagline RÉAFFICHÉE, mais elle
+     ne compte plus dans la largeur du lockup : width 0 + min-width 100 % = elle prend la largeur que le titre
+     a reçue (flex 1, tout l'espace laissé par les chips), sans jamais l'élargir → les chips restent sur la
+     même ligne. Sous-titre d'installation trop long (kiosque, 80 car.) : ellipse. Mesuré 320 → 412 px. */
+  .loader-titre-textes { min-width: 0; flex: 1 1 0; }
+  .loader-titre-tagline {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    margin-top: 1px;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .loader-titre-nom {
     overflow: hidden;
     text-overflow: ellipsis;

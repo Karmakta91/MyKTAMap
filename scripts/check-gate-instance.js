@@ -44,7 +44,8 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 
 const GATE = fs.readFileSync("js/unlockGate.js", "utf8");
 const MAIN = fs.readFileSync("js/main.js", "utf8");
-const CA   = fs.readFileSync("confadmin.html", "utf8");
+// Le script de confadmin.html vit dans js/confadmin.js depuis le 07/10/2026 (CSP stricte) : page + script.
+const CA   = fs.readFileSync("confadmin.html", "utf8") + "\n" + fs.readFileSync("js/confadmin.js", "utf8");
 
 function extraire(nom) {
   const d = GATE.search(new RegExp("function\\s+" + nom + "\\s*\\([^)]*\\)\\s*\\{"));

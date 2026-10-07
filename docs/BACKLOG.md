@@ -2,7 +2,7 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier ménage : 06/10/2026** (précédent : 30/09/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> **Dernier ménage : 07/10/2026** (précédent : 06/10/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
@@ -67,9 +67,6 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
 natives).
 
-- **Cartes PDF nettes sur un grand plan** (test terrain 30/09) : le plan entier est rendu sous 16 Mpx (limite Safari iOS) puis
-  recadré — sur un grand plan réel, 20 % de sa résolution ; les noms de galeries restent flous sur une grande zone. Rendre chaque
-  zone (et la carte des accès) directement depuis les tuiles V2, à sa propre échelle. **M-L**
 - 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
   brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
   désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart
@@ -90,7 +87,7 @@ remplace.
 
 - **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
   (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
-- **FR en dur hors des modules audités** : le détecteur `scripts/find-hardcoded-fr.js` sort ~960 candidats (plancher
+- **FR en dur hors des modules audités** : l'ancien détecteur `find-hardcoded-fr.js` (retiré le 07/10/2026, dans l'historique Git) sortait ~960 candidats (plancher
   connu de faux positifs ~560) ; seuls Secours, guidage, accueil et Documentation ont été triés. Même politique que
   les popups : **au fil de l'eau**, quand on touche un module.
 - 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
@@ -138,21 +135,13 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 
 - ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
   corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
-- 🟠 **Retirer `'unsafe-inline'` de `script-src`** : remplacer les gestionnaires `onclick="…"` inline (fiche d'un point,
-  `utils.js > buildPointPopupHtml`, et ailleurs) par des écouteurs. Gros chantier, à découper. **L.**
+- 🟠 **`script-src` sans `'unsafe-inline'` — reste la BASCULE** : l'app n'a plus de script inline (07/10/2026, gardé par
+  `check-csp-inline`), la politique stricte est servie en Report-Only et EN VIGUEUR dans le smoke. Reste, avec une
+  release : changer la directive dans `docker/nginx-docker.conf`, les modèles `docs/nginx-*.conf` et **la config nginx
+  de dev/prod sur le VPS (KARMA)**, retirer la ligne Report-Only. `security-legal.md` §40.7.1. **S.**
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
-Livré : bug incognito (`67846d5`), suppression du mode hors-ligne strict (`6a85b5b`), 🆘 Dépannage (`c923dcb`),
-pastille hors-ligne + inspecteur SW dans le mode dev (`4049614`).
-
-- 🟠 **La fenêtre « Que fait l'app sur le réseau ? » dit « liste exhaustive » sans citer OpenStreetMap** : ajouter une
-  entrée `netaudit.whitelist.osm` ×3 (la puce `home.netdoc.verify3` le dit déjà). **S.**
-- 🟡 **CSP décrite de travers** : `security-legal.md` §40.7 cite `connect-src 'self' https://www.gstatic.com`, NETWORK_AUDIT
-  « la directive clé est `connect-src 'self'` » — la conf réelle autorise aussi `blob:` et `tile.openstreetmap.org`. **S.**
-- 🟡 `security-legal.md` ~l.350 décrit encore un écran PIN bloquant qui renvoie à « Tout réinitialiser » (le verrou est
-  temporaire depuis le 13/09). **S.**
-- ⚪ Thème clair : `#loaderResetBtn` (règle par id `!important`) écrase le style « danger » du bouton reset de 🆘 Dépannage.
 - 🔬 Pastille hors-ligne : coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange
   (hors réseau) et thème clair non testés en navigateur ; la progression avance par paquets de 10.
 - ⚪ Un vieil export de profil réécrit la clé `myktamap_network_paranoia_v1` (inerte) ; purge possible en 1 ligne si gênant.
@@ -163,8 +152,6 @@ Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-1
 
 - 🟠 **Commande vocale : français seulement** — `voiceCommand.js` force `fr-FR` et ses motifs sont en français ; les guides EN/ES le disent désormais. À trancher : la traduire ou l'annoncer comme telle dans l'interface. ✅ vérifié (code lu).
 - 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
-- 🟡 **« 💾 Sauver la note »** écrit en dur en français dans la bulle d'un objet (`utils.js` ~l.962) : EN/ES l'affichent en français.
-- 🟡 **ES** : `lost.modal.titre` dit « Modo emergencia » quand `ui.subaction.*` dit « Modo urgencia ».
 - 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
 - ⚪ **Mot de passe d'installation oublié** : seul l'effacement des données du site lève le verrou (le démarrage attend le mot de passe, `main.js`). Ne concerne plus que les installations qui publient un mot de passe (le code communautaire en dur est supprimé depuis le 04/10/2026). Pas de voie de secours dans l'app — décision de produit, à confirmer.
 - ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
@@ -272,7 +259,7 @@ fix de la v1.77.0.*
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |
 | **Journal des notifications (cloche)** | Enterré le 29/09 |
 | **Dossier « 🌐 Serveur » automatique** (Mes plans) | Enterré le 29/09 |
-| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. `scripts/decouper-atlas.js` est livré et suffit ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
+| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
 | **Test de l'import SIG sur de vrais exports QGIS** | Enterré le 29/09 (le harnais couvre parsers, CRS, Lambert 93) |
 | **Transparence des plans issus d'un scan** | Enterré le 29/09 : un JPEG n'a pas d'alpha ; l'opacité compense, c'est accepté |
 | **Plan orienté : indicateur de Nord, contre-rotation des tooltips, inertie du pan** | « Bien comme ça pour le moment » (KARMA, 29/09) |

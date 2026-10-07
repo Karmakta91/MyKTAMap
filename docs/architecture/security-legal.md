@@ -43,14 +43,14 @@
 - **Détection DevTools conditionnée à `APP_CONFIG.debugMode === true`** : si debug ON, polling 2s heuristique outer/inner > 280px → toast `.kta-devtools-warn` (badge "DEBUG" pour signaler la nature outil-dev). Si debug OFF, aucune polling, zéro overhead. Toggle live du mode debug fonctionne (pas besoin de reload). Skip si une modale charte est ouverte (anti faux positif sur transitions viewport).
 - Toujours dans `ASSETS_TO_CACHE` du SW.
 
-**Headers copyright** dans les fichiers JS critiques : `main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`. Format `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */`. Si quelqu'un copie un fichier isolé, le copyright le suit.
+**En-tête de licence** sur **tous** les scripts servis (`js/*.js` + `sw.js`) : bloc `/*! MyKTAMap (c) 2026 Flavien VIDAL … CC BY-NC-SA 4.0 … */` (le `/*!` survit à une minification). Si quelqu'un copie un fichier isolé, le copyright le suit. 🛡️ `scripts/check-entete-licence.js` (pré-commit, bloquant, auto-testé) exige « Flavien VIDAL » et « CC BY-NC-SA » dans les 15 premières lignes ; l'en-tête à copier est dans son commentaire de tête. `scripts/` (outillage, jamais servi) n'est pas concerné.
 
 **Mentions visibles utilisateur** :
 - Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
 - Splash : signature `karma.png` (pseudo artistique, déjà en place)
 - Meta tags `<head>` : `author`, `copyright`, `license`
 
-**Pour ajouter un nouveau fichier JS** : ajouter le header copyright en tête (8 lignes max). Utile surtout pour les algorithmes métier (genre pathfinder).
+**Pour ajouter un nouveau fichier JS** : copier l'en-tête de licence en tête (sinon le pré-commit refuse).
 
 **Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
 
@@ -225,50 +225,51 @@ Aide visuelle pour repérer rapidement les anomalies dans le journal (toute cat�
 
 ⚠️ Si on ajoute un nouveau type d'API réseau (genre WebTransport, RTCPeerConnection) **il faut l'instrumenter** dans `networkAudit.js`, sinon il passe sous le radar.
 
-#### 40.7 CSP côté serveur (docs/nginx-csp-config.conf)
+#### 40.7 CSP côté serveur
 
-Double protection : en plus du module JS, le serveur Nginx envoie un header `Content-Security-Policy` strict. Directives clés :
+Double protection : en plus du module JS, le serveur envoie un en-tête `Content-Security-Policy`. Sources :
+`docker/nginx-docker.conf` (image, donc installations pro et selfhost), modèles `docs/nginx-csp-config.conf` +
+`docs/nginx-myktamap.conf`, et la **vraie config nginx de dev.myktamap.fr et myktamap.fr sur le VPS** (KARMA).
+Directives clés :
 ```
 connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
                                               ← LA garantie anti-exfiltration (OSM = tuiles en lecture, Vue OSM)
-script-src 'self' 'unsafe-inline'             ← compromis assumé (cf. ci-dessous)
-style-src 'self' 'unsafe-inline'              ← idem (style="..." inline partout)
+script-src 'self' 'unsafe-inline'             ← en vigueur ; cible : 'self' seul (40.7.1)
+style-src 'self' 'unsafe-inline'              ← assumé (style="…" partout ; un style injecté n'exécute rien)
 img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
-                                              ← blob: tuiles V2 ZIP ; OSM : fond de la Vue OSM
 worker-src 'self' blob:                       ← Service Worker
 frame-ancestors 'none'                        ← anti-clickjacking
 ```
 
-Même si un attaquant injectait du JS malveillant, le **navigateur lui-même** refuserait l'envoi vers un domaine non-whitelisté. Vérifiable côté user via F12 → Network → Headers → `Content-Security-Policy`.
+Même si un attaquant injectait du JS, le **navigateur** refuserait l'envoi vers un domaine non autorisé. Vérifiable
+côté user : F12 → Network → Headers → `Content-Security-Policy`. Pas de `report-uri` / `report-to` (aucune donnée vers
+un serveur) : les violations ne se voient que dans la console.
 
-⚠️ **À déployer côté Nginx prod/dev** (toi-même, manuellement) — le fichier `docs/nginx-csp-config.conf` documente la directive complète + les autres headers de sécurité (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+⚠️ La config nginx de l'hôte doit inclure une **copie hors du dossier web** du fichier de CSP : myktamap.fr se déploie
+sans `docs/` depuis le 07/10/2026 (`infra-versioning.md` §85), un include du fichier du site resterait figé.
 
-⚠️ Pas de `report-uri` / `report-to` : cohérent avec la promesse "aucune donnée n'est envoyée à un serveur tiers". Les violations CSP restent visibles côté user uniquement (DevTools).
+#### 40.7.1 `script-src` sans `'unsafe-inline'` — état au 07/10/2026
 
-#### 40.7.1 ⚠️ `'unsafe-inline'` sur script-src — compromis assumé
+- **Plus aucun script inline dans l'app** : les 11 gestionnaires (`onclick`, `onerror`) sont des écouteurs (délégation +
+  `data-*` ; images manquantes : `data-kta-echec`, écouteur `error` en capture dans `utils.js`) ; les liens
+  `javascript:void(0)` sont des `#` (le clic fait déjà `preventDefault`) ; les blocs `<script>` d'`index.html` et de
+  `confadmin.html` sont devenus `js/homeDemarrage.js`, `js/swRegister.js`, `js/confadmin.js` (même place, sans defer).
+- **Exception unique : `killsw.html`**, page de secours quand le Service Worker est cassé — son script doit rester dans la
+  page (un fichier `js/` passerait par ce SW). Page fixe sans donnée utilisateur : bloc `location = /killsw.html` qui
+  garde `'unsafe-inline'` (dans un `location` avec `add_header`, tous les en-têtes sont redits : nginx n'hérite pas).
+- **Garde-fou** `scripts/check-csp-inline.js` (pre-commit, bloquant, auto-testé) : aucun `on…=`, `javascript:` ni
+  `<script>` sans `src` dans `js/`, les pages de la racine et `lang/`.
+- **Phase d'observation** (en cours) : la politique stricte est aussi servie en `Content-Security-Policy-Report-Only` —
+  rien n'est bloqué, la console liste ce qui le serait. Le **smoke** (`scripts/smoke/server.js`) sert, lui, la politique
+  stricte **en vigueur** : tout script inline oublié y devient une erreur console, donc un smoke rouge.
+- **Bascule** (avec une release) : remplacer `script-src 'self' 'unsafe-inline'` par `script-src 'self'` dans les sources
+  ci-dessus, retirer la ligne Report-Only, `nginx -t && reload` sur le VPS.
+- Vérifié le 07/10/2026 sous politique stricte EN VIGUEUR : smoke vert ; banc bouton par bouton (pied de page, image
+  manquante, configuration, barre, sortie d'urgence, étape au clic, confadmin, Service Worker) ; un `onerror` injecté est
+  bloqué — la protection visée : un affichage non échappé qui passerait entre les mailles n'exécute plus rien.
 
-L'app utilise depuis toujours :
-- Des blocs `<script>...</script>` inline dans `index.html` (handlers du loader, modales de confirmation, modales audit…)
-- Des `onclick="..."` dans le HTML généré par `interface.js` (modales config, modales d'aide, etc.)
-
-Une CSP `script-src 'self'` strict refuse tout ça. 3 options pour résoudre :
-
-| Option | Effort | Sécurité gagnée |
-|---|---|---|
-| `'unsafe-inline'` ajouté | Aucun | -0 (garantie reste sur `connect-src`) |
-| Hashes SHA-256 par bloc | Très haut (cauchemar maintenance, change à chaque tweak) | Marginal |
-| Externalisation totale + suppression de tous les `onclick` | Refonte massive (~50+ sites) | Marginal |
-
-**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src` (même origine, `blob:` et les tuiles OpenStreetMap seulement) qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
-
-Conditions qui rendent ce compromis safe pour CE projet :
-- Aucun input user n'est jamais placé en `innerHTML` directement (tout passe par `textContent` ou `_escapeHtml`)
-- Aucun contenu tiers / aucun iframe / pas de CDN externe
-- Le HTML servi par Nginx est statique (pas de templating server-side qui pourrait injecter de l'input user)
-
-⚠️ Si un jour on ajoute une feature qui fait `innerHTML = userInput`, **revoir cette décision** : on devra soit purifier strict (DOMPurify), soit basculer sur du nonce dynamique généré par Nginx.
-
-⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement**. Toujours `el.textContent = userInput` ou `el.innerHTML = _escapeHtml(userInput)`.
+⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement** (`check-xss`), et
+**jamais de gestionnaire inline** — un écouteur (`check-csp-inline`).
 
 #### 40.8 Documentation utilisateur (docs/NETWORK_AUDIT.md)
 

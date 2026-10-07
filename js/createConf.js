@@ -1,3 +1,9 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
 // =========================
 // PLANNER.JS
 // Générateur ZIP + onglet Modifier existant + icon manager dynamique
@@ -2127,7 +2133,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     <div class="kta-planner-icon-thumb" id="${id}_thumb">
       <img src="${_pathReel || ''}" alt="${tag}"
         style="width:28px;height:28px;object-fit:contain;display:block;"
-        onerror="this.style.opacity='0.2'">
+        data-kta-echec="0.2">
     </div>
     <input class="kta-cfg-input kta-planner-icon-tag" id="${id}_tag"
       type="text" value="${tag}" placeholder="${window.I18n.t("gen.icons.tagPlaceholder")}"
@@ -5527,7 +5533,7 @@ async function _sigImpAnalyserFichier(file) {
 
     // Colonne du niveau. Pré-sélectionnée si une colonne s'appelle sans
     // ambiguïté « niveau » / « level » / « etage » : c'est le cas des fichiers
-    // produits par `scripts/decouper-atlas.js`, et l'oubli coûte cher (tout
+    // d'un atlas découpé (ancien outil decouper-atlas.js), et l'oubli coûte cher (tout
     // l'import se retrouve sur un seul niveau sans que rien ne le signale).
     const selN = document.getElementById("kta-sig-imp-niveau");
     selN.innerHTML = '<option value="">' + T("gen.sig.niveauAucun") + '</option>'

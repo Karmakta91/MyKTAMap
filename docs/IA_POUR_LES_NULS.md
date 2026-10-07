@@ -590,6 +590,6 @@ Copie-colle ceci en tête de ta première conversation, avec ce document en piè
 > **📦 Pour retrouver les originaux dans ce dépôt** : `CLAUDE.md` (contexte IA) · `.claude/settings.json` +
 > `.claude/hooks/` (hooks côté IA) · `.githooks/` + `scripts/check-*.js` (hooks Git et garde-fous) ·
 > `docs/RELEASE_GATE.md` (porte) · `scripts/smoke/` (smoke automatisé) · `scripts/release/merge-main.ps1`
-> (merge) · `scripts/deploy/` (déploiement) · `docs/audits/INDEX.md` (audits) · `docs/BACKLOG.md` (backlog) ·
+> (merge) · `docs/architecture/infra-versioning.md` §85 (déploiement Git, scripts hors dépôt) · `docs/audits/INDEX.md` (audits) · `docs/BACKLOG.md` (backlog) ·
 > `docs/applications/NETWORK_AUDIT.md` (transparence réseau) · `docs/applications/CGU.md` (légal) ·
 > `docs/architecture/infra-versioning.md` §83-84 (suite de garde-fous, garde-fou de release).

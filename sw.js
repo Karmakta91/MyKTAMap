@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.9.8";
+const CACHE_NAME = "myktamap-cache-v2.10.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -133,6 +133,9 @@ const ASSETS_TO_CACHE = [
   //     cachée par cohérence.
   "./docs/applications/NETWORK_AUDIT.html",
   "./docs/applications/NETWORK_AUDIT.md",
+  "./docs/applications/NETWORK_AUDIT_HISTORIQUE.html",
+  "./docs/applications/NETWORK_AUDIT_HISTORIQUE.md",
+  "./docs/applications/audit-pied.js",
 
   // CSS
   "./css/style.css",
@@ -330,6 +333,8 @@ const ASSETS_TO_CACHE = [
   "./js/homeLoader.js",
   "./js/homeProfile.js",
   "./js/homeConfig.js",
+  "./js/homeDemarrage.js",
+  "./js/swRegister.js",
   "./js/pathfinder.js",
   "./js/roadGraph.js",
   "./js/updateChecker.js",
@@ -481,6 +486,8 @@ const CRITICAL_APP_SHELL = [
   // être disponibles sans réseau. Sans retry+self-heal, un fetch d'install
   // raté (FTP en cours de déploiement, réseau lent) laisse l'asset absent.
   "./docs/applications/NETWORK_AUDIT.html",
+  "./docs/applications/NETWORK_AUDIT_HISTORIQUE.html",
+  "./docs/applications/audit-pied.js",
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
   "./docs/applications/README_USER.es.md",

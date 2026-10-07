@@ -658,8 +658,9 @@ function _ajouterWaypointVisuel(p, num) {
     m.bindPopup(
       '<div class="kta-popup-point"><b>' + window.I18n.t("iti.wp.popupEtape", { n: num }) + '</b>' +
         '<div class="kta-popup-actions">' +
+          // Écouteur global des fiches (utils.js > _ktaPopupAction), pas de onclick inline (CSP, 07/10/2026).
           '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
-            'onclick="window.recalerTrackerSurPoint(' + p.x + ',' + p.y + '); return false;" ' +
+            'data-kta-act="ici" data-kta-x="' + (Number(p.x) || 0) + '" data-kta-y="' + (Number(p.y) || 0) + '" ' +
             'title="' + window.I18n.t("poi.iAmHere") + '">' +
             window.I18n.t("iti.wp.jeSuisIci") +
           '</button>' +

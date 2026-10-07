@@ -161,10 +161,13 @@ doc(
   reV.test(ligneAvec(auditMd, "jour pour la version")),
   "docs/applications/NETWORK_AUDIT.md — l'en-tête doit annoncer " + V + " (item 13 du smoke le vérifie côté serveur)."
 );
+// Depuis le 07/10/2026, les notes par version vivent dans une page à part (NETWORK_AUDIT_HISTORIQUE) : l'audit
+// lui-même ne garde que l'état actuel et son en-tête « À jour pour la version ».
+const histMd = depuisIndex("docs/applications/NETWORK_AUDIT_HISTORIQUE.md");
 doc(
-  "NETWORK_AUDIT.md > entrée d'historique",
-  !!auditMd && (auditMd.match(new RegExp(esc(V), "g")) || []).length >= 2,
-  "docs/applications/NETWORK_AUDIT.md — ajouter la note de version dans « Historique des changements de ce document »."
+  "NETWORK_AUDIT_HISTORIQUE.md > entrée de version",
+  !!histMd && new RegExp(esc(V)).test(histMd),
+  "docs/applications/NETWORK_AUDIT_HISTORIQUE.md — ajouter la note de version en tête de « Notes par version »."
 );
 
 const auditHtml = depuisIndex("docs/applications/NETWORK_AUDIT.html");
@@ -173,10 +176,11 @@ doc(
   reV.test(ligneAvec(auditHtml, "jour pour la version")),
   "docs/applications/NETWORK_AUDIT.html — l'en-tête doit annoncer " + V + " (le .md et le .html se maintiennent ENSEMBLE)."
 );
+const histHtml = depuisIndex("docs/applications/NETWORK_AUDIT_HISTORIQUE.html");
 doc(
-  "NETWORK_AUDIT.html > entrée d'historique <h3>",
-  !!auditHtml && new RegExp("<h3>\\s*" + esc(V)).test(auditHtml),
-  "docs/applications/NETWORK_AUDIT.html — ajouter le <h3> de version dans l'historique en bas de page."
+  "NETWORK_AUDIT_HISTORIQUE.html > entrée de version <h3>",
+  !!histHtml && new RegExp("<h3>\\s*" + esc(V)).test(histHtml),
+  "docs/applications/NETWORK_AUDIT_HISTORIQUE.html — ajouter le <h3> de version en tête de « Notes par version »."
 );
 
 // 📄 DOC — AI_CONTEXT n'a pas de marqueur de version ({{BUILD}} est rempli

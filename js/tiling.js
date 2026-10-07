@@ -1,3 +1,9 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
 // =========================
 // TILING.JS
 // =========================
@@ -305,6 +311,13 @@ window.ktaCullerTuilesV2Throttle = function() {
 // dérivations séparées auraient divergé au premier changement de mise en page du
 // générateur, et le symptôme aurait été un plan « téléchargé » mais troué.
 
+// Chemin d'une tuile TEL QU'IL EST DANS LE ZIP. Utilisé pour la recherche dans
+// RUNTIME_ASSETS et pour le pré-extract lazy — un seul endroit à changer si le
+// générateur change sa mise en page (rendu de la carte ET rendu d'une région PDF).
+function _cheminTuileZipExt(z, col, k, ext) {
+  return "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext;
+}
+
 // Extension des tuiles d'après le manifest (webp/png = alpha, jpg = historique).
 function _extTuile(tilingManifest) {
   return (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tilingManifest) : "jpg";
@@ -421,6 +434,93 @@ function ktaTuilesV2Urls(pc, racineDejaResolue) {
   return urls;
 }
 
+// =========================
+// 🖨️ RÉGION D'UN PLAN TUILÉ V2, PEINTE DEPUIS LES TUILES (07/10/2026)
+// =========================
+// Les cartes PDF du Mode Secours rendaient le plan ENTIER sous 16 Mpx (limite des canvas
+// de Safari iOS), puis recadraient : sur un grand plan, ~27 % de la résolution — noms de
+// galeries illisibles. Ici, seule la région demandée est peinte, au niveau de tuiles qui
+// suffit à l'échelle voulue (z = 0 : pleine résolution). Mémoire bornée par la région.
+//   ctx     : contexte 2D dont (0, 0) = coin haut-gauche de la région
+//   region  : { x, y, w, h } en unités plan (y = 0 en HAUT de l'image)
+//   echelle : pixels du canvas par unité plan
+// Rend { ok, tuiles, manquantes } ; ok = false si le plan n'est pas tuilé V2 (l'appelant
+// retombe sur l'image de base). Une tuile introuvable laisse un trou blanc, comptée.
+// Même grille que le générateur et `ktaTuilesV2Urls` : rangée k = 1 EN BAS ; la rangée du
+// haut, partielle, est collée en bas de sa tuile (le haut est du remplissage hors plan).
+async function ktaDessinerRegionTuiles(ctx, pc, region, echelle) {
+  if (!ctx || !pc || !pc.plan || !pc.plan.tiledV2 || !pc.tiling || !region) return { ok: false };
+  const tm = pc.tiling;
+  const T = tm.tileSize || 512;
+  const ext = _extTuile(tm);
+  const zMin = Number.isInteger(tm.minNativeZoom) ? tm.minNativeZoom : -3;
+  const zMax = Number.isInteger(tm.maxNativeZoom) ? tm.maxNativeZoom : 0;
+  const W = Number(pc.plan.imageWidth) || 0, H = Number(pc.plan.imageHeight) || 0;
+  if (!W || !H || !(echelle > 0)) return { ok: false };
+  // Niveau le moins détaillé qui couvre l'échelle voulue (2^z pixels de tuile par unité plan).
+  let z = Math.min(zMax, Math.max(zMin, Math.ceil(Math.log2(echelle) - 1e-9)));
+  let pas, c0, c1, k0, k1;
+  const grille = function() {
+    pas = T * Math.pow(2, -z);   // unités plan couvertes par une tuile
+    const cols = Math.ceil(Math.ceil(W / Math.pow(2, -z)) / T);
+    const rows = Math.ceil(Math.ceil(H / Math.pow(2, -z)) / T);
+    c0 = Math.max(0, Math.floor(region.x / pas));
+    c1 = Math.min(cols - 1, Math.floor((region.x + region.w) / pas));
+    k0 = Math.max(1, Math.ceil((H - (region.y + region.h)) / pas));   // rangée du bas
+    k1 = Math.min(rows, Math.ceil((H - region.y) / pas));             // rangée du haut
+  };
+  grille();
+  // Garde-fou : une région immense à pleine résolution → niveau moins détaillé.
+  while ((c1 - c0 + 1) * (k1 - k0 + 1) > 600 && z > zMin) { z--; grille(); }
+  const racine = await ktaResoudreRacineTuiles(pc);   // null pour un plan importé (ZIP)
+  const aLiberer = [];
+  async function urlDe(col, k) {
+    const chemin = _cheminTuileZipExt(z, col, k, ext);
+    const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[chemin];
+    if (!asset) return racine ? racine + "/z" + z + "/x" + col + "_y" + (-k) + "." + ext : null;
+    // URL PROPRES (révoquées à la fin) : celles de la carte sont libérées par son LRU.
+    let f = asset.file;
+    if (!f && asset._zipPath && typeof window._extractLazyAsset === "function") {
+      try { f = await window._extractLazyAsset(chemin); } catch (e) { f = null; }
+      if (f && !(f instanceof Blob)) f = asset.file;
+    }
+    if (!f) return null;
+    const u = URL.createObjectURL(f);
+    aLiberer.push(u);
+    return u;
+  }
+  const charger = function(src) {
+    return new Promise(function(res) {
+      const img = new Image();
+      img.onload = function() { res(img); };
+      img.onerror = function() { res(null); };
+      img.src = src;
+    });
+  };
+  const travaux = [];
+  for (let k = k0; k <= k1; k++) for (let col = c0; col <= c1; col++) travaux.push([col, k]);
+  let manquantes = 0, i = 0;
+  const ech = Math.pow(2, -z);   // unités plan par pixel de tuile
+  async function ouvrier() {
+    while (i < travaux.length) {
+      const [col, k] = travaux[i++];
+      const u = await urlDe(col, k);
+      const img = u ? await charger(u) : null;
+      if (!img) { manquantes++; continue; }
+      const xPlan = col * pas, yPlan = H - k * pas;
+      ctx.drawImage(img, (xPlan - region.x) * echelle, (yPlan - region.y) * echelle,
+                    img.naturalWidth * ech * echelle, img.naturalHeight * ech * echelle);
+    }
+  }
+  try {
+    await Promise.all([ouvrier(), ouvrier(), ouvrier(), ouvrier(), ouvrier(), ouvrier()]);
+  } finally {
+    aLiberer.forEach(function(u) { try { URL.revokeObjectURL(u); } catch (e) { /* déjà libérée */ } });
+  }
+  if (manquantes) console.warn("[Tiling V2] Région : " + manquantes + "/" + travaux.length + " tuile(s) introuvable(s) (z" + z + ")");
+  return { ok: manquantes < travaux.length, tuiles: travaux.length, manquantes: manquantes, z: z };
+}
+
 function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv) {
   const H = bounds[1][0];
   const W = bounds[1][1];
@@ -460,12 +560,8 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   const RACINE_SRV = racineSrv || ktaRacineTuilesServeur(window.PLAN_CONFIG);
   if (RACINE_SRV) console.log("[Tiling V2] Racine tuiles serveur :", RACINE_SRV);
 
-  // Chemin d'une tuile TEL QU'IL EST DANS LE ZIP. Utilisé pour la recherche
-  // dans RUNTIME_ASSETS et pour le pré-extract lazy — un seul endroit à
-  // changer si le générateur change sa mise en page.
-  function _cheminTuileZip(z, col, k) {
-    return "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
-  }
+  // Chemin d'une tuile TEL QU'IL EST DANS LE ZIP (cf _cheminTuileZipExt, au niveau du fichier).
+  function _cheminTuileZip(z, col, k) { return _cheminTuileZipExt(z, col, k, TILE_EXT); }
 
   // Nombre de niveaux dont on garde les bitmaps décodés en RAM. Courant + 1
   // adjacent suffit pour un zoom/dézoom fluide. Sur device riche, on peut se
@@ -1093,5 +1189,6 @@ window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
 // énumérer EXACTEMENT les mêmes URLs que le rendu, pas une seconde dérivation.
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;
+window.ktaDessinerRegionTuiles  = ktaDessinerRegionTuiles;
 window.ktaCandidatsRacineTuiles = ktaCandidatsRacineTuiles;
 window.ktaResoudreRacineTuiles  = ktaResoudreRacineTuiles;

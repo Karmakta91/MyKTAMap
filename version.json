@@ -1,8 +1,8 @@
 {
-  "version": "v2.9.8",
-  "released": "2026-10-06",
+  "version": "v2.10.0",
+  "released": "2026-10-07",
   "notes": [
-    "🔒 Correctif de sécurité : un plan ou une session partagés ne peuvent plus déclencher de code à l'ouverture d'une fiche. Nouveau : l'export de session peut ne garder qu'une période, et « Effacer la session » garde les portails. Mode Secours : options brancard pour évacuer une victime, et un scénario reçu s'ouvre directement depuis l'accueil.",
-    "👥 Sur les installations reliées : bouton « Équipe », itinéraire montré à l'équipe, positions sur le plan visibles du groupe, et Mode Secours relié aux comptes (intervention déclenchée, alerte, tableau partagé entre appareils, effectif d'équipe calculé depuis les comptes reliés)."
+    "🔒 Plus sûr et plus transparent : la page « Audit réseau » est réécrite, plus courte et plus claire (l'historique des versions a maintenant sa propre page), et l'app est prête pour une protection renforcée contre le code malveillant. Mode Secours : options brancard pour évacuer une victime, un scénario reçu s'ouvre directement depuis l'accueil, et les cartes des fiches PDF restent nettes même sur un grand plan.",
+    "💼 Grosse avancée de l'édition pro, réservée aux clubs et organisations qui installent leur propre serveur (travail en équipe, Mode Secours partagé). Rien ne change pour toi : myktamap.fr reste gratuit, sans compte, et tes données restent sur ton appareil."
   ]
 }

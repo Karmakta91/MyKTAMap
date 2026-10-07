@@ -1028,6 +1028,11 @@ function _cfgInstallerFermeture(modal) {
   if (croix) croix.addEventListener("click", _cfgFermer);
   const btn = document.getElementById("kta-cfg-fermer");
   if (btn) btn.addEventListener("click", _cfgFermer);
+  // Écouteurs, pas de onclick inline (CSP sans 'unsafe-inline', 07/10/2026).
+  const calib = document.getElementById("kta-cfg-calib-echelle");
+  if (calib) calib.addEventListener("click", function () { if (typeof window.ouvrirCalibrageEchelle === "function") window.ouvrirCalibrageEchelle(); });
+  const reset = document.getElementById("kta-cfg-reset");
+  if (reset) reset.addEventListener("click", function () { if (typeof window.resetConfig === "function") window.resetConfig(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) _cfgFermer(); });
 }
 
@@ -1119,8 +1124,7 @@ function afficherConfig() {
           <div class="kta-aide-section-titre">${window.I18n.t("config.steps.scale")}</div>
           <div style="display:flex; gap:6px; align-items:center;">
             <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
-            <button type="button" class="kta-btn kta-btn-ghost"
-              onclick="ouvrirCalibrageEchelle()"
+            <button type="button" class="kta-btn kta-btn-ghost" id="kta-cfg-calib-echelle"
               style="padding:6px 10px; font-size:13px; white-space:nowrap;"
               title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
           </div>
@@ -1459,7 +1463,7 @@ function afficherConfig() {
         -->
         ${_cfgGroupeFin()}
         <div class="kta-cfg-actions-bar">
-          <button class="kta-btn kta-btn-ghost" type="button" onclick="resetConfig()">${window.I18n.t("config.actions.reset")}</button>
+          <button class="kta-btn kta-btn-ghost" type="button" id="kta-cfg-reset">${window.I18n.t("config.actions.reset")}</button>
           <button class="kta-btn kta-btn-primary" type="button" id="kta-cfg-fermer">${window.I18n.t("config.actions.close")}</button>
         </div>
 
@@ -2349,7 +2353,8 @@ function _initLevelFilterControl() {
   ctrl.onAdd = function() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-level-control");
     const a   = L.DomUtil.create("a", "kta-level-btn", div);
-    a.href      = "javascript:void(0)";
+    a.href      = "#";   // pas « javascript: » (CSP stricte, 07/10/2026) ; le clic fait L.DomEvent.stop
+    a.setAttribute("role", "button");
     a.title     = window.I18n.t("config.niveaux.controlTitle");
     a.innerHTML = '<span class="kta-niv-pastille" id="kta-niv-pastille-icone">' +
                   (APP_CONFIG.activeLevel || 0) + '</span>';

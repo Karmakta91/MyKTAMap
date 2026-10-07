@@ -5958,9 +5958,7 @@
       if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
         // 🆕 v1.26.0 Phase 4 C5 — Boucle async pour permettre l'await
         // sur la mini-carte par équipe (génération canvas exporter).
-        // Relecture 29/09 (R12) : le fond du plan (16 Mpx) est rendu UNE fois
-        // pour tout le rapport, pas une fois par équipe.
-        const cacheFond = { canvas: null };
+        // Chaque mini-carte rend sa seule zone (07/10/2026) : plus de fond commun à garder.
         for (let i = 0; i < r.equipesData.length; i++) {
           const ed = r.equipesData[i];
           // 1. Page texte étapes (synchrone, inchangé)
@@ -5970,7 +5968,7 @@
           //    waypoints/zone/iti à afficher). Async = peut échouer
           //    silencieusement et passer à la suite (PDF reste valide).
           try {
-            await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r, cacheFond);
+            await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r);
           } catch (e) {
             console.warn("[Rapport] Mini-carte équipe " + (ed.equipe && ed.equipe.nom) + " échouée : " + (e && e.message));
           }
@@ -6904,31 +6902,21 @@
   // Rendu : le plan recadré sur les accès (+ marge), zones des équipes en filigrane,
   // un repère numéroté par accès (numéros = lignes du tableau).
   async function _canvasAcces(s, acces) {
-    if (typeof window.MyKTAMapExporterGenererCanvas !== "function") return null;
-    const full = await window.MyKTAMapExporterGenererCanvas({
-      scale: _echelleCanvasPlan(1), bg: "image", includeImgLayers: true, includeDataLayers: true,
-      ann: { points: false, roads: false, zones: false, structures: false, jonctions: false, itineraire: false }
-    });
-    if (!full) return null;
-    const r = _echelleDuCanvas(full);
     const xs = acces.map(function(a) { return a.pt.x; }), ys = acces.map(function(a) { return a.pt.y; });
     let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
     let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     // Marge : 12 % de la plus grande dimension, au moins ~150 m autour d'un accès seul.
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     const pad = Math.max((Math.max(x1 - x0, y1 - y0)) * 0.12, 150 * pxParM);
-    const W = full.width / r, H = full.height / r;
-    x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
-    x1 = Math.min(W, x1 + pad); y1 = Math.min(H, y1 + pad);
-    const sw = x1 - x0, sh = y1 - y0;
-    if (sw < 10 || sh < 10) return null;
-    const cote = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
-    const out = document.createElement("canvas");
-    out.width = Math.round(sw >= sh ? cote : cote * sw / sh);
-    out.height = Math.round(sw >= sh ? cote * sh / sw : cote);
+    const rect = _rogner(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
+    if (!rect || rect.w < 10 || rect.h < 10) return null;
+    // Rendu de la seule région des accès, pleine résolution (07/10/2026, cf _rendreRegionPlan).
+    const src = await _rendreRegionPlan(rect, 2400);
+    if (!src) return null;
+    const out = src.canvas;
+    x0 = rect.x; y0 = rect.y;
+    const sw = rect.w, sh = rect.h;
     const ctx = out.getContext("2d");
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(full, x0 * r, y0 * r, sw * r, sh * r, 0, 0, out.width, out.height);
     const k = Math.max(1, Math.max(out.width, out.height) / 1000);
     const vers = function(p) { return { x: (p.x - x0) * out.width / sw, y: (p.y - y0) * out.height / sh }; };
     // Zones en filigrane (repère d'orientation, pas le sujet de la page)
@@ -7318,8 +7306,8 @@
    * Ajoute une page A4 paysage avec mini-carte de l'équipe.
    * Pipeline :
    *   1. Bounds englobants équipe (waypoints + zone + iti)
-   *   2. Canvas plan complet via MyKTAMapExporterGenererCanvas (scale 0.5)
-   *   3. Crop sur les bounds → canvas final (ratio A4 paysage)
+   *   2. Rendu de la seule zone de l'équipe (_rendreRegionPlan, pleine résolution)
+   *   3. Placement sur le canvas final (ratio A4 paysage, bandes blanches)
    *   4. Dessin overlay équipe par-dessus (zone, iti, entrée, sortie, interms)
    *   5. addPage paysage + addImage du canvas final + header/footer texte
    *
@@ -7334,7 +7322,7 @@
    * @param {object} ed - reportData.equipesData[i] = {equipe, etapes, photos}
    * @param {object} r  - reportData complet (pour metadata)
    */
-  async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r, cacheFond) {
+  async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
     if (!ed || !ed.equipe) return false;
     // 🩸 29/09/2026 (audit Secours) — LA MINI-CARTE NE S'EST JAMAIS DESSINÉE.
     // `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) :
@@ -7354,29 +7342,21 @@
       return false;
     }
 
-    // 2) Canvas plan complet (scale 0.5 pour limiter la RAM mobile)
-    let planCanvas = cacheFond && cacheFond.canvas;
-    try {
-      if (!planCanvas) planCanvas = await window.MyKTAMapExporterGenererCanvas({
-        scale: _echelleCanvasPlan(0.5),   // plafonné sous la limite iOS
-        bg:    "image",
-        // Annotations session désactivées (mini-carte = juste plan + data
-        // layers + icones permanentes ; les overlays équipe sont dessinés
-        // par-dessus en Canvas 2D natif via _drawEquipeOverlayOnCanvas)
-        ann: {
-          points:     false,
-          roads:      false,
-          zones:      false,
-          structures: false,
-          pointsTags: { tagsCoches: new Set(), untaggedCoche: false, tousActifs: false }
-        }
-      });
-    } catch (e) {
+    // 2) Rendu de la SEULE zone de l'équipe, pleine résolution (07/10/2026, cf
+    //    _rendreRegionPlan) — avant, un plan entier à l'échelle plafonnée, recadré.
+    //    Annotations de session désactivées : l'overlay de l'équipe est dessiné par-dessus.
+    const rect = _rogner(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h);
+    if (!rect) {
+      console.warn("[Rapport] Bounds équipe hors du plan — mini-carte skip");
+      return false;
+    }
+    let src = null;
+    try { src = await _rendreRegionPlan(rect, 1800); }
+    catch (e) {
       console.warn("[Rapport] Génération canvas plan échouée : " + (e && e.message));
       return false;
     }
-    if (!planCanvas || !planCanvas.width) return false;
-    if (cacheFond) cacheFond.canvas = planCanvas;
+    if (!src) return false;
 
     // 3) Nouveau canvas final paysage A4 ratio (297/210 = 1.414)
     // Cible 1800×1273 px (= ~150 dpi A4 paysage utile, bon compromis qualité/RAM)
@@ -7387,25 +7367,8 @@
     finalCanvas.height = TARGET_H;
     const ctx = finalCanvas.getContext("2d");
 
-    // Mapping bounds plan → coords canvas plan (échelle MESURÉE, cf _echelleCanvasPlan)
-    const SCALE_PLAN = _echelleDuCanvas(planCanvas);
-    let sx = bounds.x * SCALE_PLAN;
-    let sy = bounds.y * SCALE_PLAN;
-    let sw = bounds.w * SCALE_PLAN;
-    let sh = bounds.h * SCALE_PLAN;
-
-    // Clamp source au canvas plan (anti-overflow si bounds dépasse)
-    if (sx < 0) { sw += sx; sx = 0; }
-    if (sy < 0) { sh += sy; sy = 0; }
-    if (sx + sw > planCanvas.width)  sw = planCanvas.width  - sx;
-    if (sy + sh > planCanvas.height) sh = planCanvas.height - sy;
-    if (sw <= 0 || sh <= 0) {
-      console.warn("[Rapport] Bounds équipe hors du plan — mini-carte skip");
-      return false;
-    }
-
     // Ratio src/dst : letterbox (bandes blanches) pour préserver la forme
-    const srcRatio = sw / sh;
+    const srcRatio = rect.w / rect.h;
     const dstRatio = TARGET_W / TARGET_H;
     let dx, dy, dw, dh;
     if (srcRatio > dstRatio) {
@@ -7425,13 +7388,13 @@
     // Fond blanc + drawImage croppé
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, TARGET_W, TARGET_H);
-    ctx.drawImage(planCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+    ctx.drawImage(src.canvas, 0, 0, src.canvas.width, src.canvas.height, dx, dy, dw, dh);
 
     // 4) Overlay équipe : helper coord plan → coord canvas final
     // Relecture 29/09 (R11) : projeter avec la source RÉELLEMENT dessinée (rognée au
     // bord du plan), pas avec les bounds bruts — sinon l'équipe dessinée par-dessus
     // se décalait du fond dès que la zone touchait un bord du plan.
-    const srcX = sx / SCALE_PLAN, srcY = sy / SCALE_PLAN, srcW = sw / SCALE_PLAN, srcH = sh / SCALE_PLAN;
+    const srcX = rect.x, srcY = rect.y, srcW = rect.w, srcH = rect.h;
     function _planToFinal(x, y) {
       const ratioX = (x - srcX) / srcW;
       const ratioY = (y - srcY) / srcH;
@@ -7630,32 +7593,15 @@
       return null;
     }
     _toast(t("secours.toast.generationPdfCanvas"), "info");
-    // 🆕 v1.22.0-fix5 — Génère UNE fois le canvas plan complet avec calques
-    // image + data layers visibles. Sera croppé par équipe. Si échec → PDF
-    // text-only (fallback MVP).
-    let fullCanvas = null;
-    if (window.MyKTAMapExporterGenererCanvas && typeof window.MyKTAMapExporterGenererCanvas === "function") {
-      try {
-        fullCanvas = await window.MyKTAMapExporterGenererCanvas({
-          scale:             _echelleCanvasPlan(1),
-          bg:                "image",
-          includeImgLayers:  true,
-          includeDataLayers: true,
-          ann: {
-            points: false, roads: false, zones: false, structures: false,
-            jonctions: false, itineraire: false
-          }
-        });
-      } catch(e) {
-        console.warn("[SecoursMode] Canvas plan échec, fallback text-only :", e);
-      }
-    }
+    // 🖨️ 07/10/2026 — chaque page rend SA carte (région de l'équipe, pleine résolution) ;
+    // en cas d'échec, la page sort sans carte (texte seul), comme avant.
     try {
       const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
       const pageW = pdf.internal.pageSize.getWidth();
       const margin = 14;
       const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.pdf.planDefault");
-      s.groupes.forEach(function(g, idx) {
+      for (let idx = 0; idx < s.groupes.length; idx++) {
+        const g = s.groupes[idx];
         if (idx > 0) pdf.addPage();
         pdf.setTextColor(0);   // relecture PDF : titre gris hérité du pied de page précédent
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
@@ -7673,9 +7619,9 @@
         let y = margin + 22;
         // 🆕 v1.22.0-fix5 — Insère une carte miniature de la zone de l'équipe
         // avec overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire)
-        if (fullCanvas) {
+        {
           try {
-            const cropped = _cropCanvasForTeam(fullCanvas, g, couleur.hex);
+            const cropped = await _carteEquipe(g, couleur.hex);
             if (cropped) {
               const imgWmm = pageW - 2 * margin;        // pleine largeur
               const imgHmm = imgWmm * cropped.height / cropped.width;
@@ -7807,7 +7753,7 @@
         pdf.setFontSize(7); pdf.setTextColor(120);
         pdf.text(t("secours.pdf.genereLigne", { version: ((window.__MKM__ && window.__MKM__.build) || ""), date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }),
                  margin, pdf.internal.pageSize.getHeight() - 6);
-      });
+      }
       const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".pdf";
       pdf.save(filename);
       if (window.OOMGuard) {
@@ -7850,70 +7796,66 @@
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
-  // 🆕 v1.22.0-fix5 — Crop le canvas plan pour la zone de l'équipe + dessine
-  // l'overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire).
-  // Retourne un nouveau canvas ou null si bbox invalide.
-  // 🩸 29/09/2026 (audit Secours) — LE FOND DES PDF SECOURS SE RENDAIT EN TAILLE
-  // RÉELLE : briefing à l'échelle 1 (16 332 × 13 820 = 226 Mpx, ~860 Mo de canvas),
-  // mini-carte du rapport à 0,5 (56 Mpx, ~225 Mo). Au-delà de 16,7 Mpx, Safari iOS
-  // refuse le canvas et le PDF sortait sans carte. On plafonne SOUS cette limite :
-  // Contrepartie assumée (relecture R10) : une petite zone (< ~3 700 unités plan sur un
-  // plan de 16 332 px) est agrandie jusqu'à ×3,8 dans son recadrage → fond moins net.
-  const PX_MAX_CANVAS_PLAN = 16000000;
-  function _echelleCanvasPlan(voulue) {
+  // 🖨️ 07/10/2026 — CARTES PDF NETTES SUR UN GRAND PLAN (test terrain du 30/09).
+  // Avant : le plan ENTIER était rendu sous 16 Mpx (limite des canvas de Safari iOS), puis
+  // chaque zone recadrée et agrandie — sur un grand plan, ~27 % de sa résolution, noms de
+  // galeries illisibles. Désormais chaque carte rend SEULEMENT son rectangle (option
+  // `region` de l'export, fond lu dans les tuiles V2 au niveau qui suffit) : pleine
+  // résolution, et un canvas borné par la carte (≤ 2400 px de côté), plus jamais par le plan.
+  function _dimsPlan() {
     const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
-    const w = Number(pl.imageWidth) || 0, h = Number(pl.imageHeight) || 0;
-    if (!w || !h) return voulue;
-    return Math.min(voulue, Math.sqrt(PX_MAX_CANVAS_PLAN / (w * h)));
+    return { w: Number(pl.imageWidth) || 0, h: Number(pl.imageHeight) || 0 };
   }
-  // Échelle RÉELLE d'un canvas plan (mesurée, pas supposée).
-  function _echelleDuCanvas(canvas) {
-    const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
-    const w = Number(pl.imageWidth) || 0;
-    return (w && canvas && canvas.width) ? canvas.width / w : 1;
+  // Rectangle (unités plan) rogné au plan ; null s'il est vide.
+  function _rogner(x0, y0, x1, y1) {
+    const d = _dimsPlan();
+    if (d.w && d.h) { x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(d.w, x1); y1 = Math.min(d.h, y1); }
+    return (x1 - x0 >= 1 && y1 - y0 >= 1) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
   }
-
-  function _cropCanvasForTeam(fullCanvas, g, hexColor) {
+  // Rend un rectangle du plan (fond + calques image et data, sans annotations de session)
+  // → { canvas, x, y, w, h }, ou null. `cote` = côté le plus long visé, en pixels ; jamais
+  // plus de 2 pixels par unité plan (au-delà, le fond ne gagne rien).
+  async function _rendreRegionPlan(rect, cote) {
+    if (!rect || typeof window.MyKTAMapExporterGenererCanvas !== "function") return null;
+    const echelle = Math.min(2, cote / Math.max(rect.w, rect.h));
+    const canvas = await window.MyKTAMapExporterGenererCanvas({
+      scale: echelle, region: rect, bg: "image", includeImgLayers: true, includeDataLayers: true,
+      ann: { points: false, roads: false, zones: false, structures: false, jonctions: false, itineraire: false,
+             pointsTags: { tagsCoches: new Set(), untaggedCoche: false, tousActifs: false } }
+    });
+    return canvas && canvas.width ? { canvas: canvas, x: rect.x, y: rect.y, w: rect.w, h: rect.h, planEntier: !!rect.planEntier } : null;
+  }
+  // Rectangle de la carte d'une équipe : sa bbox + 15 % ; plan entier si rien n'est placé.
+  function _rectCarteEquipe(g) {
     const bbox = _computeTeamBbox(g);
-    if (!bbox || bbox.w < 1 || bbox.h < 1) {
-      // Fallback : si pas de bbox utilisable, retourne un mini canvas du plan entier
-      return _resizeCanvasFit(fullCanvas, 800, 600);
-    }
-    // ⚠️ Convention plan → canvas : pas d'inversion Y ici car exporter.js
-    // génère son canvas avec y=0 au TOP (orientation image standard).
-    // _computeTeamBbox retourne des coords plan (y=0 au top de l'image
-    // exportée). Donc bbox.x/y/w/h sont directement utilisables.
-    //
-    // Padding 15 % autour de la bbox pour respirer
+    const d = _dimsPlan();
+    if (!bbox || bbox.w < 1 || bbox.h < 1) return d.w ? { x: 0, y: 0, w: d.w, h: d.h, planEntier: true } : null;
     const pad = Math.max(bbox.w, bbox.h, 100) * 0.15;
-    // sx/sy/sw/sh en UNITÉS PLAN ; `r` les convertit en pixels du canvas réduit.
-    const r = _echelleDuCanvas(fullCanvas);
-    let sx = Math.max(0, bbox.x - pad);
-    let sy = Math.max(0, bbox.y - pad);
-    let sw = Math.min(fullCanvas.width / r  - sx, bbox.w + 2 * pad);
-    let sh = Math.min(fullCanvas.height / r - sy, bbox.h + 2 * pad);
-    if (sw < 50 || sh < 50) return _resizeCanvasFit(fullCanvas, 800, 600);
+    const r = _rogner(bbox.x - pad, bbox.y - pad, bbox.x + bbox.w + pad, bbox.y + bbox.h + pad);
+    return (r && r.w >= 50 && r.h >= 50) ? r : (d.w ? { x: 0, y: 0, w: d.w, h: d.h, planEntier: true } : null);
+  }
+  // Carte d'une équipe pour le PDF : rendu de son rectangle + l'overlay de l'équipe.
+  async function _carteEquipe(g, hexColor) {
+    const rect = _rectCarteEquipe(g);
+    const src = await _rendreRegionPlan(rect, rect && rect.planEntier ? 1200 : 2400);
+    return src ? _cropCanvasForTeam(src, g, hexColor) : null;
+  }
 
-    // Canvas de sortie : ratio préservé. Au moins 1000 px de côté ; au-delà, jusqu'à
-    // la résolution RÉELLEMENT disponible dans le canvas du plan (plafond 2400) —
-    // avant, une grande zone (équipe Golf du test terrain) était réduite sous sa source.
-    const maxOut = Math.max(1000, Math.min(2400, Math.round(Math.max(sw, sh) * r)));
-    let outW, outH;
-    if (sw >= sh) {
-      outW = Math.min(maxOut, sw);
-      outH = outW * sh / sw;
-    } else {
-      outH = Math.min(maxOut, sh);
-      outW = outH * sw / sh;
-    }
+  // Dessine l'overlay de l'équipe (polygone, entrée / sortie, intermédiaires, itinéraire)
+  // sur la région rendue `src` ({ canvas, x, y, w, h }, unités plan). y = 0 en HAUT, comme
+  // l'export : pas d'inversion. Rend un nouveau canvas.
+  function _cropCanvasForTeam(src, g, hexColor) {
+    if (!src || !src.canvas) return null;
+    if (src.planEntier || !_computeTeamBbox(g)) return _resizeCanvasFit(src.canvas, 800, 600);
+    const sx = src.x, sy = src.y, sw = src.w, sh = src.h;
     const out = document.createElement("canvas");
-    out.width = Math.round(outW);
-    out.height = Math.round(outH);
+    out.width = src.canvas.width;
+    out.height = src.canvas.height;
     const ctx = out.getContext("2d");
     // Background blanc (au cas où l'image source a un alpha)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(fullCanvas, sx * r, sy * r, sw * r, sh * r, 0, 0, out.width, out.height);
+    ctx.drawImage(src.canvas, 0, 0);
 
     // Repères, traits et textes suivent la taille de l'image (base 1000 px) : sinon,
     // plus la carte est nette, plus les numéros d'étape rapetissent sur la page.

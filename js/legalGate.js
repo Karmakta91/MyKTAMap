@@ -309,5 +309,13 @@
     TERMS_VERSION:      TERMS_VERSION
   };
 
+  // Lien « Conditions d'utilisation » du pied de page : écouteur, pas de onclick inline (CSP, 07/10/2026).
+  document.addEventListener("click", function(e) {
+    const a = e.target && e.target.closest && e.target.closest("#kta-footer-cgu");
+    if (!a) return;
+    e.preventDefault();
+    ouvrirConsultation();
+  });
+
   console.log("[LegalGate] Module chargé (CGU acceptées : " + isAccepted() + ")");
 })();

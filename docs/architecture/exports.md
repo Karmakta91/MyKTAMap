@@ -217,7 +217,10 @@ Module `js/pdfExport.js` (~700 lignes IIFE) → `window.MyKTAMapPdfExport = { af
 ```
 [modale PDF options] → _lireOptionsModale() → opts
 opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...)
-       (wrapper public dans exporter.js qui appelle _genererCanvasExport)
+       (wrapper public dans exporter.js qui appelle _genererCanvasExport ;
+        option `region: { x, y, w, h }` en unités plan = ne rendre que ce rectangle :
+        fond depuis les tuiles V2 (`ktaDessinerRegionTuiles`) ou sous-rectangle de l'image,
+        le reste translaté ; la légende se dessine après restauration — cartes PDF Secours)
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins

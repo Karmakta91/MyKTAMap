@@ -239,7 +239,7 @@ function afficherLegende() {
       if (customsIcones.length > 0) {
         const html = customsIcones.map(function(e) {
           return `<div class="kta-legende-ligne">
-            <img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" onerror="this.style.opacity='0.3'">
+            <img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" data-kta-echec="0.3">
             <span class="kta-legende-label">${e.label}</span>
           </div>`;
         }).join("");
@@ -489,7 +489,7 @@ function afficherLegende() {
       function ligneIcone2(cle, url) {
         const label = _label("icones", cle);
         return `<div class="kta-legende-ligne">
-          <img class="kta-legende-icone" src="${url}" alt="${label}" onerror="this.style.opacity='0.3'">
+          <img class="kta-legende-icone" src="${url}" alt="${label}" data-kta-echec="0.3">
           <span class="kta-legende-label">${label}</span>
         </div>`;
       }
@@ -530,7 +530,7 @@ function afficherLegende() {
         const cs = LC.listCustomEntries("icones").filter(function(e) { return e.visible && e.iconUrl; });
         if (cs.length > 0) {
           icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>` +
-                 cs.map(function(e) { return `<div class="kta-legende-ligne"><img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" onerror="this.style.opacity='0.3'"><span class="kta-legende-label">${e.label}</span></div>`; }).join("") +
+                 cs.map(function(e) { return `<div class="kta-legende-ligne"><img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" data-kta-echec="0.3"><span class="kta-legende-label">${e.label}</span></div>`; }).join("") +
                  `</div>`;
         }
       }
