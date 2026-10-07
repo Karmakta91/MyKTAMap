@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.9.8` (06/10/2026)
+## 📦 Version courante — `v2.9.9` (07/10/2026)
+
+> 🖨️ **v2.9.9 — Cartes PDF nettes sur un grand plan** (Mode Secours : fiches d'équipe, carte des accès, mini-carte du rapport rendues depuis les tuiles, pleine résolution) ; sous-titre de l'accueil revenu sur mobile ; déploiement par Git, en-têtes de licence partout.
 
 > 🚑 **v2.9.8 — Mode Secours sur le terrain** : options brancard pour « Évacuer » (zones à éviter, inaccessibles en dernier recours), scénario reçu déposé à l'accueil → plan ouvert, import, rôle « Équipe » ; doc réseau exacte (OpenStreetMap listé), finitions i18n et thème clair.
 
@@ -553,6 +555,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.9.9 (07/10/2026) — Cartes PDF nettes, déploiement par Git (branche `Karma_dev`)
+
+- 🖨️ **Cartes PDF nettes sur un grand plan** (test terrain du 30/09) : chaque carte (fiche d'équipe, carte des accès, mini-carte du rapport) rend sa seule région, au niveau de tuiles qui suffit — `ktaDessinerRegionTuiles` (`tiling.js`), option `region` de l'export (`exporter.js`). Avant : plan entier sous 16 Mpx puis recadré (~20 % de la résolution). Mesuré : 1 px par unité de plan au lieu de 0,2, 0,15 s au lieu de 1,8 s par carte ; `check-tiling` § 18 (`fc6e458`).
+- 📱 **Sous-titre de l'accueil sur mobile** : revenu sous « MyKTAMap », en petit, sans déplacer les icônes (il ne compte plus dans la largeur du titre) ; ellipse si un sous-titre d'installation est trop long (`e63ea1a`).
+- 🚀 **Déploiement par Git** : dev.myktamap.fr et myktamap.fr se déploient avec deux scripts hors dépôt (clone hors du dossier web, `data/` jamais touché, `infra-versioning.md` §85) ; `scripts/deploy/` (FTP) et cinq outils jetables retirés (`256e499`).
+- 📜 **En-tête de licence** sur les 24 scripts servis qui n'en avaient pas + garde-fou `check-entete-licence` (`09b3ff8`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau (les cartes lisent les tuiles déjà sur l'appareil ou sur le serveur du plan).
 
 #### v2.9.8 (06/10/2026) — Mode Secours sur le terrain, doc réseau exacte (branche `Karma_dev`)
 
