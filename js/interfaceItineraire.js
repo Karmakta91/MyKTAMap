@@ -1302,7 +1302,7 @@ async function _itiAvoidGetAvailableTags() {
         p.tags.forEach(function(t) { if (t) set.add(t); });
       }
     });
-    return Array.from(set).sort();
+    return Array.from(set).sort(function(a, b) { return String(a).localeCompare(String(b)); });
   } catch(e) { return []; }
 }
 

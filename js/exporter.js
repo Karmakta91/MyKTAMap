@@ -533,7 +533,7 @@
         tagCounts[k] = (tagCounts[k] || 0) + 1;
       });
     });
-    const list = Object.keys(tagCounts).sort().map(function(t) {
+    const list = Object.keys(tagCounts).sort(function(a, b) { return a.localeCompare(b); }).map(function(t) {
       return { tag: t, count: tagCounts[t], isUntagged: false };
     });
     if (untaggedCount > 0) {

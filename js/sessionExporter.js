@@ -554,7 +554,7 @@
       const noms = {};
       tous.forEach(function(o) { const a = _auteurDe(o); if (a) noms[a] = true; });
       optAuteurs = '<option value="">' + window.ktaEsc(t("export.filtre.tous")) + '</option>' +
-        Object.keys(noms).sort().map(function(n) {
+        Object.keys(noms).sort(function(a, b) { return a.localeCompare(b); }).map(function(n) {
           return '<option value="' + window.ktaEsc(n) + '"' + (n === _filtre.auteur ? " selected" : "") + '>' + window.ktaEsc(n) + '</option>';
         }).join("");
     }
@@ -693,7 +693,7 @@
       }
     });
 
-    const list = Object.keys(tagCounts).sort().map(function(t) {
+    const list = Object.keys(tagCounts).sort(function(a, b) { return a.localeCompare(b); }).map(function(t) {
       return { tag: t, count: tagCounts[t], isUntagged: false };
     });
     if (untaggedCount > 0) {
@@ -3213,7 +3213,7 @@
         counts[k] = (counts[k] || 0) + 1;
       });
     });
-    const list = Object.keys(counts).sort().map(function(t) {
+    const list = Object.keys(counts).sort(function(a, b) { return a.localeCompare(b); }).map(function(t) {
       return { tag: t, count: counts[t], isUntagged: false };
     });
     if (untagged > 0) list.push({ tag: "__untagged__", count: untagged, isUntagged: true });

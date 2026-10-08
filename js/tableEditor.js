@@ -1093,7 +1093,7 @@
     dd.className = "kta-tag-dropdown";
 
     let html = "";
-    [...tagsExistants].sort().forEach(function(t) {
+    [...tagsExistants].sort(function(a, b) { return String(a).localeCompare(String(b)); }).forEach(function(t) {
       const isSelected = tagsActifs.includes(t);
       const iconUrl = icons[t];
       html += '<div class="kta-tag-option' + (isSelected ? " selected" : "") + '" data-tag="' + _escapeAttr(t) + '">';
@@ -1217,7 +1217,7 @@
 
   function _dupliquerSelection() {
     if (_selection.size === 0) return;
-    const indices = [..._selection].sort();
+    const indices = [..._selection].sort(function(a, b) { return a - b; });
     indices.forEach(function(i) {
       // 🆔 v2.1.0 — 🩸 une copie JSON recopierait l'uid : deux objets distincts
       // partageraient une identité, et la future fusion « le plus récent gagne »

@@ -13110,7 +13110,6 @@
     create:                 createScenario,
     update:                 updateScenario,
     delete:                 deleteScenario,
-    "delete":               deleteScenario,  // alias (delete = reserved keyword)
     duplicate:              duplicateScenario,
     // 🆕 v1.23.0 Phase 2 / Feature C — Création depuis Lost Mode
     creerDepuisLostMode:    creerDepuisLostMode,
