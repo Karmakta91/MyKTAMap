@@ -4,6 +4,10 @@
 > scripts de release, porte de release. **Non vérifié** (outil `gh` absent du poste) : protection de branche
 > sur `main`, réglages « Code security » du dépôt GitHub — à contrôler dans *Settings*.
 > Volet de l'édition installable : audit à part, dans son propre dépôt.
+>
+> ⚠️ **Correctif du 08/10 (soir)** : le dépôt `Karmakta91/MyKTAMap` est **privé** (l'API GitHub anonyme répond
+> 404), alors que la première version de ce rapport le supposait public. Les points touchés (Q1, Q2, Q4, Q5, Q6)
+> sont corrigés ci-dessous : plusieurs services « gratuits sur un dépôt public » sont payants sur un dépôt privé.
 
 ## En une phrase
 
@@ -39,12 +43,12 @@ en CI à chaque push. Sonar vient ensuite, en mode « nouveau code seulement ».
 
 | # | Action | Effort | Gain |
 |---|---|---|---|
-| **Q1** | **Workflow `ci.yml`** sur push (`Karma_dev`, `main`) et PR : `node -c` sur `js/*.js`, `sw.js`, `scripts/**`, puis les 67 garde-fous du pre-commit (Node 22, aucune installation) + `check-data-hors-git` sur l'arbre. ~2 min de calcul, gratuit sur un dépôt public | ½ h | Ferme F1 et F2 : plus rien n'arrive sur `main` sans être passé par les garde-fous |
-| **Q2** | **Protection de `main`** (*Settings → Branches*) : le check `ci` doit être vert avant tout merge, pas de push forcé. Le merge reste fait par toi via `merge-main.ps1` | 10 min | Le garde-fou côté serveur que `guard-git.js` est seulement côté IA |
+| **Q1** | **Workflow `ci.yml`** sur push (`Karma_dev`, `main`) et PR : `node -c` sur `js/*.js`, `sw.js`, `scripts/**`, puis les 67 garde-fous du pre-commit (Node 22, aucune installation) + `check-data-hors-git` sur l'arbre. ~2 min de calcul, pris sur le quota gratuit des dépôts privés (2 000 min/mois [Probable]) | ½ h — **✅ fait (`4a050f9`)** | Ferme F1 et F2 : plus rien n'arrive sur `main` sans être passé par les garde-fous |
+| **Q2** | **Protection de `main`** (*Settings → Branches*) : le check `ci` doit être vert avant tout merge, pas de push forcé. Le merge reste fait par toi via `merge-main.ps1`. ⚠️ [Probable] Sur un dépôt **privé**, les règles de protection de branche demandent un compte GitHub **Pro** (payant) ; en gratuit, à défaut, `merge-main.ps1` peut vérifier l'état de la CI du commit avant de merger | 10 min | Le garde-fou côté serveur que `guard-git.js` est seulement côté IA |
 | **Q3** | **`docker.yml` conditionné à la CI** (`needs` ou `workflow_run`) | 15 min | Plus d'image publiée sur ghcr.io à partir d'un commit au rouge |
-| **Q4** | **Dependabot** (`.github/dependabot.yml`) pour `github-actions` et `scripts/smoke` (npm), et activation des *Dependabot alerts* + *Secret scanning* (gratuits sur un dépôt public) | 15 min | F4 en partie : alertes CVE, actions tenues à jour |
-| **Q5** | **SonarQube Cloud, en mode « nouveau code »** (détail ci-dessous) | 1 h | F3 : duplication, complexité, bugs et failles signalés **sur ce qu'on change**, sans noyer le projet sous l'historique |
-| **Q6** | **CodeQL** (*Settings → Code security → Default setup*, un clic, gratuit sur un dépôt public) | 5 min | Analyse de sécurité JS orientée flux (XSS, injection) : complète Sonar sur les `innerHTML` |
+| **Q4** | **Dependabot** (`.github/dependabot.yml`) pour `github-actions` et `scripts/smoke` (npm), et activation des *Dependabot alerts* (gratuites, dépôt privé compris). ⚠️ [Probable] *Secret scanning* est payant sur un dépôt privé : les garde-fous anti-fuite de la CI en tiennent lieu | 15 min | F4 en partie : alertes CVE, actions tenues à jour |
+| **Q5** | **Sonar en mode « nouveau code »** : sur un dépôt privé, **SonarQube Community Build local** (Docker, gratuit) plutôt que l'offre Cloud (détail ci-dessous) | 1 h | F3 : duplication, complexité, bugs et failles signalés **sur ce qu'on change**, sans noyer le projet sous l'historique |
+| **Q6** | ~~**CodeQL**~~ — ⚠️ [Probable] l'analyse de code GitHub est **payante sur un dépôt privé**. À la place : les règles de sécurité de Sonar local (Q5), et `check-xss.js` qui existe déjà. À reconsidérer si le dépôt devient public | — | — |
 | **Q7** | **`lib/VERSIONS.md`** : la version de chaque librairie vendorisée, avec sa source | 20 min | Rend F4 vérifiable à la main, et par Dependabot via un `package.json` factice si besoin |
 
 À plus long terme : smoke Playwright en CI sur `workflow_dispatch` (F5), un petit tableau de bord des
@@ -52,19 +56,18 @@ garde-fous (F6), puis versionner les scripts de déploiement dans un dépôt pri
 
 ## 🔍 Sonar : comment le brancher sans se noyer
 
-[Probable — offre connue, à confirmer à l'inscription] Le dépôt community est **public** : **SonarQube Cloud**
-(ex-SonarCloud) est gratuit pour un projet public, sans limite de lignes. [Supposition — à vérifier sur la page Pricing au moment de l'inscription] Pour un
-dépôt **privé**, l'offre gratuite a une limite de lignes ; l'alternative gratuite est **SonarQube Community
-Build** auto-hébergé (une image Docker), sans décoration des PR.
+Le dépôt community est **privé**. [Supposition — à vérifier sur la page Pricing] L'offre gratuite de **SonarQube
+Cloud** limite le volume de lignes des projets privés, et le community en compte ~132 000 en JS. Voie retenue :
+**SonarQube Community Build** auto-hébergé (une image Docker, gratuit), lancé sur le poste de KARMA (en
+préparation le 08/10, hors dépôt). ⚠️ Un serveur sur `localhost` n'est **pas joignable** par un runner GitHub :
+pas d'étape Sonar dans `ci.yml` qui le vise ; l'analyse se lance depuis le poste (scanner en Docker).
 
 **Mise en place (community)**
-1. Se connecter à sonarcloud.io avec le compte GitHub, importer `Karmakta91/MyKTAMap`, organisation gratuite.
-2. **Analyse automatique** (sans CI) pour démarrer, ou bien une étape `SonarSource/sonarqube-scan-action` dans
-   `ci.yml` avec un secret `SONAR_TOKEN`.
-3. `sonar-project.properties` minimal :
+1. Serveur local, projet créé à la main, jeton d'analyse (jamais commité, ni collé dans un historique de shell).
+2. Analyse depuis le poste avec le scanner en Docker (`sonarsource/sonar-scanner-cli`), sur `Karma_dev`.
+3. `sonar-project.properties` minimal (à décider avec KARMA avant de l'ajouter au dépôt) :
    ```properties
-   sonar.projectKey=Karmakta91_MyKTAMap
-   sonar.organization=karmakta91
+   sonar.projectKey=myktamap-community
    sonar.sources=js,sw.js,css,index.html
    sonar.exclusions=lib/**,data/**,docs/**,lang/**,scripts/smoke/node_modules/**
    sonar.tests=scripts
@@ -85,8 +88,8 @@ Build** auto-hébergé (une image Docker), sans décoration des PR.
 
 ## Plan proposé
 
-1. **Lot 1 (½ journée)** : Q1 + Q2 + Q3 + Q4 + Q6. C'est le socle : CI serveur, `main` protégée, image Docker
-   conditionnée, alertes de dépendances et CodeQL.
+1. **Lot 1 (½ journée)** : Q1 (✅ fait) + Q2 (selon l'offre GitHub) + Q3 + Q4. C'est le socle : CI serveur,
+   `main` protégée, image Docker conditionnée, alertes de dépendances. (Q6 CodeQL retiré : payant en privé.)
 2. **Lot 2 (1 h + réglages au fil de l'eau)** : Q5 Sonar en mode « nouveau code », profil de qualité ajusté
    après les premiers faux positifs.
 3. **Lot 3 (plus tard)** : Q7, smoke en CI manuelle, tableau de bord.
