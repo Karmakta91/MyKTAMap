@@ -10,6 +10,8 @@
 #   3. les TROIS sources de version disent la même chose — un `CACHE_NAME`
 #      oublié, et la mise à jour n'atteint jamais personne ;
 #   4. la suite complète des garde-fous est verte ;
+#      4bis. la porte qualité SonarQube est OK sur le nouveau code
+#      (`sonar-scan.ps1` ; serveur éteint = dérogation tapée, jamais en silence) ;
 #   5. `main` est à jour vis-à-vis du dépôt distant (sinon le merge diverge) ;
 #   6. il te montre ce qui va partir, puis attend une confirmation TAPÉE.
 #
@@ -170,6 +172,23 @@ if ($SkipGuards) {
     Stop-Net "La suite pre-commit sort en erreur (code $code) malgré $verts assertions vertes."
   }
   Ok "$verts assertions vertes, 0 rouge"
+}
+
+# ───────── 4bis. analyse SonarQube ─────────
+# Marche 1ter de la porte : le serveur tourne en local (Docker), la CI GitHub
+# ne le joint pas — c'est donc ici qu'il est consulté. Porte en échec = refus.
+# Serveur éteint ou jeton absent = l'analyse n'a pas eu lieu : ce n'est PAS un
+# succès, KARMA décide en tapant DEROGE (à consigner dans le relevé de release).
+Titre "4bis. Analyse SonarQube"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $racine "scripts\release\sonar-scan.ps1")
+$codeSonar = $LASTEXITCODE
+if ($codeSonar -eq 2) {
+  Stop-Net "Porte qualité SonarQube en échec sur le nouveau code. On corrige avant de merger."
+}
+if ($codeSonar -ne 0) {
+  $rep = Read-Host "  Analyse Sonar impossible. Continuer sans ? (tape DEROGE, puis consigne-le dans le relevé)"
+  if ($rep -ne "DEROGE") { Stop-Net "Merge annulé : relance Sonar puis ce script." }
+  Info "Sonar dérogé (déclaré par KARMA) — à consigner dans le relevé de release"
 }
 
 # ───────── 5. le distant ─────────
