@@ -168,8 +168,9 @@ eu lieu : `merge-main.ps1` demande `DEROGE`, à consigner dans le relevé.
 
 **Porte qualité `MyKTAMap`** (et non « Sonar way », qui refuserait presque toute release : elle exige 0 nouveau
 code smell et 80 % de couverture, alors que le dépôt n'a pas de tests unitaires). Conditions sur le nouveau code :
-fiabilité A (aucun nouveau bug), sécurité A (aucune nouvelle faille), 100 % des points sensibles revus,
-duplication ≤ 3 %.
+fiabilité A (aucun nouveau bug), sécurité A (aucune nouvelle faille), revue de sécurité A (points sensibles
+revus), duplication ≤ 3 %. Appliquée aux projets `MyKTAMap` et `MyKTAMap-pro` **explicitement** (*Project
+Settings → Quality Gate*) : un projet rattaché à « Sonar way » à sa création ignore la porte par défaut.
 
 **Faux positif** : le marquer dans Sonar (*False positive* ou *Accept*) **avec un commentaire** qui dit pourquoi —
 jamais en silence. 🩸 Le `.sort()` sans comparateur de `js/proLicense.js > _canonique` est **voulu** (l'ordre par
