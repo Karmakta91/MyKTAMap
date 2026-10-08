@@ -143,6 +143,8 @@
   let _baselineOsmZoom = null; // zoom OSM où le plan tient au fit (calc 1 fois)
   let _baseLevel       = null; // niveau plan heuristique à la baseline
   let _currentLevel    = null; // niveau plan actuellement affiché
+  let _rendusLances    = 0;    // jeton de _renderLevel : seul le DERNIER rendu lancé pose ses tuiles
+  const PANE_TUILES    = "ktaOsmTuiles";
   let _tilesByPath     = {};   // path → { overlay, tl, tr, bl } pour cull rapide
   let _moveEndHandler  = null; // ref pour cleanup au close()
   // 🆕 v1.39.12 — Step 1 : POI session + data layers
@@ -1952,6 +1954,8 @@
 
   function _applyOpacity() {
     if (!_planLayer) return;
+    const pane = _osmMap && _osmMap.getPane(PANE_TUILES);
+    if (pane) { pane.style.opacity = String(_opacity); return; }   // tuiles opaques : le pane porte l'opacité
     _planLayer.eachLayer(function(l) {
       try {
         if (l.setOpacity) l.setOpacity(_opacity);
@@ -2164,6 +2168,12 @@
     const planH  = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.imageHeight;
     if (!tiling || !planW || !planH) return;
 
+    // 🩸 08/10/2026 — COURSE ENTRE DEUX RENDUS. _renderLevel attend l'extraction des tuiles (Phase 2) ;
+    // pendant ce temps un autre cran de zoom en lançait un second, qui nettoyait et posait SON niveau —
+    // puis le premier reprenait et ajoutait ses tuiles PAR-DESSUS : deux niveaux à l'écran, jamais
+    // nettoyés avant le changement suivant. Chaque rendu prend un jeton ; après l'attente, seul le
+    // dernier lancé pose ses tuiles (il recalcule tout ce qui manque).
+    const jeton = ++_rendusLances;
     const switching = (z !== _currentLevel);
     if (switching) {
       _cleanupAllTiles();
@@ -2222,17 +2232,23 @@
       console.log("[OsmView] Lazy : " + aExtraire.length + " tuile(s) extraite(s) pour z=" + z + " en " + (Date.now() - tDebut) + " ms");
     }
 
+    // Rendu dépassé pendant l'attente (un autre cran de zoom / pan l'a remplacé) : on ne pose rien.
+    if (jeton !== _rendusLances || z !== _currentLevel || !_osmMap) return;
+
     // Phase 3 : créer les overlays (add to _planLayer + tracker dans _tilesByPath)
     let added = 0;
+    const aPane = !!_osmMap.getPane(PANE_TUILES);
     for (const t of aAjouter) {
+      if (_tilesByPath[t.path]) continue;   // posée entre-temps : jamais deux overlays pour une tuile
       const url = _resolveTileUrl(t.path);
       if (!url) continue;
       try {
-        const overlay = L.imageOverlay.rotated(url, t.tl, t.tr, t.bl, { interactive: false });
+        const overlay = L.imageOverlay.rotated(url, t.tl, t.tr, t.bl,
+          aPane ? { interactive: false, pane: PANE_TUILES } : { interactive: false });
         // Remplissage noir des tuiles de bord masqué (les « petits carrés » autour d'un plan opaque) — 07/10/2026.
         if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(planW, planH, tileSize, scale, t.col, t.k));
         overlay.addTo(_planLayer);
-        if (overlay.setOpacity) overlay.setOpacity(_opacity);
+        if (!aPane && overlay.setOpacity) overlay.setOpacity(_opacity);   // sans pane : à l'ancienne
         _tilesByPath[t.path] = { overlay: overlay, tl: t.tl, tr: t.tr, bl: t.bl };
         added++;
       } catch(e) {
@@ -2295,6 +2311,13 @@
     // pas de méthode getBounds(), seule FeatureGroup (et sous-classes) l'a.
     // Sans ça, _centerOnPlan crash avec "_planLayer.getBounds is not a function".
     _planLayer = L.featureGroup().addTo(_osmMap);
+    // 🫥 08/10/2026 — OPACITÉ SUR LE CALQUE, PAS SUR CHAQUE TUILE (retour KARMA : zone plus sombre au milieu
+    // du plan). À l'opacité de chaque tuile, deux tuiles qui se chevauchent (transition de niveau, liseré
+    // d'un pixel entre voisines) s'additionnaient : 50 % + 50 % ≈ 75 %. Tuiles opaques dans un pane dédié,
+    // opacité choisie posée sur le pane : un chevauchement ne se voit plus. Sous les tracés (canvas, 400).
+    const paneTuiles = _osmMap.createPane(PANE_TUILES);
+    paneTuiles.style.zIndex = "350";
+    paneTuiles.style.opacity = String(_opacity);
 
     // 🆕 v1.39.10 — Rendu V2 tuiles (cf header doc § CRASH MOBILE)
     // open() a déjà gaté sur _isV2Plan() → ici on suppose V2 valide.
