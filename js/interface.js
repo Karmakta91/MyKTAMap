@@ -2992,6 +2992,9 @@ _setGroupeModeActif("tracker", isTracking, null);
     if (dejaActif) return;
 
     toggleRoadMode(type);
+    // 🔒 08/10/2026 — mode refusé (plan en lecture seule) : le bouton ne s'allume pas. Avant, il
+    // s'allumait quand même et rien ne se plaçait (retour KARMA, compte créateur sur un plan partagé).
+    if (window.modeRoad !== type) return;
     btnCible.classList.add("kta-actif");
     _modesActifs["road"] = {
       btnEl: btnCible,
@@ -3171,6 +3174,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     if (dejaActif) return;
 
     toggleZoneMode(type);
+    if (window.modeZone !== type) return;   // 🔒 mode refusé (lecture seule) : le bouton ne s'allume pas
     btnCible.classList.add("kta-actif");
     _modesActifs["zone"] = {
       btnEl: btnCible,
@@ -3326,6 +3330,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     if (typeof window.toggleStructureMode === "function") {
       window.toggleStructureMode(type);
     }
+    if (window.modeStructure !== type) return;   // 🔒 mode refusé (lecture seule) : le bouton ne s'allume pas
     btnCible.classList.add("kta-actif");
     _modesActifs["structure"] = {
       btnEl: btnCible,

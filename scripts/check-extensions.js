@@ -527,6 +527,25 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
   }
 
+  // ═════════ 6 ter bis. ⏪ L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z (08/10/2026, retour KARMA) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm3 = require("vm");
+    vm3.runInContext(lire("js/ktaUid.js"), vm3.createContext(w), { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }];
+    let resets = 0, ecritures = 0;
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; ecritures++; };
+    w.getRoads = () => []; w.setRoads = () => {}; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.HistoryManager = { reset() { resets++; }, canUndo: () => true, canRedo: () => false };
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }], roads: [], zones: [], structures: [], tombstones: [] });
+    t("⏪ écho de son propre envoi (même uid, même date) → historique d'annulation gardé, rien de réécrit",
+      resets === 0 && ecritures === 0);
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_ffff6666", name: "D'un autre", updatedAt: 600 }], roads: [], zones: [], structures: [], tombstones: [] });
+    t("⏪ un vrai objet reçu (d'un autre) → l'historique repart de zéro, comme avant", resets === 1 && ecritures === 1);
+  }
+
   // ═════════ 6 quater. ACTIONS DU COMPTE ═════════
   {
     const { K } = nouveauContexte(null);
