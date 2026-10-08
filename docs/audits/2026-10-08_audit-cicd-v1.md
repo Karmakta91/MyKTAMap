@@ -10,8 +10,8 @@
 > sont corrigés ci-dessous : plusieurs services « gratuits sur un dépôt public » sont payants sur un dépôt privé.
 >
 > **Avancement au 09/10/2026** : Q1 ✅ (`4a050f9`, vert sur GitHub) · Q2 ✅ option b (`merge-main.ps1` exige la CI verte
-> du commit) · Q4 ✅ (`b55510e` Dependabot + alertes activées par KARMA) · Q5 Sonar local en cours (autre session) ·
-> Q6 retiré (payant en privé) · Q3, Q7 à faire.
+> du commit) · Q4 ✅ (`b55510e` Dependabot + alertes activées par KARMA) · Q5 ✅ Sonar local, marche 1ter de la
+> porte (`44d290f`, `a8a9447` ; correctifs du premier scan : `3815924`) · Q6 retiré (payant en privé) · Q3, Q7 à faire.
 
 ## En une phrase
 
@@ -51,7 +51,7 @@ en CI à chaque push. Sonar vient ensuite, en mode « nouveau code seulement ».
 | **Q2** ✅ (option b) | **Protection de `main`** (*Settings → Branches*) : le check `ci` doit être vert avant tout merge, pas de push forcé. Le merge reste fait par toi via `merge-main.ps1`. ⚠️ [Probable] Sur un dépôt **privé**, les règles de protection de branche demandent un compte GitHub **Pro** (payant) ; en gratuit, à défaut, `merge-main.ps1` peut vérifier l'état de la CI du commit avant de merger | 10 min | Le garde-fou côté serveur que `guard-git.js` est seulement côté IA |
 | **Q3** | **`docker.yml` conditionné à la CI** (`needs` ou `workflow_run`) | 15 min | Plus d'image publiée sur ghcr.io à partir d'un commit au rouge |
 | **Q4** ✅ | **Dependabot** (`.github/dependabot.yml`) pour `github-actions` et `scripts/smoke` (npm), et activation des *Dependabot alerts* (gratuites, dépôt privé compris). ⚠️ [Probable] *Secret scanning* est payant sur un dépôt privé : les garde-fous anti-fuite de la CI en tiennent lieu | 15 min | F4 en partie : alertes CVE, actions tenues à jour |
-| **Q5** | **Sonar en mode « nouveau code »** : sur un dépôt privé, **SonarQube Community Build local** (Docker, gratuit) plutôt que l'offre Cloud (détail ci-dessous) | 1 h | F3 : duplication, complexité, bugs et failles signalés **sur ce qu'on change**, sans noyer le projet sous l'historique |
+| **Q5** ✅ | **Sonar en mode « nouveau code »** : sur un dépôt privé, **SonarQube Community Build local** (Docker, gratuit) plutôt que l'offre Cloud (détail ci-dessous) | 1 h — **✅ fait** : `scripts/release/sonar-scan.ps1`, appelé par `merge-main.ps1` | F3 : duplication, complexité, bugs et failles signalés **sur ce qu'on change**, sans noyer le projet sous l'historique |
 | **Q6** | ~~**CodeQL**~~ — ⚠️ [Probable] l'analyse de code GitHub est **payante sur un dépôt privé**. À la place : les règles de sécurité de Sonar local (Q5), et `check-xss.js` qui existe déjà. À reconsidérer si le dépôt devient public | — | — |
 | **Q7** | **`lib/VERSIONS.md`** : la version de chaque librairie vendorisée, avec sa source | 20 min | Rend F4 vérifiable à la main, et par Dependabot via un `package.json` factice si besoin |
 
@@ -62,28 +62,32 @@ garde-fous (F6), puis versionner les scripts de déploiement dans un dépôt pri
 
 Le dépôt community est **privé**. [Supposition — à vérifier sur la page Pricing] L'offre gratuite de **SonarQube
 Cloud** limite le volume de lignes des projets privés, et le community en compte ~132 000 en JS. Voie retenue :
-**SonarQube Community Build** auto-hébergé (une image Docker, gratuit), lancé sur le poste de KARMA (en
-préparation le 08/10, hors dépôt). ⚠️ Un serveur sur `localhost` n'est **pas joignable** par un runner GitHub :
-pas d'étape Sonar dans `ci.yml` qui le vise ; l'analyse se lance depuis le poste (scanner en Docker).
+**SonarQube Community Build** auto-hébergé (une image Docker, gratuit), lancé sur le poste de KARMA (hors
+dépôt). ⚠️ Un serveur sur `localhost` n'est **pas joignable** par un runner GitHub : pas d'étape Sonar dans
+`ci.yml` qui le vise ; l'analyse se lance depuis le poste (scanner en Docker).
 
-**Mise en place (community)**
-1. Serveur local, projet créé à la main, jeton d'analyse (jamais commité, ni collé dans un historique de shell).
-2. Analyse depuis le poste avec le scanner en Docker (`sonarsource/sonar-scanner-cli`), sur `Karma_dev`.
-3. `sonar-project.properties` minimal (à décider avec KARMA avant de l'ajouter au dépôt) :
-   ```properties
-   sonar.projectKey=myktamap-community
-   sonar.sources=js,sw.js,css,index.html
-   sonar.exclusions=lib/**,data/**,docs/**,lang/**,scripts/smoke/node_modules/**
-   sonar.tests=scripts
-   ```
-4. **Quality Gate sur le nouveau code seulement** (« Clean as You Code ») : *New Code* = depuis la version
-   précédente. Le premier scan remontera des milliers de signalements sur l'existant : c'est attendu, et on
-   **ne les traite pas en bloc**. Seul le code modifié doit passer.
+**Mise en place (community) — ✅ faite le 08-09/10/2026**
+1. Serveur SonarQube 26.9 + PostgreSQL en Docker, sur `127.0.0.1:9000` seulement ; projet `MyKTAMap` créé à la
+   main ; jeton d'analyse dans la variable d'environnement utilisateur `SONAR_TOKEN` (jamais commité, ni collé
+   dans un historique de shell).
+2. `scripts/release/sonar-scan.ps1` lance le scanner en Docker et rend le verdict de la porte (0 / 2 / 1) ;
+   `merge-main.ps1` l'appelle (étape 4bis). Pas de `sonar-project.properties` : les réglages (sources,
+   exclusions dont `data/**` en dur, version lue dans `version.json`) sont passés par le script.
+3. **Porte qualité `MyKTAMap`** sur le nouveau code seulement (*New Code* = version précédente) : fiabilité A,
+   sécurité A, revue de sécurité A, duplication ≤ 3 %. « Sonar way » a été écartée : 0 nouveau code smell et
+   80 % de couverture refuseraient presque toute release. Détails : `docs/RELEASE_GATE.md` marche 1ter.
+
+**Premier scan (v2.10.3, 112 000 lignes)** : 43 bugs, 13 vulnérabilités, 5 335 code smells. Les 13
+vulnérabilités (`Math.random`) et le seul « bloquant » (`pathfinder.js`) sont des faux positifs, marqués avec
+commentaire ; 19 tris sans comparateur et 3 clés en double corrigés (`3815924`, dont un vrai bug : duplication de
+lignes du tableau dans le désordre au-delà de 10). Le tri de `proLicense.js > _canonique` est **voulu** (forme
+canonique signée) : marqué faux positif, à ne pas « corriger ». Les code smells restent la base, non traités en bloc.
 
 **Ce qu'il faut savoir avant**
-- Le code vit en **globales `window.*`, sans `import`** : Sonar va signaler des identifiants « non définis » et
-  des fonctions « inutilisées » qui sont en réalité appelées par un autre fichier. Il faudra marquer ces règles
-  « faux positif » une fois, ou les désactiver dans un profil de qualité dédié.
+- Le code vit en **globales `window.*`, sans `import`**. Crainte du rapport : des identifiants « non définis »
+  par milliers. Constat au premier scan : le profil par défaut ne les signale pas ; le bruit vient surtout du
+  style (1 942 suggestions de `?.`, 333 de complexité) — sans effet sur la porte, qui ne juge que bugs, failles
+  et duplication.
 - Les règles utiles d'emblée : duplication, complexité cognitive, code mort réel, failles (XSS via `innerHTML`,
   `postMessage`), regex catastrophiques. Les règles de style sont à couper : la convention du projet est
   documentée dans `CLAUDE.md` et elle diffère des défauts de Sonar.
@@ -94,6 +98,6 @@ pas d'étape Sonar dans `ci.yml` qui le vise ; l'analyse se lance depuis le post
 
 1. **Lot 1 (½ journée)** : Q1 (✅ fait) + Q2 (selon l'offre GitHub) + Q3 + Q4. C'est le socle : CI serveur,
    `main` protégée, image Docker conditionnée, alertes de dépendances. (Q6 CodeQL retiré : payant en privé.)
-2. **Lot 2 (1 h + réglages au fil de l'eau)** : Q5 Sonar en mode « nouveau code », profil de qualité ajusté
-   après les premiers faux positifs.
+2. **Lot 2 (1 h + réglages au fil de l'eau)** : Q5 Sonar en mode « nouveau code » (✅ fait). Ouvert, au
+   `BACKLOG.md` : Sonar en CI par un runner auto-hébergé (à trancher par KARMA).
 3. **Lot 3 (plus tard)** : Q7, smoke en CI manuelle, tableau de bord.

@@ -205,6 +205,25 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 
 ---
 
+## 🔍 Qualité de code (SonarQube) — ce qui reste (09/10/2026)
+
+> Sonar tourne en local (Docker) et juge le **nouveau code** à la porte de release (marche 1ter,
+> `scripts/release/sonar-scan.ps1`). Ce qui suit est ouvert ; le reste est dans `docs/RELEASE_GATE.md`.
+
+- 🟠 **Sonar en CI par un runner auto-hébergé — à trancher par KARMA.** Un runner GitHub hébergé ne joint pas le
+  serveur local ; un runner installé sur le poste de KARMA, oui. Coût : il exécute le code de **chaque push** avec
+  les droits du compte Windows (compte de service limité recommandé), un poste éteint laisse le job en attente,
+  et c'est un service de plus à tenir à jour. Si oui : job `sonar` **séparé et non bloquant** dans `ci.yml`
+  (`runs-on: self-hosted`), secret `SONAR_TOKEN` côté GitHub — repris par la session CI. Si non : la marche 1ter
+  suffit (une analyse par release).
+- 🟡 **Bugs déjà présents, relevés par le premier scan** (✅ vérifié 09/10, Sonar) — n'entrent pas dans la porte
+  (ancien code), à prendre au fil de l'eau : 5 `try` autour d'une promesse sans `await` (`utils.js`,
+  `homeProfile.js` ×2, `osmView.js`, `sessionBackups.js`), 5 champs sans libellé dans `index.html`
+  (accessibilité), 2 `height` en double dans `css/style.css`, une ternaire aux deux branches identiques
+  (`map.js`, `_minZoom`). Liste à jour : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
+- ⚪ **Jetons Sonar** : expiration vers le **06/01/2027** (90 jours) — au-delà, `sonar-scan.ps1` sort en code 1
+  et `merge-main.ps1` demande `DEROGE`. Régénérer un *Project Analysis Token* et le ranger dans `SONAR_TOKEN`.
+
 ## 🔴 Dettes ouvertes
 
 > Rangées par **qui doit agir**. Une dette « bloquée sur KARMA » n'attend pas du code — elle attend une mesure sur
@@ -215,6 +234,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 |---|---|---|---|
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
+| **D-guidage-instable** | `check-guidage.js` a sorti « ⚠️ 1 echec(s) » une fois au pre-commit (09/10, juste après les tests d'itinéraire Secours brancard / accès barrés), puis vert sur 2 relances sans changement | 🔬 non reproduit — possible concurrence avec une autre session | personne — s'il revient, garder la sortie complète du hook |
 | **D-confirm** | `confirm()` natifs hors charte | 📋 au fil de l'eau — cf. **📋 Popups natives** | personne |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |

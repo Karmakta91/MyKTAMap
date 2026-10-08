@@ -303,7 +303,7 @@ tendance à y écrire du technique : la règle est dans le fichier de contexte p
 |---|---|---|
 | Vérifications au commit | ✅ | Hooks Git (§5.2) |
 | Cohérence des trois sources de version | ✅ | Garde-fou `commit-msg` |
-| Merge sur `main` | ⚙️ semi : un script vérifie tout ce qu'une machine peut vérifier (arbre propre, branche légitime, versions, garde-fous, `main` à jour), montre ce qui va partir, puis **demande de confirmer, en tapant**, les marches 2 à 4 de la porte | `scripts/release/merge-main.ps1` (propriétaire seul) |
+| Merge sur `main` | ⚙️ semi : un script vérifie tout ce qu'une machine peut vérifier (arbre propre, branche légitime, versions, garde-fous, porte qualité SonarQube locale, CI GitHub verte, `main` à jour), montre ce qui va partir, puis **demande de confirmer, en tapant**, les marches 2 à 4 de la porte | `scripts/release/merge-main.ps1` (propriétaire seul) |
 | Tag Git + page de release sur GitHub | ✅ | Workflow d'intégration continue, déclenché par le merge sur `main` |
 | Image Docker pour l'auto-hébergement | ✅ | Second workflow, déclenché par le tag |
 | **Déploiement sur les serveurs** | ❌ **manuel**, par le propriétaire | Script d'envoi qui affiche version + cache avant d'envoyer, refuse d'écraser les données en prod, normalise les droits après |
