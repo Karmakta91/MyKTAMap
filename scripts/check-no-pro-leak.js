@@ -109,6 +109,11 @@ const EXEMPT_FILES = [
 // ============================================================
 
 function getStagedFiles() {
+  // CI (scripts/ci-commits.sh) : rien n'est indexé sur GitHub — la liste vient des commits poussés.
+  if (process.env.KTA_FICHIERS_CI !== undefined) {
+    return process.env.KTA_FICHIERS_CI.split(/\r?\n/).map(function (s) { return s.trim(); })
+      .filter(function (f) { return f && fs.existsSync(f); });
+  }
   try {
     // --diff-filter=ACMR = Added, Copied, Modified, Renamed
     //   (= les fichiers qui vont vraiment finir dans le commit)

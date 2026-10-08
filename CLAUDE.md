@@ -15,7 +15,8 @@
 - 🛡️ Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (refuse `*.php`, `pro/`, `backend/`, noms de modules pro ; activer 1×: `git config core.hooksPath .githooks`).
 
 ## ⚙️ Commandes & validation
-- **Syntaxe** : `node -c fichier.js` (seul filet — pas de tests auto, pas de linter).
+- **Syntaxe** : `node -c fichier.js` (pas de linter).
+- **CI GitHub** (`.github/workflows/ci.yml`, audit CI/CD du 08/10/2026) : à chaque push sur `Karma_dev` / `main` et PR — syntaxe, **commits reçus** (`scripts/ci-commits.sh` : anti-fuite pro et `data/` hors Git commit par commit, `Data-deroge:` lu dans le message) puis **tous les garde-fous du pre-commit**. Un hook contourné (`--no-verify`, poste sans `core.hooksPath`, éditeur web) ne passe plus en silence. Rouge = on corrige avant d'empiler. **Un garde-fou ajouté au pre-commit tourne aussi en CI** (la CI lance `.githooks/pre-commit`) ; un garde-fou qui lit l'index (`git diff --cached`) doit accepter `KTA_FICHIERS_CI` (liste de fichiers), sinon il passe à vide en CI.
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
 - **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026, après 8 bumps de dev v2.0.1 → v2.7.4 pour une prod restée en v2.0.0) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod, juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.

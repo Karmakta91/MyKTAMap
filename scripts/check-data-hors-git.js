@@ -37,6 +37,10 @@ const fs = require("fs");
 const { execFileSync } = require("child_process");
 
 function indexes() {
+  // CI (scripts/ci-commits.sh) : les fichiers d'UN commit poussé, son message en argument.
+  if (process.env.KTA_FICHIERS_CI !== undefined) {
+    return process.env.KTA_FICHIERS_CI.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
   try {
     return execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"],
                         { encoding: "utf8" })
