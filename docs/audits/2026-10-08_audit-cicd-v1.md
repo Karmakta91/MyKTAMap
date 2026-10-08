@@ -8,6 +8,10 @@
 > ⚠️ **Correctif du 08/10 (soir)** : le dépôt `Karmakta91/MyKTAMap` est **privé** (l'API GitHub anonyme répond
 > 404), alors que la première version de ce rapport le supposait public. Les points touchés (Q1, Q2, Q4, Q5, Q6)
 > sont corrigés ci-dessous : plusieurs services « gratuits sur un dépôt public » sont payants sur un dépôt privé.
+>
+> **Avancement au 09/10/2026** : Q1 ✅ (`4a050f9`, vert sur GitHub) · Q2 ✅ option b (`merge-main.ps1` exige la CI verte
+> du commit) · Q4 ✅ (`b55510e` Dependabot + alertes activées par KARMA) · Q5 Sonar local en cours (autre session) ·
+> Q6 retiré (payant en privé) · Q3, Q7 à faire.
 
 ## En une phrase
 
@@ -44,9 +48,9 @@ en CI à chaque push. Sonar vient ensuite, en mode « nouveau code seulement ».
 | # | Action | Effort | Gain |
 |---|---|---|---|
 | **Q1** | **Workflow `ci.yml`** sur push (`Karma_dev`, `main`) et PR : `node -c` sur `js/*.js`, `sw.js`, `scripts/**`, puis les 67 garde-fous du pre-commit (Node 22, aucune installation) + `check-data-hors-git` sur l'arbre. ~2 min de calcul, pris sur le quota gratuit des dépôts privés (2 000 min/mois [Probable]) | ½ h — **✅ fait (`4a050f9`)** | Ferme F1 et F2 : plus rien n'arrive sur `main` sans être passé par les garde-fous |
-| **Q2** | **Protection de `main`** (*Settings → Branches*) : le check `ci` doit être vert avant tout merge, pas de push forcé. Le merge reste fait par toi via `merge-main.ps1`. ⚠️ [Probable] Sur un dépôt **privé**, les règles de protection de branche demandent un compte GitHub **Pro** (payant) ; en gratuit, à défaut, `merge-main.ps1` peut vérifier l'état de la CI du commit avant de merger | 10 min | Le garde-fou côté serveur que `guard-git.js` est seulement côté IA |
+| **Q2** ✅ (option b) | **Protection de `main`** (*Settings → Branches*) : le check `ci` doit être vert avant tout merge, pas de push forcé. Le merge reste fait par toi via `merge-main.ps1`. ⚠️ [Probable] Sur un dépôt **privé**, les règles de protection de branche demandent un compte GitHub **Pro** (payant) ; en gratuit, à défaut, `merge-main.ps1` peut vérifier l'état de la CI du commit avant de merger | 10 min | Le garde-fou côté serveur que `guard-git.js` est seulement côté IA |
 | **Q3** | **`docker.yml` conditionné à la CI** (`needs` ou `workflow_run`) | 15 min | Plus d'image publiée sur ghcr.io à partir d'un commit au rouge |
-| **Q4** | **Dependabot** (`.github/dependabot.yml`) pour `github-actions` et `scripts/smoke` (npm), et activation des *Dependabot alerts* (gratuites, dépôt privé compris). ⚠️ [Probable] *Secret scanning* est payant sur un dépôt privé : les garde-fous anti-fuite de la CI en tiennent lieu | 15 min | F4 en partie : alertes CVE, actions tenues à jour |
+| **Q4** ✅ | **Dependabot** (`.github/dependabot.yml`) pour `github-actions` et `scripts/smoke` (npm), et activation des *Dependabot alerts* (gratuites, dépôt privé compris). ⚠️ [Probable] *Secret scanning* est payant sur un dépôt privé : les garde-fous anti-fuite de la CI en tiennent lieu | 15 min | F4 en partie : alertes CVE, actions tenues à jour |
 | **Q5** | **Sonar en mode « nouveau code »** : sur un dépôt privé, **SonarQube Community Build local** (Docker, gratuit) plutôt que l'offre Cloud (détail ci-dessous) | 1 h | F3 : duplication, complexité, bugs et failles signalés **sur ce qu'on change**, sans noyer le projet sous l'historique |
 | **Q6** | ~~**CodeQL**~~ — ⚠️ [Probable] l'analyse de code GitHub est **payante sur un dépôt privé**. À la place : les règles de sécurité de Sonar local (Q5), et `check-xss.js` qui existe déjà. À reconsidérer si le dépôt devient public | — | — |
 | **Q7** | **`lib/VERSIONS.md`** : la version de chaque librairie vendorisée, avec sa source | 20 min | Rend F4 vérifiable à la main, et par Dependabot via un `package.json` factice si besoin |
