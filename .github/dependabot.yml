@@ -1,0 +1,20 @@
+# Veille des dépendances (audit CI/CD du 08/10/2026, Q4). Gratuit, dépôt privé compris.
+# Dependabot ouvre une demande de fusion (PR) par mise à jour : la CI la teste (garde-fous), KARMA décide.
+# ⚠️ Les librairies copiées dans lib/ (Leaflet, JSZip, jsPDF, html2canvas) ne sont PAS suivies par
+# Dependabot : leur veille passe par lib/VERSIONS.md (Q7).
+version: 2
+updates:
+  # Smoke navigateur de la porte de release (Playwright).
+  - package-ecosystem: npm
+    directory: /scripts/smoke
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    target-branch: Karma_dev
+
+  # Actions GitHub des workflows (checkout, setup-node, docker…).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    target-branch: Karma_dev
