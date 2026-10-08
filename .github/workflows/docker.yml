@@ -56,7 +56,7 @@ jobs:
       # 1. Checkout du repo au tag/HEAD
       # ----------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Si trigger manuel avec un tag spécifié, on checkout ce tag.
           # Sinon, le checkout par défaut (HEAD du tag qui a déclenché).
