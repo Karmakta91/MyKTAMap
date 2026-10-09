@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.11.0` (09/10/2026)
+## 📦 Version courante — `v2.12.0` (09/10/2026)
+
+> 💬 **v2.12.0 — Plus aucune popup du navigateur, PDF accentués, librairies à jour** : les 193 `alert()` / `confirm()` / `prompt()` natifs passent par les fenêtres de l'app (`ktaAlerte`, `ktaConfirm`, toasts selon le réglage de notifications), cliquet à 0 ; les PDF gardent leurs accents ; jsPDF 4.2.1 (avis de sécurité) et JSZip 3.10.2, veillés par Dependabot ; outils de dessin grisés en lecture seule ; FR en dur restant migré ; relevés réels exclus des images Docker locales.
 
 > 🔏 **v2.11.0 — Licence : installation fermée si refusée, plus d'import par l'utilisateur** : une installation pro dont la licence est absente, expirée ou refusée par le serveur reste fermée (« Licence de l'installation invalide »), jamais rouverte en community sur les données de l'appareil ; écran d'accueil réduit à « Continuer » ; splash neutre sur une installation reliée ; la doc interne n'est plus servie (sites, image Docker, ZIP) ; tri des listes selon la langue ; chaîne CI/CD complétée (Sonar, état des sites, marque verte, déploiement automatique).
 
@@ -565,6 +567,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.12.0 (09/10/2026) — Plus aucune popup native, PDF accentués, librairies à jour (branche `Karma_dev`)
+
+- 💬 **Popups natives → fenêtres de l'app** (`abb7af2`, `dc01f6a`, `d408139`) : `window.ktaAlerte` (texte échappé, repli natif si l'interface ne peut pas s'afficher), `ktaConfirm` gagne `zIndex` et `texte` (fin de sortie du Carnet), Échap n'agit plus que sur la confirmation. Les 39 `confirm()` attendent la réponse ; les 153 `alert()` suivent la règle KARMA avec le réglage de notifications (à lire pour agir → fenêtre ; résultat invisible → toast warn ; confirmation → toast info ; doute → fenêtre). Corrigés en route : confirmation ouverte **derrière** l'éditeur de légende, Échap qui fermait aussi l'import de profil. `check-popups-natives.js` : cliquet, plafond 0.
+- 🖨️ **PDF accentués** (`5614c9d`) : la police standard affiche tous les accents FR/ES (mesuré) ; libellés PDF réécrits avec accents (75 FR, 23 ES, briefing pompiers compris), texte libre filtré par `window.ktaTextePdf` (flèches → `->`, emojis retirés), espace après « : » rétabli dans le rapport de sortie ; `check-pdf-texte.js`.
+- 🔒 **Librairies** (`4b3c51b`) : jsPDF 2.5.1 → 4.2.1 (dizaine d'avis, trois critiques), JSZip 3.10.2 — fichiers des paquets npm officiels, 5 PDF identiques avant/après ; veille Dependabot de `lib/` par manifeste déclaratif + `check-libs.js`.
+- 🔒 **Lecture seule** (`70e2b0e`) : outils de dessin grisés sur un plan en droit « lire », un clic rappelle « Lecture seule ».
+- 🐛 **Corrections** : Carnet — la fiche se rouvre après « Terminer la sortie » ; promesses dont l'échec n'était jamais vu ; accessibilité de l'accueil (`845faf2`) ; FR en dur restant migré (calibrage d'échelle, logs, chargement, favoris) et « Aucun fichier » reconnu en anglais au Générateur (`7d9cd1c`, `0327581`) ; écran de licence « absente, expirée ou invalide » (`03d106a`).
+- 🐳 **Docker** (`ff527b8`) : une image construite sur le poste n'embarque plus les relevés réels (`.dockerignore` en liste blanche, index fictif suivi).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; page de transparence sans numéros de version, section « comment le code est contrôlé » (`1a3ab86`).
 
 #### v2.11.0 (09/10/2026) — Licence refusée = installation fermée, plus d'import de licence, CD (branche `Karma_dev`)
 

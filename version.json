@@ -1,8 +1,8 @@
 {
-  "version": "v2.11.0",
+  "version": "v2.12.0",
   "released": "2026-10-09",
   "notes": [
-    "👋 L'écran de bienvenue est plus simple : un bouton « Continuer », c'est tout. Il ne propose plus d'importer une licence, ce qui n'activait rien sur myktamap.fr. Les listes (auteurs, étiquettes, légende) sont désormais rangées dans l'ordre alphabétique, accents compris.",
-    "💼 Édition pro : si la licence d'une installation expire ou est refusée, l'application reste fermée et le dit clairement, au lieu d'afficher « base injoignable » ou de s'ouvrir sur les données du dernier utilisateur de l'appareil."
+    "💬 Les messages et les confirmations de l'app s'ouvrent maintenant dans ses propres fenêtres, aux couleurs de ton thème, au lieu des boîtes grises du navigateur. Les PDF (rapports, fiches et briefing Secours, statistiques) retrouvent leurs accents.",
+    "🔒 Les exports PDF passent par une version plus sûre de leur librairie. Édition pro : sur un plan en lecture seule, les outils de dessin sont grisés."
   ]
 }
