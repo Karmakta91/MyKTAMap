@@ -13,9 +13,7 @@
 | ✅ 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé — **fait** : 🔆 Affichage XL / XL display / Vista XL | Claude |
 | ✅ Commande vocale FR seulement | **Masquer le bouton vocal hors français** — **fait** (réévalué au changement de langue) | Claude |
 | Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer | Claude, puis KARMA |
-| Sortie d'urgence 🚨 classique coupée | **Alerte si écart > 10 m**, comme en brancard | Claude |
 | « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |
-| Libellés des cartes Secours en sombre | **Éclaircir à #a8b2c4** sur ces libellés seulement (contraste ~5,5) | Claude |
 | Branche de test `karma-dev` (dépôt client) | **Synchronisée à chaque release** par `export-backend.ps1` | Claude (pro) |
 | Sonar en CI (runner sur le poste) | **Non** — la marche 1ter suffit | — |
 | Scripts de déploiement | **Dépôt privé dédié** (ex. MyKTAMap-deploy), sans secret | KARMA crée le dépôt, Claude y range les scripts |
@@ -92,11 +90,6 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
 natives).
 
-- 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
-  brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
-  désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart
-  > 10 m est signalé. À trancher : même alerte en mode classique (un POI de sortie peut aussi être loin d'une galerie
-  sur un plan peu tracé). ✅ vérifié (bac `check-guidage` §12). **S**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
@@ -110,24 +103,20 @@ remplace.
 
 ## 🎨 Thème et langues — reliquats des audits du 29/09/2026
 
-- **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
-  (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
 - **FR en dur hors des modules audités** — tri complet de `js/` fait le 09/10/2026 (détecteur de l'historique Git +
   passe sur les gabarits multi-lignes, qu'il ne voyait pas) : le reste visible est migré (calibrage d'échelle, logs de
   débogage, messages de chargement, import des favoris). Reste, assumé : la page d'admin `confadmin.html` (100 % FR,
   ne charge pas les dicos), les motifs de config invalide de `ktaExtensions.js` (lus par l'admin d'instance), les
   `Error` techniques et les fallbacks FR derrière une clé. **Au fil de l'eau** pour ce qui serait encore passé.
-- 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
-  thèmes, cosmétique.
 
 ## 📋 Presse-papier — au fil de l'eau
 
 > Les popups natives (`alert` / `confirm` / `prompt`) sont **toutes migrées** (09/10/2026) vers `ktaAlerte` /
 > `ktaConfirm` / toast ; `scripts/check-popups-natives.js` (plafond 0) interdit leur retour.
 
-- **Copies locales du presse-papier** : `window.ktaCopierTexte(txt)` (utils.js) est utilisé partout dans
-  `index.html` depuis le 10/10/2026, sauf `secoursMode` (son `_copierTexte` local). Hors périmètre :
-  `confadmin.js` garde sa copie, car `confadmin.html` est une page à part qui ne charge pas `utils.js`.
+- **Copies locales du presse-papier** : soldé le 10/10/2026 — tous les modules d'`index.html` passent par
+  `window.ktaCopierTexte(txt)` (utils.js), `secoursMode` compris. Reste hors périmètre : `confadmin.js` garde sa copie,
+  car `confadmin.html` est une page à part qui ne charge pas `utils.js`.
 
 ## 🎨 Harmoniser les icônes par défaut — gardé de côté, non prioritaire
 

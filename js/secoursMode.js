@@ -1689,6 +1689,12 @@
   function _stripPourPdf(txt) {
     return window.ktaTextePdf(txt).replace(/\s{2,}/g, " ").trim();
   }
+  // Texte saisi par l'utilisateur (nom, note, observation) vers un PDF : filtré D'ABORD, puis
+  // repli sur `defaut` s'il ne reste rien (un nom 100 % emoji donnait un titre vide).
+  function _pdfLibre(txt, defaut) {
+    const s = _stripPourPdf(txt);
+    return s || (defaut == null ? "" : String(defaut));
+  }
   function _heureCourte(iso) {
     return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
   }
@@ -4747,6 +4753,9 @@
             _scheduleAutoRecalc(scenarioId, groupeId);
             if (_modal) _switchView("edit");
           });
+        } else {
+          // Sans fenêtre de confirmation : le retrait est REFUSÉ (jamais d'étape perdue sans question).
+          console.warn("[SecoursMode] retrait d'étapes refusé : confirmation indisponible");
         }
         return null;
       }
@@ -5557,39 +5566,12 @@
     }
   }
 
-  // Copie le rapport texte au presse-papier. Async (navigator.clipboard).
-  // Fallback execCommand pour browsers non-HTTPS / vieux contexte.
-  // Retourne Promise<boolean>.
+  // Copie le rapport texte au presse-papier via le helper commun (utils.js : navigator.clipboard,
+  // repli execCommand en HTTP local). Retourne Promise<boolean> ; le toast reste chez l'appelant.
   function copierRapportTexte(reportData) {
     const text = genererRapportTexte(reportData);
     if (!text) return Promise.resolve(false);
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(text)
-        .then(function() { return true; })
-        .catch(function(e) {
-          console.warn("[SecoursMode] clipboard.writeText échec, fallback execCommand :", e);
-          return _copyFallback(text);
-        });
-    }
-    return Promise.resolve(_copyFallback(text));
-  }
-  // Fallback : textarea hors écran + execCommand("copy")
-  function _copyFallback(text) {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.top = "-9999px";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      return !!ok;
-    } catch(e) {
-      console.warn("[SecoursMode] _copyFallback échec :", e);
-      return false;
-    }
+    return window.ktaCopierTexte(text);
   }
 
   // 🆕 v1.40.33 (Synergie A v1) ─────────────────────────────────
@@ -5900,8 +5882,9 @@
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.contexte"), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-      pdf.text(t("secours.pdf.scenario", { nom: (r.scenario.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-      pdf.text(t("secours.pdf.plan", { plan: (r.plan ? r.plan.name : "(?)") }), margin, y); y += 4;
+      pdf.text(t("secours.pdf.scenario", { nom: _pdfLibre(r.scenario.nom, t("secours.pdf.sansNom")) }),
+               margin, y); y += 4;
+      pdf.text(t("secours.pdf.plan", { plan: _pdfLibre(r.plan && r.plan.name, "(?)") }), margin, y); y += 4;
       pdf.text(t("secours.pdf.role", { role: _formatRoleLabelAscii(r.scope) }), margin, y); y += 4;
       if (r.execution.startedAt) {
         pdf.text(t("secours.pdf.lance", { date: new Date(r.execution.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
@@ -5918,7 +5901,7 @@
         y += 2;
         pdf.setFont(undefined, "bold"); pdf.text(t("secours.pdf.notesTitre"), margin, y); y += 5;
         pdf.setFont(undefined, "normal");
-        y = _pdfWrapText(pdf, r.scenario.context.notes, margin, y, pageW - 2 * margin, 4);
+        y = _pdfWrapText(pdf, window.ktaTextePdf(r.scenario.context.notes), margin, y, pageW - 2 * margin, 4);
       }
       const victimesPdf = _victimesDuRapport(r);   // A3
       if (victimesPdf.length) {
@@ -6284,11 +6267,8 @@
       L.marker(center, {
         icon: L.divIcon({
           className: "",
-          html: '<div style="background:#1a1f2e;color:#f4c542;padding:6px 14px;' +
-                'border-radius:6px;font-size:14px;font-weight:700;' +
-                'border:2px solid #f4c542;white-space:nowrap;' +
-                'box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍 ' +
-                _escHtml(planName) + '</div>',
+          // Couleurs portées par la classe : suit le thème clair (style-secours.css).
+          html: '<div class="kta-secours-osm-etiquette">📍 ' + _escHtml(planName) + '</div>',
           iconSize: [10, 10],
           iconAnchor: [60, 5]
         }),
@@ -6440,8 +6420,10 @@
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.infos"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-    pdf.text(t("secours.surf.scenario", { nom: ((scenario && scenario.nom) || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-    pdf.text(t("secours.surf.plan", { plan: ((plan && plan.name) || t("secours.surf.planNonRenseigne")) }), margin, y); y += 4;
+    pdf.text(t("secours.surf.scenario", { nom: _pdfLibre(scenario && scenario.nom, t("secours.pdf.sansNom")) }),
+             margin, y); y += 4;
+    pdf.text(t("secours.surf.plan", { plan: _pdfLibre(plan && plan.name, t("secours.surf.planNonRenseigne")) }),
+             margin, y); y += 4;
     pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 6;
 
     // Bloc LOCALISATION (lien OSM + Google Maps)
@@ -6502,12 +6484,12 @@
       groupes.forEach(function(g) {
         if (y > pageH - 25) { pdf.addPage(); y = margin + 8; }
         pdf.setFont(undefined, "bold");
-        pdf.text("- " + (g.nom || t("secours.surf.equipeDefaut")), margin, y); y += 4;
+        pdf.text("- " + _pdfLibre(g.nom, t("secours.surf.equipeDefaut")), margin, y); y += 4;
         pdf.setFont(undefined, "normal");
-        const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
-                           ? g.membres.join(", ") : t("secours.surf.membresNonRenseignes");
+        const membresStr = _pdfLibre((Array.isArray(g.membres) && g.membres.length > 0) ? g.membres.join(", ") : "",
+                                     t("secours.surf.membresNonRenseignes"));
         pdf.text(t("secours.surf.membresLigne", { membres: membresStr }), margin + 2, y); y += 4;
-        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _pdfLibre(_chef(g), t("secours.pdf.nonRenseigne")),
                                                  effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin + 2, y); y += 4;
         if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
             && typeof g.surfaceGps.lng === "number") {
@@ -6563,7 +6545,7 @@
       arr.forEach(function(p) {
         if (y > pageH - 15) { pdf.addPage(); y = margin + 8; }
         const lvl = (typeof p.level === "number") ? t("secours.pdf.niveauParen", { level: p.level }) : "";
-        pdf.text("  - " + (p.nom || p.id || t("secours.pdf.sansNom")) + lvl, margin, y); y += 4;
+        pdf.text("  - " + _pdfLibre(p.nom || p.id, t("secours.pdf.sansNom")) + lvl, margin, y); y += 4;
       });
       y += 1;
     });
@@ -6959,7 +6941,7 @@
   function _drawRapportPDFFooter(pdf, r, pageW, pageH, margin) {
     pdf.setFontSize(7); pdf.setTextColor(120);
     const txt = "MyKTAMap " + (r.appVersion || "") +
-                " - " + (r.scenario.nom || "") +
+                " - " + _pdfLibre(r.scenario.nom) +
                 " - " + new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
     pdf.text(txt, margin, pageH - 6);
     pdf.setTextColor(0);
@@ -6985,10 +6967,11 @@
         pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
       }
       pdf.setFont(undefined, "bold");
-      pdf.text("  - " + (_lblEtape(e.label) || "(?)") + " : " + _statutLabelPdf(e.statut), margin, y); y += 4;
+      pdf.text("  - " + _pdfLibre(_lblEtape(e.label), "(?)") + " : " + _statutLabelPdf(e.statut), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (e.observations && String(e.observations).trim()) {
-        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(e.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+        const obsE = window.ktaTextePdf(String(e.observations).trim());
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsE }), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(e.photoIds) && e.photoIds.length > 0) {
         pdf.text("     " + t("secours.pdf.photosAttachees", { n: e.photoIds.length }), margin, y); y += 4;
@@ -7007,7 +6990,8 @@
       }
       y += 3;
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-      pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: h.nom, n: h.etapes.length }), margin, y); y += 6;
+      pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: _pdfLibre(h.nom), n: h.etapes.length }),
+               margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       if (h.parcours && Array.isArray(h.parcours.etapes) && h.parcours.etapes.length) {   // vague 7b
         const dist = (typeof h.parcours.distanceM === "number" && typeof window.formatDistance === "function")
@@ -7023,9 +7007,11 @@
           _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
           pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
         }
-        pdf.text("  " + (i + 1) + ". " + (_lblEtape(et.label) || "(?)") + " : " + _statutLabelPdf(et.statut), margin, y); y += 4;
+        pdf.text("  " + (i + 1) + ". " + _pdfLibre(_lblEtape(et.label), "(?)") + " : " + _statutLabelPdf(et.statut),
+                 margin, y); y += 4;
         if (et.observations && String(et.observations).trim()) {
-          y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(et.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+          const obsH = window.ktaTextePdf(String(et.observations).trim());
+          y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsH }), margin, y, pageW - 2 * margin, 4);
         }
       });
     });
@@ -7040,7 +7026,8 @@
 
     // Titre équipe
     pdf.setFontSize(14); pdf.setFont(undefined, "bold");
-    pdf.text(t("secours.pdf.equipeTitre", { nom: g.nom }), margin, y); y += 4;
+    pdf.text(t("secours.pdf.equipeTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+             margin, y); y += 4;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal"); pdf.setTextColor(100);
     pdf.text(t("secours.pdf.couleurOtan", { couleur: couleur.nom }) +
              (typeof g.level === "number" ? t("secours.pdf.niveauSuffix", { niveau: _formatLevelShort(g.level) }) : "") + ")",
@@ -7058,7 +7045,7 @@
       pdf.setFontSize(10); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.membresTitre"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
-      y = _pdfWrapText(pdf, g.membres.join(", "), margin, y, pageW - 2 * margin, 4);
+      y = _pdfWrapText(pdf, _pdfLibre(g.membres.join(", ")), margin, y, pageW - 2 * margin, 4);
       y += 3;
     }
     if (_ligneSuiviRapport(ed)) {   // A4
@@ -7089,7 +7076,8 @@
         _drawRapportPDFHeader(pdf, r, pageW, margin);
         y = margin + 22;
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text(t("secours.pdf.equipeTitreSuite", { nom: g.nom }), margin, y); y += 6;
+        pdf.text(t("secours.pdf.equipeTitreSuite", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+                 margin, y); y += 6;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
       const info = _getStatutInfo(et.statut);
@@ -7108,11 +7096,12 @@
       pdf.setDrawColor(0);
 
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (_lblEtape(et.label) || "(?)"), margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + _pdfLibre(_lblEtape(et.label), "(?)"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelPdf(et.statut), ts: ts }), margin, y); y += 4;
       if (et.observations && et.observations.trim()) {
-        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: et.observations.trim() }), margin, y, pageW - 2 * margin, 4);
+        const obsT = window.ktaTextePdf(et.observations.trim());
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsT }), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
@@ -7424,8 +7413,11 @@
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
     // Nom de l'équipe : accents gardés, emojis et symboles hors police retirés (ktaTextePdf).
-    const nomPdf = window.ktaTextePdf(eq.nom || t("secours.pdf.equipeDefautAscii"));
-    pdf.text(t("secours.pdf.carteTitre", { nom: nomPdf.toUpperCase() }), m + 12, 14);
+    // Majuscules D'ABORD (une capitale peut sortir de la police), filtre ENSUITE, défaut si
+    // rien ne reste : un nom 100 % emoji donnait un titre vide (le repli était testé avant).
+    const nomPdf = _pdfLibre(String(eq.nom || "").toUpperCase(),
+                             window.ktaTextePdf(t("secours.pdf.equipeDefautAscii").toUpperCase()));
+    pdf.text(t("secours.pdf.carteTitre", { nom: nomPdf }), m + 12, 14);
 
     // Image canvas — couvre la zone disponible
     const availW = pageW - 2 * m;
@@ -7460,7 +7452,9 @@
     let y = margin + 22;
 
     pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-    pdf.text(t("secours.pdf.photosTitre", { nom: g.nom, n: ed.photos.length }), margin, y); y += 8;
+    pdf.text(t("secours.pdf.photosTitre",
+               { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")), n: ed.photos.length }),
+             margin, y); y += 8;
     pdf.setFontSize(8); pdf.setFont(undefined, "normal");
 
     // Grille 2 colonnes, hauteur fixe par cellule
@@ -7534,7 +7528,7 @@
       pdf.text("  " + (i + 1) + ". " + _statutLabelPdf(note.statut) + "  |  " + ts, margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (note.texte) {
-        y = _pdfWrapText(pdf, "     " + note.texte, margin, y, pageW - 2 * margin, 4);
+        y = _pdfWrapText(pdf, "     " + window.ktaTextePdf(note.texte), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
@@ -7601,7 +7595,8 @@
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
         // En-tête
         pdf.setFontSize(18); pdf.setFont(undefined, "bold");
-        pdf.text(t("secours.pdf.planSecoursTitre", { nom: g.nom }), margin, margin + 4);
+        pdf.text(t("secours.pdf.planSecoursTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+                 margin, margin + 4);
         // Bandeau couleur équipe
         const rgb = _hexToRgb(couleur.hex);
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -7643,23 +7638,27 @@
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.contexteIncident"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text(t("secours.pdf.scenarioLigne", { nom: (s.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-        pdf.text(t("secours.pdf.planLigne", { plan: planName }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.scenarioLigne", { nom: _pdfLibre(s.nom, t("secours.pdf.sansNom")) }),
+                 margin, y); y += 4;
+        pdf.text(t("secours.pdf.planLigne", { plan: _pdfLibre(planName, t("secours.pdf.planDefault")) }),
+                 margin, y); y += 4;
         if (s.context && s.context.incidentAt) {
           const dt = new Date(s.context.incidentAt);
           pdf.text(t("secours.pdf.heureIncident", { date: dt.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
         }
         if (s.context && s.context.notes) {
-          y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: s.context.notes }), margin, y, pageW - 2 * margin, 4);
+          y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: window.ktaTextePdf(s.context.notes) }),
+                           margin, y, pageW - 2 * margin, 4);
         }
         y += 4;
         // Section Membres
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : t("secours.pdf.nonRenseignes"), margin, y);
+        pdf.text(_pdfLibre((g.membres && g.membres.length) ? g.membres.join(", ") : "", t("secours.pdf.nonRenseignes")),
+                 margin, y);
         y += 4;
-        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _pdfLibre(_chef(g), t("secours.pdf.nonRenseigne")),
                                                  effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin, y);
         if (g.heureRetour) {
           y += 4; pdf.setFont(undefined, "bold");
@@ -7676,7 +7675,8 @@
           if (!w || typeof w.x !== "number") return _fmtPoint(w);
           const gps = _gpsTxt(w.x, w.y);
           const ou = gps ? "GPS " + gps + (typeof w.level === "number" ? " niv=" + w.level : "") : _fmtPoint(w);
-          return w.label ? w.label + " (" + ou + ")" : ou;
+          const nom = _pdfLibre(w.label);
+          return nom ? nom + " (" + ou + ")" : ou;
         };
         pdf.text(t("secours.pdf.entreeLigne", { point: nomPt(g.entree) }), margin, y); y += 4;
         pdf.text(t("secours.pdf.sortieLigne", { point: nomPt(g.sortie) }), margin, y); y += 4;
@@ -7701,7 +7701,7 @@
         // calculé (2e relecture, D-b : le papier ne doit pas dépendre du calcul).
         const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
           .filter(function(w) { return w && typeof w.x === "number"; })
-          .map(function(w) { return w.label || _lblEtape(_fmtPoint(w)); });
+          .map(function(w) { return _pdfLibre(w.label) || _lblEtape(_fmtPoint(w)); });
         if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
@@ -9423,7 +9423,12 @@
       };
       // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
       // photos (reçues des équipes comprises) — on le dit avant.
-      if (get(sid) && get(sid).execution && typeof window.ktaConfirm === "function") {
+      // Sans fenêtre de confirmation (ktaConfirm absent), on REFUSE : jamais d'effacement sans question.
+      if (get(sid) && get(sid).execution) {
+        if (typeof window.ktaConfirm !== "function") {
+          console.warn("[SecoursMode] relance refusée : confirmation indisponible");
+          return;
+        }
         window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
       } else {
         lancer();
