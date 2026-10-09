@@ -373,23 +373,38 @@
   // longueur change soudain mérite d'être visible quand on la cherche.
   const _diagJonction = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
 
+  // Profondeur d'un niveau pour le réseau en cours de calcul. `ctxPoids` =
+  // { echelle, profondeurs } du plan du RÉSEAU quand ce n'est pas le plan
+  // ouvert (étape d'un itinéraire inter-plans). Une table fournie fait foi,
+  // même vide : le repli sur le plan ouvert n'a lieu que SANS table — sinon une
+  // étape distante pèserait ses puits avec les profondeurs du mauvais plan.
+  function _profondeurPourPoids(niveau, ctxPoids) {
+    const table = ctxPoids && ctxPoids.profondeurs;
+    if (table && typeof table === "object") {
+      const v = table[String(niveau)];
+      return (typeof v === "number" && Number.isFinite(v)) ? v : null;
+    }
+    if (typeof window.getProfondeurNiveau !== "function") return null;
+    return window.getProfondeurNiveau(niveau);
+  }
+
   // Poids d'un segment, en pixels plan. Identique à la distance 2D SAUF pour
   // une jonction dont les deux niveaux ont une profondeur renseignée.
-  function _poidsSegment(a, b, road) {
+  function _poidsSegment(a, b, road, ctxPoids) {
     const plan = _dist(a, b);
     if (!road || road.type !== "jonction") return plan;
-    if (typeof window.getProfondeurNiveau !== "function") return plan;
-    const zA = window.getProfondeurNiveau(road.fromLevel);
-    const zB = window.getProfondeurNiveau(road.toLevel);
+    const zA = _profondeurPourPoids(road.fromLevel, ctxPoids);
+    const zB = _profondeurPourPoids(road.toLevel, ctxPoids);
     if (zA === null || zB === null) return plan;   // non renseigné → inchangé
-    const echelle = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
-      ? Number(window.APP_CONFIG.scale) : 0;
+    const echelle = _echelleReseau(ctxPoids && ctxPoids.echelle, 0);
     if (!echelle) return plan;                     // plan non calibré → inchangé
     const denivPx = Math.abs(zB - zA) * echelle;
     return Math.hypot(plan, denivPx);
   }
 
-  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones) {
+  // `ctxPoids` (facultatif) : { echelle, profondeurs } du plan du réseau — cf
+  // _profondeurPourPoids. Absent = plan ouvert.
+  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, ctxPoids) {
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
     avoidRadius = avoidRadius || 0;
@@ -462,7 +477,7 @@
           //
           // Sans profondeur renseignée — l'état de tout plan d'avant cette
           // version — on retombe exactement sur l'ancien calcul.
-          const w = _poidsSegment(prevP, p, road);
+          const w = _poidsSegment(prevP, p, road, ctxPoids);
           if (_diagJonction && road.type === "jonction") {
             console.log("[Pathfinder] jonction 3D : plan", _dist(prevP, p).toFixed(1),
               "px → réel", w.toFixed(1), "px");
@@ -973,10 +988,14 @@
   // Factorise la logique build+enrich+snap+Dijkstra. Appele par computeRoute
   // pour la passe 1 (avec contraintes) puis si necessaire pour la passe 2
   // (sans avoidances). Throw avec messages clairs si echec.
-  // `echelle` (px/m, facultatif) : celle du plan du RÉSEAU, quand ce n'est pas
-  // le plan ouvert (étape d'un itinéraire inter-plans) — sinon APP_CONFIG.scale.
-  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, echelle) {
-    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones);
+  // `echelle` (px/m) et `profondeurs` ({ "<niveau>": m|null }), facultatifs :
+  // ceux du plan du RÉSEAU, quand ce n'est pas le plan ouvert (étape d'un
+  // itinéraire inter-plans) — sinon APP_CONFIG.scale / getProfondeurNiveau.
+  // Ils servent aux carrefours ET au poids des jonctions de niveau.
+  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
+                                echelle, profondeurs) {
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
+                              { echelle: echelle, profondeurs: profondeurs });
     if (graph.nodes.length === 0) {
       // 🌍 i18n : code + params, localisé côté rendu (interfaceItineraire.js).
       const e = new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
@@ -1454,6 +1473,10 @@
   //   - avoidRadius         : rayon px (défaut 100)
   //   - echelle             : px/m du plan de CE réseau (défaut : plan ouvert) —
   //                           mesure des carrefours (rayon de sortie 3 m, zone 5 m)
+  //                           et dénivelé des jonctions de niveau
+  //   - profondeurs         : { "<niveau>": m|null } du plan de CE réseau —
+  //                           poids des jonctions. Fournie (même {}) = fait foi ;
+  //                           absente = plan ouvert (à réserver au plan ouvert)
   // Retour : même forme que computeRoute (+ usedFallback / avoidedThrough).
   function computeRouteOnRoads(waypoints, roads, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -1480,12 +1503,12 @@
     let result = null, usedFallback = false, avoidedThrough = [];
     try {
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, avoidPts, avoidRadius, avoidZones, opts.echelle);
+                                    zonesInacc, avoidPts, avoidRadius, avoidZones, opts.echelle, opts.profondeurs);
     } catch(e1) {
       if (!hasAvoid) throw e1;
       // Passe 2 sans évitements souples (mêmes règles que computeRoute)
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, [], 0, [], opts.echelle);
+                                    zonesInacc, [], 0, [], opts.echelle, opts.profondeurs);
       usedFallback = true;
       avoidedThrough = avoidPts.filter(function(ap) {
         return _pathPassesNearPoint(result.path, ap, avoidRadius);

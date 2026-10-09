@@ -694,6 +694,7 @@
     let scale = null;   // px/mètre du plan distant (cfg.tracking.scale) — nécessaire
                         // pour sommer les distances des legs en MÈTRES (⚠️ les px
                         // de 2 plans n'ont pas la même échelle)
+    let profondeursCfg = null;   // cfg.plan.niveauxProfondeur du plan distant
     function _absorber(objRoads, objZones) {
       (objRoads || []).forEach(function(r) {
         if (r && Array.isArray(r.points) && r.points.length >= 2 && r.type !== "itinerary") roads.push(r);
@@ -715,6 +716,7 @@
       if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
         if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+        if (cfg && cfg.plan) profondeursCfg = cfg.plan.niveauxProfondeur;
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
@@ -736,6 +738,7 @@
             const baseDir = cfgFile.name.replace(/plan-config\.json$/, "");
             const cfg = JSON.parse(await cfgFile.async("string"));
             if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+            if (cfg && cfg.plan) profondeursCfg = cfg.plan.niveauxProfondeur;
             const layers = (cfg && cfg.dataLayers) || [];
             for (let i = 0; i < layers.length; i++) {
               const f = zip.file(baseDir + layers[i].file) || zip.file(layers[i].file);
@@ -752,7 +755,25 @@
       console.warn("[InterPlanLinks] routing datalayers " + plan.id + " illisibles :", e);
       if (stats) stats.dataError = true;
     }
-    return { roads: roads, zones: zones, scale: scale };
+    // 3) Échelle et profondeurs de niveau du plan DISTANT, même cascade que le
+    //    plan ouvert (config.js : préférence per-plan > plan-config). Les
+    //    profondeurs pèsent les jonctions de niveau de son réseau — celles du
+    //    plan ouvert y seraient fausses. Lecture directe de la préférence :
+    //    getPlanProfondeurs(id) retombe sur le plan-config du plan OUVERT.
+    let prefs = {};
+    try {
+      const rawPrefs = localStorage.getItem("myktamap_plan_prefs_" + plan.id);
+      const o = rawPrefs ? JSON.parse(rawPrefs) : null;
+      if (o && typeof o === "object") prefs = o;
+    } catch(e) { /* préférence illisible → plan-config seul */ }
+    if (typeof prefs.scale === "number" && Number.isFinite(prefs.scale) && prefs.scale > 0) scale = prefs.scale;
+    let profondeurs = {};
+    if (prefs.niveauxProfondeur && typeof prefs.niveauxProfondeur === "object") {
+      profondeurs = prefs.niveauxProfondeur;
+    } else if (profondeursCfg && typeof profondeursCfg === "object") {
+      profondeurs = profondeursCfg;
+    }
+    return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };
   }
 
   // ---------------------------------------------------------------

@@ -86,16 +86,6 @@ Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 trac�
   Pistes : marge du renderer élargie (`L.canvas({ padding: 0.5 })`) et des tuiles, à mesurer sur relevé lourd
   (mémoire, fluidité) ; puis garder, fusionner dans ULTRA, ou retirer la case. **À trancher par KARMA.**
 
-## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
-
-Décisions : `docs/ETUDE_GUIDAGE.md` ; archi : `docs/architecture/tracking.md` §Guidage.
-
-- 🟡 **Poids des jonctions de niveau sur un plan distant** (vu le 01/10/2026 en branchant le guidage
-  inter-plans) : `pathfinder.js > _poidsSegment` lit l'échelle ET les profondeurs de niveau du plan OUVERT
-  (`APP_CONFIG.scale`, `getProfondeurNiveau`). L'étape d'un itinéraire inter-plans calculée sur un autre plan
-  multi-niveau pèse donc ses jonctions avec les profondeurs du mauvais plan → choix de chemin légèrement
-  faussé. Les carrefours, eux, reçoivent déjà l'échelle du plan cible (`opts.echelle`). ✅ vérifié (code lu).
-
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
 Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Un commit par

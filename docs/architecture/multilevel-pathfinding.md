@@ -562,6 +562,19 @@ additionnerait des mètres à des pixels. **Sans profondeur renseignée, on reto
 pixel près sur l'ancien calcul** — c'est ce qui rend le changement sans risque pour
 les plans existants.
 
+**Profondeurs et échelle = celles du plan du RÉSEAU, pas du plan ouvert.**
+`_poidsSegment(a, b, road, ctxPoids)` reçoit `{ echelle, profondeurs }` via
+`_buildGraph` ← `_computeRouteInterne` ← `computeRouteOnRoads(wps, roads, opts)`
+(`opts.echelle`, `opts.profondeurs` = `{ "<niveau>": m|null }`). Une table fournie
+**fait foi, même vide** (plan cible sans profondeurs → jonctions en 2D) ; le repli
+sur `getProfondeurNiveau` / `APP_CONFIG.scale` n'a lieu que **sans** table, c.-à-d.
+pour un réseau du plan ouvert (`computeRoute`, affinage du suivi). Côté
+inter-plans, `InterPlanLinks.collectRoutingDataForPlan` rend `scale` et
+`profondeurs` du plan distant avec la même cascade que le plan ouvert
+(préférence per-plan `myktamap_plan_prefs_<id>` > plan-config), et
+`interPlanRoute.js` les passe à chaque étape distante (multi-sauts `_ctxPlan` et
+étape B directe). Filet : `scripts/check-guidage.js` §13.
+
 **2. `computeRoute` jetait le niveau.** Les nœuds le portent dans le tableau
 parallèle `graph.nodeLevels[i]` (`Set<number|"transit">`), mais le retour était un
 `{x, y}` plat. `path` porte maintenant `level` : l'entier quand il est **univoque**,

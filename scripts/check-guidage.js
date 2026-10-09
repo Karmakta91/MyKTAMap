@@ -17,7 +17,9 @@
  *     tous les trois mètres ;
  *   • le raccord à vol d'oiseau est rendu, compté (×2 pour une étape) et
  *     alerté au-delà de 50 m ;
- *   • le passage d'une jonction de niveau se dit.
+ *   • le passage d'une jonction de niveau se dit ;
+ *   • l'étape inter-plans pèse ses jonctions avec les profondeurs et l'échelle
+ *     de SON plan, jamais celles du plan ouvert.
  *
  * Usage : node scripts/check-guidage.js   (exit 1 si un contrôle échoue)
  */
@@ -537,6 +539,38 @@ async function evacuationBrancard() {
       ip.includes("raccords: leg.raccords || [], carrefours: leg.carrefours || []"));
     t("câblage inter-plans : distances avec les raccords (décision K)",
       ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
+
+    // Poids d'une jonction de niveau sur l'étape distante : profondeurs ET
+    // échelle du plan CIBLE. Plan ouvert : 5 m entre ses niveaux 0 et 1, 40 px/m ;
+    // plan cible : 40 m, 4 px/m. Puits dessiné sur 10 px (un segment), deux tronçons de 180 px.
+    const wJ = bac([], { scale: 40, multiLevel: true });
+    const profOuvert = { "0": -25, "1": -20 };
+    wJ.getProfondeurNiveau = n => (profOuvert[String(n)] === undefined ? null : profOuvert[String(n)]);
+    const reseauJ = [
+      R("principal", [[0, 500], [200, 500]], { level: 0 }),
+      R("jonction", [[200, 500], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      R("principal", [[210, 500], [400, 500]], { level: 1 })
+    ];
+    const wpsJ = [{ x: 20, y: 500, label: "A" }, { x: 390, y: 500, label: "B" }];
+    const plat = 180 + 180;
+    const proche = (d, attendu) => Math.abs(d - attendu) < 0.5;
+    const cible = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ,
+      { echelle: 4, profondeurs: { "0": -25, "1": -65 } });
+    const attenduCible = plat + Math.hypot(10, 40 * 4);
+    t("inter-plans : jonction pesée avec les profondeurs ET l'échelle du plan cible (" +
+      Math.round(cible.totalDistance) + " px, attendu " + Math.round(attenduCible) + ")",
+      proche(cible.totalDistance, attenduCible));
+    const repli = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ, {});
+    const attenduRepli = plat + Math.hypot(10, 5 * 40);
+    t("plan ouvert (sans table) : repli sur ses profondeurs et son échelle (" +
+      Math.round(repli.totalDistance) + " px)", proche(repli.totalDistance, attenduRepli));
+    const vide = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ, { echelle: 4, profondeurs: {} });
+    t("inter-plans : plan cible sans profondeurs → jonction en 2D, jamais celles du plan ouvert",
+      proche(vide.totalDistance, plat + 10));
+    const ilJ = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
+    t("câblage inter-plans : l'étape distante passe les profondeurs de son plan",
+      ip.includes("profondeurs: ctx.profondeurs") && ip.includes("profondeurs: routingB.profondeurs || {}") &&
+      ilJ.includes("return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };"));
 
     // Feuille de route : elle s'arrête au portail, puis UNE ligne par plan
     // suivant (`road.suite`, posée par interPlanRoute > _tracerItinerary).
