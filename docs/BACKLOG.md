@@ -6,6 +6,41 @@
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
+## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
+
+| Sujet | Décision | Qui |
+|---|---|---|
+| 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé | Claude |
+| Commande vocale FR seulement | **Masquer le bouton vocal hors français** | Claude |
+| Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer | Claude, puis KARMA |
+| Sortie d'urgence 🚨 classique coupée | **Alerte si écart > 10 m**, comme en brancard | Claude |
+| « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |
+| Libellés des cartes Secours en sombre | **Éclaircir à #a8b2c4** sur ces libellés seulement (contraste ~5,5) | Claude |
+| Branche de test `karma-dev` (dépôt client) | **Synchronisée à chaque release** par `export-backend.ps1` | Claude (pro) |
+| Sonar en CI (runner sur le poste) | **Non** — la marche 1ter suffit | — |
+| Scripts de déploiement | **Dépôt privé dédié** (ex. MyKTAMap-deploy), sans secret | KARMA crée le dépôt, Claude y range les scripts |
+| Stratégie doc « une source, trois rendus » | **Pas maintenant** | — |
+| Import VisualTopo | **Pas maintenant** | — |
+| Protection de branche GitHub (payante) | **Non tant que KARMA est seul** à écrire | — |
+
+## 🔐 Audit du 10/10/2026 (pro, connexion) — à corriger (Claude, pro)
+
+- 🔴 **Admin bloqué à la connexion — cause probable reproduite** : secret 2FA chiffré avec une clé tirée de `JWT_SECRET`
+  (`api/src/totp.js`) ; si `JWT_SECRET` a changé (`.env` recréé), `/api/auth/login/2fa` répond **500** — codes de secours
+  compris. À confirmer sur le VPS (logs « unable to authenticate data ») ; remède : ancien `JWT_SECRET` ou
+  réinitialisation 2FA (`outils/EXPLOITATION.md` §2). Code : try/catch + code explicite `2fa_secret_illisible`, codes de
+  secours toujours testés.
+- 🔴 **`X-Forwarded-Host` du client cru par l'API** (testé) : `req.hostname` falsifiable → contrôle de domaine de la
+  licence, dépôt de licence et résolution d'instance contournables. Correctif : `proxy_set_header X-Forwarded-Host $host`.
+- 🟠 Licence refusée pendant la reprise → retombe en « down » (`_reprise`, `_sonde`, barre de la gate) au lieu de fermer.
+- 🟠 Barre d'état de la gate sur les écrans post-connexion : `signaler("on")` en mode local sans session.
+- 🟡 « down » venu de l'événement `offline` : `_debloquerSiDown` ne suffit pas (`_reseauCoupe`).
+- 🟡 Formulaires de connexion sans délai limite ; mot de passe oublié ouvert sans licence ; 🆘 inactif avant `load`.
+- 🔬 **Non audité** : la migration des ~190 popups côté community (ordre, z-index, toasts, échappement des appelants de
+  `ktaConfirm`, qui insère son message en HTML). Second passage à faire.
+
+---
+
 ## ⚠️ Règle de vérification (à lire avant d'utiliser ce fichier)
 
 Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **faux à 30 %** : 3 dettes sur 10 étaient déjà payées. Cause : les docs du repo sont des **logs append-only** où une entrée ancienne pose une limitation qu'une entrée ultérieure lève, sans renvoi entre les deux — y compris les en-têtes de modules `js/`.
