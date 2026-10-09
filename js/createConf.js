@@ -687,7 +687,7 @@ function afficherPlanner() {
   // (Pas de flag persisté ici : le Générateur écrit plan.georef au ZIP via
   // _geoB — le champ `estimated` n'y est pas conservé, dette notée BACKLOG.)
   const _btnEstimerGen = document.getElementById("pl_geo_B_estimer");
-  if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", function() {
+  if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", async function() {
     const ax = parseFloat(document.getElementById("pl_geo_A_x").value);
     const ay = parseFloat(document.getElementById("pl_geo_A_y").value);
     const rawCoords = (document.getElementById("pl_geo_A_coords").value || "").trim();
@@ -696,20 +696,20 @@ function afficherPlanner() {
     const w = parseInt(document.getElementById("pl_width").value, 10);
     const h = parseInt(document.getElementById("pl_height").value, 10);
     if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA) {
-      alert(window.I18n.t("config.georef.estimerErrA")); return;
+      window.ktaAlerte(window.I18n.t("config.georef.estimerErrA"), { type: "erreur" }); return;
     }
     if (!Number.isFinite(scale) || scale <= 0) {
-      alert(window.I18n.t("config.georef.estimerErrScale")); return;
+      window.ktaAlerte(window.I18n.t("config.georef.estimerErrScale"), { type: "erreur" }); return;
     }
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
-      alert(window.I18n.t("config.georef.estimerErrDims")); return;
+      window.ktaAlerte(window.I18n.t("config.georef.estimerErrDims"), { type: "erreur" }); return;
     }
     const north = parseFloat(document.getElementById("pl_northOffset")?.value) || 0;
     const coin = window.ktaCoinLePlusLoin({ x: ax, y: ay }, w, h);
     const b = coin && window.ktaEstimerPointB({ x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng }, coin, scale, north);
-    if (!b) { alert(window.I18n.t("config.georef.estimerErrCalc")); return; }
+    if (!b) { window.ktaAlerte(window.I18n.t("config.georef.estimerErrCalc"), { type: "erreur" }); return; }
     const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
-    if (!confirm(window.I18n.t("config.georef.estimerConfirm", { dist: distM, scale: scale, north: north }))) return;
+    if (!(await window.ktaConfirm(window.I18n.t("config.georef.estimerConfirm", { dist: distM, scale: scale, north: north })))) return;
     document.getElementById("pl_geo_B_x").value = b.x;
     document.getElementById("pl_geo_B_y").value = b.y;
     document.getElementById("pl_geo_B_coords").value =
@@ -1167,10 +1167,11 @@ function afficherPlanner() {
         _plannerLegendStatus();
         return;
       }
-      if (confirm(window.I18n.t("gen.legende.resetConfirm"))) {
+      window.ktaConfirm(window.I18n.t("gen.legende.resetConfirm")).then(function(ok) {
+        if (!ok) return;
         _plannerPlanLegend = null;
         _plannerLegendStatus();
-      }
+      });
     });
   }
   _plannerLegendStatus();  // état initial (= "Aucune personnalisation" au boot)
@@ -1577,7 +1578,7 @@ function _ouvrirEditeurLegendePlan(etat) {
   const _lire  = (etat && etat.get) ? etat.get : function () { return _plannerPlanLegend; };
   const _ecrire = (etat && etat.set) ? etat.set : function (v) { _plannerPlanLegend = v; };
   if (!window.LegendCustomization || typeof window.LegendCustomization.ouvrirEditeur !== "function") {
-    alert(window.I18n.t("gen.legende.moduleIndispo"));
+    window.ktaAlerte(window.I18n.t("gen.legende.moduleIndispo"), { type: "erreur" });
     return;
   }
   const LC = window.LegendCustomization;
@@ -2399,13 +2400,13 @@ function _ajouterImageLayer(prefill) {
   // Bouton "📐 Calibrer (2 ancres)" → ouvre le picker
   calibBtn.addEventListener("click", function() {
     if (!window.ImageLayerCalibrationPicker) {
-      alert(window.I18n.t("gen.calib.pickerIndispo"));
+      window.ktaAlerte(window.I18n.t("gen.calib.pickerIndispo"), { type: "erreur" });
       return;
     }
     const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
     const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
     if (!planW || !planH) {
-      alert(window.I18n.t("gen.calib.chargeImageDabord"));
+      window.ktaAlerte(window.I18n.t("gen.calib.chargeImageDabord"));
       return;
     }
     // URL du plan principal (file uploadé OU mode Modifier via assets originaux)
@@ -2424,10 +2425,10 @@ function _ajouterImageLayer(prefill) {
         planUrl = URL.createObjectURL(_plannerOrigAssets[imgKey]);
       }
     }
-    if (!planUrl) { alert(window.I18n.t("gen.calib.imagePlanIndispo")); return; }
+    if (!planUrl) { window.ktaAlerte(window.I18n.t("gen.calib.imagePlanIndispo"), { type: "erreur" }); return; }
 
     _getLayerSourceInfo().then(function(info) {
-      if (!info) { alert(window.I18n.t("gen.calib.imageCalqueIndispo")); try { URL.revokeObjectURL(planUrl); } catch(e) {} return; }
+      if (!info) { window.ktaAlerte(window.I18n.t("gen.calib.imageCalqueIndispo"), { type: "erreur" }); try { URL.revokeObjectURL(planUrl); } catch(e) {} return; }
       window.ImageLayerCalibrationPicker.open({
         sourceUrl: info.url,
         planUrl: planUrl,
@@ -2444,7 +2445,7 @@ function _ajouterImageLayer(prefill) {
         try { URL.revokeObjectURL(info.url); } catch(e) {}
         try { URL.revokeObjectURL(planUrl); } catch(e) {}
         console.warn("[Planner calib] échec :", e);
-        alert(window.I18n.t("gen.calib.pickerErreur", { err: (e && e.message ? e.message : window.I18n.t("gen.commun.erreurInconnue")) }));
+        window.ktaAlerte(window.I18n.t("gen.calib.pickerErreur", { err: (e && e.message ? e.message : window.I18n.t("gen.commun.erreurInconnue")) }), { type: "erreur" });
       });
     });
   });

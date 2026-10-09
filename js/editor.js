@@ -603,7 +603,7 @@ function afficherFormulaire(x, y, existingPoint) {
         const ok = (typeof window.ktaConfirm === "function")
           ? await window.ktaConfirm(window.I18n.t(courant ? "editor.conflit.modifie" : "editor.conflit.supprime"),
               { okLabel: window.I18n.t("editor.conflit.garder"), cancelLabel: window.I18n.t("editor.conflit.abandonner") })
-          : true;
+          : (console.warn("[Editor] ktaConfirm indisponible : conflit de synchro, modification abandonnée"), false);
         if (!ok) { fermer(); return; }
         if (courant) existingPoint = courant;
         else { listePoints.push(existingPoint); if (window.KtaUid) window.KtaUid.touch(existingPoint); }

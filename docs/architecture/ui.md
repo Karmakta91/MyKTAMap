@@ -545,7 +545,7 @@ body.kta-theme-light {
 #### 53.4 Scope final (toute l'app)
 
 ✅ Couvert :
-- **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.plan-card`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`, `.loader-btn-resume` (bouton Reprendre), `.zip-drop-zone`
+- **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`, `.loader-btn-resume` (bouton Reprendre), `.zip-drop-zone`
 - **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `.loader-btn-ghost`, `.loader-btn-mini`, `.loader-btn-fs`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
 - **Splash chargement plan** : `#splashOverlay` (radial gradient beige), `#splashTitle` (ocre), `#splashSubtitle`, `#splashProgressTrack/Bar`, `.splash-scale-bar` (bandes alternées ocre)
 - **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`, `.kta-net-paranoia-toggle` (case à cocher générique de la Configuration, nom historique)

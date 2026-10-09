@@ -1430,6 +1430,8 @@ function getPlanProfondeurs(planId) {
   if (prefs.niveauxProfondeur && typeof prefs.niveauxProfondeur === "object") {
     return prefs.niveauxProfondeur;
   }
+  // PLAN_CONFIG = le plan OUVERT : il ne répond pas pour un autre plan (itinéraire inter-plans, 10/10/2026).
+  if (planId && window._currentLoadedPlanId && planId !== window._currentLoadedPlanId) return {};
   const duPlan = window.PLAN_CONFIG && window.PLAN_CONFIG.plan
                  && window.PLAN_CONFIG.plan.niveauxProfondeur;
   return (duPlan && typeof duPlan === "object") ? duPlan : {};

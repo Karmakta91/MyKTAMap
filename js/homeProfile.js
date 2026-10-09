@@ -1105,7 +1105,7 @@
               saveBtn.textContent = _t("home.profile.saveName");
             }, 700);
           } catch(e) {
-            alert(_t("home.profile.errGeneric") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" });
             saveBtn.disabled = false;
             saveBtn.textContent = _t("home.profile.saveName");
           }
@@ -1132,21 +1132,21 @@
             removeBtn.style.display = "";
             photoBtn.textContent = _t("home.profile.photoChange");
           } catch(e) {
-            alert(_t("home.profile.errPhotoUpload") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errPhotoUpload") + (e.message || e), { type: "erreur" });
             photoBtn.textContent = _t("home.profile.photoBtn");
           }
           photoBtn.disabled = false;
           photoInput.value = "";
         });
         removeBtn.addEventListener("click", async function() {
-          if (!confirm(_t("home.profile.confirmRemovePhoto"))) return;
+          if (!(await window.ktaConfirm(_t("home.profile.confirmRemovePhoto")))) return;
           try {
             await window.UserProfile.removePhoto();
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
-          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
 
         // Boutons export / import (réutilise ProfileExportImport + le file picker
@@ -1155,7 +1155,7 @@
           if (window.ProfileExportImport && window.ProfileExportImport.ouvrirExportModale) {
             window.ProfileExportImport.ouvrirExportModale();
           } else {
-            alert(_t("home.profile.errExportModule"));
+            window.ktaAlerte(_t("home.profile.errExportModule"), { type: "erreur" });
           }
         });
         // 🩸 Le bouton n'existe pas en kiosque : sans ce test, `addEventListener`
@@ -1266,7 +1266,7 @@
             await window.UserProfile.setWallpaper(f);
             await _rafraichirApercuFond();
           } catch(e) {
-            alert(_t("home.profile.errGeneric") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" });
           } finally {
             wallBtn.disabled = false;
             wallBtn.textContent = label;
@@ -1275,7 +1275,7 @@
         });
         wallRemove.addEventListener("click", async function() {
           try { await window.UserProfile.removeWallpaper(); await _rafraichirApercuFond(); }
-          catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
         // `input` = aperçu live pendant le glissement ; `change` = persistance
         // au relâchement seulement (sinon une écriture IDB par pixel parcouru).
@@ -1326,7 +1326,7 @@
             // 🖼️ v1.74.0 : `clear()` efface l'entrée entière, fond compris —
             // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
             await _rafraichirApercuFond();
-          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
       }
 

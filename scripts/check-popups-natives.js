@@ -23,7 +23,10 @@ const path = require("path");
 const PLAFOND = 0;
 
 function sansCommentaires(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+  // 🩸 10/10/2026 : `accept="image/*"` dans un gabarit HTML ouvrait un faux commentaire jusqu'au `*/` suivant
+  // (700 lignes de createConf.js et 5 alert() natifs invisibles). Un vrai commentaire bloc ne suit jamais une
+  // lettre, un chiffre, un guillemet ou un `/`.
+  return src.replace(/(?<![\w"'`/])\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
     .split(/\r?\n/).map((l) => {
       if (/^\s*\/\//.test(l)) return "";
       // « // » de fin de ligne hors chaîne (approximation : nombre pair de guillemets avant)

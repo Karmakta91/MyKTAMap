@@ -3671,8 +3671,8 @@ window.telechargerPlan = telechargerPlan;
 // qui marche partout : on ne prive pas quelqu'un de ses coordonnées parce que
 // le navigateur fait la fine bouche.
 //
-// 📌 Les 7 sites existants ne sont PAS migrés ici (ce n'était pas la
-// demande) — consigné au BACKLOG.
+// ✅ 10/10/2026 : tous les modules de l'app passent par ce helper (secoursMode compris) ;
+// seul confadmin.js garde sa copie (page à part, sans utils.js).
 window.ktaCopierTexte = function (txt) {
   const s = String(txt == null ? "" : txt);
   if (!s) return Promise.resolve(false);
