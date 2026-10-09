@@ -211,8 +211,11 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 - **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
   commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
-- **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte (jeton Git
-  rangé, lu via `git credential fill` ; illisible = `DEROGE`). Tient lieu de protection de branche.
+- **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte — il lit
+  la même marque `refs/ci/verte/<branche>` que le VPS (`git ls-remote`, sans jeton ni coffre d'identifiants Windows,
+  donc utilisable dans une session SSH ouverte depuis le téléphone) ; marque illisible = `DEROGE`. Tient lieu de
+  protection de branche. Le poste parle à GitHub en SSH (clé `~/.ssh/github_poste`, remotes `git@github.com:…`) :
+  en HTTPS, l'identifiant rangé dans le coffre Windows est inaccessible depuis SSH.
 - **Dependabot** (`.github/dependabot.yml`) : actions GitHub + `scripts/smoke`, PR vers `Karma_dev`. Les librairies de
   `lib/` sont suivies à la main dans **`lib/VERSIONS.md`**.
 - **Pas de Sonar en CI** : SonarQube tourne en local (Docker), injoignable depuis un runner GitHub — marche 1ter

@@ -194,6 +194,7 @@ if ($codeSonar -ne 0) {
 
 # ───────── 5. le distant ─────────
 Titre "5. Dépôt distant"
+$env:GIT_TERMINAL_PROMPT = "0"   # jamais d'invite d'identifiant bloquante (session SSH depuis le téléphone)
 git fetch origin --quiet
 $retard = (git rev-list --count "main..origin/main" 2>$null)
 if ($retard -and [int]$retard -gt 0) {
@@ -203,8 +204,10 @@ Ok "main local est à jour"
 
 # CI GitHub du commit à merger (audit CI/CD du 08/10/2026, Q2/W3 option b : la protection de branche est payante
 # sur un dépôt privé). On ne merge que ce que la CI a testé ET trouvé vert : la branche doit être poussée telle
-# quelle, et le passage « CI » de ce commit terminé en succès. Jeton : celui que Git a déjà rangé pour les push
-# (git credential fill, jamais affiché ni écrit). État illisible = dérogation tapée, consignée dans le relevé.
+# quelle, et porter la marque verte de la CI — refs/ci/verte/<branche>, posée par le job « Marquer le commit vert »
+# de ci.yml, la MÊME que lit le déploiement automatique du VPS. Lue par git ls-remote : aucun jeton, rien du coffre
+# d'identifiants Windows (inaccessible dans une session SSH ouverte depuis le téléphone, 09/10/2026).
+# Marque illisible (réseau) = dérogation tapée, consignée dans le relevé.
 function Echec-Ci($t) { if ($DryRun) { Ko $t } else { Stop-Net $t } }
 $sha = (git rev-parse HEAD).Trim()
 $court = $sha.Substring(0, 7)
@@ -212,36 +215,15 @@ $distantSha = (git rev-parse "origin/$branche" 2>$null)
 if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
   Echec-Ci "$branche locale ≠ origin/$branche : pousse d'abord, la CI doit avoir testé exactement ce commit ($court)."
 } else {
-  $depot = ((git remote get-url origin).Trim() -replace '\.git$', '') -replace '^.*github\.com[:/]', ''
-  $etatCi = $null; $lien = ""
-  $env:GIT_TERMINAL_PROMPT = "0"; $env:GCM_INTERACTIVE = "never"
-  $jeton = $null
-  try {
-    # Requête dans un fichier ASCII : en pipe, PowerShell 5.1 ajoute des retours chariot et une marque d'encodage
-    # (BOM) que git credential refuse (« missing protocol field »).
-    $tmpCred = [IO.Path]::GetTempFileName()
-    [IO.File]::WriteAllText($tmpCred, "protocol=https`nhost=github.com`n`n", [Text.Encoding]::ASCII)
-    $sortie = cmd /c "git credential fill < `"$tmpCred`" 2>nul"
-    Remove-Item $tmpCred -ErrorAction SilentlyContinue
-    $ligne = $sortie | Where-Object { $_ -like "password=*" } | Select-Object -First 1
-    if ($ligne) { $jeton = $ligne.Substring(9).Trim() }
-  } catch { $jeton = $null }
-  if ($jeton) {
-    try {
-      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-      $r = Invoke-RestMethod -TimeoutSec 15 -Uri "https://api.github.com/repos/$depot/actions/runs?head_sha=$sha&per_page=30" `
-        -Headers @{ Authorization = "Bearer $jeton"; Accept = "application/vnd.github+json"; "User-Agent" = "merge-main" }
-      $run = $r.workflow_runs | Where-Object { $_.name -eq "CI" } | Sort-Object created_at -Descending | Select-Object -First 1
-      if ($run) { $etatCi = "$($run.status)/$($run.conclusion)"; $lien = $run.html_url } else { $etatCi = "absente" }
-    } catch { $etatCi = $null }
-  }
-  $jeton = $null
-  if ($etatCi -eq "completed/success") { Ok "CI GitHub verte pour $court" }
-  elseif ($etatCi -eq "absente") { Echec-Ci "Aucune CI GitHub pour $court : pousse, attends qu'elle passe, puis relance." }
-  elseif ($etatCi -like "completed/*") { Echec-Ci "CI GitHub rouge ($etatCi) pour $court : $lien" }
-  elseif ($etatCi) { Echec-Ci "CI GitHub encore en cours ($etatCi) pour $court : attends la fin, puis relance. $lien" }
-  else {
-    Ko "État de la CI GitHub illisible (pas de jeton Git rangé, ou API GitHub injoignable)."
+  $lsr = @(git ls-remote origin "refs/ci/verte/$branche" 2>$null)
+  $lisible = ($LASTEXITCODE -eq 0)
+  $vert = if ($lsr.Count) { ($lsr[0] -split "`t")[0].Trim() } else { "" }
+  if ($vert -eq $sha) { Ok "CI GitHub verte pour $court (marque refs/ci/verte/$branche)" }
+  elseif ($lisible) {
+    $quoi = if ($vert) { "la marque verte est sur $($vert.Substring(0, 7))" } else { "aucune marque verte" }
+    Echec-Ci "$court pas (encore) marqué vert par la CI ($quoi) : CI en cours ou rouge — voir l'onglet Actions, puis relance."
+  } else {
+    Ko "Marque de la CI illisible (GitHub injoignable, ou accès Git au dépôt refusé)."
     if (-not $DryRun) {
       $rep = Read-Host "  Merger sans avoir vu la CI verte ? (tape DEROGE, puis consigne-le dans le relevé)"
       if ($rep -cne "DEROGE") { Stop-Net "Merge annulé : CI non vérifiée." }
