@@ -8,6 +8,8 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.13.0 (règle de sécurité stricte, Affichage XL)** : **Aucune requête nouvelle, aucun domaine nouveau.** La règle de sécurité envoyée par le serveur devient stricte : le navigateur n'exécute plus que les fichiers du site, jamais du code écrit dans une page (`script-src 'self'`). Le reste de la version (Affichage XL, Sortie d'urgence, lecture seule, fenêtres de l'app) est local.
+
 > **v2.12.1 (dépannage depuis l'écran de connexion)** : **Aucune requête nouvelle, aucun domaine nouveau.** L'app community permet seulement à l'écran de connexion d'une installation reliée d'ouvrir sa fenêtre de dépannage, déjà présente sur l'accueil. Sur une telle installation, l'écran de connexion vérifie l'état de la base sur sa propre adresse, comme le fait déjà sa pastille.
 
 > **v2.12.0 (fenêtres de l'app, PDF, librairies)** : **Aucune requête nouvelle, aucun domaine nouveau.** Les messages et confirmations s'ouvrent dans les fenêtres de l'app au lieu de celles du navigateur : tout est local. Les librairies embarquées jsPDF (4.2.1, correctifs de sécurité) et JSZip (3.10.2) sont mises à jour, toujours copiées sur le site et chargées depuis lui, sans appel externe. Les PDF gardent leurs accents, et les outils de dessin sont grisés sur un plan en lecture seule : rien de tout cela ne touche au réseau.

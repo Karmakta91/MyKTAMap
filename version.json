@@ -1,8 +1,8 @@
 {
-  "version": "v2.12.1",
+  "version": "v2.13.0",
   "released": "2026-10-10",
   "notes": [
-    "💬 Les messages et les confirmations de l'app s'ouvrent maintenant dans ses propres fenêtres, aux couleurs de ton thème, au lieu des boîtes grises du navigateur. Les PDF (rapports, fiches et briefing Secours, statistiques) retrouvent leurs accents.",
-    "🔒 Les exports PDF passent par une version plus sûre de leur librairie. Édition pro : sur un plan en lecture seule, les outils de dessin sont grisés ; l'écran de connexion dit si la base répond et donne accès à la documentation et au dépannage."
+    "💬 Les messages et confirmations s'ouvrent dans les fenêtres de l'app, aux couleurs de ton thème, et les PDF retrouvent leurs accents. L'ancien « Mode urgence » s'appelle désormais 🔆 Affichage XL ; 🚨 reste la Sortie d'urgence, qui prévient maintenant si la sortie trouvée est coupée.",
+    "🔒 Sécurité renforcée (librairie PDF à jour, protection stricte du navigateur contre le code injecté). Édition pro : outils de dessin grisés sur un plan en lecture seule, et un écran de connexion qui dit si la base répond et donne accès à la documentation et au dépannage."
   ]
 }

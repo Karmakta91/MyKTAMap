@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.12.1` (10/10/2026)
+## 📦 Version courante — `v2.13.0` (10/10/2026)
+
+> 🔆 **v2.13.0 — Affichage XL, CSP stricte, travaux parallèles du 10/10** : « Mode urgence » XL renommé 🔆 Affichage XL, 🎤 masqué hors français ; CSP `script-src 'self'` en vigueur ; lecture seule étanche (import, Ctrl+Z) ; sortie d'urgence coupée signalée ; jonctions inter-plans aux bonnes profondeurs ; presse-papier unique ; correctifs de l'audit des popups (Échap empilé, double-clic, export de calque) ; 20 popups natives cachées migrées ; smoke lançable sur GitHub et tableau des garde-fous.
 
 > 🆘 **v2.12.1 — Une issue depuis l'écran de connexion** : `window.ktaOuvrirDepannage` (point d'extension neutre) — la gate d'une installation reliée propose 📖 Documentation et 🆘 Dépannage, et l'état réel de la base (module pro 0.10.7) ; même contenu que v2.12.0 pour l'app community.
 
@@ -569,6 +571,18 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.13.0 (10/10/2026) — Travaux parallèles : Affichage XL, CSP stricte, lecture seule, Secours, audit des popups (branche `Karma_dev`)
+
+- 🔒 **CSP stricte en vigueur** (`f311fff`) : `script-src 'self'` (image Docker, modèle nginx), plus de Report-Only ; smoke et `check-csp-inline` refusent un retour de `'unsafe-inline'`. Reste le nginx du VPS (KARMA).
+- 🔆 **Affichage XL** (`d1d5e36`, décision KARMA) : « Mode urgence » XL renommé, icône 🔆 ; 🚨 = Sortie d'urgence seule. **🎤 masqué hors français**.
+- 🚨 **Sortie d'urgence classique coupée** (`ae86c83`) : même alerte qu'en brancard au-delà de 10 m d'écart. **Secours** (`66ffede`) : libellés lisibles en sombre, étiquette OSM du briefing qui suit le thème, texte libre des PDF filtré (`ktaTextePdf`), replis refusés sans confirmation.
+- 🧭 **Jonctions inter-plans** (`5967024`) : une étape calculée sur un autre plan prend les profondeurs et l'échelle de ce plan ; `getPlanProfondeurs` ne répond plus pour un autre plan avec le plan ouvert.
+- 💬 **Audit des popups** (`f177ddd`, `48913d6`) : lecture seule étanche (import de session, Ctrl+Z/Y), export de calque raté → pas de restitution, Échap avec fenêtres empilées et double-clic corrigés, Échap qui cessait de marcher après une feuille de l'accueil, `ktaTextePdf` garde la lettre de base (« Łódź » → « Lódz »), garde-fou des popups étendu (formes déguisées, faux commentaire `image/*` qui cachait **20 popups natives**, migrées), contrôle XSS des appels `ktaConfirm`.
+- 📋 **Presse-papier unique** (`c0cc1b3`, `66ffede`) ; « rien à exporter » en toast important (`30d1be5`) ; **code mort** retiré et glisser-déposer du thème clair réparé (`e35e6fd`).
+- 🧩 `signaler("on")` lève l'indicateur « réseau coupé » quand le navigateur est en ligne (`7e6b534`).
+- 🚦 **CI** (`35117ee`) : smoke Playwright lançable à la main sur GitHub, tableau de bord des garde-fous (non bloquant).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; la règle CSP en vigueur devient stricte.
 
 #### v2.12.1 (10/10/2026) — Dépannage depuis la gate d'une installation reliée (branche `Karma_dev`)
 
