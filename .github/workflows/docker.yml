@@ -157,7 +157,7 @@ jobs:
       #   linux/arm64  → Raspberry Pi 4/5, Synology ARM, Apple Silicon
       # Pas de armv7 (Pi 2/3) — coût build x2, demande utilisateur basse.
       - name: Build et push image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
