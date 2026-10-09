@@ -45,10 +45,40 @@ on:
 permissions:
   contents: read
   packages: write   # nécessaire pour push sur ghcr.io
+  actions: read     # lire l'état de la CI du commit (job ci-verte)
 
 jobs:
+  # Audit CI/CD du 08/10/2026, Q3 : aucune image publiée à partir d'un commit dont la CI (ci.yml : syntaxe,
+  # commits reçus, garde-fous) n'est pas VERTE. Le tag est posé sur le commit de main, dont le push lance la
+  # CI : on l'attend (20 min au plus), rouge ou absente = pas d'image.
+  ci-verte:
+    name: CI verte sur ce commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attendre la CI du commit taggé
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPOT: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -n "$TAG" ]; then SHA=$(gh api "repos/$DEPOT/commits/$TAG" --jq .sha); fi
+          for i in $(seq 1 40); do
+            etat=$(gh api "repos/$DEPOT/actions/runs?head_sha=$SHA&per_page=30" \
+              --jq '[.workflow_runs[] | select(.name == "CI")] | sort_by(.created_at) | last | if . == null then "absente" else "\(.status)/\(.conclusion)" end')
+            echo "[docker] CI de ${SHA:0:7} : $etat"
+            case "$etat" in
+              completed/success) exit 0 ;;
+              completed/*) echo "::error::CI rouge ($etat) sur ${SHA:0:7} : pas d'image."; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "::error::CI absente ou toujours en cours après 20 min sur ${SHA:0:7} : pas d'image."
+          exit 1
+
   build-and-push:
     name: Build + push ghcr.io
+    needs: ci-verte
     runs-on: ubuntu-latest
 
     steps:
