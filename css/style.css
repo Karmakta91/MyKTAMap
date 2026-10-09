@@ -9080,6 +9080,15 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   50%      { opacity: 0.5; transform: scale(0.8); }
 }
 
+/* 🔒 Outil de dessin grisé : plan relié en droit « lire » (interface.js > _majOutilsLectureSeule).
+   Reste cliquable : le clic rappelle « lecture seule ». Même rendu que ⏪/⏩ sans historique. */
+.leaflet-bar a.kta-outil-lecture-seule,
+.leaflet-bar a.kta-outil-lecture-seule:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
 /* =========================
    FIX MOBILE PAYSAGE — barre dans le cadre
    ========================= */

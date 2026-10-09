@@ -695,6 +695,8 @@ async function lancerApplication() {
   }
   initMeasure();
   initInterface();
+  // 🔒 Plan relié en droit « lire » : outils de dessin grisés dès l'ouverture (sans extension : rien).
+  if (typeof window.ktaMajOutilsLectureSeule === "function") window.ktaMajOutilsLectureSeule();
   initTracking();
 
   // 🆕 v1.16.0 step 4 : init SessionBackups + snapshot AVANT restore.
@@ -909,7 +911,12 @@ async function lancerApplication() {
   }
   // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : dit d'emblée, une fois par ouverture.
   if (typeof window.ktaAnnoncerLectureSeule === "function") {
-    setTimeout(function() { try { window.ktaAnnoncerLectureSeule(); } catch(e) { /* affichage seulement */ } }, 600);
+    setTimeout(function() {
+      try {
+        if (typeof window.ktaMajOutilsLectureSeule === "function") window.ktaMajOutilsLectureSeule();
+        window.ktaAnnoncerLectureSeule();
+      } catch(e) { /* affichage seulement */ }
+    }, 600);
   }
   } finally {
     _appEnCours = false;

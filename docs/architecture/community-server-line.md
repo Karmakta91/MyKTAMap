@@ -209,7 +209,12 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   recalcule l'atténuation « hors niveau ».
 - **Lecture seule** (`lectureSeule`) : gardée au bouton ✏️ (`interface.js`), au clic carte de l'éditeur, aux tracés /
   zones / structures, à la fiche d'un objet (mode lecture), à `KtaConvertir` (convertir, supprimer, lot) et au
-  remplacement de session du Tableur. `check-extensions` §6 bis ter vérifie chaque câblage.
+  remplacement de session du Tableur. À l'ouverture du plan, une fenêtre le dit (`ktaAnnoncerLectureSeule`) et les
+  4 outils de dessin (✏️ POI, tracés, zones, structures) sont **grisés** (`kta-outil-lecture-seule`,
+  `aria-disabled`) : visibles, un clic rappelle le message sans ouvrir le groupe. `ktaMajOutilsLectureSeule()`
+  (`interface.js`) recalcule l'état après `initInterface`, puis à `mktm:compte-changed`,
+  `mktm:plans-extension-changes` et `mktm:connexion-changed` (droit perdu en cours : outil armé coupé, menu fermé).
+  `check-extensions` §6 bis ter vérifie chaque câblage.
 - **Mode d'un plan ☁️** : `plans.lister()` peut donner `tiledV2` / `multiLevel` (booléens, lus dans le ZIP par
   l'extension) — inscrits au registre seulement s'ils valent `true`, comme les plans du site : badge V2 / M-LVL
   juste avant la 1re ouverture (avant : « V1 » jusqu'à l'ouverture).

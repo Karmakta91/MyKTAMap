@@ -982,6 +982,33 @@ function _initClickExterieur() {
 }
 
 // =========================
+// 🔒 OUTILS DE DESSIN GRISÉS EN LECTURE SEULE (plan relié en droit « lire »)
+// =========================
+// Les 4 groupes de dessin restent visibles (on découvre l'outil) mais grisés ; un clic rappelle le
+// message (ktaEditionRefusee) sans ouvrir le groupe — cf l'écouteur posé dans _creerGroupeAccordeon.
+// Recalculé en fin d'initInterface (= à chaque ouverture de plan), par main.js après l'annonce, et
+// quand l'extension signale un changement (compte, plans, connexion). Sans extension : jamais grisé.
+const _KTA_GROUPES_DESSIN = ["edition", "traces", "zones", "structures"];
+function _majOutilsLectureSeule() {
+  const ro = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true);
+  _KTA_GROUPES_DESSIN.forEach(function(id) {
+    const g = _groupes[id];
+    if (!g || !g.btnPrincipal) return;
+    g.btnPrincipal.classList.toggle("kta-outil-lecture-seule", ro);
+    if (ro) g.btnPrincipal.setAttribute("aria-disabled", "true");
+    else g.btnPrincipal.removeAttribute("aria-disabled");
+  });
+  if (!ro) return;
+  // Droit perdu en cours de session : un outil de dessin armé ou un menu ouvert retombe.
+  if (window.modeEdition || window.modeRoad || window.modeZone || window.modeStructure) _desactiverTousLesModes();
+  if (_currentFlyout && _KTA_GROUPES_DESSIN.indexOf(_currentFlyout.dataset.groupId) !== -1) _fermerFlyout();
+}
+window.ktaMajOutilsLectureSeule = _majOutilsLectureSeule;
+["mktm:compte-changed", "mktm:plans-extension-changes", "mktm:connexion-changed"].forEach(function(ev) {
+  window.addEventListener(ev, function() { try { _majOutilsLectureSeule(); } catch(e) { /* affichage seulement */ } });
+});
+
+// =========================
 // HELPER : créer un groupe accordéon
 // =========================
 // config = {
@@ -1007,6 +1034,20 @@ function _creerGroupeAccordeon(config) {
     btnPrincipal.href      = "#";
     btnPrincipal.setAttribute("role", "button");
     btnPrincipal.title     = config.titre;
+
+    // 🔒 Outil de dessin grisé (lecture seule) : posé AVANT l'écouteur du groupe, qu'il coupe
+    // (stopImmediatePropagation). Droit revenu sans événement : on dégrise et le clic passe.
+    if (_KTA_GROUPES_DESSIN.indexOf(config.id) !== -1) {
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        if (!btnPrincipal.classList.contains("kta-outil-lecture-seule")) return;
+        if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) {
+          L.DomEvent.stop(e);
+          e.stopImmediatePropagation();
+          return;
+        }
+        _majOutilsLectureSeule();
+      });
+    }
 
     const subActions = [];
 

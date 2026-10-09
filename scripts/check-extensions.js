@@ -400,6 +400,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const bloc = iEd >= 0 ? IF.slice(iEd, IF.indexOf("});", iEd)) : "";
     t("🩸 bouton ✏️ (le VRAI, interface.js) : la lecture seule l'empêche de s'armer",
       /ktaEditionRefusee\(\)\)\s*return;\s*window\.modeEdition = true;/.test(bloc));
+    t("outils de dessin grisés en lecture seule : 4 groupes, clic coupé, relu à l'ouverture du plan",
+      /_KTA_GROUPES_DESSIN = \["edition", "traces", "zones", "structures"\]/.test(IF) &&
+      /kta-outil-lecture-seule"\)\) return;[\s\S]{0,200}stopImmediatePropagation\(\)/.test(IF) &&
+      /initInterface\(\);\s*\n[^\n]*\n\s*if \(typeof window\.ktaMajOutilsLectureSeule/.test(lire("js/main.js")));
     t("🩸 clic carte de l'éditeur : refusé en lecture seule", /_editorClickHandler = function\(e\) \{[\s\S]{0,120}ktaEditionRefusee/.test(lire("js/editor.js")));
     t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
