@@ -247,7 +247,7 @@ window.ouvrirRoadsDistanceFloater = function() {
 
   const roads = _rdRoadsExploitables();
   if (roads.length === 0) {
-    alert(window.I18n.t("disttot.noRoads"));
+    window.ktaAlerte(window.I18n.t("disttot.noRoads"));
     return;
   }
 

@@ -750,11 +750,11 @@
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm.gps.incognito.toast"), "warn");
-      } else { alert(window.I18n.t("osm.gps.incognito.alert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm.gps.incognito.alert")); }
       return;
     }
     if (!navigator.geolocation) {
-      alert(window.I18n.t("osm.gps.unavailable"));
+      window.ktaAlerte(window.I18n.t("osm.gps.unavailable"), { type: "erreur" });
       return;
     }
     const btn = document.getElementById("kta-osm-mygps");
@@ -785,7 +785,7 @@
             const msg = window.I18n.t("osm.gps.outOfBounds", { dist: distKm.toFixed(1) });
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(msg, "warn");
-            } else { alert(msg); }
+            } else { window.ktaAlerte(msg); }
             console.log("[OsmView] GPS rejeté : hors bbox plan (",
                         lat.toFixed(5), ",", lng.toFixed(5),
                         "→ distance centre", distKm.toFixed(2), "km)");
@@ -831,7 +831,7 @@
         if (err.code === 1) msg = window.I18n.t("osm.gps.err.permission");
         else if (err.code === 2) msg = window.I18n.t("osm.gps.err.unavailable");
         else if (err.code === 3) msg = window.I18n.t("osm.gps.err.timeout");
-        alert(msg);
+        window.ktaAlerte(msg, { type: "erreur" });
         if (btn && originalHtml != null) { btn.disabled = false; btn.innerHTML = originalHtml; }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
@@ -2455,24 +2455,24 @@
   // =========================
   async function open() {
     if (typeof L === "undefined" || !L.imageOverlay || !L.imageOverlay.rotated) {
-      alert(window.I18n.t("osm.open.leafletMissing"));
+      window.ktaAlerte(window.I18n.t("osm.open.leafletMissing"), { type: "erreur" });
       return;
     }
     if (!_hasGeoref()) {
-      alert(window.I18n.t("osm.open.noGeoref"));
+      window.ktaAlerte(window.I18n.t("osm.open.noGeoref"));
       return;
     }
     // 🆕 v1.39.10 — Gate V2 : Vue OSM réservée aux plans tuilés pour éviter
     // le crash mobile (cf. header doc § CRASH MOBILE). Alert pédagogique
     // pour expliquer comment activer.
     if (!_isV2Plan()) {
-      alert(window.I18n.t("osm.open.notV2"));
+      window.ktaAlerte(window.I18n.t("osm.open.notV2"));
       return;
     }
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm.open.incognito.toast"), "warn");
-      } else { alert(window.I18n.t("osm.open.incognito.alert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm.open.incognito.alert")); }
       return;
     }
     // 🆕 v1.43.0 — Si offline mais cache OSM présent pour le plan, on
@@ -2487,7 +2487,7 @@
       if (!_planHasCachedTiles) {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("osm.open.offlineNoCache.toast"), "warn");
-        } else { alert(window.I18n.t("osm.open.offlineNoCache.alert")); }
+        } else { window.ktaAlerte(window.I18n.t("osm.open.offlineNoCache.alert")); }
         return;
       }
     }
@@ -2545,7 +2545,7 @@
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("osm.ping.noInternet"), "warn");
         } else {
-          alert(window.I18n.t("osm.ping.noInternet"));
+          window.ktaAlerte(window.I18n.t("osm.ping.noInternet"));
         }
         return;
       }

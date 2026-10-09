@@ -768,7 +768,7 @@
   function ouvrirCreation(pointId, x, y, nom, source, level, tag, pointUid) {
     const planId = _currentPlanId();
     if (!planId) {
-      alert(_t("ipl.err.noPlan"));
+      window.ktaAlerte(_t("ipl.err.noPlan"));
       return;
     }
     _fermerModale();
@@ -929,7 +929,7 @@
     opts = opts || {};
     const plan = window.PlanRegistry ? window.PlanRegistry.findById(planId) : null;
     if (!plan) {
-      alert(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }));
+      window.ktaAlerte(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }), { type: "erreur" });
       return;
     }
 
@@ -979,13 +979,13 @@
         } else if (typeof window.chargerPlanDuRegistre === "function") {
           await window.chargerPlanDuRegistre(plan.id);
         } else {
-          alert(_t("ipl.err.loadFailed"));
+          window.ktaAlerte(_t("ipl.err.loadFailed"), { type: "erreur" });
           _pendingTarget = null;
           return;
         }
       } catch(e) {
         console.warn("[InterPlanLinks] switch plan échoué :", e);
-        alert(_t("ipl.err.loadFailed"));
+        window.ktaAlerte(_t("ipl.err.loadFailed"), { type: "erreur" });
         _pendingTarget = null;
         return;
       }
@@ -1024,7 +1024,7 @@
   function naviguerVers(linkId, mySide) {
     const link = _load().links.find(function(l) { return l.id === linkId; })
       || _bakedLinkCache[linkId] || null;
-    if (!link) { alert(_t("ipl.err.linkGone")); return; }
+    if (!link) { window.ktaAlerte(_t("ipl.err.linkGone"), { type: "erreur" }); return; }
     const other = (mySide === "a") ? link.b : link.a;
     if (!other) return;
     goTo(other.planId, {

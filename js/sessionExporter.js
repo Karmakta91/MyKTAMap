@@ -1675,7 +1675,7 @@
   // sécurité si un appelant tiers n'a pas suivi.
   function _packerZipSession(payload, photos, filename, historePdfs) {
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return Promise.reject(new Error("JSZip indisponible"));
     }
     const zip = new JSZip();
@@ -2042,7 +2042,7 @@
       // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
       // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
       // verrait "session vide". OK pour MVP (cas marginal).
-      alert(t("export.err.fullVide"));
+      window.ktaAlerte(t("export.err.fullVide"));
       return;
     }
 
@@ -2211,7 +2211,7 @@
           .then(function() { _fermer(); })
           .catch(function(err) {
             console.error("[SessionExport] _packerZipSession :", err);
-            alert(t("export.err.zipCreation", { err: err.message || err }));
+            window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
           });
       } else {
         // Pas de photos ni PDF → JSON pur (rétro-compat absolue).
@@ -2305,7 +2305,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length + mesurePts.length + mesureSurfPts.length + (tracker ? 1 : 0);
     if (total === 0) {
-      alert(t("export.err.advVide"));
+      window.ktaAlerte(t("export.err.advVide"));
       return;
     }
 
@@ -2370,7 +2370,7 @@
             .then(function() { _fermer(); })
             .catch(function(err) {
               console.error("[SessionExport] _packerZipSession Avancé :", err);
-              alert(t("export.err.zipCreation", { err: err.message || err }));
+              window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
             });
         } else {
           // Pas de photos → JSON pur (rétrocompat absolue)
@@ -2387,7 +2387,7 @@
 
   function _genererZipAdvanced(points, roads, zones, structures, mesurePts, mesureSurfPts, tracker, photos) {
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return;
     }
     const zip = new JSZip();
@@ -2458,7 +2458,7 @@
       _fermer();
     }).catch(function(e) {
       console.error("[SessionExport] ZIP :", e);
-      alert(t("export.err.zipCreationGeneric"));
+      window.ktaAlerte(t("export.err.zipCreationGeneric"));
     });
   }
 
@@ -2537,7 +2537,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length;
     if (total === 0) {
-      alert(t("export.err.convVide"));
+      window.ktaAlerte(t("export.err.convVide"));
       return;
     }
 
@@ -2633,7 +2633,7 @@
   // Sens 2 : fichier data layer uploadé → fichier session JSON (ou ZIP si photos)
   function _exportConvData2Session() {
     if (!_convUploadedJson) {
-      alert(t("export.err.convNoSource"));
+      window.ktaAlerte(t("export.err.convNoSource"));
       return;
     }
     const j = _convUploadedJson;
@@ -2649,7 +2649,7 @@
 
     if (points.length === 0 && roads.length === 0 && zones.length === 0
         && structures.length === 0) {
-      alert(t("export.err.convSourceVide"));
+      window.ktaAlerte(t("export.err.convSourceVide"));
       return;
     }
 
@@ -2692,7 +2692,7 @@
         .then(function() { _fermer(); })
         .catch(function(err) {
           console.error("[SessionExport] Conv ZIP session sortie :", err);
-          alert(t("export.err.zipSessionCreation", { err: err.message || err }));
+          window.ktaAlerte(t("export.err.zipSessionCreation", { err: err.message || err }), { type: "erreur" });
         });
     } else {
       // Pas de photos → JSON pur (rétrocompat absolue)
@@ -2823,7 +2823,7 @@
 
   function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
-      alert(t("export.err.convRien"));
+      window.ktaAlerte(t("export.err.convRien"));
       return;
     }
     const now = new Date().toISOString();
@@ -2855,7 +2855,7 @@
 
     // Sinon (>1 fichier OU avec photos) → ZIP
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return;
     }
     const zip = new JSZip();
@@ -2890,7 +2890,7 @@
       _fermer();
     }).catch(function(e) {
       console.error("[SessionExport] Conversion ZIP :", e);
-      alert(t("export.err.zipCreationGeneric"));
+      window.ktaAlerte(t("export.err.zipCreationGeneric"));
     });
   }
 
@@ -3118,7 +3118,7 @@
   function _exportFusion() {
     const m = _fusionMerged;
     if (!m || (!m.data.length && !m.roads.length && !m.zones.length && !m.structures.length)) {
-      alert(t("export.fusion.errVide"));
+      window.ktaAlerte(t("export.fusion.errVide"));
       return;
     }
     const files = [];
@@ -3793,7 +3793,7 @@
             if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
               window.OOMGuard.showToast(msg, "warn");
             } else {
-              alert(msg);
+              window.ktaAlerte(msg);
             }
           }
         });
@@ -4058,13 +4058,13 @@
 
   async function _exportKmzInterne() {
     if (!window.KmzExport) {
-      alert(t("export.err.kmzModuleKo"));
+      window.ktaAlerte(t("export.err.kmzModuleKo"), { type: "erreur" });
       return;
     }
     const c = _kmzLireCalib();
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      alert(t("export.err.calib8Champs"));
+      window.ktaAlerte(t("export.err.calib8Champs"));
       return;
     }
     // Build transform (avec validations bloquantes)
@@ -4072,7 +4072,7 @@
     try {
       transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
-      alert(t("export.err.calibInvalide", { msg: e.message }));
+      window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
     // Persistance
@@ -4407,7 +4407,7 @@
       _fermer();
     } catch(e) {
       console.error("[KMZ] Erreur génération :", e);
-      alert(t("export.err.kmzGeneration", { err: e.message || e }));
+      window.ktaAlerte(t("export.err.kmzGeneration", { err: e.message || e }), { type: "erreur" });
     } finally {
       if (btnDl) { btnDl.disabled = false; btnDl.textContent = t("export.btn.download"); }
     }
@@ -4472,24 +4472,24 @@
   // Le calibrage est ainsi partagé entre les deux formats.
   function _exportGpxViaExtern() {
     if (!window.KmzExport) {
-      alert(t("export.err.kmzModuleKo"));
+      window.ktaAlerte(t("export.err.kmzModuleKo"), { type: "erreur" });
       return;
     }
     if (!window.GpxIO) {
-      alert(t("export.err.gpxModuleKo"));
+      window.ktaAlerte(t("export.err.gpxModuleKo"), { type: "erreur" });
       return;
     }
     // 1) Valider + persister calibrage (même validation que _exportKmz)
     const c = _kmzLireCalib();
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      alert(t("export.err.calib8Champs"));
+      window.ktaAlerte(t("export.err.calib8Champs"));
       return;
     }
     try {
       window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
-      alert(t("export.err.calibInvalide", { msg: e.message }));
+      window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
     window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
@@ -4521,7 +4521,7 @@
         })()
       });
       if (!r.ok) {
-        alert(t("export.err.gpxImpossible", { msg: r.msg }));
+        window.ktaAlerte(t("export.err.gpxImpossible", { msg: r.msg }), { type: "erreur" });
       } else {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(
@@ -4533,7 +4533,7 @@
       }
     } catch(e) {
       console.error("[GPX] Erreur export :", e);
-      alert(t("export.err.gpxGeneration", { err: e.message || e }));
+      window.ktaAlerte(t("export.err.gpxGeneration", { err: e.message || e }), { type: "erreur" });
     } finally {
       if (btnDl) { btnDl.disabled = false; btnDl.textContent = t("export.btn.download"); }
     }

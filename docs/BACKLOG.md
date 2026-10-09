@@ -95,15 +95,11 @@ remplace.
 - 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
   thèmes, cosmétique.
 
-## 📋 Popups natives et presse-papier — au fil de l'eau (recompté le 29/09/2026)
+## 📋 Presse-papier — au fil de l'eau
 
-Politique arrêtée : **pas de sweep massif**, on migre quand on touche le module. Nouveaux usages : les helpers
-obligatoires.
+> Les popups natives (`alert` / `confirm` / `prompt`) sont **toutes migrées** (09/10/2026) vers `ktaAlerte` /
+> `ktaConfirm` / toast ; `scripts/check-popups-natives.js` (plafond 0) interdit leur retour.
 
-- **`alert()` / `confirm()` natifs** : ~175 `alert()` et ~37 `confirm()` dans `js/` (grep brut, commentaires
-  compris), hors charte et hors du réglage de notifications. `window.ktaConfirm` (utils.js, Promise + charte) est
-  déjà utilisé par 13 fichiers. `secoursMode.js` reste le premier contributeur : le plus d'effet, le plus de risque.
-  ⚠️ `ktaConfirm` est **asynchrone** : le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`.
 - **Copies locales du presse-papier** : `window.ktaCopierTexte(txt)` (utils.js, v1.97.10) existe ; une dizaine de
   fichiers gardent leur propre `navigator.clipboard` (`debug`, `homeConfig`, `interfaceDocs`, `lostMode`,
   `memInspector`, `osmCoords`, `refonteInterface`, `secoursMode`, `sessionReport`, `statsGlobales`). Chaque site a
@@ -248,7 +244,6 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
 | **D-guidage-instable** | `check-guidage.js` a sorti « ⚠️ 1 echec(s) » une fois au pre-commit (09/10, juste après les tests d'itinéraire Secours brancard / accès barrés), puis vert sur 2 relances sans changement | 🔬 non reproduit — possible concurrence avec une autre session | personne — s'il revient, garder la sortie complète du hook |
-| **D-confirm** | `confirm()` natifs hors charte | 📋 au fil de l'eau — cf. **📋 Popups natives** | personne |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
 

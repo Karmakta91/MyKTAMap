@@ -433,7 +433,7 @@
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
         { origine: _lastResultats.origine, urgence: true, evacuation: evac });
     } else {
-      alert(window.I18n.t("sortie.erreur.itineraireIndispo"));
+      window.ktaAlerte(window.I18n.t("sortie.erreur.itineraireIndispo"), { type: "erreur" });
     }
   };
 
@@ -513,7 +513,7 @@
   SU._modePickerCarte = function() {
     _fermerModale();
     if (!window.map) {
-      alert(window.I18n.t("sortie.erreur.carteIndispo"));
+      window.ktaAlerte(window.I18n.t("sortie.erreur.carteIndispo"), { type: "erreur" });
       return;
     }
     // Picker partagé (utils.js) : floater « Où es-tu ? » avec Annuler, clic

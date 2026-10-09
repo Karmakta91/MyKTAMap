@@ -1237,11 +1237,11 @@
   // ========== APERÇU SUR LA CARTE ==========
   function _apercuCarte() {
     if (_selection.size === 0) {
-      alert(window.I18n.t("tabledit.preview.err.aucuneLigne"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.aucuneLigne"));
       return;
     }
     if (!window.map || !APP_CONFIG) {
-      alert(window.I18n.t("tabledit.preview.err.carteIndispo"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.carteIndispo"), { type: "erreur" });
       return;
     }
 
@@ -1249,7 +1249,7 @@
     const points = [..._selection].map(function(i) { return _data[i]; })
       .filter(function(p) { return typeof p.x === "number" && typeof p.y === "number"; });
     if (points.length === 0) {
-      alert(window.I18n.t("tabledit.preview.err.coordsInvalides"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.coordsInvalides"));
       return;
     }
 
@@ -1491,10 +1491,16 @@
   // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
-    if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
+    if (!window.setEditorPoints) {
+      window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
+      return;
+    }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
-    alert(window.I18n.t("tabledit.save.sessionOk", { n: _data.length }));
+    // Carte masquée par l'éditeur : le résultat ne se voit pas → toast warn (visible en « Essentielles »).
+    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
+    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn");
+    else window.ktaAlerte(msgOk);
   }
 
   // =========================
@@ -1720,8 +1726,7 @@
           if (restants === 0) {
             let msg = t("tabledit.dedup.okMulti", { ok: ok, detail: bilans.join("\n") || "—" });
             if (echecs.length) msg += "\n\n⚠️ " + t("tabledit.dedup.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
-            alert(msg);
-            if (ok) fermer();
+            window.ktaAlerte(msg).then(function() { if (ok) fermer(); });   // bilan lu avant la fermeture
           }
         });
       });
@@ -1815,7 +1820,7 @@
             $("kta-tbl-resol-" + cote + "_h").value = dm.height;
             recap();
           } else {
-            alert(window.I18n.t("tabledit.resol.errImage", { nom: f.name }));
+            window.ktaAlerte(window.I18n.t("tabledit.resol.errImage", { nom: f.name }), { type: "erreur" });
           }
         });
       });
@@ -1935,8 +1940,7 @@
           if (restants === 0) {
             let msg = window.I18n.t("tabledit.resol.okMulti", { ok: bilans.length, detail: bilans.join("\n") || "—" });
             if (echecs.length) msg += "\n\n⚠️ " + window.I18n.t("tabledit.resol.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
-            alert(msg);
-            if (bilans.length) fermer();
+            window.ktaAlerte(msg).then(function() { if (bilans.length) fermer(); });   // bilan lu avant la fermeture
           }
         });
       });

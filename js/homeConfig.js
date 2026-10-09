@@ -180,7 +180,7 @@
         }
         btn.addEventListener("click", function() {
           if (!window.IncognitoMode) {
-            alert(_t("home.incognito.indispo", "Module IncognitoMode indisponible. Recharge la page."));
+            window.ktaAlerte(_t("home.incognito.indispo", "Module IncognitoMode indisponible. Recharge la page."));
             return;
           }
           if (window.IncognitoMode.active) {
@@ -828,7 +828,7 @@
         if (!pin1) return;
         // Validation basique côté UI (le backend re-valide)
         if (!/^\d{4,6}$/.test(pin1)) {
-          alert(_t("pin.setup.errLength"));
+          await window.ktaAlerte(_t("pin.setup.errLength"), { type: "erreur" });
           return;
         }
         const pin2 = await _demanderPin(
@@ -838,7 +838,7 @@
         );
         if (!pin2) return;
         if (pin1 !== pin2) {
-          alert(_t("pin.setup.errMismatchRetry"));
+          await window.ktaAlerte(_t("pin.setup.errMismatchRetry"), { type: "erreur" });
           return;
         }
 
@@ -862,14 +862,14 @@
         // Activation
         try {
           await window.MyKTAMapPinLock.enable(pin1, useBio);
-          alert(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
+          await window.ktaAlerte(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
         } catch(e) {
           if (e && e.pinActivatedWithoutBiometric) {
             // Cas partiel : PIN OK mais biométrie a échoué
-            alert(_t("pin.setup.okEnabledBioFailed") + e.message);
+            await window.ktaAlerte(_t("pin.setup.okEnabledBioFailed") + e.message);
           } else {
             console.error("[PinSetup] enable :", e);
-            alert(_t("pin.setup.errEnable") + (e.message || e));
+            await window.ktaAlerte(_t("pin.setup.errEnable") + (e.message || e), { type: "erreur" });
             return;
           }
         }
@@ -898,12 +898,12 @@
           try {
             unlocked = await window.MyKTAMapPinLock.unlock(oldPin);
           } catch(e) {
-            alert("❌ " + (e.message || e));
+            await window.ktaAlerte("❌ " + (e.message || e), { type: "erreur" });
             return;
           }
           if (!unlocked) {
             const remaining = window.MyKTAMapPinLock.getRemainingAttempts();
-            alert(_t("pin.setup.errWrongCode", { n: remaining }));
+            await window.ktaAlerte(_t("pin.setup.errWrongCode", { n: remaining }), { type: "erreur" });
             return;
           }
         }
@@ -916,7 +916,7 @@
         );
         if (!newPin1) return;
         if (!/^\d{4,6}$/.test(newPin1)) {
-          alert(_t("pin.setup.errLength"));
+          await window.ktaAlerte(_t("pin.setup.errLength"), { type: "erreur" });
           return;
         }
         const newPin2 = await _demanderPin(
@@ -926,16 +926,16 @@
         );
         if (!newPin2) return;
         if (newPin1 !== newPin2) {
-          alert(_t("pin.setup.errMismatch"));
+          await window.ktaAlerte(_t("pin.setup.errMismatch"), { type: "erreur" });
           return;
         }
 
         try {
           await window.MyKTAMapPinLock.changePin(newPin1);
-          alert(_t("pin.setup.okChanged"));
+          await window.ktaAlerte(_t("pin.setup.okChanged"));
         } catch(e) {
           console.error("[PinSetup] changePin :", e);
-          alert(_t("pin.setup.errGeneric") + (e.message || e));
+          await window.ktaAlerte(_t("pin.setup.errGeneric") + (e.message || e), { type: "erreur" });
           return;
         }
         _majPinStatusUI();
@@ -969,12 +969,12 @@
           if (!pin) return;
           try {
             await window.MyKTAMapPinLock.disable(pin);
-            alert(_t("pin.setup.okDisabled"));
+            await window.ktaAlerte(_t("pin.setup.okDisabled"));
             _majPinStatusUI();
             return;
           } catch(e) {
             console.error("[PinSetup] disable :", e);
-            alert("❌ " + (e.message || e));
+            await window.ktaAlerte("❌ " + (e.message || e), { type: "erreur" });
             return;
           }
         }
@@ -984,7 +984,7 @@
         // appelant reset() après check biométrie OK).
         // ⚠️ Sécurité OK car la biométrie EST la preuve d'identité.
         window.MyKTAMapPinLock.reset();
-        alert(_t("pin.setup.okDisabledBio"));
+        await window.ktaAlerte(_t("pin.setup.okDisabledBio"));
         _majPinStatusUI();
       }
 
@@ -1451,10 +1451,11 @@
               netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
               setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
             }).catch(function() {
-              alert(_tNL("home.netlog.copyFail", "Copie échouée — sélectionne manuellement."));
+              window.ktaAlerte(_tNL("home.netlog.copyFail", "Copie échouée — sélectionne manuellement."));
             });
           } else {
-            alert(_tNL("home.netlog.copyUnavailable", "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
+            window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
+              "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
           }
         });
       }

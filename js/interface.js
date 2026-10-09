@@ -1906,11 +1906,11 @@ L.control.ktaFilterControl = function() {
 // #3 — Recentre la carte sur la position courante du tracker (sans dézoomer).
 function _centrerSurMaPosition() {
   if (!window.map || typeof window.getTrackingPosition !== "function" || typeof window.convertCoord !== "function") {
-    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+    window.ktaAlerte(window.I18n.t("tracker.maPosition.indispo")); return;
   }
   var pos = window.getTrackingPosition();
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+    window.ktaAlerte(window.I18n.t("tracker.maPosition.indispo")); return;
   }
   var ll = window.convertCoord(pos.x, pos.y);
   var z = Math.max(window.map.getZoom(), 0); // recentre + garantit un zoom lisible
@@ -1926,7 +1926,7 @@ var _verrouSuspendu = false, _verrouTimer = null, _verrouInterval = null, _verro
 function _gererSuspensionVerrou() {
   if (_verrouSuspendu) { _confirmerReactivationVerrou(); return; } // déjà suspendu → confirme la réactivation
   if (window.APP_CONFIG && window.APP_CONFIG.smartNav !== true) {  // rien à suspendre
-    alert(window.I18n.t("tracker.verrou.nonActif")); return;
+    window.ktaAlerte(window.I18n.t("tracker.verrou.nonActif")); return;
   }
   _ouvrirChoixDureeVerrou();
 }
@@ -2256,7 +2256,7 @@ function initInterface() {
     titre: window.I18n.t("ui.group.recherche"),
     soloAction: function() {
       if (window.ouvrirRecherche) window.ouvrirRecherche();
-      else alert(window.I18n.t("ui.alert.rechercheIndispo"));
+      else window.ktaAlerte(window.I18n.t("ui.alert.rechercheIndispo"), { type: "erreur" });
     }
   });
 
@@ -2289,7 +2289,7 @@ function initInterface() {
         } },
       { icone: "📊", titre: window.I18n.t("ui.subaction.editJson"), onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
-          else alert(window.I18n.t("ui.alert.tableEditorIndispo"));
+          else window.ktaAlerte(window.I18n.t("ui.alert.tableEditorIndispo"), { type: "erreur" });
         } }
     ]
   });
@@ -2318,7 +2318,8 @@ function initInterface() {
             // Fallback : telechargerPlan rethrow désormais — on l'attrape ici pour
             // afficher un message visible au lieu d'une promesse rejetée silencieuse.
             window.telechargerPlan().catch(function(err) {
-              alert(window.I18n.t("ui.alert.exportError", { err: (err && err.message ? err.message : err) }));
+              window.ktaAlerte(window.I18n.t("ui.alert.exportError", { err: (err && err.message ? err.message : err) }),
+                { type: "erreur" });
             });
           }
         } },
@@ -2328,7 +2329,7 @@ function initInterface() {
           if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
             window.MyKTAMapPdfExport.afficherModale();
           } else {
-            alert(window.I18n.t("ui.alert.pdfIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.pdfIndispo"), { type: "erreur" });
           }
         } }
     ]
@@ -2712,7 +2713,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
             window.MyKTAMapTrackerReplay.ouvrirModale();
           } else {
-            alert(window.I18n.t("ui.alert.replayIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.replayIndispo"), { type: "erreur" });
           }
         }
       },
@@ -2730,7 +2731,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();
           } else {
-            alert(window.I18n.t("ui.alert.heatmapIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.heatmapIndispo"), { type: "erreur" });
           }
         }
       },
@@ -2748,7 +2749,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           if (window.LostMode && typeof window.LostMode.open === "function") {
             window.LostMode.open();
           } else {
-            alert(window.I18n.t("ui.alert.lostIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.lostIndispo"), { type: "erreur" });
           }
         }
       },
@@ -2765,7 +2766,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
             window.EmergencyMode.activer();
           } else {
-            alert(window.I18n.t("ui.alert.emergencyIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.emergencyIndispo"), { type: "erreur" });
           }
         }
       },
@@ -2781,7 +2782,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
             window.SecoursMode.ouvrir();
           } else {
-            alert(window.I18n.t("ui.alert.secoursIndispo"));
+            window.ktaAlerte(window.I18n.t("ui.alert.secoursIndispo"), { type: "erreur" });
           }
         }
       }
@@ -3872,7 +3873,7 @@ window.activerModeSuppressionTraceClic = function() {
            ["principal", "secondaire", "chemin", "jonction"].indexOf(r.type) !== -1;
   });
   if (supprimables.length === 0) {
-    alert(window.I18n.t("ui.alert.noTraceToDelete"));
+    window.ktaAlerte(window.I18n.t("ui.alert.noTraceToDelete"));
     return;
   }
 
@@ -4005,7 +4006,7 @@ window.activerModeSuppressionZoneClic = function() {
     return z && Array.isArray(z.points) && z.points.length >= 3;
   });
   if (supprimables.length === 0) {
-    alert(window.I18n.t("ui.alert.noZoneToDelete"));
+    window.ktaAlerte(window.I18n.t("ui.alert.noZoneToDelete"));
     return;
   }
 
@@ -4142,7 +4143,7 @@ window.activerModeSuppressionStructureClic = function() {
     return s.points.length >= minPts;
   });
   if (supprimables.length === 0) {
-    alert(window.I18n.t("ui.alert.noStructToDelete"));
+    window.ktaAlerte(window.I18n.t("ui.alert.noStructToDelete"));
     return;
   }
 

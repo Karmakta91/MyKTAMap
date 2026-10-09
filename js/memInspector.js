@@ -1014,7 +1014,7 @@
         if (btn.isConnected) btn.textContent = orig;
       }, 1800);
     }).catch(function(e) {
-      alert(_t("copy.fail", { detail: (e.message || e) }));
+      window.ktaAlerte(_t("copy.fail", { detail: (e.message || e) }), { type: "erreur", zIndex: 100150 });
     });
   }
 
@@ -1082,7 +1082,7 @@
           if (btn.isConnected) btn.textContent = orig;
         }, 1800);
       }).catch(function(e) {
-        alert(_t("copy.fail", { detail: (e.message || e) }));
+        window.ktaAlerte(_t("copy.fail", { detail: (e.message || e) }), { type: "erreur" });
       });
     });
 

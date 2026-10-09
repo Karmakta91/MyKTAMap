@@ -131,7 +131,7 @@
     if (existing) { existing.remove(); return; }
 
     if (!_checkJsPDF()) {
-      alert(window.I18n.t("pdfexport.alert.indispo"));
+      window.ktaAlerte(window.I18n.t("pdfexport.alert.indispo"), { type: "erreur" });
       return;
     }
 

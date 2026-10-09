@@ -1323,11 +1323,13 @@ photos: false, histoirePdfs: false, crashes: false
             : exportToFile({ include: include });
           promesse.then(function(res) {
             btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
-            // Archives évincées par le quota → dit franchement, pas un zip muet
-            if (res.sautes && res.sautes.length) {
-              alert("⚠️ " + window.I18n.t("profileio.arch_sautes", { n: res.sautes.length }) + "\n" + res.sautes.join("\n"));
-            }
-            setTimeout(function() {
+            // Archives évincées par le quota → dit franchement, pas un zip muet.
+            // La fermeture de la modale attend que le message soit lu (comme la popup native bloquante d'avant).
+            const lu = (res.sautes && res.sautes.length)
+              ? window.ktaAlerte("⚠️ " + window.I18n.t("profileio.arch_sautes", { n: res.sautes.length }) +
+                  "\n" + res.sautes.join("\n"))
+              : Promise.resolve();
+            lu.then(function() { setTimeout(function() {
               _fermerModales();
               if (window.OOMGuard && window.OOMGuard.showToast) {
                 window.OOMGuard.showToast(
@@ -1335,10 +1337,10 @@ photos: false, histoirePdfs: false, crashes: false
                   "info"
                 );
               }
-            }, 800);
+            }, 800); });
           }).catch(function(e) {
             btnGo.disabled = false; btnGo.textContent = origText;
-            alert(window.I18n.t("profileio.export_fail", { error: (e.message || e) }));
+            window.ktaAlerte(window.I18n.t("profileio.export_fail", { error: (e.message || e) }), { type: "erreur" });
           });
         };
 
@@ -1416,10 +1418,10 @@ photos: false, histoirePdfs: false, crashes: false
     // la modale se déclenche depuis au moins deux endroits, et le sera
     // peut-être depuis un troisième demain.
     if (typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul()) {
-      alert(window.I18n.t("profileio.kiosque_refus"));
+      window.ktaAlerte(window.I18n.t("profileio.kiosque_refus"));
       return;
     }
-    if (!file) { alert(window.I18n.t("profileio.no_file")); return; }
+    if (!file) { window.ktaAlerte(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 
     // 📦 v1.79.0 — détection CONTENEUR au contenu (signature ZIP « PK »),
@@ -1434,7 +1436,7 @@ photos: false, histoirePdfs: false, crashes: false
         if (typeof window.JSZip === "undefined") throw new Error("JSZip indisponible");
         zipConteneur = await window.JSZip.loadAsync(file);
         const entree = zipConteneur.file("profil.json");
-        if (!entree) { alert(window.I18n.t("profileio.arch_pas_profil")); return; }
+        if (!entree) { window.ktaAlerte(window.I18n.t("profileio.arch_pas_profil"), { type: "erreur" }); return; }
         text = await entree.async("string");
         zipConteneur.folder("plans").forEach(function(chemin, e2) {
           if (!e2.dir && /\.zip$/i.test(chemin)) nbArchives++;
@@ -1443,11 +1445,14 @@ photos: false, histoirePdfs: false, crashes: false
         text = await file.text();
       }
     }
-    catch(e) { alert(window.I18n.t("profileio.file_read_fail", { error: (e.message || e) })); return; }
+    catch(e) {
+      window.ktaAlerte(window.I18n.t("profileio.file_read_fail", { error: (e.message || e) }), { type: "erreur" });
+      return;
+    }
 
     const parsed = parseProfile(text);
     if (!parsed.ok) {
-      alert(window.I18n.t("profileio.file_invalid", { error: parsed.error }));
+      window.ktaAlerte(window.I18n.t("profileio.file_invalid", { error: parsed.error }), { type: "erreur" });
       return;
     }
 
@@ -1508,7 +1513,8 @@ photos: false, histoirePdfs: false, crashes: false
       applyProfile(profile, { mode: mode, include: include }).then(async function(res) {
         if (!res || !res.ok) {
           btn.disabled = false; btn.textContent = orig;
-          alert(window.I18n.t("profileio.import_fail", { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }));
+          window.ktaAlerte(window.I18n.t("profileio.import_fail",
+            { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }), { type: "erreur" });
           return;
         }
         // 📦 v1.79.0 — restauration des archives APRÈS le registre (le
@@ -1538,7 +1544,8 @@ photos: false, histoirePdfs: false, crashes: false
         // revit, il peut réessayer.
         console.error("[ProfileExportImport] import échoué :", e);
         btn.disabled = false; btn.textContent = orig;
-        alert(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }));
+        window.ktaAlerte(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }),
+          { type: "erreur" });
       });
     });
   }

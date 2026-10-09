@@ -322,7 +322,7 @@
       if (typeof window.afficherModaleAlerteAbsente === "function") {
         window.afficherModaleAlerteAbsente("up-to-date");
       } else {
-        alert(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
+        window.ktaAlerte(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
       }
       return { status: "up-to-date", remote: remote };
     }

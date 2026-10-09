@@ -860,7 +860,7 @@
         if (ex) ex.parentNode.removeChild(ex);
 
         if (!window.UserProfile) {
-          alert(_t("home.profile.moduleUnavailable"));
+          window.ktaAlerte(_t("home.profile.moduleUnavailable"), { type: "erreur" });
           return;
         }
         const snap = window.UserProfile.get();

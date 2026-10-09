@@ -960,7 +960,7 @@
       } else {
         // Fallback : on log + on indique à l'user d'ouvrir Configuration
         console.warn("[PinLock] window._ouvrirLoaderConfig indisponible — l'user doit ouvrir ⚙️ Configuration manuellement");
-        alert(t("pin.proposal.fallbackAlert"));
+        window.ktaAlerte(t("pin.proposal.fallbackAlert"));
       }
       console.log("[PinLock] Proposition d'activation acceptée → redirection ⚙️ Configuration");
     });

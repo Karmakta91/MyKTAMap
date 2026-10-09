@@ -164,15 +164,22 @@
 
     document.getElementById("kta-debug-copier").addEventListener("click", function() {
       const text = _logBuffer.join("\n");
+      // Copie réussie = geste confirmé : toast « info » (masqué en Essentielles, voulu).
+      const _toastCopie = function() {
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(window.I18n.t("debug.logsCopied"), "info");
+        }
+      };
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() { alert(window.I18n.t("debug.logsCopied")); });
+        navigator.clipboard.writeText(text).then(_toastCopie);
       } else {
         const ta = document.createElement("textarea");
         ta.value = text;
         ta.style.cssText = "position:fixed;opacity:0;top:0;left:0;width:1px;height:1px;";
         document.body.appendChild(ta);
         ta.focus(); ta.select();
-        try { document.execCommand("copy"); alert(window.I18n.t("debug.logsCopied")); } catch(e) { alert(window.I18n.t("debug.copyManual", { text: text.slice(0,200) })); }
+        try { document.execCommand("copy"); _toastCopie(); }
+        catch(e) { window.ktaAlerte(window.I18n.t("debug.copyManual", { text: text.slice(0,200) })); }
         document.body.removeChild(ta);
       }
     });

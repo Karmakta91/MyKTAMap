@@ -105,7 +105,7 @@ function importerSessionJSON(file) {
       const data = JSON.parse(e.target.result);
 
       if (data.type !== "devmap-session") {
-        alert(window.I18n.t("impexp.fileInvalid"));
+        window.ktaAlerte(window.I18n.t("impexp.fileInvalid"), { type: "erreur" });
         return;
       }
 
@@ -127,10 +127,13 @@ function importerSessionJSON(file) {
         window.InterPlanLinks.importLinks(data.interPlanLinks || []);
       }
 
-      alert(window.I18n.t("impexp.importDone"));
+      // Fin d'import : rien ne le signale autrement (points hors vue) → toast warn, visible par défaut.
+      const msgFin = window.I18n.t("impexp.importDone");
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn");
+      else window.ktaAlerte(msgFin);
     } catch (err) {
       console.error(err);
-      alert(window.I18n.t("impexp.importError"));
+      window.ktaAlerte(window.I18n.t("impexp.importError"), { type: "erreur" });
     }
   };
 
@@ -150,7 +153,7 @@ window.ouvrirImportGpx = function(fichierInitial) {
   if (existing) { existing.remove(); if (!fichierInitial) return; }
 
   if (!window.GpxIO) {
-    alert(window.I18n.t("impexp.gpxIoUnavailable"));
+    window.ktaAlerte(window.I18n.t("impexp.gpxIoUnavailable"), { type: "erreur" });
     return;
   }
   const calibre = window.GpxIO.verifierCalibrage();
@@ -303,11 +306,11 @@ window.ouvrirImportChoix = function() {
 window.ouvrirImportFichier = function(file) {
   if (/\.gpx$/i.test(file.name)) {
     if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx(file);
-    else alert(window.I18n.t("impexp.gpxModuleUnavailable"));
+    else window.ktaAlerte(window.I18n.t("impexp.gpxModuleUnavailable"), { type: "erreur" });
   } else if (/\.(json|zip)$/i.test(file.name)) {
     ouvrirImportSession(file);
   } else {
-    alert(window.I18n.t("impexp.extInconnue", { name: file.name }));
+    window.ktaAlerte(window.I18n.t("impexp.extInconnue", { name: file.name }));
   }
 };
 

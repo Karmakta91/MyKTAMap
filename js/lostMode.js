@@ -1097,7 +1097,7 @@
         // Relecture (C1) : alert() natif migré — fonction touchée au 29/09/2026.
         window.OOMGuard.showToast(_t("lost.err.noTracker"), "warn");
       } else {
-        alert(_t("lost.err.noTracker"));
+        window.ktaAlerte(_t("lost.err.noTracker"));
       }
     });
 
@@ -1118,7 +1118,7 @@
         }
         _afficherResultats();
       } catch(e) {
-        alert(e.message || e);
+        window.ktaAlerte(e.message || e, { type: "erreur" });
       } finally {
         btn.disabled = false;
         btn.textContent = _t("lost.btn.recalc");
@@ -1257,14 +1257,14 @@
       }
     });
 
-    document.getElementById("kta-lost-confirm").addEventListener("click", function() {
+    document.getElementById("kta-lost-confirm").addEventListener("click", async function() {
       const ok = _confirmerLocalisation();
       if (ok) {
-        alert(_t("lost.alert.confirmOk"));
+        await window.ktaAlerte(_t("lost.alert.confirmOk"));
         // Une fois le point figé en session, la zone d'exploration n'a plus d'utilité
         close({ keepLayers: false });
       } else {
-        alert(_t("lost.alert.confirmFail"));
+        window.ktaAlerte(_t("lost.alert.confirmFail"), { type: "erreur" });
       }
     });
 
@@ -1273,12 +1273,12 @@
     if (launchSecoursBtn) {
       launchSecoursBtn.addEventListener("click", function() {
         if (!window.SecoursMode || typeof window.SecoursMode.creerDepuisLostMode !== "function") {
-          alert(_t("lost.alert.secoursUnavail"));
+          window.ktaAlerte(_t("lost.alert.secoursUnavail"), { type: "erreur" });
           return;
         }
         const lostState = getState();
         if (!lostState.lastKnownPos) {
-          alert(_t("lost.alert.secoursNoPos"));
+          window.ktaAlerte(_t("lost.alert.secoursNoPos"));
           return;
         }
         // Ferme la modale Lost Mode (mais garde les layers carte pour

@@ -97,7 +97,9 @@ if ("serviceWorker" in navigator) {
     }
     Promise.all(tasks).then(function() {
       const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-      try { alert(_t("home.misc.killSwUrlDone")); } catch (e) {}
+      // Natif voulu : kill switch lancé pendant le parsing (utils.js est en defer) dans une app
+      // supposée cassée ; alert() bloque, donc le message est lu AVANT le location.replace.
+      try { alert(_t("home.misc.killSwUrlDone")); } catch (e) {}   // popup-native-ok : kill switch avant utils.js
       // Reload vers la même URL SANS le param killsw, force = true pour bypass
       // tout cache HTTP résiduel.
       const cleanUrl = window.location.pathname +

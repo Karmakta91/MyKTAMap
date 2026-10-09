@@ -615,6 +615,14 @@ window.ktaConfirm = function(message, opts) {
                 (Number.isFinite(opts.nombre.max) ? ' max="' + opts.nombre.max + '"' : '') +
                 ' value="' + (Number.isFinite(opts.nombre.valeur) ? opts.nombre.valeur : '') + '"></label>'
             : '') +
+          // 🔤 09/10/2026 — champ texte optionnel (`opts.texte = {label, valeur, placeholder, maxLength}`),
+          // même contrat que `opts.nombre` : booléen rendu, saisie relue dans `opts.texte.valeur` (remplace
+          // window.prompt). Label, valeur et placeholder posés par le DOM (jamais concaténés au HTML).
+          (opts.texte
+            ? '<label style="display:flex; flex-direction:column; gap:6px; margin:0 0 14px; color:#e8eaf0;">' +
+                '<span></span><input type="text" id="kta-confirm-texte" style="width:100%; box-sizing:border-box;">' +
+              '</label>'
+            : '') +
           '<div class="kta-conv-actions">' +
             // 🗑️ 01/10/2026 — 3e choix optionnel (`opts.autre = {label, valeur}`) : la
             // Promise rend alors `opts.autre.valeur` (jamais un booléen, pour que
@@ -638,6 +646,13 @@ window.ktaConfirm = function(message, opts) {
     if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
     const nombreEl = ov.querySelector("#kta-confirm-nombre");
     if (nombreEl) nombreEl.previousElementSibling.textContent = opts.nombre.label || "";
+    const texteEl = ov.querySelector("#kta-confirm-texte");
+    if (texteEl) {
+      texteEl.previousElementSibling.textContent = opts.texte.label || "";
+      texteEl.value = opts.texte.valeur == null ? "" : String(opts.texte.valeur);
+      if (opts.texte.placeholder) texteEl.placeholder = String(opts.texte.placeholder);
+      if (Number.isFinite(opts.texte.maxLength)) texteEl.maxLength = opts.texte.maxLength;
+    }
     let resolu = false;
     const finir = function(val) {
       if (resolu) return;
@@ -647,6 +662,7 @@ window.ktaConfirm = function(message, opts) {
         const n = parseInt(nombreEl.value, 10);
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
+      if (texteEl && val) opts.texte.valeur = texteEl.value;
       document.removeEventListener("keydown", surTouche, true);
       ov.remove();
       resolve(val);
@@ -669,9 +685,12 @@ window.ktaConfirm = function(message, opts) {
       autreEl.addEventListener("click", function() { finir(opts.autre.valeur); });
     }
     ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
-    // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre s'il y en a un)
+    // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre / texte s'il y en a un)
     if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
-    setTimeout(function() { try { (nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {} }, 30);
+    if (texteEl) texteEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
+    setTimeout(function() {
+      try { (texteEl || nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {}
+    }, 30);
   });
 };
 
@@ -693,6 +712,7 @@ window.ktaAlerte = function(message, opts) {
     const t = function(k, repli) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli; };
     return window.ktaConfirm(opts.html ? texte : esc(texte), {
       sansAnnuler: true,
+      zIndex: opts.zIndex,   // appelant ouvert au-dessus de 100002 (cf ktaConfirm)
       titre: opts.titre ? esc(String(opts.titre)) : t(opts.type === "erreur" ? "ui.alerte.titreErreur" : "ui.alerte.titre",
         opts.type === "erreur" ? "Erreur" : "Information"),
       okLabel: opts.okLabel || t("ui.confirm.ok", "OK")
@@ -2963,7 +2983,7 @@ async function telechargerPlan() {
   try {
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert(window.I18n.t("utils.export.noPlanConfig"));
+      window.ktaAlerte(window.I18n.t("utils.export.noPlanConfig"), { type: "erreur" });
       return;
     }
 

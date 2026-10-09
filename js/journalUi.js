@@ -264,15 +264,18 @@
       // module refuse une fin antérieure au départ.
       const finBtn = document.getElementById("kta-jrn-fin");
       if (finBtn) {
-        finBtn.addEventListener("click", function () {
+        finBtn.addEventListener("click", async function () {
           const finMs = Date.parse(rec.endedAt || rec.updatedAt || 0) || Date.now();
           // `datetime-local` veut du temps LOCAL sans fuseau : `toISOString()`
           // rendrait de l'UTC et décalerait le champ de l'écart horaire.
           const d = new Date(finMs - new Date(finMs).getTimezoneOffset() * 60000);
           const val = d.toISOString().slice(0, 16);
-          const saisi = window.prompt(
-            _t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) }), val);
-          if (saisi === null) return;
+          // Annuler = abandon (le null du prompt) ; OK = la saisie, même vide (Date.parse("") → refus format).
+          const champ = { valeur: val, maxLength: 32 };
+          const ok = await window.ktaConfirm(
+            _esc(_t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) })), { texte: champ });
+          if (!ok) return;
+          const saisi = champ.valeur;
           const ms = Date.parse(saisi);
           if (!Number.isFinite(ms)) { _toast(_t("jrn.fin.koFormat"), "warn"); return; }
           window.Journal.setFin(rec.id, ms).then(function (maj) {

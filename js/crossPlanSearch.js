@@ -85,7 +85,7 @@
     _fermer();
     const plans = (window.PlanRegistry ? window.PlanRegistry.getAll() : []);
     if (plans.length === 0) {
-      alert(_t("xps.err.noPlan"));
+      window.ktaAlerte(_t("xps.err.noPlan"));
       return;
     }
 

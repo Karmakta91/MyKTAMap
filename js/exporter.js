@@ -151,7 +151,7 @@
     const T = window.I18n.t;
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert(T("imgexport.alert.noConfig"));
+      window.ktaAlerte(T("imgexport.alert.noConfig"), { type: "erreur" });
       return;
     }
 

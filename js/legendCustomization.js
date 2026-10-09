@@ -1335,7 +1335,7 @@ window.LegendCustomization = (function() {
     document.getElementById("kta-lc-add-ok").addEventListener("click", function() {
       const cat   = catSel.value;
       const label = (document.getElementById("kta-lc-add-label").value || "").trim();
-      if (!label) { alert(window.I18n.t("legend.add.errNoLabel")); return; }
+      if (!label) { window.ktaAlerte(window.I18n.t("legend.add.errNoLabel"), { zIndex: 100150 }); return; }
       const entry = { category: cat, label: label };
       // Mode « lier un type existant » : l'id EST le type des objets déjà
       // dessinés — c'est toute la liaison (addCustomEntry accepte entry.id).
@@ -1355,7 +1355,7 @@ window.LegendCustomization = (function() {
 
       if (cat === "icones") {
         const url = (document.getElementById("kta-lc-add-icon").value || "").trim();
-        if (!url) { alert(window.I18n.t("legend.add.errIconUrl")); return; }
+        if (!url) { window.ktaAlerte(window.I18n.t("legend.add.errIconUrl"), { zIndex: 100150 }); return; }
         entry.iconUrl = url;
       } else {
         const lineOn = document.getElementById("kta-lc-add-line-on").checked;
@@ -1376,15 +1376,15 @@ window.LegendCustomization = (function() {
         // Pour les structures polyline (front), lineColor est obligatoire.
         // Pour les polygones, fillColor est obligatoire.
         if (entry.geometry === "polyline" && !entry.lineColor) {
-          alert(window.I18n.t("legend.add.errPolyline"));
+          window.ktaAlerte(window.I18n.t("legend.add.errPolyline"), { zIndex: 100150 });
           return;
         }
         if (entry.geometry === "polygon" && !entry.fillColor) {
-          alert(window.I18n.t("legend.add.errPolygon"));
+          window.ktaAlerte(window.I18n.t("legend.add.errPolygon"), { zIndex: 100150 });
           return;
         }
         if (!entry.lineColor && !entry.fillColor) {
-          alert(window.I18n.t("legend.add.errNoColor"));
+          window.ktaAlerte(window.I18n.t("legend.add.errNoColor"), { zIndex: 100150 });
           return;
         }
       }

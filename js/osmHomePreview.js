@@ -1912,11 +1912,11 @@
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm_home.gps.incognitoToast"), "warn");
-      } else { alert(window.I18n.t("osm_home.gps.incognitoAlert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm_home.gps.incognitoAlert")); }
       return;
     }
     if (!navigator.geolocation) {
-      alert(window.I18n.t("osm_home.gps.unavailable"));
+      window.ktaAlerte(window.I18n.t("osm_home.gps.unavailable"), { type: "erreur" });
       return;
     }
     const btn = document.getElementById("ktaOsmHomeMyGpsBtn");
@@ -1938,7 +1938,7 @@
             const msg = window.I18n.t("osm_home.gps.outOfBounds", { km: distKm.toFixed(1) });
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(msg, "warn");
-            } else { alert(msg); }
+            } else { window.ktaAlerte(msg); }
             console.log("[OsmHomePreview] GPS rejeté : hors bbox plan (",
                         lat.toFixed(5), ",", lng.toFixed(5),
                         "→ distance centre", distKm.toFixed(2), "km)");
@@ -1983,7 +1983,7 @@
         if (err.code === 1) msg = window.I18n.t("osm_home.gps.errPermission");
         else if (err.code === 2) msg = window.I18n.t("osm_home.gps.errUnavailable");
         else if (err.code === 3) msg = window.I18n.t("osm_home.gps.errTimeout");
-        alert(msg);
+        window.ktaAlerte(msg, { type: "erreur" });
         if (btn && originalHtml != null) { btn.disabled = false; btn.innerHTML = originalHtml; }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }

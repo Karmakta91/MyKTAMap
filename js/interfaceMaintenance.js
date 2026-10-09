@@ -442,7 +442,7 @@ async function mettreAJourCodeSeul() {
   } catch(err) {
     overlay.remove();
     console.error("[Soft update] erreur :", err);
-    alert(window.I18n.t("maint.error_soft_update", { detail: (err.message || err) }));
+    window.ktaAlerte(window.I18n.t("maint.error_soft_update", { detail: (err.message || err) }), { type: "erreur" });
   }
 }
 

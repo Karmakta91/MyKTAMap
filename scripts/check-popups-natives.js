@@ -7,7 +7,8 @@
 // iOS peut les bloquer en PWA, et ils figent l'app (suivi de position compris). Remplaçants :
 // window.ktaAlerte (message à lire pour agir), window.ktaConfirm (choix), toast OOMGuard.showToast
 // (confirmation de ce qui vient de se passer) — tous dans js/utils.js.
-// La migration se fait par lots (09/10/2026) : ce script compte les popups natives restantes dans
+// Migration TERMINÉE le 09/10/2026 (plafond 0) : plus aucune popup native hors repli marqué. Ce script compte
+// les popups natives dans
 // js/*.js et index.html, hors commentaires, et :
 //   • refuse toute HAUSSE (une nouvelle popup native) ;
 //   • refuse une BAISSE non reportée : abaisser PLAFOND ci-dessous dans le même commit — le compte
@@ -19,7 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const PLAFOND = 154;
+const PLAFOND = 0;
 
 function sansCommentaires(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))

@@ -1535,7 +1535,7 @@ function afficherConfig() {
         if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
           window.PresentationMode.activate();
         } else {
-          alert(window.I18n.t("config.presentation.unavailable"));
+          window.ktaAlerte(window.I18n.t("config.presentation.unavailable"), { type: "erreur" });
         }
       }, 50);
     });
@@ -1551,7 +1551,7 @@ function afficherConfig() {
   if (btnIncognito) {
     btnIncognito.addEventListener("click", function() {
       if (!window.IncognitoMode) {
-        alert(window.I18n.t("config.incognito.unavailable"));
+        window.ktaAlerte(window.I18n.t("config.incognito.unavailable"), { type: "erreur" });
         return;
       }
       if (window.IncognitoMode.active) {
@@ -2320,7 +2320,7 @@ function _ouvrirCreationJonction(btnSub) {
     const toLvl   = parseInt(document.getElementById("kta-jct-to").value,   10);
     if (!Number.isInteger(fromLvl) || !Number.isInteger(toLvl)) return;
     if (fromLvl === toLvl) {
-      alert(window.I18n.t("config.jonction.errSameLevel"));
+      window.ktaAlerte(window.I18n.t("config.jonction.errSameLevel"));
       return;
     }
     _cleanup();

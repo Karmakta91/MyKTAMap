@@ -811,7 +811,7 @@
         if (window.SessionReport && typeof window.SessionReport.ouvrirModal === "function") {
           window.SessionReport.ouvrirModal();
         } else {
-          alert(window.I18n.t("stats.feedback.sessionReportIndispo"));
+          window.ktaAlerte(window.I18n.t("stats.feedback.sessionReportIndispo"), { type: "erreur" });
         }
       });
     }
@@ -826,7 +826,9 @@
           btn.textContent = "✅ " + window.I18n.t("stats.feedback.copie");
           setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
         }
-      }).catch(function(e) { alert(window.I18n.t("stats.feedback.echecCopie", { msg: (e.message || e) })); });
+      }).catch(function(e) {
+        window.ktaAlerte(window.I18n.t("stats.feedback.echecCopie", { msg: (e.message || e) }), { type: "erreur" });
+      });
     });
 
     // 🆕 v1.21.0 — Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
@@ -841,14 +843,14 @@
         }
       }).catch(function(e) {
         if (btn) { btn.textContent = orig; btn.disabled = false; }
-        alert(window.I18n.t("stats.feedback.echecCsv", { msg: (e.message || e) }));
+        window.ktaAlerte(window.I18n.t("stats.feedback.echecCsv", { msg: (e.message || e) }), { type: "erreur" });
       });
     });
 
     // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
     document.getElementById("kta-stats-glob-pdf").addEventListener("click", function() {
       if (!_lastReport) {
-        alert(window.I18n.t("stats.feedback.aucuneDonnee"));
+        window.ktaAlerte(window.I18n.t("stats.feedback.aucuneDonnee"));
         return;
       }
       const btn = document.getElementById("kta-stats-glob-pdf");
@@ -861,7 +863,7 @@
         }
       }).catch(function(e) {
         if (btn) { btn.textContent = orig; btn.disabled = false; }
-        alert(window.I18n.t("stats.feedback.echecPdf", { msg: (e.message || e) }));
+        window.ktaAlerte(window.I18n.t("stats.feedback.echecPdf", { msg: (e.message || e) }), { type: "erreur" });
       });
     });
 

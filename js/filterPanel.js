@@ -942,7 +942,7 @@
     const CS = window.CalqueSession;
     if (!CS || !id) return;
     CS.peser(id).then(async function(p) {
-      if (!p) { alert(window.I18n.t("filter.calque.errPesee")); return; }
+      if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return; }
       const occ = CS.occupationLocalStorage();
       const msg = window.I18n.t("filter.calque.confirm", {
         label:  window.ktaEsc(p.label),
@@ -953,7 +953,7 @@
       if (!(await window.ktaConfirm(msg))) return;
       CS.rapatrier(id).then(function(r) {
         if (!r || !r.ok) {
-          alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }));
+          window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
           return;
         }
         refreshDataLayers();
@@ -989,7 +989,10 @@
       okLabel:     window.I18n.t("filter.calque.exportAvantOui"),
       cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
     }).then(function (exporter) {
-      if (exporter) { _exporterCalque(id); _restituerVraiment(id); return; }
+      if (exporter) {   // la consigne d'export se lit AVANT la restitution (ordre de l'alert() bloquant)
+        _exporterCalque(id).then(function () { _restituerVraiment(id); });
+        return;
+      }
       // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
       window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
         titre:       window.I18n.t("filter.calque.exportAvantTitre"),
@@ -1002,7 +1005,10 @@
   function _restituerVraiment(id) {
     const CS = window.CalqueSession;
     const r = CS.restituer(id);
-    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    if (!r || !r.ok) {
+      window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+      return;
+    }
     refreshDataLayers();
     _scheduleRoadsRecalc();
     _updateStatus();
@@ -1014,17 +1020,20 @@
   // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
   // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
   // téléchargements et aucune idée de la ligne où le déposer.
+  // Rend une Promise résolue à la fermeture du message (l'appelant enchaîne la restitution).
   function _exporterCalque(id) {
     const CS = window.CalqueSession;
-    if (!CS || !id) return;
+    if (!CS || !id) return Promise.resolve();
     const r = CS.exporterCalque(id);
-    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    if (!r || !r.ok) {
+      return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+    }
     // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
     // n'appartiennent pas à ce calque, et les verser d'office serait décider
     // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
-    alert(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
-                                         : "filter.calque.exporte",
-                        { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
+    return window.ktaAlerte(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
+                                                          : "filter.calque.exporte",
+                                         { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
   }
 
   // ============================================================

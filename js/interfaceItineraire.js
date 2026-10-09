@@ -255,15 +255,15 @@ window.itineraireYAller = function(x, y, nom, opts) {
     ? window.getTrackingPosition()
     : null);
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-    alert(window.I18n.t("iti.err.trackerPos"));
+    window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
     return;
   }
   if (!window.Pathfinder) {
-    alert(window.I18n.t("iti.err.pathfinder"));
+    window.ktaAlerte(window.I18n.t("iti.err.pathfinder"), { type: "erreur" });
     return;
   }
   if (_itiAucunTrace()) {
-    alert(window.I18n.t("guid.aucunTrace"));
+    window.ktaAlerte(window.I18n.t("guid.aucunTrace"));
     return;
   }
 
@@ -328,7 +328,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
       if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
 
     } catch(err) {
-      alert(window.I18n.t("iti.err.compute", { err: (err.message || err) }));
+      window.ktaAlerte(window.I18n.t("iti.err.compute", { err: (err.message || err) }), { type: "erreur" });
     }
   }
 
@@ -1631,7 +1631,7 @@ function _bindAvoidSectionHandlers() {
       if (!id) return;
       const resolved = window.Pathfinder.resolvePointById(id);
       if (!resolved) {
-        alert(window.I18n.t("iti.err.idNotFound", { id: id }));
+        window.ktaAlerte(window.I18n.t("iti.err.idNotFound", { id: id }));
         return;
       }
       const prefs2 = _getItiAvoidPrefs();
@@ -2202,7 +2202,7 @@ window.ouvrirItinerairModal = function() {
       if (typeof window.getTrackingPosition !== "function") return;
       const pos = window.getTrackingPosition();
       if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-        alert(window.I18n.t("iti.err.trackerPos"));
+        window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
         return;
       }
       _itineraryWaypoints.push({
