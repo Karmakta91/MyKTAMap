@@ -116,7 +116,18 @@
       var raw = localStorage.getItem(key);
       if (!raw) return null;
       var data = JSON.parse(raw);
-      if (data && data.instance === "pro") return data;
+      if (data && data.instance === "pro") {
+        // 🔏 09/10/2026 — Une licence en cache qui a EXPIRÉ n'est plus une licence, même hors
+        // ligne (sans réseau, le serveur ne peut pas la refuser à notre place) : purgée ici, elle
+        // fait passer l'installation pro en « licence » → app fermée (main.js), jamais en
+        // community sur les données de l'appareil.
+        if (typeof data.valid_until === "string" && data.valid_until < new Date().toISOString().slice(0, 10)) {
+          localStorage.removeItem(key);
+          console.warn("[ProLicense] licence en cache expirée le " + data.valid_until + " : ignorée");
+          return null;
+        }
+        return data;
+      }
     } catch(e) {
       // Cache corrompu → on l'ignore (laissera la suite purger)
     }

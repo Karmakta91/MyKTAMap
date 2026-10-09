@@ -55,7 +55,8 @@
   let _etat = "off";
   let _raison = "";
   let _dejaEmis = false;
-  let _signal = null;   // "on" | "down" | null — posé par un module greffé (signaler)
+  let _signal = null;   // "on" | "down" | "licence" | null — posé par un module greffé (signaler)
+  let _signalRaison = ""; // raison du refus de licence donnée par le serveur (expiree, signature, domaine…)
   let _reseauCoupe = typeof navigator !== "undefined" && navigator.onLine === false;
 
   // ── Validation : fonction PURE, sans DOM ni stockage ──
@@ -177,7 +178,7 @@
     // sans fin (retour KARMA, iPhone). En « down », la garde refuse les requêtes : l'accueil
     // rouvre aussitôt la copie gardée.
     if ((_etat === "configuree" || _etat === "on") && _reseauCoupe) _etat = "down";
-    _raison = _connexion.raison || "";
+    _raison = (_etat === "licence" && _signal === "licence") ? _signalRaison : (_connexion.raison || "");
     peindre();
     if (_etat !== avant || !_dejaEmis) {
       _dejaEmis = true;
@@ -193,7 +194,12 @@
   // ── Affichage ──
   const _t = function (k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 
-  function _libelle(etat) { return _t("home.serveur.mot." + etat); }
+  // 09/10/2026 — Licence REFUSÉE par le serveur (signalée par le module) ≠ licence absente de
+  // l'installation : même état « licence » (contrat inchangé), libellés distincts. Avant, le
+  // module ne savait dire que « down » : une licence expirée s'affichait « Base de données :
+  // injoignable » (retour KARMA).
+  function _cle(etat) { return (etat === "licence" && _signal === "licence") ? "licenceRefusee" : etat; }
+  function _libelle(etat) { return _t("home.serveur.mot." + _cle(etat)); }
 
   // Pastille du pied de page, bloc d'état de la modale « Que fait l'app sur le
   // réseau ? », et icône du bouton de pied de page replié (qui masque tout
@@ -207,7 +213,7 @@
     // L'infobulle et le titre du bloc disent « Base de données : <état> » :
     // ils prennent la forme courte de l'état, pas le mot de la pastille (qui
     // contient déjà « Base de données »).
-    const etatCourt = _t("home.serveur.etat." + _etat);
+    const etatCourt = _t("home.serveur.etat." + _cle(_etat));
     const titre = _t("home.serveur.infobulle", { etat: etatCourt });
 
     const chip = document.getElementById("loaderCnxChip");
@@ -230,7 +236,7 @@
         Object.keys(CLASSE_ETAT).forEach(function (k) { t.classList.remove(CLASSE_ETAT[k]); });
         t.classList.add(cls);
       }
-      if (d) d.textContent = _t("home.serveur.explication." + _etat);
+      if (d) d.textContent = _t("home.serveur.explication." + _cle(_etat), { raison: _raison || "?" });
       bloc.hidden = false;
     }
 
@@ -339,9 +345,13 @@
   function aPrise(nom) { return !!_prise(nom); }
 
   // ── Signal d'état par un module (règle C) ──
-  function signaler(etat) {
-    if (etat !== "on" && etat !== "down" && etat !== null) return false;
+  // "licence" (09/10/2026) : le SERVEUR refuse la licence de l'installation (expirée, signature,
+  // domaine) — `raison` est la sienne. L'état devient « licence » : l'app reste fermée (main.js),
+  // jamais rouverte en mode community sur les données de l'appareil.
+  function signaler(etat, raison) {
+    if (etat !== "on" && etat !== "down" && etat !== "licence" && etat !== null) return false;
     _signal = etat;
+    _signalRaison = etat === "licence" ? String(raison || "").slice(0, 40) : "";
     _recalculer();
     return true;
   }

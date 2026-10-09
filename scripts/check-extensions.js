@@ -200,6 +200,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("…sauf une sonde (pour détecter le retour du serveur)", cfg.appelsFetch.length === 2);
     cfg.K.signaler("on");
     t("signaler(\"on\") → connectée", cfg.K.etat().etat === "on");
+    // 🔏 09/10/2026 — licence REFUSÉE par le serveur : état « licence » + sa raison, jamais « down ».
+    cfg.K.signaler("licence", "expiree");
+    t("🩸 signaler(\"licence\", raison) → état « licence » avec la raison du serveur",
+      cfg.K.etat().etat === "licence" && cfg.K.etat().raison === "expiree");
+    t("signaler(<inconnu>) refusé, l'état ne bouge pas",
+      cfg.K.signaler("ouvert") === false && cfg.K.etat().etat === "licence");
+    cfg.K.signaler("on");
+    t("signaler(\"on\") après un refus de licence → connectée", cfg.K.etat().etat === "on" && cfg.K.etat().raison !== "expiree");
 
     const off2 = nouveauContexte("server");
     off2.K.appliquerConfig({}, true);
@@ -586,8 +594,17 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("boot : licence attendue → modules chargés → gate (ordre)", iLic > 0 && iMods > iLic && iGate > iMods);
     t("boot : une gate déléguée franchie remplace la gate community", /try \{ await _gate; _gateDelegueeOk = true;/.test(MAIN));
     t("🩸 boot : gate déléguée en échec → « Installation indisponible », JAMAIS la gate community",
-      /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(\);/.test(MAIN) &&
-      /function _ktaInstanceIndisponible\(\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));
+      /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(_motifBlocage\(\)\);/.test(MAIN) &&
+      /function _ktaInstanceIndisponible\(motif\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));
+    // 🔏 09/10/2026 — installation pro sans licence valide : fermée AVANT les modules et la gate
+    // community (sinon : app ouverte en community sur les données du dernier utilisateur).
+    const iBloc = MAIN.indexOf('if (_motifBlocage() === "licence") {');
+    t("🩸 boot : licence pro absente/expirée/refusée → « Installation indisponible », AVANT modules et gate community",
+      iBloc > iLic && iBloc < iMods && iBloc < iGate &&
+      /if \(_motifBlocage\(\) === "licence"\) \{[\s\S]{0,300}await _ktaInstanceIndisponible\("licence"\);/.test(MAIN));
+    const PL = lire("js/proLicense.js");
+    t("🩸 licence en cache EXPIRÉE ignorée et purgée (hors ligne aussi)",
+      /data\.valid_until < new Date\(\)\.toISOString\(\)\.slice\(0, 10\)\)[\s\S]{0,80}localStorage\.removeItem\(key\)[\s\S]{0,160}return null;/.test(PL));
     t("🩸 boot : module de connexion non chargé → « Installation indisponible »",
       /else if \(_mods && _mods\.demandes > 0 && _mods\.echecs > 0\) \{[\s\S]{0,200}await _ktaInstanceIndisponible\(\);/.test(MAIN));
     t("import : le goulot du kiosque consulte la prise (import simple, multiple, profil)",
