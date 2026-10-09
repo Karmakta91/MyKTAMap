@@ -28,6 +28,16 @@
       : key;
   }
 
+  // « Rien à exporter » (sélection vide) : toast warn marqué important, visible même en
+  // mode Silence (décision KARMA 10/10/2026). Repli sur la modale si OOMGuard est absent.
+  function _avertirRienAExporter(msg) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(msg, "warn", { important: true });
+    } else {
+      window.ktaAlerte(msg);
+    }
+  }
+
   let _modal = null;
   // 🔎 Filtre d'export (onglets Complet et Avancé) : ne garder que les annotations d'une période et/ou
   // d'un auteur (« ce qu'a relevé B cette semaine »). Remis à zéro à chaque ouverture de la fenêtre.
@@ -2042,7 +2052,7 @@
       // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
       // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
       // verrait "session vide". OK pour MVP (cas marginal).
-      window.ktaAlerte(t("export.err.fullVide"));
+      _avertirRienAExporter(t("export.err.fullVide"));
       return;
     }
 
@@ -2305,7 +2315,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length + mesurePts.length + mesureSurfPts.length + (tracker ? 1 : 0);
     if (total === 0) {
-      window.ktaAlerte(t("export.err.advVide"));
+      _avertirRienAExporter(t("export.err.advVide"));
       return;
     }
 
@@ -2537,7 +2547,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length;
     if (total === 0) {
-      window.ktaAlerte(t("export.err.convVide"));
+      _avertirRienAExporter(t("export.err.convVide"));
       return;
     }
 
@@ -2649,7 +2659,7 @@
 
     if (points.length === 0 && roads.length === 0 && zones.length === 0
         && structures.length === 0) {
-      window.ktaAlerte(t("export.err.convSourceVide"));
+      _avertirRienAExporter(t("export.err.convSourceVide"));
       return;
     }
 
@@ -2823,7 +2833,7 @@
 
   function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
-      window.ktaAlerte(t("export.err.convRien"));
+      _avertirRienAExporter(t("export.err.convRien"));
       return;
     }
     const now = new Date().toISOString();
@@ -3118,7 +3128,7 @@
   function _exportFusion() {
     const m = _fusionMerged;
     if (!m || (!m.data.length && !m.roads.length && !m.zones.length && !m.structures.length)) {
-      window.ktaAlerte(t("export.fusion.errVide"));
+      _avertirRienAExporter(t("export.fusion.errVide"));
       return;
     }
     const files = [];
