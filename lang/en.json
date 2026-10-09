@@ -5240,6 +5240,8 @@
   "utils.popup.aRattacher.fait": "✅ Assigned to this point",
   "utils.popup.aRattacher.echec": "⚠️ Couldn't assign it, try again",
   "ui.confirm.title": "Confirmation",
+  "ui.alerte.titre": "Information",
+  "ui.alerte.titreErreur": "Error",
   "ui.confirm.ok": "OK",
   "ui.confirm.cancel": "Cancel",
   "utils.scaleCoherence.copyBtn": "📋 Copy",

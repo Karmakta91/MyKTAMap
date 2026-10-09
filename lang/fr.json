@@ -5240,6 +5240,8 @@
   "utils.popup.aRattacher.fait": "✅ Rattachée à ce point",
   "utils.popup.aRattacher.echec": "⚠️ Rattachement impossible, réessaie",
   "ui.confirm.title": "Confirmation",
+  "ui.alerte.titre": "Information",
+  "ui.alerte.titreErreur": "Erreur",
   "ui.confirm.ok": "OK",
   "ui.confirm.cancel": "Annuler",
   "utils.scaleCoherence.copyBtn": "📋 Copier",

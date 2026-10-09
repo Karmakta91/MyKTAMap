@@ -99,6 +99,10 @@ node scripts/check-libs.js || exit $?
 # modules PDF, texte libre filtré par window.ktaTextePdf. BLOQUANT.
 node scripts/check-pdf-texte.js || exit $?
 
+# 💬 09/10/2026 — Popups natives (alert/confirm/prompt) : migration par lots vers ktaAlerte / ktaConfirm /
+# toast. CLIQUET : le compte ne peut que baisser (abaisser PLAFOND dans le script). BLOQUANT.
+node scripts/check-popups-natives.js || exit $?
+
 # 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
 # inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.

@@ -620,7 +620,9 @@ window.ktaConfirm = function(message, opts) {
             (opts.autre
               ? '<button class="kta-btn kta-btn-danger" id="kta-confirm-autre"></button>'
               : '') +
-            '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
+            // `opts.sansAnnuler` : un seul bouton (window.ktaAlerte, message à lire).
+            (opts.sansAnnuler ? '' :
+              '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>') +
             '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
           '</div>' +
         '</div>' +
@@ -650,7 +652,8 @@ window.ktaConfirm = function(message, opts) {
     const surTouche = function(e) { if (e.key === "Escape") finir(false); };
     document.addEventListener("keydown", surTouche);
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
-    ov.querySelector("#kta-confirm-non").addEventListener("click", function() { finir(false); });
+    const nonEl = ov.querySelector("#kta-confirm-non");
+    if (nonEl) nonEl.addEventListener("click", function() { finir(false); });
     const autreEl = ov.querySelector("#kta-confirm-autre");
     if (autreEl) {
       autreEl.textContent = opts.autre.label || "";
@@ -661,6 +664,34 @@ window.ktaConfirm = function(message, opts) {
     if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
     setTimeout(function() { try { (nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {} }, 30);
   });
+};
+
+// 💬 09/10/2026 — window.ktaAlerte(message, opts) → Promise (résolue à la fermeture).
+// Remplace alert() natif (hors charte, ignore le thème, « dev.myktamap.fr indique… », bloquable par iOS
+// en PWA, fige l'app). Fenêtre de ktaConfirm à un seul bouton. Règle (KARMA) : message à LIRE POUR
+// AGIR (erreur qui bloque, consigne) → ktaAlerte ; message qui CONFIRME ce qui vient de se passer →
+// toast (OOMGuard.showToast). Le message est du TEXTE (échappé, retours à la ligne gardés) : un
+// alert() portait souvent un nom de fichier ou de plan. opts.html = true pour un message déjà sûr.
+// Interface indisponible (DOM cassé, crash mémoire) : repli sur l'alert() natif — un message
+// critique n'est jamais perdu. scripts/check-popups-natives.js compte les popups natives restantes.
+window.ktaAlerte = function(message, opts) {
+  opts = opts || {};
+  const texte = message == null ? "" : String(message);
+  try {
+    if (!document.documentElement || typeof window.ktaConfirm !== "function") throw new Error("interface indisponible");
+    const esc = typeof window.ktaEsc === "function" ? window.ktaEsc
+      : function(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+    const t = function(k, repli) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli; };
+    return window.ktaConfirm(opts.html ? texte : esc(texte), {
+      sansAnnuler: true,
+      titre: opts.titre ? esc(String(opts.titre)) : t(opts.type === "erreur" ? "ui.alerte.titreErreur" : "ui.alerte.titre",
+        opts.type === "erreur" ? "Erreur" : "Information"),
+      okLabel: opts.okLabel || t("ui.confirm.ok", "OK")
+    }).then(function() { return undefined; });
+  } catch (e) {
+    window.alert(texte);   // popup-native-ok : repli quand l'interface ne peut pas s'afficher
+    return Promise.resolve();
+  }
 };
 
 // Helper : attache les listeners click sur les boutons "📋 Copier" rendus
