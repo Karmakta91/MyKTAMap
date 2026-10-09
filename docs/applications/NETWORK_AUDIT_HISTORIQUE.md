@@ -8,6 +8,8 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.12.1 (dépannage depuis l'écran de connexion)** : **Aucune requête nouvelle, aucun domaine nouveau.** L'app community permet seulement à l'écran de connexion d'une installation reliée d'ouvrir sa fenêtre de dépannage, déjà présente sur l'accueil. Sur une telle installation, l'écran de connexion vérifie l'état de la base sur sa propre adresse, comme le fait déjà sa pastille.
+
 > **v2.12.0 (fenêtres de l'app, PDF, librairies)** : **Aucune requête nouvelle, aucun domaine nouveau.** Les messages et confirmations s'ouvrent dans les fenêtres de l'app au lieu de celles du navigateur : tout est local. Les librairies embarquées jsPDF (4.2.1, correctifs de sécurité) et JSZip (3.10.2) sont mises à jour, toujours copiées sur le site et chargées depuis lui, sans appel externe. Les PDF gardent leurs accents, et les outils de dessin sont grisés sur un plan en lecture seule : rien de tout cela ne touche au réseau.
 
 > **v2.11.0 (licence refusée = installation fermée)** : **aucune requête nouvelle, aucun domaine nouveau — une de moins.** Le mode Développeur ne lit plus la documentation technique sur le serveur, et les sites ne la publient plus. Sur une installation professionnelle dont la licence est absente, expirée ou refusée, l'app reste fermée au lieu de s'ouvrir sur les données de l'appareil. L'écran d'accueil ne propose plus d'importer une licence : rien n'était envoyé, rien ne l'est désormais.

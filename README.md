@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.12.0` (09/10/2026)
+## 📦 Version courante — `v2.12.1` (10/10/2026)
+
+> 🆘 **v2.12.1 — Une issue depuis l'écran de connexion** : `window.ktaOuvrirDepannage` (point d'extension neutre) — la gate d'une installation reliée propose 📖 Documentation et 🆘 Dépannage, et l'état réel de la base (module pro 0.10.7) ; même contenu que v2.12.0 pour l'app community.
 
 > 💬 **v2.12.0 — Plus aucune popup du navigateur, PDF accentués, librairies à jour** : les 193 `alert()` / `confirm()` / `prompt()` natifs passent par les fenêtres de l'app (`ktaAlerte`, `ktaConfirm`, toasts selon le réglage de notifications), cliquet à 0 ; les PDF gardent leurs accents ; jsPDF 4.2.1 (avis de sécurité) et JSZip 3.10.2, veillés par Dependabot ; outils de dessin grisés en lecture seule ; FR en dur restant migré ; relevés réels exclus des images Docker locales.
 
@@ -567,6 +569,11 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.12.1 (10/10/2026) — Dépannage depuis la gate d'une installation reliée (branche `Karma_dev`)
+
+- 🆘 **`window.ktaOuvrirDepannage()`** (`50c3bf4`, `homeConfig.js`) : point d'extension neutre, no-op sans extension — la fenêtre 🆘 Dépannage de l'accueil (mise à jour forcée, page de secours, tout réinitialiser) devient ouvrable depuis une gate déléguée. Côté pro (module `connexion.js` 0.10.7, pro 0.7.1) : 📖 et 🆘 en haut de la carte de connexion, état réel de la base sous la carte, vraie raison d'un refus du serveur, connexion qui n'est plus bloquée après un redémarrage du serveur. Retour KARMA : un compte bloqué à la connexion n'avait ni diagnostic ni issue.
+- 🔒 **Audit réseau** : aucune requête nouvelle côté community.
 
 #### v2.12.0 (09/10/2026) — Plus aucune popup native, PDF accentués, librairies à jour (branche `Karma_dev`)
 

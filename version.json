@@ -1,8 +1,8 @@
 {
-  "version": "v2.12.0",
-  "released": "2026-10-09",
+  "version": "v2.12.1",
+  "released": "2026-10-10",
   "notes": [
     "💬 Les messages et les confirmations de l'app s'ouvrent maintenant dans ses propres fenêtres, aux couleurs de ton thème, au lieu des boîtes grises du navigateur. Les PDF (rapports, fiches et briefing Secours, statistiques) retrouvent leurs accents.",
-    "🔒 Les exports PDF passent par une version plus sûre de leur librairie. Édition pro : sur un plan en lecture seule, les outils de dessin sont grisés."
+    "🔒 Les exports PDF passent par une version plus sûre de leur librairie. Édition pro : sur un plan en lecture seule, les outils de dessin sont grisés ; l'écran de connexion dit si la base répond et donne accès à la documentation et au dépannage."
   ]
 }
