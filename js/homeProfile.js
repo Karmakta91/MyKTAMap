@@ -1495,7 +1495,7 @@
           '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
             '<span class="kta-profile-pro-badge">' + _t("home.profile.pro.badgeActive") + '</span>' +
           '</div>' +
-          '<p class="kta-profile-pro-hint">' + _proSourceHint("server") + '</p>';
+          '<p class="kta-profile-pro-hint">' + _proSourceHint() + '</p>';
       }
 
       async function _refreshProfileDetailsStats() {
