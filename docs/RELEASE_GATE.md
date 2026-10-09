@@ -93,6 +93,34 @@ données de l'utilisateur, un échec là = pas de release, point.
 
 ---
 
+## ⏪ Retour arrière — une release passe la porte et casse quand même (audit CD du 09/10/2026, Q4)
+
+Les sites se mettent à jour **tout seuls** (`auto-deploy.sh` sur le VPS, toutes les 5 min, CI verte exigée) : un
+retour arrière qui ne suspend pas la mise à jour automatique est **annulé dans les 5 minutes**.
+
+1. **Menu 0 → 5** (« prod sur un commit ou un tag ») : il met la prod en **pause automatique**, montre les derniers
+   passages du journal, puis lance `deploy-prod.sh <tag précédent>` (ex. `v2.10.2`), `PROD` tapé. Sans le menu :
+   `touch /data/scripts/PAUSE-myktamap.fr` **puis** `sh /data/scripts/deploy-prod.sh v2.10.2`.
+2. **Vérifier** : `scripts\release\etat-sites.ps1` dit « le commit en ligne n'est PAS dans origin/main » — attendu,
+   c'est le retour arrière qui s'affiche.
+3. **Ce que voient les utilisateurs** [Probable — lecture du code, à confirmer par l'exercice sur dev] : rien. La
+   version servie **descend**, `updateChecker.js` le détecte (« downgrade ») et n'affiche **aucune** modale ; le
+   `sw.js` différent s'installe (`skipWaiting` + `clients.claim`) et supprime le cache de la version retirée : chaque
+   appareil bascule sur l'ancienne version au prochain contrôle du Service Worker. `killsw.html` force le passage.
+4. **Corriger en avant**, jamais en réutilisant le numéro retiré : correctif sur `Karma_dev`, **bump à un numéro
+   supérieur** à la version retirée (sinon `updateChecker` ne propose rien : « on ne redescend jamais un numéro »),
+   porte de release, `merge-main.ps1`.
+5. **Lever la pause** (menu 0 → 8) : la mise à jour automatique remet `main` en ligne au passage suivant.
+
+**Le pro** (pro.myktamap.fr) ne se retourne pas par commit : `deploy-pro.sh` n'avance que vers `main`, et l'API a
+pu **migrer la base**. Pause (menu 0 → 8), puis restauration de la sauvegarde faite juste avant le déploiement
+(`docker/backup/restore.sh` du dépôt pro, base d'essai d'abord) et remise des clones sur leur commit précédent
+(commandes affichées par `deploy-pro.sh` en cas d'échec).
+
+**À jouer une fois sur dev** (même mécanique, sans risque) : sur un navigateur où l'app est **installée**, noter la
+version ; menu 0 → 4 vers un commit plus ancien **dont la version diffère** ; recharger deux fois l'app et constater
+la bascule sans modale ; lever la pause (menu 0 → 8) ; dans les 5 min, l'app revient à la tête de `Karma_dev`.
+
 ## ⚠️ Dérogations — passer SANS valider, mais jamais en silence
 
 Un item peut être invalidable en pratique : **SIG en est l'exemple canonique** (impossible de

@@ -674,9 +674,17 @@ documentées ici pour la doctrine.
 
 ### 85. Déploiement des sites — Git sur le VPS, sans FTP (07/10/2026)
 
-- Deux scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
+- Scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
   `/data/www/dev.myktamap.fr` sur `Karma_dev` ; `deploy-prod.sh` → `/data/www/myktamap.fr` sur `main` (confirmation
-  `PROD`, après `merge-main.ps1`). Retour arrière : `deploy-prod.sh <commit ou tag>`.
+  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt client, `PRO`) ;
+  `kta-serveur.sh` = « menu 0 » qui les appelle.
+- **Mise à jour automatique** (décision KARMA du 09/10/2026) : `auto-deploy.sh`, lancé par cron toutes les 5 min,
+  compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** (jeton GitHub en
+  lecture seule sur le VPS) ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
+  de CI). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
+  (`/data/scripts/PAUSE-<domaine>`, menu 0 → 8). Conséquence : `main` mergé = prod en ligne dans les 5 minutes.
+- **Retour arrière** : menu 0 → 4 / 5 (pose la pause, sinon la branche reviendrait) — procédure complète, pro
+  compris : `docs/RELEASE_GATE.md` § Retour arrière.
 - Le dépôt vit **hors du dossier web** (`/data/git/<site>.git`, `core.worktree`) : aucun `.git` servi.
 - **Sparse checkout** : ne sont posés ni `data/`, ni `.claude/` / `.git*`, ni `scripts/`, `CLAUDE.md`, `README.md`,
   `Dockerfile`, `docker/` ; sur **les deux sites**, `docs/` se réduit à `docs/applications/` (ce que l'app lit). Les

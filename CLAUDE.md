@@ -35,9 +35,12 @@
   - **Style** : **1-2 phrases courtes**, zéro jargon technique (pas de noms de fichier `js/...`, pas de constantes `LIKE_THIS`, pas de termes algorithmiques, pas de mention `O(N)`/`AbortController`/`viewportcull`/etc.). Ne mentionne **QUE** ce que l'user voit ou doit savoir.
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
-- **Déploiement** : par KARMA, sur le VPS, avec deux scripts **hors dépôt** (`deploy-dev.sh` → dev.myktamap.fr sur
-  `Karma_dev`, `deploy-prod.sh` → myktamap.fr sur `main`) : clone Git hors du dossier web, `data/` jamais touché
-  (`docs/architecture/infra-versioning.md` §85). Plus de FTP. Claude ne déploie/push-main JAMAIS.
+- **Déploiement** : scripts **hors dépôt** sur le VPS (`deploy-dev.sh` → dev.myktamap.fr sur `Karma_dev`,
+  `deploy-prod.sh` → myktamap.fr sur `main`, `deploy-pro.sh` → pro.myktamap.fr ; menu 0 `kta-serveur.sh`) : clone
+  Git hors du dossier web, `data/` jamais touché (`docs/architecture/infra-versioning.md` §85). **Automatique depuis
+  le 09/10/2026** : `auto-deploy.sh` (cron, 5 min) déploie dès que la branche bouge **et** que sa CI est verte —
+  **un push sur `Karma_dev` part sur dev, un merge sur `main` part en prod**. Pause par site via le menu 0. Ce qui
+  tourne vraiment : `scripts/release/etat-sites.ps1`. Claude ne déploie/push-main JAMAIS.
 - **Merge sur `main`** (KARMA uniquement) : `powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1`
   — vérifie l'arbre propre, la concordance des 3 sources de version, les garde-fous, la porte qualité
   **SonarQube** (serveur local Docker, `scripts/release/sonar-scan.ps1`, jeton `SONAR_TOKEN` hors dépôt ;
