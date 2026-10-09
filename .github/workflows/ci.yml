@@ -33,7 +33,7 @@ jobs:
         with:
           fetch-depth: 0   # les commits du push, pour ci-commits.sh
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
 
