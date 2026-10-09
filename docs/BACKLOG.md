@@ -11,6 +11,7 @@
 | Sujet | Décision | Qui |
 |---|---|---|
 | ✅ 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé — **fait** : 🔆 Affichage XL / XL display / Vista XL | Claude |
+| ✅ Harmonisation Secours | **Un seul emoji 🚑 pour le Mode Secours** (tuile Tracker, titre, pastille, guides, Aide, AI_CONTEXT) ; le raccourci « 🆘 Écran XL » de la vue équipe devient **🔆 Affichage XL** — **fait**. 🚨 reste aux équipes, aux victimes et à la Sortie d'urgence | Claude |
 | ✅ Commande vocale FR seulement | **Masquer le bouton vocal hors français** — **fait** (réévalué au changement de langue) | Claude |
 | ✅ Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer — **fait** : mesuré, marges élargies pour tous (canvas 0,5, tuiles 0,6), case retirée, le levier reste dans ULTRA (`docs/architecture/perf-memory.md` §21) | Claude, puis KARMA |
 | « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |

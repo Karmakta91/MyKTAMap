@@ -437,7 +437,7 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
 | **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
-| **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚨 Rescue mode — see 🆘 In an emergency underground |
+| **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
 
@@ -1266,7 +1266,7 @@ The **🔥 Heatmap** tile in the **🧭 Tracker** menu colours the map by how of
 
 The heatmap is **purely visual**: it changes neither the map, nor your annotations, nor the exports. Close the window to hide it.
 
-> 🚨 The **Rescue Mode** keeps its own activity heatmap, whether this option is ticked or not.
+> 🚑 The **Rescue Mode** keeps its own activity heatmap, whether this option is ticked or not.
 
 #### 🔋 Battery level
 
@@ -1341,7 +1341,7 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 >
 > **Prepare it in advance**: set up one or two scenarios on your usual maps before any incident. On the day, the app has to be ready in 30 seconds.
 
-To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚨 Rescue mode — Search plans (teams + zones)**.
+To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚑 Rescue mode — Search plans (teams + zones)**.
 
 #### 🧭 How it's organized
 
@@ -1360,7 +1360,7 @@ The cycle: **prepare** the scenario → **hand it over** to the teams before goi
 ##### 📝 Creating a scenario
 
 - **➕ New scenario**: a name, the time of the incident and context notes (optional).
-- **From ⛑️ I'm lost**: the **🚨 Start a rescue plan (teams + zones)** button creates a ready-made scenario — last known position, uncertainty zone (circle on the map), incident time and inferred notes. You must first have set a last known position there.
+- **From ⛑️ I'm lost**: the **🚑 Start a rescue plan (teams + zones)** button creates a ready-made scenario — last known position, uncertainty zone (circle on the map), incident time and inferred notes. You must first have set a last known position there.
 - **🗐 Duplicate** clones a scenario so you can test another hypothesis ("went east" / "went south") without touching the original.
 - **10 scenarios per map** at most: beyond that, the oldest one is deleted. Never a scenario in progress, the one you have open, the most recent one, or a finished operation whose report has not yet left the phone.
 
@@ -1399,7 +1399,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 #### 📤 2. Handing over before going down
 
-- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
+- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚑 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
 - **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
@@ -1413,7 +1413,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 In the team role, you are **placed at your team's entry** — automatically if your position had not been confirmed yet, otherwise the app offers it ("Place me at the entry" / "Keep my position"). A single message sums up the launch.
 
-Closing the window removes nothing: your zone and your route stay on the map (a team sees its own, the operator sees all of them), even after a reload. At the bottom of the screen, the **🚨 Rescue · Alpha · 3/8 ›** badge reminds you that the operation is running; tapping it takes you back to the steps to validate. **⏸️ Pause** freezes the timer, **▶️ Resume** restarts it: paused time is not counted.
+Closing the window removes nothing: your zone and your route stay on the map (a team sees its own, the operator sees all of them), even after a reload. At the bottom of the screen, the **🚑 Rescue · Alpha · 3/8 ›** badge reminds you that the operation is running; tapping it takes you back to the steps to validate. **⏸️ Pause** freezes the timer, **▶️ Resume** restarts it: paused time is not counted.
 
 ##### 🚨 Team side
 
@@ -1433,8 +1433,8 @@ The view shows your route step by step (Entry, 1…N, Exit — the same number e
 
 - **📸 Photo**: up to 5 per step, camera or gallery; tap a thumbnail to enlarge it.
 - **Validating a step resets your position onto it** (with All clear, Suspicious, Clue, Help requested or Casualty found): without asking under 30 m, with a question beyond that. Never with Blocked or Forced turnaround: you didn't get there.
-- **🧭 Follow my route (step-by-step guidance)** turns the route into a guided itinerary: the "In 40 m, turn left" banner, the route sheet and the XL screen lead you from step to step, and 🧭 tracking starts. Validated steps are ticked off; if you stray, **Recalculate** sets off again towards the next unfinished step, still avoiding the other teams' zones. When you reach a step, a message and a vibration alert you, and the 🚨 badge opens that step. The team's route must have been computed.
-- Three shortcuts if something goes wrong: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost**.
+- **🧭 Follow my route (step-by-step guidance)** turns the route into a guided itinerary: the "In 40 m, turn left" banner, the route sheet and the 🔆 XL display lead you from step to step, and 🧭 tracking starts. Validated steps are ticked off; if you stray, **Recalculate** sets off again towards the next unfinished step, still avoiding the other teams' zones. When you reach a step, a message and a vibration alert you, and the 🚑 badge opens that step. The team's route must have been computed.
+- Three shortcuts if something goes wrong: **🚪 Emergency exit**, **🔆 XL display**, **⛑️ I'm lost**.
 - **▶️ Departure** records your departure time (otherwise, the launch time); **✅ Back** stops the clock when you come up.
 
 ##### 👤 Operator side
@@ -1444,7 +1444,7 @@ The view shows your route step by step (Entry, 1…N, Exit — the same number e
 - **Late teams**: each team has an expected return time (departure + estimated duration, or its mandatory return). Past that time, its card turns **orange**; after the margin, **red**. Late teams move to the top, the badge at the bottom changes colour, and a message and a vibration alert you.
 - **✅ Back**: the app asks **how many came back up** (nothing is prefilled: count them). Below the headcount, the red alert **"N PERSON(S) MISSING"** stays on screen, badge included, until the count is corrected (**Correct the count**).
 - **📢 General recall** (or **📢 Recall** for one team) marks the teams still underground as recalled, with the time. ⚠️ **The app does not alert anyone** — there is no network underground: pass the order on yourself, by radio or by voice.
-- **🚨 Take over**: a team radios in? You switch to its view, on its first unfinished step, to enter things on its behalf; **👤 Back to Operator** brings you back. In that case, Follow my route, Emergency exit, XL screen and I'm lost are missing: they would act on your own phone.
+- **🚨 Take over**: a team radios in? You switch to its view, on its first unfinished step, to enter things on its behalf; **👤 Back to Operator** brings you back. In that case, Follow my route, Emergency exit, XL display and I'm lost are missing: they would act on your own phone.
 - **📜 Log**: everything is recorded there with the time — launch, statuses, casualty, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It is printed as an appendix to the report.
 - **Editing during the operation**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps immediately. What has been entered stays on the same step. Removing a step that already has entries asks for confirmation, and is refused if it reports Help requested or Casualty found: change its status first. Put back within the same phase, the step gets its entries back.
 

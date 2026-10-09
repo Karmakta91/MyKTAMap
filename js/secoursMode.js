@@ -2467,7 +2467,7 @@
     });
     pastille.classList.toggle("kta-secours-footer-pastille--orange", pire === "orange");
     pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge" || pire === "manquant");
-    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
+    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚑</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
                          '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
 
@@ -8491,7 +8491,7 @@
                '</div>';
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
-                '<div class="kta-secours-empty-icon">🚨</div>' +
+                '<div class="kta-secours-empty-icon">🚑</div>' +
                 '<p>' + t("secours.list.emptyTitre") + '</p>' +
                 '<p class="kta-secours-empty-hint">' + t("secours.list.emptyHint") + '</p>' +
               '</div>';
@@ -12407,7 +12407,7 @@
     const nbGroupes = (s.groupes || []).length;
     fl.innerHTML =
       '<div class="kta-secours-overlay-floater-info">' +
-        '🚨 <strong>' + _escHtml(s.nom) + '</strong>' +
+        '🚑 <strong>' + _escHtml(s.nom) + '</strong>' +
         ' · ' + t("secours.liveOp.equipesCompteur", { n: nbGroupes }) +
       '</div>' +
       '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="reopen-modal">' +

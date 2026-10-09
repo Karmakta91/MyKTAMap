@@ -2771,12 +2771,12 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.22.0 — 🚨 Mode Secours : outil opérationnel pour assigner
+      // 🆕 v1.22.0 — 🚑 Mode Secours : outil opérationnel pour assigner
       // des équipes de recherche à des zones du plan. Multi-scénarios,
       // export PDF/KMZ. KARMA : "définir un plan de secours / lire un
       // plan de secours". Placé en FIN du flyout, fond rouge urgence.
       {
-        icone: "🚨",
+        icone: "🚑",
         titre: window.I18n.t("ui.subaction.secours"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {

@@ -437,7 +437,7 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
 | **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
-| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚨 Mode Secours — voir 🆘 En cas d'urgence sous terre |
+| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚑 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
 
@@ -1266,7 +1266,7 @@ La tuile **🔥 Heatmap** du menu **🧭 Tracker** colore le plan selon la fréq
 
 La heatmap est **purement visuelle** : elle ne modifie ni le plan, ni tes annotations, ni les exports. Ferme la fenêtre pour la masquer.
 
-> 🚨 Le **Mode Secours** garde sa propre heatmap d'activité, que cette option soit cochée ou non.
+> 🚑 Le **Mode Secours** garde sa propre heatmap d'activité, que cette option soit cochée ou non.
 
 #### 🔋 Niveau de batterie
 
@@ -1341,7 +1341,7 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 >
 > **Prépare-le à froid** : monte un ou deux scénarios sur tes plans habituels avant tout incident. Le jour J, l'app doit être prête en 30 secondes.
 
-Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚨 Mode Secours — Plans de recherche (équipes + zones)**.
+Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚑 Mode Secours — Plans de recherche (équipes + zones)**.
 
 #### 🧭 Comment ça s'organise
 
@@ -1360,7 +1360,7 @@ Le cycle : **préparer** le scénario → le **transmettre** aux équipes avant 
 ##### 📝 Créer un scénario
 
 - **➕ Nouveau scénario** : un nom, l'heure de l'incident et des notes de contexte (facultatives).
-- **Depuis ⛑️ Je suis perdu** : le bouton **🚨 Lancer un plan de secours (équipes + zones)** crée le scénario tout prêt — dernière position connue, zone d'incertitude (cercle sur la carte), heure de l'incident et notes déduites. Il faut d'abord y avoir défini une dernière position connue.
+- **Depuis ⛑️ Je suis perdu** : le bouton **🚑 Lancer un plan de secours (équipes + zones)** crée le scénario tout prêt — dernière position connue, zone d'incertitude (cercle sur la carte), heure de l'incident et notes déduites. Il faut d'abord y avoir défini une dernière position connue.
 - **🗐 Dupliquer** clone un scénario pour tester une autre hypothèse (« parti par l'est » / « parti par le sud ») sans toucher l'original.
 - **10 scénarios par plan** au plus : au-delà, le plus ancien est effacé. Jamais un scénario en cours, celui que tu as ouvert, le plus récent, ni une intervention terminée dont aucun rapport n'est encore sorti du téléphone.
 
@@ -1399,7 +1399,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 #### 📤 2. Transmettre avant de descendre
 
-- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
+- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚑 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
 - **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone (à pleine résolution du plan : les noms de galeries restent lisibles même sur un grand plan), étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
@@ -1413,7 +1413,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 En rôle équipe, tu es **placé à l'entrée de ton équipe** — d'office si ta position n'était pas encore confirmée, sinon l'app te le propose (« Me placer à l'entrée » / « Garder ma position »). Un message unique résume le lancement.
 
-Fermer la fenêtre ne retire rien : ta zone et ton parcours restent sur la carte (l'équipe voit la sienne, l'opérateur toutes), même après un rechargement. En bas de l'écran, la pastille **🚨 Secours · Alpha · 3/8 ›** rappelle que l'intervention tourne ; la toucher te ramène aux étapes à valider. **⏸️ Pause** fige le chronomètre, **▶️ Reprendre** le relance : le temps de pause n'est pas compté.
+Fermer la fenêtre ne retire rien : ta zone et ton parcours restent sur la carte (l'équipe voit la sienne, l'opérateur toutes), même après un rechargement. En bas de l'écran, la pastille **🚑 Secours · Alpha · 3/8 ›** rappelle que l'intervention tourne ; la toucher te ramène aux étapes à valider. **⏸️ Pause** fige le chronomètre, **▶️ Reprendre** le relance : le temps de pause n'est pas compté.
 
 ##### 🚨 Côté équipe
 
@@ -1433,8 +1433,8 @@ La vue montre ton parcours étape par étape (Entrée, 1…N, Sortie — le mêm
 
 - **📸 Photo** : jusqu'à 5 par étape, appareil photo ou galerie ; touche une miniature pour l'agrandir.
 - **Valider une étape te recale dessus** (avec RAS, Suspect, Indice, Aide demandée ou Victime trouvée) : sans rien demander à moins de 30 m, avec une question au-delà. Jamais avec Bloqué ou Demi-tour forcé : tu n'y es pas arrivé.
-- **🧭 Suivre mon parcours (guidage pas à pas)** transforme le parcours en itinéraire guidé : bandeau « Dans 40 m, tourner à gauche », feuille de route et écran XL te mènent d'étape en étape, et le suivi 🧭 démarre. Les étapes validées sont cochées ; si tu t'écartes, **Recalculer** repart vers la prochaine étape non faite, toujours en contournant les zones des autres équipes. À l'arrivée sur une étape, un message et une vibration te préviennent, et la pastille 🚨 ouvre cette étape. Il faut que l'itinéraire de l'équipe ait été calculé.
-- Trois raccourcis en cas de pépin : **🚪 Sortie d'urgence**, **🆘 Écran XL**, **⛑️ Je suis perdu**.
+- **🧭 Suivre mon parcours (guidage pas à pas)** transforme le parcours en itinéraire guidé : bandeau « Dans 40 m, tourner à gauche », feuille de route et 🔆 Affichage XL te mènent d'étape en étape, et le suivi 🧭 démarre. Les étapes validées sont cochées ; si tu t'écartes, **Recalculer** repart vers la prochaine étape non faite, toujours en contournant les zones des autres équipes. À l'arrivée sur une étape, un message et une vibration te préviennent, et la pastille 🚑 ouvre cette étape. Il faut que l'itinéraire de l'équipe ait été calculé.
+- Trois raccourcis en cas de pépin : **🚪 Sortie d'urgence**, **🔆 Affichage XL**, **⛑️ Je suis perdu**.
 - **▶️ Départ** note ton heure de départ (sinon, celle du lancement) ; **✅ Rentrée** arrête le chrono à la remontée.
 
 ##### 👤 Côté opérateur
@@ -1444,7 +1444,7 @@ La vue montre ton parcours étape par étape (Entrée, 1…N, Sortie — le mêm
 - **Retards** : chaque équipe a une heure de retour prévue (départ + durée estimée, ou son retour impératif). Passé cette heure, sa carte passe en **orange** ; après la marge, en **rouge**. Les équipes en retard remontent en tête, la pastille du bas change de couleur, un message et une vibration préviennent.
 - **✅ Rentrée** : l'app demande **combien sont remontés** (rien n'est prérempli : compte). En dessous de l'effectif, l'alerte rouge **« N PERSONNE(S) MANQUANTE(S) »** reste affichée, pastille comprise, tant que le compte n'est pas corrigé (**Corriger le compte**).
 - **📢 Rappel général** (ou **📢 Rappeler** pour une équipe) marque les équipes encore sous terre comme rappelées, avec l'heure. ⚠️ **L'app ne prévient personne** — pas de réseau sous terre : transmets l'ordre toi-même, par radio ou à la voix.
-- **🚨 Prendre la main** : un appel radio d'une équipe ? Tu passes dans sa vue, sur sa première étape non terminée, pour saisir à sa place ; **👤 Retour Opérateur** te ramène. Dans ce cas, Suivre mon parcours, Sortie d'urgence, Écran XL et Je suis perdu sont absents : ils agiraient sur ton propre téléphone.
+- **🚨 Prendre la main** : un appel radio d'une équipe ? Tu passes dans sa vue, sur sa première étape non terminée, pour saisir à sa place ; **👤 Retour Opérateur** te ramène. Dans ce cas, Suivre mon parcours, Sortie d'urgence, Affichage XL et Je suis perdu sont absents : ils agiraient sur ton propre téléphone.
 - **📜 Main courante** : tout y est noté à l'heure — lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes notes (appel radio, décision). Elle s'imprime en annexe du rapport.
 - **Modifier pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu changes l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a été saisi reste sur la même étape. Retirer une étape déjà renseignée demande une confirmation, et c'est refusé si elle signale Aide demandée ou Victime trouvée : change d'abord son statut. Remise dans la même phase, l'étape retrouve ses saisies.
 

@@ -187,7 +187,7 @@
   // Secours actif au moment du open() de la modale Vue OSM. Toggle dans
   // bandeau pour basculer ON/OFF à la volée.
   let _secoursLayer   = null;   // L.layerGroup zones + iti + markers entree/sortie
-  let _secoursVisible = true;   // toggle "🚨 Secours"
+  let _secoursVisible = true;   // toggle "🚑 Secours"
   // Style alignés sur l'overlay map principale (cf secoursMode.js renderOverlay)
   const SECOURS_ITI_WEIGHT       = 4;
   const SECOURS_ITI_DASHARRAY    = "8 4";   // dashed pour distinguer iti équipe vs iti pathfinder global
@@ -1710,7 +1710,7 @@
         // 🐛 v1.40.39 (KARMA "les filtres sortent de la fenêtre on les voit
         // apparaître un peu en horizontal") : ajout `flex-wrap: wrap` +
         // `row-gap` pour que le bandeau toggles wrap proprement quand il y
-        // a beaucoup d'éléments (opacité + ~10 toggles + 🚨 Secours conditionnel).
+        // a beaucoup d'éléments (opacité + ~10 toggles + 🚑 Secours conditionnel).
         // Sans wrap, débordement horizontal masqué hors viewport modale.
         '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:#c8d0e0;">' +
           '<span>' + window.I18n.t("osm.opacity.label") + '</span>' +

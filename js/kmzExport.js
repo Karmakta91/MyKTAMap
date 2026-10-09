@@ -736,7 +736,7 @@
       if (groupes.length === 0) return { folder: "", styles: "" };
 
       let styles = "";
-      let folder = '<Folder><name>🚨 Secours — ' + _xmlEsc(secoursPlan.nom || "Plan de secours") + '</name>';
+      let folder = '<Folder><name>🚑 Secours — ' + _xmlEsc(secoursPlan.nom || "Plan de secours") + '</name>';
       const ctxDesc = [];
       if (secoursPlan.context && secoursPlan.context.incidentAt) {
         ctxDesc.push("Incident : " + secoursPlan.context.incidentAt);

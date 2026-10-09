@@ -437,7 +437,7 @@ El botón **🧭 Tracker** (o el indicador 🧭 de la barra de abajo) abre una *
 |---|---|
 | **Seguimiento** | ▶️ / ⏹️ Iniciar / detener · 📍 Modo recolocación · 🎯 Mi posición (vuelve a centrar el mapa en ti) · 🔓 Suspender el bloqueo en trazado |
 | **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado |
-| **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚨 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
+| **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚑 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
 
 Navegación inteligente (bloqueo en trazado), mapa orientado, itinerario a través de varios planos, replay y mapa de calor son opciones desactivadas por defecto → 🔭 Para ir más lejos.
 
@@ -1266,7 +1266,7 @@ El mosaico **🔥 Mapa de calor** del menú **🧭 Tracker** colorea el plano se
 
 El mapa de calor es **puramente visual**: no modifica ni el plano, ni tus anotaciones, ni las exportaciones. Cierra la ventana para ocultarlo.
 
-> 🚨 El **Modo Rescate** conserva su propio mapa de calor de actividad, esté marcada o no esta opción.
+> 🚑 El **Modo Rescate** conserva su propio mapa de calor de actividad, esté marcada o no esta opción.
 
 #### 🔋 Nivel de batería
 
@@ -1341,7 +1341,7 @@ Bloquea la app en cada inicio con un código de 4 a 6 cifras, o con **Face ID / 
 >
 > **Prepáralo en frío**: monta uno o dos escenarios en tus planos habituales antes de cualquier incidente. El día D, la app tiene que estar lista en 30 segundos.
 
-Para abrirlo: menú **🧭 Tracker** → abajo, sobre fondo rojo, **🚨 Modo Rescate — Mapas de búsqueda (equipos + zonas)**.
+Para abrirlo: menú **🧭 Tracker** → abajo, sobre fondo rojo, **🚑 Modo Rescate — Mapas de búsqueda (equipos + zonas)**.
 
 #### 🧭 Cómo se organiza
 
@@ -1360,7 +1360,7 @@ El ciclo: **preparar** el escenario → **transmitirlo** a los equipos antes de 
 ##### 📝 Crear un escenario
 
 - **➕ Nuevo escenario**: un nombre, la hora del incidente y notas de contexto (opcionales).
-- **Desde ⛑️ Estoy perdido**: el botón **🚨 Lanzar un plan de rescate (equipos + zonas)** crea el escenario ya listo — última posición conocida, zona de incertidumbre (círculo en el mapa), hora del incidente y notas deducidas. Antes hay que haber definido allí una última posición conocida.
+- **Desde ⛑️ Estoy perdido**: el botón **🚑 Lanzar un plan de rescate (equipos + zonas)** crea el escenario ya listo — última posición conocida, zona de incertidumbre (círculo en el mapa), hora del incidente y notas deducidas. Antes hay que haber definido allí una última posición conocida.
 - **🗐 Duplicar** clona un escenario para probar otra hipótesis («se fue por el este» / «se fue por el sur») sin tocar el original.
 - **10 escenarios por plano** como máximo: por encima, se borra el más antiguo. Nunca un escenario en curso, el que tienes abierto, el más reciente, ni una intervención terminada cuyo informe aún no ha salido del teléfono.
 
@@ -1399,7 +1399,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 
 #### 📤 2. Transmitir antes de bajar
 
-- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚨 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario** — o, más rápido, suelta el archivo en **📦 Añadir un mapa** en la pantalla de inicio: la app abre el plano correcto, muestra la vista previa y propone lanzar como «Equipo». La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
+- **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚑 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario** — o, más rápido, suelta el archivo en **📦 Añadir un mapa** en la pantalla de inicio: la app abre el plano correcto, muestra la vista previa y propone lanzar como «Equipo». La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro plano o de otra versión del plano.
 - ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
 - **Sin conexión**: al lanzar, la app avisa si el plano no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del plano** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
 - **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona (a la resolución completa del plano: los nombres de galerías se leen incluso en un plano grande), etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
@@ -1413,7 +1413,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 
 En el rol de equipo, quedas **colocado en la entrada de tu equipo** — de oficio si tu posición aún no estaba confirmada; si no, la app te lo propone («Colocarme en la entrada» / «Mantener mi posición»). Un único mensaje resume el lanzamiento.
 
-Cerrar la ventana no quita nada: tu zona y tu recorrido siguen en el mapa (el equipo ve el suyo, el operador todos), incluso tras recargar. Abajo de la pantalla, la pastilla **🚨 Rescate · Alpha · 3/8 ›** recuerda que la intervención está en marcha; al tocarla vuelves a las etapas por validar. **⏸️ Pausa** congela el cronómetro, **▶️ Retomar** lo reanuda: el tiempo de pausa no se cuenta.
+Cerrar la ventana no quita nada: tu zona y tu recorrido siguen en el mapa (el equipo ve el suyo, el operador todos), incluso tras recargar. Abajo de la pantalla, la pastilla **🚑 Rescate · Alpha · 3/8 ›** recuerda que la intervención está en marcha; al tocarla vuelves a las etapas por validar. **⏸️ Pausa** congela el cronómetro, **▶️ Retomar** lo reanuda: el tiempo de pausa no se cuenta.
 
 ##### 🚨 Lado del equipo
 
@@ -1433,8 +1433,8 @@ La vista muestra tu recorrido etapa por etapa (Entrada, 1…N, Salida — el mis
 
 - **📸 Foto**: hasta 5 por etapa, cámara o galería; toca una miniatura para ampliarla.
 - **Validar una etapa te recalibra en ella** (con Sin novedad, Sospechoso, Indicio, Ayuda solicitada o Víctima encontrada): sin preguntar a menos de 30 m, con una pregunta más allá. Nunca con Bloqueado o Media vuelta forzada: no llegaste allí.
-- **🧭 Seguir mi recorrido (guiado paso a paso)** convierte el recorrido en un itinerario guiado: la banda «En 40 m, gira a la izquierda», la hoja de ruta y la pantalla XL te llevan de etapa en etapa, y el seguimiento 🧭 arranca. Las etapas validadas se marcan; si te desvías, **Recalcular** vuelve a salir hacia la siguiente etapa sin hacer, rodeando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚨 abre esa etapa. Hace falta que el itinerario del equipo esté calculado.
-- Tres atajos si algo va mal: **🚪 Salida de emergencia**, **🆘 Pantalla XL**, **⛑️ Estoy perdido**.
+- **🧭 Seguir mi recorrido (guiado paso a paso)** convierte el recorrido en un itinerario guiado: la banda «En 40 m, gira a la izquierda», la hoja de ruta y la 🔆 Vista XL te llevan de etapa en etapa, y el seguimiento 🧭 arranca. Las etapas validadas se marcan; si te desvías, **Recalcular** vuelve a salir hacia la siguiente etapa sin hacer, rodeando siempre las zonas de los demás equipos. Al llegar a una etapa, un mensaje y una vibración te avisan, y la pastilla 🚑 abre esa etapa. Hace falta que el itinerario del equipo esté calculado.
+- Tres atajos si algo va mal: **🚪 Salida de emergencia**, **🔆 Vista XL**, **⛑️ Estoy perdido**.
 - **▶️ Salida** anota tu hora de salida (si no, la del lanzamiento); **✅ De vuelta** detiene el cronómetro al subir.
 
 ##### 👤 Lado del operador
@@ -1444,7 +1444,7 @@ La vista muestra tu recorrido etapa por etapa (Entrada, 1…N, Salida — el mis
 - **Retrasos**: cada equipo tiene una hora de regreso prevista (salida + duración estimada, o su regreso obligatorio). Pasada esa hora, su tarjeta pasa a **naranja**; tras el margen, a **rojo**. Los equipos con retraso suben arriba, la pastilla de abajo cambia de color, y un mensaje y una vibración avisan.
 - **✅ De vuelta**: la app pregunta **cuántos han subido** (nada viene prerrellenado: cuenta). Por debajo del efectivo, la alerta roja **«N PERSONA(S) DESAPARECIDA(S)»** sigue en pantalla, pastilla incluida, hasta que se corrija el recuento (**Corregir el recuento**).
 - **📢 Llamada general** (o **📢 Llamar** para un equipo) marca los equipos que siguen bajo tierra como llamados, con la hora. ⚠️ **La app no avisa a nadie** — bajo tierra no hay red: transmite la orden tú mismo, por radio o de viva voz.
-- **🚨 Tomar el control**: ¿un equipo llama por radio? Pasas a su vista, en su primera etapa sin terminar, para introducir datos en su lugar; **👤 Volver a Operador** te devuelve. En ese caso, Seguir mi recorrido, Salida de emergencia, Pantalla XL y Estoy perdido no aparecen: actuarían sobre tu propio teléfono.
+- **🚨 Tomar el control**: ¿un equipo llama por radio? Pasas a su vista, en su primera etapa sin terminar, para introducir datos en su lugar; **👤 Volver a Operador** te devuelve. En ese caso, Seguir mi recorrido, Salida de emergencia, Vista XL y Estoy perdido no aparecen: actuarían sobre tu propio teléfono.
 - **📜 Diario de operaciones**: todo queda anotado con la hora — lanzamiento, estados, víctima, salidas, regresos, llamadas, importaciones, fases — más tus propias notas (llamada por radio, decisión). Se imprime como anexo del informe.
 - **Modificar durante la intervención**: un equipo añadido como refuerzo, o cuya entrada, salida o etapas cambias, recibe enseguida sus etapas. Lo introducido se queda en la misma etapa. Quitar una etapa ya rellenada pide confirmación, y se rechaza si señala Ayuda solicitada o Víctima encontrada: cambia antes su estado. Si la vuelves a poner en la misma fase, la etapa recupera lo introducido.
 
