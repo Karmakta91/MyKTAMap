@@ -2011,15 +2011,12 @@
       _btnCopier.addEventListener("click", function() {
         const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
         const txt = _genererStatsAggregeesTXT(_stats, planName, multiLevel);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt).then(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_ok"), "info");
-          }).catch(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_fail"), "warn");
-          });
-        } else {
-          if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_clipboard_unavailable"), "warn");
-        }
+        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        window.ktaCopierTexte(txt).then(function(ok) {
+          if (!window.OOMGuard || !window.OOMGuard.showToast) return;
+          if (ok) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_ok"), "info");
+          else window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_fail"), "warn");
+        });
       });
     }
     if (_btnExport) {

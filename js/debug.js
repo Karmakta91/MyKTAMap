@@ -170,18 +170,13 @@
           window.OOMGuard.showToast(window.I18n.t("debug.logsCopied"), "info");
         }
       };
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(_toastCopie);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.cssText = "position:fixed;opacity:0;top:0;left:0;width:1px;height:1px;";
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        try { document.execCommand("copy"); _toastCopie(); }
-        catch(e) { window.ktaAlerte(window.I18n.t("debug.copyManual", { text: text.slice(0,200) })); }
-        document.body.removeChild(ta);
-      }
+      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+      // Échec des deux = on montre le début du journal pour une copie à la main.
+      const _copieManuelle = function() {
+        window.ktaAlerte(window.I18n.t("debug.copyManual", { text: text.slice(0,200) }));
+      };
+      if (typeof window.ktaCopierTexte !== "function") { _copieManuelle(); return; }
+      window.ktaCopierTexte(text).then(function(ok) { if (ok) _toastCopie(); else _copieManuelle(); });
     });
   };
 

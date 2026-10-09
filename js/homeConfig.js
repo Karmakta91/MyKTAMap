@@ -1450,17 +1450,17 @@
           var _tNL = function(key, fr) {
             return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
           };
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(txt).then(function() {
-              netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
-              setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
-            }).catch(function() {
-              window.ktaAlerte(_tNL("home.netlog.copyFail", "Copie échouée — sélectionne manuellement."));
-            });
-          } else {
-            window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
-              "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
-          }
+          // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+          // Les deux en échec = on oriente vers 📥 Exporter, qui marche partout.
+          window.ktaCopierTexte(txt).then(function(ok) {
+            if (!ok) {
+              window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
+                "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
+              return;
+            }
+            netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
+            setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
+          });
         });
       }
       const netLogExport = document.getElementById("loaderNetLogExport");

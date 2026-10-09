@@ -1440,15 +1440,8 @@ window.afficherModaleAideIA = function() {
     const ta = document.getElementById("kta-aide-ia-prompt");
     const originalText = btn.textContent;
     try {
-      // navigator.clipboard requiert HTTPS ou localhost — fallback execCommand sinon
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(ta.value);
-      } else {
-        ta.select();
-        document.execCommand("copy");
-        ta.setSelectionRange(0, 0);
-        ta.blur();
-      }
+      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+      if (!(await window.ktaCopierTexte(ta.value))) throw new Error("clipboard + execCommand KO");
       btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");
       setTimeout(function() {
@@ -1524,22 +1517,9 @@ window.afficherModaleAideIA = function() {
     btn.textContent = window.I18n.t("aiia.dl.generating");
     try {
       const res = await _genererContexte(statusEl);
-      // Copie : API clipboard d'abord, repli execCommand si elle échoue
+      // Helper commun (utils.js) : clipboard d'abord, repli execCommand s'il échoue
       // (writeText peut throw même en contexte sécurisé, ex. document non focus).
-      let copie = false;
-      if (navigator.clipboard && window.isSecureContext) {
-        try { await navigator.clipboard.writeText(res.contenu); copie = true; } catch(e) {}
-      }
-      if (!copie) {
-        const ta = document.createElement("textarea");
-        ta.value = res.contenu;
-        ta.style.position = "fixed"; ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        copie = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (!copie) throw new Error("clipboard + execCommand KO");
-      }
+      if (!(await window.ktaCopierTexte(res.contenu))) throw new Error("clipboard + execCommand KO");
       statusEl.textContent = window.I18n.t("aiia.copyCtx.ok", { ko: Math.round(res.contenu.length / 1024) });
       btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");

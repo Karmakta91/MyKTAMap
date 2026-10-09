@@ -1095,24 +1095,15 @@
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }
 
+  // Copie déléguée au helper commun (utils.js) : il tente navigator.clipboard puis
+  // retombe sur execCommand (HTTP local, clipboard refusé). On garde la forme
+  // Promise résolue / rejetée attendue par les appelants.
   function _copyToClipboard(text) {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(text);
+    if (typeof window.ktaCopierTexte !== "function") {
+      return Promise.reject(new Error("ktaCopierTexte indisponible"));
     }
-    // Fallback textarea + execCommand (anciens browsers + contextes non-sécurisés)
-    return new Promise(function(resolve, reject) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (ok) resolve(); else reject(new Error("execCommand copy failed"));
-      } catch(e) { reject(e); }
+    return window.ktaCopierTexte(text).then(function(ok) {
+      if (!ok) throw new Error("clipboard + execCommand KO");
     });
   }
 

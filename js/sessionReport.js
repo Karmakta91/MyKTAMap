@@ -905,15 +905,10 @@
         const txt = _genererTexte(filtered, opts);
         const fn = _filename(filtered.plan.name, "txt");
         _telechargerTexte(txt, fn);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt).then(function() {
-            _setStatus("✅ " + window.I18n.t("report.status_text_ok_copied"));
-          }).catch(function() {
-            _setStatus("✅ " + window.I18n.t("report.status_text_ok_noclip"));
-          });
-        } else {
-          _setStatus("✅ " + window.I18n.t("report.status_text_ok"));
-        }
+        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        window.ktaCopierTexte(txt).then(function(ok) {
+          _setStatus("✅ " + window.I18n.t(ok ? "report.status_text_ok_copied" : "report.status_text_ok_noclip"));
+        });
       });
     });
 

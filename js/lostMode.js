@@ -1237,14 +1237,8 @@
       const btn = this;
       const txt = _genererRapport();
       try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(txt);
-        } else {
-          const ta = document.createElement("textarea");
-          ta.value = txt; document.body.appendChild(ta);
-          ta.select(); document.execCommand("copy");
-          document.body.removeChild(ta);
-        }
+        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        if (!(await window.ktaCopierTexte(txt))) throw new Error("clipboard + execCommand KO");
         const original = btn.textContent;
         btn.textContent = _t("lost.btn.copied");
         // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.5s.

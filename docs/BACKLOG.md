@@ -125,11 +125,9 @@ remplace.
 > Les popups natives (`alert` / `confirm` / `prompt`) sont **toutes migrées** (09/10/2026) vers `ktaAlerte` /
 > `ktaConfirm` / toast ; `scripts/check-popups-natives.js` (plafond 0) interdit leur retour.
 
-- **Copies locales du presse-papier** : `window.ktaCopierTexte(txt)` (utils.js, v1.97.10) existe ; une dizaine de
-  fichiers gardent leur propre `navigator.clipboard` (`debug`, `homeConfig`, `interfaceDocs`, `lostMode`,
-  `memInspector`, `osmCoords`, `refonteInterface`, `secoursMode`, `sessionReport`, `statsGlobales`). Chaque site a
-  son propre retour visuel (toast, texte in situ, `alert`) : **un par un**, en vérifiant le retour. ⚠️ `memInspector`
-  et `debug` servent au diagnostic : les casser rendrait un rapport de crash incopiable.
+- **Copies locales du presse-papier** : `window.ktaCopierTexte(txt)` (utils.js) est utilisé partout dans
+  `index.html` depuis le 10/10/2026, sauf `secoursMode` (son `_copierTexte` local). Hors périmètre :
+  `confadmin.js` garde sa copie, car `confadmin.html` est une page à part qui ne charge pas `utils.js`.
 
 ## 🎨 Harmoniser les icônes par défaut — gardé de côté, non prioritaire
 
