@@ -208,6 +208,8 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
   `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI`), puis **`.githooks/pre-commit`** (tous
   les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
+- **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
+  commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
 - **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte (jeton Git
   rangé, lu via `git credential fill` ; illisible = `DEROGE`). Tient lieu de protection de branche.
@@ -679,8 +681,9 @@ documentées ici pour la doctrine.
   `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt client, `PRO`) ;
   `kta-serveur.sh` = « menu 0 » qui les appelle.
 - **Mise à jour automatique** (décision KARMA du 09/10/2026) : `auto-deploy.sh`, lancé par cron toutes les 5 min,
-  compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** (jeton GitHub en
-  lecture seule sur le VPS) ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
+  compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** : le job
+  `marquer-vert` de `ci.yml` pose `refs/ci/verte/<branche>` sur chaque commit poussé qui passe, lue par le VPS avec
+  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
   de CI). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
   (`/data/scripts/PAUSE-<domaine>`, menu 0 → 8). Conséquence : `main` mergé = prod en ligne dans les 5 minutes.
 - **Retour arrière** : menu 0 → 4 / 5 (pose la pause, sinon la branche reviendrait) — procédure complète, pro
