@@ -1499,7 +1499,7 @@
     if (window.renderEditorPoints) window.renderEditorPoints();
     // Carte masquée par l'éditeur : le résultat ne se voit pas → toast warn (visible en « Essentielles »).
     const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
-    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn");
+    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn", { important: true });
     else window.ktaAlerte(msgOk);
   }
 

@@ -908,7 +908,8 @@
           cancelLabel: _t("session.btn.keep")
         }).then(function(ok) { if (ok) go(); });
       } else {
-        go();
+        // Sans fenêtre de confirmation, on N'efface PAS : un repli destructeur par défaut est le pire choix.
+        console.warn("[SessionPersist] ktaConfirm indisponible : effacement de la session refusé");
       }
     });
     // Click sur le backdrop = "Continuer" (pattern modal soft)

@@ -308,6 +308,7 @@
 
   function undo() {
     if (undoStack.length === 0) return false;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const entry = undoStack.pop();
     // Capture ciblée sur la MÊME catégorie que l'entrée (cohérence pour redo).
     const currentState = _captureState(entry.category);
@@ -326,6 +327,7 @@
 
   function redo() {
     if (redoStack.length === 0) return false;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const entry = redoStack.pop();
     const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);

@@ -385,7 +385,7 @@
     if (!file) return Promise.reject(new Error("Pas de fichier"));
     return _docsImportes().then(function(docs) {
       const err = _verifierQuota(docs, file, function(msg) {   // l'ajout continue : avertissement → toast warn
-        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "warn");
+        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "warn", { important: true });
         else window.ktaAlerte(msg);
       });
       if (err) { const e = new Error(err); e.code = "QUOTA"; throw e; }

@@ -1240,7 +1240,7 @@
     const id = window._currentLoadedPlanId;
     if (!id || !lectureSeule(id)) return false;
     if (!silencieux && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule" });
+      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule", important: true });
     }
     return true;
   };

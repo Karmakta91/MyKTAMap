@@ -523,18 +523,6 @@ function renderBannerCoherenceEchelle(planId, opts) {
 }
 window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
 
-// =========================
-// 🪟 v1.76.2 — CONFIRM CHARTÉ (remplaçant du confirm() natif)
-// =========================
-// Retour KARMA : « la popup n'est pas au style habituel / charte graphique ».
-// Le confirm() natif est utilisé dans 10+ fichiers — ce helper est le point
-// de migration progressive (nouveaux usages ICI, les anciens migreront au
-// fil de l'eau, dette notée au BACKLOG).
-// Promesse : ktaConfirm(message, opts) → Promise<boolean>.
-//   opts = { titre, okLabel, cancelLabel } (défauts i18n ui.confirm.*)
-// Charte : mêmes classes que les modales existantes (readme-modal), boutons
-// kta-btn, overlay clic = annuler, Échap = annuler. z-index 100002
-// (au-dessus des sous-modales 100001).
 // 🛰️ v1.85.2 — CAPTEURS REFUSES : le meme rendu pour les DEUX modales de
 // reglages (plan et accueil). Ecrit ici plutot que copie de chaque cote : une
 // des deux aurait fini par diverger, et c est la dette qu on solde a repetition
@@ -581,6 +569,36 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
     }
   });
 };
+
+// =========================
+// 🪟 window.ktaConfirm(message, opts) → Promise — fenêtre chartée (remplace confirm()/prompt() natifs)
+// =========================
+// ⚠️ CONTRAT HTML : `message`, `opts.titre`, `opts.okLabel` et `opts.cancelLabel` sont insérés TELS QUELS
+// en HTML (innerHTML). Des appelants y passent du balisage voulu (<b>, <br>, classes .kta-tx-*). Toute
+// donnée d'utilisateur ou de fichier (nom de plan, de dossier, de fichier, libellé de point…) DOIT être
+// échappée par l'appelant (window.ktaEsc) avant d'entrer dans le message. Pour un texte brut à lire,
+// préférer window.ktaAlerte (elle échappe). Les champs optionnels ci-dessous, eux, sont posés par le DOM
+// (textContent / value) : on peut y mettre une donnée brute.
+//   opts.titre / okLabel / cancelLabel : HTML (défauts i18n ui.confirm.*).
+//   opts.sansAnnuler : un seul bouton (ktaAlerte) ; le clic sur le fond ne ferme PAS (message à lire).
+//   opts.zIndex : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050).
+//   opts.caseACocher = {label, coche} · opts.nombre = {label, valeur, min, max} ·
+//   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
+//   dans l'objet passé (coche / valeur) après coup.
+//   opts.autre = {label, valeur} : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
+// Fermeture : OK → true · Annuler / Échap / clic sur le fond → false. Fenêtres EMPILÉES : seule celle du
+// SOMMET réagit à Échap (pile du module, écouteur unique en capture sur window, qui passe avant les
+// écouteurs « Échap » des modales posés sur document). Clic sur le fond ignoré pendant 300 ms après
+// l'ouverture : le 2e clic d'un double-clic sur le bouton qui ouvre la fenêtre l'annulait aussitôt.
+// z-index 100002 (au-dessus des sous-modales 100001). Doc : docs/architecture/ui.md §Fenêtres de message.
+const _ktaConfirmPile = [];   // fonctions « annuler » des fenêtres ouvertes, la dernière = le sommet
+const _KTA_CONFIRM_GARDE_CLIC_MS = 300;
+window.addEventListener("keydown", function(e) {
+  if (e.key !== "Escape" || !_ktaConfirmPile.length) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();   // la fenêtre (ou la modale) du dessous ne reçoit pas cet Échap
+  _ktaConfirmPile[_ktaConfirmPile.length - 1]();
+}, true);
 
 window.ktaConfirm = function(message, opts) {
   opts = opts || {};
@@ -663,19 +681,16 @@ window.ktaConfirm = function(message, opts) {
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
       if (texteEl && val) opts.texte.valeur = texteEl.value;
-      document.removeEventListener("keydown", surTouche, true);
+      const i = _ktaConfirmPile.indexOf(annuler);
+      if (i >= 0) _ktaConfirmPile.splice(i, 1);
       ov.remove();
       resolve(val);
     };
-    // Échap n'agit QUE sur cette fenêtre : écouteur en capture, propagation coupée — sinon la fenêtre
-    // ouverte dessous (import de profil…) se fermait aussi, ce que le confirm() natif ne faisait pas.
-    const surTouche = function(e) {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      finir(false);
-    };
-    document.addEventListener("keydown", surTouche, true);
+    // Échap n'agit QUE sur la fenêtre du sommet (écouteur unique du module, cf en-tête) — sinon la
+    // fenêtre ouverte dessous (import de profil…) se fermait aussi, ce que le confirm() natif ne faisait pas.
+    const annuler = function() { finir(false); };
+    _ktaConfirmPile.push(annuler);
+    const ouvertA = Date.now();
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
     const nonEl = ov.querySelector("#kta-confirm-non");
     if (nonEl) nonEl.addEventListener("click", function() { finir(false); });
@@ -684,7 +699,13 @@ window.ktaConfirm = function(message, opts) {
       autreEl.textContent = opts.autre.label || "";
       autreEl.addEventListener("click", function() { finir(opts.autre.valeur); });
     }
-    ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
+    // Clic sur le fond = annuler — sauf fenêtre à un seul bouton (message à lire : on ne le perd pas d'un
+    // clic à côté) et pendant les 300 premières ms (2e clic d'un double-clic sur le bouton d'ouverture).
+    ov.addEventListener("click", function(e) {
+      if (e.target !== ov || opts.sansAnnuler) return;
+      if (Date.now() - ouvertA < _KTA_CONFIRM_GARDE_CLIC_MS) return;
+      finir(false);
+    });
     // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre / texte s'il y en a un)
     if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
     if (texteEl) texteEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
@@ -3605,20 +3626,31 @@ window.telechargerPlan = telechargerPlan;
 // espagnols, « » ’ — … € ° (mesuré le 09/10/2026, PDF d'échantillon) : on ne
 // retire plus les accents. Hors police : flèches, coches, symboles, emojis —
 // ils sortent en charabia et désorganisent toute la ligne. Ce filtre convertit
-// les plus courants en équivalent lisible et retire le reste ; à passer sur
-// tout texte libre (nom d'équipe, note, libellé) envoyé à pdf.text().
+// les plus courants en équivalent lisible ; une LETTRE hors police (polonais,
+// tchèque, roumain…) garde sa lettre de base (« Łódź » → « Lódz », pas « ód ») :
+// décomposition NFKD, on garde ce que la police sait afficher, accents retirés
+// seulement pour ces lettres-là. Le reste (emojis, symboles) est retiré. À
+// passer sur tout texte libre (nom d'équipe, note, libellé) envoyé à pdf.text().
 // Les libellés PDF des dicos n'en ont pas besoin : scripts/check-pdf-texte.js
-// y refuse tout caractère hors police.
+// y refuse tout caractère hors police (et rejoue des cas de ce filtre).
 (function () {
   const EXTRA = "ŒœŠšŽžŸƒˆ˜–—‘’‚“”„†‡•…‰‹›€™";
   const EQUIV = { "→": "->", "⇒": "=>", "←": "<-", "⇐": "<=", "↔": "<->", "✓": "OK", "✔": "OK",
                   "✗": "X", "✘": "X", "≥": ">=", "≤": "<=", "≠": "!=", "⚠": "!" };
+  // Lettres SANS décomposition Unicode (barre, pas accent) : leur base à la main.
+  const BASE = { "Ł": "L", "ł": "l", "Đ": "D", "đ": "d", "Ħ": "H", "ħ": "h", "ı": "i", "Ŧ": "T", "ŧ": "t" };
+  const dansPolice = function (c) {
+    const n = c.codePointAt(0);
+    return (n >= 0x20 && n <= 0x7E) || n === 0x0A || n === 0x09 || (n >= 0xA0 && n <= 0xFF) || EXTRA.indexOf(c) >= 0;
+  };
   window.ktaTextePdf = function (s) {
     let r = "";
     for (const c of String(s == null ? "" : s).normalize("NFC")) {
-      const n = c.codePointAt(0);
-      if ((n >= 0x20 && n <= 0x7E) || n === 0x0A || n === 0x09 || (n >= 0xA0 && n <= 0xFF) || EXTRA.indexOf(c) >= 0) r += c;
-      else if (EQUIV[c]) r += EQUIV[c];
+      if (dansPolice(c)) { r += c; continue; }
+      if (EQUIV[c]) { r += EQUIV[c]; continue; }
+      if (BASE[c]) { r += BASE[c]; continue; }
+      // Repli : décomposer (ź → z + accent) et garder ce que la police affiche ; rien → caractère retiré.
+      for (const d of c.normalize("NFKD")) if (dansPolice(d)) r += d;
     }
     return r;
   };

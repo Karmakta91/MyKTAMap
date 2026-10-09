@@ -98,6 +98,7 @@ function telechargerSessionJSON() {
 // IMPORT SESSION JSON
 // =========================
 function importerSessionJSON(file) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const reader = new FileReader();
 
   reader.onload = function (e) {
@@ -129,7 +130,7 @@ function importerSessionJSON(file) {
 
       // Fin d'import : rien ne le signale autrement (points hors vue) → toast warn, visible par défaut.
       const msgFin = window.I18n.t("impexp.importDone");
-      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn");
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn", { important: true });
       else window.ktaAlerte(msgFin);
     } catch (err) {
       console.error(err);
@@ -149,6 +150,7 @@ function importerSessionJSON(file) {
 // Flow : sélection fichier → preview (X points / Y tracés) → confirm
 // → ajout aux annotations session avec snapshot HistoryManager (undo OK).
 window.ouvrirImportGpx = function(fichierInitial) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-gpx-modal");
   if (existing) { existing.remove(); if (!fichierInitial) return; }
 
@@ -287,6 +289,7 @@ window.ouvrirImportGpx = function(fichierInitial) {
 //   .gpx         → ouvrirImportGpx(file)     : aperçu + « ajoute, Ctrl+Z »
 // Le nom ouvrirImportChoix est gardé (appelé par le menu ⬇️ de interface.js).
 window.ouvrirImportChoix = function() {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const ancien = document.getElementById("kta-import-fichier");
   if (ancien) ancien.remove();  // sélecteur précédent annulé par l'user
   const input = document.createElement("input");
@@ -304,6 +307,7 @@ window.ouvrirImportChoix = function() {
 };
 
 window.ouvrirImportFichier = function(file) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   if (/\.gpx$/i.test(file.name)) {
     if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx(file);
     else window.ktaAlerte(window.I18n.t("impexp.gpxModuleUnavailable"), { type: "erreur" });
@@ -318,6 +322,7 @@ window.ouvrirImportFichier = function(file) {
 // IMPORT SESSION — modale plein écran
 // =========================
 function ouvrirImportSession(fichierInitial) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-modal");
   if (existing) { existing.remove(); if (!fichierInitial) return; }
 

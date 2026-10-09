@@ -442,11 +442,13 @@ function _bindCfgGeorefHandlers() {
     const _planIdClear = window._currentLoadedPlanId || "default";
     let _persistee = false;
     try { _persistee = !!localStorage.getItem("myktamap_kmz_calib_" + _planIdClear); } catch(e) {}
-    if (_persistee && typeof window.ktaConfirm === "function") {
-      window.ktaConfirm(window.I18n.t("config.georef.confirmClear")).then(function(ok) { if (ok) _executerClear(); });
-    } else {
-      _executerClear();
+    if (!_persistee) { _executerClear(); return; }   // rien d'enregistré : simple vidage des champs
+    // Calibration enregistrée : jamais effacée sans confirmation (sans fenêtre → refus, pas d'effacement).
+    if (typeof window.ktaConfirm !== "function") {
+      console.warn("[InterfaceConfig] ktaConfirm indisponible : effacement du calibrage refusé");
+      return;
     }
+    window.ktaConfirm(window.I18n.t("config.georef.confirmClear")).then(function(ok) { if (ok) _executerClear(); });
   });
   function _executerClear() {
     // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
@@ -1847,7 +1849,10 @@ function afficherConfig() {
 // part ; le bouton s'appelle désormais « ↺ Valeurs par défaut ».
 function resetConfig() {
   const _go = function() { _resetConfigExecuter(); };
-  if (typeof window.ktaConfirm !== "function") { _go(); return; }
+  if (typeof window.ktaConfirm !== "function") {   // sans confirmation, pas de remise à zéro (repli sûr)
+    console.warn("[InterfaceConfig] ktaConfirm indisponible : remise aux valeurs par défaut refusée");
+    return;
+  }
   window.ktaConfirm(window.I18n.t("config.confirm.reset"), {
     titre:   window.I18n.t("config.confirm.resetTitre"),
     okLabel: window.I18n.t("config.actions.reset")

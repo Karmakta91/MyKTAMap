@@ -990,7 +990,8 @@
       cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
     }).then(function (exporter) {
       if (exporter) {   // la consigne d'export se lit AVANT la restitution (ordre de l'alert() bloquant)
-        _exporterCalque(id).then(function () { _restituerVraiment(id); });
+        // Restitution SEULEMENT si l'export a réussi : sinon le travail partirait sans copie.
+        _exporterCalque(id).then(function (exporte) { if (exporte === true) _restituerVraiment(id); });
         return;
       }
       // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
@@ -1020,20 +1021,24 @@
   // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
   // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
   // téléchargements et aucune idée de la ligne où le déposer.
-  // Rend une Promise résolue à la fermeture du message (l'appelant enchaîne la restitution).
+  // Rend une Promise<boolean> résolue à la fermeture du message : true = fichier produit. L'appelant
+  // ne restitue QUE sur true — un export en échec suivi d'une restitution perdait les objets.
   function _exporterCalque(id) {
     const CS = window.CalqueSession;
-    if (!CS || !id) return Promise.resolve();
-    const r = CS.exporterCalque(id);
+    if (!CS || !id) return Promise.resolve(false);
+    let r = null;
+    try { r = CS.exporterCalque(id); } catch (e) { console.warn("[FilterPanel] export du calque :", e); }
     if (!r || !r.ok) {
-      return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+      return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" })
+        .then(function () { return false; });
     }
     // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
     // n'appartiennent pas à ce calque, et les verser d'office serait décider
     // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
     return window.ktaAlerte(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
                                                           : "filter.calque.exporte",
-                                         { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
+                                         { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }))
+      .then(function () { return true; });
   }
 
   // ============================================================

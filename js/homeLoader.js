@@ -2601,7 +2601,7 @@ function planRowHTML(plan) {
                          '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' + titre + '</span>' +
                          '<button class="kta-panneau-close" type="button" data-close>✕</button></div>' +
                          '<div class="kta-readme-modal-corps kta-plans-sheet-corps">' + corpsHtml + '</div></div>';
-        const fermer = function() { document.removeEventListener("keydown", surTouche); ov.remove(); };
+        const fermer = function() { document.removeEventListener("keydown", surTouche, true); ov.remove(); };
         const surTouche = function(e) { if (e.key === "Escape") { e.stopPropagation(); fermer(); } };
         ov.addEventListener("click", function(e) { if (e.target === ov || e.target.hasAttribute("data-close")) fermer(); });
         document.addEventListener("keydown", surTouche, true);

@@ -37,7 +37,48 @@ function sansCommentaires(src) {
     });
 }
 
-const MOTIF = /(^|[^.\w$])(alert|confirm|prompt)\s*\(|\bwindow\.(alert|confirm|prompt)\s*\(/;
+// Motif appliqué au fichier ENTIER (hors commentaires) : la parenthèse peut être à la ligne suivante.
+//   • appel nu : alert( · confirm (  · prompt\n(  · alert.call( / .apply(  — pas obj.confirm( ni function confirm(
+//   • par un objet global : window. / globalThis. / self. / top. / parent. / frames. (et ?.)
+//   • par crochets : window["alert"]( · self['confirm']( · globalThis[`prompt`](
+const NOM = "(alert|confirm|prompt)";
+const GLOBAL = "\\b(?:window|globalThis|self|top|parent|frames)\\s*";
+const APPEL = "(?:\\s*\\.\\s*(?:call|apply))?\\s*\\(";
+const MOTIFS = [
+  new RegExp("(?<![.\\w$])(?<!function\\s+)" + NOM + APPEL, "g"),
+  new RegExp(GLOBAL + "(?:\\?\\.|\\.)\\s*" + NOM + APPEL, "g"),
+  new RegExp(GLOBAL + "(?:\\?\\.)?\\s*\\[\\s*([\"'`])" + NOM + "\\1\\s*\\]" + APPEL, "g")
+];
+// Rend les occurrences d'un texte déjà privé de ses commentaires : [{ ligne (0-based), nom }].
+function occurrences(texte) {
+  const vues = new Map();
+  for (const re of MOTIFS) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(texte))) {
+      const nom = /alert|confirm|prompt/.exec(m[0])[0];
+      const debut = m.index + m[0].indexOf(nom);
+      if (!vues.has(debut)) vues.set(debut, { ligne: texte.slice(0, debut).split("\n").length - 1, nom: nom });
+    }
+  }
+  return [...vues.values()];
+}
+
+// Auto-test du motif (chaque passage) : un motif qui ne voit plus une forme connue = garde-fou à vide.
+const DOIT_VOIR = ["alert(1)", "x = confirm ('a')", "prompt\n  ('a')", "window.alert(1)", "window ?. confirm(1)",
+  "globalThis.alert(1)", "self.confirm(1)", "top.prompt(1)", "parent.alert(1)", "window[\"alert\"](1)",
+  "self['confirm'](1)", "globalThis[`prompt`](1)", "window\n  .alert\n  (1)", "alert.call(window, 1)"];
+const NE_DOIT_PAS_VOIR = ["window.ktaConfirm(1)", "ktaAlerte(1)", "obj.confirm(1)", "function confirm(a) {}",
+  "const alerte = 1", "this.prompt(1)", "confirmer(1)", "window.confirmation(1)"];
+const ratesVoir = DOIT_VOIR.filter((c) => occurrences(sansCommentaires(c).join("\n")).length !== 1);
+const ratesPas = NE_DOIT_PAS_VOIR.filter((c) => occurrences(sansCommentaires(c).join("\n")).length !== 0);
+if (ratesVoir.length || ratesPas.length) {
+  console.log("❌ check-popups-natives : le motif a régressé" +
+    (ratesVoir.length ? "\n     ne voit plus : " + ratesVoir.map((c) => JSON.stringify(c)).join(" · ") : "") +
+    (ratesPas.length ? "\n     voit à tort : " + ratesPas.map((c) => JSON.stringify(c)).join(" · ") : ""));
+  process.exit(1);
+}
+
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => path.join("js", f))
   .concat(["index.html"]);
 
@@ -49,12 +90,11 @@ for (const f of fichiers) {
   const lignes = sansCommentaires(fs.readFileSync(f, "utf8"));
   const brutes = fs.readFileSync(f, "utf8").split(/\r?\n/);
   let n = 0;
-  lignes.forEach((l, i) => {
-    if (/function\s+(alert|confirm|prompt)\s*\(/.test(l)) return;
-    const m = MOTIF.exec(l);
-    if (m && !/popup-native-ok/.test(brutes[i] || "")) {
-      n++;
-      if (liste && (liste === "*" || (m[2] || m[3]) === liste)) console.log(f + ":" + (i + 1) + "  " + l.trim().slice(0, 110));
+  occurrences(lignes.join("\n")).forEach((o) => {
+    if (/popup-native-ok/.test(brutes[o.ligne] || "")) return;
+    n++;
+    if (liste && (liste === "*" || o.nom === liste)) {
+      console.log(f + ":" + (o.ligne + 1) + "  " + lignes[o.ligne].trim().slice(0, 110));
     }
   });
   if (n) { parFichier.push([n, f]); total += n; }

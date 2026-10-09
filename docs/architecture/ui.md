@@ -70,17 +70,54 @@ Structure type :
 4. Border/accent inline-style pour la couleur sémantique (rouge erreur, orange warning, etc.)
 5. Bind ✕ + click backdrop + keydown Escape → tous appellent `_close(<result>)` qui retire la modale + retire le listener Escape + résout la Promise
 
-#### 35.4 Pourquoi pas de confirm() natif
+#### 35.4 Fenêtres de message : ktaAlerte, ktaConfirm, toasts (plus aucune popup native)
 
-- Pas customisable visuellement → casse la charte
-- Pas Promise-friendly nativement (bloque le thread JS)
-- Position et apparence dépendent de l'OS → incohérent entre desktop/mobile
-- Texte sec, pas de mise en forme (gras, couleurs, listes…)
-- Bouton "OK/Annuler" pas customisable → pas de "J'ai compris" sémantique
+`alert()` / `confirm()` / `prompt()` natifs sont **interdits** (hors charte, ignorent le thème, affichent
+« <site> indique… », bloquables par iOS en PWA, figent l'app — suivi de position compris).
+🛡️ `scripts/check-popups-natives.js` (pré-commit bloquant, plafond **0**) les compte hors commentaires, y compris
+`globalThis.alert(`, `self.confirm(`, `window["alert"](` et une parenthèse à la ligne suivante ; seul le repli de
+`ktaAlerte` (interface indisponible) est marqué `popup-native-ok`. Trois remplaçants, tous dans `js/utils.js` /
+`js/oomGuard.js` :
 
-⚠️ **`confirm()` natifs gardés** dans le projet (volontaire, pas à toucher sauf demande explicite) :
-- "Retirer ce plan de votre liste ?" (action destructive simple)
-- "Tracé en cours, charger un autre plan ?" (rapide, contexte évident)
+| Besoin | Outil | Règle |
+|---|---|---|
+| Message à **lire pour agir** (erreur qui bloque, consigne) | `window.ktaAlerte(message, opts)` → `Promise` (résolue à la fermeture) | message **texte** (échappé, retours à la ligne gardés) ; `opts.html: true` pour un message déjà sûr ; `opts.type: "erreur"`, `opts.titre`, `opts.okLabel`, `opts.zIndex` |
+| **Choix** (oui / non, saisie) | `window.ktaConfirm(message, opts)` → `Promise<boolean>` | voir le contrat ci-dessous |
+| **Confirmer** ce qui vient de se passer | `window.OOMGuard.showToast(msg, type, opts)` | `type` = `info` / `warn` / `error` ; réglage de notifications ci-dessous |
+
+**Contrat de `ktaConfirm`** (en-tête de la fonction dans `js/utils.js`) :
+- ⚠️ **`message`, `opts.titre`, `opts.okLabel`, `opts.cancelLabel` sont insérés en HTML** (voulu : des appelants
+  passent `<b>`, `<br>`, classes `.kta-tx-*`). **Toute donnée d'utilisateur ou de fichier** (nom de plan, de dossier,
+  de fichier, libellé de point) passe par `window.ktaEsc` **avant** d'entrer dans le message — typiquement
+  `I18n.t("cle", { nom: window.ktaEsc(plan.name) })`. Pour un texte brut, préférer `ktaAlerte` (elle échappe).
+  🛡️ `scripts/check-xss.js` §6 refuse une propriété de nom (`.name`, `.nom`, `.label`, `.libelle`, `.titre`,
+  `.title`, `.displayName`) hors échappeur dans le 1er argument d'un appel ; un message préparé dans une variable
+  (`msg`) lui échappe : la relecture reste due.
+- `opts.sansAnnuler` : un seul bouton (c'est `ktaAlerte`) ; le **clic sur le fond ne ferme pas** (message à lire).
+- `opts.zIndex` : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050) — sinon fenêtre invisible.
+- `opts.caseACocher = {label, coche}`, `opts.nombre = {label, valeur, min, max}`,
+  `opts.texte = {label, valeur, placeholder, maxLength}` (remplace `prompt()`) : libellés et valeurs posés par le
+  DOM (donnée brute permise) ; la Promise rend toujours un booléen, la saisie se relit dans l'objet passé.
+- `opts.autre = {label, valeur}` : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
+- Fermeture : OK → `true` ; Annuler, Échap, clic sur le fond → `false`. **Fenêtres empilées** : seule celle du
+  sommet réagit à Échap (pile du module, écouteur unique en capture sur `window`, qui passe avant les écouteurs
+  Échap des modales posés sur `document`). Le clic sur le fond est **ignoré 300 ms** après l'ouverture (le 2e clic
+  d'un double-clic sur le bouton d'ouverture annulait aussitôt).
+- **Repli sûr** : un appelant qui teste `typeof window.ktaConfirm !== "function"` avant une action destructive
+  **refuse** l'action dans ce cas (jamais « confirmé par défaut »).
+
+**Toasts et réglage de notifications** (`js/oomGuard.js`, un seul goulot, décision pure `_decisionToast` rejouée
+par `scripts/check-notifs.js`) : niveau `all` (tout, vibration sur warn/error) · `essential` (plus d'`info`, les
+`warn` restent) · `silent` (seuls les `warn` marqués **`{ important: true }`** et les `error`). Un `warn` que
+l'utilisateur ne peut pas deviner autrement (refus « Lecture seule », fin d'un import dont les objets sont hors
+vue, session remplacée depuis la table, PDF trop lourd ajouté à l'histoire) porte `important: true`.
+`opts.groupe` fusionne les toasts d'un même groupe émis à quelques ms d'écart.
+
+**Lecture seule** (plan en droit « lire ») : tout point d'entrée qui modifie les objets du plan commence par
+`if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;` — la fonction
+(`js/ktaExtensions.js`) affiche elle-même le toast ; `ktaEditionRefusee(true)` = test silencieux. Sont gardés
+notamment : outils de dessin, fiche d'un point, import (⬇️ Charger → 📥 Importer : session JSON/ZIP et GPX),
+annuler / rétablir (Ctrl+Z / Ctrl+Y et boutons), session remplacée depuis la table.
 
 ---
 

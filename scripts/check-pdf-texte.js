@@ -49,7 +49,31 @@ for (const f of MODULES_PDF) {
   const nfd = (src.match(/normalize\(\s*["']NFD["']\s*\)/g) || []).length;
   t(f + " : aucun texte de PDF privé de ses accents (normalize(\"NFD\"))", nfd === 0, nfd + " occurrence(s)");
 }
-t("utils.js : window.ktaTextePdf existe", /window\.ktaTextePdf\s*=\s*function/.test(fs.readFileSync("js/utils.js", "utf8")));
+const utilsSrc = fs.readFileSync("js/utils.js", "utf8");
+t("utils.js : window.ktaTextePdf existe", /window\.ktaTextePdf\s*=\s*function/.test(utilsSrc));
+
+// 3. Auto-test de window.ktaTextePdf (bloc extrait de utils.js, exécuté à part) : une lettre hors police
+//    garde sa base (« Łódź » → « Lódz », plus « ód »), accents français gardés, symboles convertis,
+//    emojis retirés, et rien de ce qui sort n'est hors police.
+const bloc = (utilsSrc.match(/\(function \(\) \{\s*const EXTRA[\s\S]*?\n\}\)\(\);/) || [])[0];
+t("utils.js : bloc de window.ktaTextePdf repérable pour l'auto-test", !!bloc);
+if (bloc) {
+  const bac = { window: {} };
+  require("vm").runInNewContext(bloc, bac);
+  const f = bac.window.ktaTextePdf;
+  const CAS = [
+    ["Łódź", "Lódz"], ["Kraków", "Kraków"], ["Dąbrowa Górnicza", "Dabrowa Górnicza"], ["Brno — Šťastný", "Brno — Štastný"],
+    ["Ţară", "Tara"], ["Đuro", "Duro"], ["Équipe « Été » ’ …", "Équipe « Été » ’ …"], ["A → B ✓", "A -> B OK"],
+    ["Salle 🦇 nord", "Salle  nord"], ["ﬁn", "fin"], ["", ""], [null, ""]
+  ];
+  const ratés = CAS.filter(([e, a]) => typeof f !== "function" || f(e) !== a)
+    .map(([e, a]) => JSON.stringify(e) + " → " + JSON.stringify(typeof f === "function" ? f(e) : "?") + " (attendu " +
+      JSON.stringify(a) + ")");
+  t("ktaTextePdf : " + CAS.length + " cas (lettre de base gardée, accents FR gardés, symboles, emojis)",
+    ratés.length === 0, ratés.join("\n     "));
+  const hors = typeof f === "function" ? horsPolice(f("Łódź Ţară ☃ 𝔸 ǅ ﬀ ① ㎡ ΑΩ 漢")) : ["?"];
+  t("ktaTextePdf : rien hors police en sortie, quel que soit le texte", hors.length === 0, hors.join(" "));
+}
 
 console.log(ko === 0 ? "\n🎉 textes des PDF : accents gardés, rien hors police" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);
