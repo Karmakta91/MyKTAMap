@@ -3221,6 +3221,15 @@ function _appliquerDimensions(width, height, fileSizeBytes) {
 }
 
 // Récupérer fichier : upload prioritaire, puis asset ZIP original
+// Libellé « aucun fichier » affiché à côté d'un champ d'upload : il est
+// traduit (gen.upload.aucunFichier), donc on le compare dans la langue
+// active — comparé au seul FR, « No file » passait pour un nom de fichier
+// et donnait l'erreur « fichier introuvable » au lieu de « fichier manquant ».
+function _estAucunFichier(txt) {
+  if (txt === "Aucun fichier") return true;
+  return !!(window.I18n && txt === window.I18n.t("gen.upload.aucunFichier"));
+}
+
 function _getFile(inputId, logicalPath) {
   const input = document.getElementById(inputId);
   if (input && input.files && input.files[0]) return input.files[0];
@@ -3642,7 +3651,7 @@ async function _genererZip() {
       dataFolder.file(collFile.name, await _lireFichier(collFile));
     } else if (_plannerMode === "modifier") {
       const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
-      if (collNom && collNom !== "Aucun fichier" && _plannerOrigAssets[collNom]) {
+      if (collNom && !_estAucunFichier(collNom) && _plannerOrigAssets[collNom]) {
         collisionName = "data/" + collNom;
         dataFolder.file(collNom, await _lireFichier(_plannerOrigAssets[collNom]));
       }
@@ -3673,7 +3682,7 @@ async function _genererZip() {
       if (ilFile) {
         filePath = "data/" + ilFile.name;
         dataFolder.file(ilFile.name, await _lireFichier(ilFile));
-      } else if (nomTxt && nomTxt !== "Aucun fichier") {
+      } else if (nomTxt && !_estAucunFichier(nomTxt)) {
         filePath = "data/" + nomTxt;
         // 🆕 Fix bug ZIP regen : sans ce bloc, le plan-config.json référencait
         // "data/legende.png" mais le fichier n'était PAS ajouté au nouveau
