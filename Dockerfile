@@ -59,7 +59,10 @@ RUN mkdir -p /www && \
       --exclude='.DS_Store' \
       --exclude='Thumbs.db' \
       --exclude='node_modules' \
-      /src/ /www/
+      /src/ /www/ && \
+    cp /src/docker/index-fictif.json /www/data/index.json
+# 🔒 data/ : .dockerignore ne laisse entrer que le relevé fictif et le ZIP d'exemple (jamais les relevés
+# réels du poste) ; l'index vient de docker/index-fictif.json, copie suivie de l'index fictif.
 
 # --- Stage 2 : runtime image -----------------------------------------
 # nginx:alpine — image officielle, ~40 MB, Nginx 1.27+ stable.

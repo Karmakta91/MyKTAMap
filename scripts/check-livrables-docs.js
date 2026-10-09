@@ -13,6 +13,8 @@
 //   • Dockerfile (rsync de l'étape assets) ;
 //   • .github/workflows/release.yml (rsync du ZIP selfhost) ;
 //   • .dockerignore (contexte envoyé au build).
+// 🔒 Même audit : data/ n'entre dans l'image que par liste blanche (relevé fictif + ZIP d'exemple), et son
+// index vient de docker/index-fictif.json — jamais du data/index.json local (réel, en skip-worktree).
 // Les scripts de déploiement des sites vivent HORS dépôt : leurs motifs sont décrits dans
 // docs/architecture/infra-versioning.md §85, et etat-sites.ps1 vérifie ce qui est réellement servi.
 // =====================================================================
@@ -50,6 +52,27 @@ verifierRsync(".github/workflows/release.yml");
   t(".dockerignore : docs/* exclu", iDocs >= 0);
   t(".dockerignore : docs/applications réintégré APRÈS docs/*", iApps > iDocs && iDocs >= 0);
   t(".dockerignore : README.md exclu", lignes.indexOf("README.md") >= 0);
+  // 🔒 data/ (audit CD du 09/10/2026) : une image construite sur le poste embarquait les relevés RÉELS.
+  const iData = lignes.indexOf("data/*");
+  t(".dockerignore : data/* exclu (relevés réels du poste)", iData >= 0);
+  t(".dockerignore : seuls data/test et data/myktamap.zip réintégrés, APRÈS data/*",
+    lignes.indexOf("!data/test") > iData && lignes.indexOf("!data/myktamap.zip") > iData && iData >= 0);
+  t(".dockerignore : data/index.json JAMAIS réintégré (index réel en skip-worktree sur le poste)",
+    !lignes.some(l => /^!\/?data\/(index\.json|\*|$)/.test(l) || l === "!data"));
+}
+
+// L'index de l'image = docker/index-fictif.json, identique à l'index fictif SUIVI (lu dans l'index Git :
+// `git show :data/index.json` ignore la copie locale, réelle et en skip-worktree).
+{
+  const { execSync } = require("child_process");
+  t("Dockerfile : l'index de l'image vient de docker/index-fictif.json",
+    /cp \/src\/docker\/index-fictif\.json \/www\/data\/index\.json/.test(fs.readFileSync("Dockerfile", "utf8")));
+  let suivi = null, copie = null;
+  try { suivi = execSync("git show :data/index.json", { encoding: "utf8" }); } catch { /* hors dépôt */ }
+  try { copie = fs.readFileSync("docker/index-fictif.json", "utf8"); } catch { /* absent */ }
+  const norm = (s) => (s || "").replace(/\r\n/g, "\n").trim();
+  t("docker/index-fictif.json identique au data/index.json suivi par Git",
+    suivi !== null && copie !== null && norm(suivi) === norm(copie));
 }
 
 console.log(ko === 0 ? "\n🎉 livrables : seule la doc de l'app part" : "\n⚠️ " + ko + " echec(s)");
