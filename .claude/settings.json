@@ -12,8 +12,8 @@
       "Bash(git push*)"
     ],
     "deny": [
-      "Edit(data/**)",
-      "Write(data/**)",
+      "Edit(/data/**)",
+      "Write(/data/**)",
       "Read(.env*)"
     ]
   },
