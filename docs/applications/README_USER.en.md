@@ -1639,10 +1639,9 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 | 🎯 **Disable intersection circles** | No circles at junctions beyond 50 paths (instead of 500) | Junctions less visible |
 | 🚫 **Disable popups on data layers** | No popup when clicking data-layer points | Use 🔍 Search instead |
 | 🐢 **Slow auto-save (30s)** | Saves every 30 s | Up to 30 s lost if the app crashes |
-| 👁️ **Render only visible elements** | Skips off-screen paths and points | Slight pop-in when moving the map |
 | 🛡️ **Limit zoom-out on mobile** | Caps zoom-out on phones. **Ticked by default** | No full overview on mobile; reload required |
 
-- ULTRA ticks everything; unticking it unticks everything. You can also enable only some options, for example **🐢** and **👁️** for a good gain with no visible loss.
+- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map). You can also enable only some options, for example **🐢** for a good gain with no visible loss.
 - **Your session points are always shown**, whatever the options.
 - When optimizations are active, a message reminds you when the map opens: a lightened display is not a bug.
 - On a multi-level map, **🏗️ Show every level at launch** (same group, outside ULTRA, ticked by default) can be unticked to open only levels -1, 0 and +1.

@@ -226,11 +226,12 @@ window._applyLevelFilterToBasePlan = function() {
 // niveau) et par mapBearing (pendant la rotation).
 // Règles :
 //   • zone = écran réel (`MapBearing.zoneVisible`, qui dé-tourne les coins
-//     sous rotation) élargi de 15 % contre le pop-in ;
+//     sous rotation) élargi de 60 % contre le pop-in ;
 //   • on ne remet QUE les tuiles que nous avons retirées ou jamais posées
 //     (`_ktaCulled`) : une tuile absente pour une autre raison le reste ;
 //   • plan de base masqué par le filtre multi-niveau → on ne pose RIEN.
-const MARGE_TUILES_V2 = 0.15;
+// 0,6 (10/10/2026, mesuré) : trous du fond au grand glissé 36 % → 0-1 % ; 0,30 ne gagnait rien (tuiles de 512 px).
+const MARGE_TUILES_V2 = 0.6;
 window.ktaCullerTuilesV2 = function() {
   const map = window.map;
   const st = window._tilingV2State;

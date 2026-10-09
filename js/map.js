@@ -417,6 +417,13 @@ async function initMapFromConfig() {
   // map → un changement du toggle nécessite reload pour effet (warning UI).
   const _animOff = (window.PerfUltra && window.PerfUltra.get("animOff"));
 
+  // Renderer canvas par défaut, débordant de 50 % autour de l'écran (Leaflet :
+  // 10 %) — décision KARMA 10/10/2026 : au grand glissé, les tracés ne se
+  // coupent plus au bord. Le mode « plan orienté » l'élargit encore si besoin
+  // (`mapBearing.js`, Math.max avec la valeur d'origine). UN seul renderer :
+  // passé en option ET posé en `map._renderer`, que d'autres modules lisent.
+  const _rendererVecteurs = L.canvas({ padding: 0.5 });
+
   map = L.map('map', {
     crs: L.CRS.Simple,
     minZoom: _minZoom,
@@ -427,12 +434,14 @@ async function initMapFromConfig() {
     // gain perf sur mobile pour les plans denses. Markers (L.marker) restent en DOM
     // car ils utilisent des icon images — pas affectés par preferCanvas.
     preferCanvas: true,
+    renderer:     _rendererVecteurs,
     // Animations désactivées si PerfUltra.animOff (mode performance ULTRA) :
     // pan/zoom instantanés au lieu d'animés → gain perceptible sur gros plans.
     zoomAnimation:        !_animOff,
     fadeAnimation:        !_animOff,
     markerZoomAnimation:  !_animOff
   });
+  map._renderer = _rendererVecteurs;
   // Fond sous le plan (réglage par plan, ou conseillé par le plan) — 07/10/2026.
   if (typeof window.ktaAppliquerFondPlan === "function") window.ktaAppliquerFondPlan();
   if (_animOff) console.log("[Map] 🚀 Animations Leaflet désactivées (PerfUltra.animOff)");

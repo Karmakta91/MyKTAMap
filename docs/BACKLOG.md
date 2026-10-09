@@ -12,7 +12,7 @@
 |---|---|---|
 | ✅ 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé — **fait** : 🔆 Affichage XL / XL display / Vista XL | Claude |
 | ✅ Commande vocale FR seulement | **Masquer le bouton vocal hors français** — **fait** (réévalué au changement de langue) | Claude |
-| Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer | Claude, puis KARMA |
+| ✅ Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer — **fait** : mesuré, marges élargies pour tous (canvas 0,5, tuiles 0,6), case retirée, le levier reste dans ULTRA (`docs/architecture/perf-memory.md` §21) | Claude, puis KARMA |
 | « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |
 | Branche de test `karma-dev` (dépôt client) | **Synchronisée à chaque release** par `export-backend.ps1` | Claude (pro) |
 | Sonar en CI (runner sur le poste) | **Non** — la marche 1ter suffit | — |
@@ -76,13 +76,6 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
 
 - 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
-- 🟡 **Pendant un déplacement, des éléments n'apparaissent qu'au relâcher — case « 👁️ Ne rendre que les éléments
-  visibles » décochée** (constaté le 05/10/2026, pas une régression : comportement présent avant v2.9.0). Deux causes
-  indépendantes de la case : (1) les tracés et zones sont en **canvas** (`map.js` `preferCanvas: true`) — Leaflet ne les
-  dessine que sur l'écran + 10 % et redessine à la fin du geste ; (2) **tuiles** de l'image posées seulement près de
-  l'écran (`tiling.js`, v1.98.23). La case n'ajoute donc presque rien de visible, d'où la question de sa **pertinence**.
-  Pistes : marge du renderer élargie (`L.canvas({ padding: 0.5 })`) et des tuiles, à mesurer sur relevé lourd
-  (mémoire, fluidité) ; puis garder, fusionner dans ULTRA, ou retirer la case. **À trancher par KARMA.**
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 

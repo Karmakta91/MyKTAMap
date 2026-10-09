@@ -29,6 +29,7 @@
 //                     (les points de session restent interactifs)
 //   - slowSave      : SessionPersist polling 30s au lieu de 1.5s
 //   - viewportCull  : ne rendre que les roads dont l'AABB intersecte le viewport
+//                     (sans case depuis le 10/10/2026 : piloté par ULTRA seul)
 //
 // API exposée :
 //   - window.PerfUltra.get(key) → bool

@@ -1639,10 +1639,9 @@ Si un plano grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀
 | 🎯 **Desactivar círculos de intersecciones** | Sin círculos en los cruces a partir de 50 trazados (en lugar de 500) | Cruces menos visibles |
 | 🚫 **Desactivar popups en capas de datos** | Sin ventana al hacer clic en los puntos de las capas de datos | Usa 🔍 Búsqueda |
 | 🐢 **Autoguardado lento (30s)** | Guarda cada 30 s | Hasta 30 s perdidos si la app falla |
-| 👁️ **Renderizar solo los elementos visibles** | Ignora trazados y puntos fuera de la pantalla | Ligero retardo de aparición al desplazar el mapa |
 | 🛡️ **Limitar el alejamiento del zoom en móvil** | Limita el alejamiento en el teléfono. **Marcada por defecto** | Sin vista de conjunto completa en el móvil; hay que recargar |
 
-- ULTRA lo marca todo; desmarcarlo lo desmarca todo. También puedes activar solo algunas opciones, por ejemplo **🐢** y **👁️** para una buena ganancia sin pérdida visible.
+- ULTRA lo marca todo; desmarcarlo lo desmarca todo. Además de las opciones anteriores, solo dibuja los trazados y puntos cercanos a la pantalla (ligero retardo de aparición al desplazar el mapa). También puedes activar solo algunas opciones, por ejemplo **🐢** para una buena ganancia sin pérdida visible.
 - **Tus puntos de sesión se muestran siempre**, sean cuales sean las opciones.
 - Cuando hay optimizaciones activas, un mensaje te lo recuerda al abrir el plano: una visualización aligerada no es un error.
 - En un plano multinivel, **🏗️ Mostrar todos los niveles al iniciar** (mismo grupo, fuera de ULTRA, marcada por defecto) puede desmarcarse para abrir solo los niveles -1, 0 y +1.

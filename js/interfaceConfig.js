@@ -73,6 +73,9 @@ function _renderPerfUltraSection() {
       row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux,
           window.I18n.t("config.perfultra.tousNiveaux.hint"))
     : "";
+  // « 👁️ Ne rendre que les éléments visibles » (viewportCull) n'a plus de case
+  // depuis le 10/10/2026 (décision KARMA) : le levier reste piloté par le preset
+  // ULTRA, et une valeur déjà enregistrée pour le plan est toujours relue.
   return `
     <div class="kta-aide-section">
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
@@ -91,8 +94,6 @@ function _renderPerfUltraSection() {
             window.I18n.t("config.perfultra.noTooltips.hint"))}
       ${row("cfg_perf_slowSave", window.I18n.t("config.perfultra.slowSave.label"), s.slowSave,
             window.I18n.t("config.perfultra.slowSave.hint"))}
-      ${row("cfg_perf_viewportCull", window.I18n.t("config.perfultra.viewportCull.label"), s.viewportCull,
-            window.I18n.t("config.perfultra.viewportCull.hint"))}
       ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
             window.I18n.t("config.perfultra.mobileZoomLimit.hint"), true)}
       ${rowNiveaux}
@@ -117,7 +118,6 @@ function _bindPerfUltraToggles() {
     "cfg_perf_noIntersect":     "noIntersect",
     "cfg_perf_noTooltips":      "noTooltips",
     "cfg_perf_slowSave":        "slowSave",
-    "cfg_perf_viewportCull":    "viewportCull",
     "cfg_perf_mobileZoomLimit": "mobileZoomLimit",
     "cfg_perf_tousNiveaux":     "tousNiveaux"      // hors ULTRA (PerfUltra.set l'accepte depuis v1.92.0)
   };

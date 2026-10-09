@@ -1639,10 +1639,9 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 | 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 tracés (au lieu de 500) | Carrefours moins visibles |
 | 🚫 **Désactiver popups sur calques données** | Plus de bulle au clic sur les points des calques de données | Passe par 🔍 Recherche |
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30 s | Jusqu'à 30 s perdues en cas de plantage |
-| 👁️ **Ne rendre que les éléments visibles** | Ignore tracés et points hors écran | Léger temps d'apparition en déplaçant la carte |
 | 🛡️ **Limiter le dézoom sur mobile** | Plafonne le dézoom sur téléphone. **Cochée par défaut** | Pas de vue d'ensemble complète sur mobile ; rechargement requis |
 
-- ULTRA coche tout ; le décocher décoche tout. Tu peux aussi n'activer que certaines options, par exemple **🐢** et **👁️** pour un bon gain sans perte visible.
+- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte). Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
 - **Tes points de session restent toujours affichés**, quelles que soient les options.
 - Quand des optimisations sont actives, un message te le rappelle à l'ouverture du plan : un affichage allégé n'est pas un bug.
 - Sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement** (même groupe, hors ULTRA, coché par défaut) peut être décoché pour n'ouvrir que les niveaux -1, 0 et +1.
