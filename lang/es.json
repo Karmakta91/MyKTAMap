@@ -1305,7 +1305,7 @@
   "ext.indispo.texte": "Esta instalación no consigue cargar su módulo de conexión. Para proteger su contenido, el acceso sigue cerrado. Comprueba tu conexión y vuelve a intentarlo, o avisa a la persona que gestiona esta instalación.",
   "ext.indispo.reessayer": "Reintentar",
   "ext.licence.titre": "Licencia de la instalación no válida",
-  "ext.licence.texte": "Esta instalación no tiene una licencia pro válida (ausente o caducada). Para proteger su contenido, el acceso sigue cerrado. Avisa a la persona que gestiona esta instalación y vuelve a intentarlo.",
+  "ext.licence.texte": "Esta instalación no tiene una licencia pro válida (ausente, caducada o no válida). Para proteger su contenido, el acceso sigue cerrado. Avisa a la persona que gestiona esta instalación y vuelve a intentarlo.",
   "ext.licence.texteRaison": "El servidor de esta instalación rechaza su licencia ({raison}). Para proteger su contenido, el acceso sigue cerrado. Avisa a la persona que gestiona esta instalación y vuelve a intentarlo.",
   "ext.publier.question": "¿Publicar «{nom}» en el servidor de esta instalación? Será visible para las personas con las que lo compartas.",
   "ext.publier.ok": "Publicar",

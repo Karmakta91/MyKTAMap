@@ -1305,7 +1305,7 @@
   "ext.indispo.texte": "This installation can't load its connection module. To protect its content, access stays closed. Check your connection and try again, or let the person who runs this installation know.",
   "ext.indispo.reessayer": "Try again",
   "ext.licence.titre": "Installation licence invalid",
-  "ext.licence.texte": "This installation has no valid pro licence (missing or expired). To protect its content, access stays closed. Tell the person who manages this installation, then try again.",
+  "ext.licence.texte": "This installation has no valid pro licence (missing, expired or invalid). To protect its content, access stays closed. Tell the person who manages this installation, then try again.",
   "ext.licence.texteRaison": "This installation's server refuses its licence ({raison}). To protect its content, access stays closed. Tell the person who manages this installation, then try again.",
   "ext.publier.question": "Publish \"{nom}\" to this installation's server? It will be visible to the people you share it with.",
   "ext.publier.ok": "Publish",

@@ -1305,7 +1305,7 @@
   "ext.indispo.texte": "Cette installation ne parvient pas à charger son module de connexion. Pour protéger son contenu, l'accès reste fermé. Vérifie ta connexion puis réessaie, ou préviens la personne qui gère cette installation.",
   "ext.indispo.reessayer": "Réessayer",
   "ext.licence.titre": "Licence de l'installation invalide",
-  "ext.licence.texte": "Cette installation n'a pas de licence pro valide (absente ou expirée). Pour protéger son contenu, l'accès reste fermé. Préviens la personne qui gère cette installation, puis réessaie.",
+  "ext.licence.texte": "Cette installation n'a pas de licence pro valide (absente, expirée ou invalide). Pour protéger son contenu, l'accès reste fermé. Préviens la personne qui gère cette installation, puis réessaie.",
   "ext.licence.texteRaison": "Le serveur de cette installation refuse sa licence ({raison}). Pour protéger son contenu, l'accès reste fermé. Préviens la personne qui gère cette installation, puis réessaie.",
   "ext.publier.question": "Publier « {nom} » sur le serveur de cette installation ? Il deviendra visible des personnes à qui tu le partageras.",
   "ext.publier.ok": "Publier",
