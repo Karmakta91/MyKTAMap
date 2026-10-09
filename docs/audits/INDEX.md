@@ -23,6 +23,9 @@ git ls-tree -r --name-only archive-docs-2026-09-30 docs/
 Soldés le 06/10/2026 (bugs UI v2 et code mort JS du 05/10) : tag **`archive-docs-2026-10-06`** —
 `git show archive-docs-2026-10-06:docs/audits/2026-10-05_audit-ui-v2.md`.
 
+Soldé le 09/10/2026 (CI/CD du 08/10, toutes les actions faites ou retirées ; pistes restantes au `BACKLOG.md`) :
+tag **`archive-docs-2026-10-09`** — `git show archive-docs-2026-10-09:docs/audits/2026-10-08_audit-cicd-v1.md`.
+
 Règle : un audit reste ici tant qu'il a des lots ouverts ; soldé, il part en archive (un tag, pas un dossier).
 
 ## Historique (audits ouverts)

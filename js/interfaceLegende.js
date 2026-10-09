@@ -223,7 +223,7 @@ function afficherLegende() {
     const autresEntrees = Array.from(tousLesTags)
       .filter(function(cle) { return !clesGroupees.includes(cle); })
       .filter(function(cle) { return _visible("icones", cle); })
-      .sort()
+      .sort(function(a, b) { return String(a).localeCompare(String(b)); })
       .map(function(cle) { return ligneIcone(cle, getIconUrl(cle)); })
       .join("");
 
@@ -522,7 +522,7 @@ function afficherLegende() {
       const autresEntrees2 = Array.from(tousLesTags2)
         .filter(function(cle) { return !clesGroupees2.includes(cle); })
         .filter(function(cle) { return _visible("icones", cle); })
-        .sort()
+        .sort(function(a, b) { return String(a).localeCompare(String(b)); })
         .map(function(cle) { return ligneIcone2(cle, getIconUrl2(cle)); })
         .join("");
       if (autresEntrees2) icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees2}</div>`;

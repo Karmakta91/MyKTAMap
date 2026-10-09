@@ -2078,7 +2078,7 @@ function planRowHTML(plan) {
               if (!tousTags[k]) tousTags[k] = tg;
             });
           });
-          const cles = Object.keys(tousTags).sort();
+          const cles = Object.keys(tousTags).sort(function(a, b) { return a.localeCompare(b); });
           if (_plansTagFilter) {
             _plansTagFilter.forEach(function(k) { if (!tousTags[k]) _plansTagFilter.delete(k); });
             if (_plansTagFilter.size === 0) _plansTagFilter = null;

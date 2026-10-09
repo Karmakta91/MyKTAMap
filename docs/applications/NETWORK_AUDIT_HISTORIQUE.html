@@ -180,6 +180,8 @@
   </p>
 
   <h2>Notes par version (du plus récent au plus ancien)</h2>
+  <h3>v2.10.3 (réseau perdu, Vue OSM, lecture seule)</h3>
+  <p><strong>Aucune requête nouvelle, aucun domaine nouveau.</strong> Quand l’appareil perd le réseau, l’app ne tente plus de télécharger un plan et ouvre sa copie ; un téléchargement qui ne reçoit plus rien est abandonné au bout de 15 à 20 secondes. Les autres changements (affichage en Vue OSM, fenêtre « lecture seule », annulation) sont locaux.</p>
   <h3>v2.10.2 (plans servis en ZIP)</h3>
   <p><strong>Aucun domaine nouveau, rien d’envoyé.</strong> Une installation peut déclarer un plan par son archive (<code>"zip": "data/x.zip"</code> dans <code>data/index.json</code>, chemin relatif sur le même site uniquement — une adresse externe est refusée). L’app la télécharge à l’ouverture, puis, si une copie est gardée sur l’appareil, ne la redemande que sous condition (<code>If-None-Match</code> / <code>If-Modified-Since</code>) et sonde sa fraîcheur par un <code>HEAD</code> à l’accueil. Sur myktamap.fr, qui ne déclare aucun plan ZIP, rien ne change.</p>
   <h3>v2.10.1 (démarrage harmonisé, incognito à sa place)</h3>

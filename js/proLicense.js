@@ -84,7 +84,7 @@
   //   - ses `domaines` couvrent l'adresse ouverte (`*` = tous, licences de test).
   // La forme signée est la licence SANS `signature`, clés triées récursivement.
   // Clé PUBLIQUE : la publier ne permet pas d'émettre de licence.
-  var CLE_PUBLIQUE_JWK = {"kty":"EC","crv":"P-256","x":"Gb2T21We0Y8M12M0v-JBtQQEDRtTlonRjR0v0QwCm1I","y":"owuAq0sHCqpV5N-9nU9yP-XXCVVByiZiOqAs42MOzbk"};
+  var CLE_PUBLIQUE_JWK = {"kty":"EC","crv":"P-256","x":"4hCCKedCcwslgzb2dueMVrnw5bMCwOReHr82fYBDMbE","y":"eesWXOFd9Snk-hM9mUB8J4SbKgdWvVJWKHMAX5kdDgk"};
   var FETCH_TIMEOUT_MS = 1500;
   // 🩸 Sans licence serveur déjà connue (1er lancement, après « Tout réinitialiser »),
   // on attend la vraie réponse : 1,5 s ne suffisait pas quand le Service Worker

@@ -455,7 +455,7 @@
     const sortedKeys = [];
     (builtinOrder || []).forEach(function(t) { if (counts[t] != null) sortedKeys.push(t); });
     universe.filter(function(t) { return !(builtinOrder || []).includes(t); })
-            .sort()
+            .sort(function(a, b) { return String(a).localeCompare(String(b)); })
             .forEach(function(t) { sortedKeys.push(t); });
 
     let html = '<div class="kta-fp-row-actions">' +

@@ -2089,6 +2089,32 @@
   // 🗂️ v1.71.0 — Cœur PARAMÉTRÉ (multi-plans) : rend les tuiles d'UN plan dans
   // le groupe fourni, avec SON opacité et SON zIndex de pile. Le wrapper
   // historique (plan principal) et les plans ajoutés passent tous par ici.
+  // 🫥 08/10/2026 — OPACITÉ D'UN PLAN SUR UN CALQUE, PLUS TUILE PAR TUILE (retour KARMA : rectangle plus
+  // sombre au milieu du plan). La vue d'ensemble (tout le plan) et les tuiles nettes de la zone visible
+  // (hi-res) se superposent PAR CONSTRUCTION : à 50 % chacune, la zone visible sortait à ~75 %. Toutes les
+  // tuiles d'un plan vont dans un sous-calque de son pane, opaques ; l'opacité choisie est posée sur ce
+  // sous-calque : la hi-res recouvre la vue d'ensemble sans s'y ajouter. zIndex -1 : sous les tracés du
+  // plan (même pane, renderer SVG).
+  function _paneTuiles(paneNom, op) {
+    if (!_mapInstance || !paneNom) return null;
+    const nom = paneNom + "_tuiles";
+    let pane = _mapInstance.getPane(nom);
+    if (!pane) {
+      const parent = _mapInstance.getPane(paneNom);
+      if (!parent) return null;
+      pane = _mapInstance.createPane(nom, parent);
+      pane.style.zIndex = "-1";
+    }
+    if (op != null) pane.style.opacity = String(op);
+    return nom;
+  }
+  // Opacité des tuiles d'un plan : posée sur son sous-calque. false = pas de calque (ancien chemin).
+  function _opaciteTuilesPlan(planId, op) {
+    const e = _panesParPlan[planId];
+    if (!e || e.map !== _mapInstance) return false;
+    return !!_paneTuiles(e.nom, op);
+  }
+
   function _renderTilesInto(groupe, tilesData, georef, opacite, zIndex, paneNom) {
     if (!_mapInstance || !groupe) return;
     groupe.clearLayers();
@@ -2104,6 +2130,7 @@
     const scale    = tilesData.scale;
     const tileSize = tilesData.tileSize;
 
+    const pTuiles = _paneTuiles(paneNom, opacite);
     let rendered = 0;
     for (const t of tilesData.tiles) {
       // Bounds pixel dans le plan source (top-left origin pour Y)
@@ -2121,9 +2148,9 @@
       try {
         const overlay = L.imageOverlay.rotated(t.url, tl, tr, bl, Object.assign({
           interactive: false,
-          opacity: opacite,
+          opacity: pTuiles ? 1 : opacite,
           zIndex: zIndex
-        }, paneNom ? { pane: paneNom } : {}));
+        }, pTuiles ? { pane: pTuiles } : (paneNom ? { pane: paneNom } : {})));
         // Remplissage noir des tuiles de bord masqué (07/10/2026).
         if (window.ktaRognerTuile) window.ktaRognerTuile(overlay, window.ktaRemplissageTuile(tilesData.planW, planH, tileSize, scale, t.col, t.k));
         overlay.addTo(groupe);
@@ -2148,6 +2175,7 @@
   function _setPlanOpacity(opacity) {
     _planOpacity = Math.max(0, Math.min(1, opacity));
     _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity); // 🔍 v1.77.0
+    if (_opaciteTuilesPlan(_selectedPlanId, _planOpacity)) return;   // calque : tuiles opaques
     if (!_tilesLayer) return;
     _tilesLayer.eachLayer(function(l) {
       try {
@@ -2305,6 +2333,7 @@
     const pn   = _panePour(planId);
     const op   = _opaciteDe(planId);
     const zIdx = _zIndexPour(planId) + 1;
+    const pT   = pn ? _paneTuiles(pn.nom, op) : null;   // même sous-calque que la vue d'ensemble
     const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
     const nouvelles = {};
     // Garde anti-race : si la carte est détruite/recréée pendant un await
@@ -2330,7 +2359,7 @@
       if (!tl || !tr || !bl) { try { URL.revokeObjectURL(url); } catch(e) {} continue; }
       try {
         const ov = L.imageOverlay.rotated(url, tl, tr, bl, Object.assign(
-          { interactive: false, opacity: op, zIndex: zIdx }, pn ? { pane: pn.nom } : {}));
+          { interactive: false, opacity: pT ? 1 : op, zIndex: zIdx }, pT ? { pane: pT } : (pn ? { pane: pn.nom } : {})));
         if (window.ktaRognerTuile) window.ktaRognerTuile(ov, window.ktaRemplissageTuile(planW, planH, tileSize, choix.scale, t.col, t.k));
         ov.addTo(groupe);
         nouvelles[cle] = { url: url, overlay: ov };
@@ -2355,6 +2384,7 @@
   }
 
   function _appliquerOpaciteHiRes(planId, op) {
+    if (_opaciteTuilesPlan(planId, op)) return;   // calque : tuiles opaques
     const h = _hiRes[planId];
     if (!h || !h.groupe) return;
     h.groupe.eachLayer(function(l) {
@@ -2699,6 +2729,7 @@
   function _setOpaciteExtra(planId, v) {
     _extraOpacity[planId] = Math.max(0, Math.min(1, v));
     _appliquerOpaciteHiRes(planId, _extraOpacity[planId]); // 🔍 v1.77.0
+    if (_opaciteTuilesPlan(planId, _extraOpacity[planId])) return;   // calque : tuiles opaques
     const g = _extraLayers[planId];
     if (!g) return;
     g.tiles.eachLayer(function(l) {

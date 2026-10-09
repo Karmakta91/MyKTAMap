@@ -303,7 +303,7 @@ tendance à y écrire du technique : la règle est dans le fichier de contexte p
 |---|---|---|
 | Vérifications au commit | ✅ | Hooks Git (§5.2) |
 | Cohérence des trois sources de version | ✅ | Garde-fou `commit-msg` |
-| Merge sur `main` | ⚙️ semi : un script vérifie tout ce qu'une machine peut vérifier (arbre propre, branche légitime, versions, garde-fous, `main` à jour), montre ce qui va partir, puis **demande de confirmer, en tapant**, les marches 2 à 4 de la porte | `scripts/release/merge-main.ps1` (propriétaire seul) |
+| Merge sur `main` | ⚙️ semi : un script vérifie tout ce qu'une machine peut vérifier (arbre propre, branche légitime, versions, garde-fous, porte qualité SonarQube locale, CI GitHub verte, `main` à jour), montre ce qui va partir, puis **demande de confirmer, en tapant**, les marches 2 à 4 de la porte | `scripts/release/merge-main.ps1` (propriétaire seul) |
 | Tag Git + page de release sur GitHub | ✅ | Workflow d'intégration continue, déclenché par le merge sur `main` |
 | Image Docker pour l'auto-hébergement | ✅ | Second workflow, déclenché par le tag |
 | **Déploiement sur les serveurs** | ❌ **manuel**, par le propriétaire | Script d'envoi qui affiche version + cache avant d'envoyer, refuse d'écraser les données en prod, normalise les droits après |
@@ -551,7 +551,7 @@ elles manquent.
 | **Porte de release** | La liste de vérifications à franchir avant de merger sur `main` |
 | **Dérogation** | Passer une vérification sans la valider, **avec** motif, risque et rattrapage écrits |
 | **Release / bump** | Publier une nouvelle version / augmenter le numéro de version |
-| **CI/CD** | Intégration et déploiement continus : des robots qui vérifient et publient à chaque merge. Ici : tag, page de release et image Docker automatiques ; **déploiement manuel** |
+| **CI/CD** | Intégration et déploiement continus : des robots qui vérifient et publient. Ici : **tous les garde-fous rejoués sur GitHub à chaque push**, merge refusé si cette CI n'est pas verte, tag, page de release et image Docker (seulement si la CI est verte) automatiques ; **déploiement manuel** |
 | **Déploiement** | Mettre les fichiers sur le serveur qui les sert aux utilisateurs |
 | **Service worker / cache** | Le mécanisme qui permet à une app web de fonctionner hors ligne ; il faut renommer son cache à chaque version |
 | **Environnement de dev / prod** | Le serveur d'essai / le serveur des vrais utilisateurs |

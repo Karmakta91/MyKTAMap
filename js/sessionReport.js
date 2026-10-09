@@ -242,7 +242,7 @@
     if (o.includePoints !== false) {
       const tagStats = _statsParTag(data.points);
       lines.push("📍 " + t("report.txt.poi") + data.points.length);
-      Object.keys(tagStats).sort().forEach(function(tag) {
+      Object.keys(tagStats).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(tag) {
         lines.push("   • " + tag + " : " + tagStats[tag]);
       });
       lines.push("");
@@ -252,7 +252,7 @@
     if (o.includeRoads !== false) {
       const typeStats = _statsParType(data.roads);
       lines.push("🛣️ " + t("report.txt.roads") + data.roads.length + " " + t("report.txt.allPeriodsNoTs"));
-      Object.keys(typeStats).sort().forEach(function(ty) {
+      Object.keys(typeStats).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(ty) {
         lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       const distM = _pxVersM(_calculerDistanceRoadsPx(data.roads), data.plan.scale);
@@ -266,7 +266,7 @@
     if (o.includeZones !== false) {
       const typeStats = _statsParType(data.zones);
       lines.push("⬛ " + t("report.txt.zones") + data.zones.length + " " + t("report.txt.allPeriods"));
-      Object.keys(typeStats).sort().forEach(function(ty) {
+      Object.keys(typeStats).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(ty) {
         lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
@@ -276,7 +276,7 @@
     if (o.includeStructures !== false && data.structures.length > 0) {
       const typeStats = _statsParType(data.structures);
       lines.push("🏛️ " + t("report.txt.structures") + data.structures.length + " " + t("report.txt.allPeriods"));
-      Object.keys(typeStats).sort().forEach(function(ty) {
+      Object.keys(typeStats).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(ty) {
         lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
@@ -649,7 +649,7 @@
     if (opts.includePoints !== false) {
       pdf.text(_stripPourPdf(t("report.pdf.poi")) + data.points.length, margin, y); y += 4;
       const tagStats = _statsParTag(data.points);
-      Object.keys(tagStats).sort().forEach(function(tag) {
+      Object.keys(tagStats).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(tag) {
         _ensurePageSpace(4);
         pdf.text("    - " + _stripPourPdf(tag) + " : " + tagStats[tag], margin, y); y += 4;
       });

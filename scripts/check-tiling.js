@@ -598,6 +598,27 @@ async function _sonderIcones(icons, presentsLocalement, fetchPlante) {
   return { icons: cfg.icons, sondes: win._sondes };
 }
 
+// ───────── §19. OPACITÉ DU PLAN SUR UN CALQUE (08/10/2026, retour KARMA) ─────────
+// Rectangle plus sombre au milieu d'un plan en Vue OSM / widget de l'accueil : des tuiles qui se
+// superposent (vue d'ensemble + tuiles nettes de la zone visible ; deux niveaux après une course de
+// rendu) s'additionnaient, l'opacité étant posée TUILE PAR TUILE. Mesuré en navigateur : calque à 0,5,
+// tuiles sans opacité propre.
+function _opaciteCalque() {
+  const OV = fs.readFileSync("js/osmView.js", "utf8"), HP = fs.readFileSync("js/osmHomePreview.js", "utf8");
+  t("🫥 Vue OSM : tuiles dans un pane dédié qui porte l'opacité (sous les tracés)",
+    /const paneTuiles = _osmMap\.createPane\(PANE_TUILES\);/.test(OV) && /paneTuiles\.style\.zIndex = "350"/.test(OV) &&
+    /pane: PANE_TUILES/.test(OV) && /if \(pane\) \{ pane\.style\.opacity = String\(_opacity\); return; \}/.test(OV));
+  t("🩸 Vue OSM : un rendu de niveau dépassé pendant l'extraction ne pose rien (jeton), jamais 2 overlays par tuile",
+    /const jeton = \+\+_rendusLances;/.test(OV) && /if \(jeton !== _rendusLances \|\| z !== _currentLevel \|\| !_osmMap\) return;/.test(OV) &&
+    /if \(_tilesByPath\[t\.path\]\) continue;   \/\/ posée entre-temps/.test(OV));
+  t("🫥 accueil : vue d'ensemble ET tuiles nettes dans le même sous-calque opaque du plan, opacité sur le calque",
+    /const pTuiles = _paneTuiles\(paneNom, opacite\);/.test(HP) && /opacity: pTuiles \? 1 : opacite/.test(HP) &&
+    /const pT   = pn \? _paneTuiles\(pn\.nom, op\) : null;/.test(HP) && /opacity: pT \? 1 : op/.test(HP) &&
+    /pane\.style\.zIndex = "-1";/.test(HP));
+  t("🫥 accueil : les 3 réglages d'opacité passent par le calque (sinon la tuile se re-multiplie)",
+    (HP.match(/_opaciteTuilesPlan\(/g) || []).length === 4);
+}
+
 Promise.all([
   _sonderIcones({ track: "icon/iconetrack.png", perso: "icon/moncustom.png",
                   def: "lib/leaflet/images/marker-icon.png" },
@@ -618,7 +639,7 @@ Promise.all([
   t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
 }).catch(function (e) {
   t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
-}).then(_osmServeur).then(_lruZip).then(_regionTuiles).then(function () {
+}).then(_osmServeur).then(_lruZip).then(_regionTuiles).then(_opaciteCalque).then(function () {
   console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);

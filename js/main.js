@@ -895,6 +895,10 @@ async function lancerApplication() {
       }
     }, 800);
   }
+  // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : dit d'emblée, une fois par ouverture.
+  if (typeof window.ktaAnnoncerLectureSeule === "function") {
+    setTimeout(function() { try { window.ktaAnnoncerLectureSeule(); } catch(e) { /* affichage seulement */ } }, 600);
+  }
   } finally {
     _appEnCours = false;
     // 🌀 v152 : ferme l'overlay de chargement plein écran (lancé par

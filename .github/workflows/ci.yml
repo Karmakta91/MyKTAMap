@@ -1,0 +1,53 @@
+# =====================================================================
+# MyKTAMap — CI (audit CI/CD du 08/10/2026, Q1)
+# =====================================================================
+# Les garde-fous (scripts/check-*.js) ne tournaient que dans les hooks LOCAUX : opt-in
+# (core.hooksPath), contournables (--no-verify), absents de l'éditeur web de GitHub. Ce workflow
+# les rejoue à chaque push et PR : syntaxe, contrôles des commits reçus (anti-fuite pro, data/
+# hors Git) puis tous les garde-fous du pre-commit. Node pur, aucune installation.
+# La protection de `main` (Settings › Branches) exige ce check avant tout merge.
+# =====================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [Karma_dev, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  garde-fous:
+    name: Garde-fous
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # les commits du push, pour ci-commits.sh
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Syntaxe
+        run: |
+          for f in js/*.js sw.js scripts/*.js scripts/smoke/*.js; do
+            node --check "$f" || exit 1
+          done
+
+      - name: Commits reçus (anti-fuite pro, data/ hors Git)
+        env:
+          KTA_BASE: ${{ github.event.pull_request.base.sha }}
+          KTA_AVANT: ${{ github.event.before }}
+        run: sh scripts/ci-commits.sh
+
+      - name: Garde-fous du pre-commit
+        run: sh .githooks/pre-commit

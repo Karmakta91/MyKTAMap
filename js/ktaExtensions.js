@@ -409,17 +409,11 @@
     const entetes = new Headers(init.headers || {});
     entetes.set("X-Kta-Ext", "1");
     init.headers = entetes;
-    // 📶 Échec RÉSEAU (pas une réponse d'erreur : le serveur n'a pas répondu du tout) → « down ».
-    // Le module repasse en « on » quand sa sonde réussit (mktm:reseau-retour, sonde périodique).
-    // Une annulation volontaire (AbortError : délai, veilleur de téléchargement) ne compte pas.
-    return fetch(url.href, init).catch(function (e) {
-      if (!(e && e.name === "AbortError") && _signal !== "down" && (_etat === "on" || _etat === "configuree")) {
-        console.warn("[Extensions] requête sans réponse du serveur → injoignable :", e && e.message);
-        _signal = "down";
-        _recalculer();
-      }
-      throw e;
-    });
+    // 🩸 Un échec réseau isolé NE fait PAS passer en « down » (essayé le 07/10/2026, retiré) : la garde
+    // refusait alors toute requête jusqu'à la prochaine sonde du module (60 s) — synchro, positions et
+    // envois en attente bloqués après un simple raté (8 scénarios pro au rouge). L'état « down » vient
+    // du réseau de l'appareil (offline) ou du module ; une requête figée, du veilleur de l'accueil.
+    return fetch(url.href, init);
   }
 
   // 📶 Réseau de l'appareil : coupé → « injoignable » aussitôt ; revenu → on prévient les modules
@@ -620,8 +614,17 @@
     // Les autres ne sont pas réécrites (une réécriture ferme la fiche ouverte et coupe
     // le dessin en cours — retour de l'audit multi-utilisateur 05/10/2026).
     const tracesRecues = new Set(distant.tombstones.map(function (t) { return t && t.uid; }));
+    // 🩸 08/10/2026 — L'ÉCHO DE SES PROPRES ENVOIS N'EST PAS UNE NOUVEAUTÉ. Le serveur renvoie, au cycle
+    // suivant, les objets que cet appareil vient d'envoyer (même uid, même updatedAt). Ils comptaient comme
+    // « reçus » : famille réécrite et historique d'annulation vidé à CHAQUE synchro — Ctrl+Z inopérant même
+    // seul sur le plan (retour KARMA). Un objet reçu ne compte que s'il est inconnu ici ou plus récent.
+    const nouveau = function (fam) {
+      const ici = new Map();
+      local[fam].forEach(function (o) { if (o && o.uid) ici.set(o.uid, Number(o.updatedAt) || 0); });
+      return function (o) { return !!o && (!ici.has(o.uid) || (Number(o.updatedAt) || 0) > ici.get(o.uid)); };
+    };
     const touche = function (fam) {
-      return distant[fam].length > 0 || local[fam].some(function (o) { return o && tracesRecues.has(o.uid); });
+      return distant[fam].some(nouveau(fam)) || local[fam].some(function (o) { return o && tracesRecues.has(o.uid); });
     };
     distant.data.concat(distant.roads, distant.zones, distant.structures).forEach(function (o) { if (o && o.uid) _recusADistance.add(o.uid); });
     const traces = new Map();
@@ -1176,6 +1179,44 @@
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
     if (!id || exportAutorise(id)) return false;
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t("ext.export.refuse"), "warn");
+    return true;
+  };
+  // 🔒 08/10/2026 (KARMA) — à chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée
+  // (avant : on ne l'apprenait qu'en essayant d'ajouter un objet). Appelée par main.js en fin de chargement.
+  window.ktaAnnoncerLectureSeule = function () {
+    const id = window._currentLoadedPlanId;
+    if (!id || !lectureSeule(id) || document.getElementById("kta-ext-lecture-seule")) return false;
+    const ov = document.createElement("div");
+    ov.id = "kta-ext-lecture-seule";
+    ov.className = "kta-readme-modal-overlay";
+    ov.style.zIndex = "100001";
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite";
+    boite.style.cssText = "max-width:420px; height:auto;";
+    const entete = document.createElement("div");
+    entete.className = "kta-readme-modal-header";
+    const titre = document.createElement("span");
+    titre.className = "kta-readme-modal-titre";
+    titre.textContent = _t("ext.lectureSeuleFenetre.titre");
+    entete.appendChild(titre);
+    const corps = document.createElement("div");
+    corps.className = "kta-readme-modal-corps";
+    corps.style.fontSize = "13px";
+    const p = document.createElement("p");
+    p.style.cssText = "line-height:1.55; margin:0 0 14px;";
+    p.textContent = _t("ext.lectureSeuleFenetre.texte");
+    const actions = document.createElement("div");
+    actions.className = "kta-conv-actions";
+    const ok = document.createElement("button");
+    ok.className = "kta-btn kta-btn-primary";
+    ok.textContent = _t("ext.lectureSeuleFenetre.ok");
+    ok.addEventListener("click", function () { ov.remove(); });
+    actions.appendChild(ok);
+    corps.append(p, actions);
+    boite.append(entete, corps);
+    ov.appendChild(boite);
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    document.documentElement.appendChild(ov);
     return true;
   };
   // Modifier le plan OUVERT (outils de dessin, fiche d'un point) : refusé = message.

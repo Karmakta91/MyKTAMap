@@ -15,7 +15,7 @@ unique : **aucun guard n'exécute l'app dans un navigateur**. La porte comble ce
 
 | # | Marche | Qui | Dérogeable ? |
 |---|---|---|---|
-| 1 | **Garde-fous automatiques** — la suite pre-commit complète verte (`.githooks/pre-commit`, 13 scripts) **+ le guard de release** (`.githooks/commit-msg` : 3 sources de version cohérentes, docs à jour — cf. encadré sous le tableau) | auto | ❌ noyau · ⚠️ doc |
+| 1 | **Garde-fous automatiques** — la suite pre-commit complète verte (`.githooks/pre-commit`) **+ le guard de release** (`.githooks/commit-msg` : 3 sources de version cohérentes, docs à jour — cf. encadré sous le tableau) **+ la porte qualité SonarQube** (marche 1ter) | auto | ❌ noyau · ⚠️ doc · ⚠️ Sonar injoignable |
 | 2 | **Smoke test standard** — les 12 points ci-dessous, sur **dev.myktamap.fr**, cache vidé | KARMA (~10 min) | ⚠️ par item, sauf 🔒 |
 | 3 | **Checkup ciblé** — tableau destructif du/des modules **touchés par la release** (façon SIG, Légende) | KARMA + Claude | ⚠️ par item |
 | 4 | **Trempage** — la release vit sur dev pendant l'usage réel de KARMA (24-48 h) | KARMA | ⚠️ (hotfix urgent = cas typique) |
@@ -44,7 +44,10 @@ relevé est ouvert : exiger un arbre propre au sens strict rendait toute release
 règle de confidentialité du dépôt était respectée**. Les fichiers `data/` divergents sont listés, pas
 bloquants — rien n'en sera commité, `check-data-hors-git.js` s'en charge, et le merge ne les touche pas),
 branche légitime (jamais `Chig_Dev`, jamais `main`), **concordance des trois sources de version**
-(volet 🔒 de la marche 1), suite complète des garde-fous, `main` local à jour vis-à-vis du distant. Puis il montre
+(volet 🔒 de la marche 1), suite complète des garde-fous, porte qualité SonarQube (marche 1ter : échec = refus,
+serveur injoignable = `DEROGE` tapé), `main` local à jour vis-à-vis du distant, **CI GitHub verte sur le commit à
+merger** (branche poussée telle quelle — tient lieu de protection de branche, payante en dépôt privé ; GitHub
+injoignable = `DEROGE` tapé). Puis il montre
 ce qui va partir, merge en `--no-ff`, pose le tag de version et publie — chaque étape vérifiée, un merge en conflit
 étant annulé et la branche de travail restaurée.
 
@@ -110,6 +113,7 @@ suivantes, **toutes** :
 ```
 RELEASE GATE — vX.Y.Z (date)
 [ ] M1 guards auto : verts (commit <sha>)
+[ ] M1ter Sonar : porte qualité OK sur le nouveau code | dérogée (motif)
 [ ] M2 smoke 12 pts : OK sauf dérogations ci-dessous
 [ ] M3 checkup ciblé : <modules> — OK sauf dérogations
 [ ] M4 trempage dev : du <date> au <date>
@@ -147,6 +151,32 @@ invisible**. Détails : `scripts/smoke/README.md`.
 (ReferenceError, classe CSS fantôme, variable hors portée) qui a traversé
 trois fois les garde-fous logiques la semaine du 06/08. Le smoke manuel
 (marche 2) reste : lui seul voit le VISUEL (décalages, chevauchements).
+
+## 🔍 Marche 1ter — analyse SonarQube (depuis le 09/10/2026)
+
+`powershell -ExecutionPolicy Bypass -File scripts\release\sonar-scan.ps1` — lancé par `merge-main.ps1`
+(étape 4bis), lançable seul. Il analyse `js/`, `sw.js`, `css/` et `index.html` (`data/` exclu **en dur** : les
+relevés réels ne partent jamais dans la base Sonar), attend le traitement de **cette** analyse et rend le verdict
+de la porte qualité : `0` OK · `2` échec (refus du merge) · `1` analyse impossible.
+
+**Ce qu'il voit et que les garde-fous ne voient pas** : bugs génériques, failles, duplication, sur le **nouveau
+code seulement** (période « version précédente » : la référence avance à chaque bump de `version.json`). L'existant
+sert de base et ne bloque pas. Les garde-fous restent seuls juges des **règles métier** — Sonar ne les remplace pas.
+
+**Prérequis** : le serveur SonarQube tourne en **local** (Docker, hors dépôt — un runner GitHub hébergé ne peut pas
+le joindre, d'où ce script plutôt qu'une étape de CI) et la variable d'environnement utilisateur `SONAR_TOKEN`
+contient un jeton d'analyse du projet `MyKTAMap`, jamais écrit dans le dépôt. Serveur éteint = l'analyse n'a pas
+eu lieu : `merge-main.ps1` demande `DEROGE`, à consigner dans le relevé.
+
+**Porte qualité `MyKTAMap`** (et non « Sonar way », qui refuserait presque toute release : elle exige 0 nouveau
+code smell et 80 % de couverture, alors que le dépôt n'a pas de tests unitaires). Conditions sur le nouveau code :
+fiabilité A (aucun nouveau bug), sécurité A (aucune nouvelle faille), revue de sécurité A (points sensibles
+revus), duplication ≤ 3 %. Appliquée aux projets `MyKTAMap` et `MyKTAMap-pro` **explicitement** (*Project
+Settings → Quality Gate*) : un projet rattaché à « Sonar way » à sa création ignore la porte par défaut.
+
+**Faux positif** : le marquer dans Sonar (*False positive* ou *Accept*) **avec un commentaire** qui dit pourquoi —
+jamais en silence. 🩸 Le `.sort()` sans comparateur de `js/proLicense.js > _canonique` est **voulu** (l'ordre par
+défaut est celui de la forme canonique signée) : ne pas « corriger » la règle S2871 à cet endroit.
 
 ## 🌍 Marche 3 — checkups ciblés automatisés (à lancer selon les modules touchés)
 

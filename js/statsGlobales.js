@@ -709,7 +709,7 @@
     if (t.roads > 0) {
       lines.push("🛣️  " + window.I18n.t("stats.report.tracesParType"));
       lines.push("─────────────────────────────────────────");
-      Object.keys(rep.roadsByType).sort().forEach(function(type) {
+      Object.keys(rep.roadsByType).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + (rep.roadsByType[type] + "").padStart(4, " ") +
                    "  " + _formatDist(rep.roadsDistByTypeM[type] || 0));
       });
@@ -719,7 +719,7 @@
     if (t.zones > 0) {
       lines.push("⬛ " + window.I18n.t("stats.report.zonesParType"));
       lines.push("─────────────────────────────────────────");
-      Object.keys(rep.zonesByType).sort().forEach(function(type) {
+      Object.keys(rep.zonesByType).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + (rep.zonesByType[type] + "").padStart(4, " ") +
                    "  " + _formatSurf(rep.zonesAreaByTypeM2[type] || 0));
       });
@@ -729,7 +729,7 @@
     if (t.structures > 0) {
       lines.push("🏛️  " + window.I18n.t("stats.report.structuresParType"));
       lines.push("─────────────────────────────────────────");
-      Object.keys(rep.structsByType).sort().forEach(function(type) {
+      Object.keys(rep.structsByType).sort(function(a, b) { return a.localeCompare(b); }).forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + rep.structsByType[type]);
       });
       lines.push("");

@@ -118,7 +118,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     d.K.signaler("on");
     d.w._fetch = () => Promise.reject(new TypeError("Load failed"));
     try { await d.K.requete("/v1/x"); } catch (e) { /* attendu */ }
-    t("📶 requête sans réponse du serveur (erreur réseau) → « down »", d.K.etat().etat === "down");
+    t("🩸 📶 un échec réseau isolé ne passe PAS en « down » (sinon la garde bloque tout jusqu'à la sonde suivante)",
+      d.K.etat().etat === "on");
     const e2 = nouveauContexte("server");
     e2.K.appliquerConfig(ON, true);
     e2.K.signaler("on");
@@ -524,6 +525,25 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("la session est sauvegardée", sauve === 1 && res && typeof res.fusionnes === "number");
     recu.editorPoints[0].name = "modifié après coup";
     t("les objets reçus sont copiés (rien de partagé avec l'appelant)", pts.find((p) => p.uid === "pt_aaaa1111").name === "Distant plus récent");
+  }
+
+  // ═════════ 6 ter bis. ⏪ L'ÉCHO DE SES PROPRES ENVOIS NE VIDE PAS CTRL+Z (08/10/2026, retour KARMA) ═════════
+  {
+    const { K, w } = nouveauContexte(null);
+    const vm3 = require("vm");
+    vm3.runInContext(lire("js/ktaUid.js"), vm3.createContext(w), { filename: "ktaUid.js" });
+    let pts = [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }];
+    let resets = 0, ecritures = 0;
+    w.getEditorPoints = () => pts; w.setEditorPoints = (p) => { pts = p; ecritures++; };
+    w.getRoads = () => []; w.setRoads = () => {}; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.HistoryManager = { reset() { resets++; }, canUndo: () => true, canRedo: () => false };
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_eeee5555", name: "Le mien", updatedAt: 500 }], roads: [], zones: [], structures: [], tombstones: [] });
+    t("⏪ écho de son propre envoi (même uid, même date) → historique d'annulation gardé, rien de réécrit",
+      resets === 0 && ecritures === 0);
+    K.appliquerChangements({ editorPoints: [{ uid: "pt_ffff6666", name: "D'un autre", updatedAt: 600 }], roads: [], zones: [], structures: [], tombstones: [] });
+    t("⏪ un vrai objet reçu (d'un autre) → l'historique repart de zéro, comme avant", resets === 1 && ecritures === 1);
   }
 
   // ═════════ 6 quater. ACTIONS DU COMPTE ═════════

@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.10.2` (07/10/2026)
+## 📦 Version courante — `v2.10.3` (08/10/2026)
+
+> 📶 **v2.10.3 — Réseau perdu, Vue OSM, lecture seule** : pastille « injoignable » dès que le réseau tombe, téléchargement de plan jamais bloqué (veilleur d'inactivité) ; plus de zone plus sombre au milieu d'un plan en Vue OSM (opacité sur le calque) ; installation reliée : fenêtre « Plan en lecture seule », Ctrl+Z qui ne se vide plus à chaque synchro.
 
 > 📦 **v2.10.2 — Plans de l'index servis en ZIP** : `data/index.json` peut déclarer l'archive d'un plan (`"zip": "data/x.zip"`) au lieu d'un dossier décompressé — téléchargée à l'ouverture, gardée sur l'appareil, retéléchargée seulement si elle a changé ; ConfAdmin le produit par défaut. Générateur : message clair quand un plan vierge dépasse la limite d'un iPhone.
 
@@ -561,6 +563,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.10.3 (08/10/2026) — Réseau perdu, Vue OSM, lecture seule (branche `Karma_dev`)
+
+- 📶 **Réseau perdu sur l'accueil** (retour KARMA, iPhone) : `offline` → état « injoignable » aussitôt (la garde refuse, l'accueil rouvre la copie gardée), `online` → `mktm:reseau-retour` pour que le module sonde. Veilleur d'inactivité des téléchargements de plan (15 s sans réponse, puis 20 s sans octet → abandon ; rien tenté hors ligne), plans ZIP de l'index et plans ☁️ ; `chargerPlanExtension` transmet `opts.signal` (`bd68785`). Un échec réseau isolé ne passe plus en « down » — la règle bloquait les envois jusqu'à la sonde suivante (`d184385`).
+- 🗺️ **Vue OSM / widget de l'accueil : zone plus sombre au milieu d'un plan** : l'opacité était posée tuile par tuile, deux tuiles superposées s'additionnaient (vue d'ensemble + tuiles nettes ; deux niveaux après une course de rendu). Tuiles opaques dans un calque qui porte l'opacité ; jeton de rendu dans la Vue OSM. Garde-fou `check-tiling` §19 (`96db43e`).
+- 🔒 **Installation reliée, droit « lire »** : fenêtre « Plan en lecture seule » à l'ouverture ; les boutons Zone / Tracé / Structure ne s'allument plus quand le mode est refusé. **Ctrl+Z** : l'écho de ses propres envois (même uid, même `updatedAt`) ne vide plus l'historique d'annulation à chaque synchro (`7e480e6`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau (les téléchargements existants peuvent seulement être annulés plus tôt).
 
 #### v2.10.2 (07/10/2026) — Plans de l'index servis en ZIP (branche `Karma_dev`)
 

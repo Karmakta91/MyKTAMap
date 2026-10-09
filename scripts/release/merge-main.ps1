@@ -10,7 +10,10 @@
 #   3. les TROIS sources de version disent la même chose — un `CACHE_NAME`
 #      oublié, et la mise à jour n'atteint jamais personne ;
 #   4. la suite complète des garde-fous est verte ;
-#   5. `main` est à jour vis-à-vis du dépôt distant (sinon le merge diverge) ;
+#      4bis. la porte qualité SonarQube est OK sur le nouveau code
+#      (`sonar-scan.ps1` ; serveur éteint = dérogation tapée, jamais en silence) ;
+#   5. `main` est à jour vis-à-vis du dépôt distant (sinon le merge diverge), et la CI GitHub du commit
+#      à merger est VERTE (branche poussée telle quelle ; protection de branche payante en dépôt privé) ;
 #   6. il te montre ce qui va partir, puis attend une confirmation TAPÉE.
 #
 # 🩸 CE QU'IL NE PEUT PAS VÉRIFIER, et qu'il te DEMANDE donc explicitement :
@@ -172,6 +175,23 @@ if ($SkipGuards) {
   Ok "$verts assertions vertes, 0 rouge"
 }
 
+# ───────── 4bis. analyse SonarQube ─────────
+# Marche 1ter de la porte : le serveur tourne en local (Docker), la CI GitHub
+# ne le joint pas — c'est donc ici qu'il est consulté. Porte en échec = refus.
+# Serveur éteint ou jeton absent = l'analyse n'a pas eu lieu : ce n'est PAS un
+# succès, KARMA décide en tapant DEROGE (à consigner dans le relevé de release).
+Titre "4bis. Analyse SonarQube"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $racine "scripts\release\sonar-scan.ps1")
+$codeSonar = $LASTEXITCODE
+if ($codeSonar -eq 2) {
+  Stop-Net "Porte qualité SonarQube en échec sur le nouveau code. On corrige avant de merger."
+}
+if ($codeSonar -ne 0) {
+  $rep = Read-Host "  Analyse Sonar impossible. Continuer sans ? (tape DEROGE, puis consigne-le dans le relevé)"
+  if ($rep -ne "DEROGE") { Stop-Net "Merge annulé : relance Sonar puis ce script." }
+  Info "Sonar dérogé (déclaré par KARMA) — à consigner dans le relevé de release"
+}
+
 # ───────── 5. le distant ─────────
 Titre "5. Dépôt distant"
 git fetch origin --quiet
@@ -180,6 +200,54 @@ if ($retard -and [int]$retard -gt 0) {
   Stop-Net "main local est en retard de $retard commit(s) sur origin/main. Fais d'abord : git checkout main ; git pull ; git checkout $branche"
 }
 Ok "main local est à jour"
+
+# CI GitHub du commit à merger (audit CI/CD du 08/10/2026, Q2/W3 option b : la protection de branche est payante
+# sur un dépôt privé). On ne merge que ce que la CI a testé ET trouvé vert : la branche doit être poussée telle
+# quelle, et le passage « CI » de ce commit terminé en succès. Jeton : celui que Git a déjà rangé pour les push
+# (git credential fill, jamais affiché ni écrit). État illisible = dérogation tapée, consignée dans le relevé.
+function Echec-Ci($t) { if ($DryRun) { Ko $t } else { Stop-Net $t } }
+$sha = (git rev-parse HEAD).Trim()
+$court = $sha.Substring(0, 7)
+$distantSha = (git rev-parse "origin/$branche" 2>$null)
+if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
+  Echec-Ci "$branche locale ≠ origin/$branche : pousse d'abord, la CI doit avoir testé exactement ce commit ($court)."
+} else {
+  $depot = ((git remote get-url origin).Trim() -replace '\.git$', '') -replace '^.*github\.com[:/]', ''
+  $etatCi = $null; $lien = ""
+  $env:GIT_TERMINAL_PROMPT = "0"; $env:GCM_INTERACTIVE = "never"
+  $jeton = $null
+  try {
+    # Requête dans un fichier ASCII : en pipe, PowerShell 5.1 ajoute des retours chariot et une marque d'encodage
+    # (BOM) que git credential refuse (« missing protocol field »).
+    $tmpCred = [IO.Path]::GetTempFileName()
+    [IO.File]::WriteAllText($tmpCred, "protocol=https`nhost=github.com`n`n", [Text.Encoding]::ASCII)
+    $sortie = cmd /c "git credential fill < `"$tmpCred`" 2>nul"
+    Remove-Item $tmpCred -ErrorAction SilentlyContinue
+    $ligne = $sortie | Where-Object { $_ -like "password=*" } | Select-Object -First 1
+    if ($ligne) { $jeton = $ligne.Substring(9).Trim() }
+  } catch { $jeton = $null }
+  if ($jeton) {
+    try {
+      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+      $r = Invoke-RestMethod -TimeoutSec 15 -Uri "https://api.github.com/repos/$depot/actions/runs?head_sha=$sha&per_page=30" `
+        -Headers @{ Authorization = "Bearer $jeton"; Accept = "application/vnd.github+json"; "User-Agent" = "merge-main" }
+      $run = $r.workflow_runs | Where-Object { $_.name -eq "CI" } | Sort-Object created_at -Descending | Select-Object -First 1
+      if ($run) { $etatCi = "$($run.status)/$($run.conclusion)"; $lien = $run.html_url } else { $etatCi = "absente" }
+    } catch { $etatCi = $null }
+  }
+  $jeton = $null
+  if ($etatCi -eq "completed/success") { Ok "CI GitHub verte pour $court" }
+  elseif ($etatCi -eq "absente") { Echec-Ci "Aucune CI GitHub pour $court : pousse, attends qu'elle passe, puis relance." }
+  elseif ($etatCi -like "completed/*") { Echec-Ci "CI GitHub rouge ($etatCi) pour $court : $lien" }
+  elseif ($etatCi) { Echec-Ci "CI GitHub encore en cours ($etatCi) pour $court : attends la fin, puis relance. $lien" }
+  else {
+    Ko "État de la CI GitHub illisible (pas de jeton Git rangé, ou API GitHub injoignable)."
+    if (-not $DryRun) {
+      $rep = Read-Host "  Merger sans avoir vu la CI verte ? (tape DEROGE, puis consigne-le dans le relevé)"
+      if ($rep -cne "DEROGE") { Stop-Net "Merge annulé : CI non vérifiée." }
+    }
+  }
+}
 
 # ───────── 6. ce qui va partir ─────────
 Titre "6. Ce qui va être mergé"

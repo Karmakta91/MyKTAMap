@@ -710,7 +710,6 @@
       "pilier2emasse": "struct:pilier-2", "2emasse": "struct:pilier-2",
       mur: "struct:mur", murs: "struct:mur", muret: "struct:mur",
       maconnerie: "struct:mur", beton: "struct:mur",
-      front: "struct:front-1", "frontdetaille": "struct:front-1",
       "front1": "struct:front-1", "front2": "struct:front-2"
     },
     zones: {

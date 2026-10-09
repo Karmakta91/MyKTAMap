@@ -170,6 +170,7 @@ déjà les trois langues du guide ; il ne relie pas le guide à l'Aide intégré
 | **Puits inter-étage** (KARMA, 30/09) | un puits qui relie deux niveaux n'existe que comme **tracé** « jonction » 🪜 (`{type:"jonction", fromLevel, toLevel}`, `multilevel-pathfinding.md` §26.5) — invisible en tant que point. POI spéciale, **icône dédiée**, visible sur ses **deux** niveaux, qui porte (ou crée) la jonction pour l'itinéraire — même logique qu'un **portail** (lié à deux plans). Ajout du tag : skill `.claude/skills/add-icon-tag` | gardé — à cadrer |
 | **➕ Créer un tag depuis l'éditeur de point, sur le modèle de « ➕ Nouveau type… »** (reliquat du 30/09) | Tracés / Zones / Structures ont leur « ➕ Nouveau type… » (flyout → `LegendCustomization.ouvrirAddDialog`, catégorie verrouillée). L'éditeur de point garde son propre « ➕ Créer un nouveau tag… » (`editor.js` `__new__`) : slug brut dans `PLAN_CONFIG.icons`, icône par défaut, **ni libellé ni icône choisie, aucune entrée de légende** — deux modèles pour un même geste. Le brancher sur la même boîte (catégorie `icones`). ✅ vérifié 30/09 | gardé — choix 4:b de KARMA, second temps |
 | **ConfAdmin : adresse de contact de l'installation** (KARMA, 04/10) | `contact@myktamap.fr` est écrit en dur dans l'app (`index.html` ×2, `lang/{fr,en,es}.json` ×3 chacun) et dans le guide ×3. Une installation indépendante doit pouvoir afficher **son** adresse : champ dans ConfAdmin → `index.json > config`, lu au rendu, repli sur `contact@myktamap.fr`. À trancher : quelles mentions suivent (contact de l'installation) et lesquelles restent (crédit de l'auteur, licence, `NETWORK_AUDIT` qui décrit myktamap.fr) | à cadrer |
+| **Outils de dessin grisés ou masqués en lecture seule** (KARMA, 08/10) | Sur un plan relié en droit « lire », les outils POI / Zone / Tracé / Structure restent affichés : depuis le 08/10 ils ne s'allument plus et une fenêtre « Plan en lecture seule » s'ouvre à l'ouverture (`ktaAnnoncerLectureSeule`), mais on peut encore cliquer pour rien. Piste : les **griser** (cliquables pour rappeler le message) ou les **retirer** de la barre tant que `KtaExtensions.lectureSeule(planId)` — à trancher : griser garde la découverte de l'outil, retirer allège la barre. Point d'entrée : `interface.js` (groupes d'outils), relu à l'ouverture du plan | à trancher — sans code |
 | **Export de profil en flux** | `showSaveFilePicker` + `generateInternalStream` (Chrome/Edge desktop) pour réduire le pic RAM de `generateAsync` sur les très gros exports | gardé — si un cas réel le demande |
 
 **VisualTopo** — l'app ne lit **aucun** format de topographie (ni VisualTopo, ni Therion, ni Compass, ni Survex ;
@@ -204,6 +205,40 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 
 ---
 
+## 🔍 Qualité de code (SonarQube) — ce qui reste (09/10/2026)
+
+> Sonar tourne en local (Docker) et juge le **nouveau code** à la porte de release (marche 1ter,
+> `scripts/release/sonar-scan.ps1`). Ce qui suit est ouvert ; le reste est dans `docs/RELEASE_GATE.md`.
+
+- 🟠 **Sonar en CI par un runner auto-hébergé — à trancher par KARMA.** Un runner GitHub hébergé ne joint pas le
+  serveur local ; un runner installé sur le poste de KARMA, oui. Coût : il exécute le code de **chaque push** avec
+  les droits du compte Windows (compte de service limité recommandé), un poste éteint laisse le job en attente,
+  et c'est un service de plus à tenir à jour. Si oui : job `sonar` **séparé et non bloquant** dans `ci.yml`
+  (`runs-on: self-hosted`), secret `SONAR_TOKEN` côté GitHub — repris par la session CI. Si non : la marche 1ter
+  suffit (une analyse par release).
+- 🟡 **Bugs déjà présents, relevés par le premier scan** (✅ vérifié 09/10, Sonar) — n'entrent pas dans la porte
+  (ancien code), à prendre au fil de l'eau : 5 `try` autour d'une promesse sans `await` (`utils.js`,
+  `homeProfile.js` ×2, `osmView.js`, `sessionBackups.js`), 5 champs sans libellé dans `index.html`
+  (accessibilité), 2 `height` en double dans `css/style.css`, une ternaire aux deux branches identiques
+  (`map.js`, `_minZoom`). Liste à jour : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
+- ⚪ **Jetons Sonar** : expiration vers le **06/01/2027** (90 jours) — au-delà, `sonar-scan.ps1` sort en code 1
+  et `merge-main.ps1` demande `DEROGE`. Régénérer un *Project Analysis Token* et le ranger dans `SONAR_TOKEN`.
+
+## 🚦 CI/CD — ce qui reste (audit du 08/10/2026, soldé et archivé sous `archive-docs-2026-10-09`)
+
+> Socle en place : garde-fous rejoués sur GitHub à chaque push (`ci.yml`), merge refusé sans CI verte
+> (`merge-main.ps1`), image Docker conditionnée à la CI, Dependabot, `lib/VERSIONS.md`. Détail :
+> `docs/architecture/infra-versioning.md` §29bis. Pistes non prioritaires :
+
+- 🟡 **jsPDF 2.5.1** (`lib/VERSIONS.md`) : premier candidat à une mise à jour — avis de sécurité publiés sur la
+  branche 2.x [Supposition — à vérifier sur le lien « Avis »] ; tester **tous** les exports PDF après coup.
+- ⚪ **Smoke Playwright en CI**, lancé à la main (`workflow_dispatch`) : la marche 2 de la porte reste manuelle.
+- ⚪ **Tableau de bord des garde-fous** : nombre, durée du pre-commit, tendance d'une version à l'autre.
+- ⚪ **Scripts de déploiement versionnés** dans un dépôt privé dédié (aujourd'hui un seul poste les détient) —
+  à trancher par KARMA.
+- ⚪ **Protection de branche réelle** (GitHub Pro, ~4 $/mois) si d'autres comptes obtiennent un accès en écriture :
+  le contrôle de `merge-main.ps1` ne protège que ce qui passe par le script.
+
 ## 🔴 Dettes ouvertes
 
 > Rangées par **qui doit agir**. Une dette « bloquée sur KARMA » n'attend pas du code — elle attend une mesure sur
@@ -214,6 +249,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 |---|---|---|---|
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
+| **D-guidage-instable** | `check-guidage.js` a sorti « ⚠️ 1 echec(s) » une fois au pre-commit (09/10, juste après les tests d'itinéraire Secours brancard / accès barrés), puis vert sur 2 relances sans changement | 🔬 non reproduit — possible concurrence avec une autre session | personne — s'il revient, garder la sortie complète du hook |
 | **D-confirm** | `confirm()` natifs hors charte | 📋 au fil de l'eau — cf. **📋 Popups natives** | personne |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |

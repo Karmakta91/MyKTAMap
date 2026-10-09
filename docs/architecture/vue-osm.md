@@ -221,7 +221,7 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 
 ~~**Pas de viewport culling dynamique** dans le widget~~ → **obsolète depuis v1.77.0**, voir §3.4bis.
 
-Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: _planOpacity })`. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
+Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: 1, pane: <pane du plan>_tuiles })` — **l'opacité est portée par le sous-calque `_tuiles` du plan** (`_paneTuiles`, enfant du pane du plan, `zIndex -1` = sous ses tracés), jamais par la tuile : vue d'ensemble et tuiles nettes (hi-res) s'y superposent sans s'additionner (avant : ~75 % dans la zone visible à 50 %, retour KARMA 08/10/2026). Vue OSM modale : même règle, pane `ktaOsmTuiles` (z 350) ; `_renderLevel` porte un jeton (un rendu dépassé pendant l'extraction ne pose rien). Garde-fou : `check-tiling.js` §19. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
 
 ### 3.4bis Tuiles HI-RES au zoom (v1.77.0)
 
@@ -240,7 +240,7 @@ Mécanisme (bloc `TUILES HI-RES` de `osmHomePreview.js`) :
 - *baseline* : vivent avec `_planDataCache`, **jamais révoquées en session** (design v1.71.0 — re-ajout d'un plan gratuit, cache borne l'extraction à 1×/plan). La révocation ajoutée par l'audit cassait le multi-plans (charger B révoquait les URLs de A encore affiché).
 - *hi-res* : éphémères, révoquées à chaque swap/sortie/refresh.
 
-**Slider opacité** (v1.40.6) : `_setPlanOpacity(v)` itère `_tilesLayer.eachLayer` + `setOpacity`. Default `_planOpacity = 0.7`.
+**Slider opacité** : `_setPlanOpacity(v)` / `_setOpaciteExtra` / `_appliquerOpaciteHiRes` posent l'opacité sur le sous-calque du plan (`_opaciteTuilesPlan`) ; repli tuile par tuile seulement sans pane.
 
 ### 3.5 Icônes POI — Approche hybride (v1.40.13 → v1.40.16)
 
