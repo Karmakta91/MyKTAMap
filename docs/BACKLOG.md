@@ -230,8 +230,6 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 > (`merge-main.ps1`), image Docker conditionnée à la CI, Dependabot, `lib/VERSIONS.md`. Détail :
 > `docs/architecture/infra-versioning.md` §29bis. Pistes non prioritaires :
 
-- 🟡 **jsPDF 2.5.1** (`lib/VERSIONS.md`) : premier candidat à une mise à jour — avis de sécurité publiés sur la
-  branche 2.x [Supposition — à vérifier sur le lien « Avis »] ; tester **tous** les exports PDF après coup.
 - ⚪ **Smoke Playwright en CI**, lancé à la main (`workflow_dispatch`) : la marche 2 de la porte reste manuelle.
 - ⚪ **Tableau de bord des garde-fous** : nombre, durée du pre-commit, tendance d'une version à l'autre.
 - ⚪ **Scripts de déploiement versionnés** dans un dépôt privé dédié (aujourd'hui un seul poste les détient) —

@@ -216,8 +216,10 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   donc utilisable dans une session SSH ouverte depuis le téléphone) ; marque illisible = `DEROGE`. Tient lieu de
   protection de branche. Le poste parle à GitHub en SSH (clé `~/.ssh/github_poste`, remotes `git@github.com:…`) :
   en HTTPS, l'identifiant rangé dans le coffre Windows est inaccessible depuis SSH.
-- **Dependabot** (`.github/dependabot.yml`) : actions GitHub + `scripts/smoke`, PR vers `Karma_dev`. Les librairies de
-  `lib/` sont suivies à la main dans **`lib/VERSIONS.md`**.
+- **Dependabot** (`.github/dependabot.yml`) : actions GitHub, `scripts/smoke` et les librairies de `lib/` (manifeste
+  déclaratif `lib/package.json`, hebdomadaire), PR vers `Karma_dev`. Une PR sur `lib/` ne change que le manifeste :
+  `check-libs.js` (bloquant) la retient tant que le fichier embarqué et **`lib/VERSIONS.md`** n'ont pas suivi — la mise
+  à jour réelle reste un geste testé (marche à suivre dans `lib/VERSIONS.md`).
 - **Pas de Sonar en CI** : SonarQube tourne en local (Docker), injoignable depuis un runner GitHub — marche 1ter
   de `docs/RELEASE_GATE.md`.
 
@@ -637,6 +639,7 @@ documentées ici pour la doctrine.
 | `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
 | `check-devmode-docs.js` | le Mode Dev ne relit **aucune** doc technique (ni manifest, ni `docs/` hors `docs/applications/`, ni `README.md`) ; hash SHA-256 ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | la bibliothèque obligeait à publier toute la doc interne sur dev (audit CD du 09/10/2026, F1) |
 | `check-livrables-docs.js` | le `Dockerfile`, le ZIP de `release.yml` et `.dockerignore` ne livrent de `docs/` que `docs/applications/`, jamais le `README.md` racine (règles rsync présentes et **dans l'ordre**) ; `.dockerignore` ne laisse entrer de `data/` que `data/test` et `data/myktamap.zip`, l'index de l'image venant de `docker/index-fictif.json` (identique au `data/index.json` **suivi**) | BACKLOG, audits et `README.md` dans l'image Docker — donc servis par pro.myktamap.fr — et dans le ZIP (audit CD, F1) ; **relevés réels** et index local du poste dans les couches d'une image construite sur le poste (pile de test pro) |
+| `check-libs.js` | chaque librairie de `lib/` : version de l'en-tête du fichier embarqué = `lib/package.json` (manifeste lu par Dependabot, versions exactes) = `lib/VERSIONS.md` | une veille qui ment : PR Dependabot fusionnée sans remplacer le fichier, ou librairie remplacée sans mettre la table à jour |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
 | `check-aide-sections.js` | structure de l'Aide intégrée : même nombre de sections FR/EN, **1 seul titre par section**, `AIDE_CATEGORIES` couvre tout (ni orpheline, ni doublon, ni hors-bornes) | **3 bugs d'un coup le 01/09** : conteneur oublié fusionnant 2 sections FR (« Mode profil » inatteignable) · section absente en EN alors que les index sont **communs aux 2 langues** · index annoncé à 29 pour une section en 30 (« Mon carnet » tombée dans le filet « Autres ») |
 

@@ -1,9 +1,18 @@
 # Veille des dépendances (audit CI/CD du 08/10/2026, Q4). Gratuit, dépôt privé compris.
 # Dependabot ouvre une demande de fusion (PR) par mise à jour : la CI la teste (garde-fous), KARMA décide.
-# ⚠️ Les librairies copiées dans lib/ (Leaflet, JSZip, jsPDF, html2canvas) ne sont PAS suivies par
-# Dependabot : leur veille passe par lib/VERSIONS.md (Q7).
+# Les librairies copiées dans lib/ (Leaflet, JSZip, jsPDF, html2canvas) sont suivies via lib/package.json,
+# manifeste DÉCLARATIF (rien ne s'installe). Sa PR ne met PAS la librairie à jour : scripts/check-libs.js la fait
+# échouer tant que le fichier embarqué et lib/VERSIONS.md n'ont pas suivi (marche à suivre : lib/VERSIONS.md).
 version: 2
 updates:
+  # Librairies embarquées de l'app (veille : avis de sécurité, nouvelles versions).
+  - package-ecosystem: npm
+    directory: /lib
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 4
+    target-branch: Karma_dev
+
   # Smoke navigateur de la porte de release (Playwright).
   - package-ecosystem: npm
     directory: /scripts/smoke

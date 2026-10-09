@@ -89,6 +89,11 @@ node scripts/check-devmode-docs.js || exit $?
 # racine. BLOQUANT.
 node scripts/check-livrables-docs.js || exit $?
 
+# 📚 09/10/2026 — Librairies de lib/ : version de l'en-tête du fichier embarqué = lib/package.json (manifeste
+# lu par Dependabot) = lib/VERSIONS.md. Une PR Dependabot (manifeste seul) échoue ici tant que le fichier
+# n'est pas réellement remplacé et testé. BLOQUANT.
+node scripts/check-libs.js || exit $?
+
 # 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
 # inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.

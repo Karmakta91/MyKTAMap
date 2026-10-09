@@ -880,9 +880,12 @@
 
   <p>L'app ne télécharge aucune librairie pendant que tu l'utilises. Les quelques librairies
   qu'elle embarque (Leaflet, JSZip, jsPDF, html2canvas) sont copiées dans le dépôt, avec leur
-  version et un lien vers leurs avis de sécurité, vérifiés à chaque mise à jour. Les outils de
-  test et d'intégration continue sont surveillés automatiquement (Dependabot) : chaque
-  proposition de mise à jour est testée par l'intégration continue.</p>
+  version et un lien vers leurs avis de sécurité. Ces librairies, comme les outils de test et
+  d'intégration continue, sont surveillées automatiquement (Dependabot) : une faille connue ou
+  une nouvelle version est signalée, et chaque proposition de mise à jour est testée par
+  l'intégration continue. Une librairie n'est remplacée que par le fichier officiel publié par
+  son auteur, et ce qu'elle fait (exports PDF, ouverture des plans…) est retesté avant de la
+  livrer.</p>
 
   <h3>6. Un essai à la main avant chaque mise en production</h3>
 

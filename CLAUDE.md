@@ -17,9 +17,11 @@
 ## ⚙️ Commandes & validation
 - **Syntaxe** : `node -c fichier.js` (pas de linter).
 - **CI GitHub** (`.github/workflows/ci.yml`, audit CI/CD du 08/10/2026) : à chaque push sur `Karma_dev` / `main` et PR — syntaxe, **commits reçus** (`scripts/ci-commits.sh` : anti-fuite pro et `data/` hors Git commit par commit, `Data-deroge:` lu dans le message) puis **tous les garde-fous du pre-commit**. Un hook contourné (`--no-verify`, poste sans `core.hooksPath`, éditeur web) ne passe plus en silence. Rouge = on corrige avant d'empiler. **Un garde-fou ajouté au pre-commit tourne aussi en CI** (la CI lance `.githooks/pre-commit`) ; un garde-fou qui lit l'index (`git diff --cached`) doit accepter `KTA_FICHIERS_CI` (liste de fichiers), sinon il passe à vide en CI.
-- **Dépendances** : Dependabot (`.github/dependabot.yml`) ouvre une PR par mise à jour (actions GitHub, `scripts/smoke`) vers `Karma_dev`, testée par la CI. Les librairies copiées dans `lib/` ne sont **pas** suivies par Dependabot : leur
-  version et leurs liens d'avis de sécurité vivent dans **`lib/VERSIONS.md`** — mettre à jour une librairie = mettre à
-  jour sa ligne dans le même commit. L'image Docker (`docker.yml`) n'est publiée que si la CI du commit taggé est verte.
+- **Dépendances** : Dependabot (`.github/dependabot.yml`) ouvre une PR par mise à jour (actions GitHub, `scripts/smoke`, et les librairies copiées dans `lib/` via le manifeste
+  **déclaratif** `lib/package.json`) vers `Karma_dev`, testée par la CI. Une PR sur `lib/` ne touche que le manifeste :
+  `scripts/check-libs.js` (bloquant) exige que l'en-tête du fichier embarqué, `lib/package.json` et
+  **`lib/VERSIONS.md`** disent la même version — mettre à jour une librairie = fichier du paquet npm officiel +
+  manifeste + table dans le même commit, puis tester ce qu'elle fait (marche à suivre : `lib/VERSIONS.md`). L'image Docker (`docker.yml`) n'est publiée que si la CI du commit taggé est verte.
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
 - **⛔ Pas de bump par correctif** (décision KARMA 04/10/2026, après 8 bumps de dev v2.0.1 → v2.7.4 pour une prod restée en v2.0.0) : on commite **sans bump** (`fix(...)`, `feat(...)`) ; le **seul** bump se fait quand KARMA prépare une mise en prod, juste avant la porte de release, avec la sync docs 4 axes dans ce commit. On ne redescend jamais un numéro (comparaison semver de `updateChecker.js`) : la prochaine prod reprend la suite.
