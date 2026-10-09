@@ -224,6 +224,21 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 - ⚪ **Jetons Sonar** : expiration vers le **06/01/2027** (90 jours) — au-delà, `sonar-scan.ps1` sort en code 1
   et `merge-main.ps1` demande `DEROGE`. Régénérer un *Project Analysis Token* et le ranger dans `SONAR_TOKEN`.
 
+## 🚦 CI/CD — ce qui reste (audit du 08/10/2026, soldé et archivé sous `archive-docs-2026-10-09`)
+
+> Socle en place : garde-fous rejoués sur GitHub à chaque push (`ci.yml`), merge refusé sans CI verte
+> (`merge-main.ps1`), image Docker conditionnée à la CI, Dependabot, `lib/VERSIONS.md`. Détail :
+> `docs/architecture/infra-versioning.md` §29bis. Pistes non prioritaires :
+
+- 🟡 **jsPDF 2.5.1** (`lib/VERSIONS.md`) : premier candidat à une mise à jour — avis de sécurité publiés sur la
+  branche 2.x [Supposition — à vérifier sur le lien « Avis »] ; tester **tous** les exports PDF après coup.
+- ⚪ **Smoke Playwright en CI**, lancé à la main (`workflow_dispatch`) : la marche 2 de la porte reste manuelle.
+- ⚪ **Tableau de bord des garde-fous** : nombre, durée du pre-commit, tendance d'une version à l'autre.
+- ⚪ **Scripts de déploiement versionnés** dans un dépôt privé dédié (aujourd'hui un seul poste les détient) —
+  à trancher par KARMA.
+- ⚪ **Protection de branche réelle** (GitHub Pro, ~4 $/mois) si d'autres comptes obtiennent un accès en écriture :
+  le contrôle de `merge-main.ps1` ne protège que ce qui passe par le script.
+
 ## 🔴 Dettes ouvertes
 
 > Rangées par **qui doit agir**. Une dette « bloquée sur KARMA » n'attend pas du code — elle attend une mesure sur
