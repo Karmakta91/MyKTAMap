@@ -230,9 +230,10 @@ async function evacuationBrancard() {
   w.itineraireYAller = (x, y, nom, o) => { trace = { x: x, y: y, o: o }; };
   vm.runInContext("var window = this;" + fs.readFileSync(path.join(ROOT, "js/sortieUrgence.js"), "utf8"), vm.createContext(w));
   const supp = [{ x: 500, y: 500, nom: "A" }, { x: 900, y: 500, nom: "B" }];
-  async function evacuer(contraintes) {
+  async function evacuer(contraintes, de) {
     corps.innerHTML = ""; trace = null;
-    w.SortieUrgence.declencherDepuis(100, 500, 0, { sortiesSupp: supp, origine: "victime", contraintes: contraintes });
+    const o = de || [100, 500];
+    w.SortieUrgence.declencherDepuis(o[0], o[1], 0, { sortiesSupp: supp, origine: "victime", contraintes: contraintes });
     for (let i = 0; i < 100 && !/kta-sortie-principal/.test(corps.innerHTML); i++) await new Promise(r => setTimeout(r, 5));
     w.SortieUrgence._tracerMeilleure();
     return { html: corps.innerHTML, trace: trace };
@@ -257,6 +258,18 @@ async function evacuationBrancard() {
   r = await evacuer({ avoidZones: [], respecterInaccessibles: false });
   t("inaccessibles levés (dernier recours) : A redevient la plus proche, et c'est écrit",
     r.trace && r.trace.x === 500 && /sortie.brancard.inaccLeve/.test(r.html));
+  // Sortie CLASSIQUE (sans options) coupée par une zone inaccessible (10/10/2026) : même seuil
+  // de 10 m et même rang qu'en brancard — A, calée court, ne passe plus devant B ; alerte si coupé.
+  r = await evacuer(null);
+  t("classique : A coupée par une zone inaccessible ne passe plus devant B (chemin entier)",
+    r.trace && r.trace.x === 900 && !/sortie.coupee.alerte/.test(r.html) && !/sortie.brancard/.test(r.html));
+  zones = [];
+  r = await evacuer(null, [100, 600]);
+  t("classique : départ à 25 m de toute galerie → la fenêtre alerte (écart > 10 m)",
+    r.trace && /sortie.coupee.alerte/.test(r.html) && !/sortie.brancard/.test(r.html));
+  r = await evacuer(null, [100, 536]);
+  t("classique : écart de 9 m → pas d'alerte (seuil 10 m)", r.trace && !/sortie.coupee.alerte/.test(r.html));
+  zones = [{ type: "inaccessible", level: 0, points: [{ x: 250, y: 450 }, { x: 350, y: 450 }, { x: 350, y: 550 }, { x: 250, y: 550 }] }];
   // Recalcul en route : relancerDepuis relit road.evacuation.
   w.getRoads = () => [{ type: "itinerary", evacuation: { contraintes: { avoidZones: [], respecterInaccessibles: true }, supp: supp } }];
   corps.innerHTML = ""; trace = null;

@@ -4472,6 +4472,7 @@
   "sortie.brancard.inaccLeve": "zonas inaccesibles permitidas",
   "sortie.brancard.aucune": "ninguna zona evitada",
   "sortie.brancard.contourne": "Imposible evitar todas las zonas marcadas: este camino atraviesa al menos una.",
+  "sortie.coupee.alerte": "Este camino deja {ecart} fuera de las galerías trazadas, al inicio o al final: una zona inaccesible o una galería no trazada lo corta. Comprueba el terreno antes de adentrarte.",
   "sortie.btn.tracer": "🧭 Trazar la ruta",
   "sortie.btn.voirAutres": "▾ Ver las {n} otras salida{s}",
   "sortie.erreur.carteIndispo": "Mapa no disponible.",

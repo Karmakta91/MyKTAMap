@@ -4472,6 +4472,7 @@
   "sortie.brancard.inaccLeve": "zones inaccessibles autorisées",
   "sortie.brancard.aucune": "aucune zone évitée",
   "sortie.brancard.contourne": "Impossible d'éviter toutes les zones cochées : ce chemin en traverse au moins une.",
+  "sortie.coupee.alerte": "Ce chemin laisse {ecart} hors des galeries tracées, au départ ou à l'arrivée : une zone inaccessible ou une galerie non tracée le coupe. Vérifie le terrain avant de t'y engager.",
   "sortie.btn.tracer": "🧭 Tracer l'itinéraire",
   "sortie.btn.voirAutres": "▾ Voir les {n} autres sortie{s}",
   "sortie.erreur.carteIndispo": "Carte indisponible.",

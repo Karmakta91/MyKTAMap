@@ -4472,6 +4472,7 @@
   "sortie.brancard.inaccLeve": "inaccessible zones allowed",
   "sortie.brancard.aucune": "no zone avoided",
   "sortie.brancard.contourne": "Could not avoid all ticked zones: this path crosses at least one.",
+  "sortie.coupee.alerte": "This path leaves {ecart} outside the drawn galleries, at the start or at the end: an inaccessible zone or an undrawn gallery cuts it. Check the ground before committing to it.",
   "sortie.btn.tracer": "🧭 Plot the route",
   "sortie.btn.voirAutres": "▾ Show the {n} other exit{s}",
   "sortie.erreur.carteIndispo": "Map unavailable.",
