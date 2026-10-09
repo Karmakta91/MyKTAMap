@@ -225,7 +225,14 @@ jobs:
           #  - scripts/                                    → scripts dev local (check-no-pro-leak.js…)
           #  - Licence-pro.json                            → garde-fou (jamais en community mais au cas où)
           #  - .DS_Store, Thumbs.db                        → cosmétique OS
+          #  - docs/ sauf docs/applications/, README.md   → doc interne (BACKLOG, audits, archi) : seul ce
+          #    que l'app lit est livré — audit CD du 09/10/2026, mêmes règles que le Dockerfile et les
+          #    scripts de déploiement (scripts/check-livrables-docs.js)
           rsync -a \
+            --include='/docs/' \
+            --include='/docs/applications/***' \
+            --exclude='/docs/*' \
+            --exclude='/README.md' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='.githooks' \

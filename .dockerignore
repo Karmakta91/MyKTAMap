@@ -32,8 +32,11 @@ Thumbs.db
 # Node modules au cas où (l'app vanilla n'en a pas, mais defensive)
 node_modules
 
-# Documentation interne archi (lue par l'IA, pas par l'utilisateur)
-docs/architecture/
+# Documentation interne : de docs/, seul docs/applications/ (ce que l'app lit) part dans l'image ;
+# ni le README.md racine (journal de dev). Audit CD du 09/10/2026, F1 — mêmes règles que le Dockerfile.
+docs/*
+!docs/applications
+README.md
 
 # Builds locaux
 dist/
