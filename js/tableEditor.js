@@ -1893,7 +1893,7 @@
       } else if (res.mode === "1p") {
         html = window.I18n.t("tabledit.resol.mode1p") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong> · θ = <strong>" + res.theta + "°</strong>";
       } else {
-        html = window.I18n.t("tabledit.resol.mode2p") + "<br>échelle = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
+        html = window.I18n.t("tabledit.resol.mode2p") + "<br>" + window.I18n.t("tabledit.resol.echelle") + " = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
       }
       if (fichiers.length) html += "<br>" + window.I18n.t("tabledit.resol.nbFichiers", { n: fichiers.length });
       recapEl.innerHTML = html;

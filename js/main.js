@@ -673,7 +673,7 @@ async function lancerApplication() {
 
   // 🌀 v152 : message overlay au moment du render carte (lourd sur V2)
   if (typeof window._majOverlayChargement === "function") {
-    window._majOverlayChargement("Initialisation de la carte et des calques…");
+    window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
 
   await new Promise(function(resolve) { requestAnimationFrame(resolve); });
@@ -1528,7 +1528,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
       return typeof fp === "string" && /^data\/tiles\/z-?\d+\//.test(fp);
     }).length;
     if (typeof window._majOverlayChargement === "function") {
-      window._majOverlayChargement("Plan V2 tuilé — Indexation de " + totalTuiles + " tuiles…");
+      window._majOverlayChargement(window.I18n.t("main.loading.tilesIndex", { n: totalTuiles }));
     }
     let nbTuiles = 0;
     for (const f of files) {
@@ -1538,13 +1538,13 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         nbTuiles++;
         // Update progress every 50 tiles (gros plans = 1000+ tuiles)
         if (nbTuiles % 50 === 0 && typeof window._majOverlayChargement === "function") {
-          window._majOverlayChargement("Plan V2 tuilé — Indexation " + nbTuiles + " / " + totalTuiles + " tuiles…");
+          window._majOverlayChargement(window.I18n.t("main.loading.tilesProgress", { done: nbTuiles, total: totalTuiles }));
         }
       }
     }
     console.log("[Loader] Tiling V2 — " + nbTuiles + " tuiles enregistrées (lazy)");
     if (typeof window._majOverlayChargement === "function") {
-      window._majOverlayChargement("Plan V2 prêt — Initialisation de la carte…");
+      window._majOverlayChargement(window.I18n.t("main.loading.tilesReady"));
     }
   }
 
@@ -1706,7 +1706,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         const photoIds = Object.keys(idxObj.photos);
         if (photoIds.length > 0) {
           if (typeof window._majOverlayChargement === "function") {
-            window._majOverlayChargement("Restauration de " + photoIds.length + " photo(s)…");
+            window._majOverlayChargement(window.I18n.t("main.loading.photosRestore", { n: photoIds.length }));
           }
           // 🩸 v2.5.0 (lot C3, décision KARMA) — PLUS D'EFFACEMENT GLOBAL.
           // Avant : `deletePhotosForPlan(planId)` à CHAQUE ouverture d'un plan ZIP
@@ -1769,7 +1769,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (restoredCount > 0 && window.OOMGuard
               && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(
-              "📸 " + restoredCount + " photo" + (restoredCount > 1 ? "s" : "") + " restaurée" + (restoredCount > 1 ? "s" : "") + " depuis le plan",
+              window.I18n.t(restoredCount > 1 ? "main.toast.photosRestored.many" : "main.toast.photosRestored.one",
+                            { n: restoredCount }),
               "info", { groupe: "chargement" }   // 🔕 regroupé avec les autres restaurations
             );
           }

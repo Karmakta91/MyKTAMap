@@ -949,7 +949,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       // vérifie en amont, mais robustesse pour les cas limites).
       const corps = current
         ? '<div class="kta-note-popup-readonly-text">' + _esc(current) + '</div>'
-        : '<div class="kta-note-popup-readonly-empty"><em>(aucune note)</em></div>';
+        : '<div class="kta-note-popup-readonly-empty"><em>' + _esc(window.I18n.t("utils.note.empty")) + '</em></div>';
       const _uidLu = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;   // « créé par », historique
       return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
