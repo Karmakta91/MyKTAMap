@@ -358,6 +358,12 @@
     if (etat !== "on" && etat !== "down" && etat !== "licence" && etat !== null) return false;
     _signal = etat;
     _signalRaison = etat === "licence" ? String(raison || "").slice(0, 40) : "";
+    // Un module qui vient de JOINDRE son serveur dit que le réseau est revenu : l'indicateur « réseau coupé »
+    // (posé par l'événement offline) ne doit pas rester collant jusqu'à un événement online qui peut ne jamais
+    // venir (retour d'une autre appli sur téléphone). Sauf si le navigateur se dit encore hors ligne.
+    if (etat === "on" && _reseauCoupe && typeof navigator !== "undefined" && navigator.onLine !== false) {
+      _reseauCoupe = false;
+    }
     _recalculer();
     return true;
   }
