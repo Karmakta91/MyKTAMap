@@ -87,9 +87,11 @@ remplace.
 
 - **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
   (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
-- **FR en dur hors des modules audités** : l'ancien détecteur `find-hardcoded-fr.js` (retiré le 07/10/2026, dans l'historique Git) sortait ~960 candidats (plancher
-  connu de faux positifs ~560) ; seuls Secours, guidage, accueil et Documentation ont été triés. Même politique que
-  les popups : **au fil de l'eau**, quand on touche un module.
+- **FR en dur hors des modules audités** — tri complet de `js/` fait le 09/10/2026 (détecteur de l'historique Git +
+  passe sur les gabarits multi-lignes, qu'il ne voyait pas) : le reste visible est migré (calibrage d'échelle, logs de
+  débogage, messages de chargement, import des favoris). Reste, assumé : la page d'admin `confadmin.html` (100 % FR,
+  ne charge pas les dicos), les motifs de config invalide de `ktaExtensions.js` (lus par l'admin d'instance), les
+  `Error` techniques et les fallbacks FR derrière une clé. **Au fil de l'eau** pour ce qui serait encore passé.
 - 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
   thèmes, cosmétique.
 
