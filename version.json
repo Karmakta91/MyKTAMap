@@ -1,8 +1,8 @@
 {
-  "version": "v2.10.3",
-  "released": "2026-10-08",
+  "version": "v2.11.0",
+  "released": "2026-10-09",
   "notes": [
-    "🔒 Plus sûr et plus transparent : la page « Audit réseau » est réécrite, plus courte et plus claire (l'historique des versions a maintenant sa propre page), et l'app est prête pour une protection renforcée contre le code malveillant. 🗺️ Corrigé : les zones et carrés plus sombres (opacité) sur les plans projetés en Vue OSM. Hors connexion, un plan s'ouvre aussitôt depuis sa copie, sans attente sans fin. Nouveau : le Générateur crée un plan sur fond transparent, et tu choisis le fond (noir, blanc ou gris) affiché sous un plan transparent. Mode Secours : options brancard pour évacuer une victime, un scénario reçu s'ouvre directement depuis l'accueil, et les cartes des fiches PDF restent nettes même sur un grand plan.",
-    "💼 Grosse avancée de l'édition pro, réservée aux clubs et organisations qui installent leur propre serveur (travail en équipe, Mode Secours partagé). Rien ne change pour toi : myktamap.fr reste gratuit, sans compte, et tes données restent sur ton appareil."
+    "👋 L'écran de bienvenue est plus simple : un bouton « Continuer », c'est tout. Il ne propose plus d'importer une licence, ce qui n'activait rien sur myktamap.fr. Les listes (auteurs, étiquettes, légende) sont désormais rangées dans l'ordre alphabétique, accents compris.",
+    "💼 Édition pro : si la licence d'une installation expire ou est refusée, l'application reste fermée et le dit clairement, au lieu d'afficher « base injoignable » ou de s'ouvrir sur les données du dernier utilisateur de l'appareil."
   ]
 }

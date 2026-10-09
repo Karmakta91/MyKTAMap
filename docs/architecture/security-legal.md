@@ -2,7 +2,7 @@
 
 > 🔑 **Le mot de passe d'instance, quand il existe, est le SEUL** (`data/index.json > config.accessHash`).
 > Il n'y a **plus de code communautaire codé en dur** depuis le 04/10/2026 : sans mot de passe d'instance,
-> l'écran d'entrée propose « Continuer sans licence » (§36).
+> l'écran d'entrée propose « Continuer » (§36).
 >
 > 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
 > `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
@@ -15,9 +15,11 @@
 > connexion), la promesse « aucune trace » serait fausse, et le coffre / les plans gardés ont besoin d'IndexedDB, que le
 > shim bloque. Bouton grisé et expliqué (🧩 Fonctionnalités optionnelles), `launch()` / `confirmAndLaunch()` refusent.
 >
-> 🔒 **v1.90.8 / v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, ni
-> la licence importée par l'utilisateur (`"local"`, v1.90.8) ni celle servie par l'instance (`"server"`,
-> v1.90.9) n'ouvre la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser
+> 🔏 **09/10/2026 — Licence de l'installation absente, expirée ou refusée par le serveur = app FERMÉE** (§77.10) ;
+> l'utilisateur ne peut plus importer de licence (gate, profil).
+>
+> 🔒 **v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, la licence servie
+> par l'instance n'ouvre pas la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser
 > rendait le mot de passe muet. `main.js` refuse donc le bypass **quelle que soit la source** dès que
 > l'instance impose un mot de passe. Le mode pro s'active après la saisie ; la licence n'est pas une clé
 > d'accès. Seule une instance SANS mot de passe laisse la licence serveur bypasser (rien à garder).
@@ -61,7 +63,7 @@
 
 ---
 
-### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Continuer sans licence »)
+### 36. Unlock Gate — écran d'entrée (mot de passe d'instance ou « Continuer »)
 
 Module `js/unlockGate.js` : un écran entre la fin du splash et le démarrage normal, montré au premier
 lancement et après un reset complet (le choix est mémorisé en localStorage). **Plus aucun mot de passe
@@ -76,7 +78,7 @@ chargée par `ktaInstance.js`) :
 | Instance | Écran | Ce qui ouvre |
 |---|---|---|
 | publie `index.json > config.accessHash` (posé par ConfAdmin ; c'est le cas de myktamap.fr) | 🗝️ champ mot de passe, **sans** bloc licence | **seul** le mot de passe de l'instance |
-| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 « Bienvenue » : **Continuer sans licence** + 📂 Importer ma licence pro | le bouton (mémorise `libre-v1`) ou une licence valide |
+| sans `accessHash` (usage local, ZIP, Docker community) | 🧭 « Bienvenue » : **Continuer** | le bouton (mémorise `libre-v1`) ou une licence valide |
 
 ⚠️ **Niveau de sécurité inchangé** : barrière **sociale**, jamais une authentification. Le hash d'instance
 est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modifie en F12.
@@ -94,7 +96,7 @@ est dans un fichier public, brute-forçable hors ligne ; `localStorage` se modif
 - `revaliderInstance(hash, indexRepondu)` (appelée par `main.js` avant la gate, **seulement si l'index a
   répondu**) : l'instance impose un mot de passe → tout autre accès mémorisé (libre, ancien code, ancien
   mot de passe) est **révoqué** ; l'instance retire son mot de passe → l'accès qui en venait est révoqué
-  (l'écran propose alors « Continuer sans licence »).
+  (l'écran propose alors « Continuer »).
 
 Mesuré le 04/10/2026 (Edge, index simulé) : ancien code sans mot de passe d'instance → ouvert ; ancien
 code + instance au **même** mot de passe → ouvert, mémoire posée ; ancien code ou accès libre + instance
@@ -121,7 +123,7 @@ Une licence pro (serveur ou locale) contourne l'écran **sauf** sur une instance
 
 `viderCacheAppli` purge `localStorage` → l'écran revient au démarrage suivant. Sur une instance qui publie
 un mot de passe, la 1ʳᵉ fenêtre prévient qu'il sera **redemandé** (`maint.reset_access_code_*`), **sans
-jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (« Continuer sans licence »).
+jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (« Continuer »).
 
 #### 36.6 API publique `window.UnlockGate`
 
@@ -376,23 +378,21 @@ if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
 
 ---
 
-### 77. Mécanisme de licence pro — Licence-pro.json signée + import manuel
+### 77. Mécanisme de licence pro — Licence-pro.json signée, servie par l'installation
 
 4 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
 sans casser la philo offline-first ni l'audit réseau.
 
 #### 77.1 Architecture
 
-**Module unique** : `js/proLicense.js` (~280 lignes IIFE) → `window.MyKTAMapProLicense = { isPro, getData, getSource, importFile, removeLocal, forceRecheck }`.
+**Module unique** : `js/proLicense.js` (~280 lignes IIFE) → `window.MyKTAMapProLicense = { isPro, getData, getSource, forceRecheck }` (`getSource()` : `"server"` ou `null`).
 
 Au boot très tôt (chargé juste après `js/copyright.js`, avant `themeManager.js`), le module :
-1. Lit deux clés `localStorage` distinctes :
-   - `__mktm_pro_license__` : cache du fetch serveur `/Licence-pro.json`
-   - `__mktm_pro_license_local__` : licence importée manuellement via UI
-2. Applique synchronement la classe `kta-instance-pro` sur `<html>` si l'une OU l'autre porte `instance: "pro"`
-3. Lance un fetch async `GET /Licence-pro.json?_=<ts>` (cache-bust) pour confirmer/invalider le cache serveur
-4. Le fetch serveur n'affecte **jamais** le cache local (sources strictement indépendantes)
-5. Si les 2 sources sont actives, **serveur prime** (annonce officielle du déployeur > import perso)
+1. Purge l'ancienne licence importée par l'utilisateur (`__mktm_pro_license_local__`, import retiré le 09/10/2026)
+2. Lit le cache serveur `__mktm_pro_license__` — une licence **expirée** y est ignorée et purgée, hors ligne compris
+3. Applique synchronement la classe `kta-instance-pro` sur `<html>` si la licence est active
+4. Lance un fetch async `GET /Licence-pro.json?_=<ts>` (cache-bust) : signature, date et domaine vérifiés AVANT de
+   mémoriser ; refusée ou absente (404) → cache purgé ; hors ligne / 5xx → cache conservé
 
 **Pattern CSS de bascule** (cf §53 ThemeManager, même approche) : `.kta-licence-community` vs `.kta-licence-pro`.
 
@@ -421,7 +421,7 @@ car la page est statique et peut être ouverte hors contexte de l'app principale
 ```json
 {
   "instance":     "pro",                              // REQUIS
-  "license_hash": "MKTM-LIC-<32 hex chars>",          // REQUIS pour import manuel
+  "license_hash": "MKTM-LIC-<32 hex chars>",          // nominatif
   "client":       "Acme SpeleSecours",
   "license_id":   "MKTM-2026-001",
   "license_type": "annual" | "test" | …,
@@ -436,12 +436,11 @@ car la page est statique et peut être ouverte hors contexte de l'app principale
 publique** embarquée (`CLE_PUBLIQUE_JWK`, WebCrypto), elle n'est pas expirée, et ses `domaines` couvrent
 `location.hostname` (ou `"*"`). Forme signée = la licence **sans** `signature`, clés triées récursivement
 (même canonisation côté émetteur). Sans WebCrypto (contexte non sécurisé), aucune licence n'est acceptée.
-Vérifiée au fetch serveur (avant mémorisation), à l'import manuel (`license.err.signature`) et au démarrage
-pour les licences mémorisées (retirées si invalides). La clé privée qui signe ne vit **jamais** dans ce dépôt
+Vérifiée au fetch serveur (avant mémorisation) et au démarrage pour la licence mémorisée (retirée si invalide ou
+expirée). La clé privée qui signe ne vit **jamais** dans ce dépôt
 (`check-no-pro-leak.js` refuse `.pem`, `BEGIN … PRIVATE KEY`, JWK à champ `d`, `signer-licence.js`).
 
-**Validation hash** (en plus de la signature) : regex stricte `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`, exigée à
-l'import manuel. Le hash et la licence sont nominatifs (1 client/contrat).
+**Hash** : format `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`. Le hash et la licence sont nominatifs (1 client/contrat).
 
 🛡️ `scripts/check-licence.js` (pré-commit, bloquant) **exécute** la vérification avec une clé d'essai
 substituée : signée valide / `*` acceptées ; altérée, sans signature, expirée, autre domaine, autre clé
@@ -466,40 +465,19 @@ Pourquoi : l'état doit refléter la réalité serveur en temps réel. Si un dé
 `Licence-pro.json`, le mode pro doit s'éteindre au prochain check du PWA — pas être maintenu artificiellement
 par un cache LRU stale.
 
-#### 77.5 Import manuel via UI profil (v1.28.4)
+#### 77.5 Profil : statut seulement — l'import par l'utilisateur est retiré (09/10/2026)
 
-Nouvelle section **« 💼 Édition professionnelle »** dans la modale **« 👤 Mon profil »** du loader (cf. §61
-Profile UI). 3 états rendu dynamiquement par `_refreshProfileProSection()` dans `index.html` :
-
-| État | Rendu |
-|---|---|
-| Community | Hint texte + bouton « 📂 Importer une licence pro » qui ouvre file picker `.json` |
-| Pro via serveur | Badge ✓ + hint « instance pro déployée — aucune action requise » (pas de bouton) |
-| Pro via local | Badge ✓ + hint + bouton « 🗑️ Retirer la licence locale » |
-
-**Pipeline import** :
-1. File picker accept `.json,application/json` → `FileReader.readAsText(file)`
-2. Cap taille 50 KB (anti-spam)
-3. `JSON.parse` (refus si erreur)
-4. `_validateData(data, strictHash=true)` (refus si `instance !== "pro"` ou hash absent/mal formé)
-5. `localStorage.setItem("__mktm_pro_license_local__", JSON.stringify(data))`
-6. `_recomputeActive()` → re-render section + toast OOMGuard
-
-Retrait : `localStorage.removeItem` + `_recomputeActive()`. La confirmation passe par un `confirm()` natif
-(volontaire — cas marginal, format custom non justifié).
-
-**Helpers internes** dans `index.html` (associés au modal profil) :
-- `_proHashShort(hash)` : tronque pour affichage (`MKTM-LIC-abc123…3456`) — **non utilisé en v1.28.4** mais
-  laissé en place pour usage futur (diagnostic, export profil, etc.)
-- `_proSourceLabel(source)` : libellé humain — idem
-- `_proSourceHint(source)` : phrase d'explication contextuelle (utilisée)
+La section **« 💼 Édition professionnelle »** du profil n'apparaît que si l'installation sert une licence valide
+(badge ✓ + « instance pro déployée »). Plus d'import ni de retrait : une licence importée sur un appareil
+(source « locale », v1.28.4 → 09/10/2026) n'activait **aucune** fonction pro — la règle E exige une licence SERVEUR
+pour charger les modules — et ne servait qu'à passer la gate community. `check-gate-instance.js` refuse son retour
+(gate, profil, `importFile` / `removeLocal`). `_proHashShort` / `_proSourceLabel` : mort documenté (BACKLOG).
 
 #### 77.6 Sécurité juridique
 
-Mécanisme **purement cosmétique** côté technique. La validité juridique vient du **contrat signé** entre
+La licence est **signée** (ECDSA P-256, §77.3) ; sa validité juridique vient aussi du **contrat signé** entre
 MyKTAMap et le client :
 - Hash nominatif → reproduction = infraction contractuelle
-- Pas de vérification cryptographique (signature HMAC future possible si demande client institutionnel)
 - Cohérent avec la doctrine §36 UnlockGate « barrière sociale, pas pseudo-crypto »
 - Le copyright légal reste dans `LICENSE` (CC BY-NC-SA) + `LICENSE_PRO.md` (côté repo pro privé)
 
@@ -508,7 +486,6 @@ MyKTAMap et le client :
 AUCUNE nouvelle surface réseau côté community :
 - Le fetch `/Licence-pro.json` est **same-origin** (déjà couvert par `connect-src 'self'`)
 - Sur `myktamap.fr` (community pur) : le serveur retourne 404 → mode community préservé
-- L'import manuel utilise `FileReader` (lecture locale du disque) — le fichier n'est **jamais envoyé** au serveur
 - Pas de directive CSP ajoutée, pas de nouveau service tiers
 - `connect-src` inchangé (même origine, `blob:`, tuiles OpenStreetMap)
 
@@ -516,8 +493,7 @@ Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail
 
 #### 77.8 À ne PAS faire
 
-- ❌ Mélanger les 2 caches localStorage (server / local) — sources strictement indépendantes
-- ❌ Modifier la doctrine "serveur prime sur local" sans accord (cohérent avec "annonce officielle du déployeur")
+- ❌ Réintroduire un import de licence par l'utilisateur (gate, profil) : il n'activait rien et ouvrait la gate
 - ❌ Réintroduire la mention "💼 Licence pro" en mode pro (redondant — on est déjà pro)
 - ❌ Logger ou exposer publiquement le `license_hash` (nominatif, à traiter comme un secret modéré)
 - ❌ Casser la backward compat fetch serveur (les premiers déploiements v1.28.2/3 sont sans hash)
@@ -526,80 +502,24 @@ Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail
 
 1. Identifier l'élément DOM à wrapper
 2. L'envelopper soit dans `.kta-licence-community` (visible community, masqué pro) soit dans `.kta-licence-pro` (masqué community, visible pro)
-3. Vérifier visuellement les 2 états en testant avec un `Licence-pro.json` posé localement ou importé via UI profil
+3. Vérifier visuellement les 2 états en servant un `Licence-pro.json` (pile de test du pro, ou fichier posé à la racine)
 4. Documenter dans la matrice §77.2 ci-dessus
 
-#### 77.10 Voie d'accès UnlockGate via import de licence (v1.28.5)
+#### 77.10 Licence absente, expirée ou refusée = installation fermée (09/10/2026)
 
-Sur l'écran **libre** de l'UnlockGate (instance sans mot de passe, §36), l'import d'un fichier
-`Licence-pro.json` reçu par mail/canal privé active le mode pro et ferme la gate. Sur une instance qui
-publie un mot de passe, le bloc est retiré et l'import n'ouvre pas la gate (mot de passe requis).
+Une installation qui déclare une connexion serveur (`serverConnection.state: "on"`, ou sa dernière config connue
+hors ligne) **sans licence serveur valide** est en état « licence » (`ktaExtensions.js > etatDe`). `main.js` affiche
+alors « Installation indisponible » (motif licence, `_motifBlocage`) **avant** les modules et la gate community.
+🩸 Avant : pas de licence → pas de module → pas de gate déléguée → gate community, souvent déjà franchie → app
+ouverte en mode community sur les plans et sessions gardés par le dernier utilisateur de l'appareil.
 
-**Implémentation** (`js/unlockGate.js`, ~70 lignes ajoutées) :
-
-- Dans `_creerOverlay()`, **sous** le formulaire historique du code (inchangé), ajout de 2 blocs :
-  - Séparateur `<div class="kta-unlock-separator kta-licence-community">` avec libellé « ou »
-  - Bloc `<div class="kta-unlock-licence-block kta-licence-community">` contenant un hint italique
-    + bouton ambré « 📂 Importer ma licence pro » + `<input type="file" accept=".json">` masqué
-- Dans `ouvrirGate()`, handler du bouton : ouvre le file picker, appelle
-  `window.MyKTAMapProLicense.importFile(file)` (= **même API que §77.5 import profil**, validation
-  stricte avec hash bien formé requis). Si OK :
-  ```js
-  localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);   // "libre-v1"
-  localStorage.removeItem(LS_ATTEMPTS);
-  // fondu overlay + resolve(true)
-  ```
-- Si rejeté : message d'erreur inline `❌ Licence refusée : <error>` (sans incrémenter le compteur
-  de tentatives échouées — l'import licence n'est PAS un essai de code communautaire raté)
-
-**Doctrine** : « détenir une licence pro = canal légitime d'accès, pas besoin de re-saisir le code
-communautaire à chaque reload ». Une fois la licence importée, le flag `LS_UNLOCK` est posé comme
-si l'user avait tapé le code → la gate ne réapparaît pas au prochain boot. Si l'user retire ensuite
-sa licence locale depuis le profil (§77.5), le flag `LS_UNLOCK` reste posé : pas de re-prompt
-(« déjà passé une fois par un canal légitime »).
-
-**Bascule auto** : les 2 blocs (séparateur + import) sont wrappés dans `.kta-licence-community`. Sur
-instance pro serveur (`Licence-pro.json` détecté), ils sont masqués automatiquement via la cascade
-CSS de §77.1 (`html.kta-instance-pro .kta-licence-community { display: none }`). Aucune action
-spéciale dans le JS — réutilise le pattern existant.
-
-**CSS dédié** (`css/style.css`, ~60 lignes mode dark + ~22 lignes variant thème clair) :
-
-| Classe | Rôle |
-|---|---|
-| `.kta-unlock-separator` | Flex row avec 2 lignes + libellé « ou » |
-| `.kta-unlock-separator-line` | Ligne horizontale subtile `rgba(255,255,255,0.10)` |
-| `.kta-unlock-separator-text` | Libellé uppercase letter-spaced, gris muted |
-| `.kta-unlock-licence-block` | Wrapper text-align center |
-| `.kta-unlock-licence-info` | Hint italique gris-bleu |
-| `.kta-unlock-licence-btn` | Bouton ambré `rgba(244,197,66,...)` border + hover saturé |
-
-Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeManager).
-
-**À NE PAS faire** :
-
-- ❌ Incrémenter `LS_ATTEMPTS` si l'import est rejeté — un essai d'import RATÉ n'est PAS un essai de code
-  communautaire RATÉ. Sinon, un user qui essaie 5 fois d'importer un fichier invalide se retrouve en
-  lockout sans avoir tapé le code une seule fois.
-- ❌ Bypass `MyKTAMapProLicense.importFile(file)` — il assure la validation regex hash, le cap taille,
-  l'écriture localStorage + le dispatch d'événement `mktm:license-changed`. Tout pipeline parallèle
-  serait du code mort + risque de désynchronisation.
-- ❌ Ouvrir le file picker sans masquer le compteur de tentatives au-dessus — UX confuse (« 5/5 tentatives
-  utilisées » pendant qu'on essaie d'importer une licence n'a aucun sens). Solution actuelle : le hint
-  italique du bloc précise le contexte différent.
-- ❌ Permettre l'import depuis l'écran lockout — au-delà de 5 tentatives ratées du code communautaire,
-  la gate refuse tout (cohérent avec §36.3 — verrou temporisé depuis le 13/09/2026, pas d'import pendant le délai). L'import est dispo UNIQUEMENT
-  sur la gate normale avant lockout. Volontaire : sinon bypass trivial du lockout.
-
-#### 77.11 Pour étendre
-
-**Si on veut ajouter une 3e voie d'accès** (genre code QR à scanner, signature WebAuthn, etc.) :
-
-1. Ajouter le bloc HTML sous le bouton import dans `_creerOverlay()`, wrappé dans `.kta-licence-community`
-2. Ajouter le handler dans `ouvrirGate()` — pattern identique : succès → set `LS_UNLOCK` + fade + resolve
-3. **Ne pas** incrémenter `LS_ATTEMPTS` en cas d'échec (cohérent avec import)
-4. Ajouter le bloc dans la matrice §77.2 des surfaces basculées
-5. Documenter le canal dans `docs/NETWORK_AUDIT.md` si nouvelle surface réseau impliquée
+- Licence refusée par le **serveur** (`503 licence_invalide` de l'API pro, sauf `/api/health`) : le module la
+  signale par `KtaExtensions.signaler("licence", raison)` → pastille « Licence refusée par le serveur (raison) »,
+  jamais « Base de données : injoignable » ; la gate déléguée échoue → même écran fermé.
+- **Hors ligne** : licence en cache encore valide → rien ne change (module + copie locale) ; expirée → fermée.
+- Classe `html.kta-instance-reliee` (posée dès la dernière config connue) : splash et pied de page ne montrent
+  jamais l'identité community d'une installation reliée, licence valide ou non.
+- Garde-fou : `check-extensions.js` (blocage avant modules et gate, signal, purge du cache expiré, splash).
 
 ---
 
@@ -1371,7 +1291,7 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 **⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
 0. ⚖️ **Conditions d'utilisation** — affichée par **`main.js > initApp` AVANT l'UnlockGate** (pas par le flow). Bug corrigé : déclenchée post-splash par le flow, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
-1. 🗝️ **UnlockGate** (mot de passe d'instance, ou « Continuer sans licence » / import licence) puis 🔐 **gate PIN**.
+1. 🗝️ **UnlockGate** (mot de passe d'instance, ou « Continuer ») puis 🔐 **gate PIN**.
 2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
 3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`) → 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`).
 

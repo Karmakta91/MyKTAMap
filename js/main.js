@@ -209,17 +209,29 @@ function _appliquerConnexionServeur(config, indexRepondu) {
 // de connexion ne se charge pas, ou dont la gate déléguée échoue. L'app reste
 // bloquée ici (comme une gate) ; « Réessayer » recharge la page. JAMAIS de
 // repli sur la gate community.
-function _ktaInstanceIndisponible() {
+// 🔏 09/10/2026 — motif "licence" : installation pro dont la licence est absente, expirée ou
+// refusée par le serveur. Même écran, autre texte : avant, l'app s'ouvrait en mode community
+// sur les données gardées par le dernier utilisateur de l'appareil (retour KARMA).
+function _motifBlocage() {
+  const e = (window.KtaExtensions && typeof window.KtaExtensions.etat === "function") ? window.KtaExtensions.etat() : null;
+  return (e && e.etat === "licence") ? "licence" : "";
+}
+function _ktaInstanceIndisponible(motif) {
   return new Promise(function() {
-    const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const lic = motif === "licence";
+    const e = (lic && window.KtaExtensions) ? window.KtaExtensions.etat() : null;
     const ov = document.createElement("div");
     ov.id = "kta-instance-indispo";
     ov.className = "kta-instance-indispo";
     ov.setAttribute("role", "alertdialog");
     const boite = document.createElement("div");
     boite.className = "kta-instance-indispo-boite";
-    const h = document.createElement("h2"); h.textContent = t("ext.indispo.titre");
-    const p = document.createElement("p"); p.textContent = t("ext.indispo.texte");
+    const h = document.createElement("h2"); h.textContent = t(lic ? "ext.licence.titre" : "ext.indispo.titre");
+    const p = document.createElement("p");
+    p.textContent = lic
+      ? t((e && e.raison) ? "ext.licence.texteRaison" : "ext.licence.texte", { raison: e && e.raison ? e.raison : "" })
+      : t("ext.indispo.texte");
     const b = document.createElement("button"); b.type = "button"; b.className = "kta-btn kta-btn-primary";
     b.textContent = t("ext.indispo.reessayer");
     b.addEventListener("click", function() { location.reload(); });
@@ -2155,6 +2167,19 @@ window.proposerRedemarrageLangue = function() {
   // licence de source serveur (KtaExtensions.chargerModules ne fait rien
   // sinon : myktamap.fr n'en charge jamais). Ils se chargent AVANT les gates,
   // pour qu'un module puisse remplacer la gate d'entrée par son compte.
+  // 🔏 09/10/2026 — INSTALLATION PRO SANS LICENCE VALIDE = APP FERMÉE. L'état « licence » ne
+  // naît que d'une installation qui déclare une connexion serveur (index, ou sa dernière config
+  // connue hors ligne) sans licence serveur valide : absente, expirée, signature refusée. Sans
+  // ce verrou, les modules ne se chargeaient pas, la gate déléguée non plus, et l'app tombait
+  // sur la gate community — souvent déjà franchie — puis s'ouvrait sur les plans et sessions
+  // gardés par le dernier utilisateur de l'appareil. Hors ligne avec une licence encore valide
+  // en cache, l'état est « configurée » : rien ne change (module + copie locale).
+  if (_motifBlocage() === "licence") {
+    console.warn("[Main] Installation pro sans licence valide : accès fermé (jamais de repli community)");
+    await _splashEnd();
+    await _ktaInstanceIndisponible("licence");
+  }
+
   let _gateDelegueeOk = false;
   if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
     const _mods = await window.KtaExtensions.chargerModules();
@@ -2166,7 +2191,7 @@ window.proposerRedemarrageLangue = function() {
         // 🩸 JAMAIS de repli sur la gate community : le code communautaire,
         // diffusé largement, ouvrirait une instance privée (trou v1.90.7).
         console.warn("[Main] Gate déléguée en échec :", e);
-        await _ktaInstanceIndisponible();
+        await _ktaInstanceIndisponible(_motifBlocage());
       }
     } else if (_mods && _mods.demandes > 0 && _mods.echecs > 0) {
       // Instance connectée dont un module ne se charge pas : écran dédié, même

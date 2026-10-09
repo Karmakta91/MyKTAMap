@@ -208,9 +208,14 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
   `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI`), puis **`.githooks/pre-commit`** (tous
   les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
+- **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
+  commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
-- **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte (jeton Git
-  rangé, lu via `git credential fill` ; illisible = `DEROGE`). Tient lieu de protection de branche.
+- **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte — il lit
+  la même marque `refs/ci/verte/<branche>` que le VPS (`git ls-remote`, sans jeton ni coffre d'identifiants Windows,
+  donc utilisable dans une session SSH ouverte depuis le téléphone) ; marque illisible = `DEROGE`. Tient lieu de
+  protection de branche. Le poste parle à GitHub en SSH (clé `~/.ssh/github_poste`, remotes `git@github.com:…`) :
+  en HTTPS, l'identifiant rangé dans le coffre Windows est inaccessible depuis SSH.
 - **Dependabot** (`.github/dependabot.yml`) : actions GitHub + `scripts/smoke`, PR vers `Karma_dev`. Les librairies de
   `lib/` sont suivies à la main dans **`lib/VERSIONS.md`**.
 - **Pas de Sonar en CI** : SonarQube tourne en local (Docker), injoignable depuis un runner GitHub — marche 1ter
@@ -630,7 +635,8 @@ documentées ici pour la doctrine.
 | `check-georef-estimation.js` | maths de l'estimation du point B (A + échelle + Nord) | `Number(null) = 0` → un A à lat nulle partait à l'équateur |
 | `check-image-header-dims.js` | parseur binaire des dimensions d'image du Générateur | « Image non décodable » sur les JPG 32K×32K (limite Chrome/Skia) |
 | `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
-| `check-devmode-docs.js` | manifest de la bibliothèque du Mode Dev (chemins existants, aucun `.md` d'archi oublié, hash SHA-256) ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | doc renommée = modale cassée en silence |
+| `check-devmode-docs.js` | le Mode Dev ne relit **aucune** doc technique (ni manifest, ni `docs/` hors `docs/applications/`, ni `README.md`) ; hash SHA-256 ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | la bibliothèque obligeait à publier toute la doc interne sur dev (audit CD du 09/10/2026, F1) |
+| `check-livrables-docs.js` | le `Dockerfile`, le ZIP de `release.yml` et `.dockerignore` ne livrent de `docs/` que `docs/applications/`, jamais le `README.md` racine (règles rsync présentes et **dans l'ordre**) | BACKLOG, audits et `README.md` dans l'image Docker — donc servis par pro.myktamap.fr — et dans le ZIP (audit CD, F1) |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
 | `check-aide-sections.js` | structure de l'Aide intégrée : même nombre de sections FR/EN, **1 seul titre par section**, `AIDE_CATEGORIES` couvre tout (ni orpheline, ni doublon, ni hors-bornes) | **3 bugs d'un coup le 01/09** : conteneur oublié fusionnant 2 sections FR (« Mode profil » inatteignable) · section absente en EN alors que les index sont **communs aux 2 langues** · index annoncé à 29 pour une section en 30 (« Mon carnet » tombée dans le filet « Autres ») |
 
@@ -673,44 +679,48 @@ documentées ici pour la doctrine.
 
 ### 85. Déploiement des sites — Git sur le VPS, sans FTP (07/10/2026)
 
-- Deux scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
+- Scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
   `/data/www/dev.myktamap.fr` sur `Karma_dev` ; `deploy-prod.sh` → `/data/www/myktamap.fr` sur `main` (confirmation
-  `PROD`, après `merge-main.ps1`). Retour arrière : `deploy-prod.sh <commit ou tag>`.
+  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt client, `PRO`) ;
+  `kta-serveur.sh` = « menu 0 » qui les appelle.
+- **Mise à jour automatique** (décision KARMA du 09/10/2026) : `auto-deploy.sh`, lancé par cron toutes les 5 min,
+  compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** : le job
+  `marquer-vert` de `ci.yml` pose `refs/ci/verte/<branche>` sur chaque commit poussé qui passe, lue par le VPS avec
+  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
+  de CI). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
+  (`/data/scripts/PAUSE-<domaine>`, menu 0 → 8). Conséquence : `main` mergé = prod en ligne dans les 5 minutes.
+- **Retour arrière** : menu 0 → 4 / 5 (pose la pause, sinon la branche reviendrait) — procédure complète, pro
+  compris : `docs/RELEASE_GATE.md` § Retour arrière.
 - Le dépôt vit **hors du dossier web** (`/data/git/<site>.git`, `core.worktree`) : aucun `.git` servi.
-- **Sparse checkout** : ne sont posés ni `data/`, ni `.claude/` / `.git*`, ni `scripts/`, `CLAUDE.md`, `Dockerfile`,
-  `docker/` ; en prod, `docs/` se réduit à `docs/applications/`.
+- **Sparse checkout** : ne sont posés ni `data/`, ni `.claude/` / `.git*`, ni `scripts/`, `CLAUDE.md`, `README.md`,
+  `Dockerfile`, `docker/` ; sur **les deux sites**, `docs/` se réduit à `docs/applications/` (ce que l'app lit). Les
+  motifs sont réécrits et réappliqués à chaque déploiement : un fichier qui sort des motifs **disparaît** du site.
+  🩸 Jusqu'au 09/10/2026, dev servait `docs/` entier et les deux sites le `README.md` racine — la documentation
+  interne d'un dépôt privé, lisible sans mot de passe (audit CD, F1).
 - 🩸 **`data/` n'est jamais écrit ni effacé** : `data/index.json` et le relevé fictif sont SUIVIS par Git et déjà présents
   sur le serveur — Git ≥ 2.37 les « reprend » si on ne pose pas `sparse.expectFilesOutsideOfPatterns=true`, et une
   mise à jour écraserait alors l'`index.json` du site (reproduit sur une copie). Les scripts posent ce réglage et
   refusent tout déploiement si un fichier de `data/` perd son bit skip-worktree. `data/` reste géré à la main.
 - Mise à jour refusée si un fichier du site a été modifié à la main ; 1re installation : ancien site archivé (sans
   `data/`), fichiers hors dépôt listés, jamais supprimés.
+- **Après chaque passage** (audit CD du 09/10/2026, Q3) : `deploiement.json` à la racine du site (`commit`, `branche`,
+  `version`, `date` — la version seule ne dit pas quel commit tourne, on commite sans bump) ; le site est interrogé
+  comme un navigateur (version, cache du Service Worker, en-têtes `no-cache`, commit, doc interne non servie — en
+  lisant le **contenu** : toute adresse inconnue répond 200 avec la page de l'app) ; une ligne au journal
+  `/data/www/_sauvegardes/deploiements.log`, refus et abandons compris ; un seul déploiement à la fois par site
+  (`flock`). Codes : `0` ok · `1` refus ou abandon, site inchangé · `2` site changé mais vérification en échec.
+- **Depuis le poste** : `scripts/release/etat-sites.ps1` (lecture seule, sans secret) fait les mêmes contrôles sur les
+  deux sites et donne l'écart en commits avec `origin/Karma_dev` / `origin/main` — rappelé en fin de `merge-main.ps1`
+  et avant la marche 2 de `RELEASE_GATE.md`.
 - Remplace `scripts/deploy/deploy.ps1` (FTP), retiré le 07/10/2026.
 
-## 📚 La bibliothèque de docs du mode Développeur — ce qui la garde honnête (06/09/2026)
+## 📚 La doc technique ne se lit pas dans l'app (depuis le 09/10/2026)
 
-Le manifeste `DOCS` de `js/devMode.js` liste ce que la modale sert. `scripts/check-devmode-docs.js` le confronte au
-dépôt dans **les deux sens** : un chemin listé doit exister (un renommage oublié casse le commit), et une doc
-présente doit être listée.
+Le mode Développeur avait une bibliothèque qui affichait `README.md` et `docs/` (architecture, BACKLOG, audits…). Pour
+fonctionner, elle exigeait que ces fichiers soient **déployés**, donc publics : le mot de passe du mode ne cachait que
+la liste, pas les fichiers. Elle a été retirée ; les sites ne reçoivent plus que `docs/applications/` (§85) et la doc
+technique se lit dans le dépôt. `scripts/check-devmode-docs.js` refuse son retour : ni manifest de docs, ni lecture de
+`docs/` hors `docs/applications/`, ni du `README.md` racine.
 
-🩸 **Le second contrôle ne scannait que `docs/architecture/`.** Une doc déposée à la RACINE de `docs/` passait donc au
-vert tout en restant **invisible** en mode Développeur. Constaté sur `ETUDE_PODOMETRE.md` — et l'audit déclenché par
-la question de KARMA (« on n'a pas oublié d'ailleurs ? ») en a trouvé **trois autres**, absentes de longue date :
-`DESIGN_NAV_INTELLIGENTE.md`, `INSTALLATION_SELFHOST.md` et les deux audits i18n. 22 docs → 27.
-
-La racine est désormais couverte au même titre, avec une liste `HORS_BIBLIO` **explicite** : ce qui n'y est pas doit
-être une décision, jamais un oubli — même principe que la tolérance de `check-prefs-survival.js`. En sont exclues les
-docs déjà servies ailleurs dans l'app (README_USER → 📚 Documentation, AI_CONTEXT → 🤖 Aide IA, NETWORK_AUDIT → 🔒
-Audit réseau, CGU → écran légal) et l'historique daté de `docs/audits/`.
-
-**Deux détails qui comptent** :
-
-- Les docs ne sont **pas précachées** : la modale les lit en direct (`fetch(path, { cache: "no-store" })`) et **dit**
-  quand ça échoue — hors ligne, ou `docs/` non téléversé. Le repli silencieux est déjà traité : un serveur PWA qui
-  renvoie `index.html` en 200 pour un fichier absent est démasqué en testant si la réponse commence comme du HTML.
-- **dev.myktamap.fr** reçoit `docs/` entier (déploiement Git, §85) : une nouvelle doc y part toute seule. **myktamap.fr**
-  ne reçoit que `docs/applications/` : en prod, la bibliothèque du mode Développeur dit que les docs d'architecture
-  sont absentes (repli déjà prévu), ce qui est voulu — elles se lisent sur GitHub.
-
-Un titre de la bibliothèque **porte sa date** quand la doc est un instantané (les audits i18n de juin 2026) : la
-bibliothèque ne doit pas faire passer une photo pour une référence courante.
+Ce que l'app lit encore, et qui doit donc rester déployé : les guides (`README_USER*.md`, 📚 Documentation), l'Aide IA
+(`AI_CONTEXT.md`), l'audit réseau (`NETWORK_AUDIT*`), les CGU et les guides Docker — tous dans `docs/applications/`.

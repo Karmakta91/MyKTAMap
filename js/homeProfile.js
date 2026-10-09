@@ -926,15 +926,14 @@
                 '</div>' +
               '</div>' +
 
-              // 🆕 v1.28.4 : section Édition pro — statut + import/retrait
-              // licence locale. Le contenu dynamique (statut, source, hash
-              // tronqué, boutons) est rendu par _refreshProfileProSection().
-              '<div class="kta-profile-pro-section" id="kta-profile-pro-section">' +
+              // 💼 Section Édition pro — affichée SEULEMENT quand l'installation sert sa
+              // licence (source serveur). Plus d'import ni de retrait par l'utilisateur
+              // (retirés le 09/10/2026) : une licence importée n'activait aucune fonction pro.
+              '<div class="kta-profile-pro-section" id="kta-profile-pro-section" hidden>' +
                 '<div class="kta-profile-pro-header">💼 ' + window.I18n.t("home.splash.proEdition") + '</div>' +
                 '<div class="kta-profile-pro-body" id="kta-profile-pro-body">' +
                   '<div class="kta-profile-pro-loading">⏳…</div>' +
                 '</div>' +
-                '<input type="file" id="kta-profile-pro-input" accept=".json,application/json" style="display:none;">' +
               '</div>' +
 
               // 🖼️ v1.74.0 — Fond d'écran du HOME. Placé JUSTE AVANT les actions
@@ -1007,7 +1006,6 @@
 
         // 🆕 v1.28.4 : Render initial + bind handlers de la section Édition pro.
         _refreshProfileProSection();
-        _bindProfileProHandlers();
 
         // Fermeture
         const closeFn = function() {
@@ -1474,108 +1472,30 @@
       function _proSourceLabel(source) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (source === "server") return _t("home.profile.pro.sourceServer");
-        if (source === "local")  return _t("home.profile.pro.sourceLocal");
         return "—";
       }
-      function _proSourceHint(source) {
+      // Seule source restante : la licence servie par l'installation.
+      function _proSourceHint() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        if (source === "server") {
-          return _t("home.profile.pro.hintServer");
-        }
-        if (source === "local") {
-          return _t("home.profile.pro.hintLocal");
-        }
-        return _t("home.profile.pro.hintCommunity");
+        return _t("home.profile.pro.hintServer");
       }
 
-      // Rend la section selon l'état actuel de la licence pro.
+      // Rend la section selon l'état actuel de la licence pro : visible seulement avec une
+      // licence SERVEUR (l'installation est pro) ; masquée sinon, sans rien proposer.
       function _refreshProfileProSection() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        const body = document.getElementById("kta-profile-pro-body");
-        if (!body) return;
-        if (!window.MyKTAMapProLicense) {
-          body.innerHTML = '<p class="kta-profile-pro-error">' + _t("home.profile.pro.moduleUnavailable") + '</p>';
-          return;
-        }
-        const lic = window.MyKTAMapProLicense;
-        const isPro = lic.isPro();
-        const source = lic.getSource();
-
-        let html = "";
-        if (isPro) {
-          // 🆕 v1.28.4 (post-feedback KARMA) : suppression du bloc méta
-          // (Source / Client / Hash). Le badge + le hint suffisent pour
-          // donner le contexte sans saturer la modale.
-          // Les helpers _proHashShort / _proSourceLabel restent disponibles
-          // si un usage futur (export profil, diagnostic, etc.) en a besoin.
-          html +=
-            '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
-              '<span class="kta-profile-pro-badge">' + _t("home.profile.pro.badgeActive") + '</span>' +
-            '</div>';
-          html += '<p class="kta-profile-pro-hint">' + _proSourceHint(source) + '</p>';
-          if (source === "local") {
-            html +=
-              '<div class="kta-profile-pro-actions">' +
-                '<button type="button" class="kta-btn kta-btn-danger kta-btn-mini" id="kta-profile-pro-remove">' + _t("home.profile.pro.removeLocalBtn") + '</button>' +
-              '</div>';
-          }
-        } else {
-          html += '<p class="kta-profile-pro-hint">' + _proSourceHint(null) + '</p>';
-          html +=
-            '<div class="kta-profile-pro-actions">' +
-              '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-pro-import">' + _t("home.profile.pro.importBtn") + '</button>' +
-            '</div>';
-        }
-        body.innerHTML = html;
-      }
-
-      // Bind handlers (boutons import / retrait + input file).
-      // Idempotent : un seul binding global via délégation sur le body
-      // de la section (qui est re-renduré à chaque change d'état).
-      function _bindProfileProHandlers() {
-        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const section = document.getElementById("kta-profile-pro-section");
-        const fileInput = document.getElementById("kta-profile-pro-input");
-        if (!section || !fileInput) return;
-
-        // Délégation sur la section (les boutons sont à l'intérieur du body
-        // qui se re-rendre, donc on délègue plutôt que bind direct).
-        section.addEventListener("click", function(e) {
-          const target = e.target;
-          if (!(target instanceof HTMLElement)) return;
-          if (target.id === "kta-profile-pro-import" || target.closest("#kta-profile-pro-import")) {
-            fileInput.value = ""; // reset pour permettre re-pick du même fichier
-            fileInput.click();
-            return;
-          }
-          if (target.id === "kta-profile-pro-remove" || target.closest("#kta-profile-pro-remove")) {
-            if (!window.MyKTAMapProLicense) return;
-            const ok = window.confirm(_t("home.profile.pro.confirmRemove"));
-            if (!ok) return;
-            window.MyKTAMapProLicense.removeLocal();
-            _refreshProfileProSection();
-            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-              window.OOMGuard.showToast(_t("home.profile.pro.removedToast"), "info");
-            }
-          }
-        });
-
-        fileInput.addEventListener("change", function() {
-          const file = fileInput.files && fileInput.files[0];
-          if (!file) return;
-          if (!window.MyKTAMapProLicense) return;
-          window.MyKTAMapProLicense.importFile(file).then(function(result) {
-            if (result && result.ok) {
-              _refreshProfileProSection();
-              if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-                window.OOMGuard.showToast(_t("home.profile.pro.importedToast"), "info");
-              }
-            } else {
-              const msg = (result && result.error) ? result.error : _t("home.profile.pro.errUnknown");
-              window.alert(_t("home.profile.pro.importRejected") + msg);
-            }
-          });
-        });
+        const body = document.getElementById("kta-profile-pro-body");
+        if (!section || !body) return;
+        const lic = window.MyKTAMapProLicense;
+        const actif = !!(lic && lic.isPro() && lic.getSource() === "server");
+        section.hidden = !actif;
+        if (!actif) { body.innerHTML = ""; return; }
+        body.innerHTML =
+          '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
+            '<span class="kta-profile-pro-badge">' + _t("home.profile.pro.badgeActive") + '</span>' +
+          '</div>' +
+          '<p class="kta-profile-pro-hint">' + _proSourceHint() + '</p>';
       }
 
       async function _refreshProfileDetailsStats() {

@@ -8,6 +8,8 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.11.0 (licence refusée = installation fermée)** : **aucune requête nouvelle, aucun domaine nouveau — une de moins.** Le mode Développeur ne lit plus la documentation technique sur le serveur, et les sites ne la publient plus. Sur une installation professionnelle dont la licence est absente, expirée ou refusée, l'app reste fermée au lieu de s'ouvrir sur les données de l'appareil. L'écran d'accueil ne propose plus d'importer une licence : rien n'était envoyé, rien ne l'est désormais.
+
 > **v2.10.3 (réseau perdu, Vue OSM, lecture seule)** : **aucune requête nouvelle, aucun domaine nouveau.** Quand l'appareil perd le réseau, l'app ne tente plus de télécharger un plan et ouvre sa copie ; un téléchargement qui ne reçoit plus rien est abandonné au bout de 15 à 20 secondes. Les autres changements (affichage en Vue OSM, fenêtre « lecture seule », annulation) sont locaux.
 
 > **v2.10.2 (plans servis en ZIP)** : **aucun domaine nouveau, rien d'envoyé.** Une installation peut déclarer un plan par son archive (`"zip": "data/x.zip"` dans `data/index.json`, chemin relatif sur le même site uniquement — une adresse externe est refusée). L'app la télécharge à l'ouverture, puis, si une copie est gardée sur l'appareil, ne la redemande que sous condition (`If-None-Match` / `If-Modified-Since`) et sonde sa fraîcheur par un `HEAD` à l'accueil. Sur myktamap.fr, qui ne déclare aucun plan ZIP, rien ne change.

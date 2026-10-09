@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.10.3` (08/10/2026)
+## 📦 Version courante — `v2.11.0` (09/10/2026)
+
+> 🔏 **v2.11.0 — Licence : installation fermée si refusée, plus d'import par l'utilisateur** : une installation pro dont la licence est absente, expirée ou refusée par le serveur reste fermée (« Licence de l'installation invalide »), jamais rouverte en community sur les données de l'appareil ; écran d'accueil réduit à « Continuer » ; splash neutre sur une installation reliée ; la doc interne n'est plus servie (sites, image Docker, ZIP) ; tri des listes selon la langue ; chaîne CI/CD complétée (Sonar, état des sites, marque verte, déploiement automatique).
 
 > 📶 **v2.10.3 — Réseau perdu, Vue OSM, lecture seule** : pastille « injoignable » dès que le réseau tombe, téléchargement de plan jamais bloqué (veilleur d'inactivité) ; plus de zone plus sombre au milieu d'un plan en Vue OSM (opacité sur le calque) ; installation reliée : fenêtre « Plan en lecture seule », Ctrl+Z qui ne se vide plus à chaque synchro.
 
@@ -563,6 +565,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.11.0 (09/10/2026) — Licence refusée = installation fermée, plus d'import de licence, CD (branche `Karma_dev`)
+
+- 🔏 **Sécurité — licence pro absente, expirée ou refusée** (retour KARMA) : sans module pro, l'app tombait sur la gate community souvent déjà franchie et s'ouvrait sur les plans et sessions du dernier utilisateur de l'appareil. Désormais `main.js` ferme l'installation (« Installation indisponible », motif licence) **avant** les modules et la gate ; une licence en cache **expirée** est purgée, hors ligne compris ; le module pro signale `KtaExtensions.signaler("licence", raison)` → pastille « Licence refusée par le serveur », plus « Base de données : injoignable » (`10f7287`).
+- 👋 **Plus d'import de licence par l'utilisateur** (gate, profil) : il n'activait aucune fonction pro (règle E) ; « Continuer sans licence » devient « Continuer » ; la section Édition pro du profil n'apparaît qu'avec une licence serveur ; une licence locale ancienne est purgée. **Splash neutre** sur une installation reliée (`html.kta-instance-reliee`), licence valide ou non (`2367229`).
+- 📚 **La doc interne n'est plus servie** : bibliothèque du mode Développeur retirée (`4495cb5`) ; `docs/` réduit à `docs/applications/` et plus de `README.md` racine sur les sites, dans l'image Docker et le ZIP (`58a22f9`, `check-livrables-docs.js`).
+- 🔤 **Tri des listes** selon la langue (accents, casse) et duplication de lignes du tableau dans l'ordre (`3815924`, relevé Sonar — déjà en prod via `main`).
+- 🚦 **CI/CD** : `etat-sites.ps1`, marque verte `refs/ci/verte/<branche>` lue par `merge-main` et par le déploiement automatique du VPS (sans jeton), audit CD (`docs/audits/2026-10-09_audit-cd-v1.md`), retour arrière dans `RELEASE_GATE.md`.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; en moins, les lectures de la doc technique par le mode Développeur.
 
 #### v2.10.3 (08/10/2026) — Réseau perdu, Vue OSM, lecture seule (branche `Karma_dev`)
 

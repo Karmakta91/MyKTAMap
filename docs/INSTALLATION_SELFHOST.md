@@ -351,9 +351,12 @@ Vous copiez tel quel le contenu du repo dans le dossier servi par Nginx :
 # Création du dossier cible
 sudo mkdir -p /var/www/myktamap
 
-# Copie de l'app (on exclut les méta-fichiers Git et la doc)
-sudo rsync -av --exclude='.git' --exclude='.github' \
-  --exclude='.claude' --exclude='docs/INSTALLATION_*.md' \
+# Copie de l'app : de docs/, seul docs/applications/ (lu par l'app) est utile ;
+# le reste (journal README.md, doc de développement) n'a pas à être servi.
+sudo rsync -av --include='/docs/' --include='/docs/applications/***' \
+  --exclude='/docs/*' --exclude='/README.md' \
+  --exclude='.git' --exclude='.github' --exclude='.githooks' --exclude='.claude' \
+  --exclude='CLAUDE.md' --exclude='scripts/' \
   /tmp/MyKTAMap/ /var/www/myktamap/
 
 # Permissions (utilisateur Nginx — adapter selon votre OS)

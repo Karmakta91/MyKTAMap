@@ -13,8 +13,9 @@
 //   - instance qui publie un mot de passe (`index.json > config.accessHash`,
 //     posé par ConfAdmin — c'est le cas de myktamap.fr) : champ mot de passe,
 //     comme avant. C'est le SEUL mot de passe qui ouvre.
-//   - sinon (usage local, ZIP, Docker community) : « Continuer sans licence »
-//     ou importer une licence pro. Le choix est retenu sur l'appareil.
+//   - sinon (usage local, ZIP, Docker community) : « Continuer », retenu sur
+//     l'appareil. Plus d'import de licence ici (retiré le 09/10/2026) : une licence
+//     importée n'activait aucune fonction pro (règle E : licence SERVEUR exigée).
 // Re-demandé après un reset complet (viderCacheAppli purge le localStorage).
 //
 // ⚠️ NIVEAU DE SÉCURITÉ : c'est une barrière SOCIALE / COMMUNAUTAIRE, pas
@@ -107,13 +108,6 @@
 
   // État interne
   let _resolveGate = null;  // Promise resolver pour main.js qui attend
-
-  // 🔒 v1.90.8 — Vrai quand la gate courante est montée sur une instance qui
-  // publie un `accessHash` valide. Sert à RETIRER le bloc « importer ma licence
-  // pro » de l'écran : sur une instance protégée, une licence importée par
-  // l'utilisateur ne doit pas être un contournement du mot de passe du
-  // déployeur. Remis à false à chaque (re)montage de la gate.
-  let _instanceProtegeeGate = false;
 
   // =========================================================================
   // HELPERS HASH (SubtleCrypto SHA-256)
@@ -317,28 +311,6 @@
               '</button>' +
             '</form>') +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
-        // 🆕 v1.28.5 — Voie alternative d'accès via licence pro. Un user
-        // qui détient une licence pro valide n'a pas à connaître le code
-        // d'accès communautaire (qui sert juste à filtrer les passants).
-        // L'import d'une licence locale activée le mode pro ET débloque
-        // simultanément l'UnlockGate (équivalent à un unlock réussi),
-        // car détenir une licence émise par MyKTAMap = canal légitime.
-        // Bloc wrappé en .kta-licence-community → masqué côté instance pro
-        // (cohérent : si déjà pro côté serveur, pas besoin de proposer l'import).
-        '<div class="kta-unlock-separator kta-licence-community" aria-hidden="true">' +
-          '<span class="kta-unlock-separator-line"></span>' +
-          '<span class="kta-unlock-separator-text">' + t("gate.separatorOr") + '</span>' +
-          '<span class="kta-unlock-separator-line"></span>' +
-        '</div>' +
-        '<div class="kta-unlock-licence-block kta-licence-community">' +
-          '<p class="kta-unlock-licence-info">' +
-            t("gate.licence.info") +
-          '</p>' +
-          '<button type="button" id="kta-unlock-licence-btn" class="kta-btn kta-btn-secondary kta-unlock-licence-btn">' +
-            t("gate.licence.importBtn") +
-          '</button>' +
-          '<input type="file" id="kta-unlock-licence-input" accept=".json,application/json" style="display:none;">' +
-        '</div>' +
         // 🆕 v1.28.1 — Bouton 📖 Documentation accessible depuis l'écran de
         // verrouillage. Permet à un user qui doute (« c'est quoi ce projet ? »,
         // « pourquoi un code ? ») de lire le README utilisateur sans devoir
@@ -576,10 +548,8 @@
         });
       });
 
-      // 🔓 Instance sans mot de passe : « Continuer sans licence » (choix
-      // retenu sur l'appareil), ou import d'une licence pro (plus bas).
+      // 🔓 Instance sans mot de passe : « Continuer » (choix retenu sur l'appareil).
       if (libre) {
-        _instanceProtegeeGate = false;
         const btnLibre = overlay.querySelector("#kta-unlock-libre-btn");
         if (btnLibre) {
           setTimeout(function() { btnLibre.focus(); }, 100);
@@ -618,89 +588,6 @@
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
-      // 🔒 v1.90.8 — INSTANCE PROTÉGÉE : on RETIRE le bloc « importer ma
-      // licence pro ». Async (une requête d'index), donc le bloc peut clignoter
-      // une fraction de seconde avant de disparaître — la gate est un écran
-      // rare (1ᵉʳ lancement / reset) et le SW sert l'index en cache, donc
-      // c'est instantané en pratique. Le flag `_instanceProtegeeGate` double
-      // ce retrait d'un refus au clic (ci-dessous) au cas où le bloc serait
-      // rendu autrement un jour.
-      if (!libre) {
-        _instanceProtegeeGate = true;
-        overlay.querySelectorAll(".kta-licence-community").forEach(function(el) {
-          if (el && el.parentNode) el.parentNode.removeChild(el);
-        });
-      }
-
-      // 🆕 v1.28.5 — Voie alternative "Ou importer ma licence pro".
-      // L'user clique sur le bouton → file picker .json → import via
-      // MyKTAMapProLicense.importFile() (réutilise tout le pipeline de
-      // validation hash + storage local + bascule mode pro).
-      // Si import OK : on set le flag unlock communautaire (= bypass définitif
-      // pour les boots suivants) ET on résout la Promise de la gate
-      // (équivalent à un unlock réussi via code).
-      const btnLicence = overlay.querySelector("#kta-unlock-licence-btn");
-      const inputLicence = overlay.querySelector("#kta-unlock-licence-input");
-      if (btnLicence && inputLicence) {
-        btnLicence.addEventListener("click", function() {
-          inputLicence.value = ""; // permet de re-picker le même fichier
-          inputLicence.click();
-        });
-        inputLicence.addEventListener("change", function() {
-          const file = inputLicence.files && inputLicence.files[0];
-          if (!file) return;
-          if (!window.MyKTAMapProLicense || typeof window.MyKTAMapProLicense.importFile !== "function") {
-            fb.innerHTML =
-              '<div class="kta-unlock-error">' +
-                t("gate.licence.moduleUnavailable") +
-              '</div>';
-            return;
-          }
-          window.MyKTAMapProLicense.importFile(file).then(function(result) {
-            if (result && result.ok) {
-              // 🔒 v1.90.8 — Sur une instance protégée, la licence peut activer
-              // le mode pro, mais elle N'OUVRE PAS la gate : le mot de passe du
-              // déployeur reste requis. On ne pose donc PAS le flag unlock.
-              if (_instanceProtegeeGate) {
-                fb.innerHTML = '<div class="kta-unlock-error">' +
-                  t("gate.licence.instanceProtegee") + '</div>';
-                return;
-              }
-              // Set le flag unlock (= bypass définitif pour les boots suivants).
-              // Cohérent : détenir une licence pro = canal légitime, pas besoin
-              // de re-saisir le code partagé à chaque reload.
-              try {
-                localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
-                localStorage.removeItem(LS_UNLOCK_KIOSQUE);
-                localStorage.removeItem(LS_ATTEMPTS);
-              } catch(e) {}
-              fb.innerHTML =
-                '<div class="kta-unlock-success">' +
-                  t("gate.licence.accepted") +
-                '</div>';
-              // Même flow de fade-out + résolve que l'unlock par code.
-              setTimeout(function() {
-                overlay.classList.add("kta-unlock-fading");
-                setTimeout(function() {
-                  if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-                  if (_resolveGate) {
-                    const r = _resolveGate;
-                    _resolveGate = null;
-                    r(true);
-                  }
-                }, 250);
-              }, 600);
-            } else {
-              const msg = (result && result.error) ? result.error : t("gate.licence.errUnknown");
-              fb.innerHTML =
-                '<div class="kta-unlock-error">' +
-                  t("gate.licence.refused", { msg: msg.replace(/</g, "&lt;") }) +
-                '</div>';
-            }
-          });
-        });
-      }
-
       // Si l'user avait déjà des tentatives ratées avant ce boot, on l'informe
       const ap = _getAttempts();
       if (ap > 0 && ap < MAX_ATTEMPTS) {
@@ -722,11 +609,9 @@
   }
 
   // 🆕 v1.29.1-fix1 — Pose le flag LS_UNLOCK car une licence pro a été
-  // détectée (serveur via fetch /Licence-pro.json OU import local). Une
-  // licence pro valide est un canal d'accès légitime équivalent au code
-  // communautaire (= même doctrine que le bouton « 📂 Importer ma licence
-  // pro » de l'UnlockGate depuis v1.28.5). Appelé par main.js juste après
-  // la résolution async de proLicense.isPro().
+  // détectée — licence SERVEUR uniquement (/Licence-pro.json de l'installation ;
+  // l'import d'une licence par l'utilisateur n'existe plus depuis le 09/10/2026).
+  // Appelé par main.js juste après la résolution async de proLicense.isPro().
   function markUnlockedViaLicensePro() {
     try {
       localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);

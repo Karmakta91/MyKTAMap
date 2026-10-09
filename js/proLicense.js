@@ -10,17 +10,13 @@
 // =========================
 //
 // 🎯 Rôle : détecter si l'instance MyKTAMap tourne sous licence pro.
-// 2 sources possibles (depuis v1.28.4) :
+// UNE seule source : le SERVEUR — un fichier `/Licence-pro.json` à la racine du
+// site (le déployeur active le mode pro pour tous les visiteurs de l'installation).
 //
-//   1. SERVEUR : présence d'un fichier `/Licence-pro.json` à la racine
-//      du serveur web (= déployeur a mis en place le mode pro pour
-//      tous les visiteurs de l'instance).
-//
-//   2. LOCAL (🆕 v1.28.4) : l'utilisateur importe un fichier
-//      Licence-pro.json depuis SON profil dans le home loader →
-//      mode pro activé sur SON appareil uniquement, persistant dans
-//      localStorage. Permet d'activer une licence reçue par mail/canal
-//      privé sans dépendre d'un déploiement serveur pro.
+// 🗑️ 09/10/2026 — L'IMPORT D'UNE LICENCE PAR L'UTILISATEUR (source « locale », depuis
+// la gate ou le profil) EST RETIRÉ : il n'activait aucune fonction pro (règle E : les
+// modules exigent une licence SERVEUR) et servait seulement à passer la gate
+// community. Une licence locale déjà importée est purgée au démarrage.
 //
 // 🛡️ Côté community : 100 % transparent. Pas de Licence-pro.json sur
 // myktamap.fr, pas de licence importée → mode community par défaut →
@@ -58,9 +54,7 @@
 //   window.__MKTM_PRO_LICENSE__         : objet JSON parsé OU null
 //   window.MyKTAMapProLicense.isPro()   : boolean
 //   window.MyKTAMapProLicense.getData() : objet ou null
-//   window.MyKTAMapProLicense.getSource() : "server" | "local" | null  🆕
-//   window.MyKTAMapProLicense.importFile(file) : Promise<result>       🆕
-//   window.MyKTAMapProLicense.removeLocal()    : void                  🆕
+//   window.MyKTAMapProLicense.getSource() : "server" | null
 //   window.MyKTAMapProLicense.forceRecheck()   : void
 //
 // Event émis sur window au changement de licence :
@@ -73,7 +67,7 @@
 
   // Clés localStorage distinctes pour les 2 sources.
   var LS_KEY_SERVER = "__mktm_pro_license__";       // cache du fetch /Licence-pro.json
-  var LS_KEY_LOCAL  = "__mktm_pro_license_local__"; // licence importée manuellement
+  var LS_KEY_LOCAL  = "__mktm_pro_license_local__"; // ancienne licence importée (retirée) : purgée au démarrage
 
   var FETCH_PATH = "/Licence-pro.json";
 
@@ -116,7 +110,18 @@
       var raw = localStorage.getItem(key);
       if (!raw) return null;
       var data = JSON.parse(raw);
-      if (data && data.instance === "pro") return data;
+      if (data && data.instance === "pro") {
+        // 🔏 09/10/2026 — Une licence en cache qui a EXPIRÉ n'est plus une licence, même hors
+        // ligne (sans réseau, le serveur ne peut pas la refuser à notre place) : purgée ici, elle
+        // fait passer l'installation pro en « licence » → app fermée (main.js), jamais en
+        // community sur les données de l'appareil.
+        if (typeof data.valid_until === "string" && data.valid_until < new Date().toISOString().slice(0, 10)) {
+          localStorage.removeItem(key);
+          console.warn("[ProLicense] licence en cache expirée le " + data.valid_until + " : ignorée");
+          return null;
+        }
+        return data;
+      }
     } catch(e) {
       // Cache corrompu → on l'ignore (laissera la suite purger)
     }
@@ -189,16 +194,18 @@
   var _activeData = null;
   var _activeSource = null;
 
+  // Ancienne licence importée par l'utilisateur (avant le 09/10/2026) : sans effet, purgée.
+  try {
+    if (localStorage.getItem(LS_KEY_LOCAL)) {
+      localStorage.removeItem(LS_KEY_LOCAL);
+      console.info("[ProLicense] licence importée sur l'appareil retirée : seule la licence de l'installation compte");
+    }
+  } catch(e) {}
+
   var serverCached = _safeReadLS(LS_KEY_SERVER);
   if (serverCached) {
     _activeData = serverCached;
     _activeSource = "server";
-  } else {
-    var localCached = _safeReadLS(LS_KEY_LOCAL);
-    if (localCached) {
-      _activeData = localCached;
-      _activeSource = "local";
-    }
   }
 
   window.__MKTM_PRO_LICENSE__ = _activeData;
@@ -235,17 +242,11 @@
     var prevIsPro = !!_activeData;
     var prevSource = _activeSource;
 
-    // Re-lecture : serveur > local (serveur prime sur local si les 2
-    // sont actifs en même temps — annonce du déployeur > import perso).
     var srv = _safeReadLS(LS_KEY_SERVER);
-    var loc = _safeReadLS(LS_KEY_LOCAL);
 
     if (srv) {
       _activeData = srv;
       _activeSource = "server";
-    } else if (loc) {
-      _activeData = loc;
-      _activeSource = "local";
     } else {
       _activeData = null;
       _activeSource = null;
@@ -326,63 +327,6 @@
   }
 
   // -------------------------------------------------------------------------
-  // Import manuel d'un fichier (UI dans Mon profil — depuis v1.28.4)
-  // -------------------------------------------------------------------------
-
-  function _importFile(file) {
-    return new Promise(function(resolve) {
-      if (!file || typeof file !== "object") {
-        resolve({ ok: false, error: t("license.err.noFile") });
-        return;
-      }
-      var maxBytes = 50 * 1024; // 50 KB suffit largement pour un JSON de licence
-      if (typeof file.size === "number" && file.size > maxBytes) {
-        resolve({ ok: false, error: t("license.err.tooLarge") });
-        return;
-      }
-
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        var text = ev && ev.target && typeof ev.target.result === "string"
-          ? ev.target.result
-          : null;
-        if (!text) {
-          resolve({ ok: false, error: t("license.err.readImpossible") });
-          return;
-        }
-        var data;
-        try {
-          data = JSON.parse(text);
-        } catch(e) {
-          resolve({ ok: false, error: t("license.err.jsonInvalid", { msg: (e.message || e) }) });
-          return;
-        }
-        // ⚠️ Strict pour l'import manuel : hash obligatoire et bien formé.
-        var v = _validateData(data, /* strictHash */ true);
-        if (!v.ok) {
-          resolve(v);
-          return;
-        }
-        _verifierSignature(v.data).then(function(signee) {
-          if (!signee) { resolve({ ok: false, error: t("license.err.signature") }); return; }
-          _safeWriteLS(LS_KEY_LOCAL, v.data);
-          _recomputeActive();
-          resolve({ ok: true, data: v.data });
-        });
-      };
-      reader.onerror = function() {
-        resolve({ ok: false, error: t("license.err.readError") });
-      };
-      reader.readAsText(file);
-    });
-  }
-
-  function _removeLocal() {
-    _safeRemoveLS(LS_KEY_LOCAL);
-    _recomputeActive();
-  }
-
-  // -------------------------------------------------------------------------
   // API publique
   // -------------------------------------------------------------------------
   window.MyKTAMapProLicense = {
@@ -395,18 +339,11 @@
     getSource: function() {
       return _activeSource;
     },
-    importFile: function(file) {
-      return _importFile(file);
-    },
-    removeLocal: function() {
-      _removeLocal();
-    },
     forceRecheck: function() {
       _checkServerLicense();
     },
     // Helpers diagnostic
     _LS_KEY_SERVER: LS_KEY_SERVER,
-    _LS_KEY_LOCAL: LS_KEY_LOCAL,
     HASH_PATTERN: HASH_PATTERN,
     _verifierSignature: _verifierSignature   // tests (scripts/check-licence.js)
   };

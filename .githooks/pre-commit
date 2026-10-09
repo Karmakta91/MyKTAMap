@@ -79,10 +79,15 @@ node scripts/check-image-header-dims.js || exit $?
 # le bug classique : chaque tableau du format est eprouve + aller-retour. BLOQUANT.
 node scripts/check-resolution-convert.js || exit $?
 
-# 🛠️ v1.76.3 — Manifest de la bibliotheque de docs du Mode Developpeur :
-# chaque chemin liste existe, chaque .md d'architecture est liste, hash mdp
-# au format SHA-256. BLOQUANT.
+# 🛠️ Mode Developpeur : plus de bibliotheque de docs (retiree le 09/10/2026,
+# audit CD F1 — elle obligeait a publier la doc interne), hash mdp au format
+# SHA-256, ConfAdmin et inspecteur SW rendus en mode actif seulement. BLOQUANT.
 node scripts/check-devmode-docs.js || exit $?
+
+# 📦 09/10/2026 (audit CD F1) — Livrables : de docs/, seul docs/applications/
+# part (Dockerfile, ZIP de release.yml, .dockerignore), jamais le README.md
+# racine. BLOQUANT.
+node scripts/check-livrables-docs.js || exit $?
 
 # 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence

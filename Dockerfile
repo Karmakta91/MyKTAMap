@@ -35,8 +35,15 @@ COPY . /src/
 
 # Reproduit la logique d'exclusion du workflow GitHub Actions release.yml
 # (section "Construire le package selfhost") pour cohérence ZIP <-> Docker.
+# 🩸 docs/ : seul docs/applications/ (ce que l'app lit) est livré, ni le README.md racine — avant le
+# 09/10/2026, le BACKLOG, les audits et la porte de release partaient dans l'image (audit CD, F1).
+# Mêmes règles que le ZIP de release.yml et les scripts de déploiement (scripts/check-livrables-docs.js).
 RUN mkdir -p /www && \
     rsync -a \
+      --include='/docs/' \
+      --include='/docs/applications/***' \
+      --exclude='/docs/*' \
+      --exclude='/README.md' \
       --exclude='.git' \
       --exclude='.github' \
       --exclude='.githooks' \
@@ -49,7 +56,6 @@ RUN mkdir -p /www && \
       --exclude='Licence-pro.json' \
       --exclude='Dockerfile' \
       --exclude='docker/' \
-      --exclude='docs/architecture/' \
       --exclude='.DS_Store' \
       --exclude='Thumbs.db' \
       --exclude='node_modules' \

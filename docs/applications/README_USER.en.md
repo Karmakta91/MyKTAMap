@@ -1197,7 +1197,7 @@ Tap the active button (in green) again to turn it off.
 
 ### 🔑 The password is refused
 
-On first launch, MyKTAMap simply offers **Continue without a licence**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
+On first launch, MyKTAMap simply offers **Continue**: no code is asked. Only an installation with its own password (association, club, myktamap.fr) asks for one: **that password** is the one you need, and a pro licence does not replace it. If the installation changes it, the app asks for it again at the next start; offline, your access stays valid.
 
 ### 🔄 The app does not update, or stays stuck
 
@@ -1213,7 +1213,7 @@ These tools delete **no** data (stored maps, sessions, photos, logbook, preferen
 **⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
-- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue without a licence**.
+- If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will simply offer **Continue**.
 - Two confirmations are required. Do it **with a connection**: if you are offline, a red window warns you that the app will be unusable until the network is back.
 
 Not to be confused with **↺ Default values** in ⚙️ Settings, which only touches the settings of the open map.
@@ -1727,18 +1727,13 @@ The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form s
 
 Even simpler: drop the map's ZIP as is (without unzipping it) and declare it with `"zip"` instead of `"path"`, for example `{ "id": "test3", "zip": "data/test3.zip", "name": "Test map 3" }`. The app downloads it when opened, keeps it on the device for offline use (according to **Store the map in the app**), and only downloads it again if it has changed. On the map's row, 💾 keeps it without opening it, ✅ shows it is kept and up to date.
 
-### 💼 Pro edition — importing a license
+### 💼 Pro edition
 
-If the author gave you a **`Licence-pro.json`** file, it turns on the pro edition **on this device**.
+The pro edition is installed by **the person who manages your installation**: they put the licence on the server, there is nothing to do on your side. Your profile then shows ✓ Pro edition active, and the startup screen "Professional edition". The app no longer offers to import a licence yourself: a licence imported on a device did not turn on any pro feature.
 
-- **From your profile**: **📂 Import a pro license**, then choose the file. The bottom of the home screen shows ✓ Pro license active and the startup screen shows "Professional edition". **🗑️ Remove local license** takes you back to community mode; you can re-import the file later.
-- **On the very first launch**, on the welcome screen, **📂 Import my pro licence** takes you straight into pro mode.
-- On an instance where the administrator installed the license on the server, your profile simply shows ✓, with no button.
-
-A licence is **signed by the author** and issued for one address and a set period: a modified or expired file, or one issued for another address, is refused with a message. The file is read and checked in your browser and sent nowhere.
+A licence is **signed by the author** and issued for one address and a set period. If it expires, or if the server refuses it, the app **stays closed** on the "Installation licence invalid" screen — never reopened in community mode: tell the person who manages the installation. What is kept on the device is not erased.
 
 > ⚖️ The license is **personal**: sharing it with an unauthorised third party breaches the contract made with the author.
-
 ### 🛡️ Revoked maps
 
 When a map has been spread outside its circle of trust (forum, public social network…), its author can **revoke** it: the app then refuses to open it, for everyone.

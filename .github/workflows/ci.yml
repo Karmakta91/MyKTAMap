@@ -51,3 +51,23 @@ jobs:
 
       - name: Garde-fous du pre-commit
         run: sh .githooks/pre-commit
+
+  # Déploiement automatique (auto-deploy.sh sur le VPS, décision KARMA du 09/10/2026) : le VPS ne déploie
+  # qu'un commit marqué VERT. Il lit la marque avec sa clé de déploiement (git ls-remote, lecture seule) :
+  # aucun jeton GitHub sur le serveur. La marque est une référence hors branches et hors tags
+  # (refs/ci/verte/<branche>), réécrite à chaque CI verte d'un push : elle ne déclenche aucun workflow.
+  # Une CI rouge ne marque rien — le site reste sur son dernier commit vert.
+  marquer-vert:
+    name: Marquer le commit vert
+    needs: garde-fous
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: refs/ci/verte/${{ github.ref_name }} → ${{ github.sha }}
+        run: git push origin "+${GITHUB_SHA}:refs/ci/verte/${GITHUB_REF_NAME}"

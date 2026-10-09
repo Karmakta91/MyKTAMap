@@ -1197,7 +1197,7 @@ Touche à nouveau le bouton actif (en vert) pour le couper.
 
 ### 🔑 Le mot de passe est refusé
 
-Au premier lancement, MyKTAMap propose simplement **Continuer sans licence** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
+Au premier lancement, MyKTAMap propose simplement **Continuer** : aucun code n'est demandé. Seule une installation qui a son propre mot de passe (association, club, myktamap.fr) en demande un : c'est **ce mot de passe** qu'il faut, et une licence pro ne le remplace pas. Si l'installation le change, l'app le redemande au démarrage suivant ; hors connexion, ton accès reste valable.
 
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
@@ -1213,7 +1213,7 @@ Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos
 **⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
-- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app proposera simplement **Continuer sans licence**.
+- Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app proposera simplement **Continuer**.
 - Deux confirmations sont demandées. Fais-le **avec une connexion** : si tu es hors ligne, une fenêtre rouge te prévient que l'app sera inutilisable jusqu'au retour du réseau.
 
 À ne pas confondre avec **↺ Valeurs par défaut** de ⚙️ Réglages, qui ne touche qu'aux réglages du plan ouvert.
@@ -1727,18 +1727,13 @@ La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme d�
 
 Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et déclare-le avec `"zip"` à la place de `"path"`, par exemple `{ "id": "test3", "zip": "data/test3.zip", "name": "Plan Test 3" }`. L'app le télécharge à l'ouverture, le garde sur l'appareil pour le hors-ligne (selon **Mémoriser le plan dans l'app**), et ne le retélécharge que s'il a changé. Sur la ligne du plan, 💾 le garde sans l'ouvrir, ✅ indique qu'il est gardé et à jour.
 
-### 💼 Édition pro — importer une licence
+### 💼 Édition pro
 
-Si l'auteur t'a remis un fichier **`Licence-pro.json`**, il active l'édition pro **sur cet appareil**.
+L'édition pro est installée par **la personne qui gère ton installation** : elle pose la licence sur le serveur, il n'y a rien à faire de ton côté. Ton profil affiche alors ✓ Édition pro active, et l'écran de démarrage « Édition professionnelle ». L'application ne propose plus d'importer une licence toi-même : une licence importée sur un appareil n'activait aucune fonction pro.
 
-- **Depuis ton profil** : **📂 Importer une licence pro**, puis choisis le fichier. Le bas de l'accueil affiche ✓ Licence pro active et l'écran de démarrage « Édition professionnelle ». **🗑️ Retirer la licence locale** te ramène au mode communautaire ; tu peux réimporter le fichier plus tard.
-- **Au tout premier lancement**, sur l'écran de bienvenue, **📂 Importer ma licence pro** fait entrer directement en mode pro.
-- Sur une instance où l'administrateur a installé la licence sur le serveur, ton profil affiche simplement ✓, sans bouton.
-
-Une licence est **signée par l'auteur** et émise pour une adresse et une durée : un fichier modifié, expiré ou émis pour une autre adresse est refusé avec un message. Le fichier est lu et vérifié dans ton navigateur, il n'est envoyé nulle part.
+Une licence est **signée par l'auteur** et émise pour une adresse et une durée. Si elle expire, ou si le serveur la refuse, l'application **reste fermée** sur l'écran « Licence de l'installation invalide » — jamais rouverte en mode communautaire : préviens la personne qui gère l'installation. Ce qui est gardé sur l'appareil n'est pas effacé.
 
 > ⚖️ La licence est **nominative** : la partager avec un tiers non autorisé enfreint le contrat passé avec l'auteur.
-
 ### 🛡️ Plans révoqués
 
 Quand un plan a été diffusé hors de son groupe de confiance (forum, réseau social public…), son auteur peut le **révoquer** : l'app refuse alors de l'ouvrir, chez tout le monde.

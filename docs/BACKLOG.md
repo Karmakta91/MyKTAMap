@@ -238,6 +238,13 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
   à trancher par KARMA.
 - ⚪ **Protection de branche réelle** (GitHub Pro, ~4 $/mois) si d'autres comptes obtiennent un accès en écriture :
   le contrôle de `merge-main.ps1` ne protège que ce qui passe par le script.
+- 🟠 **Une image Docker construite depuis le poste embarque le `data/` local** (✅ vérifié 09/10, audit CD) : le
+  `Dockerfile` copie tout le dossier, et ni lui ni `.dockerignore` n'excluent `data/`. Depuis GitHub (`docker.yml`),
+  seul le `data/` suivi par Git part (index et relevé fictifs) ; depuis le poste, ce sont les **relevés réels** et
+  le `data/index.json` local qui entrent dans les couches de l'image — cas de la pile de test du pro, construite
+  depuis le dossier community (masqué à l'exécution par le volume `instance/data`, mais présent dans l'image).
+  Sans conséquence tant qu'une image locale n'est jamais poussée ni copiée. À trancher : exclure `data/` du
+  contexte sauf le fictif (`.dockerignore`), au prix d'un `data/index.json` local ignoré lui aussi.
 
 ## 🔴 Dettes ouvertes
 

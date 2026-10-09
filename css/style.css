@@ -3013,59 +3013,6 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
   padding-top: 14px;
 }
 
-/* 🆕 v1.28.5 — Voie alternative "ou importer une licence pro" dans UnlockGate.
-   Séparateur "ou" + bloc d'import dédié, masqué sur instance pro
-   (via .kta-licence-community → bascule v1.28.2). */
-.kta-unlock-separator {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 16px 0 12px;
-}
-.kta-unlock-separator-line {
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.10);
-}
-.kta-unlock-separator-text {
-  font-size: 11px;
-  color: #6c7689;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-weight: 600;
-}
-.kta-unlock-licence-block {
-  text-align: center;
-}
-.kta-unlock-licence-info {
-  font-size: 12.5px;
-  color: #a8b3c8;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-.kta-unlock-licence-info strong {
-  color: #f4c542;
-}
-.kta-unlock-licence-btn {
-  width: 100%;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  background: rgba(244, 197, 66, 0.08);
-  color: #f4c542;
-  border: 1px solid rgba(244, 197, 66, 0.32);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
-}
-.kta-unlock-licence-btn:hover {
-  background: rgba(244, 197, 66, 0.16);
-  border-color: rgba(244, 197, 66, 0.55);
-}
-.kta-unlock-licence-btn:active {
-  transform: scale(0.98);
-}
-
 
 /* ==============================================
    MODALES PLEIN ÉCRAN (README, aide, légende, config…)
@@ -4625,6 +4572,10 @@ html.kta-theme-light #splashMajeure {
 #splashLicense .kta-licence-community { display: inline-block; }
 html.kta-instance-pro #splashLicense .kta-licence-community,
 body.kta-instance-pro #splashLicense .kta-licence-community { display: none; }
+/* 🏷️ 09/10/2026 — Installation reliée à un serveur (ktaExtensions.js), licence valide ou NON :
+   jamais l'identité community au démarrage (licence refusée = splash neutre, puis écran
+   « Installation indisponible »). */
+html.kta-instance-reliee #splashLicense .kta-licence-community { display: none; }
 #splashLicense .kta-licence-pro { display: none; }
 html.kta-instance-pro #splashLicense .kta-licence-pro,
 body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
@@ -10636,7 +10587,8 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
    éviter de masquer du contenu utile le jour où ces classes seraient
    réutilisées dans d'autres contextes. */
 html.kta-instance-pro span.kta-licence-community,
-body.kta-instance-pro span.kta-licence-community {
+body.kta-instance-pro span.kta-licence-community,
+html.kta-instance-reliee span.kta-licence-community {
   display: none;
 }
 html.kta-instance-pro .kta-licence-pro,
@@ -16434,29 +16386,6 @@ html.kta-theme-light .kta-unlock-signature {
   color: #6b6354 !important;
 }
 
-/* 🆕 v1.28.5 — Variant thème clair de la section "ou importer une licence". */
-html.kta-theme-light .kta-unlock-separator-line {
-  background: rgba(0, 0, 0, 0.12) !important;
-}
-html.kta-theme-light .kta-unlock-separator-text {
-  color: #6b6354 !important;
-}
-html.kta-theme-light .kta-unlock-licence-info {
-  color: #4a3f30 !important;
-}
-html.kta-theme-light .kta-unlock-licence-info strong {
-  color: #b8860b !important;
-}
-html.kta-theme-light .kta-unlock-licence-btn {
-  background: rgba(184, 134, 11, 0.10) !important;
-  color: #b8860b !important;
-  border-color: rgba(184, 134, 11, 0.42) !important;
-}
-html.kta-theme-light .kta-unlock-licence-btn:hover {
-  background: rgba(184, 134, 11, 0.18) !important;
-  border-color: rgba(184, 134, 11, 0.65) !important;
-}
-
 /* === PIN GATE (saisie PIN au boot quand activé) === */
 html.kta-theme-light .kta-pin-gate-overlay {
   background: linear-gradient(135deg, #f0e8d8 0%, #c9b88f 100%) !important;
@@ -21466,47 +21395,6 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
 html.kta-theme-light .zip-drop-formats-titre { color: #3a4256; }
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
-
-/* 🛠️ v1.76.3 — Mode Développeur : 📚 bibliothèque des docs (v2 : navigation
-   liste → doc plein cadre, comme l'Aide — le layout 2 colonnes v1 cassait). */
-.kta-devdocs-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.kta-devdocs-item {
-  text-align: left;
-  font-size: 13px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(140, 180, 255, 0.14);
-  border-radius: 8px;
-  color: #e8eaf0;
-  cursor: pointer;
-  line-height: 1.4;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.kta-devdocs-item:hover {
-  background: rgba(140, 180, 255, 0.08);
-  border-color: rgba(140, 180, 255, 0.35);
-}
-.kta-devdocs-chemin {
-  font-size: 10.5px;
-  color: #8892a4;
-  font-family: 'Courier New', monospace;
-}
-.kta-devdocs-lecture {
-  font-size: 13px;
-  line-height: 1.55;
-  min-width: 0;
-}
-.kta-devdocs-lecture pre { overflow-x: auto; background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; }
-.kta-devdocs-lecture table { display: block; overflow-x: auto; }
-.kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
-.kta-devdocs-lecture h3 { color: #8cb4ff; }
-.kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
 
 /* ═══════════════════════════════════════════════════════════════════
    📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)

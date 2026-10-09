@@ -62,7 +62,8 @@ photos restent locales et exportables).
 > `KtaExtensions.register({ nom, apiVersion: 1, gate: { ouvrir() → Promise }, plans: { lister() →
 > Promise<[{id,name,version?,tags?}]>, charger(id, { progression?, signal? }) → Promise<Blob ZIP> }, importAutorise() → bool,
 > exportAutorise(planId) → bool, publierPlan({ blob, nom }) → Promise, compte() → { pseudo, libelle } | null })` ·
-> `signaler("on"|"down"|null)` ·
+> `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
+> expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
 > `chargerModules()` · `requete(chemin, { …fetch, sonde? })` · `changementsDepuis(ts)` ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
@@ -71,6 +72,10 @@ photos restent locales et exportables).
 > 📶 **Réseau** : `offline` → état « down » aussitôt (la garde refuse, l'accueil rouvre la copie gardée) ; `online` →
 > événement `mktm:reseau-retour`, à la suite duquel le module sonde et `signaler("on"|"down")`. Un échec réseau
 > isolé d'une requête ne change **pas** l'état (sinon la garde bloquerait tout jusqu'à la sonde suivante).
+> 🔏 **Licence (09/10/2026)** : une installation qui déclare une connexion serveur **sans licence serveur valide**
+> (absente, expirée — cache compris, même hors ligne —, refusée par le serveur) est **fermée** : écran « Installation
+> indisponible » (motif licence) AVANT les modules et la gate community (`main.js`, `_motifBlocage`). Jamais
+> d'ouverture en community sur les données gardées par le dernier utilisateur de l'appareil.
 > ⏱️ `charger` reçoit `opts.signal` (AbortSignal) du veilleur d'inactivité de l'accueil (rien en 15 s, puis plus un
 > octet pendant 20 s → annulé) : le transmettre à sa requête ; l'accueil abandonne de toute façon (`Promise.race`).
 > Ce paragraphe ne décrit que ce que **community** fournit. Comptes, rôles, synchro et
