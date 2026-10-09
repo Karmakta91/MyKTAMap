@@ -185,7 +185,7 @@ When a new version exists and you have a connection, the app offers to update.
 | Your situation | The tool | Where to find it |
 |---|---|---|
 | I want to **get out as fast as possible** | 🚨 Emergency exit | 🚨 button in the top bar |
-| I know where I am, but I am panicking: I need **my position and heading in very large print** | 🚨 Emergency mode — XL display | 🧭 Tracker menu, red button |
+| I know where I am, but I am panicking: I need **my position and heading in very large print** | 🔆 XL display | 🧭 Tracker menu, red button |
 | **I no longer know where I am** | ⛑️ I'm lost | 🧭 Tracker menu, orange button |
 | **Someone else is lost**, I am coordinating teams | 🚑 Rescue Mode | 🔭 Going further › 🚑 Rescue Mode |
 
@@ -198,7 +198,7 @@ When a new version exists and you have a connection, the app offers to update.
 
 ### 🚨 Emergency exit — find the nearest exit
 
-To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (on the right, next to 📖 Story Mode), or say "**sortie**" to the 🎤 voice command (it only understands French).
+To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (on the right, next to 📖 Story Mode), or say "**sortie**" to the 🎤 voice command (available in French only; the button only appears when the app is in French).
 
 **What the app looks for**: points marked as an open exit — **Open quarry access** (`cao`), **Open rung shaft** (`peo`), **Open service stairs** (`eso`) — as well as those tagged `entrée` and the built-in "🚪 Map entry point" tag. **Closed** variants (`caf`, `pef`, `esf`) are ignored: a point marked closed will never be suggested to you. If the map has no recognised exit, a message reminds you of these tags.
 
@@ -211,9 +211,9 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 A vibration confirms the exit found or alerts you if there is none, even when **📳 Haptic vibration** is off. Everything is computed on your device, without network.
 
-### 🚨 Emergency mode — XL display
+### 🔆 XL display
 
-You know where you are, but you are panicking and need the essentials **in very large print**: re-orient yourself, spot a nearby shaft, check your heading, read your position out to someone. In the **🧭 Tracker** menu, the red **🚨 Emergency mode — XL display (position + heading)** button opens a full-screen view that fits without scrolling:
+You know where you are, but you are panicking and need the essentials **in very large print**: re-orient yourself, spot a nearby shaft, check your heading, read your position out to someone. In the **🧭 Tracker** menu, the red **🔆 XL display (position + heading)** button opens a full-screen view that fits without scrolling:
 
 - 🗺️ **A mini-map** filling almost the whole screen, tightly zoomed and centred on you, in **your legend's colours**, with your route, **the map's points and your own** (on the level shown), and the same orientation as the map in "oriented map" mode.
 - 🖐️ **You can drag and pinch it** to look further. As soon as you move it, it stops following you and turns back **North up**; the **🎯 Recenter** button brings it back to you and resumes following and orientation.
@@ -223,7 +223,7 @@ You know where you are, but you are panicking and need the essentials **in very 
 - 🔋 **A status line** at the top right: your battery (if **🔋 Battery level** is enabled in ⚙️ Configuration), the tracker and compass state. The map name sits under the title.
 - 📋 **Your GPS coordinates, if your map is georeferenced**: the 📋 icon at the end of the status line opens a bubble that shows them **in very large print**, readable from a metre away — the ones you read out to rescuers —, with a line saying whether it is your tracked position, your last known position, or the **map's starting position, never confirmed**. Its **📋 Copy my position** button copies the coordinates alone (`48.856600, 2.352200`), ready to paste into a text message or a maps app. ⚠️ If your position was never confirmed, the bubble says so but the message does not: tell whoever you write to as well. Map not georeferenced: no icon, no coordinates are shown.
 
-The screen follows the app's theme, does not go to sleep while open and also fits in landscape. To leave: the big **↩️ EXIT EMERGENCY MODE** button, always at the bottom, or **Esc** on a computer (if a bubble is open, Esc closes the bubble first).
+The screen follows the app's theme, does not go to sleep while open and also fits in landscape. To leave: the big **↩️ EXIT XL DISPLAY** button, always at the bottom, or **Esc** on a computer (if a bubble is open, Esc closes the bubble first).
 
 ### ⛑️ I'm lost
 
@@ -437,7 +437,7 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
 | **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
-| **Emergency** (red background) | ⛑️ I'm lost · 🚨 Emergency mode XL · 🚨 Rescue mode — see 🆘 In an emergency underground |
+| **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚨 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
 
@@ -1122,7 +1122,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
-- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
+- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands; available in French only: the button only appears when the app is in French. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
 - **🧩 Optional features** and **🔒 Privacy & security** — the same boxes as in ⚙️ Configuration (options, incognito mode).
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.

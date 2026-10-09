@@ -16,7 +16,9 @@
 //   ✅ Chrome / Edge / Safari iOS 14.5+ / Chrome Android
 //   ❌ Firefox (graceful degradation : pas de bouton mic)
 // - Push-to-talk : bouton mic flottant. L'user appuie, parle, lâche.
-// - Langue : FR (langue principale du projet)
+// - Langue : FR uniquement (reconnaissance fr-FR, motifs en français). Le
+//   bouton 🎤 n'apparaît que si la langue de l'app est le français
+//   (décision KARMA 10/10/2026) ; réévalué à chaque changement de langue.
 // - Permission micro demandée à la 1ère utilisation par le navigateur.
 //
 // Activation : OPT-IN dans la modale Réglages → "🎤 Commandes vocales (BETA)".
@@ -281,8 +283,18 @@
   // 🎨 UI — BOUTON MIC FLOTTANT
   // ============================================================
 
+  // Commande vocale française seulement : hors FR, pas de bouton.
+  function _langueFr() {
+    try {
+      if (window.I18n && typeof window.I18n.getLang === "function") {
+        return window.I18n.getLang() === "fr";
+      }
+    } catch(e) {}
+    return true;
+  }
+
   function _injectMicButton() {
-    if (_micButton || !SR) return;
+    if (_micButton || !SR || !_langueFr()) return;
     const btn = document.createElement("button");
     btn.id        = "kta-voice-mic";
     btn.className = "kta-voice-mic";
@@ -653,6 +665,7 @@
     });
     registerCommand({
       patterns: [
+        "affichage xl", "affichage x l", "mode xl", "grand affichage",
         "mode urgence", "lance urgence", "lance l'urgence", "lancer urgence",
         "lancer l'urgence", "active urgence", "active l'urgence",
         "activer urgence", "activer l'urgence", "déclencher urgence",
@@ -783,6 +796,20 @@
 
   function _initUI() {
     if (_enabled && isSupported()) _injectMicButton();
+  }
+
+  // Réévalue la présence du bouton au changement de langue (FR seulement).
+  function _surChangementLangue() {
+    if (_langueFr()) {
+      if (_enabled && isSupported()) _injectMicButton();
+    } else {
+      stopListening();
+      _hideLiveOverlay();
+      _removeMicButton();
+    }
+  }
+  if (window.I18n && typeof window.I18n.onChange === "function") {
+    window.I18n.onChange(_surChangementLangue);
   }
   if (document.readyState === "complete" || document.readyState === "interactive") {
     _initUI();

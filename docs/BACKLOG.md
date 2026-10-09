@@ -10,8 +10,8 @@
 
 | Sujet | Décision | Qui |
 |---|---|---|
-| 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé | Claude |
-| Commande vocale FR seulement | **Masquer le bouton vocal hors français** | Claude |
+| ✅ 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé — **fait** : 🔆 Affichage XL / XL display / Vista XL | Claude |
+| ✅ Commande vocale FR seulement | **Masquer le bouton vocal hors français** — **fait** (réévalué au changement de langue) | Claude |
 | Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer | Claude, puis KARMA |
 | Sortie d'urgence 🚨 classique coupée | **Alerte si écart > 10 m**, comme en brancard | Claude |
 | « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |
@@ -170,8 +170,6 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 
 Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
 
-- 🟠 **Commande vocale : français seulement** — `voiceCommand.js` force `fr-FR` et ses motifs sont en français ; les guides EN/ES le disent désormais. À trancher : la traduire ou l'annoncer comme telle dans l'interface. ✅ vérifié (code lu).
-- 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
 - 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
 - ⚪ **Mot de passe d'installation oublié** : seul l'effacement des données du site lève le verrou (le démarrage attend le mot de passe, `main.js`). Ne concerne plus que les installations qui publient un mot de passe (le code communautaire en dur est supprimé depuis le 04/10/2026). Pas de voie de secours dans l'app — décision de produit, à confirmer.
 - ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.

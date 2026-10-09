@@ -6,8 +6,11 @@
  */
 
 // =========================
-// 🚨 MODE URGENCE — v1.10.1
+// 🔆 AFFICHAGE XL (ex-« Mode urgence ») — v1.10.1
 // =========================
+// Nom affiché à l'utilisateur : « 🔆 Affichage XL » (EN « XL display », ES « Vista XL »),
+// décision KARMA 10/10/2026 : 🚨 reste réservé à la Sortie d'urgence. Le code (EmergencyMode,
+// classes kta-emergency-*, clés emergency.*) garde son nom d'origine.
 // Bouton "panique" qui affiche un écran simplifié plein écran avec les infos
 // VITALES en GROS :
 //   - Mini-carte interactive (déplacer / zoomer au doigt) centrée sur la

@@ -185,7 +185,7 @@ Cuando existe una versión nueva y tienes conexión, la app te propone actualiza
 | Tu situación | La herramienta | Dónde encontrarla |
 |---|---|---|
 | Quiero **salir lo antes posible** | 🚨 Salida de emergencia | botón 🚨 de la barra superior |
-| Sé dónde estoy, pero me entra el pánico: necesito **mi posición y mi rumbo en muy grande** | 🚨 Modo urgencia — Visualización XL | menú 🧭 Tracker, botón rojo |
+| Sé dónde estoy, pero me entra el pánico: necesito **mi posición y mi rumbo en muy grande** | 🔆 Vista XL | menú 🧭 Tracker, botón rojo |
 | **Ya no sé dónde estoy** | ⛑️ Estoy perdido | menú 🧭 Tracker, botón naranja |
 | **Otra persona está perdida**, coordino equipos | 🚑 Modo Rescate | 🔭 Para ir más lejos › 🚑 Modo Rescate |
 
@@ -198,7 +198,7 @@ Cuando existe una versión nueva y tienes conexión, la app te propone actualiza
 
 ### 🚨 Salida de emergencia — encontrar la salida más cercana
 
-Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨** en la barra superior (a la derecha, junto a 📖 Modo Historia), o di «**sortie**» al comando de voz 🎤 (solo entiende francés).
+Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨** en la barra superior (a la derecha, junto a 📖 Modo Historia), o di «**sortie**» al comando de voz 🎤 (disponible solo en francés; el botón solo aparece si la app está en francés).
 
 **Lo que busca la app**: los puntos marcados como salida abierta — **Acceso a cantera abierto** (`cao`), **Pozo de peldaños abierto** (`peo`), **Escalera de servicio abierta** (`eso`) — además de los etiquetados `entrée` y la etiqueta integrada «🚪 Punto de entrada del mapa». Las variantes **cerradas** (`caf`, `pef`, `esf`) se ignoran: un punto marcado como cerrado nunca se te propondrá. Si el plano no tiene ninguna salida reconocida, un mensaje te recuerda estas etiquetas.
 
@@ -211,9 +211,9 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 Una vibración confirma la salida encontrada o te avisa si no hay ninguna, aunque **📳 Vibración háptica** esté desactivada. Todo se calcula en tu dispositivo, sin red.
 
-### 🚨 Modo urgencia — Visualización XL
+### 🔆 Vista XL
 
-Sabes dónde estás, pero te entra el pánico y necesitas lo esencial **en muy grande**: reorientarte, localizar un pozo cercano, comprobar tu rumbo, dictarle tu posición a alguien. En el menú **🧭 Tracker**, el botón rojo **🚨 Modo urgencia — Visualización XL (posición + rumbo)** abre una pantalla completa que cabe sin desplazarse:
+Sabes dónde estás, pero te entra el pánico y necesitas lo esencial **en muy grande**: reorientarte, localizar un pozo cercano, comprobar tu rumbo, dictarle tu posición a alguien. En el menú **🧭 Tracker**, el botón rojo **🔆 Vista XL (posición + rumbo)** abre una pantalla completa que cabe sin desplazarse:
 
 - 🗺️ **Un minimapa** que ocupa casi toda la pantalla, muy ampliado y centrado en ti, con los **colores de tu leyenda**, tu ruta, **los puntos del plano y los tuyos** (del nivel mostrado) y la misma orientación que el mapa en modo «mapa orientado».
 - 🖐️ **Puedes desplazarlo y hacer zoom con los dedos** para mirar más lejos. En cuanto lo mueves, deja de seguirte y vuelve a ponerse con el **Norte arriba**; el botón **🎯 Recentrar** lo devuelve a ti y reanuda el seguimiento y la orientación.
@@ -223,7 +223,7 @@ Sabes dónde estás, pero te entra el pánico y necesitas lo esencial **en muy g
 - 🔋 **Una línea de estado** arriba a la derecha: tu batería (si **🔋 Nivel de batería** está activado en ⚙️ Configuración), el estado del tracker y de la brújula. El nombre del plano está bajo el título.
 - 📋 **Tus coordenadas GPS, si tu plano está georreferenciado**: el icono 📋 al final de la línea de estado abre una burbuja que las muestra **en muy grande**, legibles a un metro — las que se dictan a los equipos de rescate —, con una línea que indica si es tu posición seguida, tu última posición conocida o la **posición de salida del plano, nunca confirmada**. Su botón **📋 Copiar mi posición** copia solo las coordenadas (`48.856600, 2.352200`), listas para pegar en un SMS o una app de mapas. ⚠️ Si tu posición nunca se confirmó, la burbuja lo dice pero el mensaje no: díselo también a quien escribas. Plano sin georreferenciar: sin icono, no se muestra ninguna coordenada.
 
-La pantalla sigue el tema de la app, no se apaga mientras está abierta y también cabe en horizontal. Para salir: el botón grande **↩️ SALIR DEL MODO EMERGENCIA**, siempre abajo, o **Esc** en ordenador (si hay una burbuja abierta, Esc cierra primero la burbuja).
+La pantalla sigue el tema de la app, no se apaga mientras está abierta y también cabe en horizontal. Para salir: el botón grande **↩️ SALIR DE LA VISTA XL**, siempre abajo, o **Esc** en ordenador (si hay una burbuja abierta, Esc cierra primero la burbuja).
 
 ### ⛑️ Estoy perdido
 
@@ -437,7 +437,7 @@ El botón **🧭 Tracker** (o el indicador 🧭 de la barra de abajo) abre una *
 |---|---|
 | **Seguimiento** | ▶️ / ⏹️ Iniciar / detener · 📍 Modo recolocación · 🎯 Mi posición (vuelve a centrar el mapa en ti) · 🔓 Suspender el bloqueo en trazado |
 | **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado |
-| **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🚨 Modo urgencia XL · 🚨 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
+| **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚨 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
 
 Navegación inteligente (bloqueo en trazado), mapa orientado, itinerario a través de varios planos, replay y mapa de calor son opciones desactivadas por defecto → 🔭 Para ir más lejos.
 
@@ -1122,7 +1122,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
   - **🧭 Posición inicial del tracker** *(este plano)*: X/Y, **🔍 Elegir mediante un punto** o **📍 Hacer clic en el mapa**. Cambiar el inicio hace que el seguimiento vuelva a empezar desde ahí (el recorrido en curso se borra);
   - **👣 Detección de pasos** *(todos los planos)*: longitud del paso (de 0 a 1,5 m), umbral (de 10 a 30), retardo (de 300 a 3000 ms);
   - **🧭 Navegación inteligente** *(este plano)*: ver «🔭 Para ir más lejos».
-- **🎨 Visualización** — **🎨 Fondo bajo el plano** *(este plano)*: negro, blanco o gris neutro bajo las partes transparentes del plano (por defecto: el que recomienda el plano, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este plano)*; **🎤 Comandos de voz (BETA)** *(todos los planos)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
+- **🎨 Visualización** — **🎨 Fondo bajo el plano** *(este plano)*: negro, blanco o gris neutro bajo las partes transparentes del plano (por defecto: el que recomienda el plano, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este plano)*; **🎤 Comandos de voz (BETA)** *(todos los planos)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos; disponible solo en francés: el botón solo aparece si la app está en francés. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
 - **🚀 Rendimiento** *(este plano)* — el **🚀 Modo ULTRA** para los planos grandes que hacen fallar el teléfono (ver «🔭 Para ir más lejos»); en un plano multinivel, **🏗️ Mostrar todos los niveles al iniciar**.
 - **🧩 Funciones opcionales** y **🔒 Privacidad y seguridad** — las mismas casillas que en ⚙️ Configuración (opciones, modo incógnito).
 - **🛠️ Sistema y mantenimiento** — el **modo rendimiento** del plano, en modo lectura.

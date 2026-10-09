@@ -2753,13 +2753,14 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.10.1 — 🚨 Mode urgence "panique" : différent du ⛑️ Je suis
+      // 🆕 v1.10.1 — Affichage XL "panique" : différent du ⛑️ Je suis
       // perdu (qui calcule une zone de recherche). Ici c'est juste de
       // l'AFFICHAGE en grand des infos vitales (position + cap boussole),
       // désactive tout le superflu. Utile pour lire ses coordonnées et
       // son heading en grand format sans avoir à pinch-zoomer la sidebar.
+      // Affiché « 🔆 Affichage XL » depuis le 10/10/2026 (🚨 = Sortie d'urgence).
       {
-        icone: "🚨",
+        icone: "🔆",
         titre: window.I18n.t("ui.subaction.emergency"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {

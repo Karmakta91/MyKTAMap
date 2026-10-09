@@ -185,7 +185,7 @@ Quand une nouvelle version existe et que tu as du réseau, l'app te propose de l
 | Ta situation | L'outil | Où le trouver |
 |---|---|---|
 | Je veux **sortir au plus vite** | 🚨 Sortie d'urgence | bouton 🚨 de la barre du haut |
-| Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🚨 Mode urgence — Affichage XL | menu 🧭 Tracker, bouton rouge |
+| Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🔆 Affichage XL | menu 🧭 Tracker, bouton rouge |
 | **Je ne sais plus où je suis** | ⛑️ Je suis perdu | menu 🧭 Tracker, bouton orange |
 | **Quelqu'un d'autre est perdu**, je coordonne des équipes | 🚑 Mode Secours | 🔭 Pour aller plus loin › 🚑 Mode Secours |
 
@@ -211,9 +211,9 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, même si **📳 Vibration haptique** est désactivée. Tout se calcule sur ton appareil, sans réseau.
 
-### 🚨 Mode urgence — Affichage XL
+### 🔆 Affichage XL
 
-Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, dicter ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🚨 Mode urgence — Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
+Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, dicter ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🔆 Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
 
 - 🗺️ **Une mini-carte** qui occupe presque tout l'écran, très zoomée et centrée sur toi, aux **couleurs de ta légende**, avec ton itinéraire, **les points du plan et les tiens** (du niveau affiché), et la même orientation que la carte en mode « plan orienté ».
 - 🖐️ **Tu peux la déplacer et zoomer au doigt** pour regarder plus loin. Dès que tu la bouges, elle cesse de te suivre et se remet **Nord en haut** ; le bouton **🎯 Recentrer** la ramène sur toi, reprend le suivi et l'orientation.
@@ -223,7 +223,7 @@ Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** 
 - 🔋 **Une ligne d'état** en haut à droite : ta batterie (si **🔋 Niveau de batterie** est activé dans ⚙️ Configuration), l'état du tracker et de la boussole. Le nom du plan est sous le titre.
 - 📋 **Tes coordonnées GPS, si ton plan est géoréférencé** : l'icône 📋 au bout de la ligne d'état ouvre une bulle qui les affiche **en très gros**, lisibles à un mètre — celles qu'on dicte aux secours —, avec une ligne qui précise s'il s'agit de ta position suivie, de ta dernière position connue, ou de la **position de départ du plan, jamais confirmée**. Son bouton **📋 Copier ma position** copie les coordonnées seules (`48.856600, 2.352200`), prêtes à coller dans un SMS ou une app de cartes. ⚠️ Si ta position n'a jamais été confirmée, la bulle le dit mais pas le message : dis-le aussi à qui tu écris. Plan non géoréférencé : pas d'icône, aucune coordonnée n'est affichée.
 
-L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et tient aussi en paysage. Pour en sortir : le gros bouton **↩️ SORTIR DU MODE URGENCE**, toujours en bas, ou **Échap** sur ordinateur (si une bulle est ouverte, Échap ferme d'abord la bulle).
+L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et tient aussi en paysage. Pour en sortir : le gros bouton **↩️ QUITTER L'AFFICHAGE XL**, toujours en bas, ou **Échap** sur ordinateur (si une bulle est ouverte, Échap ferme d'abord la bulle).
 
 ### ⛑️ Je suis perdu
 
@@ -437,7 +437,7 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
 | **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
-| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🚨 Mode urgence XL · 🚨 Mode Secours — voir 🆘 En cas d'urgence sous terre |
+| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚨 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
 
@@ -1122,7 +1122,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
   - **🧭 Navigation intelligente** *(ce plan)* : voir « 🔭 Pour aller plus loin ».
-- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
+- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes ; disponible en français uniquement : le bouton n'apparaît que si l'app est en français. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
 - **🚀 Performance** *(ce plan)* — le **🚀 Mode ULTRA** pour les gros plans qui font planter le téléphone (voir « 🔭 Pour aller plus loin ») ; sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement**.
 - **🧩 Fonctionnalités optionnelles** et **🔒 Confidentialité & sécurité** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito).
 - **🛠️ Système & maintenance** — le **mode performance** du plan, en lecture seule.
