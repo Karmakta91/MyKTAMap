@@ -266,8 +266,8 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 > (`merge-main.ps1`), image Docker conditionnée à la CI, Dependabot, `lib/VERSIONS.md`. Détail :
 > `docs/architecture/infra-versioning.md` §29bis. Pistes non prioritaires :
 
-- ⚪ **Smoke Playwright en CI**, lancé à la main (`workflow_dispatch`) : la marche 2 de la porte reste manuelle.
-- ⚪ **Tableau de bord des garde-fous** : nombre, durée du pre-commit, tendance d'une version à l'autre.
+- ⚪ **Tendance des garde-fous d'une version à l'autre** : le tableau (`ci.yml` › `tableau-garde-fous`) donne nombre,
+  durée et statut à chaque push, sans historique — comparer deux versions = ouvrir deux runs.
 - ⚪ **Scripts de déploiement versionnés** dans un dépôt privé dédié (aujourd'hui un seul poste les détient) —
   à trancher par KARMA.
 - ⚪ **Protection de branche réelle** (GitHub Pro, ~4 $/mois) si d'autres comptes obtiennent un accès en écriture :

@@ -71,3 +71,26 @@ jobs:
           fetch-depth: 1
       - name: refs/ci/verte/${{ github.ref_name }} → ${{ github.sha }}
         run: git push origin "+${GITHUB_SHA}:refs/ci/verte/${GITHUB_REF_NAME}"
+
+  # Tableau de bord des garde-fous (backlog CI/CD, 10/10/2026) — INDICATIF, jamais bloquant.
+  # Le job « Garde-fous » s'arrête au premier rouge et ne dit pas où part le temps ; celui-ci lance chaque
+  # garde-fou du pre-commit un par un et affiche nom · durée · statut dans le résumé du run. Ici plutôt que
+  # dans smoke.yml : il a besoin de tourner à CHAQUE push pour qu'on voie un garde-fou ralentir, et le smoke
+  # n'est lancé qu'à la main. Job parallèle (pas de needs) : il n'allonge pas la CI ; continue-on-error et
+  # absent des needs de « Marquer le commit vert » : il ne peut ni rougir la CI ni retenir un déploiement.
+  tableau-garde-fous:
+    name: Tableau de bord des garde-fous (indicatif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Durée et résultat de chaque garde-fou
+        run: node scripts/garde-fous-tableau.js | tee -a "$GITHUB_STEP_SUMMARY"

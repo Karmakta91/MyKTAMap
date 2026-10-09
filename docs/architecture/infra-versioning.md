@@ -210,6 +210,20 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
 - **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
   commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
+- **`ci.yml` › `tableau-garde-fous`** (chaque run, en parallèle, **indicatif**) : `scripts/garde-fous-tableau.js`
+  lance un par un les scripts listés dans `.githooks/pre-commit` (liste lue dans le hook, rien à tenir à jour) et
+  écrit nom · type (bloquant / consultatif) · durée · statut · 1re ligne d'erreur dans le résumé du run
+  (`$GITHUB_STEP_SUMMARY`) ; `--json` en local. Sort toujours en 0, `continue-on-error`, hors des `needs` de
+  `marquer-vert` : il ne rougit rien et ne retient aucun déploiement — le verdict reste celui du pre-commit. Placé
+  dans `ci.yml` et non `smoke.yml` pour tourner à chaque push (voir un garde-fou ralentir). Pas d'historique.
+- **`smoke.yml`** (manuel seulement : Actions › Smoke › Run workflow, sur n'importe quelle branche) : `npm ci` de
+  `scripts/smoke` (le `postinstall` télécharge Chromium) + `playwright install-deps`, puis `smoke.js` — il démarre
+  son serveur (port 8123, CSP stricte de `docker/nginx-docker.conf`). Le checkout n'a dans `data/` que ce que Git
+  suit (`data/index.json` + le relevé fictif `data/test`) : une étape vérifie que l'index pointe bien un relevé
+  fictif avant d'installer quoi que ce soit. Journal dans le résumé du run ; en échec, `smoke-resultats/` (journal
+  complet) en artefact 14 jours — `smoke.js` ne produit pas de capture. Aucun secret. C'est la marche 1bis de la porte
+  (`docs/RELEASE_GATE.md`) lançable sans poste, depuis un téléphone ; la marche 2 (12 points sur dev, à la main)
+  reste manuelle.
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
 - **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte — il lit
   la même marque `refs/ci/verte/<branche>` que le VPS (`git ls-remote`, sans jeton ni coffre d'identifiants Windows,
