@@ -580,6 +580,36 @@ async function evacuationBrancard() {
     const vide = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ, { echelle: 4, profondeurs: {} });
     t("inter-plans : plan cible sans profondeurs → jonction en 2D, jamais celles du plan ouvert",
       proche(vide.totalDistance, plat + 10));
+
+    // 🐛 10/10/2026 — jonction dessinée en PLUSIEURS segments : chaque segment
+    // comptait le dénivelé complet (2 segments → 680 px au lieu de 520). Le
+    // dénivelé est réparti au prorata de la longueur 2D de chaque segment :
+    // même puits en 1 ou 3 segments → même poids, dans les deux sens.
+    const ctxCible = { echelle: 4, profondeurs: { "0": -25, "1": -65 } };
+    const reseauJ3 = [
+      reseauJ[0],
+      R("jonction", [[200, 500], [203, 500], [207, 500], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      reseauJ[2]
+    ];
+    const cible3 = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ3, ctxCible);
+    t("jonction en 3 segments : même poids qu'en 1 segment (" + Math.round(cible3.totalDistance) +
+      " px, attendu " + Math.round(attenduCible) + ")", proche(cible3.totalDistance, attenduCible));
+    const wpsInv = [wpsJ[1], wpsJ[0]];
+    const inv1 = wJ.Pathfinder.computeRouteOnRoads(wpsInv, reseauJ, ctxCible);
+    const inv3 = wJ.Pathfinder.computeRouteOnRoads(wpsInv, reseauJ3, ctxCible);
+    t("jonction : sens inverse identique, en 1 comme en 3 segments (" + Math.round(inv1.totalDistance) +
+      " / " + Math.round(inv3.totalDistance) + " px)",
+      proche(inv1.totalDistance, attenduCible) && proche(inv3.totalDistance, attenduCible));
+    // Tracé coudé : le prorata suit la longueur 2D réelle (pas le nombre de points).
+    const reseauJc = [
+      reseauJ[0],
+      R("jonction", [[200, 500], [205, 512], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      reseauJ[2]
+    ];
+    const cibleC = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJc, ctxCible);
+    const attenduC = plat + Math.hypot(2 * Math.hypot(5, 12), 40 * 4);
+    t("jonction coudée : hypot(longueur 2D totale, dénivelé) (" + Math.round(cibleC.totalDistance) +
+      " px, attendu " + Math.round(attenduC) + ")", proche(cibleC.totalDistance, attenduC));
     const ilJ = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
     t("câblage inter-plans : l'étape distante passe les profondeurs de son plan",
       ip.includes("profondeurs: ctx.profondeurs") && ip.includes("profondeurs: routingB.profondeurs || {}") &&

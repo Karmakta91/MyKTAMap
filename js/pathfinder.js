@@ -390,7 +390,13 @@
 
   // Poids d'un segment, en pixels plan. Identique à la distance 2D SAUF pour
   // une jonction dont les deux niveaux ont une profondeur renseignée.
-  function _poidsSegment(a, b, road, ctxPoids) {
+  // `part` (0..1) = part du dénivelé portée par CE segment : une jonction
+  // dessinée en N segments répartit son dénivelé au prorata de la longueur 2D
+  // de chacun (cf _partsDenivJonction). Sans prorata, chaque segment comptait
+  // le dénivelé COMPLET (680 px au lieu de 520 pour un puits en 2 segments).
+  // Somme des hypoténuses = hypot(longueur 2D totale, dénivelé) : une jonction
+  // pèse pareil quel que soit son nombre de points, et dans les deux sens.
+  function _poidsSegment(a, b, road, ctxPoids, part) {
     const plan = _dist(a, b);
     if (!road || road.type !== "jonction") return plan;
     const zA = _profondeurPourPoids(road.fromLevel, ctxPoids);
@@ -398,8 +404,24 @@
     if (zA === null || zB === null) return plan;   // non renseigné → inchangé
     const echelle = _echelleReseau(ctxPoids && ctxPoids.echelle, 0);
     if (!echelle) return plan;                     // plan non calibré → inchangé
-    const denivPx = Math.abs(zB - zA) * echelle;
+    const p = (typeof part === "number" && Number.isFinite(part)) ? part : 1;
+    const denivPx = Math.abs(zB - zA) * echelle * p;
     return Math.hypot(plan, denivPx);
+  }
+
+  // Parts du dénivelé d'une jonction, segment par segment (index i = segment
+  // [points[i], points[i+1]]) : longueur 2D du segment / longueur 2D totale.
+  // Jonction de longueur nulle (tous ses points confondus) → parts égales.
+  function _partsDenivJonction(points) {
+    const n = points.length - 1;
+    const longueurs = [];
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const l = _dist(points[i], points[i + 1]);
+      longueurs.push(l);
+      total += l;
+    }
+    return longueurs.map(function(l) { return total > 0 ? l / total : 1 / n; });
   }
 
   // `ctxPoids` (facultatif) : { echelle, profondeurs } du plan du réseau — cf
@@ -437,6 +459,7 @@
         ? (Number.isInteger(road.toLevel) ? road.toLevel : 0)
         : null;
       const lastPointIdxInRoad = road.points.length - 1;
+      const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y);
       // Niveau du first node : fromLvl pour jonction, segLevel pour road normale.
@@ -477,7 +500,7 @@
           //
           // Sans profondeur renseignée — l'état de tout plan d'avant cette
           // version — on retombe exactement sur l'ancien calcul.
-          const w = _poidsSegment(prevP, p, road, ctxPoids);
+          const w = _poidsSegment(prevP, p, road, ctxPoids, partsDeniv ? partsDeniv[i - 1] : 1);
           if (_diagJonction && road.type === "jonction") {
             console.log("[Pathfinder] jonction 3D : plan", _dist(prevP, p).toFixed(1),
               "px → réel", w.toFixed(1), "px");
