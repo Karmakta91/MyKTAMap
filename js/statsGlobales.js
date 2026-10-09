@@ -880,22 +880,15 @@
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }
 
+  // Copie déléguée au helper commun (utils.js) : il tente navigator.clipboard puis
+  // retombe sur execCommand (HTTP local, clipboard refusé). On garde la forme
+  // Promise résolue / rejetée attendue par les appelants.
   function _copyToClipboard(text) {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(text);
+    if (typeof window.ktaCopierTexte !== "function") {
+      return Promise.reject(new Error("ktaCopierTexte indisponible"));
     }
-    return new Promise(function(resolve, reject) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (ok) resolve(); else reject(new Error("execCommand copy failed"));
-      } catch(e) { reject(e); }
+    return window.ktaCopierTexte(text).then(function(ok) {
+      if (!ok) throw new Error("clipboard + execCommand KO");
     });
   }
 
@@ -1045,12 +1038,13 @@
     pdf.setFontSize(13);
     pdf.setTextColor(244, 197, 66);
     pdf.setFont("helvetica", "bold");
-    pdf.text(meta.name + (meta.version ? "  " + meta.version : ""), margin, y);
+    // Nom, version, auteur = saisie libre : ktaTextePdf (utils.js) retire ce que la police ne sait pas écrire.
+    pdf.text(window.ktaTextePdf(meta.name + (meta.version ? "  " + meta.version : "")), margin, y);
     y += 6;
     pdf.setFont("helvetica", "normal");
 
     // Plan meta
-    if (meta.author)               _drawKV(window.I18n.t("stats.pdf.kv.auteur"),     meta.author);
+    if (meta.author)               _drawKV(window.I18n.t("stats.pdf.kv.auteur"),     window.ktaTextePdf(meta.author));
     if (meta.imageW && meta.imageH) _drawKV(window.I18n.t("stats.pdf.kv.dimensions"), meta.imageW + " x " + meta.imageH + " px");
     if (meta.scale && meta.scale !== 1) _drawKV(window.I18n.t("stats.pdf.kv.echelle"), meta.scale.toFixed(1) + " px/m");
     const flags = [];

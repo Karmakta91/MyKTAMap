@@ -625,9 +625,10 @@
   function _dessinerHeader(pdf, pageW, margin, headerH) {
     const T = window.I18n.t;
     const pc = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
-    const planName = pc.name    || T("pdfexport.header.planSansNom");
-    const planVer  = pc.version || "";
-    const planAuth = pc.author  || "";
+    // Nom, version, auteur = saisie libre : ktaTextePdf (utils.js) retire ce que la police ne sait pas écrire.
+    const planName = window.ktaTextePdf(pc.name || "") || T("pdfexport.header.planSansNom");
+    const planVer  = window.ktaTextePdf(pc.version || "");
+    const planAuth = window.ktaTextePdf(pc.author  || "");
     const scale    = (window.APP_CONFIG && window.APP_CONFIG.scale) || null;
     const date     = _dateLisible();
 
