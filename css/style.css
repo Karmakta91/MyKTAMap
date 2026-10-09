@@ -21467,47 +21467,6 @@ html.kta-theme-light .zip-drop-formats-titre { color: #3a4256; }
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 
-/* 🛠️ v1.76.3 — Mode Développeur : 📚 bibliothèque des docs (v2 : navigation
-   liste → doc plein cadre, comme l'Aide — le layout 2 colonnes v1 cassait). */
-.kta-devdocs-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.kta-devdocs-item {
-  text-align: left;
-  font-size: 13px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(140, 180, 255, 0.14);
-  border-radius: 8px;
-  color: #e8eaf0;
-  cursor: pointer;
-  line-height: 1.4;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.kta-devdocs-item:hover {
-  background: rgba(140, 180, 255, 0.08);
-  border-color: rgba(140, 180, 255, 0.35);
-}
-.kta-devdocs-chemin {
-  font-size: 10.5px;
-  color: #8892a4;
-  font-family: 'Courier New', monospace;
-}
-.kta-devdocs-lecture {
-  font-size: 13px;
-  line-height: 1.55;
-  min-width: 0;
-}
-.kta-devdocs-lecture pre { overflow-x: auto; background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; }
-.kta-devdocs-lecture table { display: block; overflow-x: auto; }
-.kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
-.kta-devdocs-lecture h3 { color: #8cb4ff; }
-.kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
-
 /* ═══════════════════════════════════════════════════════════════════
    📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
    Budget mesuré : HOME desktop ≈ 870px déplié, gouverné par la colonne
