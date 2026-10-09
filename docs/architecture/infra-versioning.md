@@ -202,6 +202,20 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 ---
 
+### 29bis. CI GitHub : garde-fous à chaque push (`.github/workflows/ci.yml`, audit CI/CD du 08/10/2026)
+
+- **`ci.yml`** (push `Karma_dev` / `main`, PR) : `node --check`, **`scripts/ci-commits.sh`** (anti-fuite pro et
+  `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
+  `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI`), puis **`.githooks/pre-commit`** (tous
+  les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
+- **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
+- **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte (jeton Git
+  rangé, lu via `git credential fill` ; illisible = `DEROGE`). Tient lieu de protection de branche.
+- **Dependabot** (`.github/dependabot.yml`) : actions GitHub + `scripts/smoke`, PR vers `Karma_dev`. Les librairies de
+  `lib/` sont suivies à la main dans **`lib/VERSIONS.md`**.
+- **Pas de Sonar en CI** : SonarQube tourne en local (Docker), injoignable depuis un runner GitHub — marche 1ter
+  de `docs/RELEASE_GATE.md`.
+
 ### 30. GitHub Releases automatiques (`.github/workflows/release.yml`, depuis v169)
 
 À chaque bump de `version.json > version` mergé sur `main`, un workflow GitHub Actions auto-crée :

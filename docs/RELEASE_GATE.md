@@ -45,7 +45,9 @@ règle de confidentialité du dépôt était respectée**. Les fichiers `data/` 
 bloquants — rien n'en sera commité, `check-data-hors-git.js` s'en charge, et le merge ne les touche pas),
 branche légitime (jamais `Chig_Dev`, jamais `main`), **concordance des trois sources de version**
 (volet 🔒 de la marche 1), suite complète des garde-fous, porte qualité SonarQube (marche 1ter : échec = refus,
-serveur injoignable = `DEROGE` tapé), `main` local à jour vis-à-vis du distant. Puis il montre
+serveur injoignable = `DEROGE` tapé), `main` local à jour vis-à-vis du distant, **CI GitHub verte sur le commit à
+merger** (branche poussée telle quelle — tient lieu de protection de branche, payante en dépôt privé ; GitHub
+injoignable = `DEROGE` tapé). Puis il montre
 ce qui va partir, merge en `--no-ff`, pose le tag de version et publie — chaque étape vérifiée, un merge en conflit
 étant annulé et la branche de travail restaurée.
 

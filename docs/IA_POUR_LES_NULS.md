@@ -551,7 +551,7 @@ elles manquent.
 | **Porte de release** | La liste de vérifications à franchir avant de merger sur `main` |
 | **Dérogation** | Passer une vérification sans la valider, **avec** motif, risque et rattrapage écrits |
 | **Release / bump** | Publier une nouvelle version / augmenter le numéro de version |
-| **CI/CD** | Intégration et déploiement continus : des robots qui vérifient et publient à chaque merge. Ici : tag, page de release et image Docker automatiques ; **déploiement manuel** |
+| **CI/CD** | Intégration et déploiement continus : des robots qui vérifient et publient. Ici : **tous les garde-fous rejoués sur GitHub à chaque push**, merge refusé si cette CI n'est pas verte, tag, page de release et image Docker (seulement si la CI est verte) automatiques ; **déploiement manuel** |
 | **Déploiement** | Mettre les fichiers sur le serveur qui les sert aux utilisateurs |
 | **Service worker / cache** | Le mécanisme qui permet à une app web de fonctionner hors ligne ; il faut renommer son cache à chaque version |
 | **Environnement de dev / prod** | Le serveur d'essai / le serveur des vrais utilisateurs |
