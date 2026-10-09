@@ -328,4 +328,5 @@ Write-Host ""
 Write-Host "   Il reste le déploiement PROD, qui est manuel :" -ForegroundColor Yellow
 Write-Host "     sur le VPS : sh /data/scripts/deploy-prod.sh   (script hors dépôt)" -ForegroundColor Yellow
 Write-Host "   puis ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
+Write-Host "   Ce qui tourne vraiment, dev et prod : scripts\release\etat-sites.ps1" -ForegroundColor Yellow
 Write-Host ""

@@ -85,6 +85,12 @@ données de l'utilisateur, un échec là = pas de release, point.
 > **Voie rapide hotfix** (bump de cache type v1.75.1, zéro changement fonctionnel) :
 > items 1, 2, 5, 11, 12 seulement — les 5 sont 🔒 ou version, aucun dérogeable.
 
+> **Avant de commencer, et après `deploy-prod.sh`** : `powershell -ExecutionPolicy Bypass -File
+> scripts\release\etat-sites.ps1` dit quel **commit** tourne sur dev et prod (`deploiement.json`, écrit par les
+> scripts de déploiement) et l'écart avec `Karma_dev` / `main`, plus les en-têtes `no-cache` et la doc interne non
+> servie. Sans lui, on peut faire tout le smoke sur un dev resté sur un commit plus ancien : on commite sans bump,
+> la version affichée ne change pas d'un commit à l'autre.
+
 ---
 
 ## ⚠️ Dérogations — passer SANS valider, mais jamais en silence

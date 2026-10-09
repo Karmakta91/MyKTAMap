@@ -688,6 +688,15 @@ documentées ici pour la doctrine.
   refusent tout déploiement si un fichier de `data/` perd son bit skip-worktree. `data/` reste géré à la main.
 - Mise à jour refusée si un fichier du site a été modifié à la main ; 1re installation : ancien site archivé (sans
   `data/`), fichiers hors dépôt listés, jamais supprimés.
+- **Après chaque passage** (audit CD du 09/10/2026, Q3) : `deploiement.json` à la racine du site (`commit`, `branche`,
+  `version`, `date` — la version seule ne dit pas quel commit tourne, on commite sans bump) ; le site est interrogé
+  comme un navigateur (version, cache du Service Worker, en-têtes `no-cache`, commit, doc interne non servie — en
+  lisant le **contenu** : toute adresse inconnue répond 200 avec la page de l'app) ; une ligne au journal
+  `/data/www/_sauvegardes/deploiements.log`, refus et abandons compris ; un seul déploiement à la fois par site
+  (`flock`). Codes : `0` ok · `1` refus ou abandon, site inchangé · `2` site changé mais vérification en échec.
+- **Depuis le poste** : `scripts/release/etat-sites.ps1` (lecture seule, sans secret) fait les mêmes contrôles sur les
+  deux sites et donne l'écart en commits avec `origin/Karma_dev` / `origin/main` — rappelé en fin de `merge-main.ps1`
+  et avant la marche 2 de `RELEASE_GATE.md`.
 - Remplace `scripts/deploy/deploy.ps1` (FTP), retiré le 07/10/2026.
 
 ## 📚 La doc technique ne se lit pas dans l'app (depuis le 09/10/2026)
