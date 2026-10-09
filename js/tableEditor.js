@@ -1203,10 +1203,10 @@
     if (wrap) wrap.scrollTop = wrap.scrollHeight;
   }
 
-  function _supprimerSelection() {
+  async function _supprimerSelection() {
     if (_selection.size === 0) return;
     const n = _selection.size;
-    if (!confirm(window.I18n.t("tabledit.confirm.supprimer", { n: n }))) return;
+    if (!(await window.ktaConfirm(window.I18n.t("tabledit.confirm.supprimer", { n: n })))) return;
     const indices = [..._selection].sort(function(a, b) { return b - a; });
     indices.forEach(function(i) { _data.splice(i, 1); });
     _selection.clear();

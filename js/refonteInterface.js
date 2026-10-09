@@ -1942,11 +1942,8 @@
         };
         window.Journal.affinerEnCours().then(function(bilan) {
           if (bilan && bilan.skipped === "trop-gros") {
-            const demander = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
-                                  { titre: window.I18n.t("jrn.affiner.confirmTitre") })
-              : Promise.resolve(window.confirm(window.I18n.t("jrn.affiner.confirmGros",
-                                                             { n: bilan.nbPts || "?" })));
+            const demander = window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
+                                               { titre: window.I18n.t("jrn.affiner.confirmTitre") });
             return demander.then(function(ok) {
               if (!ok) return null;
               return window.Journal.affinerEnCours({ force: true });

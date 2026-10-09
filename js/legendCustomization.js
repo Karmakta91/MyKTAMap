@@ -1085,7 +1085,7 @@ window.LegendCustomization = (function() {
       body.addEventListener("input", function(e) {
         if (e.target.matches(".kta-legend-label")) _applyFromUI(e.target);
       });
-      body.addEventListener("click", function(e) {
+      body.addEventListener("click", async function(e) {
         if (e.target.matches(".kta-legend-rm")) {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
@@ -1095,11 +1095,11 @@ window.LegendCustomization = (function() {
             if (u.total > 0) {
               const ent = findCustomEntry(id);
               const msg = window.I18n.t("legend.editor.rmUsedConfirm", {
-                nom:      (ent && ent.label) || id,
+                nom:      window.ktaEsc((ent && ent.label) || id),
                 total:    u.total,
                 calques:  u.calques
               });
-              if (!window.confirm(msg)) return;
+              if (!(await window.ktaConfirm(msg, { zIndex: 100100 }))) return;   // au-dessus de l'éditeur (100050)
             }
             removeCustomEntry(id);
             _render();
@@ -1125,8 +1125,8 @@ window.LegendCustomization = (function() {
       });
     });
 
-    document.getElementById("kta-legend-editor-reset").addEventListener("click", function() {
-      const ok = window.confirm(window.I18n.t("legend.editor.resetConfirm"));
+    document.getElementById("kta-legend-editor-reset").addEventListener("click", async function() {
+      const ok = await window.ktaConfirm(window.I18n.t("legend.editor.resetConfirm"), { zIndex: 100100 });
       if (!ok) return;
       resetSession();
       _render();

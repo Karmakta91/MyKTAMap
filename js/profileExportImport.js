@@ -1347,9 +1347,7 @@ photos: false, histoirePdfs: false, crashes: false
         if (planIds.length && octetsArchives > _seuilArchives()) {
           const msg = window.I18n.t(_estIOS() ? "profileio.arch_seuil_ios" : "profileio.arch_seuil_std",
                                     { taille: _formatBytes(octetsArchives), seuil: _formatBytes(_seuilArchives()) });
-          const confirmer = (typeof window.ktaConfirm === "function")
-            ? window.ktaConfirm(msg, { okLabel: window.I18n.t("profileio.arch_seuil_ok") })
-            : Promise.resolve(confirm(msg));
+          const confirmer = window.ktaConfirm(msg, { okLabel: window.I18n.t("profileio.arch_seuil_ok") });
           confirmer.then(function(ok) { if (ok) lancer(); });
         } else {
           lancer();
@@ -1494,14 +1492,14 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerModales(); });
     document.addEventListener("keydown", _onEscape);
 
-    document.getElementById("kta-profile-import-go").addEventListener("click", function() {
+    document.getElementById("kta-profile-import-go").addEventListener("click", async function() {
       const mode = (document.querySelector('input[name="kta-profile-import-mode"]:checked') || {}).value || "merge";
       const include = {};
       document.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
         include[cb.dataset.section] = cb.checked;
       });
       if (mode === "replace") {
-        const ok = confirm(window.I18n.t("profileio.replace_confirm"));
+        const ok = await window.ktaConfirm(window.I18n.t("profileio.replace_confirm"));
         if (!ok) return;
       }
       const btn = document.getElementById("kta-profile-import-go");

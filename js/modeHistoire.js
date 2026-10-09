@@ -585,9 +585,9 @@
     // Supprime le document AFFICHÉ (jamais l'embarqué : le bouton est masqué
     // quand la sélection vient du ZIP).
     if (btnRemove) {
-      btnRemove.addEventListener("click", function() {
+      btnRemove.addEventListener("click", async function() {
         if (!_docSelectionne || String(_docSelectionne).indexOf(EMBED_ID) === 0) return;
-        if (!confirm(window.I18n.t("histoire.pdf.removeConfirm"))) return;
+        if (!(await window.ktaConfirm(window.I18n.t("histoire.pdf.removeConfirm")))) return;
         _supprimerDoc(_docSelectionne).then(function() {
           _docSelectionne = null;
           _renderPdf({ force: true });

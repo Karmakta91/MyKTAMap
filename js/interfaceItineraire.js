@@ -1070,16 +1070,14 @@ window._onTrackerRecale = function(x, y, source, opts) {
       : 0;
     if (restantes > 0) {
       // Confirm CHARTÉ (ktaConfirm, utils.js) — retour KARMA : le confirm()
-      // natif jurait avec la charte graphique. Repli natif si utils absent.
-      const demander = (typeof window.ktaConfirm === "function")
-        ? window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
-            titre: window.I18n.t("iti.replan.confirmTitre"),
-            okLabel: window.I18n.t("iti.replan.confirmOk"),
-            cancelLabel: window.I18n.t("iti.replan.confirmNon"),
-            // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
-            autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
-          })
-        : Promise.resolve(confirm(window.I18n.t("iti.replan.confirm")));
+      // natif jurait avec la charte graphique.
+      const demander = window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
+        titre: window.I18n.t("iti.replan.confirmTitre"),
+        okLabel: window.I18n.t("iti.replan.confirmOk"),
+        cancelLabel: window.I18n.t("iti.replan.confirmNon"),
+        // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
+        autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
+      });
       demander.then(function(ok) {
         if (ok === "supprimer") {
           _effacerItineraireActif();
@@ -1693,8 +1691,8 @@ function _bindAvoidSectionHandlers() {
 
   const resetBtn = document.getElementById("kta-iti-avoid-reset");
   if (resetBtn) {
-    resetBtn.addEventListener("click", function() {
-      if (!confirm(window.I18n.t("iti.avoid.resetConfirm"))) return;
+    resetBtn.addEventListener("click", async function() {
+      if (!(await window.ktaConfirm(window.I18n.t("iti.avoid.resetConfirm")))) return;
       // Le reset rend le comportement SÛR, pas le dernier choix : la case
       // revient cochée comme le reste revient à vide.
       _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
@@ -2084,8 +2082,8 @@ window.ouvrirItinerairModal = function() {
       modal.remove();
       window.map.fitBounds(bounds, { padding: [40, 40], animate: false });
     });
-    document.getElementById("kta-iti-erase").addEventListener("click", function() {
-      if (!confirm(window.I18n.t("iti.erase.confirm"))) return;
+    document.getElementById("kta-iti-erase").addEventListener("click", async function() {
+      if (!(await window.ktaConfirm(window.I18n.t("iti.erase.confirm")))) return;
       modal.remove();
       _effacerItineraireActif();
     });

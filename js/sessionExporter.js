@@ -4160,11 +4160,10 @@
             } else if (!tilesOverlay) {
               // Irréductible (image géante non-V2) : choix explicite, jamais
               // d'erreur silencieuse (règle KARMA).
-              const continuer = (typeof window.ktaConfirm === "function")
-                ? await window.ktaConfirm(window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }),
-                    { titre: "🌍 Google Earth", okLabel: window.I18n.t("kmz.geOverlay.okQuandMeme"),
-                      cancelLabel: window.I18n.t("kmz.geOverlay.annuler") })
-                : confirm(window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }));
+              const continuer = await window.ktaConfirm(
+                window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }),
+                { titre: "🌍 Google Earth", okLabel: window.I18n.t("kmz.geOverlay.okQuandMeme"),
+                  cancelLabel: window.I18n.t("kmz.geOverlay.annuler") });
               if (!continuer) {
                 if (window.OOMGuard && window.OOMGuard.showToast) {
                   window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.exportAnnule"), "warn");

@@ -1881,9 +1881,9 @@
     const noms = (s.groupes || []).filter(function(g) { return gids.indexOf(g.id) >= 0; })
                                   .map(function(g) { return _escHtml(g.nom); }).join(", ");
     const msg = t("secours.rappel.confirm", { n: gids.length, equipes: noms, h: _heureCourte(_nowIso()) });
-    const ok = (typeof window.ktaConfirm === "function")
-      ? await window.ktaConfirm(msg, { titre: t("secours.rappel.confirmTitre"), okLabel: t("secours.rappel.confirmOk") })
-      : window.confirm(msg);
+    const ok = await window.ktaConfirm(msg, {
+      titre: t("secours.rappel.confirmTitre"), okLabel: t("secours.rappel.confirmOk")
+    });
     if (!ok) return false;
     const s2 = get(sid);
     if (!s2 || !_estExecutionActive(s2)) return false;
@@ -3425,9 +3425,7 @@
         planSource: _escHtml(importedPlanName),
         planCourant: _escHtml(currentPlanName)
       });
-      const ok = (typeof window.ktaConfirm === "function")
-        ? await window.ktaConfirm(confirmMsg)
-        : window.confirm(confirmMsg);
+      const ok = await window.ktaConfirm(confirmMsg);
       if (!ok) {
         return { ok: false, error: t("secours.import.errAnnuleUser") };
       }
@@ -8895,13 +8893,16 @@
           _afficherModaleLancerPhaseSuivante(scenarioId);
         } else {
           // 2b. Pas de phase suivante → propose d'arrêter complètement
-          if (window.confirm(t("secours.debrief.confirmArret", { phase: phase.nom }))) {
-            arreterExecution(scenarioId);
-            _toast(t("secours.toast.planTermine"), "info");
-          } else {
-            _toast(t("secours.toast.phaseTermineeManuel", { phase: phase.nom }), "info");
-          }
-          if (_activeView) _switchView(_activeView);
+          window.ktaConfirm(t("secours.debrief.confirmArret", { phase: window.ktaEsc(phase.nom) }))
+            .then(function(ok) {
+              if (ok) {
+                arreterExecution(scenarioId);
+                _toast(t("secours.toast.planTermine"), "info");
+              } else {
+                _toast(t("secours.toast.phaseTermineeManuel", { phase: phase.nom }), "info");
+              }
+              if (_activeView) _switchView(_activeView);
+            });
         }
       }
     });
@@ -10516,11 +10517,11 @@
       });
       // Supprimer
       corps.querySelectorAll('[data-action="del-scenario"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           const id = btn.getAttribute("data-id");
           const s = get(id);
           if (!s) return;
-          if (window.confirm(t("secours.confirm.supprimerScenario", { nom: s.nom }))) {
+          if (await window.ktaConfirm(t("secours.confirm.supprimerScenario", { nom: window.ktaEsc(s.nom) }))) {
             deleteScenario(id);
             _switchView("list");
           }
@@ -10576,8 +10577,8 @@
         btn.addEventListener("click", function() { _switchView("live"); });
       });
       corps.querySelectorAll('[data-action="arreter-plan"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (!window.confirm(t("secours.confirm.arreterPlan"))) return;
+        btn.addEventListener("click", async function() {
+          if (!(await window.ktaConfirm(t("secours.confirm.arreterPlan")))) return;
           arreterExecution(s.id);
           _toast(t("secours.toast.planArrete"), "info");
           _switchView("edit");
@@ -10666,8 +10667,8 @@
       });
       // 🆕 v1.23.0 Feature C — Retirer les données Lost Mode importées
       corps.querySelectorAll('[data-action="clear-lostpos"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (!window.confirm(t("secours.confirm.retirerLostpos"))) return;
+        btn.addEventListener("click", async function() {
+          if (!(await window.ktaConfirm(t("secours.confirm.retirerLostpos")))) return;
           updateScenario(s.id, {
             context: { lastKnownPoint: null, zoneIncertitude: null }
           });
@@ -10791,7 +10792,7 @@
       });
       // 🆕 v1.23.0 Phase 2 / Feature E — Auto-création 1 équipe par niveau M-LVL
       corps.querySelectorAll('[data-action="auto-equipes-mlvl"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) {
             _toast(t("secours.toast.mlvlNonActif"), "warn");
             return;
@@ -10803,7 +10804,8 @@
           }
           // Confirme si des équipes existent déjà (anti-doublon massif)
           if (s.groupes.length > 0) {
-            if (!window.confirm(t("secours.confirm.autoEquipes", { existant: s.groupes.length, nouveau: levels.length }))) return;
+            if (!(await window.ktaConfirm(t("secours.confirm.autoEquipes",
+              { existant: s.groupes.length, nouveau: levels.length })))) return;
           }
           // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
           // 🆕 v1.23.3 : passe le level explicitement à addGroupe → g.level
@@ -10839,15 +10841,15 @@
         });
       });
       corps.querySelectorAll('[data-action="delete-phase"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           if (btn.hasAttribute("disabled")) return;
           const idxAttr = btn.getAttribute("data-phase-idx");
           const idx = parseInt(idxAttr, 10);
           if (!Number.isInteger(idx)) return;
           const phase = s.phases[idx];
           if (!phase) return;
-          const confirmMsg = t("secours.confirm.supprimerPhase", { nom: phase.nom });
-          if (!window.confirm(confirmMsg)) return;
+          const confirmMsg = t("secours.confirm.supprimerPhase", { nom: window.ktaEsc(phase.nom) });
+          if (!(await window.ktaConfirm(confirmMsg))) return;
           const ok = supprimerPhase(s.id, idx);
           if (ok) {
             _toast(t("secours.toast.phaseSupprimee"), "info");
@@ -10961,11 +10963,11 @@
       /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler share-qr retiré. */
       // Delete groupe
       corps.querySelectorAll('[data-action="del-groupe"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           const gid = btn.getAttribute("data-gid");
           const g = s.groupes.find(function(x) { return x.id === gid; });
           if (!g) return;
-          if (window.confirm(t("secours.confirm.supprimerEquipe", { nom: g.nom }))) {
+          if (await window.ktaConfirm(t("secours.confirm.supprimerEquipe", { nom: window.ktaEsc(g.nom) }))) {
             removeGroupe(s.id, gid);
             _switchView("edit");
           }
@@ -11202,8 +11204,8 @@
     });
     // Arrêter le plan depuis la vue Live
     corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        if (!window.confirm(t("secours.confirm.terminerPlanLive"))) return;
+      btn.addEventListener("click", async function() {
+        if (!(await window.ktaConfirm(t("secours.confirm.terminerPlanLive")))) return;
         arreterExecution(s.id);
         _toast(t("secours.toast.planTermineSauv"), "info");
         _switchView("edit");
@@ -11332,10 +11334,10 @@
       });
     });
     corps.querySelectorAll('[data-action="live-photo-del"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const pid = btn.getAttribute("data-photo-id");
         if (!pid) return;
-        if (!window.confirm(t("secours.confirm.supprimerPhoto"))) return;
+        if (!(await window.ktaConfirm(t("secours.confirm.supprimerPhoto")))) return;
         _supprimerPhotoEtape(s.id, equipeId, idx, pid);
       });
     });
@@ -11689,10 +11691,10 @@
     });
     // Suppression d'une note
     corps.querySelectorAll('[data-action="sec-del-note"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const noteId = btn.getAttribute("data-note-id");
         if (!noteId) return;
-        if (!window.confirm(t("secours.confirm.supprimerNote"))) return;
+        if (!(await window.ktaConfirm(t("secours.confirm.supprimerNote")))) return;
         supprimerNoteLibre(s.id, noteId);
         _toast(t("secours.toast.noteSupprimee"), "info");
         _switchView("live");

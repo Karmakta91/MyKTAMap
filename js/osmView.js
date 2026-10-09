@@ -2492,7 +2492,7 @@
       }
     }
     if (!isOptedIn()) {
-      const yes = confirm(window.I18n.t("osm.open.optInConfirm"));
+      const yes = await window.ktaConfirm(window.I18n.t("osm.open.optInConfirm"));
       if (!yes) return;
       setOptedIn(true);
     }

@@ -2665,7 +2665,7 @@
     else _retirerPlansOsm(e.ids);
   }
 
-  function _ajouterPlansOsm(ids, libelle) {
+  async function _ajouterPlansOsm(ids, libelle) {
     // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
     // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
     // sur un lot, « après coup » veut dire une fois les vingt plans montés,
@@ -2673,8 +2673,8 @@
     // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
     const total = _stackOrder.length + ids.length;
     if (ids.length >= 2 && total > 3) {
-      const ok = window.confirm(window.I18n.t("osm_mode.multi.tagConfirm",
-        { n: ids.length, tag: libelle || "", total: total }));
+      const ok = await window.ktaConfirm(window.I18n.t("osm_mode.multi.tagConfirm",
+        { n: ids.length, tag: window.ktaEsc(libelle || ""), total: total }));
       if (!ok) return;
     }
     const montes = [];

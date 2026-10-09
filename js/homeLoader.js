@@ -1750,9 +1750,7 @@ function planRowHTML(plan) {
             if (bMaj) bMaj.addEventListener("click", lancer);
             if (bDel) bDel.addEventListener("click", function () {
               const msg = _t("home.plans.offline.confirmRetirer");
-              const confirmer = (typeof window.ktaConfirm === "function")
-                ? window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") })
-                : Promise.resolve(confirm(msg));
+              const confirmer = window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") });
               confirmer.then(function (okc) {
                 if (!okc) return;
                 window.PlanOffline.supprimer(plan.id).then(rendreOffline);
@@ -1811,9 +1809,8 @@ function planRowHTML(plan) {
               const mo = (octets / 1048576).toLocaleString(undefined, { maximumFractionDigits: 1 });
               caseDocs = { coche: false, label: _t("home.plans.removeDocs", { n: docs.length, mo: mo }) };
             }
-            const confirmer = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(msg, { okLabel: _t("home.plans.removeBtnTitle"), caseACocher: caseDocs })
-              : Promise.resolve(confirm(msg));
+            const confirmer = window.ktaConfirm(msg,
+              { okLabel: _t("home.plans.removeBtnTitle"), caseACocher: caseDocs });
             confirmer.then(async function(ok) {
               if (!ok) return;
               try { await window.PlanRegistry.purgeAssociatedData(plan.id); } catch(e) {

@@ -1282,11 +1282,9 @@
 
     const btnLegReset = document.getElementById("kta-legend-custom-reset");
     if (btnLegReset) {
-      btnLegReset.addEventListener("click", function() {
+      btnLegReset.addEventListener("click", async function() {
         if (!window.LegendCustomization) return;
-        // Confirmation simple via window.confirm — pas de modale custom pour
-        // garder le code léger (action peu fréquente).
-        const ok = window.confirm(window.I18n.t("imgexport.legende.custom.resetConfirm"));
+        const ok = await window.ktaConfirm(window.I18n.t("imgexport.legende.custom.resetConfirm"));
         if (!ok) return;
         window.LegendCustomization.resetSession();
         _peuplerLegendCustom();

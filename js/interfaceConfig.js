@@ -303,7 +303,7 @@ function _bindCfgGeorefHandlers() {
     _badgeEstime.style.display = "";
   }
   const _btnEstimer = document.getElementById("cfg_kmz_B_estimer");
-  if (_btnEstimer) _btnEstimer.addEventListener("click", function() {
+  if (_btnEstimer) _btnEstimer.addEventListener("click", async function() {
     const ax = parseFloat(document.getElementById("cfg_kmz_A_x").value);
     const ay = parseFloat(document.getElementById("cfg_kmz_A_y").value);
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
@@ -323,8 +323,8 @@ function _bindCfgGeorefHandlers() {
     if (!b) { _setStatus(window.I18n.t("config.georef.estimerErrCalc"), "err"); return; }
     // Récap de confirmation — l'estimation N'EST PAS une mesure, on le dit.
     const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
-    if (!confirm(window.I18n.t("config.georef.estimerConfirm",
-          { dist: distM, scale: scale, north: north }))) return;
+    if (!(await window.ktaConfirm(window.I18n.t("config.georef.estimerConfirm",
+          { dist: distM, scale: scale, north: north })))) return;
     document.getElementById("cfg_kmz_B_x").value = b.x;
     document.getElementById("cfg_kmz_B_y").value = b.y;
     document.getElementById("cfg_kmz_B_coords").value =
@@ -1556,9 +1556,9 @@ function afficherConfig() {
       }
       if (window.IncognitoMode.active) {
         // Confirm avant quit (perte de données potentielle)
-        if (confirm(window.I18n.t("config.incognito.confirmQuit"))) {
-          window.IncognitoMode.quit();
-        }
+        window.ktaConfirm(window.I18n.t("config.incognito.confirmQuit")).then(function(ok) {
+          if (ok) window.IncognitoMode.quit();
+        });
       } else {
         // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
         // modale charte de garde-fou (description + risques + buttons).

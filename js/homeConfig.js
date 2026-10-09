@@ -184,9 +184,9 @@
             return;
           }
           if (window.IncognitoMode.active) {
-            if (confirm(_t("config.incognito.confirmQuit", "Quitter le mode incognito ?"))) {
-              window.IncognitoMode.quit();
-            }
+            window.ktaConfirm(_t("config.incognito.confirmQuit", "Quitter le mode incognito ?")).then(function(ok) {
+              if (ok) window.IncognitoMode.quit();
+            });
           } else {
             // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
             // modale charte de garde-fou (description + risques + buttons).

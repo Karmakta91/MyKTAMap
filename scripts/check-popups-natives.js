@@ -19,7 +19,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const PLAFOND = 193;
+const PLAFOND = 154;
 
 function sansCommentaires(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))

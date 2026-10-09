@@ -941,16 +941,16 @@
   function _rapatrierCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return;
-    CS.peser(id).then(function(p) {
+    CS.peser(id).then(async function(p) {
       if (!p) { alert(window.I18n.t("filter.calque.errPesee")); return; }
       const occ = CS.occupationLocalStorage();
       const msg = window.I18n.t("filter.calque.confirm", {
-        label:  p.label,
+        label:  window.ktaEsc(p.label),
         n:      p.objets,
         poids:  _fmtOctets(p.octets),
         occup:  (occ === null) ? "?" : _fmtOctets(occ)
       });
-      if (!window.confirm(msg)) return;
+      if (!(await window.ktaConfirm(msg))) return;
       CS.rapatrier(id).then(function(r) {
         if (!r || !r.ok) {
           alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }));

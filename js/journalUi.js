@@ -302,8 +302,8 @@
         });
       });
 
-      document.getElementById("kta-jrn-del").addEventListener("click", function() {
-        if (!window.confirm(_t("jrn.confirm.supprimer"))) return;
+      document.getElementById("kta-jrn-del").addEventListener("click", async function() {
+        if (!(await window.ktaConfirm(_t("jrn.confirm.supprimer")))) return;
         window.Journal.remove(rec.id).then(function() {
           _fermerFiche();
           _toast(_t("jrn.toast.supprimee"), "info");
@@ -527,9 +527,7 @@
         // 🩸 La fusion SUPPRIME des enregistrements : on confirme. C'est le
         // seul geste destructif du carnet, dont la raison d'être est d'être
         // une archive append-only.
-        const demander = (typeof window.ktaConfirm === "function")
-          ? window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }))
-          : Promise.resolve(window.confirm(_t("jrn.fusion.confirm", { n: ids.length })));
+        const demander = window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }));
         demander.then(function (ok) {
           if (!ok) return;
           return window.Journal.fusionner(ids).then(function (rec) {
@@ -951,11 +949,11 @@
     });
 
     box.querySelectorAll(".kta-jrn-doc-del").forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const i = parseInt(btn.getAttribute("data-del"), 10);
         const d = r.docs[i];
         if (!d) return;
-        if (!window.confirm(_t("jrn.recits.confirmSupprPdf", { nom: d.name }))) return;
+        if (!(await window.ktaConfirm(_t("jrn.recits.confirmSupprPdf", { nom: window.ktaEsc(d.name) })))) return;
         _histSupprimer(d.id).then(function(ok) {
           if (!ok) { _toast(_t("jrn.recits.errSuppr"), "warn"); return; }
           r.docs.splice(i, 1);

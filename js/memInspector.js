@@ -933,9 +933,7 @@
       const plans = (rep && rep.orphelins && rep.orphelins.plans) || [];
       if (!plans.length) return;
       const msg = _t("orph.confirm", { n: plans.length, taille: _formatBytes(rep.orphelins.totalBytes) });
-      const ok = (typeof window.ktaConfirm === "function")
-        ? await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") })
-        : confirm(msg);
+      const ok = await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") });
       if (!ok) return;
       btn.disabled = true; btn.textContent = "⏳";
       for (const e of plans) {
@@ -951,15 +949,15 @@
       const id = parseInt(this.dataset.crashId, 10);
       _copierCrashReport(id, this);
     });
-    _lc.delegate(corps, "click", ".kta-mem-crash-del", function() {
+    _lc.delegate(corps, "click", ".kta-mem-crash-del", async function() {
       const id = parseInt(this.dataset.crashId, 10);
-      if (!confirm(_t("crash.confirm.del"))) return;
+      if (!(await window.ktaConfirm(_t("crash.confirm.del")))) return;
       if (window.CrashReports && typeof window.CrashReports.remove === "function") {
         window.CrashReports.remove(id).then(_refreshAndRender);
       }
     });
-    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", function() {
-      if (!confirm(_t("crash.confirm.clearAll"))) return;
+    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", async function() {
+      if (!(await window.ktaConfirm(_t("crash.confirm.clearAll")))) return;
       if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
         window.CrashReports.clearAll().then(_refreshAndRender);
       }

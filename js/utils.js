@@ -590,7 +590,9 @@ window.ktaConfirm = function(message, opts) {
     };
     const ov = document.createElement("div");
     ov.className = "kta-readme-modal-overlay";
-    ov.style.zIndex = "100002";
+    // `opts.zIndex` : appelant ouvert AU-DESSUS de 100002 (éditeur de légende, 100050) — sinon la
+    // fenêtre s'ouvrirait derrière lui, invisible et inatteignable.
+    ov.style.zIndex = String(opts.zIndex || 100002);
     ov.innerHTML = '' +
       '<div class="kta-readme-modal-boite" style="max-width:430px; height:auto; max-height:80vh;">' +
         '<div class="kta-readme-modal-header">' +   // checkup thème (C1) : « -entete » n'existait dans aucun CSS
@@ -645,12 +647,19 @@ window.ktaConfirm = function(message, opts) {
         const n = parseInt(nombreEl.value, 10);
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
-      document.removeEventListener("keydown", surTouche);
+      document.removeEventListener("keydown", surTouche, true);
       ov.remove();
       resolve(val);
     };
-    const surTouche = function(e) { if (e.key === "Escape") finir(false); };
-    document.addEventListener("keydown", surTouche);
+    // Échap n'agit QUE sur cette fenêtre : écouteur en capture, propagation coupée — sinon la fenêtre
+    // ouverte dessous (import de profil…) se fermait aussi, ce que le confirm() natif ne faisait pas.
+    const surTouche = function(e) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      finir(false);
+    };
+    document.addEventListener("keydown", surTouche, true);
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
     const nonEl = ov.querySelector("#kta-confirm-non");
     if (nonEl) nonEl.addEventListener("click", function() { finir(false); });

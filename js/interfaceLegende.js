@@ -412,7 +412,7 @@ function afficherLegende() {
 
   // 🧷 v1.76.1 — bouton « ➕ Lier » du bandeau orphelins (délégué : le corps
   // est re-rendu par innerHTML à chaque édition de légende).
-  modal.addEventListener("click", function (e) {
+  modal.addEventListener("click", async function (e) {
     const btn = e.target.closest ? e.target.closest(".kta-orphan-link") : null;
     if (!btn) return;
     if (!LC || typeof LC.ouvrirAddDialog !== "function") return;
@@ -425,7 +425,8 @@ function afficherLegende() {
     // comprendre laquelle agit (vécu KARMA, audit S1).
     const dejaLabel = (typeof LC.listCustomEntries === "function") &&
       LC.listCustomEntries(cat).some(function(e) { return e && e.label === type && e.id !== type; });
-    if (dejaLabel && !confirm(window.I18n.t("legendui.orphans.labelExiste", { label: type }))) return;
+    if (dejaLabel && !(await window.ktaConfirm(window.I18n.t("legendui.orphans.labelExiste",
+      { label: window.ktaEsc(type) })))) return;
     LC.ouvrirAddDialog(function() {
       const corps = modal.querySelector(".kta-legende-corps");
       if (corps) corps.innerHTML = _construireContenuLegende();
