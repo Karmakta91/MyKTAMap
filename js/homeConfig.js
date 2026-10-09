@@ -683,6 +683,10 @@
 
       const depannageBtn = document.getElementById("loaderDepannageBtn");
       if (depannageBtn) depannageBtn.addEventListener("click", _ouvrirDepannage);
+      // 🧩 10/10/2026 — point d'extension neutre : un écran qui précède l'accueil (gate d'une extension
+      // de connexion) peut proposer le même 🆘 Dépannage (mise à jour forcée, page de secours, tout
+      // réinitialiser). La fenêtre est ajoutée à <html> (id kta-depannage-modal), z-index 99999.
+      window.ktaOuvrirDepannage = _ouvrirDepannage;
 
       // ═══════════════════════════════════════════════════════════════
       // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)

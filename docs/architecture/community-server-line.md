@@ -69,6 +69,11 @@ photos restent locales et exportables).
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
+> 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
+> Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
+> 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,
+> overLocker: true })` (Documentation, au-dessus d'un écran plein). Une installation bloquée à la connexion garde
+> ainsi une issue.
 > 📶 **Réseau** : `offline` → état « down » aussitôt (la garde refuse, l'accueil rouvre la copie gardée) ; `online` →
 > événement `mktm:reseau-retour`, à la suite duquel le module sonde et `signaler("on"|"down")`. Un échec réseau
 > isolé d'une requête ne change **pas** l'état (sinon la garde bloquerait tout jusqu'à la sonde suivante).
