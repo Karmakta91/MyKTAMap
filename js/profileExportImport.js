@@ -1668,7 +1668,7 @@ photos: false, histoirePdfs: false, crashes: false
     document.getElementById("kta-profile-import-done-reload").addEventListener("click", function() {
       // Reload pleine page : garantit que TOUS les modules relisent leur état
       try { window.location.reload(); }
-      catch(e) { window.location.href = window.location.href; }
+      catch(e) { window.location.assign(window.location.href); }
     });
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     document.addEventListener("keydown", _onEsc);

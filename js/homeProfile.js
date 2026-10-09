@@ -1018,8 +1018,9 @@
           // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
           // final. Deux rendus frais, coût négligeable (une fois par
           // fermeture), et ça rend le symptôme impossible par construction.
-          try { _refreshLoaderProfileBar(); } catch(e) {}
-          try { _appliquerFondEcran(); }     catch(e) {}
+          // Fonctions async : un try ne voit pas leur rejet, le .catch si.
+          _refreshLoaderProfileBar().catch(function() {});
+          _appliquerFondEcran().catch(function() {});
         };
         const escFn = function(e) { if (e.key === "Escape" || e.key === "Esc") closeFn(); };
         document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);

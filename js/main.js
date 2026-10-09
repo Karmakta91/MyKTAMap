@@ -1956,6 +1956,7 @@ async function _splashEnd() {
 //   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
 //   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
 //   • data-i18n-placeholder → pose placeholder = I18n.t(clé)  [v1.69.0]
+//   • data-i18n-aria-label  → pose aria-label = I18n.t(clé), sans title
 // Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
 // VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
 // changement de langue. Générique : poser les attributs suffit, aucun code à
@@ -1979,6 +1980,11 @@ function _applyI18nDom(root) {
   // de re-traduction au changement de langue.
   root.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
     el.setAttribute("placeholder", window.I18n.t(el.getAttribute("data-i18n-placeholder")));
+  });
+  // Nom accessible d'un champ sans libellé visible (recherche, fichier) : aria-label seul, sans l'infobulle
+  // que poserait data-i18n-title. Le HTML garde un aria-label FR de repli (lu aussi par Sonar).
+  root.querySelectorAll("[data-i18n-aria-label]").forEach(function(el) {
+    el.setAttribute("aria-label", window.I18n.t(el.getAttribute("data-i18n-aria-label")));
   });
 }
 

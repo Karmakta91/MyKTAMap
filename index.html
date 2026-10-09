@@ -348,6 +348,7 @@
         <div class="loader-search-wrap">
           <div class="loader-search-bar" id="loaderSearchBar" style="display:none;">
             <input type="search" id="loaderSearchInput" class="loader-search-input"
+                   aria-label="Chercher un point dans tous mes plans" data-i18n-aria-label="home.search.placeholder"
                    data-i18n-placeholder="home.search.placeholder"
                    placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
             <button type="button" id="loaderSearchBtn" class="loader-search-btn"
@@ -471,6 +472,7 @@
                  nom (RAM only) + chips tags (visibles seulement si des tags
                  existent). Les épinglés ⭐ remontent en tête du tri. -->
             <input class="kta-plans-name-filter" id="loaderPlansNameFilter" type="search"
+                   aria-label="Filtrer par nom" data-i18n-aria-label="home.plans.filterName"
                    data-i18n-placeholder="home.plans.filterName" placeholder="🔎 Filtrer par nom…" autocomplete="off">
             <div id="loaderPlansTagChips" class="kta-plans-tagchips" style="display:none;"></div>
 
@@ -523,7 +525,7 @@
                afficherImporterSig. Avant, l'accueil les REFUSAIT (« le fichier
                doit être une archive .zip ») et la conversion SIG n'était
                atteignable que depuis la zone d'import du Générateur. -->
-          <input id="zipFile" type="file" accept=".zip,.kmz,.gpx,.geojson,.kml,.json,.tif,.tiff,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml,image/tiff">
+          <input id="zipFile" type="file" aria-label="Ajouter un plan" data-i18n-aria-label="home.add.title" accept=".zip,.kmz,.gpx,.geojson,.kml,.json,.tif,.tiff,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml,image/tiff">
         </div>
         <div id="zipFileName"></div>
 
@@ -564,7 +566,7 @@
 
       <!-- Input caché pour import de liste -->
       <!-- 📦 v1.79.0 : .zip accepté — profil COMPLET (conteneur profil.json + plans/) -->
-      <input id="importListFile" type="file" accept=".config,.json,.zip,application/json,application/zip" style="display:none;">
+      <input id="importListFile" type="file" aria-label="Fichier de liste de plans à importer" accept=".config,.json,.zip,application/json,application/zip" style="display:none;">
 
       <div id="loaderStatus"></div>
 
@@ -718,7 +720,7 @@
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderAideCtxCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.aidectx.label"></span>
+              <span class="kta-perf-ultra-label" data-i18n="config.aidectx.label">❓ Bouton d'aide dans les fenêtres</span>
               <span class="kta-perf-ultra-hint" data-i18n="config.aidectx.hint"></span>
             </span>
           </label>
@@ -727,10 +729,10 @@
                Les alertes serveur et les fenêtres de décision ne sont jamais coupées. -->
           <div class="kta-perf-ultra-row kta-notifs-row" style="margin-top:10px;">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.notifs.label"></span>
+              <span class="kta-perf-ultra-label" id="loaderNotifsLabel" data-i18n="config.notifs.label">🔔 Notifications</span>
               <span class="kta-perf-ultra-hint" data-i18n="config.notifs.hint"></span>
             </span>
-            <select class="kta-cfg-input kta-notifs-select" id="loaderNotifsSel">
+            <select class="kta-cfg-input kta-notifs-select" id="loaderNotifsSel" aria-labelledby="loaderNotifsLabel">
               <option value="all" data-i18n="config.notifs.all"></option>
               <option value="essential" data-i18n="config.notifs.essential"></option>
               <option value="silent" data-i18n="config.notifs.silent"></option>
@@ -888,7 +890,7 @@
           <label class="kta-perf-ultra-row" id="loaderJournalRow">
             <input type="checkbox" id="loaderJournalCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.journal.label"></span>
+              <span class="kta-perf-ultra-label" data-i18n="config.journal.label">📔 Tenir un carnet de mes sorties</span>
               <span class="kta-perf-ultra-hint" data-i18n="config.journal.hint"></span>
             </span>
           </label>
@@ -900,7 +902,7 @@
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderMemoriserCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.memoriser.label"></span>
+              <span class="kta-perf-ultra-label" data-i18n="config.memoriser.label">💾 Mémoriser le plan dans l'app au premier chargement</span>
               <span class="kta-perf-ultra-hint" data-i18n="config.memoriser.hint"></span>
             </span>
           </label>

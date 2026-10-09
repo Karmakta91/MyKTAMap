@@ -216,11 +216,11 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
   et c'est un service de plus à tenir à jour. Si oui : job `sonar` **séparé et non bloquant** dans `ci.yml`
   (`runs-on: self-hosted`), secret `SONAR_TOKEN` côté GitHub — repris par la session CI. Si non : la marche 1ter
   suffit (une analyse par release).
-- 🟡 **Bugs déjà présents, relevés par le premier scan** (✅ vérifié 09/10, Sonar) — n'entrent pas dans la porte
-  (ancien code), à prendre au fil de l'eau : 5 `try` autour d'une promesse sans `await` (`utils.js`,
-  `homeProfile.js` ×2, `osmView.js`, `sessionBackups.js`), 5 champs sans libellé dans `index.html`
-  (accessibilité), 2 `height` en double dans `css/style.css`, une ternaire aux deux branches identiques
-  (`map.js`, `_minZoom`). Liste à jour : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
+- ⚪ **Faux positifs « Bug » à marquer « Accepté » dans Sonar (KARMA, interface web)** — corrigés le 09/10 :
+  les 14 autres. Restent, voulus : `mdParser.js:107` ×2 (caractères de contrôle = balises internes des blocs de
+  code), `css/style.css` ×2 (`height: 44px` = repli avant `calc(… env(safe-area-inset-top))`), `index.html`
+  barre de profil (clavier géré en JS, `homeProfile.js` — la CSP interdit l'attribut inline que Sonar réclame).
+  Liste : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
 - ⚪ **Jetons Sonar** : expiration vers le **06/01/2027** (90 jours) — au-delà, `sonar-scan.ps1` sort en code 1
   et `merge-main.ps1` demande `DEROGE`. Régénérer un *Project Analysis Token* et le ranger dans `SONAR_TOKEN`.
 

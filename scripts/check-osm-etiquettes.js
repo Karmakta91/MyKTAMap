@@ -104,8 +104,11 @@ t("l'ajout en lot demande confirmation avant de depasser la pile",
   /osm_mode\.multi\.tagConfirm/.test(src));
 t("le plan PRINCIPAL est protege du retrait en lot",
   /_retirerPlansOsm[\s\S]{0,400}id === _selectedPlanId/.test(src));
+// En série = chaque chargement accroché au précédent (reduce, ou forEach qui réaffecte la chaîne — écriture
+// adoptée le 09/10/2026, Sonar refusant une valeur de reduce ignorée) ; jamais Promise.all sur le lot.
 t("les donnees d'un lot se chargent EN SERIE, pas en parallele",
-  /montes\.reduce\(/.test(src));
+  (/montes\.reduce\(/.test(src) || /montes\.forEach\(function \(m\) \{\s*chaine = chaine\.then\(/.test(src)) &&
+  !/Promise\.all\(\s*montes/.test(src));
 
 console.log(ko === 0 ? "\n🎉 etiquettes de plans (Vue OSM) : tout passe"
                      : "\n⚠️ " + ko + " echec(s)");

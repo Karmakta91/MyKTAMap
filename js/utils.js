@@ -3574,12 +3574,16 @@ window.ktaCopierTexte = function (txt) {
       return !!ok;
     } catch (e) { return false; }
   };
-  try {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(s)
-        .then(function () { return true; })
-        .catch(function () { return repli(); });
-    }
-  } catch (e) { /* accès à navigator.clipboard lui-même peut jeter en iframe */ }
+  // Le try ne garde que l'ACCÈS à navigator.clipboard (peut jeter en iframe) ; l'écriture, elle, est une
+  // promesse : son échec passe par le .catch (repli), et une erreur synchrone de writeText aussi.
+  // ⚠️ writeText est appelé TOUT DE SUITE (exécuteur de Promise = synchrone) : iOS exige l'appel pendant
+  // le geste de l'utilisateur, un .then() le décalerait d'une microtâche.
+  let presse = null;
+  try { presse = navigator.clipboard; } catch (e) { presse = null; }
+  if (presse && typeof presse.writeText === "function") {
+    return new Promise(function (resoudre) { resoudre(presse.writeText(s)); })
+      .then(function () { return true; })
+      .catch(function () { return repli(); });
+  }
   return Promise.resolve(repli());
 };

@@ -407,7 +407,7 @@ async function initMapFromConfig() {
   } else if (_maxImgDim > 4000) {
     _minZoom = _treatAsMobile ? -3 : -4;
   } else {
-    _minZoom = _treatAsMobile ? -4 : -4;
+    _minZoom = -4;   // petit plan : même plancher sur mobile et sur PC
   }
   console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom,
               "(mobile:", _isMobile, ", mobileZoomLimit:", _mobileLimit + ")");

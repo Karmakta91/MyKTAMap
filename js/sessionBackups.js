@@ -433,7 +433,9 @@ window.SessionBackups = (function() {
         // beforeunload est synchrone, IDB est async → en pratique le
         // snapshot n'a pas le temps de finir. On accepte ce trade-off
         // (le périodique 5 min couvre 99% des cas).
-        try { snapshot("beforeunload"); } catch(e) {}
+        // Erreur synchrone (lecture de la session) comme rejet d'IDB : tout finit dans le .catch. L'exécuteur
+        // d'une Promise est synchrone : le snapshot démarre tout de suite, pas une microtâche plus tard.
+        new Promise(function(resoudre) { resoudre(snapshot("beforeunload")); }).catch(function() {});
       });
       console.log("[SessionBackups] init OK (max=" + MAX + ", periodic=" + (PERIODIC_MS/1000) + "s)");
     }).catch(function(err) {

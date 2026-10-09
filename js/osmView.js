@@ -379,9 +379,8 @@
     // en ~1 tick après chargement du plan. Sans ça, la flag reste à false
     // car le setTimeout boot (1500ms) peut tirer avant que PLAN_CONFIG
     // ne soit prêt (bbox null → flag false définitive).
-    try {
-      if (window.OsmTilesCache) _recheckCachedForCurrentPlan();
-    } catch(e) {}
+    // async : un try ne voit pas son rejet, le .catch si.
+    if (window.OsmTilesCache) _recheckCachedForCurrentPlan().catch(function() {});
     return _hasGeoref() && isOptedIn() && !_isIncognitoOn() && _isOnlineOrCached();
   }
 

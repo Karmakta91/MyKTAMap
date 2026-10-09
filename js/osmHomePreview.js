@@ -2689,12 +2689,13 @@
     // EN SÉRIE, jamais en parallèle : chaque chargement extrait un ZIP.
     // Vingt extractions lancées ensemble figent l'onglet ; enchaînées, la
     // carte se remplit plan par plan et reste manipulable.
-    montes.reduce(function (chaine, m) {
-      return chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
-                   .catch(function (e) {
-                     console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
-                   });
-    }, Promise.resolve());
+    let chaine = Promise.resolve();
+    montes.forEach(function (m) {
+      chaine = chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
+                     .catch(function (e) {
+                       console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
+                     });
+    });
   }
 
   function _retirerPlansOsm(ids) {

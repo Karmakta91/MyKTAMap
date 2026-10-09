@@ -358,9 +358,11 @@
     if (m) m.remove();
   }
 
+  // Rend la promesse : « Terminer la sortie » enchaîne `.then(ouvrirFiche)` dessus (sans retour, TypeError
+  // et fiche jamais rouverte — relevé par Sonar le 09/10/2026).
   function _rafraichirListe() {
-    if (!document.getElementById(MODAL_ID)) return;
-    window.Journal.list().then(function(all) {
+    if (!document.getElementById(MODAL_ID)) return Promise.resolve();
+    return window.Journal.list().then(function(all) {
       _sorties = all;
       _renderListe();
       _renderTotaux();
