@@ -179,6 +179,12 @@
     // rouvre aussitôt la copie gardée.
     if ((_etat === "configuree" || _etat === "on") && _reseauCoupe) _etat = "down";
     _raison = (_etat === "licence" && _signal === "licence") ? _signalRaison : (_connexion.raison || "");
+    // 🏷️ 09/10/2026 — Installation RELIÉE (connexion serveur déclarée, même sans licence valide) :
+    // le splash et le pied de page cessent d'afficher l'identité community. Avant, une licence
+    // refusée retirait .kta-instance-pro et le splash redevenait celui de myktamap.fr juste avant
+    // l'écran « Installation indisponible » (retour KARMA). Posée dès la dernière config connue.
+    try { document.documentElement.classList.toggle("kta-instance-reliee", !!_connexion && _connexion.etat !== "off"); }
+    catch (e) { /* pas de DOM (tests) */ }
     peindre();
     if (_etat !== avant || !_dejaEmis) {
       _dejaEmis = true;

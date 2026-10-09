@@ -1197,7 +1197,7 @@ Vuelve a tocar el botón activo (en verde) para desactivarlo.
 
 ### 🔑 La contraseña se rechaza
 
-En el primer arranque, MyKTAMap simplemente propone **Continuar sin licencia**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
+En el primer arranque, MyKTAMap simplemente propone **Continuar**: no se pide ningún código. Solo una instalación con su propia contraseña (asociación, club, myktamap.fr) pide una: es **esa contraseña** la que necesitas, y una licencia pro no la sustituye. Si la instalación la cambia, la app la vuelve a pedir en el siguiente arranque; sin conexión, tu acceso sigue siendo válido.
 
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
@@ -1213,7 +1213,7 @@ Estas herramientas no borran **ningún** dato (planos memorizados, sesiones, fot
 **⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de planos y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
-- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar sin licencia**.
+- Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app propondrá simplemente **Continuar**.
 - Se piden dos confirmaciones. Hazlo **con conexión**: si estás sin conexión, una ventana roja te avisa de que la app quedará inutilizable hasta que vuelva la red.
 
 No hay que confundirlo con **↺ Valores por defecto** de ⚙️ Ajustes, que solo afecta a los ajustes del plano abierto.
@@ -1727,18 +1727,13 @@ La forma corta `{ "plans": ["test1", "test2"] }` también funciona; la forma det
 
 Más sencillo aún: deja el ZIP del plano tal cual (sin descomprimirlo) y decláralo con `"zip"` en lugar de `"path"`, por ejemplo `{ "id": "test3", "zip": "data/test3.zip", "name": "Plano de prueba 3" }`. La app lo descarga al abrirlo, lo guarda en el dispositivo para usarlo sin conexión (según **Memorizar el plano en la app**) y solo vuelve a descargarlo si ha cambiado. En la fila del plano, 💾 lo guarda sin abrirlo y ✅ indica que está guardado y al día.
 
-### 💼 Edición pro: importar una licencia
+### 💼 Edición pro
 
-Si el autor te ha entregado un archivo **`Licence-pro.json`**, este activa la edición pro **en este dispositivo**.
+La edición pro la instala **la persona que gestiona tu instalación**: coloca la licencia en el servidor, no tienes nada que hacer. Tu perfil muestra entonces ✓ Edición pro activa, y la pantalla de arranque «Edición profesional». La aplicación ya no propone importar una licencia por tu cuenta: una licencia importada en un dispositivo no activaba ninguna función pro.
 
-- **Desde tu perfil**: **📂 Importar una licencia pro** y elige el archivo. La parte inferior de la pantalla de inicio muestra ✓ Licencia pro activa y la pantalla de arranque «Edición profesional». **🗑️ Quitar licencia local** te devuelve al modo comunitario; puedes volver a importar el archivo más tarde.
-- **En el primer inicio**, en la pantalla de bienvenida, **📂 Importar mi licencia pro** te hace entrar directamente en modo pro.
-- En una instancia donde el administrador ha instalado la licencia en el servidor, tu perfil muestra simplemente ✓, sin botón.
-
-Una licencia está **firmada por el autor** y se emite para una dirección y un periodo: un archivo modificado, caducado o emitido para otra dirección se rechaza con un mensaje. El archivo se lee y se verifica en tu navegador, y no se envía a ninguna parte.
+Una licencia está **firmada por el autor** y se emite para una dirección y un periodo. Si caduca, o si el servidor la rechaza, la aplicación **permanece cerrada** en la pantalla «Licencia de la instalación no válida», nunca reabierta en modo comunitario: avisa a la persona que gestiona la instalación. Lo que se guarda en el dispositivo no se borra.
 
 > ⚖️ La licencia es **nominativa**: compartirla con un tercero no autorizado infringe el contrato firmado con el autor.
-
 ### 🛡️ Planos revocados
 
 Cuando un plano se ha difundido fuera de su grupo de confianza (foro, red social pública…), su autor puede **revocarlo**: la app se niega entonces a abrirlo, para todo el mundo.

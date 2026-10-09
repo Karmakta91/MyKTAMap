@@ -91,8 +91,8 @@
   largement, il ouvre la prod qui n'héberge rien — ouvrirait votre instance, et le mot de passe ne
   protégerait rien.*
   - 🔒 **Et aucune licence pro ne contourne ce mot de passe** (v1.90.8, complété v1.90.9) : dès que vous
-    publiez un `accessHash`, ni un `Licence-pro.json` importé par le visiteur, ni celui que **vous** servez
-    (`/Licence-pro.json` côté serveur) n'ouvre l'app sans le mot de passe. 🩸 *Le vôtre est fetché par TOUS
+    publiez un `accessHash`, le `Licence-pro.json` que **vous** servez (`/Licence-pro.json` côté serveur)
+    n'ouvre pas l'app sans le mot de passe. Un visiteur ne peut plus importer de licence lui-même. 🩸 *Le vôtre est fetché par TOUS
     les visiteurs : le laisser bypasser aurait rendu votre mot de passe muet — tout le monde serait entré.*
     La licence accorde le **mode pro** (les outils d'édition) APRÈS la saisie du mot de passe ; elle n'est
     plus une clé d'accès.

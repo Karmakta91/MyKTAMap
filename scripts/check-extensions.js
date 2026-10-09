@@ -602,6 +602,11 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 boot : licence pro absente/expirée/refusée → « Installation indisponible », AVANT modules et gate community",
       iBloc > iLic && iBloc < iMods && iBloc < iGate &&
       /if \(_motifBlocage\(\) === "licence"\) \{[\s\S]{0,300}await _ktaInstanceIndisponible\("licence"\);/.test(MAIN));
+    const KE = lire("js/ktaExtensions.js"), CSS = lire("css/style.css");
+    t("🩸 installation reliée (licence valide ou non) : jamais le splash ni le pied de page community",
+      /classList\.toggle\("kta-instance-reliee", !!_connexion && _connexion\.etat !== "off"\)/.test(KE) &&
+      /html\.kta-instance-reliee #splashLicense \.kta-licence-community \{ display: none; \}/.test(CSS) &&
+      /html\.kta-instance-reliee span\.kta-licence-community \{/.test(CSS));
     const PL = lire("js/proLicense.js");
     t("🩸 licence en cache EXPIRÉE ignorée et purgée (hors ligne aussi)",
       /data\.valid_until < new Date\(\)\.toISOString\(\)\.slice\(0, 10\)\)[\s\S]{0,80}localStorage\.removeItem\(key\)[\s\S]{0,160}return null;/.test(PL));

@@ -349,12 +349,18 @@ const KIOSK = "b".repeat(64);         // hash d'instance
       jouer(false, "local", true) === false && jouer(false, "server", false) === false);
   }
 
-  // La gate retire le bloc d'import de licence sur une instance protégée…
-  t("🔒 la gate RETIRE le bloc « importer ma licence » sur instance protégée",
-    /if \(!libre\) \{\s*_instanceProtegeeGate = true;[\s\S]{0,200}kta-licence-community[\s\S]{0,120}removeChild/.test(GATE));
-  // …et refuse l'unlock au clic, défense en profondeur.
-  t("🩸 …et refuse l'unlock même si le bloc est rendu (garde `_instanceProtegeeGate`)",
-    /if \(_instanceProtegeeGate\) \{[\s\S]{0,160}return;/.test(GATE));
+  // 🗑️ 09/10/2026 — L'IMPORT DE LICENCE PAR L'UTILISATEUR EST RETIRÉ (gate et profil) : il
+  // n'activait aucune fonction pro (règle E : licence SERVEUR exigée) et ne servait qu'à passer
+  // la gate. Il ne doit pas revenir : ni bloc d'import dans la gate, ni importFile exposé.
+  const PL = fs.readFileSync("js/proLicense.js", "utf8");
+  const PROF = fs.readFileSync("js/homeProfile.js", "utf8");
+  t("🩸 la gate ne propose plus d'importer une licence (ni bloc, ni champ fichier)",
+    !/kta-unlock-licence|type="file"|importFile/.test(GATE));
+  t("🩸 le profil ne propose plus d'importer ni de retirer une licence",
+    !/kta-profile-pro-input|importFile|removeLocal/.test(PROF));
+  t("🩸 proLicense n'expose plus importFile / removeLocal, une licence locale ancienne est purgée",
+    !/importFile:|removeLocal:/.test(PL) && /localStorage\.removeItem\(LS_KEY_LOCAL\)/.test(PL) &&
+    !/_activeSource = "local"/.test(PL));
   t("le prédicat instanceRequiertMotDePasse est exposé",
     /instanceRequiertMotDePasse: instanceRequiertMotDePasse/.test(GATE) &&
     /async function instanceRequiertMotDePasse\(\)/.test(GATE));
@@ -363,11 +369,6 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   // épargné la licence serveur, exactement le trou que KARMA a fait fermer.
   t("🩸 la décision de bypass ne discrimine plus par source (plus de test \"local\")",
     !/getSource\(\) === "local"/.test(MAIN));
-  // Le message de refus existe dans les 3 langues.
-  ["fr", "en", "es"].forEach(function (c) {
-    const d = JSON.parse(fs.readFileSync("lang/" + c + ".json", "utf8"));
-    t("🌍 message de refus traduit : " + c, typeof d["gate.licence.instanceProtegee"] === "string");
-  });
 }
 
 // ═════════ 10. 🔑 INCOGNITO HÉRITE DE TOUS LES DÉVERROUILLAGES (v1.90.14) ═════════
