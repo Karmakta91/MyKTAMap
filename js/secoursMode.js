@@ -138,7 +138,6 @@
       ? t("secours.statut." + info.id)
       : info.label;
   }
-  // Version ASCII (pour PDF jsPDF latin1) — retire les accents du label i18n.
   // Contre-audit GRIMP (30/09) : une même étape portait deux numéros à l'écran
   // (« Étape 6/41 » en tête, « ÉTAPE 5 » dans le bloc). Numéro unique, celui de la
   // carte et des PDF : entrée « E », étapes 1…N (intermédiaires), sortie « S ».
@@ -150,9 +149,10 @@
          : (et && et.type === "sortie") ? t("secours.num.sortie")
          : t("secours.num.etape", { n: idx });
   }
-  function _statutLabelAscii(statutId) {
-    return _statutLabel(statutId)
-      .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // Libellé de statut pour un PDF : accents gardés (la police les affiche), seuls les
+  // caractères hors police sont retirés (window.ktaTextePdf, utils.js).
+  function _statutLabelPdf(statutId) {
+    return window.ktaTextePdf(_statutLabel(statutId));
   }
 
   // ============================================================
@@ -1684,10 +1684,10 @@
     }
     return parts.join(" · ");
   }
+  // Texte libre vers un PDF : window.ktaTextePdf (utils.js). Accents gardés, flèches et coches
+  // converties (-> et OK), emojis et symboles hors police retirés ; espaces resserrés.
   function _stripPourPdf(txt) {
-    return String(txt || "")
-      .replace(/[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F]|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
-      .replace(/\s{2,}/g, " ").trim();
+    return window.ktaTextePdf(txt).replace(/\s{2,}/g, " ").trim();
   }
   function _heureCourte(iso) {
     return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
@@ -6987,7 +6987,7 @@
         pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
       }
       pdf.setFont(undefined, "bold");
-      pdf.text("  - " + (_lblEtape(e.label) || "(?)") + " : " + _statutLabelAscii(e.statut), margin, y); y += 4;
+      pdf.text("  - " + (_lblEtape(e.label) || "(?)") + " : " + _statutLabelPdf(e.statut), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (e.observations && String(e.observations).trim()) {
         y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(e.observations).trim() }), margin, y, pageW - 2 * margin, 4);
@@ -7025,7 +7025,7 @@
           _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
           pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
         }
-        pdf.text("  " + (i + 1) + ". " + (_lblEtape(et.label) || "(?)") + " : " + _statutLabelAscii(et.statut), margin, y); y += 4;
+        pdf.text("  " + (i + 1) + ". " + (_lblEtape(et.label) || "(?)") + " : " + _statutLabelPdf(et.statut), margin, y); y += 4;
         if (et.observations && String(et.observations).trim()) {
           y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(et.observations).trim() }), margin, y, pageW - 2 * margin, 4);
         }
@@ -7112,7 +7112,7 @@
       pdf.setFont(undefined, "bold");
       pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (_lblEtape(et.label) || "(?)"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
-      pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelAscii(et.statut), ts: ts }), margin, y); y += 4;
+      pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelPdf(et.statut), ts: ts }), margin, y); y += 4;
       if (et.observations && et.observations.trim()) {
         y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: et.observations.trim() }), margin, y, pageW - 2 * margin, 4);
       }
@@ -7425,13 +7425,9 @@
     pdf.setTextColor(40);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
-    // ASCII-normalize le nom : retire accents (NFD + diacritics) + non-Latin-1
-    // (jsPDF Helvetica latin1 = mojibake sur emojis/Unicode)
-    const nomAscii = String(eq.nom || t("secours.pdf.equipeDefautAscii"))
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")    // diacritics
-      .replace(/[^\x20-\x7E]/g, "");       // non-Latin1 (emojis, etc.)
-    pdf.text(t("secours.pdf.carteTitre", { nom: nomAscii.toUpperCase() }), m + 12, 14);
+    // Nom de l'équipe : accents gardés, emojis et symboles hors police retirés (ktaTextePdf).
+    const nomPdf = window.ktaTextePdf(eq.nom || t("secours.pdf.equipeDefautAscii"));
+    pdf.text(t("secours.pdf.carteTitre", { nom: nomPdf.toUpperCase() }), m + 12, 14);
 
     // Image canvas — couvre la zone disponible
     const availW = pageW - 2 * m;
@@ -7537,7 +7533,7 @@
       }
       const ts = new Date(note.ts).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + _statutLabelAscii(note.statut) + "  |  " + ts, margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + _statutLabelPdf(note.statut) + "  |  " + ts, margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (note.texte) {
         y = _pdfWrapText(pdf, "     " + note.texte, margin, y, pageW - 2 * margin, 4);

@@ -3539,6 +3539,32 @@ window.telechargerPlan = telechargerPlan;
 })();
 
 // =====================================================================
+// 🖨️ window.ktaTextePdf(s) → texte affichable par la police standard des PDF
+// =====================================================================
+// jsPDF (Helvetica, encodage WinAnsi) affiche TOUS les accents français et
+// espagnols, « » ’ — … € ° (mesuré le 09/10/2026, PDF d'échantillon) : on ne
+// retire plus les accents. Hors police : flèches, coches, symboles, emojis —
+// ils sortent en charabia et désorganisent toute la ligne. Ce filtre convertit
+// les plus courants en équivalent lisible et retire le reste ; à passer sur
+// tout texte libre (nom d'équipe, note, libellé) envoyé à pdf.text().
+// Les libellés PDF des dicos n'en ont pas besoin : scripts/check-pdf-texte.js
+// y refuse tout caractère hors police.
+(function () {
+  const EXTRA = "ŒœŠšŽžŸƒˆ˜–—‘’‚“”„†‡•…‰‹›€™";
+  const EQUIV = { "→": "->", "⇒": "=>", "←": "<-", "⇐": "<=", "↔": "<->", "✓": "OK", "✔": "OK",
+                  "✗": "X", "✘": "X", "≥": ">=", "≤": "<=", "≠": "!=", "⚠": "!" };
+  window.ktaTextePdf = function (s) {
+    let r = "";
+    for (const c of String(s == null ? "" : s).normalize("NFC")) {
+      const n = c.codePointAt(0);
+      if ((n >= 0x20 && n <= 0x7E) || n === 0x0A || n === 0x09 || (n >= 0xA0 && n <= 0xFF) || EXTRA.indexOf(c) >= 0) r += c;
+      else if (EQUIV[c]) r += EQUIV[c];
+    }
+    return r;
+  };
+})();
+
+// =====================================================================
 // 📋 window.ktaCopierTexte(txt) → Promise<boolean>
 // =====================================================================
 // 26/09/2026 — le presse-papier était recopié à la main dans SEPT modules

@@ -94,6 +94,11 @@ node scripts/check-livrables-docs.js || exit $?
 # n'est pas réellement remplacé et testé. BLOQUANT.
 node scripts/check-libs.js || exit $?
 
+# 🖨️ 09/10/2026 — Textes des PDF : la police standard affiche les accents (on les retirait à tort) ;
+# libellés PDF des dicos sans caractère hors police (→ ✓ ⚠ emoji), aucun normalize("NFD") dans les
+# modules PDF, texte libre filtré par window.ktaTextePdf. BLOQUANT.
+node scripts/check-pdf-texte.js || exit $?
+
 # 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
 # inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
