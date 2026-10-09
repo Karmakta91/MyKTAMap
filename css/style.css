@@ -13669,14 +13669,13 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-togg
    🆕 v1.8.1-refonte-9 fix KARMA : classe `.kta-measure-distance`
    (anglais "measure", pas "mesure" FR comme j'avais écrit avant).
    Le label "Distance : 0 m" restait visible en mode refonte car
-   ma règle .kta-mesure-distance ne matchait jamais.
+   l'ancienne règle (orthographe FR « mesure ») ne matchait jamais.
 
    La classe .kta-measure-label-control est un legacy alias potentiel
    (gardé par sécurité), et #measureLabel est l'id du même élément
    (double protection). */
 body.kta-refonte-v1 .kta-iti-distance,
 body.kta-refonte-v1 .kta-measure-distance,
-body.kta-refonte-v1 .kta-mesure-distance,        /* legacy fallback */
 body.kta-refonte-v1 .kta-measure-label-control,
 body.kta-refonte-v1 #measureLabel {
   display: none !important;
@@ -14669,8 +14668,7 @@ body.kta-theme-light .kta-measure-distance .kta-measure-active-line {
 body.kta-theme-light .kta-measure-distance .kta-measure-line + .kta-measure-line {
   border-top-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-iti-distance,
-body.kta-theme-light .kta-rd-total-pill {
+body.kta-theme-light .kta-iti-distance {
   background: var(--kta-light-bg-elevated) !important;
   color: #0a4f6b !important;
   border-color: rgba(10, 79, 107, 0.4) !important;
@@ -15512,14 +15510,12 @@ body.kta-theme-light #resumeBox *,
 body.kta-theme-light #panelZip * {
   color: var(--kta-light-text);
 }
-body.kta-theme-light #allPlansList li,
-body.kta-theme-light .plan-card {
+body.kta-theme-light #allPlansList li {
   background: rgba(0,0,0,0.03) !important;
   border: 1px solid var(--kta-light-border) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light #allPlansList li:hover,
-body.kta-theme-light .plan-card:hover {
+body.kta-theme-light #allPlansList li:hover {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
@@ -16596,7 +16592,7 @@ html.kta-theme-light .zip-drop-zone {
   color: #2a2620 !important;
 }
 html.kta-theme-light .zip-drop-zone:hover,
-html.kta-theme-light .zip-drop-zone.drag-over {
+html.kta-theme-light .zip-drop-zone.dragover {   /* classe posée par homeLoader.js */
   background: rgba(244, 197, 66, 0.10) !important;
   border-color: #f4c542 !important;
 }
@@ -16647,7 +16643,6 @@ html.kta-theme-light .loader-plans-filter-row:hover {
 }
 
 /* === Liste des plans (allPlansList) — les lignes individuelles === */
-html.kta-theme-light .loader-plans-list .plan-card,
 html.kta-theme-light .loader-plans-list li {
   background: rgba(0, 0, 0, 0.03) !important;
   border: 1px solid rgba(154, 135, 84, 0.20) !important;
@@ -16657,7 +16652,6 @@ html.kta-theme-light .loader-plans-list li {
   margin-bottom: 6px !important;
   box-shadow: 0 1px 3px rgba(80, 60, 30, 0.06) !important;
 }
-html.kta-theme-light .loader-plans-list .plan-card:hover,
 html.kta-theme-light .loader-plans-list li:hover {
   background: rgba(244, 197, 66, 0.10) !important;
   border-color: var(--kta-light-accent) !important;
@@ -16961,23 +16955,19 @@ html.kta-theme-light .kta-modal-actions button:hover {
   background: rgba(244, 197, 66, 0.18) !important;
   border-color: var(--kta-light-accent) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary,
 html.kta-theme-light .kta-modal-actions button.kta-btn-primary {
   background: var(--kta-light-accent) !important;
   color: #2a2620 !important;
   border-color: var(--kta-light-accent-hover) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary:hover,
 html.kta-theme-light .kta-modal-actions button.kta-btn-primary:hover {
   background: var(--kta-light-accent-hover) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger,
 html.kta-theme-light .kta-modal-actions button.kta-btn-danger {
   background: rgba(220, 50, 50, 0.10) !important;
   color: #b02020 !important;
   border-color: rgba(220, 50, 50, 0.45) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger:hover,
 html.kta-theme-light .kta-modal-actions button.kta-btn-danger:hover {
   background: rgba(220, 50, 50, 0.22) !important;
 }
@@ -19466,7 +19456,6 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
    Variant thème clair : orange charte plus saturé (#b8860b).
    ========================================================================= */
 .kta-btn:focus-visible,
-.kta-btn-action:focus-visible,
 .kta-btn-primary:focus-visible,
 .kta-btn-secondary:focus-visible,
 .kta-btn-danger:focus-visible,
@@ -19482,8 +19471,6 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
 
 body.kta-theme-light .kta-btn:focus-visible,
 html.kta-theme-light .kta-btn:focus-visible,
-body.kta-theme-light .kta-btn-action:focus-visible,
-html.kta-theme-light .kta-btn-action:focus-visible,
 body.kta-theme-light .kta-btn-primary:focus-visible,
 html.kta-theme-light .kta-btn-primary:focus-visible,
 body.kta-theme-light .kta-btn-secondary:focus-visible,

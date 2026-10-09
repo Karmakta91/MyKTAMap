@@ -2409,11 +2409,11 @@ function _ajouterImageLayer(prefill) {
       return;
     }
     // URL du plan principal (file uploadé OU mode Modifier via assets originaux)
-    let planUrl = null, planBlob = null;
+    // Révoquée sur toutes les issues ci-dessous (calque indispo, picker fermé, erreur).
+    let planUrl = null;
     const baseFile = (baseImgEl && baseImgEl.files && baseImgEl.files[0]) ? baseImgEl.files[0] : null;
     if (baseFile) {
       planUrl = URL.createObjectURL(baseFile);
-      planBlob = planUrl;
     } else if (_plannerMode === "modifier") {
       // Cherche la 1ère image dans _plannerOrigAssets qui n'est pas la collision
       const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
@@ -2422,7 +2422,6 @@ function _ajouterImageLayer(prefill) {
       });
       if (imgKey) {
         planUrl = URL.createObjectURL(_plannerOrigAssets[imgKey]);
-        planBlob = planUrl;
       }
     }
     if (!planUrl) { alert(window.I18n.t("gen.calib.imagePlanIndispo")); return; }

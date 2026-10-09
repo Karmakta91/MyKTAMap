@@ -225,10 +225,16 @@ malgré son commentaire », donc branché — à tort : il révoquait les URLs d
 d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN avant de brancher un cleanup.**
 
 ### 🟡 À vérifier avant de toucher
-- Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action`, `.plan-card` ×4, `.kta-modal-btn-*`, `.kta-mesure-distance`, `.drag-over`, `.kta-rd-total-pill`, `style-secours.css` — contrôle runtime (`querySelectorAll(...).length === 0`)
-- `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
-- `planBlob` (`createConf.js`) : écrit, jamais lu — vérifier qu'aucune révocation d'URL n'a été oubliée avant de le retirer
-- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
+- Fragments de sélecteurs morts dans **`style-secours.css`** — pas encore inventoriés (ceux de `style.css` sont
+  retirés le 10/10/2026) ; contrôle runtime (`querySelectorAll(...).length === 0`) + grep des concaténations
+- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?) et exports `window.*` sans
+  consommateur hors de leur fichier (re-grep du 10/10/2026) : `getPlanScale`, `getPlanSmartNav`, `getBaseName`,
+  `ktaNettoyerIconesConfig` (config.js) · `chargerImageTuillee`, `tuilingNecessaire` (tiling.js, dette documentée
+  dans `TILING.md`) · `PROF_*_DEFAUT` non revérifiés. API = contrat : gain faible, risque non nul — à arbitrer par
+  KARMA, pas à supprimer d'office
+
+> ✅ **Vérifié vivant, ne plus signaler** : `kta-toast-error` / `kta-toast-info` (`oomGuard.js` les construit par
+> `"kta-toast-" + type` ; `showToast(…, "error")` ×6, `"info"` ×48, `"warn"` ×34 au 10/10/2026).
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
