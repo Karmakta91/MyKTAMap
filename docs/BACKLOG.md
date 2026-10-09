@@ -133,10 +133,9 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 
 - ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
   corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
-- 🟠 **`script-src` sans `'unsafe-inline'` — reste la BASCULE** : l'app n'a plus de script inline (07/10/2026, gardé par
-  `check-csp-inline`), la politique stricte est servie en Report-Only et EN VIGUEUR dans le smoke. Reste, avec une
-  release : changer la directive dans `docker/nginx-docker.conf`, les modèles `docs/nginx-*.conf` et **la config nginx
-  de dev/prod sur le VPS (KARMA)**, retirer la ligne Report-Only. `security-legal.md` §40.7.1. **S.**
+- 🟠 **CSP stricte — reste le VPS (KARMA)** : bascule faite dans le dépôt le 10/10/2026 (`script-src 'self'`, plus de
+  Report-Only). À reporter dans la config nginx de dev et de prod sur le VPS, puis `nginx -t && systemctl reload
+  nginx` ; vérifier ensuite l'en-tête servi. `security-legal.md` §40.7.1.
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 

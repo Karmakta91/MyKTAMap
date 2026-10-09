@@ -107,4 +107,27 @@ if (toutes.length) {
   console.error("   → un écouteur (addEventListener, délégation + data-*), \"#\" + preventDefault, ou un fichier js/.");
   process.exit(1);
 }
-console.log("✅ [check-csp-inline] " + fichiers.length + " fichiers sans script inline (CSP script-src 'self' possible).");
+// 4. Depuis la BASCULE du 10/10/2026, la CSP EN VIGUEUR est stricte : dans les configs nginx du dépôt, aucune
+//    politique ne rouvre 'unsafe-inline' aux scripts, hors du bloc `location = /killsw.html` (exception assumée).
+//    Plus de Report-Only : la phase d'observation est finie.
+const CONFS_NGINX = ["docker/nginx-docker.conf", "docs/nginx-csp-config.conf", "docs/nginx-myktamap.conf"];
+const fautesConf = [];
+CONFS_NGINX.forEach(function (f) {
+  if (!fs.existsSync(f)) return;
+  let dansKillsw = 0;
+  fs.readFileSync(f, "utf8").split(/\r?\n/).forEach(function (l, i) {
+    if (/^\s*#/.test(l)) return;
+    if (/location\s*=\s*\/killsw\.html/.test(l)) dansKillsw = 1;
+    else if (dansKillsw && /^\s*\}/.test(l)) dansKillsw = 0;
+    if (/add_header\s+Content-Security-Policy-Report-Only/.test(l)) fautesConf.push(f + ":" + (i + 1) + " Report-Only (bascule faite)");
+    const m = /add_header\s+Content-Security-Policy\s+"([^"]+)"/.exec(l);
+    if (m && !dansKillsw && /script-src[^;]*'unsafe-inline'/.test(m[1])) fautesConf.push(f + ":" + (i + 1) + " script-src 'unsafe-inline'");
+  });
+});
+if (fautesConf.length) {
+  console.error("❌ [check-csp-inline] la CSP en vigueur rouvre les scripts inline :");
+  fautesConf.forEach((x) => console.error("   - " + x));
+  process.exit(1);
+}
+console.log("✅ [check-csp-inline] " + fichiers.length + " fichiers sans script inline ; CSP en vigueur stricte " +
+  "(script-src 'self', hors killsw.html).");

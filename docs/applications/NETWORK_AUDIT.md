@@ -477,10 +477,9 @@ peut donc demander au navigateur de **n'exécuter que les fichiers du site** (`s
 qui passerait un jour entre les mailles de l'affichage (un nom de point, une note venue d'un autre compte) ne
 pourrait plus rien exécuter.
 
-- **En ce moment** : la règle en vigueur garde encore `script-src 'self' 'unsafe-inline'` (code inline toléré) ; la
-  règle stricte est envoyée **en observation**, dans un second en-tête `Content-Security-Policy-Report-Only` — rien
-  n'est bloqué, la console (F12) signale ce qui le serait. Selon l'installation, cet en-tête peut être absent.
-- **Prochaine étape** : la règle stricte devient la règle en vigueur.
+- **La règle en vigueur est stricte** : `script-src 'self'`, sans `'unsafe-inline'`. Le navigateur refuse tout code
+  écrit dans une page ; seuls les fichiers du site s'exécutent. Une installation indépendante dont le serveur garde
+  une ancienne configuration peut encore envoyer l'ancienne règle : F12 → Network → Headers pour le vérifier.
 - **Une exception, voulue** : la page de secours `killsw.html` (réinitialiser le Service Worker quand l'app ne démarre
   plus) garde son code dans la page — elle doit fonctionner même quand les fichiers de l'app sont inaccessibles. Elle
   n'affiche aucune donnée.

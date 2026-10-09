@@ -752,11 +752,10 @@
   (<code>script-src 'self'</code>) : un texte piégé qui passerait un jour entre les mailles de l’affichage (un nom de point, une note
   venue d’un autre compte) ne pourrait plus rien exécuter.</p>
   <ul>
-    <li><strong>En ce moment</strong> : la règle en vigueur garde encore <code>script-src 'self' 'unsafe-inline'</code> (code inline
-    toléré) ; la règle stricte est envoyée <strong>en observation</strong>, dans un second en-tête
-    <code>Content-Security-Policy-Report-Only</code> — rien n’est bloqué, la console (F12) signale ce qui le serait. Selon
-    l’installation, cet en-tête peut être absent.</li>
-    <li><strong>Prochaine étape</strong> : la règle stricte devient la règle en vigueur.</li>
+    <li><strong>La règle en vigueur est stricte</strong> : <code>script-src 'self'</code>, sans <code>'unsafe-inline'</code>. Le
+    navigateur refuse tout code écrit dans une page ; seuls les fichiers du site s’exécutent. Une installation
+    indépendante dont le serveur garde une ancienne configuration peut encore envoyer l’ancienne règle : F12 → Network →
+    Headers pour le vérifier.</li>
     <li><strong>Une exception, voulue</strong> : la page de secours <code>killsw.html</code> (réinitialiser le Service Worker quand
     l’app ne démarre plus) garde son code dans la page — elle doit fonctionner même quand les fichiers de l’app sont
     inaccessibles. Elle n’affiche aucune donnée.</li>
