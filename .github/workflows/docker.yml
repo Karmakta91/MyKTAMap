@@ -134,7 +134,7 @@ jobs:
       # 3. Setup Buildx (multi-arch)
       # ----------------------------------------------------------------
       - name: Set up QEMU (cross-compile arm64)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
