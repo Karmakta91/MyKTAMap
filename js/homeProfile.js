@@ -815,7 +815,16 @@
           } else if (key === "storage") {
             try {
               const bytes = await _getStorageMyktamapCached();
-              valEl.textContent = _formatBytesShort(bytes);
+              // 10/10/2026 : la mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le
+              // total reste modeste — on le signale ici (⚠️ + infobulle), le détail est dans 📊 Détails de la session.
+              const S = window.ktaStockageLocal;
+              const mem = S ? S.mesurer() : null;
+              const alerte = mem && mem.ratio >= S.SEUIL_ALERTE;
+              valEl.textContent = _formatBytesShort(bytes) + (alerte ? " ⚠️" : "");
+              if (alerte) {
+                slot.title = window.I18n.t("home.profile.stats.memoireAlerte",
+                  { pct: Math.min(100, Math.round(mem.ratio * 100)), occupe: S.mo(mem.car), limite: S.mo(mem.limite) });
+              }
             } catch(e) {
               valEl.textContent = "—";
             }

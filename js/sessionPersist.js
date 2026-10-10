@@ -1053,8 +1053,33 @@
       }
     }
     _startPolling();
+    _verifierMemoire(false);
     return restored;
   }
+
+  // ========== MÉMOIRE DES SESSIONS (localStorage ~5 Mo) ==========
+  // 10/10/2026 (testeur en prod : points disparus, invite de mise à jour à chaque ouverture) : un localStorage
+  // plein ne se voyait qu'APRÈS la panne (bandeau d'échec de sauvegarde). On prévient AVANT, au chargement d'un
+  // plan (≥ 80 %), et dès qu'une écriture échoue faute de place (événement mktm:stockage-plein, utils.js).
+  // Une fois par page et par niveau : jamais une fenêtre à chaque plan ouvert.
+  const _memoireAlertee = { presque: false, plein: false };
+  function _verifierMemoire(plein) {
+    const S = window.ktaStockageLocal;
+    if (!S || typeof window.ktaConfirm !== "function") return;
+    const m = S.mesurer();
+    const niveau = plein ? "plein" : (m.ratio >= S.SEUIL_ALERTE ? "presque" : null);
+    if (!niveau || _memoireAlertee[niveau] || (niveau === "presque" && _memoireAlertee.plein)) return;
+    _memoireAlertee[niveau] = true;
+    const pct = Math.min(100, Math.round(m.ratio * 100));
+    window.ktaConfirm(_trModule(niveau === "plein" ? "session.memoire.pleinMsg" : "session.memoire.presqueMsg",
+      { pct: pct, occupe: S.mo(m.car), limite: S.mo(m.limite) }), {
+      titre: _trModule(niveau === "plein" ? "session.memoire.pleinTitre" : "session.memoire.presqueTitre"),
+      okLabel: _trModule("session.memoire.voir"), cancelLabel: _trModule("session.memoire.plusTard")
+    }).then(function (ok) {
+      if (ok && typeof window.ktaOuvrirDetailsSession === "function") window.ktaOuvrirDetailsSession();
+    });
+  }
+  window.addEventListener("mktm:stockage-plein", function () { _verifierMemoire(true); });
 
   // ========== SAFETY NETS ==========
 

@@ -3705,3 +3705,64 @@ window.ktaCopierTexte = function (txt) {
   }
   return Promise.resolve(repli());
 };
+
+// =====================================================================
+// 💾 window.ktaStockageLocal — mémoire des sessions (localStorage)
+// =====================================================================
+// 10/10/2026 (retour d'un testeur en prod : points disparus + invite de mise à
+// jour à chaque ouverture) : les sessions (points, tracés, notes) vivent dans le
+// localStorage, plafonné à ~5 Mo PAR SITE quel que soit l'espace du téléphone.
+// Plein, toute écriture y échoue (QuotaExceededError) — sauvegarde de session,
+// « version vue » de la mise à jour… — et rien ne le montrait AVANT la panne.
+// Aucune API ne donne ce plafond : on MESURE l'occupation (clés + valeurs, en
+// caractères — ce que comptent les navigateurs) face à une limite prudente.
+//   mesurer() → { car, limite, ratio, sessions: [{ planId, car }], autres }
+//   ecrire(cle, valeur) → bool : écriture protégée ; plein → événement
+//     `mktm:stockage-plein` (une fois par page), jamais d'exception.
+(function () {
+  const LIMITE = 5000000;   // ~5 Mo : Chrome/Edge 5 Mi car., Firefox 5 Mio, Safari ~5 Mo — prudent
+  const PREFIXE_SESSION = "myktamap_session_v1_";
+  let _signale = false;
+
+  function mesurer() {
+    let car = 0, autres = 0;
+    const sessions = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        const v = localStorage.getItem(k) || "";
+        const n = k.length + v.length;
+        car += n;
+        if (k.indexOf(PREFIXE_SESSION) === 0) sessions.push({ planId: k.slice(PREFIXE_SESSION.length), car: n });
+        else autres += n;
+      }
+    } catch (e) { /* stockage inaccessible (navigation privée stricte) : mesure nulle */ }
+    sessions.sort(function (a, b) { return b.car - a.car; });
+    return { car: car, limite: LIMITE, ratio: car / LIMITE, sessions: sessions, autres: autres };
+  }
+
+  function _plein(e) {
+    return !!e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      e.code === 22 || e.code === 1014 || /quota/i.test(e.message || ""));
+  }
+
+  function ecrire(cle, valeur) {
+    try { localStorage.setItem(cle, valeur); return true; }
+    catch (e) {
+      if (_plein(e) && !_signale) {
+        _signale = true;
+        console.warn("[Stockage] localStorage plein : écriture de « " + cle + " » refusée");
+        try { window.dispatchEvent(new CustomEvent("mktm:stockage-plein", { detail: { cle: cle } })); } catch (e2) { /* rien */ }
+      }
+      return false;
+    }
+  }
+
+  // « 3,8 Mo » : 1 caractère ≈ 1 octet pour ces données (JSON en ASCII surtout).
+  function mo(car) {
+    const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
+    return (car / 1000000).toLocaleString(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " Mo";
+  }
+
+  window.ktaStockageLocal = { mesurer: mesurer, ecrire: ecrire, mo: mo, LIMITE: LIMITE, SEUIL_ALERTE: 0.8 };
+})();

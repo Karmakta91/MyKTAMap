@@ -22673,3 +22673,26 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
   display: inline-block; transform: translate(8px, -50%); white-space: nowrap; font-size: 11px; padding: 1px 6px;
   border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #f4c542; border: 1px solid #f4c542; pointer-events: none;
 }
+
+/* ── 💾 Mémoire des sessions (Détails de la session, 10/10/2026) ──
+   Les sessions vivent dans le localStorage (~5 Mo par site) : jauge + plans les plus lourds. */
+.kta-memoire-jauge { height: 10px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; margin: 4px 0 6px; }
+.kta-memoire-barre { height: 100%; border-radius: 6px; background: #6ee287; transition: width .3s; }
+.kta-memoire-barre.kta-memoire-presque { background: #f4c542; }
+.kta-memoire-barre.kta-memoire-plein { background: #ff8c8c; }
+.kta-refonte-session-badge.kta-memoire-presque { color: #f4c542; }
+.kta-refonte-session-badge.kta-memoire-plein { color: #ff8c8c; }
+.kta-memoire-legende { font-size: 12px; color: #8892a4; line-height: 1.5; }
+.kta-memoire-conseil { font-size: 12.5px; line-height: 1.5; margin: 4px 0 6px; }
+.kta-memoire-plans { list-style: none; margin: 6px 0; padding: 0; }
+.kta-memoire-plans li { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #c8d0e0;
+  padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.kta-memoire-plans li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kta-memoire-plans li b { font-weight: 600; color: #e8eaf0; white-space: nowrap; }
+html.kta-theme-light .kta-memoire-jauge, body.kta-theme-light .kta-memoire-jauge { background: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-barre, body.kta-theme-light .kta-memoire-barre { background: #1e7a3a; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-presque, body.kta-theme-light .kta-memoire-barre.kta-memoire-presque { background: #b8860b; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-plein, body.kta-theme-light .kta-memoire-barre.kta-memoire-plein { background: #a01818; }
+html.kta-theme-light .kta-memoire-legende, body.kta-theme-light .kta-memoire-legende { color: #6b6354; }
+html.kta-theme-light .kta-memoire-plans li, body.kta-theme-light .kta-memoire-plans li { color: #2a2620; border-bottom-color: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-plans li b, body.kta-theme-light .kta-memoire-plans li b { color: #2a2620; }

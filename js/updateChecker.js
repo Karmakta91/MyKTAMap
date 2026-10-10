@@ -102,17 +102,22 @@
     }
   }
 
+  // 🩸 10/10/2026 (testeur en prod : « la mise à jour m'est demandée à chaque ouverture ») : ces écritures
+  // n'étaient pas protégées. localStorage plein → _markSeen jetait, la version n'était jamais notée, la
+  // fenêtre revenait à CHAQUE ouverture et « Plus tard » ne faisait rien. Désormais : écriture protégée
+  // (ktaStockageLocal.ecrire → événement mktm:stockage-plein, qui explique à l'utilisateur quoi faire).
+  function _ecrire(cle, valeur) {
+    if (window.ktaStockageLocal) return window.ktaStockageLocal.ecrire(cle, valeur);
+    try { localStorage.setItem(cle, valeur); return true; } catch (e) { return false; }
+  }
+
   function _getKnownVersion() {
-    return localStorage.getItem(LS_VERSION);
+    try { return localStorage.getItem(LS_VERSION); } catch (e) { return null; }
   }
 
   function _setKnownVersion(version, data) {
-    localStorage.setItem(LS_VERSION, version);
-    try {
-      localStorage.setItem(LS_DATA, JSON.stringify(data));
-    } catch(e) {
-      // Quota — pas critique
-    }
+    // Les données (notes) d'abord ne servent qu'à l'affichage : la version passe en premier.
+    if (_ecrire(LS_VERSION, version)) _ecrire(LS_DATA, JSON.stringify(data));
   }
 
   function _getLastKnownData() {
@@ -125,17 +130,18 @@
   }
 
   function _isSnoozed() {
-    const since = parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10);
+    let since = 0;
+    try { since = parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10); } catch (e) { since = 0; }
     if (!since) return false;
     return (Date.now() - since) < POSTPONE_MS;
   }
 
   function _snooze() {
-    localStorage.setItem(LS_POSTPONED, String(Date.now()));
+    _ecrire(LS_POSTPONED, String(Date.now()));
   }
 
   function _clearSnooze() {
-    localStorage.removeItem(LS_POSTPONED);
+    try { localStorage.removeItem(LS_POSTPONED); } catch (e) { /* rien */ }
   }
 
   // 🆕 v1.20.0 — Comparison sémantique X.Y.Z (au lieu de comparison string).

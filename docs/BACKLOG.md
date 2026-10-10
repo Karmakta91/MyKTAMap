@@ -6,6 +6,28 @@
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
+## 🩸 Retour testeur en prod (10/10/2026) — sessions perdues, invite de mise à jour à chaque ouverture
+
+Analyse : `localStorage` (~5 Mo par site, sessions dedans) plein = la cause probable des deux symptômes. **Fait** :
+jauge « 💾 Mémoire des sessions » (📊 Détails de la session, ⚠️ sur la tuile 💾 du profil), alerte à ≥ 80 % au
+chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`, `utils.js`), écritures de
+`updateChecker.js` protégées (avant : « Plus tard » jetait `QuotaExceededError`, invite à chaque ouverture). Reste :
+
+- 🔴 **Session supprimée en silence** si le nom du plan a changé (casse, accent, libellé) : `sessionPersist.js:1041-1055`
+  compare `saved.planName === nom courant` strictement, ignore la session sans message, puis le 1er tick d'autosauvegarde
+  (carte vide) fait `removeItem` (`:326-334`). Corriger : comparaison tolérante (celle de `homeLoader.js:436-458`), ne
+  JAMAIS supprimer une session non restaurée, et le dire (« session d'une autre version du plan trouvée »).
+- 🟠 **« 💥 Forcer un reset complet » dans la fenêtre de mise à jour** (`fr.json` `alerts.update.*`) : l'enlever de là
+  (🆘 Dépannage seulement) ; sa confirmation doit lister ce qui sera perdu (N points, N photos, N backups) et
+  proposer d'exporter avant.
+- 🟠 **📦 Backups filtrés sur le planId courant** (`refonteInterface.js` `_renderBackupsSection`) : un plan réimporté en
+  « Garder les deux » (nouvel id) ne voit plus les backups de l'ancien — les montrer (« autre version de ce plan »).
+- 🟡 **Badge de version de l'accueil** qui clignote « ancienne → nouvelle » quand le nouveau code reste en cache (iOS
+  PWA) alors que la mise à jour est acceptée : pris pour une invite répétée.
+- ⚪ **Sessions vers IndexedDB** (plus de plafond de 5 Mo) : le vrai remède, mais touche sauvegarde, restauration,
+  backups, import/export — à cadrer à part.
+- ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
+
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
 
 | Sujet | Décision | Qui |

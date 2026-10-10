@@ -1432,6 +1432,47 @@
     return lines.join("\n");
   }
 
+  function _htmlMemoireSessions() {
+    const S = window.ktaStockageLocal;
+    if (!S) return "";
+    const m = S.mesurer();
+    const pct = Math.min(100, Math.round(m.ratio * 100));
+    const niveau = m.ratio >= 0.95 ? "plein" : (m.ratio >= S.SEUIL_ALERTE ? "presque" : "ok");
+    const esc = window.ktaEsc || function (x) { return String(x); };
+    const plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? window.PlanRegistry.getAll() : [];
+    const nomDe = function (id) {
+      const p = plans.find(function (x) { return x && x.id === id; });
+      return p && p.name ? p.name : window.I18n.t("ui.refonte.memoire_plan_inconnu");
+    };
+    let h = '<div class="kta-refonte-session-section" id="kta-refonte-session-memoire">';
+    h += '<div class="kta-refonte-session-section-titre">💾 ' + window.I18n.t("ui.refonte.section_memoire") +
+         ' <span class="kta-refonte-session-badge kta-memoire-' + niveau + '">' + pct + ' %</span></div>';
+    h += '<div class="kta-memoire-jauge"><div class="kta-memoire-barre kta-memoire-' + niveau +
+         '" style="width:' + pct + '%"></div></div>';
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t("ui.refonte.memoire_occupe",
+         { occupe: S.mo(m.car), limite: S.mo(m.limite) })) + '</div>';
+    if (niveau !== "ok") {
+      h += '<div class="kta-memoire-conseil kta-tx-' + (niveau === "plein" ? "err" : "warn") + '">' +
+           esc(window.I18n.t("ui.refonte.memoire_conseil")) + '</div>';
+    }
+    const lourds = m.sessions.slice(0, 5);
+    if (lourds.length) {
+      h += '<ul class="kta-memoire-plans">';
+      lourds.forEach(function (x) {
+        const courant = x.planId === window._currentLoadedPlanId;
+        h += '<li><span>' + (courant ? "📍 " : "") + esc(nomDe(x.planId)) + '</span><b>' + esc(S.mo(x.car)) + '</b></li>';
+      });
+      h += '</ul>';
+    }
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t("ui.refonte.memoire_autres", { autres: S.mo(m.autres) })) + '</div>';
+    return h + '</div>';
+  }
+
+  // Ouverture depuis l'alerte « mémoire des sessions » (sessionPersist.js) : ouvre, ne referme jamais.
+  window.ktaOuvrirDetailsSession = function () {
+    if (!document.getElementById("kta-refonte-session-modal")) _afficherModaleSessionDetail();
+  };
+
   function _afficherModaleSessionDetail() {
     // Cleanup éventuel d'une instance précédente
     const existing = document.getElementById("kta-refonte-session-modal");
@@ -1818,6 +1859,11 @@
             '</div>';
     html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:#8892a4; min-height:14px; font-style:italic;"></div>';
     html += '</div>';
+
+    // ─── 💾 Mémoire des sessions (localStorage ~5 Mo, 10/10/2026) ───
+    // Les sessions vivent dans le localStorage, plafonné par site quel que soit l'espace du téléphone : plein,
+    // plus rien ne se sauvegarde. Jauge + plans les plus lourds, pour faire le ménage AVANT la panne.
+    html += _htmlMemoireSessions();
 
     // ─── 🆕 v1.16.0 step 4 : 📦 Backups récents (10 FIFO IDB) ───
     //
