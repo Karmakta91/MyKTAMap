@@ -1,8 +1,8 @@
 {
-  "version": "v2.13.0",
+  "version": "v2.13.1",
   "released": "2026-10-10",
   "notes": [
-    "💬 Les messages et confirmations s'ouvrent dans les fenêtres de l'app, aux couleurs de ton thème, et les PDF retrouvent leurs accents. L'ancien « Mode urgence » s'appelle désormais 🔆 Affichage XL ; 🚨 reste la Sortie d'urgence, qui prévient maintenant si la sortie trouvée est coupée.",
-    "🔒 Sécurité renforcée (librairie PDF à jour, protection stricte du navigateur contre le code injecté). Édition pro : outils de dessin grisés sur un plan en lecture seule, et un écran de connexion qui dit si la base répond et donne accès à la documentation et au dépannage."
+    "💬 Messages et confirmations dans les fenêtres de l'app, PDF avec leurs accents, carte plus fluide quand on la fait glisser. L'ancien « Mode urgence » devient 🔆 Affichage XL ; 🚑 désigne le Mode Secours, et la Sortie d'urgence prévient si la sortie trouvée est coupée. Les itinéraires entre niveaux comptent mieux le dénivelé.",
+    "🔒 Sécurité renforcée (librairie PDF à jour, protection stricte du navigateur contre le code injecté). Édition pro : outils de dessin grisés en lecture seule, écran de connexion qui dit si la base répond, et fenêtre « Que fait l'app sur le réseau ? » qui renvoie vers la page de transparence de l'installation."
   ]
 }

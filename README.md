@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.13.0` (10/10/2026)
+## 📦 Version courante — `v2.13.1` (10/10/2026)
+
+> 🧭 **v2.13.1 — Dénivelé des jonctions, glissé plus fluide, modale réseau en mode relié** : une jonction en N segments répartit son dénivelé au prorata ; marges de glissé élargies pour tous (case « 👁️ éléments visibles » retirée, incluse dans ULTRA) ; 🚑 seul emoji du Mode Secours ; sur une installation reliée, la modale « Que fait l'app sur le réseau ? » prévient qu'elle ne décrit que l'app de base et mène à la page de transparence de l'installation.
 
 > 🔆 **v2.13.0 — Affichage XL, CSP stricte, travaux parallèles du 10/10** : « Mode urgence » XL renommé 🔆 Affichage XL, 🎤 masqué hors français ; CSP `script-src 'self'` en vigueur ; lecture seule étanche (import, Ctrl+Z) ; sortie d'urgence coupée signalée ; jonctions inter-plans aux bonnes profondeurs ; presse-papier unique ; correctifs de l'audit des popups (Échap empilé, double-clic, export de calque) ; 20 popups natives cachées migrées ; smoke lançable sur GitHub et tableau des garde-fous.
 
@@ -571,6 +573,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.13.1 (10/10/2026) — Dénivelé des jonctions, glissé, modale réseau en mode relié (branche `Karma_dev`)
+
+- 🧭 **Pathfinder** (`b20de9c`) : une jonction découpée en N segments répartit son dénivelé au prorata de la longueur (garde-fou `check-guidage.js`).
+- ⚡ **Rendu** (`632c334`) : marges de glissé élargies pour tous ; la case « 👁️ éléments visibles » disparaît (comportement inclus dans ULTRA) — docs utilisateur ×3 et Aide IA (`f0c2ab8`) suivies.
+- 🚑 **Secours** (`f494d80`) : un seul emoji 🚑 pour le Mode Secours, raccourci « 🔆 Affichage XL ».
+- 🔌 **Modale réseau en mode relié** (`aa2d343`) : connectée ou injoignable, le bloc d'état avertit que la suite ne décrit que l'app de base et propose la page de transparence déclarée (`serverConnection.transparence`, même règle que la pastille) ; état OFF inchangé. Testé : scénario pro « transparence » 8 OK, app seule (OFF) avertissement caché.
+- 📄 **Frontière** (`782045a`) : `community-server-line.md` — plusieurs organisations à une même adresse = une active par appareil, fragment d'URL préservé au démarrage (`swRegister.js`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.13.0 (10/10/2026) — Travaux parallèles : Affichage XL, CSP stricte, lecture seule, Secours, audit des popups (branche `Karma_dev`)
 

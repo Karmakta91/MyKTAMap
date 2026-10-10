@@ -8,6 +8,8 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.13.1 (fenêtre réseau sur une installation reliée)** : **Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à un serveur, la fenêtre « Que fait l'app sur le réseau ? » prévient désormais qu'elle ne décrit que l'app de base, et propose la page de transparence de l'installation (ouverte seulement si tu la touches). Sur myktamap.fr, rien ne change.
+
 > **v2.13.0 (règle de sécurité stricte, Affichage XL)** : **Aucune requête nouvelle, aucun domaine nouveau.** La règle de sécurité envoyée par le serveur devient stricte : le navigateur n'exécute plus que les fichiers du site, jamais du code écrit dans une page (`script-src 'self'`). Le reste de la version (Affichage XL, Sortie d'urgence, lecture seule, fenêtres de l'app) est local.
 
 > **v2.12.1 (dépannage depuis l'écran de connexion)** : **Aucune requête nouvelle, aucun domaine nouveau.** L'app community permet seulement à l'écran de connexion d'une installation reliée d'ouvrir sa fenêtre de dépannage, déjà présente sur l'accueil. Sur une telle installation, l'écran de connexion vérifie l'état de la base sur sa propre adresse, comme le fait déjà sa pastille.
