@@ -27,7 +27,7 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 - ❌ **Not an underground GPS** — native geolocation doesn't work under rock. The app's "tracker" is a **pedometer + heading** that drifts quickly; you need to recalibrate regularly.
 - ❌ **Not a safety guarantee** — the map gives the path, not the oxygen. You remain the sole judge of the risks (collapses, water, gas, fatigue).
 - ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
-- ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
+- ❌ **Not a social network** — no account to create, no public profile, no one-click sharing. You choose who you send your `.zip` to, and how.
 
 ---
 
@@ -75,7 +75,7 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ---
 
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
 
 ---
 
@@ -580,6 +580,8 @@ A link joins **a point on one map to a point on another map** — a “portal”
 
 From the Route window (**Destination on another plan**) or a multi-map search result (🧭 button): the app picks the shortest portal, shows the route in steps and draws it on your map. Your waypoints are visited first, in order; the avoidances of each map are respected. If it is impossible, a message says why.
 
+By default, the route crosses only one border (your map and the destination map). To go through intermediate maps (A → B → C), tick **🌀 Route across multiple plans (connected plans)** in the multi-map search, with a map open; this choice is remembered.
+
 **Let's go** does not teleport you: you walk (stop validation and recalculation as usual), then cross at the portal with the floating **🌀 Next portal** button or the portal point's ➜. The rest is drawn on the other side. If you open the next map another way, or replace the route, the rest is dropped. The 🪧 Route sheet summarizes the following maps (“Then 🌀 portal → map: 350 m, 4 crossings”).
 
 **Good to know**: renaming or moving a linked point updates its links; deleting a point deletes its links; links travel with the session export; those shipped with a map can be used but not edited.
@@ -591,7 +593,7 @@ From the Route window (**Destination on another plan**) or a multi-map search re
 The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
 - **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar (georeferenced maps).
+- **On a map**, the **🌍** button in the top bar (georeferenced maps). From a map, the OSM View only opens if the map has been **converted to tiled V2** (see “🧱 Convert to V2 tiles”); otherwise, a message explains how to convert it.
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
@@ -854,7 +856,7 @@ It appears in dotted magenta, with a dot at each end. **Without a junction, no r
 
 ### 🛠️ On the map creator's side
 
-Multi-level mode, the level of each image layer and that of the elements in data layers are set by the map's creator in the Generator → 🔭 Going further › 🏗️ Create or modify a map. On a map that has not enabled it, none of this appears; if enabled later, existing elements are on level 0.
+Multi-level mode, the level of each image layer and that of the elements in data layers are set by the map's creator in the Generator (see 🔭 Going further › 🏗️ Create or modify a map). On a map that has not enabled it, none of this appears; if enabled later, existing elements are on level 0.
 
 ---
 
@@ -1106,7 +1108,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
-  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** and **💥 Reset everything** — see “🆘 Troubleshooting”.
+  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🆘 Troubleshooting”.
 
 ### ⚙️ Settings (in map mode) — this map
 
@@ -1153,7 +1155,7 @@ The welcome tutorial can be replayed at any time: **📖 Documentation** → **�
 
 ### 🔎 Searching the documentation
 
-At the top of the 📖 window, the **🔎 Search** field searches the whole text: results are highlighted, **Enter** or ↓ goes to the next one, the counter shows “i / n” and the table of contents fades the parts without a match. Accents do not matter: “reglages” finds “Réglages”. The search in the ❓ Help group looks through the titles and content of the help pages.
+At the top of the 📖 window, the **🔎 Search** field searches the whole text: results are highlighted, **Enter** or ↓ goes to the next one, the counter shows “i / n” and the table of contents fades the parts without a match. Accents do not matter: “reglages” finds “Réglages”. The search in the **❓ Help** window (📚 group) looks through the titles and content of the help pages.
 
 ### 🤖 AI Help
 
@@ -1383,7 +1385,7 @@ On a multi-level map, **🏗️ Auto: 1 team per level** creates one team for ea
 
 ##### 🗺️ Route, zone and itinerary
 
-- **🗺️ Route**: tap **Entry**, **➕ Add an intermediate step**, then **Exit**. For each point: your map's **⭐ favorites** in one tap, the search, or **📍 Click on the map** (the point snaps to the nearest POI). Tapping a POI takes it as the point, without opening its card. Same entry and same exit = loop. From the app's search, the 📌 button assigns a point to a team in two taps.
+- **🗺️ Route**: tap **Entry**, **➕ Add an intermediate step**, then **Exit**. For each point: your map's **⭐ favorites** in one tap, the search, or **📍 Click on the map** (the point snaps to the nearest POI — point of interest of the map). Tapping a POI takes it as the point, without opening its card. Same entry and same exit = loop. From the app's search, the 📌 button assigns a point to a team in two taps.
 - **⬛ Define zone**: either a **polygon** (one tap per vertex, double-tap to close), or a **selection of paths** (tap each gallery, tap again to remove it). The other teams' zones are shown dotted so you can align the boundaries. A gallery from the map is found identically on every phone that has this map; a path added by hand on a single device exists only on that device. On a multi-level map, the zone applies **to the level where you drew it** — tick "Zone on all levels" to extend it.
 - **✨ Zone POIs** adds every point in the zone as steps, from nearest to farthest from the entry.
 - **🗺️ Calc. route** computes the path through the galleries, from entry to exit via the steps, with distance and duration. It **avoids the other teams' steps and zones**; if it can't, it says so. It also lists **the steps more than 25 m from a gallery**: fix them before going down. Finally, it warns you when galleries on another level run under the zone without any route going down to them.
@@ -1406,7 +1408,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
 - **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
-- **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (🌍 KMZ tab of the session export).
+- **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (📡 External export tab of the session export).
 
 #### 🔦 3. In the field
 
@@ -1499,12 +1501,12 @@ The operator's PDF opens with the casualties, then covers each phase (planned ro
 
 ### 🏗️ Create or edit a map
 
-The **🏗️** button in the sidebar opens the **Generator** (**📦 Create / Edit a map**), which produces a map's ZIP archive.
+The **🏗️ Generate a map** button on the home screen opens the **Generator** (**📦 Create / Edit a map**), which produces a map's ZIP archive.
 
 #### 🧙 The Generator
 
 - **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
-- **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2, multi-level) and loads the default icons; Advanced mode gives access to every option.
+- **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
 - **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ**, a **GPX**, a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 
 When you're ready, **📦 Generate ZIP** downloads the archive.
@@ -1573,7 +1575,7 @@ Good to know: holes in polygons are ignored; beyond 20,000 objects a warning is 
 
 For a heavy map (image over 50 MB or over 8,000 px), the **🧱 Convert to V2 tiles (performance)** box cuts the image into **tiles**: the app then only loads the pieces on screen, which greatly reduces memory use.
 
-1. Choose a main image, or load the ZIP of the map to convert: the box appears.
+1. Choose a main image, or load the ZIP of the map to convert.
 2. Tick it and read the warning: the conversion is heavy.
 3. **📦 Generate ZIP**: a progress bar follows the cutting (1 to 5 min). The downloaded ZIP has a `_v2` suffix.
 4. Import that ZIP: the map opens in V2 (purple `V2` badge).
@@ -1728,6 +1730,8 @@ If your server hosts maps in `data/` (for example `data/test1/`, `data/test2/`),
 The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form shows the names straight away.
 
 Even simpler: drop the map's ZIP as is (without unzipping it) and declare it with `"zip"` instead of `"path"`, for example `{ "id": "test3", "zip": "data/test3.zip", "name": "Test map 3" }`. The app downloads it when opened, keeps it on the device for offline use (according to **Store the map in the app**), and only downloads it again if it has changed. On the map's row, 💾 keeps it without opening it, ✅ shows it is kept and up to date.
+
+> 📖 Instance subtitle, map tags, an access password of your own, read-only mode (import and Generator hidden), links between maps: your instance’s `confadmin.html` page builds this file for you — how-to in the guide **[Hosting an instance with your maps](SELFHOST.md)** (in French).
 
 ### 💼 Pro edition
 

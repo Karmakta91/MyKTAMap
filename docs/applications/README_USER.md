@@ -27,7 +27,7 @@ L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les 
 - ❌ **Pas un GPS sous terre** — la géolocalisation native ne marche pas sous roche. Le « tracker » de l'app est un **podomètre + direction** qui dérive vite ; il faut recaler régulièrement.
 - ❌ **Pas une garantie de sécurité** — la carte donne le chemin, pas l'oxygène. Tu restes seul·e juge des risques (effondrements, eau, gaz, fatigue).
 - ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
-- ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
+- ❌ **Pas un réseau social** — pas de compte à créer, pas de profil public, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
 
 ---
 
@@ -75,7 +75,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 ---
 
@@ -580,6 +580,8 @@ Une liaison relie **un point d'un plan à un point d'un autre plan** — un « p
 
 Depuis la fenêtre Itinéraire (**Destination sur un autre plan**) ou un résultat de la recherche multi-plans (bouton 🧭) : l'app choisit le portail le plus court, affiche le trajet en étapes et le trace sur ton plan. Tes points de passage sont parcourus d'abord, dans l'ordre ; les évitements de chaque plan sont respectés. Si c'est impossible, un message dit pourquoi.
 
+Par défaut, le trajet ne franchit qu'une frontière (ton plan et le plan d'arrivée). Pour passer par des plans intermédiaires (A → B → C), coche **🌀 Itinéraire via plusieurs plans (plans connectés)** dans la recherche multi-plans, plan ouvert ; ce choix est mémorisé.
+
 **C'est parti** ne te téléporte pas : tu marches (validation des étapes et recalcul comme d'habitude), puis tu traverses au portail avec le bouton flottant **🌀 Portail suivant** ou le ➜ du point-portail. La suite se trace de l'autre côté. Si tu ouvres le plan suivant autrement, ou si tu remplaces l'itinéraire, la suite est abandonnée. La 🪧 Feuille de route résume les plans suivants (« Puis 🌀 portail → plan : 350 m, 4 croisements »).
 
 **Bon à savoir** : renommer ou déplacer un point lié met ses liaisons à jour ; supprimer un point supprime ses liaisons ; les liaisons voyagent avec l'export de session ; celles livrées avec un plan s'utilisent mais ne se modifient pas.
@@ -591,7 +593,7 @@ Depuis la fenêtre Itinéraire (**Destination sur un autre plan**) ou un résult
 La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec leurs points, tracés, zones et structures, dans tes couleurs de légende. Elle est **active par défaut** : le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu regardes ; aucune donnée de tes plans ne sort. Pour la couper : ⚙️ Configuration.
 
 - **Sur l'accueil**, le widget **🌍 Vue OSM** ; son bouton **⛶** ouvre le mode OSM en plein écran.
-- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés).
+- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés). Depuis un plan, la Vue OSM ne s'ouvre que si le plan a été **converti en V2 tuilé** (voir « 🧱 Convertir en V2 tuilé ») ; sinon, un message explique comment le convertir.
 - Un plan n'y apparaît qu'une fois **ouvert au moins une fois** : c'est à l'ouverture que l'app lit son géoréférencement.
 - **Hors connexion** : **💾 Sauvegarder hors-ligne** télécharge à l'avance les tuiles de la zone visible.
 - Zoomer sur un plan affiche des images plus détaillées, lues dans le fichier du plan déjà sur ton appareil. Les calques livrés masqués s'y affichent et se filtrent comme les autres.
@@ -854,7 +856,7 @@ Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, a
 
 ### 🛠️ Côté créateur du plan
 
-Le mode multi-niveau, le niveau de chaque calque image et celui des éléments des calques de données sont réglés par le créateur du plan dans le Générateur → 🔭 Pour aller plus loin › 🏗️ Créer ou modifier un plan. Sur un plan qui ne l'a pas activé, rien de tout cela n'apparaît ; activé plus tard, les éléments existants sont au niveau 0.
+Le mode multi-niveau, le niveau de chaque calque image et celui des éléments des calques de données sont réglés par le créateur du plan dans le Générateur (voir 🔭 Pour aller plus loin › 🏗️ Créer ou modifier un plan). Sur un plan qui ne l'a pas activé, rien de tout cela n'apparaît ; activé plus tard, les éléments existants sont au niveau 0.
 
 ---
 
@@ -1106,7 +1108,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
-  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
+  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
 
 ### ⚙️ Réglages (en mode carte) — ce plan
 
@@ -1153,7 +1155,7 @@ Le tutoriel d'accueil se rejoue à tout moment : **📖 Documentation** → bout
 
 ### 🔎 Chercher dans la documentation
 
-En haut de la fenêtre 📖, le champ **🔎 Chercher** cherche dans tout le texte : les résultats sont surlignés, **Entrée** ou ↓ passe au suivant, le compteur indique « i / n » et le sommaire estompe les parties sans résultat. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche du groupe ❓ Aide cherche dans les titres et le contenu des pages d'aide.
+En haut de la fenêtre 📖, le champ **🔎 Chercher** cherche dans tout le texte : les résultats sont surlignés, **Entrée** ou ↓ passe au suivant, le compteur indique « i / n » et le sommaire estompe les parties sans résultat. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche de la fenêtre **❓ Aide** (groupe 📚) cherche dans les titres et le contenu des pages d'aide.
 
 ### 🤖 Aide IA
 
@@ -1383,7 +1385,7 @@ Sur un plan multiniveau, **🏗️ Auto : 1 équipe par niveau** crée une équi
 
 ##### 🗺️ Parcours, zone et itinéraire
 
-- **🗺️ Parcours** : touche **Entrée**, **➕ Ajouter une étape intermédiaire**, puis **Sortie**. Pour chaque point : tes **⭐ favoris** du plan en un toucher, la recherche, ou **📍 Cliquer sur la carte** (le point s'aimante au POI le plus proche). Toucher un POI le prend comme point, sans ouvrir sa fiche. Même entrée et même sortie = boucle. Depuis la recherche de l'app, le bouton 📌 assigne un point à une équipe en deux touchers.
+- **🗺️ Parcours** : touche **Entrée**, **➕ Ajouter une étape intermédiaire**, puis **Sortie**. Pour chaque point : tes **⭐ favoris** du plan en un toucher, la recherche, ou **📍 Cliquer sur la carte** (le point s'aimante au POI — point d'intérêt du plan — le plus proche). Toucher un POI le prend comme point, sans ouvrir sa fiche. Même entrée et même sortie = boucle. Depuis la recherche de l'app, le bouton 📌 assigne un point à une équipe en deux touchers.
 - **⬛ Définir zone** : soit un **polygone** (un toucher par sommet, double-toucher pour fermer), soit une **sélection de tracés** (touche chaque galerie, re-touche pour la retirer). Les zones des autres équipes s'affichent en pointillé pour caler les limites. Une galerie du plan se retrouve à l'identique sur tous les téléphones qui ont ce plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur lui. Sur un plan multiniveau, la zone vaut **au niveau où tu l'as dessinée** — coche « Zone sur tous les niveaux » pour l'étendre.
 - **✨ POI de la zone** ajoute tous les points de la zone comme étapes, de proche en proche depuis l'entrée.
 - **🗺️ Calc. itinéraire** calcule le chemin par les galeries, de l'entrée à la sortie en passant par les étapes, avec distance et durée. Il **contourne les étapes et les zones des autres équipes** ; s'il ne peut pas, il le signale. Il liste aussi **les étapes à plus de 25 m d'une galerie** : corrige-les avant de descendre. Il prévient enfin quand des galeries d'un autre niveau passent sous la zone sans qu'aucun parcours n'y descende.
@@ -1406,7 +1408,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
 - **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone (à pleine résolution du plan : les noms de galeries restent lisibles même sur un grand plan), étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
-- **🌍 Export KMZ géolocalisé** : le scénario pour Google Earth, OsmAnd ou Avenza — un dossier par équipe (points, zone, itinéraire) sur le plan en fond. Les itinéraires manquants sont calculés avant l'export, et MyKTAMap relit ce KMZ avec le scénario. Il faut un plan calibré avec deux points GPS (onglet 🌍 KMZ de l'export de session).
+- **🌍 Export KMZ géolocalisé** : le scénario pour Google Earth, OsmAnd ou Avenza — un dossier par équipe (points, zone, itinéraire) sur le plan en fond. Les itinéraires manquants sont calculés avant l'export, et MyKTAMap relit ce KMZ avec le scénario. Il faut un plan calibré avec deux points GPS (onglet 📡 Export externe de l'export de session).
 
 #### 🔦 3. Sur le terrain
 
@@ -1499,12 +1501,12 @@ Le PDF de l'opérateur ouvre sur les victimes, puis reprend chaque phase (parcou
 
 ### 🏗️ Créer ou modifier un plan
 
-Le bouton **🏗️** de la barre latérale ouvre le **Générateur** (**📦 Créer / Modifier un plan**), qui produit l'archive ZIP d'un plan.
+Le bouton **🏗️ Générer un plan** de l'accueil ouvre le **Générateur** (**📦 Créer / Modifier un plan**), qui produit l'archive ZIP d'un plan.
 
 #### 🧙 Le Générateur
 
 - **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
-- **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
+- **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2 — l'image découpée en tuiles, voir « 🧱 Convertir en V2 tuilé » —, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
 - **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ**, un **GPX**, un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
 
 Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
@@ -1573,7 +1575,7 @@ Dépose ton export **sur la zone « 📦 Ajouter un plan » de l'accueil** ou da
 
 Pour un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), la case **🧱 Convertir en V2 tuile (performance)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés, ce qui réduit fortement la mémoire utilisée.
 
-1. Choisis une image principale, ou charge le ZIP du plan à convertir : la case apparaît.
+1. Choisis une image principale, ou charge le ZIP du plan à convertir.
 2. Coche-la et lis l'avertissement : la conversion est lourde.
 3. **📦 Générer le ZIP** : une barre de progression suit le découpage (de 1 à 5 min). Le ZIP téléchargé porte le suffixe `_v2`.
 4. Importe ce ZIP : le plan s'ouvre en V2 (badge violet `V2`).
@@ -1728,6 +1730,8 @@ Si ton serveur héberge des plans dans `data/` (par exemple `data/test1/`, `data
 La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme détaillée affiche les noms tout de suite.
 
 Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et déclare-le avec `"zip"` à la place de `"path"`, par exemple `{ "id": "test3", "zip": "data/test3.zip", "name": "Plan Test 3" }`. L'app le télécharge à l'ouverture, le garde sur l'appareil pour le hors-ligne (selon **Mémoriser le plan dans l'app**), et ne le retélécharge que s'il a changé. Sur la ligne du plan, 💾 le garde sans l'ouvrir, ✅ indique qu'il est gardé et à jour.
+
+> 📖 Sous-titre de ton instance, étiquettes de plans, mot de passe d’accès propre, mode « consultation » (import et Générateur masqués), liaisons entre plans : la page `confadmin.html` de ton instance fabrique ce fichier pour toi — mode d’emploi dans le guide **[Héberger une instance avec ses plans](SELFHOST.md)**.
 
 ### 💼 Édition pro
 

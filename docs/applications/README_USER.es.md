@@ -27,7 +27,7 @@ La app **no tiene ninguna pretensión de sustituir** a los viejos planos de pape
 - ❌ **No es un GPS bajo tierra** — la geolocalización nativa no funciona bajo la roca. El «rastreador» de la app es un **podómetro + dirección** que deriva rápido; hay que reajustarlo con regularidad.
 - ❌ **No es una garantía de seguridad** — el mapa da el camino, no el oxígeno. Sigues siendo tú quien juzga los riesgos (derrumbes, agua, gases, fatiga).
 - ❌ **No es un directorio** — la app no cataloga lugares. Muestra lo que tú le das, y punto.
-- ❌ **No es una red social** — sin cuenta, sin perfil, sin compartir con un clic. Tú eliges a quién envías tu `.zip`, y cómo.
+- ❌ **No es una red social** — sin cuenta que crear, sin perfil público, sin compartir con un clic. Tú eliges a quién envías tu `.zip`, y cómo.
 
 ---
 
@@ -75,7 +75,7 @@ Por haberte tomado 10 minutos para leer en lugar de pulsar a ciegas. Es exactame
 
 ---
 
-**Créditos de bibliotecas y algoritmos** — 🍃 Leaflet (cartografía interactiva) · 🔄 Leaflet.ImageOverlay.Rotated (ajuste con 2 anclas + proyección de la Vista OSM) · 📦 JSZip (lectura/escritura de los archivos ZIP) · 📤 jsPDF (exportación a PDF imprimible) · 📸 html2canvas (captura del DOM para el PDF de Briefing para bomberos) · 🌍 OpenStreetMap y colaboradores (datos ODbL, Vista OSM opcional) · 🧭 Dijkstra (cálculo del camino más corto para los itinerarios) · 🌐 GPX 1.1 (intercambio para actividades al aire libre).
+**Créditos de bibliotecas y algoritmos** — 🍃 Leaflet (cartografía interactiva) · 🔄 Leaflet.ImageOverlay.Rotated (ajuste con 2 anclas + proyección de la Vista OSM) · 📦 JSZip (lectura/escritura de los archivos ZIP) · 📤 jsPDF (exportación a PDF imprimible) · 📸 html2canvas (captura del DOM para el PDF de Briefing para bomberos) · 🌍 OpenStreetMap y colaboradores (datos ODbL, Vista OSM desactivable) · 🧭 Dijkstra (cálculo del camino más corto para los itinerarios) · 🌐 GPX 1.1 (intercambio para actividades al aire libre).
 
 ---
 
@@ -580,6 +580,8 @@ Un enlace une **un punto de un plano con un punto de otro plano** — un «porta
 
 Desde la ventana del itinerario (**Destino en otro plano**) o un resultado de la búsqueda multiplano (botón 🧭): la app elige el portal más corto, muestra el trayecto por etapas y lo traza en tu plano. Tus puntos de paso se recorren primero, en orden; se respetan las evitaciones de cada plano. Si es imposible, un mensaje explica por qué.
 
+Por defecto, el trayecto solo cruza una frontera (tu plano y el plano de llegada). Para pasar por planos intermedios (A → B → C), marca **🌀 Itinerario a través de varios planos (planos conectados)** en la búsqueda multiplano, con un plano abierto; esta elección se recuerda.
+
 **¡En marcha!** no te teletransporta: caminas (validación de etapas y recálculo como de costumbre) y luego cruzas en el portal con el botón flotante **🌀 Portal siguiente** o con el ➜ del punto-portal. La continuación se traza al otro lado. Si abres el plano siguiente de otra forma, o si sustituyes el itinerario, la continuación se abandona. La 🪧 Hoja de ruta resume los planos siguientes («Luego 🌀 portal → plano: 350 m, 4 cruces»).
 
 **Bueno saberlo**: renombrar o mover un punto enlazado actualiza sus enlaces; eliminar un punto elimina sus enlaces; los enlaces viajan con la exportación de sesión; los incluidos con un plano se pueden usar pero no modificar.
@@ -591,7 +593,7 @@ Desde la ventana del itinerario (**Destino en otro plano**) o un resultado de la
 La Vista OSM coloca tus planos **georreferenciados** sobre el mapa de OpenStreetMap, con sus puntos, trazados, zonas y estructuras, en tus colores de leyenda. Está **activa por defecto**: el fondo de mapa procede de OpenStreetMap, que por tanto ve las zonas que miras; ningún dato de tus planos sale del dispositivo. Para desactivarla: ⚙️ Configuración.
 
 - **En la pantalla de inicio**, el widget **🌍 Vista OSM**; su botón **⛶** abre el modo OSM a pantalla completa.
-- **En un plano**, el botón **🌍** de la barra de arriba (planos georreferenciados).
+- **En un plano**, el botón **🌍** de la barra de arriba (planos georreferenciados). Desde un plano, la Vista OSM solo se abre si el plano se ha **convertido a V2 en teselas** (ver «🧱 Convertir a teselas V2»); si no, un mensaje explica cómo convertirlo.
 - Un plano solo aparece una vez que se ha **abierto al menos una vez**: es al abrirlo cuando la app lee su georreferenciación.
 - **Sin conexión**: **💾 Guardar sin conexión** descarga con antelación las teselas de la zona visible.
 - Al acercar el zoom sobre un plano se muestran imágenes más detalladas, leídas del archivo del plano que ya está en tu dispositivo. Las capas incluidas ocultas se muestran y se filtran como las demás.
@@ -854,7 +856,7 @@ Aparece en magenta punteado, con un círculo en cada extremo. **Sin unión, ning
 
 ### 🛠️ Del lado del creador del plano
 
-El modo multinivel, el nivel de cada capa de imagen y el de los elementos de las capas de datos los ajusta el creador del plano en el Generador → 🔭 Para ir más lejos › 🏗️ Crear o modificar un plano. En un plano que no lo ha activado, nada de esto aparece; si se activa más tarde, los elementos existentes quedan en el nivel 0.
+El modo multinivel, el nivel de cada capa de imagen y el de los elementos de las capas de datos los ajusta el creador del plano en el Generador (ver 🔭 Para ir más lejos › 🏗️ Crear o modificar un plano). En un plano que no lo ha activado, nada de esto aparece; si se activa más tarde, los elementos existentes quedan en el nivel 0.
 
 ---
 
@@ -1106,7 +1108,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
 - **🛠️ Sistema y mantenimiento**:
   - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
   - **📊 Ver el estado de memoria**: lo que ocupa la app en tu dispositivo, con **📋 Copiar el informe** para señalar un problema;
-  - **🆘 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🆘 Abrir la herramienta Kill SW** y **💥 Reiniciar todo** — ver «🆘 En caso de problema».
+  - **🆘 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🆘 Abrir la herramienta Kill SW** (SW = *Service Worker*, la parte de la app que la guarda para usarla sin conexión) y **💥 Reiniciar todo** — ver «🆘 En caso de problema».
 
 ### ⚙️ Ajustes (en modo mapa) — este plano
 
@@ -1153,7 +1155,7 @@ El tutorial de bienvenida se puede repetir en cualquier momento: **📖 Document
 
 ### 🔎 Buscar en la documentación
 
-Arriba de la ventana 📖, el campo **🔎 Buscar** busca en todo el texto: los resultados se resaltan, **Intro** o ↓ pasa al siguiente, el contador indica «i / n» y el índice atenúa las partes sin resultado. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del grupo ❓ Ayuda busca en los títulos y el contenido de las páginas de ayuda.
+Arriba de la ventana 📖, el campo **🔎 Buscar** busca en todo el texto: los resultados se resaltan, **Intro** o ↓ pasa al siguiente, el contador indica «i / n» y el índice atenúa las partes sin resultado. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda de la ventana **❓ Ayuda** (grupo 📚) busca en los títulos y el contenido de las páginas de ayuda.
 
 ### 🤖 Ayuda con IA
 
@@ -1383,7 +1385,7 @@ En un plano multinivel, **🏗️ Auto: 1 equipo por nivel** crea un equipo por 
 
 ##### 🗺️ Recorrido, zona e itinerario
 
-- **🗺️ Recorrido**: toca **Entrada**, **➕ Añadir una etapa intermedia** y luego **Salida**. Para cada punto: tus **⭐ favoritos** del plano en un toque, la búsqueda, o **📍 Hacer clic en el mapa** (el punto se ajusta al POI más cercano). Tocar un POI lo toma como punto, sin abrir su ficha. Misma entrada y misma salida = bucle. Desde la búsqueda de la app, el botón 📌 asigna un punto a un equipo en dos toques.
+- **🗺️ Recorrido**: toca **Entrada**, **➕ Añadir una etapa intermedia** y luego **Salida**. Para cada punto: tus **⭐ favoritos** del plano en un toque, la búsqueda, o **📍 Hacer clic en el mapa** (el punto se ajusta al POI — punto de interés del plano — más cercano). Tocar un POI lo toma como punto, sin abrir su ficha. Misma entrada y misma salida = bucle. Desde la búsqueda de la app, el botón 📌 asigna un punto a un equipo en dos toques.
 - **⬛ Definir zona**: o bien un **polígono** (un toque por vértice, doble toque para cerrar), o bien una **selección de trazados** (toca cada galería, vuelve a tocarla para quitarla). Las zonas de los demás equipos se muestran en punteado para ajustar los límites. Una galería del plano se encuentra idéntica en todos los teléfonos que tienen ese plano; un trazado añadido a mano en un solo dispositivo solo existe en él. En un plano multinivel, la zona vale **en el nivel donde la dibujaste** — marca «Zona en todos los niveles» para extenderla.
 - **✨ POI de la zona** añade todos los puntos de la zona como etapas, de cerca a lejos desde la entrada.
 - **🗺️ Calc. ruta** calcula el camino por las galerías, de la entrada a la salida pasando por las etapas, con distancia y duración. **Rodea las etapas y las zonas de los demás equipos**; si no puede, lo avisa. También enumera **las etapas a más de 25 m de una galería**: corrígelas antes de bajar. Por último, avisa cuando galerías de otro nivel pasan bajo la zona sin que ningún recorrido baje hasta ellas.
@@ -1406,7 +1408,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 - ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
 - **Sin conexión**: al lanzar, la app avisa si el plano no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del plano** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
 - **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona (a la resolución completa del plano: los nombres de galerías se leen incluso en un plano grande), etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
-- **🌍 Exportar KMZ geolocalizado**: el escenario para Google Earth, OsmAnd o Avenza — una carpeta por equipo (puntos, zona, itinerario) sobre el plano de fondo. Los itinerarios que faltan se calculan antes de exportar, y MyKTAMap vuelve a leer ese KMZ con el escenario. Hace falta un plano calibrado con dos puntos GPS (pestaña 🌍 KMZ de la exportación de sesión).
+- **🌍 Exportar KMZ geolocalizado**: el escenario para Google Earth, OsmAnd o Avenza — una carpeta por equipo (puntos, zona, itinerario) sobre el plano de fondo. Los itinerarios que faltan se calculan antes de exportar, y MyKTAMap vuelve a leer ese KMZ con el escenario. Hace falta un plano calibrado con dos puntos GPS (pestaña 📡 Exportación externa de la exportación de sesión).
 
 #### 🔦 3. Sobre el terreno
 
@@ -1499,12 +1501,12 @@ El PDF del operador empieza por las víctimas, luego recorre cada fase (recorrid
 
 ### 🏗️ Crear o modificar un plano
 
-El botón **🏗️** de la barra lateral abre el **Generador** (**📦 Crear / Modificar un mapa**), que produce el archivo ZIP de un plano.
+El botón **🏗️ Generar un mapa** de la pantalla de inicio abre el **Generador** (**📦 Crear / Modificar un mapa**), que produce el archivo ZIP de un plano.
 
 #### 🧙 El Generador
 
 - **🧙 Asistente**: el Generador avanza **paso a paso** (nombre, imagen, capas…). Los pasos opcionales se saltan con un clic (**⏭ Omitir**), y un **✅ Resumen antes de generar** muestra lo que está completo, omitido o falta, con avisos útiles (por ejemplo: sin georreferenciación GPS, ni Vista OSM ni exportación KMZ / GPX). **🗒️ Mostrar todo** muestra en cambio el formulario entero de una vez; tu elección se recuerda.
-- **🚀 Simple / ⚙️ Avanzado**: el modo Simple se limita a lo esencial (imagen, nombre, versión, V2, multinivel) y carga los iconos por defecto; el modo Avanzado da acceso a todas las opciones.
+- **🚀 Simple / ⚙️ Avanzado**: el modo Simple se limita a lo esencial (imagen, nombre, versión, V2 — la imagen cortada en teselas, ver «🧱 Convertir a teselas V2» —, multinivel) y carga los iconos por defecto; el modo Avanzado da acceso a todas las opciones.
 - **📂 Cargar un archivo** acepta un **ZIP de MyKTAMap** (para modificarlo), un **KMZ**, un **GPX**, una **exportación SIG** (`.geojson`, `.kml`) o un **GeoTIFF**. Si no, rellena el formulario para crear un plano desde cero.
 
 Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
@@ -1573,7 +1575,7 @@ A tener en cuenta: los huecos de los polígonos se ignoran; por encima de 20 000
 
 Para un plano pesado (imagen de más de 50 MB o de más de 8000 px), la casilla **🧱 Convertir a teselas V2 (rendimiento)** corta la imagen en **teselas**: la app ya solo carga los trozos visibles, lo que reduce mucho la memoria utilizada.
 
-1. Elige una imagen principal, o carga el ZIP del plano que vas a convertir: aparece la casilla.
+1. Elige una imagen principal, o carga el ZIP del plano que vas a convertir.
 2. Márcala y lee el aviso: la conversión es pesada.
 3. **📦 Generar el ZIP**: una barra de progreso sigue el corte (de 1 a 5 min). El ZIP descargado lleva el sufijo `_v2`.
 4. Importa ese ZIP: el plano se abre en V2 (distintivo violeta `V2`).
@@ -1728,6 +1730,8 @@ Si tu servidor aloja planos en `data/` (por ejemplo `data/test1/`, `data/test2/`
 La forma corta `{ "plans": ["test1", "test2"] }` también funciona; la forma detallada muestra los nombres de inmediato.
 
 Más sencillo aún: deja el ZIP del plano tal cual (sin descomprimirlo) y decláralo con `"zip"` en lugar de `"path"`, por ejemplo `{ "id": "test3", "zip": "data/test3.zip", "name": "Plano de prueba 3" }`. La app lo descarga al abrirlo, lo guarda en el dispositivo para usarlo sin conexión (según **Memorizar el plano en la app**) y solo vuelve a descargarlo si ha cambiado. En la fila del plano, 💾 lo guarda sin abrirlo y ✅ indica que está guardado y al día.
+
+> 📖 Subtítulo de tu instancia, etiquetas de planos, contraseña de acceso propia, modo «consulta» (importación y Generador ocultos), enlaces entre planos: la página `confadmin.html` de tu instancia fabrica este archivo por ti — instrucciones en la guía **[Alojar una instancia con sus planos](SELFHOST.md)** (en francés).
 
 ### 💼 Edición pro
 
