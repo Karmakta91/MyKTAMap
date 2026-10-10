@@ -119,7 +119,7 @@ qui parle au serveur.
 | État | Condition | Affichage (footer) | Modules greffés / requêtes |
 |---|---|---|---|
 | **OFF** | Champ absent ou `state: "off"` — cas de myktamap.fr | 🔌 « Base de données : désactivée » | Jamais chargés ; garde bloquant |
-| **INVALIDE** | Champ mal formé : pas un objet, `state` inconnu, `api` hors `https://`, module hors de l'origine de l'app (raison exacte journalisée `[Connexion]`) | « Configuration invalide » (décision KARMA, contre la reco d'un repli silencieux en OFF) | Jamais chargés ; garde bloquant |
+| **INVALIDE** | Champ mal formé : pas un objet, `state` inconnu, `api` hors `https://`, module hors de l'origine de l'app (raison exacte journalisée `[Connexion]`) | « Configuration invalide » (décision de l'auteur, plutôt qu'un repli silencieux en OFF) | Jamais chargés ; garde bloquant |
 | **LICENCE** | `"on"` mais aucune licence pro de source `"server"` | « Licence requise » | Jamais chargés |
 | **CONFIGURÉE** | `"on"` + licence serveur, mais aucun module ne s'est encore déclaré | « Configurée, aucun module » | Personne ne sonde le serveur (règle C) : c'est l'état normal de tout le chantier 0 |
 | **ON** | `"on"` + licence serveur + backend qui répond | « Connecté » | Chargés ; requêtes autorisées |
@@ -130,7 +130,7 @@ qui parle au serveur.
 - **B. Index injoignable au démarrage = dernière config mémorisée.** Mémorisée `"on"` →
   DOWN ; jamais vue → OFF. 🩸 Même piège que `revaliderInstance` : « index injoignable »
   et « connexion coupée par le déployeur » ne doivent pas se confondre. Une instance
-  configurée connectée qu'on ouvre hors ligne est **HS**, pas désactivée (décision KARMA :
+  configurée connectée qu'on ouvre hors ligne est **HS**, pas désactivée (décision de l'auteur :
   pas d'échec fermé vers OFF).
 - **C. Community expose l'état, le module agit.** Community tient l'état, l'affiche et émet
   un événement `mktm:*` à chaque changement (convention déjà utilisée par
@@ -160,7 +160,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 | État de connexion + badge footer | Les états (OFF, INVALIDE, LICENCE, CONFIGURÉE, ON, DOWN), l'événement `mktm:*`, le badge **affiché partout, myktamap.fr compris** | Transparence active : la garantie se voit au lieu de se chercher dans l'audit |
 | Chargeur de modules | Lit `modules`, vérifie la règle E, injecte les scripts même origine | L'instance garde l'`index.html` community tel quel : zéro fork |
 | Garde unique | Toute requête d'extension passe par lui ; hors ON il refuse avant envoi | Même leçon que `ktaKiosqueServeurSeul()` : le verrou est au goulot |
-| Gate déléguée | Un module peut remplacer la gate d'entrée (code communautaire / `accessHash`) par son propre écran | Décision KARMA : sur une instance connectée, le compte remplace la gate |
+| Gate déléguée | Un module peut remplacer la gate d'entrée (code communautaire / `accessHash`) par son propre écran | Décision de l'auteur : sur une instance connectée, le compte remplace la gate |
 | Journal des changements | « Ce qui a changé depuis telle date », horodatage par objet (point, tracé, zone, session…) | Indispensable au local-first et à la résolution des conflits |
 | Source de plans enfichable | Un module peut fournir des plans à la bibliothèque (et leur stockage hors ligne) au lieu de `data/` | Sur une instance connectée, les plans soumis à des droits sont servis par le backend seul |
 | Filtre d'export | Un module peut refuser l'export ZIP d'un plan (ex. plan partagé dont on n'est pas propriétaire) | L'export vit dans community |
@@ -320,7 +320,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   doivent pourtant tourner hors ligne (connexion par clé enregistrée, état DOWN) : leur
   cache est propre au module, versionné à part, pour qu'une release pro n'impose pas de
   bumper `CACHE_NAME` côté community.
-- **ConfAdmin** (décision KARMA, contre la reco) : l'outil déployeur community propose un bloc
+- **ConfAdmin** (décision de l'auteur) : l'outil déployeur community propose un bloc
   « Connexion serveur » (état, API, modules), **replié par défaut** et présenté comme réservé
   aux instances qui greffent des modules. Il reste hors `ASSETS_TO_CACHE`.
 - **Transparence** : NETWORK_AUDIT ne couvre que myktamap.fr. Une instance connectée publie
@@ -353,74 +353,39 @@ navigateur.
   (le trou corrigé en v1.90.7).
 - **Démarrage** : `index.json` est lu **une seule fois, avant les gates** (ou la config
   mémorisée s'il est injoignable, règle B), puis réutilisé par la gate (`accessHash`), le
-  kiosque et la découverte des plans. Aujourd'hui, la gate passe avant
-  `_chargerIndexServeur()` et relit l'index de son côté.
+  kiosque et la découverte des plans (`js/ktaInstance.js`, délai de 2 s ; la licence n'est attendue avant la
+  gate que si `state: "on"`).
 - **Identifiants d'objets** : chaque point, tracé, zone et structure reçoit un **id stable
   et un `updatedAt` en millisecondes**, pour tout le monde, myktamap.fr compris, avec une
-  migration des anciennes sessions à l'ouverture. Aujourd'hui, tracés, zones et structures
-  sont des `{type, points[], level?}` sans identité, et les points n'ont qu'un
-  `date_update` au jour près. Sans ça, ni « le dernier gagne, par objet », ni le journal
-  des changements ne sont possibles.
+  migration des anciennes sessions à l'ouverture (`js/ktaUid.js` ; format : [Formats JSON](data-formats.md)).
+  Sans ça, ni « le dernier gagne, par objet », ni le journal des changements ne seraient possibles.
 - **Cache des modules** : préfixe `myktamap-ext-<module>`, ajouté aux caches que
-  l'`activate` du Service Worker conserve (il efface aujourd'hui tout ce qui n'est ni
-  `CACHE_NAME` ni `myktamap-plan-`). Chaque module remplit et versionne le sien.
+  l'`activate` du Service Worker conserve (il efface tout cache qui n'est ni `CACHE_NAME`,
+  ni `myktamap-plan-`, ni `myktamap-ext-`). Chaque module remplit et versionne le sien.
 - **Garde-fou** : `scripts/check-extensions.js` (pré-commit bloquant, sur le modèle de
   `check-kiosque-serveur.js`) vérifie chaque prise appelée au goulot, le no-op sans module,
   le refus quand une prise de permission échoue, l'absence de `pro/` dans
   `ASSETS_TO_CACHE`, et OFF par défaut sans champ.
 
-**Ordre des chantiers** :
-0. ✅ **Connecteur — release v2.0.0, livré** (amorce la transition) : lecture de `serverConnection`
-   dans `_chargerIndexServeur()` (après les gates, comme le kiosque) + mémorisation de la
-   dernière config connue (règle B) ; états OFF / INVALIDE / LICENCE / CONFIGURÉE ;
-   événement `mktm:*` ; **pastille collée au badge de version** du footer du HOME (même
-   groupe que la pastille hors-ligne, visible footer replié), icône + mot court,
-   **cliquable** → petite modale « aucune donnée ne quitte ton appareil » + lien vers
-   l'audit réseau ; bloc ConfAdmin replié avec la même validation que l'app. **Aucune
-   requête vers l'API** (rien ne la sonde avant le chantier 3). Doc de transparence dans
-   la **même** release : phrase NETWORK_AUDIT recadrée sur le domaine, 3 README_USER,
-   AI_CONTEXT, aide intégrée. Topo validé par KARMA (04/10/2026) :
-   - module `js/ktaExtensions.js` (porte l'état, puis `KtaExtensions` au chantier 3) avec
-     une fonction pure `valider(cfg)` → `{ etat, raison }` ; recalcul à chaque
-     `mktm:license-changed` (la licence peut arriver après l'index) ; événement
-     `mktm:connexion-changed` ; clé `myktamap_server_connection_v1` **exclue de l'export de
-     profil** (donnée de l'instance, pas de l'utilisateur) ;
-   - ⚠️ le footer replié masque tout `#loaderFooterBlock` (badge et pastilles compris) :
-     l'**icône seule**, colorée, s'ajoute au bouton replié (non cliquable, il déplie) ;
-   - clic sur la pastille → la modale existante « Que fait l'app sur le réseau ? »
-     (`#loaderNetDocModal`), avec un bloc d'état en tête ; pas de nouvelle modale ;
-   - couleurs : OFF `.kta-tx-muted`, INVALIDE `.kta-tx-err`, LICENCE `.kta-tx-warn`,
-     CONFIGURÉE `.kta-tx-info` ; **icône seule sous 380 px** (mot dans l'infobulle et la
-     modale) ;
-   - ConfAdmin n'écrit le champ **que si `state: "on"`** (l'absence vaut OFF) ;
-   - garde-fou `scripts/check-connexion-serveur.js` (pré-commit bloquant) : exécute la
-     validation de l'app **et** celle de ConfAdmin sur une table de cas (méthode
-     `check-tags-index.js`), table de vérité des états, clé hors export de profil, module
-     précaché ;
-   - les états INVALIDE / LICENCE / CONFIGURÉE en navigateur réel exigent un `index.json`
-     de test que seul KARMA peut poser (`data/` interdit à Claude) : à la smoke-list de la
-     porte de release.
-1. ✅ Ids + horodatages + migration (**livré de v2.1.0 à v2.5.0**, lots A, B, C1-C3) : **release community** sur `Karma_dev`, livrée seule sur
-   myktamap.fr, utile en soi. Décisions : `docs/ETUDE_UID.md`.
-2. ✅ **Lecture unique de l'index avant les gates** (community, QCM du 04/10/2026) — **livré en v2.6.0** (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` = section `config` seule) :
-   - lu **une fois**, avant les gates, avec un **délai de 2 s** ; au-delà, ou hors ligne, on
-     démarre sur la **dernière config mémorisée** (règle B). Aujourd'hui la lecture n'a aucun
-     délai maximal ;
-   - rangé dans **un objet de config d'instance partagé**, que lisent la gate (`accessHash`),
-     le kiosque, le connecteur et la découverte des plans. `_hashInstance()` cesse de
-     relire l'index : une requête de moins à l'ouverture de la gate, aucune de plus ailleurs ;
-   - la licence n'est attendue avant la gate (2 s max) **que si `state: "on"`** :
-     myktamap.fr et toute instance en OFF ne sont pas ralentis ;
-   - **rotation du mot de passe d'instance à effet immédiat** : la revalidation passe avant
-     la gate, donc au lancement, jamais en pleine session. 🩸 Une config **mémorisée** (index
-     injoignable) appelle `revaliderInstance(…, false)` : elle ne révoque jamais rien ;
-   - le kiosque reprend lui aussi la config mémorisée quand l'index est injoignable ;
-   - invariants du §5 et contrôles de `scripts/check-gate-instance.js` réécrits (ordre
-     config → revalidation → gate, une seule lecture, mémoire qui ne révoque rien).
-3. ✅ Points d'extension + `check-extensions.js` (**livré en v2.7.0**, fusionné dans `Karma_dev`) : gate déléguée (écran « Installation indisponible » si le module de connexion manque ou échoue, jamais de repli sur la gate community), chargeur de modules (règle E), garde des requêtes (origine de `api`, états permis, sondes en « injoignable »), états `on`/`down` signalés par le module, permissions import/export (erreur = refus), plans d'extension (`type: "ext"`, ☁️, gardés sur l'appareil), publication depuis le Générateur, journal des changements, effacement à la déconnexion (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
-4. Modules greffés et backend : repo `MyKTAMap-pro`.
-
-Les noms et signatures exacts de chaque prise se fixent au chantier 3.
+**État : livré** (v2.0.0 → v2.7.0) — tout ce qui précède est en place dans community :
+- **Connecteur** (`js/ktaExtensions.js`) : validation pure `valider(cfg)` → `{ etat, raison }`, recalculée à chaque
+  `mktm:license-changed` ; événement `mktm:connexion-changed` ; dernière config connue mémorisée
+  (`myktamap_server_connection_v1`, **exclue de l'export de profil** : donnée de l'instance, pas de l'utilisateur).
+- **Pastille** collée au badge de version du pied de page de l'accueil, icône + mot court (icône seule sous 380 px ;
+  footer replié : icône seule sur le bouton) ; un clic ouvre la fenêtre « Que fait l'app sur le réseau ? » avec
+  l'état en tête. Couleurs : OFF `.kta-tx-muted`, INVALIDE `.kta-tx-err`, LICENCE `.kta-tx-warn`,
+  CONFIGURÉE `.kta-tx-info`.
+- **ConfAdmin** n'écrit le champ que si `state: "on"` (l'absence vaut OFF), avec la même validation que l'app.
+- **Lecture unique de l'index** avant les gates (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` =
+  section `config` seule) ; une config **mémorisée** ne révoque jamais rien (`revaliderInstance(…, false)`).
+- **Identifiants stables** (`js/ktaUid.js`) et **points d'extension** : `window.KtaExtensions.register()`, gate
+  déléguée, chargeur de modules (règle E), garde des requêtes, permissions import/export, plans d'extension
+  (`type: "ext"`, ☁️), publication depuis le Générateur, journal des changements, effacement à la déconnexion
+  (plans `ext` seulement), Secours entrant, caches `myktamap-ext-` gardés par le SW.
+- **Garde-fous** (pré-commit et CI, bloquants) : `check-connexion-serveur.js` (validation de l'app et de ConfAdmin
+  sur une table de cas, table de vérité des états, clé hors export de profil, module précaché),
+  `check-gate-instance.js` (ordre config → revalidation → gate), `check-uid.js`, `check-extensions.js`.
+- Les **modules greffés et le backend** vivent dans le dépôt pro, jamais ici.
 
 ## 4. Ce qui n'entrera JAMAIS ici (périmètre exclu)
 

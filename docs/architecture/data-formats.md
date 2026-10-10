@@ -1,6 +1,7 @@
 # Architecture MyKTAMap — Formats JSON (plan-config, point, session)
 
-> Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
+> Référence des fichiers JSON que l'app lit et écrit : configuration d'un plan, points, export de session.
+> Utile pour produire ou relire un plan hors de l'app. Chaque format est décrit dans son état actuel.
 > Sections : 📦 Format des données
 
 ---
@@ -14,7 +15,7 @@
   "plan": {
     "name": "Test 1",
     "version": "V1",
-    "author": "KARMA",
+    "author": "Asso X",
     "tags": ["gironde", "carrière"],   // optionnel (16/09/2026) — PROPOSÉES à l'import : jamais par-dessus des tags posés à la main (tagsSrc "user") ni ceux de l'index serveur ("index")
     "fondConseille": "blanc",          // optionnel (07/10/2026) — "noir" | "blanc" | "gris" : fond sous les parties transparentes en mode carte ; la pref par plan `fondPlan` (⚙️ Réglages › Affichage) l'emporte ; absent = selon le thème
     "imageWidth": 1044,
@@ -82,12 +83,12 @@
 → **Identité stable (v2.1.0)** : chaque objet de carte (point, tracé, zone, structure) porte aussi
 `"uid": "pt_lq3x9a_k2f8m1"` (préfixe `pt_`/`rd_`/`zn_`/`st_` = famille **à la création**, puis date
 base 36 et 6 caractères aléatoires) et `"updatedAt": 1759572000000` (ms, mis à jour à chaque
-modification). `id` d'un point **reste son nom** (photos, favoris, liaisons, Secours s'y réfèrent
-encore jusqu'au lot C). Posés : par le Générateur et les imports KMZ/GPX/SIG sur les nouveaux plans ;
+modification). `id` d'un point **reste son nom** (les données anciennes s'y réfèrent encore : photos,
+favoris, liaisons et Secours lisent l'uid d'abord, puis le nom — voir plus bas). Posés : par le Générateur et les imports KMZ/GPX/SIG sur les nouveaux plans ;
 dans une session, par la migration à l'ouverture (`updatedAt` de repli = `savedAt` de la session) et
 par le filet des 4 setters. **Jamais** dans KMZ, GPX ni l'export anonymisé. Absents des anciens plans
 tant qu'ils ne sont pas régénérés. Unicité **par stockage** (un objet rapatrié d'un calque garde l'uid
-de l'original). Module : `js/ktaUid.js` ; décisions : `docs/ETUDE_UID.md`.
+de l'original). Module : `js/ktaUid.js`.
 
 → **Traces de suppression (v2.2.0)** : le payload de session et l'export complet portent
 `"tombstones": [{ "uid": "rd_…", "deletedAt": 1759572000000 }]` — un objet supprimé laisse son uid
