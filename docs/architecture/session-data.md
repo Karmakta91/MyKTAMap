@@ -122,69 +122,80 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 ---
 
-### 42. Système photos POI complet (depuis v1.10.0)
+### 42. Photos des points
 
-Backend IDB-first + UI complète (capture / viewer / exports / générateur). 4 sous-phases livrées ensemble :
+**Stockage** — `js/photos.js` → `window.MyKTAMapPhotos`. IndexedDB `myktamap_photos` v1, store `photos` (clé `id`),
+index `by_plan` et `by_plan_point` ([planId, pointId]). Enregistrement : `{ id, planId, pointId, blob, mime, size,
+createdAt, meta, fiche? }`. Compression à l'ajout (canvas → JPEG, 1920 px max côté long, q 0.85 ; 0.92 sans resize
+pour une petite photo) : toute photo est ré-encodée, l'EXIF (GPS compris) ne survit pas. **5 photos max par point**
+à l'ajout (`MAX_PHOTOS_PER_POINT`) ; une restauration ou un rattachement ne le vérifient pas (rien n'est refusé
+de ce qui existe déjà).
 
-**B1.a — Backend** : `js/photos.js` (~540 lignes IIFE) → `window.MyKTAMapPhotos`. DB IDB `myktamap_photos` v1, store `photos`, indexes `by_plan` et `by_plan_point`. Compression auto (canvas → JPEG q85, max 1920px côté long). Max **5 photos par point** (`MAX_PHOTOS_PER_POINT`). API complète : `addPhoto, getPhoto, getBlob, getObjectUrl, getPhotosForPoint, getAllPhotosForPlan, countPhotosForPoint, countPhotosForPlan, deletePhoto, deletePhotosForPoint, deletePhotosForPlan, renamePointId, restorePhoto, clearAll, getStorageInfo`.
+**Clé du point** (`pointId`) = l'**uid** du point (`js/ktaUid.js`), son nom pour les photos d'avant la v2.3.0.
+Lecture double `getPhotosForPointRef(planId, { uid, id })` ; migration douce nom → uid à l'ouverture d'un plan
+(`migrerPhotosPlan`, seulement si un seul point porte ce nom) ; nom ambigu = « 📌 à rattacher » dans la bulle.
+Renommer un point ne touche plus ses photos ; un point sans uid garde l'ancien comportement (`renamePointId`).
 
-**B1.b — UI éditeur** : refactor `editor.js > afficherFormulaire(x, y, existingPoint)` avec 3ème argument optionnel pour le mode édition (avant : ajout uniquement). Section "📸 Photos (N/5)" avec grille 3 cols PC / 2 mobile, miniatures 80×80, spinner ⏳ pulse pendant compression+IDB write, ✕ pour pending delete (vignette grisée + hachures), ↺ pour annuler. 2 boutons d'ajout : `📷 Prendre photo` (`capture="environment"`) + `🖼️ Depuis la galerie` (multiple).
+**Fiche du point** (`fiche: { nom, x, y, niveau, type, maj }`, coordonnées image comme dans la session) : de quoi
+retrouver le point s'il disparaît. Posée à l'ajout (état du formulaire), au rattachement et à la restauration si
+fournie ; remise à jour par `majFichesPoints(planId, points)` quand le point est enregistré (éditeur, tableau
+« Remplacer la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
+Seules les fiches qui changent sont écrites. Jamais exigée : les anciennes photos n'en ont pas.
 
-**Stratégie 5a** : photos écrites en IDB DÈS l'ajout (sous pointId temporaire `_temp_<timestamp>_<rand>` en mode ajout), migration via `renamePointId` au save vers le vrai id (= nom). Cleanup à l'annulation : delete les photos uploadées cette session. En mode édition : `_photosPendingDelete` Set commit uniquement au save (= annuler ne perd pas de photos).
+**Saisie** — `editor.js > afficherFormulaire(x, y, existingPoint?)`, section 📸 : écriture IndexedDB dès l'ajout
+(sous l'uid du futur point en mode ajout), retraits marqués et appliqués à l'enregistrement, annulation = les photos
+ajoutées pendant la fenêtre sont supprimées. **Affichage** — bulle du point (`utils.js > attachPopupPhotos`,
+miniatures `<img role="button">` — pas de `<button><img>`, fond bleu sur Chromium iOS), visionneuse plein écran
+`js/photoViewer.js` (`MyKTAMapPhotoViewer.open(photos, i)`, z-index 100000 : pinch, pan, swipe, clavier).
+ObjectURL suivies (`window._ktaAllPhotoUrls`) et révoquées à la fermeture / au changement de plan.
 
-Popup marker — `utils.js > buildPointPopupHtml + attachPopupPhotos(marker, pointId)` : bouton "✏️ Modifier" bleu pour points session + slot `.kta-popup-photos` hydraté en async via `popupopen` event Leaflet. Miniatures 44×44 (`<img class="kta-popup-photo-mini" role="button" tabindex="0">` directes cliquables, **PAS** `<button>` car les styles user-agent variables créaient un "fond bleu" visible). Tap → viewer plein écran. ObjectURLs révoquées au `popupclose` (anti memory leak).
+**Supprimer un point ne supprime PAS ses photos** (décision KARMA 10/10/2026 : récupération, pas nettoyage ;
+gardées indéfiniment, jamais effacées sans confirmation). ⏪ Annuler la suppression rend le point avec son uid :
+ses photos le retrouvent sans rien réécrire. Restent effacées : la suppression d'une photo dans la fiche du point,
+la suppression d'un plan (`PlanRegistry` purge ses photos), **💥 Tout réinitialiser**, le **réimport d'une session
+ZIP** (remplacement : photos du plan effacées puis restaurées depuis le fichier) et l'import de profil en mode
+remplacement. L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
+disparues de la nouvelle version (v2.5.0) — jamais une photo prise par l'utilisateur.
 
-⚠️ **À ne PAS revenir au pattern `<button><img></button>`** pour les miniatures popup — testé, ça créait un fond bleu visible sur certains browsers (Chromium iOS notamment). L'`<img>` cliquable directe est le pattern propre.
+**🧰 Outils > 📸 Mes photos** — `js/photosGalerie.js` → `window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId),
+apresOuverturePlan(planId) }`. Liste des plans qui ont des photos (nombre, taille ; en installation reliée, aussi
+les plans ☁️ sans photo locale), puis par plan : vignettes groupées par point, groupe **⚠️ Sans point** en tête.
+- **« Sans point »** : clé qui ne correspond à AUCUN point connu du plan — session (`KtaSessionStore` ; les objets
+  reçus d'une installation reliée y sont fusionnés), points des calques (fichiers du plan serveur, ou archive ZIP
+  gardée — `PlanRegistry.getBlob`). Plan ouvert : points vivants (`getEditorPoints` + `getAllEmbeddedPoints`), et
+  les fichiers du plan en complément si une photo n'y est pas retrouvée (les calques arrivent par lots).
+  🩸 Points non lisibles d'ici (archive absente, serveur injoignable, plan ☁️ pas encore ouvert, plan absent) →
+  **🔎 à vérifier à l'ouverture du plan**, jamais « sans point » par défaut.
+- Actions d'un point disparu : **🔗 Rattacher** (`rattacher(photoIds, planId, pointId, fiche)` ; liste filtrable
+  des points, ou **🗺️ Choisir sur la carte** si le plan est ouvert : on ouvre la bulle du point voulu) ;
+  **♻️ Recréer le point** (seulement avec une fiche : position, niveau, type, nom ; **même uid** si la clé en est un,
+  donc photos et serveur le retrouvent sans changer de clé ; entrée d'historique ⏪ ; plan fermé → proposé à
+  l'ouverture, la recréation se fait quand le plan a fini de charger) ; **💾 Enregistrer** (ZIP
+  `photos/_index.json` + fichiers, même format que les exports de session, fiche incluse) ; **🗑️ Supprimer**
+  (`ktaConfirm` avec nombre et taille, `supprimerPhotos`). Photo rattachée : voir, 📍 Voir sur le plan, enregistrer.
+- **Signal discret** : à l'ouverture d'un plan, après la migration nom → uid (`main.js > _ktaPlanifierMigrationPhotos`
+  appelle `apresOuverturePlan`), un toast maison `#kta-phg-signal` (en bas : il porte un bouton ; il demande
+  `OOMGuard.toastAutorise("warn")`) « 📸 N photo(s) sans point » ouvre la galerie sur ce plan. Une fois par
+  ouverture (oublié à `mktm:plan-ferme`).
 
-**B1.c — Viewer plein écran** : `js/photoViewer.js` (~310 lignes IIFE) → `window.MyKTAMapPhotoViewer = { open(photos, startIndex), close, isOpen }`. Modale fullscreen z-index 100000. Maison (pas de dep) :
-- Pinch-zoom 1× à 4× (2 doigts, scale center-based, clamp transform)
-- Pan (drag PC quand zoomé / 1 doigt mobile zoomé)
-- Swipe horizontal pour navigation (1 doigt mobile, zoom=1, threshold 50px)
-- Flèches `◂` `▸` + raccourcis clavier `← → + - 0 Échap`
-- Auto-reset transform à chaque changement de photo
-- `touch-action: none` sur viewport + `passive: false` sur touchmove/wheel → on contrôle tout le touch
-- Compteur "N / M" pastille jaune + ✕ rouge au hover
+**Événement `mktm:photos-changees`** et prise d'extension `photos` (installation reliée) : contrat dans
+`community-server-line.md` §3. Toute écriture voulue émet (`ajout`, `suppression`, `rattachement`, `fiche`) ;
+les purges locales (`deletePhotosForPlan`, `clearAll`) n'émettent rien ; `restorePhoto(record, { source })` :
+`"extension"` par défaut, `"import"` pour les restaurations de l'app.
 
-**B1.d — Exports** complets (rétrocompat absolue : sans photos cochées ou 0 photo → format v1.9.2 strict) :
-
-| Voie | Output sans photos | Output avec photos |
-|---|---|---|
-| Session Full | `.json` pur | `.zip` (session.json + photos/) |
-| Session Avancé Single | `.json` pur | `.zip` (session.json + photos/) |
-| Session Avancé ZIP multi | `.zip` (N JSON) | `.zip` (N JSON + photos/) |
-| Conversion ed2data (basic 1 cat.) | `.json` direct | `.zip` (1 JSON + photos/) |
-| Conversion ed2data (basic N cat.) | `.zip` multi | `.zip` (N JSON + photos/) |
-| Conversion ed2data (fine) | `.zip` multi | `.zip` (N JSON + photos/) |
-| Conversion data2ed (ZIP input) | `.json` session | `.zip` session (réimportable) |
-| Re-import session ZIP | (rétrocompat .json) | wipe + restorePhoto IDB |
-| Re-import KMZ | (pas concerné) | (pas concerné, B1.d.β à venir) |
-
-Format ZIP unifié pour les 3 voies (Full / Avancé Single / Conversion) :
+**Exports** (rétrocompat : sans photo cochée → format sans photos) : Session Full / Avancé / Conversion → ZIP
+`session.json` + `photos/` ; réimport = remplacement (ci-dessus). Format commun :
 ```
-session.json (ou data layer)
 photos/
 ├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file}}}
 └── <photoId>.<ext>
 ```
-
-Helpers communs dans sessionExporter.js : `_collecterPhotosPlan(pointIdsSet)`, `_extDepuisMime(mime)`, `_formatBytes(n)` (exposé `window._kta_formatBytes`), `_packerZipSession(payload, photos, filename)`, `_enrichirPointsAvecPhotos(points, photos)` (ajoute `point.photos = [photoIds]` sur clone). Filtre par `pointIdsSet` : les photos suivent le filtre des points (= si l'user filtre par tag, photos correspondantes seulement).
-
-**Re-import session** (interface.js > `_parseSessionZip(file)`) : détection ZIP vs JSON par extension + MIME. Extraction `session.json` + `photos/_index.json` + blobs. `_pendingPhotosToRestore` en variable de fermeture. Validateur async : `_restorerPhotos()` → `deletePhotosForPlan(planId)` (wipe) puis `restorePhoto` × N. Format multi-files (Avancé ZIP) **non pris en charge** en re-import (par design — format archive).
-
-**B1.d.γ — Générateur** (createConf.js) :
-- Mode Modifier : case "📸 Inclure les photos attachées (N · X Mo)" (compteur async) embed les photos IDB du plan courant dans `data/photos/`
-- Encadré dédié "📦 Importer un datalayer ZIP en un clic" (mode Nouveau ET Modifier) qui parse un ZIP datalayer exporté → crée les data layers correspondants + stocke photos dans `_plannerPhotosFromZip`
-- En mode Modifier : suffixe `_imported_<N>` sur l'id du calque si collision avec un calque existant (= n'écrase pas le plan source)
-- Au `_genererZip` : MERGE des 2 sources photos en mode Modifier (IDB + ZIP importé) avec déduplication par photoId. Sans la dédup-merge, importer 1 ZIP avec 2 photos écrasait les 10 photos IDB du plan → bug "ça casse tout" remonté KARMA.
-
-**Symétrie côté import** — `main.js > startImportedPlan` :
-- Détection `data/photos/_index.json` dans le ZIP plan
-- Wipe `deletePhotosForPlan(planId)` puis `restorePhoto` × N
-- Toast discret `OOMGuard.showToast("📸 N photos restaurées depuis le plan", "info")`
-
-**Header refonte** : 5e compteur 📸 (lecture async `countPhotosForPlan`) à côté de 📍/🛣/⬛/🏛️. Section dédiée dans la modale "📊 Détails de la session" : breakdown par point + total Mo.
-
-⚠️ **`data/editor.json` reste écrasé** par `PLANNER_EDITOR_JSON` vide au `_genererZip` (comportement v1.9.2 inchangé). Les points importés via datalayer ZIP apparaissent comme data layers `points` séparés (lecture seule), pas dans le calque "Mes annotations" éditable. Cohérent avec le modèle "session = éphémère, data = figé dans le plan".
+Helpers `sessionExporter.js` : `_collecterPhotosPlan(pointIdsSet)` (les photos suivent le filtre des points),
+`_extDepuisMime`, `_formatBytes` (`window._kta_formatBytes`), `_packerZipSession`, `_enrichirPointsAvecPhotos`
+(`point.photos = [ids]` sur une copie). L'export de profil emporte les photos de tous les plans (fiche comprise).
+Générateur (`createConf.js`) : case « 📸 Inclure les photos » en mode Modifier (→ `data/photos/` du plan, fusion
+dédoublonnée avec un datalayer ZIP importé). Compteur 📸 de l'en-tête (`countPhotosForPlan`) et détail par point
+dans « 📊 Détails de la session ».
 
 ---
 

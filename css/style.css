@@ -22714,3 +22714,67 @@ body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-
   background: rgba(184, 134, 11, 0.12);
   border-color: rgba(184, 134, 11, 0.45);
 }
+
+/* ============================================================
+   📸 MES PHOTOS — galerie (js/photosGalerie.js, 10/10/2026)
+   Réutilise la modale des liaisons (.kta-ipl-boite, boutons de plan, filtre) ;
+   ici seulement ce qui lui est propre. Mobile d'abord : vignettes en grille
+   fluide, actions qui passent à la ligne, aucun débordement à 390 px.
+   ============================================================ */
+.kta-phg-boite { width: min(720px, 96vw) !important; max-width: min(720px, 96vw) !important; }
+.kta-phg-corps { overflow-x: hidden; }
+/* Fenêtres posées sur <html> (hors <body>) : la police du body ne leur arrive pas. */
+.kta-phg-boite, .kta-phg-pick-boite, .kta-phg-signal, .kta-phg-floater {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.kta-phg-total { font-size: 12px; color: #8892a4; margin: 0 0 10px 0; }
+.kta-phg-barre { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-bottom: 8px; }
+.kta-phg-plan-titre { font-size: 15px; font-weight: 600; color: #f4c542; margin: 4px 0 6px; overflow-wrap: anywhere; }
+.kta-phg-section { margin: 14px 0 6px; }
+.kta-phg-section-titre { font-size: 13.5px; font-weight: 600; color: #e8eaf0; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.kta-phg-badge {
+  display: inline-block; min-width: 20px; padding: 1px 7px; border-radius: 10px;
+  font-size: 11.5px; text-align: center; background: rgba(140, 180, 255, 0.18); color: #8cb4ff;
+}
+.kta-phg-sec-sans .kta-phg-badge { background: rgba(244, 197, 66, 0.2); color: #f4c542; }
+.kta-phg-texte { font-size: 12.5px; color: #c8d0e0; line-height: 1.5; margin: 0 0 8px 0; }
+.kta-phg-carte {
+  background: rgba(140, 180, 255, 0.05); border: 1px solid rgba(140, 180, 255, 0.16);
+  border-radius: 8px; padding: 9px 10px; margin-bottom: 8px; min-width: 0;
+}
+.kta-phg-sec-sans .kta-phg-carte { border-color: rgba(244, 197, 66, 0.35); background: rgba(244, 197, 66, 0.05); }
+.kta-phg-carte-titre { font-size: 13.5px; color: #e8eaf0; font-weight: 600; overflow-wrap: anywhere; }
+.kta-phg-carte-meta { font-size: 11.5px; color: #8892a4; margin: 2px 0 6px; overflow-wrap: anywhere; }
+.kta-phg-vignettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.kta-phg-vignette {
+  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06); cursor: zoom-in; min-height: 40px;
+}
+.kta-phg-vignette:focus-visible { outline: 2px solid #8cb4ff; outline-offset: 1px; }
+.kta-phg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.kta-phg-action { flex: 0 1 auto; }
+.kta-phg-danger { color: #ff8080 !important; border-color: rgba(255, 128, 128, 0.4) !important; }
+.kta-phg-pick-liste { margin-top: 8px; max-height: 50vh; overflow-y: auto; }
+.kta-phg-carte-btn { width: 100%; margin-bottom: 8px; }
+/* Signal à l'ouverture d'un plan (toast maison : il porte un bouton). En BAS, au-dessus de la barre
+   du plan : en haut, les toasts de l'ouverture (session, sortie reprise) le recouvraient. */
+.kta-phg-signal, .kta-phg-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  max-width: min(440px, calc(100vw - 24px)); box-sizing: border-box;
+  background: #1a1f2e; border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid #f4c542;
+  border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 9px 10px 9px 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  z-index: 99998; color: #e8eaf0; font-size: 13px;
+}
+.kta-phg-signal > span, .kta-phg-floater > span { flex: 1 1 160px; min-width: 0; }
+.kta-phg-floater { border-left-color: #8cb4ff; }
+.kta-phg-signal-x { background: none; border: none; color: #8892a4; font-size: 15px; cursor: pointer; padding: 2px 4px; }
+html.kta-theme-light .kta-phg-section-titre,
+html.kta-theme-light .kta-phg-carte-titre { color: var(--kta-light-text, #1a1f2e); }
+html.kta-theme-light .kta-phg-texte { color: var(--kta-light-text-2, #38414f); }
+html.kta-theme-light .kta-phg-plan-titre { color: #8b5a00; }
+html.kta-theme-light .kta-phg-signal,
+html.kta-theme-light .kta-phg-floater { background: #ffffff; color: var(--kta-light-text, #1a1f2e); border-color: rgba(0, 0, 0, 0.12); }
+html.kta-theme-light .kta-phg-signal { border-left-color: #b8860b; }
+html.kta-theme-light .kta-phg-floater { border-left-color: #3a6fd8; }

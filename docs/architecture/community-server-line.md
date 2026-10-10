@@ -281,6 +281,22 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb).
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
+- **Photos des points** (10/10/2026) : prise d'information `photos: { completerPoint(planId, pointId) →
+  Promise<number>, completerPlan(planId) → Promise<{ ajoutees, total }> }`. L'app appelle `completerPoint` quand
+  elle **affiche** les photos d'un point (bulle, fiche d'édition ; `pointId` = uid du point, son nom s'il n'en a pas)
+  et `completerPlan` à l'ouverture d'un plan dans 🧰 Outils > 📸 Mes photos ; l'extension dépose ce qui manque par
+  `MyKTAMapPhotos.restorePhoto(record)` (fiche comprise) et l'app réaffiche si `> 0`. Côté community :
+  `KtaExtensions.photosCompleterPoint` / `photosCompleterPlan`, **8 s max** puis abandon silencieux, erreur ou
+  forme inattendue = 0 (journalisée `[Photos]`). Sans extension : rien n'est appelé, aucune attente.
+  **Sortant** : événement `mktm:photos-changees` sur `window`, `detail = { planId, photoIds, action, source? }`,
+  `action` ∈ `ajout` | `suppression` | `rattachement` | `fiche`, émis APRÈS l'écriture IndexedDB.
+  `source: "extension"` = écrit par `restorePhoto` **sans** `opts.source` (le dépôt d'une extension : à ne pas
+  renvoyer) ; `source: "import"` = restauration par l'app (session, plan ZIP, profil). 🩸 Les **purges locales**
+  n'émettent rien : `deletePhotosForPlan` (plan retiré de l'appareil, déconnexion — `effacerDonneesExtension` —,
+  réimport de session) et `clearAll` (réinitialisation, import de profil) — une extension qui les propagerait
+  effacerait les photos de l'équipe. Supprimer un point ne supprime jamais ses photos (« sans point »,
+  `session-data.md` §42). API photos ajoutée pour l'extension : `listerPlan(planId)` (sans blob),
+  `rattacher(photoIds, planId, pointId, fiche)`, `restorePhoto(record, opts?)`.
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
   ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
   `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :

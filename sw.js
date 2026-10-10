@@ -325,6 +325,7 @@ const ASSETS_TO_CACHE = [
   "./js/firstRunFlow.js",
   "./js/interPlanLinks.js",
   "./js/crossPlanSearch.js",
+  "./js/photosGalerie.js",
   "./js/interPlanRoute.js",
   "./js/planNetwork.js",
   // 💾 28/09/2026 — ABSENT jusqu'ici alors qu'index.html le charge : le module

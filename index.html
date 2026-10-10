@@ -556,6 +556,8 @@
             <button class="loader-btn-secondary" type="button" id="loaderJournalBtn" data-i18n="home.add.journal">📔 Mon carnet</button>
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
             <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
+            <!-- 📸 10/10/2026 — galerie de toutes les photos, rattachées ou non (js/photosGalerie.js) -->
+            <button class="loader-btn-secondary" type="button" id="loaderPhotosBtn" data-i18n="home.add.photos">📸 Mes photos</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
             <!-- 📦 v1.94.0 — import multiple. Il vit ICI, avec les outils
                  occasionnels (KARMA : « pas forcément utilisé bcp ») et non
@@ -1416,6 +1418,8 @@
   <!-- 🌐 v1.58.0 : Recherche cross-plan (tous les plans de la bibliothèque).
        Réutilise InterPlanLinks (lecture de plans non chargés + navigation). -->
   <script src="js/crossPlanSearch.js" defer></script>
+  <!-- 📸 10/10/2026 : galerie « Mes photos » (🧰 Outils) + photos sans point (récupération). -->
+  <script src="js/photosGalerie.js" defer></script>
   <!-- 🧭 v1.60.0 : Itinéraire inter-plan (Dijkstra à travers les portails). -->
   <script src="js/interPlanRoute.js" defer></script>
   <!-- 🕸️ v1.65.0 (A7) : Vue « réseau de plans » (graphe SVG plans/portails,
