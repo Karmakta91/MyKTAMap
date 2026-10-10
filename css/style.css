@@ -22696,3 +22696,19 @@ html.kta-theme-light .kta-memoire-barre.kta-memoire-plein, body.kta-theme-light 
 html.kta-theme-light .kta-memoire-legende, body.kta-theme-light .kta-memoire-legende { color: #6b6354; }
 html.kta-theme-light .kta-memoire-plans li, body.kta-theme-light .kta-memoire-plans li { color: #2a2620; border-bottom-color: rgba(0,0,0,.08); }
 html.kta-theme-light .kta-memoire-plans li b, body.kta-theme-light .kta-memoire-plans li b { color: #2a2620; }
+
+/* ⏳ Mise à jour acceptée, ancien code encore chargé (10/10/2026) : ambre, SANS clignoter —
+   le clignotement était pris pour « la mise à jour m'est demandée à chaque ouverture ». */
+.kta-loader-copyright-version.kta-loader-copyright-version-attente {
+  cursor: pointer;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.45);
+  animation: none;
+}
+html.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente,
+body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente {
+  color: #8b5a00;
+  background: rgba(184, 134, 11, 0.12);
+  border-color: rgba(184, 134, 11, 0.45);
+}

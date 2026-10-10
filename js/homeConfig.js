@@ -307,7 +307,8 @@
         let _titreVer = { cle: "home.version.titre", v: installed };
         const _TITRE_FR = {
           "home.version.titre":    "Version installée : {v} — clique pour voir les notes ou vérifier les mises à jour",
-          "home.version.titreMaj": "Nouvelle version disponible : {v} — clique pour mettre à jour"
+          "home.version.titreMaj": "Nouvelle version disponible : {v} — clique pour mettre à jour",
+          "home.version.titreAttente": "Mise à jour {v} acceptée, en cours d'installation — ferme complètement l'app puis rouvre-la"
         };
         function _tVer(k, p) {
           _titreVer = { cle: k, v: p.v };
@@ -321,11 +322,26 @@
         el.title = _tVer("home.version.titre", { v: installed });
 
         function _evaluerEtAfficher(remoteVersion) {
-          if (!remoteVersion || remoteVersion === installed) {
-            // Pas d'update dispo → état normal (mais toujours cliquable)
+          const UC = window.UpdateChecker;
+          const cmp = function (a, b) { return UC && typeof UC.compareSemver === "function" ? UC.compareSemver(a, b) : (a === b ? 0 : 1); };
+          el.classList.remove("kta-loader-copyright-version-attente");
+          if (!remoteVersion || cmp(remoteVersion, installed) <= 0) {
+            // Pas d'update dispo (ou serveur plus ancien que le code chargé) → état normal (toujours cliquable)
             el.classList.remove("kta-loader-copyright-version-update");
             el.textContent = installed;
             el.title = _tVer("home.version.titre", { v: installed });
+            return;
+          }
+          // 🩸 10/10/2026 (retour testeur en prod) : mise à jour DÉJÀ acceptée (version connue = serveur) mais ancien
+          // code encore chargé (iOS en app installée, SW pas encore relayé). Avant : badge bleu clignotant à chaque
+          // ouverture, pris pour « la mise à jour m'est demandée à chaque fois », alors qu'un clic répondait
+          // « déjà à jour ». Désormais : ⏳ sans clignoter, l'infobulle dit quoi faire, le clic propose de relancer.
+          const acceptee = UC && typeof UC.getCurrentVersion === "function" ? UC.getCurrentVersion() : null;
+          if (acceptee && cmp(acceptee, remoteVersion) >= 0) {
+            el.classList.remove("kta-loader-copyright-version-update");
+            el.classList.add("kta-loader-copyright-version-attente");
+            el.textContent = installed + " ⏳";
+            el.title = _tVer("home.version.titreAttente", { v: remoteVersion });
             return;
           }
           // Update disponible → badge bleu clignotant

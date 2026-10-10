@@ -2103,7 +2103,17 @@
         // en IDB (utiles pour le retour à un autre plan) mais ne sont pas
         // affichés dans la liste de CE plan.
         const currentPlanId = window._currentLoadedPlanId || null;
+        // 10/10/2026 (retour testeur en prod) : un plan réimporté (« Garder les deux ») ou renommé change
+        // d'identifiant — ses copies, rangées sous l'ANCIEN, n'apparaissaient plus. Même nom (comparaison
+        // tolérante, cf. SessionPersist.normNomPlan) = « autre version de ce plan », restaurable ici.
+        const nomPlan = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
+        const norm = (window.SessionPersist && window.SessionPersist.normNomPlan) || function (x) { return String(x || ""); };
+        const autreVersion = function (b) {
+          return !!(currentPlanId && b.planId && b.planId !== currentPlanId && nomPlan && b.planName &&
+            norm(b.planName) === norm(nomPlan));
+        };
         const arr = arrAll.filter(function(b) {
+          if (autreVersion(b)) return true;
           // Si le snapshot n'a pas de planId (cas legacy ou session vide),
           // on l'affiche quand même — il pourrait correspondre. Sinon on
           // exige une correspondance stricte.
@@ -2171,9 +2181,11 @@
                    ' <span class="kta-refonte-session-meta">' +
                      _countContent(b.payload) +
                      ' · <em style="opacity:0.7;">' + _esc(b.reason || window.I18n.t("ui.refonte.label_backup_auto")) + '</em>' +
+                     (autreVersion(b) ? ' · <span class="kta-tx-warn">📂 ' + _esc(window.I18n.t("ui.refonte.backup_autre_version")) + '</span>' : "") +
                    '</span>' +
                  '</span>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                   (autreVersion(b) ? 'data-backup-autre="1" ' : "") +
                    'data-backup-restore="' + b.id + '" title="' + window.I18n.t("ui.refonte.btn_restore_title") + '">' +
                    '↻ ' + window.I18n.t("ui.refonte.btn_restore") +
                  '</button>' +
@@ -2189,9 +2201,10 @@
         listEl.querySelectorAll("[data-backup-restore]").forEach(function(btn) {
           btn.addEventListener("click", function() {
             const id = Number(btn.getAttribute("data-backup-restore"));
-            window.ktaConfirm(window.I18n.t("ui.refonte.confirm_restore")).then(function(ok) {
+            const autre = btn.getAttribute("data-backup-autre") === "1";
+            window.ktaConfirm(window.I18n.t(autre ? "ui.refonte.confirm_restore_autre" : "ui.refonte.confirm_restore")).then(function(ok) {
             if (!ok) return;
-            window.SessionBackups.restore(id).then(function() {
+            window.SessionBackups.restore(id, autre ? { versPlanId: currentPlanId, versPlanName: nomPlan } : null).then(function() {
               if (window.OOMGuard && window.OOMGuard.showToast) {
                 window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_restore_ok"), "info");
               }

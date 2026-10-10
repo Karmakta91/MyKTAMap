@@ -361,7 +361,10 @@ window.SessionBackups = (function() {
   // plan, de réinitialiser les structures Leaflet, etc. → trop complexe,
   // fragile. Un simple location.reload après écriture localStorage est
   // robuste et utilise la pipeline standard de boot.
-  function restore(id) {
+  // opts.versPlanId / opts.versPlanName (10/10/2026) : restaurer DANS le plan ouvert une copie prise sous un
+  // autre identifiant (même plan, autre version : réimport « Garder les deux », nom changé). Sans eux, la copie
+  // retournait sous son identifiant d'origine — sur l'ancienne entrée du plan, pas celle qu'on regarde.
+  function restore(id, opts) {
     return _tx("readonly").then(function(store) {
       return new Promise(function(resolve, reject) {
         const req = store.get(id);
@@ -375,7 +378,12 @@ window.SessionBackups = (function() {
         req.onerror = function() { reject(req.error); };
       });
     }).then(function(entry) {
-      const targetPlanId = (entry.payload && entry.payload.planId) || entry.planId;
+      const versPlanId = opts && opts.versPlanId;
+      const targetPlanId = versPlanId || (entry.payload && entry.payload.planId) || entry.planId;
+      if (versPlanId && entry.payload) {
+        entry.payload = Object.assign({}, entry.payload, { planId: versPlanId,
+          planName: (opts.versPlanName != null ? opts.versPlanName : entry.payload.planName) });
+      }
       if (!targetPlanId) {
         throw new Error(window.I18n.t("backup.err_no_planid"));
       }

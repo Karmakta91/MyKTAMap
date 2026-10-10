@@ -264,14 +264,6 @@
         }
       },
       // 💥 Reset complet — purge tout (fallback en cas de problème)
-      onAcceptHard: function() {
-        _markSeen();
-        if (typeof window.viderCacheAppli === "function") {
-          window.viderCacheAppli();
-        } else {
-          window.location.reload();
-        }
-      },
       onPostpone: function() {
         _snooze();
       }
@@ -323,6 +315,17 @@
     // gérer aussi le cas downgrade serveur (remote < known) → message neutre
     // "à jour" (= pas de fausse promesse d'upgrade qui régresserait).
     const _cmpShow = remote && remote.version ? compareSemver(remote.version, known) : 0;
+    // 🩸 10/10/2026 : version acceptée mais ANCIEN code encore chargé (le badge de l'accueil montre ⏳) — on ne
+    // répond plus « déjà à jour » : on propose de relancer la mise à jour douce, qui recharge le nouveau code.
+    const charge = (window.__MKM__ && window.__MKM__.build) || null;
+    if (remote && remote.version && _cmpShow <= 0 && charge && compareSemver(remote.version, charge) > 0 &&
+        typeof window.ktaConfirm === "function") {
+      const ok = await window.ktaConfirm(window.I18n.t("update.attente.msg", { v: remote.version, charge: charge }), {
+        titre: window.I18n.t("update.attente.titre"), okLabel: window.I18n.t("update.attente.relancer")
+      });
+      if (ok && typeof window.mettreAJourCodeSeul === "function") window.mettreAJourCodeSeul();
+      return { status: "pending-reload", remote: remote };
+    }
     if (!remote || !remote.version || _cmpShow <= 0) {
       // Pas d'update dispo (égalité OU downgrade serveur) — message neutre
       if (typeof window.afficherModaleAlerteAbsente === "function") {
@@ -346,14 +349,6 @@
           _markSeen();
           if (typeof window.mettreAJourCodeSeul === "function") {
             window.mettreAJourCodeSeul();
-          } else {
-            window.location.reload();
-          }
-        },
-        onAcceptHard: function() {
-          _markSeen();
-          if (typeof window.viderCacheAppli === "function") {
-            window.viderCacheAppli();
           } else {
             window.location.reload();
           }

@@ -1153,6 +1153,7 @@
     save:         save,
     clear:        clear,
     getSaved:     getSaved,
-    getLastSaveInfo: getLastSaveInfo   // 🚨 Q46
+    getLastSaveInfo: getLastSaveInfo,  // 🚨 Q46
+    normNomPlan:  _normNomPlan         // même plan sous un autre nom (📦 Backups d'une autre version)
   };
 })();

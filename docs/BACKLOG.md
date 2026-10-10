@@ -17,13 +17,10 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
   question « Session d'une autre version du plan » (copie dans 📦 Backups), l'autosauvegarde ne supprime plus un slot
   qu'elle n'a pas chargé. Si l'utilisateur choisit « Ignorer », la question revient à la prochaine ouverture du plan
   (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
-- 🟠 **« 💥 Forcer un reset complet » dans la fenêtre de mise à jour** (`fr.json` `alerts.update.*`) : l'enlever de là
-  (🆘 Dépannage seulement) ; sa confirmation doit lister ce qui sera perdu (N points, N photos, N backups) et
-  proposer d'exporter avant.
-- 🟠 **📦 Backups filtrés sur le planId courant** (`refonteInterface.js` `_renderBackupsSection`) : un plan réimporté en
-  « Garder les deux » (nouvel id) ne voit plus les backups de l'ancien — les montrer (« autre version de ce plan »).
-- 🟡 **Badge de version de l'accueil** qui clignote « ancienne → nouvelle » quand le nouveau code reste en cache (iOS
-  PWA) alors que la mise à jour est acceptée : pris pour une invite répétée.
+- ✅ **Fait le 10/10/2026** : « 💥 Forcer un reset complet » retiré de la fenêtre de mise à jour (renvoi vers 🆘
+  Dépannage) ; 📦 Backups d'une autre version du plan (autre id, même nom) listés et restaurés DANS le plan ouvert
+  (les photos restent avec l'ancienne version) ; badge de version ⏳ sans clignoter quand la mise à jour est acceptée
+  mais l'ancien code encore chargé, et son clic propose de relancer la mise à jour douce.
 - ⚪ **Sessions vers IndexedDB** (plus de plafond de 5 Mo) : le vrai remède, mais touche sauvegarde, restauration,
   backups, import/export — à cadrer à part.
 - ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).

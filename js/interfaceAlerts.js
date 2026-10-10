@@ -376,20 +376,14 @@ window.afficherModaleUpdateDispo = function(opts) {
               window.I18n.t("alerts.update.softDesc") +
             '</div>' +
           '</div>' +
-          '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
-            '<div style="font-weight:700; color:#ff6b6b; font-size:13px; margin-bottom:4px;">' + window.I18n.t("alerts.update.hardTitre") + '</div>' +
-            '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-              window.I18n.t("alerts.update.hardDesc") +
-            '</div>' +
-          '</div>' +
+          // 10/10/2026 (retour testeur en prod) : le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
+          // à jour — il efface tout (sessions, photos, backups) sans recours. Il ne vit plus que dans 🆘 Dépannage.
+          '<div style="color:#8892a4; font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +
 
         '<div style="display:flex; gap:10px; margin-top:14px;">' +
           '<button class="kta-btn kta-btn-ghost"   id="kta-update-postpone" type="button" style="flex:1;">' + window.I18n.t("alerts.update.postpone") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-update-accept-soft" type="button" style="flex:2;">' + window.I18n.t("alerts.update.acceptSoft") + '</button>' +
-        '</div>' +
-        '<div style="text-align:center; margin-top:10px;">' +
-          '<button class="kta-btn-link kta-update-link-danger" id="kta-update-accept-hard" type="button">' + window.I18n.t("alerts.update.acceptHard") + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -412,18 +406,6 @@ window.afficherModaleUpdateDispo = function(opts) {
       opts.onAcceptSoft();
     } else if (typeof window.mettreAJourCodeSeul === "function") {
       window.mettreAJourCodeSeul();
-    }
-  });
-  // 💥 Reset complet — purge tout (fallback)
-  document.getElementById("kta-update-accept-hard").addEventListener("click", function() {
-    _fermer();
-    if (typeof opts.onAcceptHard === "function") {
-      opts.onAcceptHard();
-    } else if (typeof opts.onAccept === "function") {
-      // Rétro-compat — l'ancien callback `onAccept` était le reset complet
-      opts.onAccept();
-    } else if (typeof window.viderCacheAppli === "function") {
-      window.viderCacheAppli();
     }
   });
   // Clic backdrop = postpone (équivalent Plus tard)
