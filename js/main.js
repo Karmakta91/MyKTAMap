@@ -236,6 +236,16 @@ function _ktaInstanceIndisponible(motif) {
     b.textContent = t("ext.indispo.reessayer");
     b.addEventListener("click", function() { location.reload(); });
     boite.appendChild(h); boite.appendChild(p); boite.appendChild(b);
+    // Licence absente / refusée : lien vers la présentation de la licence pro (même adresse que le « 💼 Licence
+    // pro » du pied de page de l'accueil, index.html) — demande KARMA du 10/10/2026.
+    if (lic) {
+      const lien = document.createElement("a");
+      lien.className = "kta-instance-indispo-lien";
+      lien.href = "https://pro.myktamap.fr/presentation/";
+      lien.target = "_blank"; lien.rel = "noopener noreferrer";
+      lien.textContent = t("ext.licence.lienPro");
+      boite.appendChild(lien);
+    }
     ov.appendChild(boite);
     document.body.appendChild(ov);
     // Promesse jamais résolue : le démarrage s'arrête là, comme un lockout de gate.

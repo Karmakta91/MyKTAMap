@@ -11092,6 +11092,8 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 }
 .kta-instance-indispo-boite h2 { margin: 0 0 10px; font-size: 18px; color: #f4c542; }
 .kta-instance-indispo-boite p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; color: #c8d0e0; }
+.kta-instance-indispo-lien { display: block; margin-top: 14px; font-size: 13px; color: #f4c542; text-decoration: none; }
+.kta-instance-indispo-lien:hover, .kta-instance-indispo-lien:focus-visible { text-decoration: underline; }
 
 /* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
    vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
