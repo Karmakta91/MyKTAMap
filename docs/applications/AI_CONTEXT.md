@@ -831,8 +831,8 @@ Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d
    - 🎯 Désactiver cercles intersections (seuil 50 routes vs 200)
    - 🚫 Désactiver popups sur calques de données
    - 🐢 Auto-save lent (30s)
-   - 👁️ Ne rendre que les tracés visibles (viewport culling)
-   Tu peux aussi activer ces toggles individuellement si tu veux affiner.
+   - 👁️ Ne rendre que ce qui est proche de l'écran (inclus dans ULTRA, sans case séparée)
+   Les autres toggles s'activent aussi un par un si tu veux affiner.
 4. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
 5. Active 🐛 Logs détaillés (loader → ⚙️ Configuration → 🛠️ Debug, ou ⚙️ Réglages in-app) puis recharge → consulte la modale 🐛 pour voir où ça plante.
 6. À terme : optimise le plan (voir la recette « Optimiser un plan qui plante sur mobile »).
