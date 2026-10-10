@@ -18,7 +18,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.13.1` (10/10/2026)
+## 📦 Version courante — `v2.13.2` (10/10/2026)
+
+> 💾 **v2.13.2 — Sessions protégées (retour testeur en prod)** : jauge « 💾 Mémoire des sessions » + alerte avant saturation du localStorage ; session d'un plan renommé plus jamais effacée en silence (question + copie en Backups) ; 📦 Backups d'une autre version du plan restaurables dans le plan ouvert ; fenêtre de mise à jour sans « reset complet » et qui ne boucle plus stockage plein ; badge de version ⏳ quand la mise à jour attend un redémarrage.
 
 > 🧭 **v2.13.1 — Dénivelé des jonctions, glissé plus fluide, modale réseau en mode relié** : une jonction en N segments répartit son dénivelé au prorata ; marges de glissé élargies pour tous (case « 👁️ éléments visibles » retirée, incluse dans ULTRA) ; 🚑 seul emoji du Mode Secours ; sur une installation reliée, la modale « Que fait l'app sur le réseau ? » prévient qu'elle ne décrit que l'app de base et mène à la page de transparence de l'installation.
 
@@ -573,6 +575,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.13.2 (10/10/2026) — Sessions protégées : mémoire visible, plus de perte silencieuse (branche `Karma_dev`)
+
+Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jour » et invite de mise à jour à chaque ouverture. Cause probable commune : localStorage (~5 Mo par site, sessions dedans) plein.
+
+- 💾 **Mémoire des sessions** (`984e55a`) : `window.ktaStockageLocal` (mesure, écriture protégée → `mktm:stockage-plein`) ; jauge dans 📊 Détails de la session, ⚠️ sur la tuile 💾 du profil ; alerte à ≥ 80 % au chargement d'un plan et dès qu'une écriture échoue.
+- 🩸 **Invite de mise à jour en boucle** (`984e55a`) : `updateChecker.js` écrivait « version vue » et « Plus tard » sans protection — stockage plein → `QuotaExceededError`, invite à chaque ouverture. Reproduit puis corrigé.
+- 🩸 **Session effacée en silence** (`163d9f3`) : nom de plan différent (comparaison stricte) → session écartée puis supprimée par l'autosauvegarde (carte vide). Comparaison tolérante, question « Session d'une autre version du plan » avec copie en 📦 Backups, et l'autosauvegarde ne supprime plus un slot qu'elle n'a pas chargé.
+- 📦 **Backups d'une autre version du plan** (`47417af`) : copies sous un ancien identifiant (même nom) listées et restaurées dans le plan ouvert (`SessionBackups.restore(id, { versPlanId })`).
+- 🔔 **Fenêtre de mise à jour** (`47417af`) : « 💥 Forcer un reset complet » retiré (renvoi vers 🆘 Dépannage) ; **badge ⏳** sans clignoter quand la mise à jour est acceptée mais l'ancien code encore chargé, clic = relancer la mise à jour douce.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
 
 #### v2.13.1 (10/10/2026) — Dénivelé des jonctions, glissé, modale réseau en mode relié (branche `Karma_dev`)
 

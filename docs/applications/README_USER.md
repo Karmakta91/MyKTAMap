@@ -329,7 +329,8 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 - les autres mesures : 📐 mesure, 🗺️ itinéraire et ses étapes, 🧭 suivi ;
 - **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet. Si aucune sortie n'est en cours, le bouton **📔 Démarrer une sortie** en ouvre une sur ce plan — y compris quand « Tenir un carnet de mes sorties » est décoché dans ⚙️ Configuration (c'est alors le seul moyen d'en enregistrer une). Une seule sortie à la fois ;
 - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer ;
-- **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation ;
+- **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation. Les copies d'une **autre version de ce plan** (réimportée ou renommée) apparaissent aussi, marquées 📂, et se restaurent dans le plan ouvert ;
+- **💾 Mémoire des sessions** : tes sessions vivent dans un stockage du navigateur limité à ~5 Mo par site, **quel que soit l'espace libre du téléphone**. La jauge montre son remplissage et les plans qui pèsent le plus ; à 80 %, l'app te prévient à l'ouverture d'un plan. Pour faire de la place : exporte ta session (💾 Enregistrer session), puis efface la session d'un vieux plan — les photos et les plans ne comptent pas ici ;
 - le bouton **📊 Stats globales** (rapport copiable, CSV, PDF).
 
 ### 🗺️ Lire le plan

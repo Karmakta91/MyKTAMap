@@ -329,7 +329,8 @@ Un clic en los contadores de arriba abre el **panel de control** del plano:
 - las otras medidas: 📐 medición, 🗺️ itinerario y sus etapas, 🧭 seguimiento;
 - **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno. Si no hay ninguna salida en curso, el botón **📔 Iniciar una salida** abre una en este plano — incluso cuando «Llevar un cuaderno de mis salidas» está desmarcado en ⚙️ Configuración (entonces es la única forma de registrar una). Una sola salida a la vez;
 - **⭐ Favoritos**: exportar los de este plano o todos, importar;
-- **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación;
+- **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación. Las copias de **otra versión de este plano** (reimportada o renombrada) también aparecen, marcadas con 📂, y se restauran en el plano abierto;
+- **💾 Memoria de sesiones**: tus sesiones viven en un almacenamiento del navegador limitado a ~5 MB por sitio, **sea cual sea el espacio libre del teléfono**. El indicador muestra su llenado y los planos que más pesan; al 80 %, la app te avisa al abrir un plano. Para liberar espacio: exporta tu sesión (💾 Guardar sesión) y luego borra la sesión de un plano antiguo — las fotos y los planos no cuentan aquí;
 - el botón **📊 Estadísticas globales** (informe copiable, CSV, PDF).
 
 ### 🗺️ Leer el plano

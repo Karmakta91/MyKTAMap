@@ -8,6 +8,8 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+> **v2.13.2 (sessions protégées)** : **Aucune requête nouvelle, aucun domaine nouveau.** Tout est local : la mesure de la mémoire des sessions lit le stockage du navigateur sur ton appareil, rien n'est envoyé.
+
 > **v2.13.1 (fenêtre réseau sur une installation reliée)** : **Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à un serveur, la fenêtre « Que fait l'app sur le réseau ? » prévient désormais qu'elle ne décrit que l'app de base, et propose la page de transparence de l'installation (ouverte seulement si tu la touches). Sur myktamap.fr, rien ne change.
 
 > **v2.13.0 (règle de sécurité stricte, Affichage XL)** : **Aucune requête nouvelle, aucun domaine nouveau.** La règle de sécurité envoyée par le serveur devient stricte : le navigateur n'exécute plus que les fichiers du site, jamais du code écrit dans une page (`script-src 'self'`). Le reste de la version (Affichage XL, Sortie d'urgence, lecture seule, fenêtres de l'app) est local.

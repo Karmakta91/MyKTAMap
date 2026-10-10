@@ -230,7 +230,7 @@ Pour **chaque** question :
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
 - 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte — bouton 🤖 dans la ligne de titre de la 📖 Documentation, à côté du choix de langue (donc aussi depuis l'accueil)
-- 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
+- 🔔 **Détection de mise à jour** : version.json + popup « Mise à jour douce » / « Plus tard » (le reset complet n'y est plus : seulement dans ⚙️ Configuration → 🆘 Dépannage, en dernier recours)
 - 🏷️ **Badge version cliquable** dans le footer du loader : affiche la version installée. Clignote en bleu si une nouvelle version est dispo (passage à la version cible visible : `v150 → v151`). Au clic, force la modale d'update (bypass snooze 24h). Si déjà à jour, affiche les notes de la version installée.
 - 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques, migration domaine...) via fichier `alert.json` côté serveur. Modales colorées selon niveau (`emergency` rouge / `warning` orange / `info` bleu) affichées en cascade après le splash. **Multi-alertes supporté depuis v163** : plusieurs alertes peuvent être actives simultanément (chacune acquittable individuellement). Bouton 🚨 dans le header du loader pour re-consulter à tout moment, avec **coloration dynamique** selon le niveau max actif + pastille compteur si N > 1 alertes.
 - 🌐 **Migration domaine vers myktamap.fr** (depuis v163) : annoncée pour le **15 juillet 2026**. L'annonce est diffusée via une alerte `info` permanente dans `alert.json` (cf système d'alertes publiques) — visible via le badge 🚨 bleu dans le loader, l'utilisateur consulte quand il veut. Les 2 domaines cohabitent pendant ~2 mois pour laisser le temps d'exporter sessions et plans manuellement. Cf recette « 🌐 Migration vers myktamap.fr ».
@@ -516,7 +516,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 ### Sauvegarder et partager une session
 
 1. Ouvre le groupe **⬆️ Enregistrer**.
-2. Clique **💾 Enregistrer la session** (mode Full / Avancé selon besoin).
+2. Clique **💾 Enregistrer session** (mode Full / Avancé selon besoin).
 3. Un fichier `.json` est téléchargé.
 4. Envoie-le à ton interlocuteur (mail, cloud, USB).
 5. Côté destinataire : ouvrir le même plan → **📥 Importer une session** → sélectionner le `.json`.
@@ -864,7 +864,7 @@ L'auto-sauvegarde (1.5s) couvre normalement ce cas. Si tu ne la retrouves pas :
 
 - Vérifie que tu rouvres bien le **même plan** (même nom + version exacte).
 - La session n'est PAS partagée entre plans différents — mais depuis v1.16.1 **chaque plan a son propre emplacement** : changer de plan n'écrase plus la session du précédent, tu la retrouves en revenant dessus.
-- Pour plus de sécurité long-terme : exporte ta session régulièrement via 💾 Enregistrer la session (fichier .json).
+- Pour plus de sécurité long-terme : exporte ta session régulièrement via 💾 Enregistrer session (fichier .json).
 - Même si la session est perdue, la **sortie** correspondante reste dans **📔 Mon carnet** (depuis v1.69.0) avec sa date, sa durée, sa distance et ses compteurs — le carnet n'est pas effacé avec la session. En revanche il n'archive PAS les points/tracés eux-mêmes : il ne remplace pas un export.
 
 <!-- @@PROFIL usage,diagnostic -->
@@ -900,7 +900,11 @@ C'est le **badge version** de l'application. Il indique la version actuellement 
 - La date de publication
 - Les **notes de cette version** (changelog de ce que tu utilises actuellement)
 
-**État "mise à jour disponible"** : le badge devient **bleu et clignote**, et affiche la transition (ex: `v141 → v143`). Au clic, ouvre la modale **🔔 Mise à jour disponible** avec les choix Mise à jour douce / Reset complet.
+**État "mise à jour disponible"** : le badge devient **bleu et clignote**, et affiche la transition (ex: `v141 → v143`). Au clic, ouvre la modale **🔔 Mise à jour disponible** (Mise à jour douce / Plus tard).
+
+**État "⏳"** (ambre, sans clignoter) : la mise à jour est **déjà acceptée** mais l'ancien code est encore chargé (fréquent sur iPhone avec l'app installée). Ce n'est pas une nouvelle demande : fermer complètement l'app puis la rouvrir, ou cliquer le badge → « Relancer la mise à jour douce ».
+
+**Si un user dit « la mise à jour m'est demandée à chaque ouverture » ou « mes points ont disparu »** : vérifier d'abord la **💾 Mémoire des sessions** (📊 Détails de la session) — les sessions vivent dans un stockage limité à ~5 Mo par site, quel que soit l'espace du téléphone. Pleine, plus rien ne se sauvegarde : exporter la session (💾 Enregistrer session), effacer la session d'un vieux plan. Points disparus : regarder **📦 Backups** (y compris les lignes « 📂 autre version de ce plan »). Ne **jamais** conseiller le reset complet, qui efface aussi photos et backups.
 
 > 💡 Tu peux cliquer le badge à tout moment pour relancer la modale d'update — pratique si tu avais cliqué "Plus tard" et que tu changes d'avis.
 

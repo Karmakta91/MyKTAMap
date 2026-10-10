@@ -329,7 +329,8 @@ A click on the top counters opens the map's **dashboard**:
 - the other measurements: 📐 measurement, 🗺️ route and its stops, 🧭 tracking;
 - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. If no outing is running, the **📔 Start an outing** button opens one on this map — even when “Keep a logbook of my outings” is unticked in ⚙️ Configuration (it is then the only way to record one). One outing at a time;
 - **⭐ Favorites**: export this map's or all of them, import;
-- **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation;
+- **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
+- **💾 Session memory**: your sessions live in browser storage capped at ~5 MB per site, **whatever free space your phone has**. The gauge shows how full it is and which maps weigh the most; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session of an old map — photos and maps do not count here;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map
