@@ -23,7 +23,8 @@ const path = require("path");
 
 let ko = 0;
 const t = (n, c, d) => { console.log((c ? "✅" : "❌") + " [check-session-store] " + n + (c || !d ? "" : " — " + d)); if (!c) ko++; };
-const lire = (f) => fs.readFileSync(f, "utf8");
+// Fins de ligne normalisées : copie Windows (CRLF) — sinon les commentaires ne sont pas retirés et passent pour du code.
+const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 
 // Seuls ces fichiers ont le droit de nommer la clé : le module de stockage (migration, repli),
 // SessionPersist (repli sans module) et la mesure du localStorage en repli (utils.js).
