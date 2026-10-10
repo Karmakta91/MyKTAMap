@@ -165,22 +165,24 @@ doc(
 // lui-même ne garde que l'état actuel et son en-tête « À jour pour la version ».
 const histMd = depuisIndex("docs/applications/NETWORK_AUDIT_HISTORIQUE.md");
 doc(
-  "NETWORK_AUDIT_HISTORIQUE.md > entrée de version",
-  !!histMd && new RegExp(esc(V)).test(histMd),
-  "docs/applications/NETWORK_AUDIT_HISTORIQUE.md — ajouter la note de version en tête de « Notes par version »."
+  "NETWORK_AUDIT_HISTORIQUE.md > titre « ### " + V + " (…) »",
+  !!histMd && new RegExp("^###\\s+" + esc(V) + "\\b", "m").test(histMd),
+  "docs/applications/NETWORK_AUDIT_HISTORIQUE.md — ajouter « ### " + V + " (titre) » + la note en tête de « Notes par version »."
 );
 
+// Les .html sont GÉNÉRÉS depuis les .md (scripts/audit-html.js) et check-audit-html.js (pre-commit) refuse tout
+// écart : les deux contrôles ci-dessous n'attrapent que l'oubli de régénérer, avec un message propre au bump.
 const auditHtml = depuisIndex("docs/applications/NETWORK_AUDIT.html");
 doc(
   "NETWORK_AUDIT.html > en-tête « À jour pour la version »",
   reV.test(ligneAvec(auditHtml, "jour pour la version")),
-  "docs/applications/NETWORK_AUDIT.html — l'en-tête doit annoncer " + V + " (le .md et le .html se maintiennent ENSEMBLE)."
+  "docs/applications/NETWORK_AUDIT.html — régénérer depuis le .md : node scripts/audit-html.js"
 );
 const histHtml = depuisIndex("docs/applications/NETWORK_AUDIT_HISTORIQUE.html");
 doc(
   "NETWORK_AUDIT_HISTORIQUE.html > entrée de version <h3>",
-  !!histHtml && new RegExp("<h3>\\s*" + esc(V)).test(histHtml),
-  "docs/applications/NETWORK_AUDIT_HISTORIQUE.html — ajouter le <h3> de version en tête de « Notes par version »."
+  !!histHtml && new RegExp("<h3[^>]*>\\s*" + esc(V) + "\\b").test(histHtml),
+  "docs/applications/NETWORK_AUDIT_HISTORIQUE.html — régénérer depuis le .md : node scripts/audit-html.js"
 );
 
 // 📄 DOC — AI_CONTEXT n'a pas de marqueur de version ({{BUILD}} est rempli

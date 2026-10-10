@@ -1,0 +1,199 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+/* Pages d'audit réseau (NETWORK_AUDIT.html, NETWORK_AUDIT_HISTORIQUE.html), GÉNÉRÉES par scripts/audit-html.js.
+   Charte cohérente avec l'app (css/style.css) : fond sombre, accent #f4c542, interaction #8cb4ff.
+   Feuille à part (et non <style> dans la page) : la page n'a ni style ni script écrit dedans. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0a0d18;
+  color: #c8d0e0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  line-height: 1.6;
+}
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  /* Un mot ou un code trop long (URL, clé de stockage) passe à la ligne au lieu d'élargir la page. */
+  overflow-wrap: anywhere;
+}
+.header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8cb4ff;
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 20px;
+  padding: 8px 14px;
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.header-back:hover { background: rgba(140, 180, 255, 0.15); }
+h1 {
+  color: #f4c542;
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+.meta {
+  color: #8892a4;
+  font-style: italic;
+  font-size: 13px;
+  margin-bottom: 30px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.meta p { margin: 6px 0; }
+.meta strong { color: #c8d0e0; }
+h2 {
+  color: #8cb4ff;
+  font-size: 20px;
+  line-height: 1.35;
+  margin: 36px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(140, 180, 255, 0.18);
+}
+h3 { color: #e8eaf0; font-size: 16px; line-height: 1.4; margin: 24px 0 10px; }
+h4 { color: #e8eaf0; font-size: 15px; margin: 20px 0 8px; }
+/* Ancre « # » de chaque titre : discrète, visible au survol (lien partageable vers une section). */
+.kta-ancre {
+  color: #8892a4;
+  text-decoration: none;
+  font-size: 0.8em;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1:hover .kta-ancre, h2:hover .kta-ancre, h3:hover .kta-ancre, h4:hover .kta-ancre,
+.kta-ancre:focus { opacity: 1; }
+p { margin: 8px 0 14px; }
+a { color: #8cb4ff; }
+a:hover { color: #b8d0ff; }
+strong { color: #e8eaf0; }
+em { color: #d0d6dc; }
+code {
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  background: rgba(140, 180, 255, 0.12);
+  color: #8cb4ff;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+pre {
+  background: #0d1117;
+  color: #c8d0e0;
+  padding: 14px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  overflow-wrap: normal;
+  font-size: 13px;
+  line-height: 1.5;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+/* Tableau : il défile dans son cadre sur un petit écran, la page ne s'élargit pas. */
+.kta-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 14px 0 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  overflow-wrap: normal;
+}
+table th, table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+table td { min-width: 9em; overflow-wrap: anywhere; }
+table th {
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.08);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+table tr:hover td { background: rgba(140, 180, 255, 0.04); }
+.kta-al-center { text-align: center; }
+.kta-al-right { text-align: right; }
+ul, ol { padding-left: 24px; margin: 10px 0 16px; }
+li { margin-bottom: 6px; }
+li > p { margin: 4px 0 8px; }
+blockquote {
+  margin: 18px 0;
+  padding: 14px 18px;
+  background: rgba(244, 197, 66, 0.08);
+  border-left: 3px solid #f4c542;
+  border-radius: 4px;
+  color: #d0d6dc;
+}
+blockquote p:first-child { margin-top: 0; }
+blockquote p:last-child { margin-bottom: 0; }
+/* Encadrés posés depuis le .md par la directive <!-- kta:classe … --> */
+.kta-promesse {
+  padding: 18px 22px;
+  background: linear-gradient(135deg, rgba(140, 180, 255, 0.10), rgba(140, 180, 255, 0.04));
+  border: 1px solid rgba(140, 180, 255, 0.32);
+  border-left-width: 1px;
+  border-radius: 10px;
+  font-size: 15px;
+  margin: 16px 0 26px;
+  color: #c8d0e0;
+}
+.kta-promesse strong { color: #b8d0ff; }
+.kta-alerte {
+  padding: 18px 22px;
+  background: rgba(255, 140, 140, 0.08);
+  border: 1px solid #ff8c8c;
+  border-radius: 10px;
+  font-size: 15px;
+  margin: 16px 0 26px;
+  color: #c8d0e0;
+}
+.kta-auteur { text-align: right; font-style: normal; color: #8892a4; }
+hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 36px 0;
+}
+details { margin: 12px 0; }
+summary { cursor: pointer; color: #8cb4ff; }
+img { max-width: 100%; height: auto; }
+.kta-lien-retire { color: #8892a4; }
+.footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #8892a4;
+  font-size: 12px;
+  text-align: center;
+}
+/* Mention de licence du pied : community par défaut, pro quand audit-pied.js pose .kta-instance-pro. */
+.kta-licence-pro { display: none; }
+html.kta-instance-pro .kta-licence-community,
+body.kta-instance-pro .kta-licence-community { display: none; }
+html.kta-instance-pro .kta-licence-pro,
+body.kta-instance-pro .kta-licence-pro { display: inline; }
+
+@media (max-width: 600px) {
+  .wrap { padding: 24px 16px 60px; }
+  h1 { font-size: 23px; }
+  h2 { font-size: 18px; }
+  table th, table td { padding: 6px 8px; }
+  .kta-promesse, .kta-alerte { padding: 14px 16px; }
+  /* Pas de survol au doigt : l'ancre « # » invisible prendrait une ligne sous les titres longs. */
+  .kta-ancre { display: none; }
+}

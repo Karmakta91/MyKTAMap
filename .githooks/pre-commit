@@ -593,3 +593,8 @@ node scripts/check-csp-inline.js || exit $?
 # ancienne copie gardée 30 jours, ou écraserait la session à jour au démarrage
 # suivant) + câblage (chargement, précache, init attendue). BLOQUANT.
 node scripts/check-session-store.js || exit $?
+
+# 🔒 10/10/2026 — Pages d'audit réseau GÉNÉRÉES : NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html
+# sont le rendu de leurs .md (scripts/audit-html.js). Refuse un .md modifié sans régénérer, ou un .html
+# retouché à la main (lu dans l'index) ; vérifie que audit.css / audit-pied.js sont précachés. BLOQUANT.
+node scripts/check-audit-html.js || exit $?
