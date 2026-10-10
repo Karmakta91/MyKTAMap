@@ -1432,7 +1432,20 @@
     return lines.join("\n");
   }
 
+  // Le quota IndexedDB se lit en asynchrone : la section s'affiche avec la dernière mesure connue, puis se
+  // redessine en place avec une mesure fraîche.
   function _htmlMemoireSessions() {
+    const st = window.KtaSessionStore;
+    if (st && st.mode() === "idb" && typeof st.actualiserEstimation === "function") {
+      st.actualiserEstimation().then(function () {
+        const el = document.getElementById("kta-refonte-session-memoire");
+        if (el) el.outerHTML = _htmlMemoireSessionsMesure();
+      }).catch(function () { /* garde l'affichage */ });
+    }
+    return _htmlMemoireSessionsMesure();
+  }
+
+  function _htmlMemoireSessionsMesure() {
     const S = window.ktaStockageLocal;
     if (!S) return "";
     const m = S.mesurer();
@@ -1449,11 +1462,14 @@
          ' <span class="kta-refonte-session-badge kta-memoire-' + niveau + '">' + pct + ' %</span></div>';
     h += '<div class="kta-memoire-jauge"><div class="kta-memoire-barre kta-memoire-' + niveau +
          '" style="width:' + pct + '%"></div></div>';
-    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t("ui.refonte.memoire_occupe",
-         { occupe: S.mo(m.car), limite: S.mo(m.limite) })) + '</div>';
+    // IndexedDB (normal) : quota du site, part de l'espace libre de l'appareil. Repli localStorage : ~5 Mo.
+    const idb = m.mode === "idb";
+    const cleOccupe = idb ? (m.limite ? "ui.refonte.memoire_occupe_idb" : "ui.refonte.memoire_occupe_idb_sans") : "ui.refonte.memoire_occupe";
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t(cleOccupe,
+         { occupe: S.mo(m.car), limite: m.limite ? S.mo(m.limite) : "", sessions: S.mo(m.carSessions || 0) })) + '</div>';
     if (niveau !== "ok") {
       h += '<div class="kta-memoire-conseil kta-tx-' + (niveau === "plein" ? "err" : "warn") + '">' +
-           esc(window.I18n.t("ui.refonte.memoire_conseil")) + '</div>';
+           esc(window.I18n.t(idb ? "ui.refonte.memoire_conseil_idb" : "ui.refonte.memoire_conseil")) + '</div>';
     }
     const lourds = m.sessions.slice(0, 5);
     if (lourds.length) {
@@ -1464,7 +1480,8 @@
       });
       h += '</ul>';
     }
-    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t("ui.refonte.memoire_autres", { autres: S.mo(m.autres) })) + '</div>';
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t(idb ? "ui.refonte.memoire_autres_idb" : "ui.refonte.memoire_autres",
+         { autres: S.mo(m.autres) })) + '</div>';
     return h + '</div>';
   }
 
@@ -1860,9 +1877,10 @@
     html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:#8892a4; min-height:14px; font-style:italic;"></div>';
     html += '</div>';
 
-    // ─── 💾 Mémoire des sessions (localStorage ~5 Mo, 10/10/2026) ───
-    // Les sessions vivent dans le localStorage, plafonné par site quel que soit l'espace du téléphone : plein,
-    // plus rien ne se sauvegarde. Jauge + plans les plus lourds, pour faire le ménage AVANT la panne.
+    // ─── 💾 Mémoire des sessions (10/10/2026) ───
+    // Les sessions vivent en IndexedDB (quota du navigateur pour le site) — en repli, dans le localStorage
+    // (~5 Mo par site). Plein, plus rien ne se sauvegarde. Jauge + plans les plus lourds, pour faire le ménage
+    // AVANT la panne.
     html += _htmlMemoireSessions();
 
     // ─── 🆕 v1.16.0 step 4 : 📦 Backups récents (10 FIFO IDB) ───

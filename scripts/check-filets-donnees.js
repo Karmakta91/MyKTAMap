@@ -69,8 +69,14 @@ function bloc(src, debut, fin) {
   verif(/function clear\(opts\)[\s\S]*?opts\.snapshotFait/.test(s), "clear(opts) respecte snapshotFait (pas de double snapshot)");
   verif(/function _compterEtatCourant\(/.test(s) && clearBtn.includes("session.confirm.clear"), "confirmation chiffrée (points / tracés / zones / structures)");
   verif(/function _afficherBandeauStockage\(/.test(s) && /function _masquerBandeauStockage\(/.test(s), "B5 : bandeau « sauvegarde impossible » défini");
-  const save = bloc(s, "localStorage.setItem(_writeKey, JSON.stringify(payload));", "return true;");
-  verif(save.includes("_masquerBandeauStockage()"), "🩸 B5 : le bandeau tombe au premier save réussi");
+  // Sessions en IndexedDB (10/10/2026) : la réussite se confirme en asynchrone. Le bandeau tombe dans
+  // _ecritureReussie, appelée par save() en localStorage ET par l'écouteur de résultat IndexedDB.
+  const reussie = bloc(s, "function _ecritureReussie() {", "}");
+  const save = bloc(s, "S.ecrire(_currentPlanId, JSON.stringify(payload)", "return true;");
+  const resultat = bloc(s, "window.KtaSessionStore.surResultat(function(r) {", "});");
+  verif(reussie.includes("_masquerBandeauStockage()") && save.includes("_ecritureReussie()") &&
+        /if \(r\.ok\) \{ _ecritureReussie\(\); return; \}/.test(resultat),
+        "🩸 B5 : le bandeau tombe au premier save réussi (localStorage et IndexedDB)");
   verif(/if \(isQuota\) _afficherBandeauStockage\(\);/.test(s), "🩸 B5 : le bandeau s'affiche à CHAQUE échec de quota (pas seulement le premier)");
 }
 

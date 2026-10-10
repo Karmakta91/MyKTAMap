@@ -192,6 +192,10 @@
        En mode normal (URL sans flag) : ne fait que poser window.IncognitoMode
        = { active: false, launch: fn } et return. Zéro effet de bord. -->
   <script src="js/incognitoMode.js"></script>
+  <!-- 💾 Sessions auto-sauvegardées : IndexedDB (lecture synchrone depuis la mémoire,
+       repli localStorage). Chargé tôt, sans dépendance : les modules de l'accueil
+       lisent les sessions par window.KtaSessionStore. main.js attend son init(). -->
+  <script src="js/sessionStore.js"></script>
 
   <!-- 🏷️ v1.28.2 : PRO LICENSE DETECTOR — détecte la présence de
        /Licence-pro.json à la racine du serveur. Si présent : active le

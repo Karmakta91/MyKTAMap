@@ -3707,25 +3707,44 @@ window.ktaCopierTexte = function (txt) {
 };
 
 // =====================================================================
-// 💾 window.ktaStockageLocal — mémoire des sessions (localStorage)
+// 💾 window.ktaStockageLocal — mémoire des sessions
 // =====================================================================
 // 10/10/2026 (retour d'un testeur en prod : points disparus + invite de mise à
-// jour à chaque ouverture) : les sessions (points, tracés, notes) vivent dans le
-// localStorage, plafonné à ~5 Mo PAR SITE quel que soit l'espace du téléphone.
-// Plein, toute écriture y échoue (QuotaExceededError) — sauvegarde de session,
-// « version vue » de la mise à jour… — et rien ne le montrait AVANT la panne.
-// Aucune API ne donne ce plafond : on MESURE l'occupation (clés + valeurs, en
-// caractères — ce que comptent les navigateurs) face à une limite prudente.
-//   mesurer() → { car, limite, ratio, sessions: [{ planId, car }], autres }
-//   ecrire(cle, valeur) → bool : écriture protégée ; plein → événement
+// jour à chaque ouverture) : les sessions vivaient dans le localStorage, plafonné
+// à ~5 Mo PAR SITE quel que soit l'espace du téléphone. Plein, toute écriture y
+// échouait (QuotaExceededError) et rien ne le montrait AVANT la panne.
+// Depuis, les sessions vivent en IndexedDB (js/sessionStore.js) : la mémoire qui
+// compte est alors le QUOTA du navigateur pour le site (navigator.storage.estimate,
+// une part de l'espace libre de l'appareil — plans, photos et caches compris).
+// En repli (IndexedDB indisponible), c'est encore le localStorage : on MESURE
+// l'occupation (clés + valeurs, en caractères) face à une limite prudente.
+//   mesurer() → { mode, car, limite, ratio, sessions: [{ planId, car }], autres, carSessions }
+//     mode « idb » : car = usage du site, limite = quota (null si le navigateur ne le
+//     donne pas : ratio 0), carSessions = total des sessions.
+//     mode « ls »  : car = occupation du localStorage, limite = 5 000 000.
+//   ecrire(cle, valeur) → bool : écriture localStorage protégée ; plein → événement
 //     `mktm:stockage-plein` (une fois par page), jamais d'exception.
 (function () {
   const LIMITE = 5000000;   // ~5 Mo : Chrome/Edge 5 Mi car., Firefox 5 Mio, Safari ~5 Mo — prudent
   const PREFIXE_SESSION = "myktamap_session_v1_";
   let _signale = false;
 
+  function _mesurerIdb(st) {
+    const sessions = st.ids().map(function (id) { return { planId: id, car: st.taille(id) }; });
+    sessions.sort(function (a, b) { return b.car - a.car; });
+    const carSessions = sessions.reduce(function (n, x) { return n + x.car; }, 0);
+    const e = st.estimation();
+    if (!e || !(e.quota > 0)) {
+      return { mode: "idb", car: carSessions, limite: null, ratio: 0, sessions: sessions, autres: 0, carSessions: carSessions };
+    }
+    return { mode: "idb", car: e.usage, limite: e.quota, ratio: e.usage / e.quota, sessions: sessions,
+      autres: Math.max(0, e.usage - carSessions), carSessions: carSessions };
+  }
+
   function mesurer() {
-    let car = 0, autres = 0;
+    const st = window.KtaSessionStore;
+    if (st && st.mode() === "idb") return _mesurerIdb(st);
+    let car = 0, autres = 0, carSessions = 0;
     const sessions = [];
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -3733,12 +3752,12 @@ window.ktaCopierTexte = function (txt) {
         const v = localStorage.getItem(k) || "";
         const n = k.length + v.length;
         car += n;
-        if (k.indexOf(PREFIXE_SESSION) === 0) sessions.push({ planId: k.slice(PREFIXE_SESSION.length), car: n });
+        if (k.indexOf(PREFIXE_SESSION) === 0) { sessions.push({ planId: k.slice(PREFIXE_SESSION.length), car: n }); carSessions += n; }
         else autres += n;
       }
     } catch (e) { /* stockage inaccessible (navigation privée stricte) : mesure nulle */ }
     sessions.sort(function (a, b) { return b.car - a.car; });
-    return { car: car, limite: LIMITE, ratio: car / LIMITE, sessions: sessions, autres: autres };
+    return { mode: "ls", car: car, limite: LIMITE, ratio: car / LIMITE, sessions: sessions, autres: autres, carSessions: carSessions };
   }
 
   function _plein(e) {
@@ -3758,10 +3777,11 @@ window.ktaCopierTexte = function (txt) {
     }
   }
 
-  // « 3,8 Mo » : 1 caractère ≈ 1 octet pour ces données (JSON en ASCII surtout).
+  // « 3,8 Mo » / « 1,2 Go » : 1 caractère ≈ 1 octet pour ces données (JSON en ASCII surtout).
   function mo(car) {
     const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
-    return (car / 1000000).toLocaleString(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " Mo";
+    const go = car >= 1e9;
+    return (car / (go ? 1e9 : 1e6)).toLocaleString(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (go ? " Go" : " Mo");
   }
 
   window.ktaStockageLocal = { mesurer: mesurer, ecrire: ecrire, mo: mo, LIMITE: LIMITE, SEUIL_ALERTE: 0.8 };

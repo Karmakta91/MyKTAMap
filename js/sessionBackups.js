@@ -226,7 +226,7 @@ window.SessionBackups = (function() {
   // ─────────────────────────────────────────────
   function _readCurrentSessionPayload() {
     // On lit le payload depuis SessionPersist qui maintient déjà la dernière
-    // version sauvée dans localStorage. 🆕 v1.16.1 — SessionPersist utilise
+    // version sauvée (KtaSessionStore). 🆕 v1.16.1 — SessionPersist utilise
     // désormais des slots PAR PLAN (myktamap_session_v1_<planId>) au lieu
     // d'un slot unique. getSaved() sans argument lit le slot du plan
     // courant — exactement ce qu'on veut snapshotter ici.
@@ -237,8 +237,8 @@ window.SessionBackups = (function() {
       // Fallback ultra-défensif si SessionPersist pas chargé. On scan les
       // clés par préfixe pour trouver le slot du plan courant si possible.
       const planId = window._currentLoadedPlanId || null;
-      if (planId) {
-        const raw = localStorage.getItem("myktamap_session_v1_" + planId);
+      if (planId && window.KtaSessionStore) {
+        const raw = window.KtaSessionStore.lire(planId);
         if (raw) return JSON.parse(raw);
       }
       // Legacy slot (avant migration v1.16.1) — peut encore exister au
@@ -303,9 +303,10 @@ window.SessionBackups = (function() {
         return null;
       }
       // Vraie modif depuis le dernier snapshot persisté → créer l'entry
+      const t = _nouvelId();
       const entry = {
-        id:        Date.now(),
-        createdAt: Date.now(),
+        id:        t,
+        createdAt: t,
         reason:    reason || "auto",
         planId:    payload.planId   || null,
         planName:  payload.planName || null,
@@ -321,6 +322,30 @@ window.SessionBackups = (function() {
     }).catch(function(err) {
       console.warn("[SessionBackups] snapshot échec :", err);
       return null;
+    });
+  }
+
+  // Identifiant = horodatage, strictement croissant dans la page : deux copies prises dans
+  // la même milliseconde (migration de plusieurs sessions) ne s'écrasent pas.
+  let _dernierId = 0;
+  function _nouvelId() { _dernierId = Math.max(Date.now(), _dernierId + 1); return _dernierId; }
+
+  // Copie d'une session QUELCONQUE (pas forcément celle du plan ouvert) : utilisée par
+  // la migration des sessions vers IndexedDB (js/sessionStore.js) avant de retirer une
+  // ancienne copie. Rend true si la copie existe (créée, ou identique à la dernière du
+  // plan), false sinon. Pas de filtre « session vide » : une légende seule compte aussi.
+  function snapshotPayload(payload, reason) {
+    if (!payload || typeof payload !== "object") return Promise.resolve(false);
+    const h = _hash(payload);
+    return _getLastSnapshotForPlan(payload.planId).then(function(dernier) {
+      if (dernier && _hash(dernier.payload) === h) return true;
+      const t = _nouvelId();
+      const entry = { id: t, createdAt: t, reason: reason || "copie",
+        planId: payload.planId || null, planName: payload.planName || null, payload: payload };
+      return _put(entry).then(function() { return _enforceLimit(); }).then(function() { _emit(); return true; });
+    }).catch(function(err) {
+      console.warn("[SessionBackups] copie échouée :", err);
+      return false;
     });
   }
 
@@ -346,8 +371,8 @@ window.SessionBackups = (function() {
   // Restore
   // ─────────────────────────────────────────────
   //
-  // Stratégie : on écrit le payload du backup dans le slot per-plan
-  // localStorage (myktamap_session_v1_<planId>) PUIS on demande à
+  // Stratégie : on écrit le payload du backup dans la session du plan
+  // (KtaSessionStore, IndexedDB), on ATTEND la confirmation, PUIS on demande à
   // l'utilisateur de recharger la page. SessionPersist se charge de
   // restaurer au prochain boot.
   //
@@ -359,7 +384,7 @@ window.SessionBackups = (function() {
   //
   // Pourquoi pas restaurer en live : le restore implique de SWITCHER de
   // plan, de réinitialiser les structures Leaflet, etc. → trop complexe,
-  // fragile. Un simple location.reload après écriture localStorage est
+  // fragile. Un simple location.reload après écriture de la session est
   // robuste et utilise la pipeline standard de boot.
   // opts.versPlanId / opts.versPlanName (10/10/2026) : restaurer DANS le plan ouvert une copie prise sous un
   // autre identifiant (même plan, autre version : réimport « Garder les deux », nom changé). Sans eux, la copie
@@ -387,26 +412,25 @@ window.SessionBackups = (function() {
       if (!targetPlanId) {
         throw new Error(window.I18n.t("backup.err_no_planid"));
       }
-      try {
-        // 🆕 v1.16.1 : slot per-plan
-        localStorage.setItem(
-          "myktamap_session_v1_" + targetPlanId,
-          JSON.stringify(entry.payload)
-        );
-        // Session remplacée par une ancienne : une installation reliée relira tout (no-op sinon).
-        try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: targetPlanId, restauration: true } })); } catch(e) {}
-        // 🆕 v1.16.1 : force PlanRegistry.lastPlanId pour que l'app
-        // rouvre le bon plan au reload. Si le backup vient du plan
-        // actuellement chargé → no-op (déjà à la bonne valeur).
-        if (window.PlanRegistry && typeof window.PlanRegistry.setLastPlanId === "function") {
-          try { window.PlanRegistry.setLastPlanId(targetPlanId); } catch(e) {
-            console.warn("[SessionBackups] PlanRegistry.setLastPlanId échec :", e);
-          }
+      // Écriture ATTENDUE (IndexedDB, js/sessionStore.js) : la page se recharge juste après.
+      return window.KtaSessionStore.ecrireDurable(targetPlanId, JSON.stringify(entry.payload)).then(function() {
+        return entry;
+      }, function(e) {
+        throw new Error(window.I18n.t("backup.err_ls_write", { msg: e && e.message ? e.message : String(e) }));
+      });
+    }).then(function(entry) {
+      const targetPlanId = entry.payload.planId || entry.planId;
+      // Session remplacée par une ancienne : une installation reliée relira tout (no-op sinon).
+      try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: targetPlanId, restauration: true } })); } catch(e) {}
+      // 🆕 v1.16.1 : force PlanRegistry.lastPlanId pour que l'app
+      // rouvre le bon plan au reload. Si le backup vient du plan
+      // actuellement chargé → no-op (déjà à la bonne valeur).
+      if (window.PlanRegistry && typeof window.PlanRegistry.setLastPlanId === "function") {
+        try { window.PlanRegistry.setLastPlanId(targetPlanId); } catch(e) {
+          console.warn("[SessionBackups] PlanRegistry.setLastPlanId échec :", e);
         }
-        return { restored: true, entry: entry };
-      } catch(e) {
-        throw new Error(window.I18n.t("backup.err_ls_write", { msg: e.message }));
       }
+      return { restored: true, entry: entry };
     });
   }
 
@@ -455,6 +479,7 @@ window.SessionBackups = (function() {
   return {
     init:        init,
     snapshot:    snapshot,
+    snapshotPayload: snapshotPayload,   // copie d'une session donnée (migration IndexedDB)
     listAll:     listAll,
     restore:     restore,
     remove:      remove,

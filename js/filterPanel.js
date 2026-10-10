@@ -943,12 +943,17 @@
     if (!CS || !id) return;
     CS.peser(id).then(async function(p) {
       if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return; }
-      const occ = CS.occupationLocalStorage();
-      const msg = window.I18n.t("filter.calque.confirm", {
+      // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site.
+      // Repli localStorage : l'occupation du localStorage, plafond ~5 Mo (message d'origine).
+      const mem = window.ktaStockageLocal ? window.ktaStockageLocal.mesurer() : null;
+      const idb = !!mem && mem.mode === "idb";
+      const occ = idb ? mem.carSessions : CS.occupationLocalStorage();
+      const msg = window.I18n.t(idb ? "filter.calque.confirmIdb" : "filter.calque.confirm", {
         label:  window.ktaEsc(p.label),
         n:      p.objets,
         poids:  _fmtOctets(p.octets),
-        occup:  (occ === null) ? "?" : _fmtOctets(occ)
+        occup:  (occ === null) ? "?" : _fmtOctets(occ),
+        limite: (idb && mem.limite) ? _fmtOctets(mem.limite) : "?"
       });
       if (!(await window.ktaConfirm(msg))) return;
       CS.rapatrier(id).then(function(r) {

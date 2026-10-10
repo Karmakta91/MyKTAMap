@@ -221,7 +221,7 @@
   // (boot froid — le cas NORMAL : on est au HOME avant de charger un plan),
   // soit celui du DERNIER plan chargé (faux pour les autres plans de la
   // pile). La source correcte PAR PLAN : son slot SessionPersist
-  // (localStorage myktamap_session_v1_<id> → payload.customLegend, auto-savé
+  // (KtaSessionStore.lire(id) → payload.customLegend, auto-savé
   // ~1,5 s en mode plan) puis le customLegend du plan-config (ZIP, niveau
   // auteur). Cache RAM par planId, invalidé au mount() (retour HOME =
   // re-mount → les modifs faites en mode plan sont reprises).

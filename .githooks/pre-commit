@@ -587,3 +587,9 @@ node scripts/check-doc-langues.js || exit $?
 node scripts/check-entete-licence.js || exit $?
 # CSP stricte (07/10/2026) : aucun script inline (onclick=, javascript:, <script> sans src) — killsw.html excepté.
 node scripts/check-csp-inline.js || exit $?
+
+# 💾 10/10/2026 — Sessions en IndexedDB (js/sessionStore.js) : aucun module ne relit
+# ni n'écrit localStorage["myktamap_session_v1_<planId>"] en direct (il lirait une
+# ancienne copie gardée 30 jours, ou écraserait la session à jour au démarrage
+# suivant) + câblage (chargement, précache, init attendue). BLOQUANT.
+node scripts/check-session-store.js || exit $?

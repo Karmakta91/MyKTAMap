@@ -721,7 +721,7 @@
       return p.then(function () {
         const e = PR.findById(id);
         if (!e || e.type !== "ext") { refuses++; return; }
-        try { localStorage.removeItem("myktamap_session_v1_" + id); } catch (er) {}
+        try { window.KtaSessionStore.retirer(id); } catch (er) {}
         // Photos, sauvegardes de session et calage du plan (purge du registre), puis
         // l'entrée et son archive locale (remove).
         return Promise.resolve(typeof PR.purgeAssociatedData === "function" ? PR.purgeAssociatedData(id) : null)
