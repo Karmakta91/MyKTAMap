@@ -150,15 +150,13 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 ## 🔒 Affichage de données d'autres comptes — XSS et CSP (04/10/2026)
 
 Contexte : sur une **installation reliée** (synchro), l'app affiche des noms et des notes écrits par d'autres comptes ;
-avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie accepte `script-src 'unsafe-inline'`.
+avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie est stricte (`script-src 'self'`) depuis
+le 10/10/2026, sur dev et prod (`security-legal.md` §40.7.1).
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
 - ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
   corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
-- 🟠 **CSP stricte — reste le VPS (KARMA)** : bascule faite dans le dépôt le 10/10/2026 (`script-src 'self'`, plus de
-  Report-Only). À reporter dans la config nginx de dev et de prod sur le VPS, puis `nginx -t && systemctl reload
-  nginx` ; vérifier ensuite l'en-tête servi. `security-legal.md` §40.7.1.
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 

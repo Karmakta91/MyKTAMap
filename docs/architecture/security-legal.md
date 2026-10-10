@@ -270,8 +270,10 @@ sans `docs/` depuis le 07/10/2026 (`infra-versioning.md` §85), un include du fi
   et le modèle `docs/nginx-csp-config.conf` ; la ligne `Content-Security-Policy-Report-Only` est retirée. Le **smoke**
   (`scripts/smoke/server.js`) sert cette politique et refuse de démarrer si elle rouvre `'unsafe-inline'` aux scripts ;
   `check-csp-inline.js` (règle 4) refuse la même chose dans les configs nginx du dépôt, hors bloc `killsw.html`.
-- **Hors dépôt (KARMA)** : la config nginx de dev/prod sur le VPS reprend la même directive (`nginx -t && reload`).
-  Tant qu'elle n'est pas modifiée, le site sert l'ancienne règle — l'app fonctionne dans les deux cas.
+- **Servie sur dev et prod depuis le 10/10/2026** (config nginx du VPS, hors dépôt) : `script-src 'self'` sur l'app,
+  `'unsafe-inline'` sur `/killsw.html` seulement, avec son bloc `location` qui redit tous les en-têtes. Vérifié par
+  les en-têtes servis : `curl -sI https://<site>/killsw.html | grep -io "script-src[^;]*"`. Sans ce bloc, la page de
+  secours s'affiche mais son script est bloqué (constaté le 10/10/2026 avant l'ajout).
 - Vérifié le 10/10/2026 sous la vraie config nginx de l'image Docker : en-têtes servis (stricte sur l'app, exception
   sur `killsw.html`), parcours accueil → Dépannage → Documentation → relevé fictif → fenêtre de l'app → export PDF
   sans aucune violation CSP ; smoke vert.
