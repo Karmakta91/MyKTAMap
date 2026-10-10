@@ -2,7 +2,7 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier ménage : 07/10/2026** (précédent : 06/10/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> **Dernier ménage : 10/10/2026** (précédent : 07/10/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
 
@@ -13,17 +13,19 @@ jauge « 💾 Mémoire des sessions » (📊 Détails de la session, ⚠️ sur 
 chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`, `utils.js`), écritures de
 `updateChecker.js` protégées (avant : « Plus tard » jetait `QuotaExceededError`, invite à chaque ouverture). Reste :
 
-- ✅ **Session supprimée en silence si le nom du plan change** — corrigé le 10/10/2026 : comparaison tolérante,
-  question « Session d'une autre version du plan » (copie dans 📦 Backups), l'autosauvegarde ne supprime plus un slot
-  qu'elle n'a pas chargé. Si l'utilisateur choisit « Ignorer », la question revient à la prochaine ouverture du plan
-  (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
-- ✅ **Fait le 10/10/2026** : « 💥 Forcer un reset complet » retiré de la fenêtre de mise à jour (renvoi vers 🆘
-  Dépannage) ; 📦 Backups d'une autre version du plan (autre id, même nom) listés et restaurés DANS le plan ouvert
-  (les photos restent avec l'ancienne version) ; badge de version ⏳ sans clignoter quand la mise à jour est acceptée
-  mais l'ancien code encore chargé, et son clic propose de relancer la mise à jour douce.
-- ⚪ **Sessions vers IndexedDB** (plus de plafond de 5 Mo) : le vrai remède, mais touche sauvegarde, restauration,
-  backups, import/export — à cadrer à part.
+- Question « Session d'une autre version du plan » : si l'utilisateur choisit « Ignorer », elle revient à la prochaine
+  ouverture (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
 - ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
+
+## 📸 Photos (galerie « Mes photos » livrée le 10/10/2026) — reliquats
+
+- 🟠 **Le réimport d'une session ZIP efface TOUTES les photos du plan**, y compris celles sans point
+  (`interface.js > _restorerPhotos`, comportement historique) — contredit « jamais effacé sans confirmation ». À
+  remplacer par une fusion, ou au moins une confirmation avec le nombre de photos perdues.
+- 🟡 La fiche du point (nom, position) ne voyage pas dans les ZIP de session (elle voyage dans l'export de profil et
+  dans « Enregistrer » de la galerie).
+- 🟡 Analyse d'un gros plan depuis l'accueil (photos sans point) : décompresse son archive — coût mémoire sur téléphone.
+- 🟡 La limite de 5 photos par point n'est pas vérifiée au rattachement (rien d'existant n'est refusé).
 
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
 
@@ -43,17 +45,13 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 
 ## 🔐 Audit du 10/10/2026 (pro, connexion) — à corriger (Claude, pro)
 
-- 🔴 **Admin bloqué à la connexion — cause probable reproduite** : secret 2FA chiffré avec une clé tirée de `JWT_SECRET`
-  (`api/src/totp.js`) ; si `JWT_SECRET` a changé (`.env` recréé), `/api/auth/login/2fa` répond **500** — codes de secours
-  compris. À confirmer sur le VPS (logs « unable to authenticate data ») ; remède : ancien `JWT_SECRET` ou
-  réinitialisation 2FA (`outils/EXPLOITATION.md` §2). Code : try/catch + code explicite `2fa_secret_illisible`, codes de
-  secours toujours testés.
-- 🔴 **`X-Forwarded-Host` du client cru par l'API** (testé) : `req.hostname` falsifiable → contrôle de domaine de la
-  licence, dépôt de licence et résolution d'instance contournables. Correctif : `proxy_set_header X-Forwarded-Host $host`.
+(Corrigés côté pro depuis : secret 2FA indépendant de `JWT_SECRET` + `2fa_secret_illisible`, `X-Forwarded-Host` jamais
+cru, délai limite des formulaires de connexion.)
+
 - 🟠 Licence refusée pendant la reprise → retombe en « down » (`_reprise`, `_sonde`, barre de la gate) au lieu de fermer.
 - 🟠 Barre d'état de la gate sur les écrans post-connexion : `signaler("on")` en mode local sans session.
 - 🟡 « down » venu de l'événement `offline` : `_debloquerSiDown` ne suffit pas (`_reseauCoupe`).
-- 🟡 Formulaires de connexion sans délai limite ; mot de passe oublié ouvert sans licence ; 🆘 inactif avant `load`.
+- 🟡 Mot de passe oublié ouvert sans licence ; 🆘 inactif avant `load`.
 - 🔬 **Non audité** : la migration des ~190 popups côté community (ordre, z-index, toasts, échappement des appelants de
   `ktaConfirm`, qui insère son message en HTML). Second passage à faire.
 
