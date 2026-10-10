@@ -10,6 +10,7 @@
 
 ## 🎯 La promesse en une ligne
 
+<!-- kta:classe kta-promesse -->
 **MyKTAMap est une application 100 % client-side. Aucune de tes annotations,
 sessions, plans ou données personnelles n'est jamais envoyée à un serveur,
 ni à un service tiers. Point final.**
@@ -21,6 +22,7 @@ suite du document t'explique comment.
 
 ## 🛡️ Périmètre de cette garantie : `myktamap.fr`
 
+<!-- kta:classe kta-alerte -->
 > **⚠️ Cette garantie de sécurité et de non-télémétrie s'applique
 > UNIQUEMENT au domaine officiel `myktamap.fr`** (et à l'environnement
 > de développement `dev.myktamap.fr`, géré par le même auteur).
@@ -90,7 +92,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
-| `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
+| `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
 | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
@@ -109,8 +111,8 @@ jamais de serveur applicatif.** Une installation
 indépendante (hors de ce domaine) peut déclarer une **connexion serveur**
 dans sa configuration ; l'app affiche alors son état dans le pied de page de
 l'accueil (pastille 🔌), et rien n'est activé sans une licence posée par
-cette installation. Sur `myktamap.fr`, la pastille affiche « Serveur :
-désactivé ». Si un jour ce qui précède change, ce fichier sera mis à jour en
+cette installation. Sur `myktamap.fr`, la pastille affiche « Base de
+données : désactivée ». Si un jour ce qui précède change, ce fichier sera mis à jour en
 conséquence et la version sera bumpée.
 
 ### À propos du ping `<origin>/ping.html`
@@ -346,7 +348,7 @@ défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper le
 
 ### Méthode 1 — Le journal réseau intégré (le plus simple)
 
-L'app loggue **en temps réel** toutes ses requêtes réseau dans un
+L'app logue **en temps réel** toutes ses requêtes réseau dans un
 journal interne. Tu peux le consulter à tout moment :
 
 1. **Page d'accueil → ⚙️ Configuration** (header)
@@ -661,9 +663,10 @@ toi-même (cf. « 🔍 Comment vérifier toi-même »).
 > pourraient atterrir, parce qu'il n'y a aucun code applicatif côté
 > serveur. Tout est conçu pour être vérifiable. Si tu trouves quoi que
 > ce soit qui contredit ce document, contacte-moi directement —
-> Instagram **@karma_kta** ou **contact@myktamap.fr** — je corrigerai
+> Instagram **[@karma_kta](https://instagram.com/karma_kta)** ou **[contact@myktamap.fr](mailto:contact@myktamap.fr)** — je corrigerai
 > immédiatement.*
 >
+> <!-- kta:classe kta-auteur -->
 > — **KARMA**, auteur de MyKTAMap
 
 ---

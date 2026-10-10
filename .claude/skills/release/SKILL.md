@@ -21,13 +21,27 @@ Vérifier qu'aucune n'est oubliée :
 ```
 grep -n "vX\.Y\.Z" sw.js js/copyright.js version.json
 ```
-🛡️ Depuis le 16/08/2026, ce contrôle est **automatique et bloquant** : `.githooks/commit-msg` refuse tout commit qui bumpe `version.json` sans que les 3 sources concordent (noyau **non dérogeable**) ni que `README.md` / `NETWORK_AUDIT.md` / `.html` / `AI_CONTEXT.md` suivent (dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>` dans le message). Le grep reste utile pour corriger AVANT de buter dessus.
+🛡️ Depuis le 16/08/2026, ce contrôle est **automatique et bloquant** : `.githooks/commit-msg` refuse tout commit qui bumpe `version.json` sans que les 3 sources concordent (noyau **non dérogeable**) ni que `README.md` / `NETWORK_AUDIT.md` / `.html` (généré, cf. §3 bis) / `AI_CONTEXT.md` suivent (dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>` dans le message). Le grep reste utile pour corriger AVANT de buter dessus.
 
 ## 3. Notes user-facing + journal README
 - `version.json > notes` : 1-2 puces concises orientées **utilisateur** (pas technique), **uniquement le bump courant** (les notes précédentes sont remplacées).
 - Détail technique dans `README.md`, **2 endroits précis** (⚠️ ne JAMAIS prépender en tête de fichier) :
   1. Remplacer le bloc `## 📦 Version courante` (tête de fichier, 3-5 lignes max) ;
   2. Ajouter l'entrée détaillée **en tête de la section `## 📋 Journal des versions`** (fin de fichier, juste sous `### 🕐 Versions récentes`).
+
+## 3 bis. Audit réseau (axe 🔒) — on écrit le `.md`, le `.html` se génère
+1. `docs/applications/NETWORK_AUDIT.md` : en-tête « À jour pour la version **vX.Y.Z** (date) » + l'état actuel si le réseau a changé.
+2. `docs/applications/NETWORK_AUDIT_HISTORIQUE.md` : en tête de `## Notes par version`, un titre et un paragraphe :
+   ```
+   ### vX.Y.Z (titre court)
+
+   **Aucune requête nouvelle, aucun domaine nouveau.** Ce qui change côté réseau, en mots d'utilisateur.
+   ```
+3. **Régénérer les pages** : `node scripts/audit-html.js` → réécrit `NETWORK_AUDIT.html` et `NETWORK_AUDIT_HISTORIQUE.html`
+   (reproductible : deux passages = mêmes octets). Indexer les **4** fichiers.
+   Ne JAMAIS retoucher un `.html` à la main : `scripts/check-audit-html.js` (pré-commit + CI) refuse un `.html` qui n'est
+   pas le rendu de son `.md`. Encadrés : une ligne `<!-- kta:classe kta-promesse -->` (ou `kta-alerte`, `kta-auteur`)
+   juste avant un bloc du `.md` lui pose la classe (invisible sur GitHub). Mise en page : `docs/applications/audit.css`.
 
 ## 4. Nouveaux assets
 Si un nouveau fichier `js/` ou une icône a été ajouté → vérifier qu'il est dans `sw.js > ASSETS_TO_CACHE` (sinon pas servi offline).

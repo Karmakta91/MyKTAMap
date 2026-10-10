@@ -2,321 +2,612 @@
 
 > Ce que chaque version a changé (ou pas) côté réseau et confidentialité, du plus récent au plus ancien.
 > L'état actuel — ce que l'app fait sur le réseau, comment le vérifier, comment couper OpenStreetMap — est dans
-> la page d'audit : [NETWORK_AUDIT.md](NETWORK_AUDIT.md).
+> [la page d'audit](NETWORK_AUDIT.md).
 
 ---
 
 ## Notes par version (du plus récent au plus ancien)
 
-> **v2.13.2 (sessions protégées)** : **Aucune requête nouvelle, aucun domaine nouveau.** Tout est local : la mesure de la mémoire des sessions lit le stockage du navigateur sur ton appareil, rien n'est envoyé.
+### v2.13.2 (sessions protégées)
 
-> **v2.13.1 (fenêtre réseau sur une installation reliée)** : **Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à un serveur, la fenêtre « Que fait l'app sur le réseau ? » prévient désormais qu'elle ne décrit que l'app de base, et propose la page de transparence de l'installation (ouverte seulement si tu la touches). Sur myktamap.fr, rien ne change.
+**Aucune requête nouvelle, aucun domaine nouveau.** Tout est local : la mesure de la mémoire des sessions lit le stockage du navigateur sur ton appareil, rien n'est envoyé.
 
-> **v2.13.0 (règle de sécurité stricte, Affichage XL)** : **Aucune requête nouvelle, aucun domaine nouveau.** La règle de sécurité envoyée par le serveur devient stricte : le navigateur n'exécute plus que les fichiers du site, jamais du code écrit dans une page (`script-src 'self'`). Le reste de la version (Affichage XL, Sortie d'urgence, lecture seule, fenêtres de l'app) est local.
+### v2.13.1 (fenêtre réseau sur une installation reliée)
 
-> **v2.12.1 (dépannage depuis l'écran de connexion)** : **Aucune requête nouvelle, aucun domaine nouveau.** L'app community permet seulement à l'écran de connexion d'une installation reliée d'ouvrir sa fenêtre de dépannage, déjà présente sur l'accueil. Sur une telle installation, l'écran de connexion vérifie l'état de la base sur sa propre adresse, comme le fait déjà sa pastille.
+**Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à un serveur, la fenêtre « Que fait l'app sur le réseau ? » prévient désormais qu'elle ne décrit que l'app de base, et propose la page de transparence de l'installation (ouverte seulement si tu la touches). Sur myktamap.fr, rien ne change.
 
-> **v2.12.0 (fenêtres de l'app, PDF, librairies)** : **Aucune requête nouvelle, aucun domaine nouveau.** Les messages et confirmations s'ouvrent dans les fenêtres de l'app au lieu de celles du navigateur : tout est local. Les librairies embarquées jsPDF (4.2.1, correctifs de sécurité) et JSZip (3.10.2) sont mises à jour, toujours copiées sur le site et chargées depuis lui, sans appel externe. Les PDF gardent leurs accents, et les outils de dessin sont grisés sur un plan en lecture seule : rien de tout cela ne touche au réseau.
+### v2.13.0 (règle de sécurité stricte, Affichage XL)
 
-> **v2.11.0 (licence refusée = installation fermée)** : **aucune requête nouvelle, aucun domaine nouveau — une de moins.** Le mode Développeur ne lit plus la documentation technique sur le serveur, et les sites ne la publient plus. Sur une installation professionnelle dont la licence est absente, expirée ou refusée, l'app reste fermée au lieu de s'ouvrir sur les données de l'appareil. L'écran d'accueil ne propose plus d'importer une licence : rien n'était envoyé, rien ne l'est désormais.
+**Aucune requête nouvelle, aucun domaine nouveau.** La règle de sécurité envoyée par le serveur devient stricte : le navigateur n'exécute plus que les fichiers du site, jamais du code écrit dans une page (`script-src 'self'`). Le reste de la version (Affichage XL, Sortie d'urgence, lecture seule, fenêtres de l'app) est local.
 
-> **v2.10.3 (réseau perdu, Vue OSM, lecture seule)** : **aucune requête nouvelle, aucun domaine nouveau.** Quand l'appareil perd le réseau, l'app ne tente plus de télécharger un plan et ouvre sa copie ; un téléchargement qui ne reçoit plus rien est abandonné au bout de 15 à 20 secondes. Les autres changements (affichage en Vue OSM, fenêtre « lecture seule », annulation) sont locaux.
+### v2.12.1 (dépannage depuis l'écran de connexion)
 
-> **v2.10.2 (plans servis en ZIP)** : **aucun domaine nouveau, rien d'envoyé.** Une installation peut déclarer un plan par son archive (`"zip": "data/x.zip"` dans `data/index.json`, chemin relatif sur le même site uniquement — une adresse externe est refusée). L'app la télécharge à l'ouverture, puis, si une copie est gardée sur l'appareil, ne la redemande que sous condition (`If-None-Match` / `If-Modified-Since`) et sonde sa fraîcheur par un `HEAD` à l'accueil. Sur myktamap.fr, qui ne déclare aucun plan ZIP, rien ne change.
+**Aucune requête nouvelle, aucun domaine nouveau.** L'app community permet seulement à l'écran de connexion d'une installation reliée d'ouvrir sa fenêtre de dépannage, déjà présente sur l'accueil. Sur une telle installation, l'écran de connexion vérifie l'état de la base sur sa propre adresse, comme le fait déjà sa pastille.
 
-> **v2.10.1 (démarrage harmonisé, incognito à sa place)** : **aucune requête nouvelle, aucun domaine nouveau.** Fond choisi sous le plan, bords des tuiles masqués, animations du démarrage : tout est local. Le mode incognito devient indisponible sur une installation reliée à une base de données : il y promettait « aucune trace » alors que le serveur enregistre l'activité.
+### v2.12.0 (fenêtres de l'app, PDF, librairies)
 
-> **v2.10.0 (plus aucun script inline, audit en deux pages)** : **aucune requête nouvelle, aucun domaine nouveau.** L'app ne contient plus de code écrit dans ses pages : le serveur peut n'autoriser que ses propres fichiers (`script-src 'self'`), règle envoyée pour l'instant en observation (`Content-Security-Policy-Report-Only`). La page d'audit ne garde que l'état actuel ; cet historique a sa page. Corrigé : l'audit disait la Vue OSM désactivée par défaut — elle est activée par défaut depuis la v1.90.2, et la page le dit désormais.
+**Aucune requête nouvelle, aucun domaine nouveau.** Les messages et confirmations s'ouvrent dans les fenêtres de l'app au lieu de celles du navigateur : tout est local. Les librairies embarquées jsPDF (4.2.1, correctifs de sécurité) et JSZip (3.10.2) sont mises à jour, toujours copiées sur le site et chargées depuis lui, sans appel externe. Les PDF gardent leurs accents, et les outils de dessin sont grisés sur un plan en lecture seule : rien de tout cela ne touche au réseau.
 
-### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+### v2.11.0 (licence refusée = installation fermée)
 
-#### 🗜️ Résumé compact par version (déplacé de l'en-tête le 06/08/2026 — il était devenu un pavé avant même la promesse)
+**Aucune requête nouvelle, aucun domaine nouveau — une de moins.** Le mode Développeur ne lit plus la documentation technique sur le serveur, et les sites ne la publient plus. Sur une installation professionnelle dont la licence est absente, expirée ou refusée, l'app reste fermée au lieu de s'ouvrir sur les données de l'appareil. L'écran d'accueil ne propose plus d'importer une licence : rien n'était envoyé, rien ne l'est désormais.
+
+### v2.10.3 (réseau perdu, Vue OSM, lecture seule)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Quand l'appareil perd le réseau, l'app ne tente plus de télécharger un plan et ouvre sa copie ; un téléchargement qui ne reçoit plus rien est abandonné au bout de 15 à 20 secondes. Les autres changements (affichage en Vue OSM, fenêtre « lecture seule », annulation) sont locaux.
+
+### v2.10.2 (plans servis en ZIP)
+
+**Aucun domaine nouveau, rien d'envoyé.** Une installation peut déclarer un plan par son archive (`"zip": "data/x.zip"` dans `data/index.json`, chemin relatif sur le même site uniquement — une adresse externe est refusée). L'app la télécharge à l'ouverture, puis, si une copie est gardée sur l'appareil, ne la redemande que sous condition (`If-None-Match` / `If-Modified-Since`) et sonde sa fraîcheur par un `HEAD` à l'accueil. Sur myktamap.fr, qui ne déclare aucun plan ZIP, rien ne change.
+
+### v2.10.1 (démarrage harmonisé, incognito à sa place)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Fond choisi sous le plan, bords des tuiles masqués, animations du démarrage : tout est local. Le mode incognito devient indisponible sur une installation reliée à une base de données : il y promettait « aucune trace » alors que le serveur enregistre l'activité.
+
+### v2.10.0 (plus aucun script inline, audit en deux pages)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** L'app ne contient plus de code écrit dans ses pages : le serveur peut n'autoriser que ses propres fichiers (`script-src 'self'`), règle envoyée pour l'instant en observation (`Content-Security-Policy-Report-Only`). La page d'audit ne garde que l'état actuel ; cet historique a sa page. Corrigé : l'audit disait la Vue OSM désactivée par défaut — elle est activée par défaut depuis la v1.90.2, et la page le dit désormais.
+
+### v2.9.9 (cartes PDF nettes)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Les cartes des PDF du Mode Secours lisent les tuiles du plan déjà ouvert — sur l'appareil pour un plan importé, sur le même serveur que le plan pour un plan servi (les mêmes adresses que l'affichage de la carte).
+
+### v2.9.8 (Mode Secours sur le terrain)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Les options brancard et l'ouverture d'un scénario depuis l'accueil se calculent sur l'appareil, avec le plan déjà présent. La fenêtre « Que fait l'app sur le réseau ? » liste désormais aussi OpenStreetMap (fond de la Vue OSM, déjà autorisé), et la directive `connect-src` est citée telle qu'elle est servie.
+
+### v2.9.7 (effectif d'équipe automatique)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, l'effectif se calcule à partir des comptes déjà connus de l'appareil : rien n'est demandé de plus au serveur.
+
+### v2.9.6 (Secours relié aux comptes)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur : pendant une intervention Secours déclenchée, les étapes cochées, départs et rentrées, accusés « vu » et **photos d'étape** sont envoyés à l'installation (gardés hors réseau, envoyés au retour) ; une position sur le plan partagée n'est remise qu'aux membres d'un groupe commun.
+
+### v2.9.5 (Secours à plusieurs appareils, export filtré)
+
+**Aucune requête nouvelle, aucun domaine nouveau**, ni sur `myktamap.fr` ni sur une installation reliée. Le filtre d'export travaille sur l'appareil. Sur une installation reliée, le partage en direct du Mode Secours (déjà existant) n'est plus relayé que pour les comptes qui ont le droit de modifier le plan.
+
+### v2.9.4 (correctif de sécurité, lecture seule)
+
+**Aucune requête nouvelle, aucun domaine nouveau**, ni sur `myktamap.fr` ni sur une installation reliée. Le contenu d'un plan ou d'une session partagés est désormais filtré à l'ouverture (adresses d'icônes, couleurs, libellés) : rien de ce qu'il contient ne peut s'exécuter dans l'app.
+
+### v2.9.3 (itinéraire montré à l'équipe)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur, **si tu le choisis** (bouton 🧭 de la fenêtre Itinéraire) : ton itinéraire (le tracé et ses étapes, sur le plan) est envoyé et montré à ceux qui peuvent ouvrir ce plan, mis à jour à chaque étape, retiré quand tu l'effaces et au plus tard après 24 h.
+
+### v2.9.2 (panneau Équipe, activité)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur : l'app demande qui a quel plan ouvert (l'« activité » : pseudo, plan, « en édition »), visible de ceux qui peuvent ouvrir ce plan. Ta position sur le plan (pas le GPS) reste partagée seulement si tu le choisis.
+
+### v2.9.1 (portails gardés, plusieurs comptes sur un plan)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur (même site) : les modules déclarés par l'installation sont aussi gardés dans un cache durable du navigateur (téléchargés à la lecture de sa configuration, pour le hors ligne) ; « Tout réinitialiser » prévient d'abord le serveur pour fermer la session.
+
+### v2.9.0 (installations reliées : publier, garder hors ligne, présence)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Mémoriser après coup un plan local relit le ZIP que tu choisis **sur ton appareil**. Sur une installation reliée à une base de données, et seulement vers **son** serveur (même site) : un plan local peut y être **publié** (son ZIP est envoyé, à ta demande) ; un plan ☁️ peut être gardé sur l'appareil depuis sa ligne ; **partager ta position** sur un plan est une **case à cocher** (rien ne part sans elle) ; la pastille peut mener à la page de transparence de l'installation (même site). Hors ligne, la licence de l'appareil n'est plus effacée : le Service Worker répond lui-même « hors ligne », sans requête.
+
+### v2.8.0 (licences signées, installations reliées)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Une licence pro est désormais **signée** : l'app vérifie sa signature, sa date de fin et l'adresse pour laquelle elle a été émise **dans ton navigateur**, avec une clé publique embarquée — rien n'est envoyé pour la vérifier. Sur une installation reliée à une base de données : l'adresse de la base peut être un chemin du même site (`/api/`), toujours sur le même site que l'app ; un plan venu de la base affiche sa progression de téléchargement ; se déconnecter efface de l'appareil les données de ce compte. Image Docker community : en-tête `Referrer-Policy` aligné sur la prod (`strict-origin-when-cross-origin`) — la politique d'usage d'OpenStreetMap exige l'en-tête `Referer` (le site seul, jamais la page), sans quoi les tuiles de la Vue OSM étaient bloquées dans cette image.
+
+### v2.7.4 (compte affiché sur l’accueil d’une installation reliée)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à une base de données, la carte profil de l’accueil affiche le compte connecté (pseudo et rôle) sans rien écrire dans ton profil local, qui revient à la déconnexion. Sans effet sur `myktamap.fr`.
+
+### v2.7.3 (écran de démarrage)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Changement visuel seulement : l’écran de démarrage n’a plus de cadre autour de l’écran.
+
+### v2.7.2 (version des modules d’une installation reliée)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Une installation reliée à une base de données peut indiquer la version de ses modules (`?v=…` à la fin de leur chemin, toujours sur le même site que l’app) : une nouvelle version est alors téléchargée une fois, au lieu de rester bloquée sur l’ancienne. Sans effet sur `myktamap.fr`, qui n’a ni base de données ni module.
+
+### v2.7.1 (réponses de base de données jamais gardées en cache)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à une base de données, le service worker de l’app ne garde **jamais** en cache une réponse de cette base (ni aucune requête authentifiée) : tes données de compte et de synchronisation ne restent pas dans le cache du navigateur. Sans effet sur `myktamap.fr`, qui n’a pas de base de données.
+
+### v2.7.0 (points d’extension des installations indépendantes)
+
+**Sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** L’app peut désormais accueillir des modules de connexion à une base de données, mais **uniquement** sur une installation qui les déclare dans sa configuration **et** pose une licence ; `myktamap.fr` n’en déclare aucun, et l’app vérifie ces deux conditions avant de charger quoi que ce soit (la pastille reste « Base de données : désactivée »). Sur une telle installation, les modules sont servis par le même site que l’app, et toute requête vers la base de données passe par un garde unique qui refuse une autre adresse que celle déclarée, et refuse tout envoi quand la connexion est désactivée ou injoignable. La page de transparence de cette installation décrit ce qu’elle synchronise.
+
+### v2.6.0 (configuration de l’installation lue une seule fois)
+
+**Aucun domaine nouveau, une requête de moins.** `data/index.json`, que l’app lisait déjà à chaque démarrage, est lu **une seule fois**, un peu plus tôt (avant l’écran de code), au lieu de deux quand cet écran s’affiche. Au-delà de 2 secondes sans réponse, l’app abandonne cette lecture et reprend la dernière configuration connue, gardée **sur ton appareil** (stockage local, clé `myktamap_instance_config_v1` : uniquement la section « config » de l’installation, ni tes données ni la liste des plans).
+
+### v2.5.0 (photos des plans importés)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les photos contenues dans un plan importé sont recopiées dans le stockage local de ton navigateur comme avant ; tes propres photos de ce plan ne sont plus effacées à sa réouverture. Tout se fait sur ton appareil.
+
+### v2.4.0 (favoris, liaisons et Secours rattachés à l’identifiant du point)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Tes favoris, tes liaisons entre plans et tes scénarios de secours restent dans le stockage local de ton navigateur ; seule l’étiquette qui les relie à leur point change. Tout se fait sur ton appareil.
+
+### v2.3.0 (photos rattachées à l’identifiant du point)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Tes photos restent dans la base locale de ton navigateur ; seule l’étiquette qui les relie à leur point change (l’identifiant du point au lieu de son nom). La migration se fait **sur ton appareil** et ne supprime aucune photo.
+
+### v2.2.0 (traces de suppression, fusion par identifiant)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Quand tu supprimes un élément, son identifiant est gardé **sur ton appareil** 90 jours (stockage local de la session) ; il part dans tes exports complets, **jamais** dans l’export anonymisé. La fusion de sessions se fait sur ton appareil, sans rien envoyer.
+
+### v2.1.0 (identifiants stables des objets)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Chaque objet de tes plans reçoit un identifiant et une date de modification, **calculés et rangés sur ton appareil** (stockage local de la session, quelques dizaines d’octets par objet). Un fichier de plus est servi par le site et précaché (`js/ktaUid.js`). Ces identifiants partent dans tes exports JSON (que tu télécharges toi-même), **jamais** dans l’export anonymisé, KMZ ou GPX.
+
+### v2.0.1 (export anonymisé : liaisons retirées)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Correctif de confidentialité sur un **fichier que tu télécharges toi-même** : l’export de session « anonymisé » gardait les **liaisons inter-plan**, avec le vrai nom du plan et du point de chaque côté (présentes depuis la v1.57.0). Elles en sont retirées. Un export anonymisé fait **avant** la v2.0.1 depuis un plan qui avait des liaisons peut contenir ces noms : vérifie-le avant de le repartager.
+
+### v2.0.0 (pastille « connexion serveur »)
+
+**Aucune requête nouvelle, aucun domaine nouveau, whitelist `connect-src` inchangée.** Une pastille 🔌 apparaît en bas de l’accueil : sur `myktamap.fr` elle affiche « Base de données : désactivée », et un clic ouvre « Que fait l’app sur le réseau ? ». Son état est **lu dans `data/index.json`, que l’app chargeait déjà à chaque démarrage** : aucune lecture de plus. Une installation indépendante peut y déclarer une connexion serveur (adresse d’API, modules) ; l’app **ne contacte jamais cette adresse** dans cette version et ne charge aucun module — elle affiche seulement « Licence requise », « Configurée, aucun module » ou « Configuration invalide ». La dernière configuration vue est gardée **sur l’appareil** (stockage local, clé `myktamap_server_connection_v1`), jamais dans l’export de profil. La phrase « aucun POST/PUT… » plus haut est désormais bornée à `myktamap.fr`, qui n’aura jamais de serveur applicatif. Le démarrage affiche un « 2 » manuscrit au-dessus du titre dans une **police embarquée** (`lib/fonts/kalam-700-splash.woff2`, ~3,5 Ko) : un fichier de plus **servi par le site lui-même et précaché** — aucune police tierce, aucun Google Fonts, `font-src 'self'` inchangé.
+
+### v1.99.8 (tutoriel d’accueil refondu)
+
+**Aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
+
+### v1.99.6 (guide et aide réécrits)
+
+**Aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
+
+### v1.99.5 (plus de consigne fantôme à la suppression de l’itinéraire)
+
+**Aucun changement réseau**, aucun domaine, aucune requête.
+
+### v1.99.4 (inter-plans : la suite ne passe que par le portail)
+
+**Aucun changement réseau**, aucun domaine, aucune requête.
+
+### v1.99.3 (supprimer l’itinéraire depuis la question de recalcul)
+
+**Aucun changement réseau**, aucun domaine, aucune requête (un bouton de plus dans une fenêtre).
+
+### v1.99.2 (guidage des itinéraires inter-plans)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les données des autres plans étaient déjà lues sur l’appareil pour calculer le trajet ; le guidage en garde simplement les croisements.
+
+### v1.99.1 (guidage de plaque en plaque ; coupe de l’itinéraire derrière soi)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. La coupe de l’itinéraire et le guidage se calculent sur l’appareil.
+
+### v1.99.0 (fonctionnalités optionnelles ; Aide IA dans la Documentation)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. **Un capteur de moins écouté par défaut** : l’indicateur de batterie est désormais une option désactivée — tant qu’il l’est, l’app n’interroge pas le niveau de batterie du téléphone. L’Aide IA lit toujours `AI_CONTEXT.md` sur le même serveur, seulement quand on la demande.
+
+### v1.98.26 (calques en modification à l’import de session ; import unifié ; « Nouveau type… »)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Tout se passe sur l’appareil.
+
+### v1.98.25 (Mode Secours, vague 8b)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. La couverture est calculée sur l'appareil.
+
+### v1.98.24 (Mode Secours, vague 8a)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Évacuation, bilan des engagés, durées, recalage et PDF sont calculés sur l'appareil.
+
+### v1.98.23 (Mode Secours, retours KARMA)
+
+**Aucun changement réseau**, aucun domaine, aucune requête (affichage de la vue équipe et textes d'aide seulement).
+
+### v1.98.22 (Mode Secours, test terrain)
+
+**Moins de réseau**. Le **rapport PDF** n'ouvre plus la Vue OSM pour la capturer : sa page surface est désormais une carte des accès tirée du plan, sur l'appareil — aucune tuile OpenStreetMap demandée. Le **briefing pompiers** garde la capture OSM, en option, après cette carte. Aucun nouveau domaine, aucune nouvelle requête.
+
+### v1.98.21 (Mode Secours, retours de test)
+
+**Aucun changement réseau**, aucun domaine, aucune requête.
+
+### v1.98.20 (Mode Secours, vague 7b)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le contrôle hors-ligne au lancement lit le **cache local** du navigateur (rien n'est demandé au serveur) ; la couverture est calculée sur l'appareil.
+
+### v1.98.19 (Mode Secours, vague 7a)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. La main courante et le compte des remontés restent sur l'appareil ; ils voyagent dans le fichier de rapport que tu transmets toi-même.
+
+### v1.98.18 (Mode Secours, guidage)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le guidage et la feuille de route sont calculés sur l'appareil, à partir du plan déjà chargé.
+
+### v1.98.17 (affichage iPhone)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Deux corrections de mise en page.
+
+### v1.98.16 (Mode Secours, vague 5)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Alertes de retard et rappel sont calculés et notés **sur l'appareil** : l'app n'envoie rien aux autres téléphones (le rappel se transmet par radio). Départ, rentrée, rappel et position de la victime voyagent dans le fichier de rapport que tu transmets toi-même.
+
+### v1.98.15 (Mode Secours, niveaux vides)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le contenu des niveaux est lu dans le plan déjà chargé.
+
+### v1.98.14 (Mode Secours, retours terrain)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les coordonnées GPS affichées sont calculées sur l'appareil à partir du géoréférencement du plan ; l'état replié des équipes reste dans le navigateur.
+
+### v1.98.13 (doc, langues et thème clair)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Textes, couleurs et format des dates sont locaux. Le tutoriel mentionne désormais les tuiles OpenStreetMap de la Vue OSM parmi les requêtes émises — c'était déjà le cas depuis la v1.90.2 et documenté ici.
+
+### v1.98.12 (Mode Secours, 4e relecture)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Fusion des rapports, historique des phases et PDF restent calculés sur l'appareil ; la capture de la vue OSM du briefing ne fait qu'exclure les boutons de zoom de l'image.
+
+### v1.98.11 (Mode Secours, vague 4)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Durées, calage d'itinéraire et contrôle de version du plan sont calculés sur l'appareil.
+
+### v1.98.10 (Mode Secours, 3e relecture)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les identités des points sont calculées sur chaque appareil à partir du plan lui-même : rien n'est échangé ni demandé à un serveur.
+
+### v1.98.9 (Mode Secours, 2e relecture)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les étapes, photos et rapports restent sur l'appareil ; les rapports circulent toujours comme des fichiers que tu transmets toi-même.
+
+### v1.98.8 (Mode Secours, reprise après relecture)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les corrections portent sur des données locales (étapes, photos gardées sur l'appareil, PDF fabriqués sur place) ; la Vue OSM trace l'itinéraire autrement, avec les mêmes tuiles.
+
+### v1.98.7 (Mode Secours, documents papier)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Les PDF de briefing et de rapport sont fabriqués sur ton appareil, à partir du plan déjà chargé ; ils sont seulement plus légers et plus complets.
+
+### v1.98.6 (Mode Secours, saisie du plan)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. La sélection de galeries, l'ordre des étapes, le niveau des points et la mise à jour des étapes en cours d'intervention sont calculés sur ton appareil.
+
+### v1.98.5 (correctifs du Mode Secours)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le plan de secours et les rapports d'équipe circulent toujours comme des **fichiers** que tu transmets toi-même (AirDrop, câble, messagerie) ; l'app ne fait que les lire sur ton appareil. Ce qui change est local : l'import garde les identifiants du scénario, et la fusion d'un rapport départage mieux les statuts.
+
+### v1.98.4 (tuiles du fond à la demande)
+
+**Moins de requêtes, aucun domaine nouveau.** Sur un plan tuilé servi par le serveur, l'app ne télécharge plus que les tuiles du fond proches de ce que tu regardes (mesuré : 12 au lieu de 864 au zoom le plus fin) ; les autres le sont quand tu t'en approches. Même serveur, mêmes fichiers — seulement moins, et plus tard. Le reste est local (mémoire de l'appareil).
+
+### v1.98.3 (itinéraire plus rapide, réglages de performance)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le calcul d'itinéraire est plus rapide (même résultat, calculé sur ton appareil), et les réglages de performance masquent ou simplifient à l'affichage les tracés déjà chargés — rien n'est téléchargé ni envoyé en plus.
+
+### v1.98.2 (correctifs du tour du backlog)
+
+**Aucun domaine nouveau, aucune requête nouvelle vers l'extérieur.** Un seul changement de ce que l'app télécharge, et il est sur **son propre serveur** : le fichier `js/planOffline.js` (le module qui rend un plan serveur disponible hors connexion) rejoint la liste des fichiers mis de côté à l'installation — il était déjà téléchargé à l'ouverture, il l'est maintenant aussi pour marcher sans réseau. Le reste est local : suppression des documents d'un plan sur ton appareil, calcul de la mémoire de l'export image, codes de l'export anonymisé.
+
+### v1.98.1 (sortie mise en pause au changement de plan)
+
+**Aucun changement réseau**, aucune requête, aucun domaine. La mise en pause d'une sortie et sa reprise se font dans le carnet stocké sur ton appareil (IndexedDB) ; la relance du suivi utilise les capteurs du téléphone déjà employés par le tracker, rien ne part sur le réseau.
+
+### v1.98.0 (guidage de l'itinéraire)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. Le guidage (bandeau « Dans 40 m, tourner à gauche », feuille de route, schéma des carrefours) calcule tout **sur ton appareil**, à partir de l'itinéraire déjà calculé localement et de ta position estimée ; rien n'est envoyé. Le nouveau module `js/itiGuidage.js` est servi par le même serveur que le reste de l'app et **mis en cache hors-ligne** (précache du service worker). Son seul stockage : ton choix Auto / Jamais et une suggestion déjà faite, dans le localStorage de ton navigateur.
+
+### v1.97.12 (mise en page du bouton de copie)
+
+**Aucun changement réseau**, aucun domaine, aucune requête — seule la place du bouton « Copier ma position » change dans l'écran d'urgence. Ce qu'il copie et où ça va restent identiques : le presse-papier de ton appareil, rien d'autre.
+
+### v1.97.11 (indicateur de batterie)
+
+**Aucun changement réseau**, aucun domaine, aucune requête. L'écran d'urgence n'affiche plus d'indicateur de batterie quand le capteur est indisponible ou que tu as décoché le réglage — et décocher ce réglage coupe aussi l'écoute du capteur, comme depuis la v1.85.2.
+
+### v1.97.10 (copier sa position)
+
+**100 % local**, aucune requête, aucun domaine. Le bouton « Copier ma position » écrit dans le **presse-papier de ton appareil** — l'app n'envoie rien, ne géolocalise rien et n'interroge aucun service : les coordonnées sont calculées sur place à partir du calibrage de ton plan. C'est **toi** qui décides ensuite de les coller quelque part. ⚠️ Rappel : le presse-papier est lisible par d'autres applications de ton appareil — comme pour tout ce que tu copies.
+
+### v1.97.9 (moins de requêtes à l'ouverture d'un plan)
+
+**100 % local**, aucun domaine nouveau — et **21 requêtes en MOINS** par ouverture de plan. L'app demandait à ton serveur, icône par icône, si elle était livrée dans le dossier du plan ; un plan généré avec cette version le **déclare** dans son fichier de configuration, donc plus aucune question à poser. Un plan plus ancien conserve l'ancien comportement (ces requêtes restent adressées **au domaine qui sert l'app**, jamais ailleurs) jusqu'à sa régénération.
+
+### v1.97.8 (documents d'un plan dans le Carnet)
+
+**100 % local**, aucun domaine nouveau, aucune requête vers l'extérieur. Un PDF livré dans le ZIP d'un plan est **recopié sur ton appareil** (base locale du Mode Histoire) à l'ouverture de ce plan, pour qu'il reste consultable depuis « Mon carnet » sans recharger le plan. La lecture se fait depuis le fichier déjà présent (ZIP extrait en mémoire, ou même domaine que l'app pour un plan servi) ; rien n'est envoyé nulle part, et tu peux supprimer cette copie.
+
+### v1.97.7 (écran d'urgence épuré)
+
+**100 % local**, aucun domaine nouveau, **aucune requête nouvelle**. L'écran d'urgence affiche désormais une seule position : quand ton plan est géoréférencé, les coordonnées GPS sont **calculées sur ton téléphone** à partir du calibrage enregistré localement — aucun service de localisation n'est interrogé, rien ne sort de l'appareil.
+
+### v1.97.6 (cache hors-ligne, écran d'urgence, fonds de carte)
+
+**100 % local**, aucun domaine nouveau. Deux changements touchent le réseau, tous deux dans le sens de MOINS de trafic et de PLUS de hors-ligne : (1) le ménage automatique du cache n'efface plus les fichiers dont un plan a besoin pour s'ouvrir — un plan déjà consulté reste donc consultable sans réseau ; (2) trois écrans (mini-carte d'urgence, Vue OSM, export KMZ) demandaient leurs tuiles à une adresse qui n'existait pas sur une instance servie en HTTP — ils les demandent maintenant au bon endroit, **sur le même domaine que l'app**, là où ils n'obtenaient rien.
+
+### v1.97.5 (réparation des plans aux réglages impossibles)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Une valeur lue dans le fichier de ton plan est remplacée par la valeur d'usine si elle est hors bornes ; le fichier, lui, n'est pas modifié.
+
+### v1.97.4 (zoom à deux doigts en mode « plan orienté »)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Un réglage d'interaction rendu à la bibliothèque de cartographie.
+
+### v1.97.3 (affichage aux bords en mode « plan orienté »)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Du calcul d'affichage : l'app décide mieux quelles tuiles déjà présentes sur l'appareil rester affichées. Rien n'est téléchargé ni envoyé.
+
+### v1.97.2 (placement du bouton « Recentrer »)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Un bouton qui se déplace de quelques pixels à l'écran.
+
+### v1.97.1 (correctif d'affichage du mode « plan orienté »)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Les tuiles hors écran sont simplement retirées de l'affichage pendant que la carte tourne : elles étaient déjà sur l'appareil, rien n'est téléchargé ni envoyé.
+
+### v1.97.0 (mode « plan orienté »)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Faire tourner la carte est un calcul d'affichage : la rotation vient de la boussole de ton appareil, déjà utilisée par le tracker, et **rien n'en sort**. Le choix d'activer le mode vit dans les préférences de ton navigateur (`localStorage`). Un fichier JavaScript de plus au précache (`js/mapBearing.js`).
+
+### v1.96.0 (réglages du podomètre globaux)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Taille de pas, seuil et cooldown quittent le plan-config pour les préférences de ton navigateur (`localStorage`), qui voyagent dans l'export de profil que TU déclenches. Un ZIP généré contient donc trois clés de moins, rien de plus.
+
+### v1.95.0 (dossiers de « Mes plans », étiquettes à la génération)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle. Les dossiers, leur mode et les appartenances vivent dans le registre de ton navigateur (`localStorage`), voyagent dans l'export de profil que TU déclenches, et — sur une instance auto-hébergée — peuvent être proposés par le `data/index.json` de ce serveur, un fichier que l'app lisait déjà. Les étiquettes saisies dans le Générateur sont écrites dans le ZIP que tu produis, rien d'autre. La copie d'un ZIP mémorisé est désormais une vraie copie (plus un lien vers le fichier du disque) : elle ne sort pas plus du navigateur qu'avant.
+
+### v1.94.0 (import multiple de plans)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les archives sont lues **dans le navigateur**, et rangées soit par une autorisation d'accès au fichier d'origine, soit par une copie dans le stockage local — les mêmes emplacements que l'ajout d'un plan à l'unité. Aucun octet n'est envoyé nulle part, et la fonction marche hors ligne.
+
+### v1.93.0 (prise en charge des GeoTIFF)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le `.tif` est lu **dans le navigateur** (`FileReader` → `ArrayBuffer`), décodé en mémoire et ré-encodé en PNG par le canvas ; **aucun octet du fichier ne quitte l'appareil**, et aucune bibliothèque externe n'est chargée pour cela (pas de CDN, rien de vendoré). La reprojection Lambert 93 / Web Mercator → WGS84 est du calcul local. Un GeoTIFF **géoréférence** le plan : les fonctions qui demandent ensuite des tuiles OSM (Vue OSM) deviennent disponibles pour ce plan, exactement comme après un calage saisi à la main — c'est le seul effet réseau, indirect et inchangé.
+
+### v1.92.0 (Réglages : application immédiate, portée explicite, géoref en sous-modale)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les réglages restent dans `localStorage` (clés `myktamap_plan_prefs_<plan>`, `myktamap_perf_toggles_v2_<plan>`, `myktamap_kmz_calib_<plan>`, nouvelle clé d'interface `myktamap_cfg_groupes_v1` = groupes repliés). Le reset ne réécrit plus `app_user_prefs`.
+
+### v1.91.2 (recherche plein texte de la documentation + docs bulle / Détails)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. La recherche parcourt le texte déjà chargé dans la modale (`docs/applications/README_USER*.md`, même origine, déjà déclaré) — rien n'est envoyé nulle part.
+
+### v1.91.1 (Vue OSM de l'accueil — l'ancien plan principal restait dans la pile)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif de la pile de plans du widget OSM (règle de promotion du principal partagée, ligne fantôme retirable, purge des groupes morts). Les tuiles OSM ne sont demandées que pour les plans effectivement rendus, comme avant.
+
+### v1.91.0 (audit ergonomie — sécurité, filets de données, état visible, verrou temporisé)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Contrôle du 13/09 : le bloc « 🛡️ Périmètre de garantie » cite `myktamap.fr` et `dev.myktamap.fr` **en dur** aux deux endroits (modale « Que fait l'app sur le réseau ? » et cette page), jamais dérivés de l'origine — une copie servie ailleurs se désavoue au lieu de s'adapter (verrouillé par `check-audit-domaine.js`). Le verrou temporisé du code d'accès et de la gate est calculé sur l'horloge de l'appareil, sans aucun appel. Rappel de transparence, déjà vrai avant cette version : la **commande vocale** (opt-in, désactivée par défaut) repose sur l'API de reconnaissance du navigateur, qui peut envoyer l'audio au service de son éditeur (Google pour Chrome, Apple pour Safari) — ce n'est pas un appel de l'app et il n'apparaît pas dans son journal ; l'app le dit désormais quand elle est hors ligne au lieu d'afficher « Erreur : network ». Les notes d'un point lues à voix haute (synthèse vocale) restent 100 % locales.
+
+### v1.90.17 (pastille bloquée après Ctrl+Z — étendu aux zones et structures)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Extension du correctif v1.90.16 (tracé) aux zones et aux structures : après avoir annulé (Ctrl+Z) une forme en cours de dessin, le bouton de l'outil restait « allumé » alors qu'il était inactif, et il devenait impossible de reprendre le dessin. Correctif d'interface pur. Aucun effet réseau.
+
+### v1.90.16 (le bouton d'un tracé restait allumé après un Ctrl+Z jusqu'au vide — correctif)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'interface pur : après avoir annulé (Ctrl+Z) tous les points d'un tracé en cours de dessin, le bouton de l'outil restait visuellement « allumé » alors qu'il était devenu inactif — le raccourci clavier ne passait pas par la même fermeture que les boutons de suppression. Aucun effet réseau.
+
+### v1.90.15 (Vue OSM figée au retour à l'accueil — l'appel qui plantait en silence)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'un plantage interne introduit en v1.90.12 : au retour à l'accueil, le rafraîchissement de la Vue OSM appelait une fonction mal nommée et échouait en silence — la vue restait figée, un plan chargé pour la première fois n'y apparaissait qu'après un redémarrage. Aucun effet réseau.
+
+### v1.90.14 (mode Incognito : la gate se réaffichait sur une instance à mot de passe)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif : en mode privé (Incognito), sur une installation qui définit son propre mot de passe d'accès, l'écran de code se réaffichait à tort. Le mode privé relit du disque une courte liste de clés — dont le déverrouillage — pour ne pas re-demander le mot de passe à chaque fenêtre privée ; la mémoire du déverrouillage **par mot de passe d'instance** (ajoutée avec cette fonctionnalité) avait été oubliée de cette liste. Les écritures restent isolées comme avant : le mode privé ne persiste toujours rien sur le disque.
+
+### v1.90.13 (plantage de la Vue OSM au retour à l'accueil — correctif)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'un plantage interne : au retour à l'accueil, le widget OSM se reconstruit, et une image de plan qui finissait de charger juste après pouvait provoquer une erreur (`Cannot read null`) qui bloquait l'affichage. Cause purement interne (une image chargée après la destruction de sa carte) — aucun effet réseau.
+
+### v1.90.12 (au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Détail d'affichage dans la suite du correctif v1.90.11 : au retour à l'accueil, le widget OSM s'ouvre désormais sur le plan que vous venez de quitter, au lieu de sa sélection précédente. Purement interne.
+
+### v1.90.11 (la Vue OSM d'un plan tout juste chargé marche sans redémarrer)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'affichage : après avoir chargé un nouveau plan puis être revenu à l'accueil, sa Vue OSM ne s'activait qu'après un redémarrage complet. Le widget de l'accueil se rafraîchit désormais au retour à l'accueil. Purement interne — aucun effet réseau (les tuiles OSM restent régies par le même réglage qu'avant).
+
+### v1.90.10 (niveau manquant à l'ouverture de la Vue OSM — correctif d'affichage)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'affichage : dans la Vue OSM d'un plan à plusieurs niveaux, un niveau pourtant actif pouvait manquer à l'ouverture (il fallait le décocher puis le recocher). Purement un ordre de rendu interne — aucun effet réseau.
+
+### v1.90.9 (même une licence pro servie par l'instance ne contourne plus son mot de passe)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Achève le correctif v1.90.7/8 : sur une installation qui publie un mot de passe d'accès, **plus aucune licence pro ne l'ouvre à la place du mot de passe** — y compris le `Licence-pro.json` que l'installation sert elle-même. Ce fichier est récupéré par **tous** les visiteurs ; le laisser bypasser rendait le mot de passe muet. La licence active désormais le **mode pro** une fois le mot de passe saisi, elle n'est plus une clé d'accès. Une installation **sans** mot de passe s'ouvre toujours directement avec sa licence.
+
+### v1.90.8 (la licence pro importée ne contourne plus le mot de passe d'instance)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Suite du correctif de sécurité v1.90.7 : sur une installation qui publie un mot de passe d'accès, **importer soi-même un fichier de licence pro n'ouvre plus l'application** — il fallait fermer cette porte, sinon elle contournait le mot de passe. Une licence **fournie par l'installation elle-même** (côté serveur) reste acceptée : c'est le choix du déployeur, pas un contournement. La vérification reste **entièrement locale**.
+
+### v1.90.7 (le mot de passe d'instance devient exclusif — correctif de sécurité)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. Correctif de sécurité, sans effet réseau. Depuis la v1.90.6, une instance auto-hébergée peut publier l'empreinte d'un mot de passe ; désormais, **quand elle le fait, c'est le SEUL mot de passe qui ouvre son application** — le code communautaire n'ouvre plus une instance protégée. Sans ce correctif, quiconque connaît le code communautaire (public, il ouvre le site de démonstration) aurait pu ouvrir n'importe quelle instance privée. La vérification reste **entièrement locale** : votre navigateur compare l'empreinte, rien n'est transmis.
+
+### v1.90.6 (mot de passe d'accès propre à une instance)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. Une instance auto-hébergée peut publier l'**empreinte** (SHA-256) d'un mot de passe dans son `data/index.json` — **le même fichier, déjà lu à chaque démarrage**. Ses visiteurs ouvrent alors l'app avec ce mot de passe **et uniquement lui** : quand une instance publie son empreinte, le code communautaire n'ouvre plus cette instance (v1.90.7). Côté réseau : **aucune requête ajoutée pour qui est déjà entré**, et une seule lecture de `data/index.json` — vers votre propre serveur — quand l'écran de code s'affiche et que le code communautaire n'a pas fonctionné. Le mot de passe lui-même n'est **jamais** transmis : c'est votre navigateur qui calcule l'empreinte et la compare, sur place.
+
+🔒 **Ce que ça vaut, dit franchement.** `index.json` est **public** : l'empreinte l'est donc aussi, et quelqu'un de motivé peut tenter de retrouver le mot de passe hors ligne. C'est **exactement** la situation du code communautaire, dont l'empreinte est lisible sur GitHub depuis toujours — le niveau de protection ne baisse pas, **mais il ne monte pas non plus**. C'est une barrière **sociale**, **jamais une authentification**.
+
+### v1.90.5 (bouton « Retrouver les noms » dans les statistiques)
+
+⚠️ **Une requête, et seulement si vous cliquez.** Les statistiques du profil peuvent afficher un type personnalisé par son identifiant, quand son nom n'a jamais été mémorisé. Un bouton **« Retrouver les noms »** va alors chercher ce nom dans le descriptif de chaque plan. Pour un plan hébergé sur **votre propre serveur**, cela demande son `plan-config.json` **à ce serveur** — le même fichier que celui déjà lu à l'ouverture du plan, à la même adresse. Pour un plan local, la lecture se fait **dans le navigateur**, sur l'archive déjà mémorisée.
+
+**Rien ne part tant que vous ne cliquez pas** : le bouton annonce le nombre de plans qu'il va lire, et il n'y a **aucune requête automatique** à l'ouverture de la fenêtre. Aucun tiers n'est contacté, aucune de vos données n'est envoyée — on **lit**, on n'envoie rien. Les noms trouvés sont gardés dans le stockage local de votre navigateur, donc l'opération ne se refait pas.
+
+### v1.90.4 (filtre par étiquette dans les statistiques du profil)
+
+**100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Le nouveau graphique et son filtre travaillent sur des décomptes **déjà calculés dans votre navigateur**, et le filtre lui-même n'est **écrit nulle part** : il vit le temps où la fenêtre est ouverte.
+
+### v1.90.3 (les types personnalisés retrouvent leur nom dans les statistiques)
+
+**100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Correction d'affichage : dans les statistiques du profil, un type que vous avez créé vous-même apparaissait sous son identifiant interne. Son nom est désormais retenu **sur votre appareil** au moment où vous ouvrez le plan, puis réutilisé pour l'affichage. Rien n'est lu ailleurs que dans le stockage local de votre navigateur.
+
+### v1.90.2 (la Vue OSM passe à ACTIVÉE PAR DÉFAUT)
+
+⚠️ **Le seul changement de ce type depuis la création de l'app — à lire même si vous ne lisez rien d'autre.** La **Vue OSM** (vos plans calibrés GPS affichés au-dessus d'une carte du monde) était **désactivée par défaut** ; elle est désormais **activée PAR DÉFAUT**. Concrètement : si vous possédez au moins un plan géoréférencé, **l'écran d'accueil demande des tuiles de fond de carte à `tile.openstreetmap.org` dès son chargement, sans que vous cliquiez sur quoi que ce soit**. C'est la **seule** requête que MyKTAMap adresse à un tiers, et elle était jusqu'ici conditionnée à votre accord explicite.
+
+**Ce qui sort, exactement** : les **coordonnées des tuiles** affichées (donc la zone géographique que vous regardez) et votre adresse IP, comme pour n'importe quel site consulté. **Aucune donnée de vos plans ne part** : ni points, ni tracés, ni photos, ni sessions, ni le nom du plan — le fond arrive du serveur, vos données restent dessinées par-dessus, sur votre appareil.
+
+**Si vous aviez décoché la case, elle reste décochée.** Un refus explicite n'est jamais réécrasé, ni par cette version ni par les suivantes. Le changement ne concerne que ceux qui n'avaient **jamais touché** au réglage. La première fois que la vue s'affiche pour cette raison, **un bandeau vous le dit** et vous rappelle où la couper (⚙️ Configuration).
+
+**Trois situations où rien ne change, et qui restent prioritaires sur ce défaut** : le **mode hors-ligne strict**, le **mode incognito**, et le simple fait de n'avoir **aucun plan géoréférencé** — dans ces trois cas, aucune requête n'est émise. La **whitelist reste identique** : `tile.openstreetmap.org` y figurait déjà.
+
+### v1.90.2 (le tuilage n'est plus un réglage de l'écran de chargement)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le sélecteur de découpage d'image quitte l'écran de chargement : l'application décide seule, comme elle le faisait déjà pour la quasi-totalité des plans. Le réglage reste accessible dans la fiche ℹ️ Infos des plans que ça concerne réellement. **Changement d'interface uniquement** : les mêmes fichiers sont demandés, aux mêmes adresses, sur votre serveur.
+
+### v1.90.1 (étiquettes venues du serveur + import de profil verrouillé en mode kiosque)
+
+**100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Deux changements, tous deux **dans le navigateur** : (1) la liste de plans que sert **votre propre serveur** (`data/index.json`, lue à chaque démarrage depuis toujours) peut désormais porter des **étiquettes** par plan — c'est **le même fichier, à la même adresse**, avec un champ de plus ; les étiquettes que **vous** posez restent prioritaires et ne sont jamais écrasées. (2) Sur une instance configurée pour ne proposer **que** les plans de son serveur, l'**import de profil est refusé** — il pouvait rapporter des plans que le mode masque et, surtout, réécrire vos préférences d'affichage au point de **vider la liste**. L'**export** de profil reste entièrement disponible : vos données sortent quand vous le décidez.
+
+### v1.90.0 (télécharger un plan serveur depuis la liste)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. Le bouton de téléchargement hors-ligne, jusqu'ici seulement dans la fiche ℹ️ Infos, apparaît désormais **directement sur la ligne** d'un plan hébergé sur **votre propre serveur**. Il ne déclenche rien tout seul : il affiche l'état, et c'est vous qui lancez le téléchargement. Les fichiers demandés sont ceux du plan, sur votre serveur, exactement comme avant.
+
+### v1.89.0 (Vue OSM des plans serveur + installation allégée)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Moins de réseau, pas plus** : le plan de démonstration (~2 Mo) n'est plus téléchargé à l'installation — il se charge comme n'importe quel plan, quand vous l'ouvrez. Par ailleurs, la Vue OSM de l'accueil sait désormais lire un plan hébergé sur **votre propre serveur** : elle demande son descriptif et ses calques **à ce serveur**, les mêmes fichiers que ceux déjà servis à l'affichage du plan. Aucun tiers n'est contacté.
+
+### v1.88.4 (les plans importés s'affichent enfin en mode serveur)
+
+**100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Un plan créé par un **import SIG, GPX ou KMZ** et hébergé sur **votre propre serveur** demandait son image et ses données à une adresse qui n'existait pas — ces imports écrivaient bien les fichiers dans le dossier `data/` de l'archive, mais les déclaraient sans ce dossier. Invisible tant que le plan restait dans votre navigateur, bloquant dès qu'il était servi. Corrigé pour les futurs imports, **et pour ceux déjà en ligne** : rien à re-déployer. Les fichiers demandés sont les mêmes, simplement à la bonne adresse.
+
+### v1.88.3 (les images découpées cherchées au bon endroit)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. Sur un plan hébergé sur **votre propre serveur**, l'application vérifie désormais où se trouvent réellement les images découpées, au lieu de le déduire de l'emplacement de l'image principale — une déduction fausse dès que le plan avait été déposé selon une recette plus ancienne, d'où des plans qui marchaient et d'autres non. Concrètement : **une à deux requêtes de plus à l'ouverture d'un plan**, sur une seule image témoin, **vers votre serveur uniquement**.
+
+### v1.88.2 (Service Worker réparé + liste serveur à jour)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Correctif important** : depuis la v1.88.0, une erreur interne dans le Service Worker faisait échouer son interception des requêtes — l'application continuait de fonctionner en ligne, mais **elle ne servait plus ses fichiers depuis son cache**, donc le mode hors-ligne était atteint et chaque requête repartait vers le serveur. Réparé. Deux autres changements, tous deux **vers votre serveur uniquement** : la liste des plans du serveur (`data/index.json`) est désormais demandée en **`no-store`**, pour qu'une liste modifiée ne remonte plus depuis le cache du navigateur ; et un plan retiré de cette liste est retiré de « Mes plans » au démarrage — **aucune de vos données n'est supprimée** (sessions, photos, géoréférencement restent).
+
+### v1.88.1 (débordement de l'accueil à 125 % de zoom)
+
+**100 % local**, aucune requête, aucun domaine, aucune donnée. Correction d'affichage uniquement : sur l'accueil, le bloc de réglage d'image de la carte de chargement débordait sur le pied de page quand l'affichage de Windows est réglé à 125 %. Il est désormais replié par défaut, et la colonne peut défiler si son contenu grandit à l'avenir. Rien d'autre ne change.
+
+### v1.88.0 (savoir qu'un plan hors-ligne est périmé)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Une nouveauté réseau, vers votre serveur et lui seul** : à l'ouverture de la fiche d'un plan téléchargé pour le hors-ligne, l'application demande à votre serveur si les fichiers du plan ont changé. Ce sont des requêtes **conditionnelles** — le serveur répond « rien n'a bougé » avec un **corps vide** dans la quasi-totalité des cas, donc quelques centaines d'octets en tout. Les tuiles d'image en sont exclues (elles se déduisent de l'image, qui est vérifiée) : cela fait une quinzaine de requêtes pour un plan comme celui de démonstration. Rien n'est envoyé, rien n'est stocké côté serveur, et ces requêtes ne sont **pas** mises en cache.
+
+### v1.87.2 (les icônes d'un plan servi, sondées)
+
+**100 % local**, aucun domaine nouveau, aucune donnée qui sort. Correction d'une régression introduite en v1.86.2 : sur un plan hébergé sur **votre propre serveur**, certaines icônes de l'application — dont celle du tracker — étaient cherchées dans le dossier du plan au lieu de la racine du site, et ne s'affichaient plus. L'application **demande désormais au serveur** si l'icône se trouve dans le dossier du plan, et ne l'y prend que si la réponse est positive. Cela ajoute, à l'ouverture d'un plan serveur, une petite requête par icône déclarée — **vers votre serveur uniquement**, sur des fichiers déjà servis par ailleurs, et mises en cache ensuite.
+
+### v1.87.1 (le hors-ligne dit ce qui manque)
+
+**100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Correction d'affichage sur le téléchargement hors-ligne : quand un fichier déclaré par un plan n'existe pas sur le serveur, l'application le **nomme** et considère le plan comme disponible, au lieu d'annoncer « incomplet » indéfiniment et d'inviter à retélécharger sans fin un fichier absent. Les fichiers demandés sont exactement les mêmes qu'avant.
+
+### v1.87.0 (télécharger un plan serveur pour le hors-ligne)
+
+**100 % local**. un plan hébergé sur **votre propre serveur** peut être téléchargé en entier pour le hors-ligne. Le bouton lance le téléchargement de son image, de ses données et de toutes ses tuiles — **depuis votre serveur, et lui seul**. Aucun domaine externe n'est contacté, rien n'est envoyé : ce sont des requêtes de lecture vers les mêmes fichiers que ceux déjà servis à l'affichage, simplement demandés d'un coup au lieu d'au fil du zoom. Le résultat est stocké **dans votre navigateur**, dans un espace réservé au plan, que vous pouvez vider quand vous voulez depuis la même fiche.
+
+### v1.86.2 (les icônes personnalisées d'un plan servi)
+
+**100 % local**. Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Une icône que vous avez ajoutée à un plan hébergé sur **votre propre serveur** est désormais cherchée **dans le dossier du plan**, où elle se trouve, au lieu de la racine du site, où elle n'a jamais été. Les icônes livrées avec l'application continuent d'être servies depuis la racine — c'est le catalogue interne de l'app qui départage, pas une devinette. Mêmes fichiers, même serveur, bonne adresse.
+
+### v1.86.1 (déployer un plan sur son serveur : il suffit de dézipper)
+
+**100 % local**. Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Un plan déposé sur **votre propre serveur** voit enfin ses fichiers trouvés : ses images, ses données et ses tuiles sont désormais cherchées **dans le dossier du plan** et non plus à la racine du site, où elles n'étaient jamais. Ce sont les mêmes fichiers, sur le même serveur, demandés à la bonne adresse — rien de plus n'est téléchargé. Les déploiements déjà en place, dont les chemins avaient été corrigés à la main, sont inchangés.
+
+### v1.86.0 (le tuilage, audité)
+
+**100 % local**. Aucune requête nouvelle vers un tiers, aucune donnée qui sort. Une seule nouveauté réseau, et elle reste **sur ton propre serveur** : un plan hébergé et découpé en tuiles va désormais chercher ces tuiles en HTTP dans son propre dossier (`data/<plan>/tiles/…`) — avant, elles n'étaient cherchées qu'en mémoire, donc jamais trouvées, et la carte restait blanche. Aucun domaine externe n'est contacté. Le reste est de l'interface : le sélecteur d'image passe de cinq choix à deux, un plan déjà découpé utilise toujours ses tuiles, et un repli affiche l'image entière si les tuiles sont inatteignables. Le stockage est inchangé. Un bouton **ConfAdmin** apparaît en Mode Développeur : il ouvre une page **locale** du site, rien n'y est envoyé.
+
+### v1.85.4 (la langue et le tuilage retrouvent leur place)
+
+**100 % local**. Aucune requête nouvelle, aucun domaine nouveau, aucune donnée qui sort. Trois déplacements d'interface et une correction d'affichage : le **sélecteur de langue** quitte les réglages du mode plan (il pilotait toute l'application depuis l'écran d'un seul plan) et ne vit plus que hors plan — ⚙️ Configuration de l'accueil et écran de déverrouillage ; le **tuilage de l'image** descend dans la carte de chargement, contre le bouton « Charger » ; et la mention « (s'applique à tous tes plans) » cesse de s'afficher avec ses balises HTML en clair. Le stockage est inchangé : la langue reste dans `myktamap_app_lang` (localStorage), le tuilage n'est toujours mémorisé nulle part et le preset retenu par plan reste dans le registre des plans. Deux garde-fous s'ajoutent au pre-commit, dont `check-i18n.js` qui existait mais n'y était pas branché.
+
+### v1.85.3 (portée des réglages : plan vs application)
+
+**100 % local**. Uniquement des déplacements de réglages entre deux écrans et un changement de clé de stockage (`app_user_prefs` → prefs du plan) pour la navigation intelligente. **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
+
+### v1.85.2 (reprise de sortie, fusion au carnet, wake lock réparé)
+
+**100 % local**. La reprise et la fusion lisent et écrivent la base IndexedDB du Carnet, déjà présente ; le wake lock relit une préférence de `localStorage`. **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
+
+### v1.85.1 (affichage mobile : panneaux centrés, bandeau de mesure)
+
+**100 % local**. Deux corrections d'interface uniquement — position d'un panneau, icône d'un bandeau — plus une préférence d'affichage écrite dans `localStorage` (`app_user_prefs.panneauxAncres`). **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
+
+### v1.85.0 (corriger un calque de données sans quitter la carte)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** « Modifier » un calque **relit le fichier déjà présent dans ton plan**, sur ton appareil — c'est la même lecture que celle faite à l'ouverture du plan, pas une requête de plus. Son contenu va dans la **sauvegarde de session de ton navigateur** (`localStorage`), qui n'a jamais quitté ton appareil et ne le quitte pas davantage ici. ⚠️ Point de transparence utile : cette copie peut peser **plus d'un mégaoctet** sur un gros relevé, et l'app te l'annonce **avant** en te montrant la place déjà occupée — c'est du stockage local, rien n'est envoyé. « Exporter » produit un fichier **téléchargé sur ton appareil**, que tu es seul à décider de partager.  🎯 Le **relevé de coordonnées** ne va rien chercher en ligne non plus : il lit une position que la carte affichée connaît déjà — aucun géocodeur, aucune requête. La copie va dans **ton presse-papier**, nulle part ailleurs. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
+
+### v1.84.0 (plans par étiquette en Vue OSM, légende des imports SIG)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** Afficher d'un coup tous les plans d'une étiquette ne va rien chercher en ligne : les étiquettes sont **celles que tu as tapées toi-même** dans ta bibliothèque, rangées dans le stockage local de ton navigateur, et les plans sont lus **sur ton appareil** (mêmes archives locales qu'avant, simplement plusieurs d'affilée). Le correctif de la légende des imports SIG ne touche qu'au **contenu du fichier de plan que tu fabriques toi-même**, téléchargé sur ton appareil et envoyé nulle part. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0 ; **afficher plus de plans n'en demande pas davantage**, le nombre de tuiles dépend de la zone regardée, pas du nombre de plans posés dessus.
+
+### v1.83.1 (légende des imports SIG)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** Le correctif ne touche qu'au **contenu du fichier de plan que tu fabriques toi-même** : les noms et les couleurs que tu choisis pour la légende y sont désormais écrits en entier au lieu d'être perdus. Ce fichier est **téléchargé sur ton appareil** et n'est envoyé nulle part — c'est toi qui décides de le partager, ou non. Rien d'autre ne change : ni requête, ni permission, ni stockage. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
+
+### v1.83.0 (profondeur des niveaux, profil en long, mesure en Vue OSM)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** Les profondeurs de niveaux sont un **chiffre que tu saisis toi-même**, rangé dans le stockage local de ton navigateur ou dans le fichier de ton plan — rien n'est interrogé pour l'obtenir, aucun modèle de terrain, aucun service d'altitude. Le **profil en long** est un calcul fait sur ton appareil à partir de ton itinéraire. La **mesure en Vue OSM** est de la trigonométrie sur des coordonnées déjà présentes : aucun service de calcul de distance n'est appelé. L'**altitude dans les exports** part dans les fichiers que tu télécharges toi-même et que tu partages, comme le reste de leur contenu. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
+
+### v1.82.1 (podomètre, persistance des réglages, tous les niveaux à l'ouverture)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** Le correctif du podomètre touche un **capteur de l'appareil** déjà utilisé depuis toujours (`devicemotion`, l'accéléromètre) : il était mal interprété, il l'est correctement — **aucune mesure ne sort de ton téléphone**, et aucune permission nouvelle n'est demandée. La réparation des plans déjà créés se fait **à leur ouverture, sur ton appareil**, en corrigeant une valeur du fichier de plan local. Les réglages de pas sont désormais conservés dans le **stockage local de ton navigateur**, par plan — même emplacement que l'échelle depuis la v1.76.1. L'affichage de tous les niveaux à l'ouverture, la case qui permet d'y renoncer et le reclassement d'un objet sont de l'affichage et de la donnée locale. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
+
+### v1.82.0 (import SIG : relevés de carrière, Lambert 93, découpage d'atlas)
+
+**100 % local, aucune requête nouvelle, aucun domaine ajouté.** La conversion du **Lambert 93** est un calcul fait sur ton appareil — une cinquantaine de lignes de trigonométrie ajoutées à l'app, et surtout **aucun service de reprojection n'est interrogé** : c'était l'enjeu, beaucoup d'outils envoient les coordonnées à un serveur pour ça. Les fichiers SIG que tu importes sont lus **dans le navigateur** et n'en sortent pas. L'outil de découpage d'atlas (`scripts/decouper-atlas.js`) ne fait pas partie de l'application : c'est un utilitaire qu'on lance à la main sur son ordinateur, hors navigateur, sans réseau. Le tuilage des plans, les couleurs par niveau et les correctifs d'échelle ne touchent à rien de réseau. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
+
+### v1.81.0 (écart de calage des liaisons, travail de session en Vue OSM)
+
+**100 % local, aucune requête nouvelle.** L'« écart de calage » d'une liaison est un **calcul fait sur ton appareil** à partir de deux informations que tu as toi-même saisies (le géoréférencement de chaque plan) — rien n'est envoyé nulle part pour l'obtenir, et aucun service extérieur n'est interrogé. L'affichage du **travail de session** en Vue OSM lit un fichier déjà présent dans ton navigateur (la sauvegarde automatique de ta session, `myktamap_session_v1_<plan>`), qui n'a jamais quitté ton appareil et ne le quitte pas davantage ici. Les correctifs d'icônes et de mise en page ne touchent à rien de réseau. Aucun nouveau domaine, whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — c'est le seul appel extérieur de cet écran, il existe depuis la v1.40.0 et n'est pas modifié.
+
+### v1.80.0 (documentation en espagnol, Aide intégrée réparée)
+
+**100 % local** — la doc espagnole est un **fichier de plus livré avec l'app** (`README_USER.es.md`), lu depuis ton appareil exactement comme les versions française et anglaise, et **précaché** pour rester disponible hors connexion. Le reste du lot (réparations de l'Aide, mise en forme sortie vers la feuille de style, garde-fous internes) ne touche à rien de réseau. L'**Aide intégrée** a migré du code vers les dictionnaires `lang/` : ça ne change rien au réseau non plus, ces dictionnaires étant **déjà** livrés et précachés avec l'app depuis la v1.45.0 — l'Aide lit désormais un fichier qui était de toute façon là. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.6 (« Affiner le tracé » à la demande, clic « Je suis ici » instantané)
+
+**100 % local** — le recalcul suit les mêmes tracés du plan déjà chargés dans ton navigateur, avec le même moteur d'itinéraire qu'avant ; ce qui change est **quand** le calcul a lieu (à ta demande ou à l'archivage, plus au moment du clic), pas où il se fait. Le trajet redessiné vit dans ta base locale de sorties, à côté du tracé brut qui n'est jamais remplacé. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.5 (distance des « 📍 Je suis ici », carnet, garde-fou de release)
+
+**100 % local** — la distance estimée est calculée **dans ton navigateur** à partir des tracés du plan déjà chargé (même moteur d’itinéraire que le bouton Itinéraire) ; aucune position, aucun repère et aucune distance ne quitte l’appareil. Le reste du lot (carnet, garde-fou de release) est du stockage local et de l’outillage interne. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.4 (langue dès le premier écran, tutoriel multilingue)
+
+**100 % local** — le sélecteur charge les dictionnaires de langue **déjà précachés** par l'application (`lang/*.json`, même origine), le tutoriel lit ces mêmes dictionnaires. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.3 (hygiène du stockage : backups par plan, purge à la suppression, nettoyeur d'orphelines)
+
+**100 % local** — tout se passe entre ta liste de plans et le stockage de ton navigateur (localStorage + IndexedDB). Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.2 (entretien : vérification des traductions, docs dépoussiérées)
+
+Changement **100 % outillage interne** (vérificateur de traductions) + retrait d'une section de doc périmée. Aucun changement réseau d'aucune sorte, whitelist `connect-src` inchangée.
+
+### v1.79.1 (popup doublon systématique, renommage d'affichage)
+
+**100 % local** — la détection de doublon compare des noms déjà présents dans ton navigateur, le nom d'affichage vit dans le même registre local que les tags. Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.79.0 (profil complet avec archives, HOME PC)
+
+**100 % local** — le ZIP « profil complet » est assemblé **dans ton navigateur** (les archives viennent de la base locale de l'app, le fichier est téléchargé par toi) et l'import le lit de même, sans aucun envoi. Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.78.0 (organisation de la bibliothèque : tags, épinglage, filtre, suppression déplacée)
+
+**100 % local** — tags, épinglages et filtres vivent dans le stockage local de ton navigateur (le même registre de plans qu'avant, deux champs de plus). Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.77.0 (netteté OSM au zoom, couleurs de légende sur OSM, outillage, nettoyage)
+
+Traitement **100 % local** — les tuiles détaillées chargées au zoom dans l'aperçu OSM de l'accueil viennent du **ZIP du plan déjà sur ton appareil** (extraction locale, AUCUNE requête — seul le fond de carte OpenStreetMap reste, inchangé, opt-in) ; les couleurs personnalisées sont lues dans le **stockage local**. Le nettoyage de code supprime des fichiers jamais téléchargés par l'app (cartes de débogage de la bibliothèque Leaflet). Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.76.4 (overlay KMZ des grands plans, finitions Mode Développeur)
+
+Traitement **100 % local** — la réduction d'image pour Google Earth se fait dans le navigateur (canvas, tuiles déjà locales), le KMZ est téléchargé par toi. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.76.3 (Mode Développeur, confirmation d'itinéraire)
+
+Le Mode Développeur lit la documentation technique via des requêtes **same-origin** (`docs/*.md`, même domaine que l'app, à la demande, uniquement quand TU ouvres un document) — **aucune nouvelle origine réseau, whitelist `connect-src` inchangée**. Le mot de passe est vérifié **localement** (hash SHA-256 dans le code, aucune requête). La confirmation d'itinéraire est purement locale.
+
+### v1.76.2 (convertisseur de résolution/recalage de l'Éditeur de données)
+
+Outil **100 % local** — les fichiers `.json` et les images dont on lit les dimensions sont traités dans le navigateur, les fichiers convertis sont **téléchargés par toi**. Aucune requête réseau, aucun nouveau domaine, whitelist `connect-src` inchangée.
+
+### v1.76.1 (train v1.76 complet — la v1.76.0 n'a été servie que sur le domaine de dev)
+
+Mêmes garanties, périmètre élargi. En plus de la personnalisation des couleurs : **bordures indépendantes** (zones/piliers), **liaison d'un type hérité** à la légende (bouton ➕ Lier), **estimation du point B** du géoréférencement (calcul entièrement local à partir du point A, de l'échelle et de l'orientation Nord — aucune requête, aucun service de géocodage), **échelle mémorisée par plan** (localStorage), et lecture des dimensions d'images dans l'en-tête du fichier (traitement local, permet de refuser proprement les images trop grandes pour le navigateur). **Aucune nouvelle surface réseau, aucun nouveau domaine, whitelist `connect-src` inchangée.**
+
+### 🗜️ Résumé compact par version (déplacé de l'en-tête le 06/08/2026 — il était devenu un pavé avant même la promesse)
 
 > _v1.76.0 — **Personnalisation de la légende (couleurs des types) et légende voyageant avec les exports** : tout est **purement local** — les couleurs choisies vivent dans la sauvegarde de session de ton navigateur (localStorage), le rendu est recalculé sur l'appareil. **Aucune requête réseau nouvelle, aucun nouveau domaine, whitelist inchangée.** Point de transparence : les fichiers que **tu exportes toi-même** (calque de données, session, KMZ/GPX) contiennent désormais la définition de tes types personnalisés — noms que tu as tapés et couleurs choisies — pour que le destinataire les retrouve. Rien ne part de ton appareil autrement que par ces fichiers que tu télécharges et partages toi-même. v1.75.0 — **Import depuis un SIG** : tu peux convertir un fichier QGIS (GeoJSON, KML, KMZ) en plan. **Le fichier est lu sur ton appareil, rien n'est envoyé** — aucun service de conversion, aucun géocodeur, aucune vérification en ligne des coordonnées. Le fond de plan est dessiné localement. **Fond d'écran de l'accueil** : ton image reste dans le stockage local du navigateur, avec ses métadonnées supprimées au passage. **Récupération du ZIP d'un plan** : l'archive vient du stockage local, le téléchargement ne passe par aucun serveur. **Aucune nouvelle requête, aucun nouveau domaine, whitelist inchangée.** v1.73.1 — Trois correctifs **sans aucun impact réseau** : le réimport d'un plan déjà connu propose de le mettre à jour au lieu de créer un doublon (registre et archive locaux, mêmes emplacements de stockage qu'avant), ouvrir une fenêtre désarme l'outil de dessin en cours (interface pure), et la Vue OSM affiche enfin les calques livrés masqués dans un ZIP (mêmes fichiers déjà lus localement). **Aucune nouvelle requête, aucune donnée sortante.** v1.73.0 — **Mode serveur « kiosque »** : une instance auto-hébergée peut personnaliser son sous-titre, masquer l'import de plans/le Générateur et livrer ses liaisons via `data/index.json` (fichier **déjà lu depuis toujours**, même domaine). Changement de comportement : ce fichier est désormais relu **au réseau à chaque démarrage** (au lieu du cache) pour que les mises à jour d'une instance se propagent — **1 requête same-origin par boot, aucune nouvelle URL, aucune donnée sortante** ; hors-ligne, la copie en cache est utilisée. La page `confadmin.html` (outil du déployeur) travaille **100 % localement** : les ZIP et le profil qu'on lui donne ne quittent jamais le navigateur. v1.71.0 — Le mode OSM affiche **plusieurs plans à la fois** (panneau d'ordre/opacité) : toujours **100 % local** (lecture des ZIP sur l'appareil), seules les tuiles de fond `tile.openstreetmap.org` déjà whitelistées sont demandées — aucune requête réseau nouvelle. v1.70.0 — Mode OSM enrichi d'une **recherche 100 % locale** (vos plans géoréférencés + leurs points, lus depuis votre appareil — **aucun service d'adresses interrogé**, aucune requête réseau nouvelle, whitelist inchangée) + avertissement de performance à la première ouverture. v1.69.0 — Nouveau « Mon carnet » : tes sorties sont archivées **sur ton appareil uniquement** (nouvelle base locale `myktamap_journal`), avec tes notes et tes PDF de plan réunis au même endroit — le Mode Histoire accepte désormais **jusqu'à 10 PDF par plan** (base `myktamap_histoire_pdfs` migrée, plafonds 25/100 Mo, enfin comptée dans « Stockage »). L'accueil est **repensé** (habillage en cards, recherche au centre de l'en-tête, Vue OSM agrandie, outils en grille) : **réorganisation d'affichage pure**, mêmes fonctions. Aucune requête réseau ajoutée, aucune photo dupliquée (le carnet ne garde que des références), aucune donnée collectée. v1.68.1 — Correctif d'affichage des traductions au démarrage (certains libellés apparaissaient en anglais approximatif). **Purement local**, et l'app émet même **une requête de moins** au démarrage : les dictionnaires de langue n'étaient parfois téléchargés deux fois, c'est corrigé — aucune nouvelle requête réseau, aucune donnée collectée. v1.68.0 — Accueil repensé pour mobile (réorganisation d'affichage uniquement). **Purement local** : CSS et logique d'affichage — aucune requête réseau, aucune donnée collectée. v1.67.2 — L'export du profil inclut désormais le registre des liaisons entre plans et deux préférences de navigation. **Purement local** : mêmes données locales, simplement embarquées dans le fichier d'export que l'utilisateur télécharge lui-même — aucune requête réseau, aucune donnée collectée. v1.67.1 — Correctifs d'interface : les boutons flottants de navigation (retour réduit, portail suivant, boussole) disparaissent proprement à la sortie d'un plan, et les conditions d'utilisation sont traduites en espagnol. **Purement local** — aucune requête réseau, aucune donnée collectée. v1.67.0 — Multi-niveau : le plan principal se masque comme le niveau 0 (superposition d'étages lisible) + avertissement du générateur si un calque de niveau n'a pas de transparence. **Purement local** : logique d'affichage et analyse d'images dans le navigateur — aucune requête réseau, aucune donnée collectée. v1.66.0 — Nettoyage interne : le script embarqué de l'écran d'accueil est découpé en 3 fichiers JavaScript statiques (chargement des plans, profil, configuration) — extraction à l'identique, aucun changement de comportement. **Purement local** : mêmes fonctions, servies depuis les mêmes origines, 3 fichiers de plus au précache — aucune requête réseau nouvelle, aucune donnée collectée. v1.65.0 — Vue « réseau de plans » (graphe des plans et portails dans le gestionnaire Mes liaisons). **Purement local** : rendu SVG dans le navigateur à partir de données déjà locales (bibliothèque + registre des liaisons) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. Un fichier JS statique de plus au précache (`js/planNetwork.js`). v1.64.0 — Itinéraire à travers plusieurs plans (multi-hop, opt-in à cocher), refonte du déroulé (la traversée se propose quand on est au portail), points de passage avant le portail, et 3 correctifs (lecture des calques de plans serveur, position du tracker au changement de plan, effacement du tracé à « Effacer la session »). **Purement local** : mêmes lectures de plans same-origin/IndexedDB déjà couvertes par l'audit — aucune nouvelle requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.63.0 — Confidentialité des photos renforcée : toute photo est ré-encodée à l'ajout, ce qui supprime systématiquement ses métadonnées EXIF (position GPS de la prise de vue, date, modèle d'appareil) ; l'export anonymisé peut désormais inclure les photos, chacune ré-encodée sans métadonnées avant d'entrer dans l'archive (une photo non ré-encodable est exclue). **Purement local** : traitement d'images dans le navigateur, aucune requête réseau, aucune donnée collectée. v1.62.0 — Transparence des plans : les images sources avec canal alpha sont tuilées sans fond ajouté (tuiles WebP/PNG au lieu de JPEG). **Purement local** : encodage/décodage d'images dans le navigateur, aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.61.0 — Itinéraire vivant (replanification automatique au recalage de position + validation d'étapes via « 📍 Je suis ici », dans n'importe quel ordre) + recalage du tracker sur le point d'arrivée d'un portail + bouton Retour réductible/fermable + correctifs d'affichage (boutons de fermeture de modales). **Purement local** : tous les calculs d'itinéraire et réglages restent sur l'appareil (localStorage) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.60.1 — Améliorations de traduction (Journal réseau, messages d'import) — **aucun impact réseau**. v1.60.0 — Itinéraire inter-plan (calcul de trajet à travers les portails). **Aucune nouvelle surface réseau** : les tracés du plan de destination sont lus depuis le stockage local (IndexedDB) ou le propre domaine de l'app (déjà couverts par `connect-src 'self'`) ; tout le calcul est local. v1.59.0 — Mode Performance ULTRA par plan (opt-in strict), gestionnaire de liaisons, nouveau tag « Portail » avec icône dédiée (fichier image local, précaché), avertissements « plan injoignable ». **Purement local** : réglages en localStorage par plan, lecture des plans via stockage local ou requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`) — aucune nouvelle permission, aucune donnée collectée. v1.58.0 — Recherche multi-plans + bouton Retour après un saut inter-plan. **Aucune nouvelle surface réseau** : la lecture des points des autres plans passe par le stockage local (localStorage/IndexedDB) ou par des requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`). v1.57.4 — Correctif interne de stabilité mémoire lors des changements de plan répétés. **Purement local** — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. v1.57.3 — Mise à jour de documentation uniquement (Aide intégrée, Aide IA et doc utilisateur pour les liaisons inter-plan) — aucun impact réseau. v1.57.2 — Correctif purement local : les outils d'édition sont désactivés à l'ouverture d'un plan (aucun impact réseau). v1.57.1 — Liaisons inter-plan (avec correctif d'arrivée : bascule automatique sur le niveau du point de destination) (lier un point d'un plan à un point d'un autre plan). **Aucune nouvelle surface réseau** : le registre des liaisons vit en localStorage, la lecture des points d'un autre plan passe par le stockage local (IndexedDB) ou par des requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`). Les conditions d'utilisation s'affichent désormais avant la saisie du code d'accès (changement d'ordre local, zéro réseau). (v1.56.3 : renommage du domaine de dev en `dev.myktamap.fr`.)_
 
+### 🆕 Notes détaillées par version (du plus récent au plus ancien)
 
-> **v2.9.9 (cartes PDF nettes)** : **aucune requête nouvelle, aucun domaine nouveau.** Les cartes des PDF du Mode Secours lisent les tuiles du plan déjà ouvert — sur l'appareil pour un plan importé, sur le même serveur que le plan pour un plan servi (les mêmes adresses que l'affichage de la carte).
->
-> **v2.9.8 (Mode Secours sur le terrain)** : **aucune requête nouvelle, aucun domaine nouveau.** Les options brancard et l'ouverture d'un scénario depuis l'accueil se calculent sur l'appareil, avec le plan déjà présent. La fenêtre « Que fait l'app sur le réseau ? » liste désormais aussi OpenStreetMap (fond de la Vue OSM, déjà autorisé), et la directive `connect-src` est citée telle qu'elle est servie.
->
-> **v2.9.7 (effectif d'équipe automatique)** : **aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, l'effectif se calcule à partir des comptes déjà connus de l'appareil : rien n'est demandé de plus au serveur.
->
-> **v2.9.6 (Secours relié aux comptes)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur : pendant une intervention Secours déclenchée, les étapes cochées, départs et rentrées, accusés « vu » et **photos d'étape** sont envoyés à l'installation (gardés hors réseau, envoyés au retour) ; une position sur le plan partagée n'est remise qu'aux membres d'un groupe commun.
->
-> **v2.9.5 (Secours à plusieurs appareils, export filtré)** : **aucune requête nouvelle, aucun domaine nouveau**, ni sur `myktamap.fr` ni sur une installation reliée. Le filtre d'export travaille sur l'appareil. Sur une installation reliée, le partage en direct du Mode Secours (déjà existant) n'est plus relayé que pour les comptes qui ont le droit de modifier le plan.
->
-> **v2.9.4 (correctif de sécurité, lecture seule)** : **aucune requête nouvelle, aucun domaine nouveau**, ni sur `myktamap.fr` ni sur une installation reliée. Le contenu d'un plan ou d'une session partagés est désormais filtré à l'ouverture (adresses d'icônes, couleurs, libellés) : rien de ce qu'il contient ne peut s'exécuter dans l'app.
->
-> **v2.9.3 (itinéraire montré à l'équipe)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur, **si tu le choisis** (bouton 🧭 de la fenêtre Itinéraire) : ton itinéraire (le tracé et ses étapes, sur le plan) est envoyé et montré à ceux qui peuvent ouvrir ce plan, mis à jour à chaque étape, retiré quand tu l'effaces et au plus tard après 24 h.
->
-> **v2.9.2 (panneau Équipe, activité)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur : l'app demande qui a quel plan ouvert (l'« activité » : pseudo, plan, « en édition »), visible de ceux qui peuvent ouvrir ce plan. Ta position sur le plan (pas le GPS) reste partagée seulement si tu le choisis.
->
-> **v2.9.1 (portails gardés, plusieurs comptes sur un plan)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, et seulement vers **son** serveur (même site) : les modules déclarés par l'installation sont aussi gardés dans un cache durable du navigateur (téléchargés à la lecture de sa configuration, pour le hors ligne) ; « Tout réinitialiser » prévient d'abord le serveur pour fermer la session.
->
-> **v2.9.0 (installations reliées : publier, garder hors ligne, présence)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Mémoriser après coup un plan local relit le ZIP que tu choisis **sur ton appareil**. Sur une installation reliée à une base de données, et seulement vers **son** serveur (même site) : un plan local peut y être **publié** (son ZIP est envoyé, à ta demande) ; un plan ☁️ peut être gardé sur l'appareil depuis sa ligne ; **partager ta position** sur un plan est une **case à cocher** (rien ne part sans elle) ; la pastille peut mener à la page de transparence de l'installation (même site). Hors ligne, la licence de l'appareil n'est plus effacée : le Service Worker répond lui-même « hors ligne », sans requête.
->
-> **v2.8.0 (licences signées, installations reliées)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** Une licence pro est désormais **signée** : l'app vérifie sa signature, sa date de fin et l'adresse pour laquelle elle a été émise **dans ton navigateur**, avec une clé publique embarquée — rien n'est envoyé pour la vérifier. Sur une installation reliée à une base de données : l'adresse de la base peut être un chemin du même site (`/api/`), toujours sur le même site que l'app ; un plan venu de la base affiche sa progression de téléchargement ; se déconnecter efface de l'appareil les données de ce compte. Image Docker community : en-tête `Referrer-Policy` aligné sur la prod (`strict-origin-when-cross-origin`) — la politique d'usage d'OpenStreetMap exige l'en-tête `Referer` (le site seul, jamais la page), sans quoi les tuiles de la Vue OSM étaient bloquées dans cette image.
->
-> **v2.7.4 (compte affiché sur l’accueil d’une installation reliée)** : **aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à une base de données, la carte profil de l’accueil affiche le compte connecté (pseudo et rôle) sans rien écrire dans ton profil local, qui revient à la déconnexion. Sans effet sur `myktamap.fr`.
->
-> **v2.7.3 (écran de démarrage)** : **aucune requête nouvelle, aucun domaine nouveau.** Changement visuel seulement : l’écran de démarrage n’a plus de cadre autour de l’écran.
->
-> **v2.7.2 (version des modules d’une installation reliée)** : **aucune requête nouvelle, aucun domaine nouveau.** Une installation reliée à une base de données peut indiquer la version de ses modules (`?v=…` à la fin de leur chemin, toujours sur le même site que l’app) : une nouvelle version est alors téléchargée une fois, au lieu de rester bloquée sur l’ancienne. Sans effet sur `myktamap.fr`, qui n’a ni base de données ni module.
->
-> **v2.7.1 (réponses de base de données jamais gardées en cache)** : **aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée à une base de données, le service worker de l’app ne garde **jamais** en cache une réponse de cette base (ni aucune requête authentifiée) : tes données de compte et de synchronisation ne restent pas dans le cache du navigateur. Sans effet sur `myktamap.fr`, qui n’a pas de base de données.
->
-> **v2.7.0 (points d’extension des installations indépendantes)** : **sur `myktamap.fr` : aucune requête nouvelle, aucun domaine nouveau.** L’app peut désormais accueillir des modules de connexion à une base de données, mais **uniquement** sur une installation qui les déclare dans sa configuration **et** pose une licence ; `myktamap.fr` n’en déclare aucun, et l’app vérifie ces deux conditions avant de charger quoi que ce soit (la pastille reste « Base de données : désactivée »). Sur une telle installation, les modules sont servis par le même site que l’app, et toute requête vers la base de données passe par un garde unique qui refuse une autre adresse que celle déclarée, et refuse tout envoi quand la connexion est désactivée ou injoignable. La page de transparence de cette installation décrit ce qu’elle synchronise.
->
-> **v2.6.0 (configuration de l’installation lue une seule fois)** : **aucun domaine nouveau, une requête de moins.** `data/index.json`, que l’app lisait déjà à chaque démarrage, est lu **une seule fois**, un peu plus tôt (avant l’écran de code), au lieu de deux quand cet écran s’affiche. Au-delà de 2 secondes sans réponse, l’app abandonne cette lecture et reprend la dernière configuration connue, gardée **sur ton appareil** (stockage local, clé `myktamap_instance_config_v1` : uniquement la section « config » de l’installation, ni tes données ni la liste des plans).
->
-> **v2.5.0 (photos des plans importés)** : **aucun changement réseau**, aucun domaine, aucune requête. Les photos contenues dans un plan importé sont recopiées dans le stockage local de ton navigateur comme avant ; tes propres photos de ce plan ne sont plus effacées à sa réouverture. Tout se fait sur ton appareil.
->
-> **v2.4.0 (favoris, liaisons et Secours rattachés à l’identifiant du point)** : **aucun changement réseau**, aucun domaine, aucune requête. Tes favoris, tes liaisons entre plans et tes scénarios de secours restent dans le stockage local de ton navigateur ; seule l’étiquette qui les relie à leur point change. Tout se fait sur ton appareil.
->
-> **v2.3.0 (photos rattachées à l’identifiant du point)** : **aucun changement réseau**, aucun domaine, aucune requête. Tes photos restent dans la base locale de ton navigateur ; seule l’étiquette qui les relie à leur point change (l’identifiant du point au lieu de son nom). La migration se fait **sur ton appareil** et ne supprime aucune photo.
->
-> **v2.2.0 (traces de suppression, fusion par identifiant)** : **aucun changement réseau**, aucun domaine, aucune requête. Quand tu supprimes un élément, son identifiant est gardé **sur ton appareil** 90 jours (stockage local de la session) ; il part dans tes exports complets, **jamais** dans l’export anonymisé. La fusion de sessions se fait sur ton appareil, sans rien envoyer.
->
-> **v2.1.0 (identifiants stables des objets)** : **aucun changement réseau**, aucun domaine, aucune requête. Chaque objet de tes plans reçoit un identifiant et une date de modification, **calculés et rangés sur ton appareil** (stockage local de la session, quelques dizaines d’octets par objet). Un fichier de plus est servi par le site et précaché (`js/ktaUid.js`). Ces identifiants partent dans tes exports JSON (que tu télécharges toi-même), **jamais** dans l’export anonymisé, KMZ ou GPX.
->
-> **v2.0.1 (export anonymisé : liaisons retirées)** : **aucun changement réseau**, aucun domaine, aucune requête. Correctif de confidentialité sur un **fichier que tu télécharges toi-même** : l’export de session « anonymisé » gardait les **liaisons inter-plan**, avec le vrai nom du plan et du point de chaque côté (présentes depuis la v1.57.0). Elles en sont retirées. Un export anonymisé fait **avant** la v2.0.1 depuis un plan qui avait des liaisons peut contenir ces noms : vérifie-le avant de le repartager.
->
-> **v2.0.0 (pastille « connexion serveur »)** : **aucune requête nouvelle, aucun domaine nouveau, whitelist `connect-src` inchangée.** Une pastille 🔌 apparaît en bas de l’accueil : sur `myktamap.fr` elle affiche « Base de données : désactivée », et un clic ouvre « Que fait l’app sur le réseau ? ». Son état est **lu dans `data/index.json`, que l’app chargeait déjà à chaque démarrage** : aucune lecture de plus. Une installation indépendante peut y déclarer une connexion serveur (adresse d’API, modules) ; l’app **ne contacte jamais cette adresse** dans cette version et ne charge aucun module — elle affiche seulement « Licence requise », « Configurée, aucun module » ou « Configuration invalide ». La dernière configuration vue est gardée **sur l’appareil** (stockage local, clé `myktamap_server_connection_v1`), jamais dans l’export de profil. La phrase « aucun POST/PUT… » plus haut est désormais bornée à `myktamap.fr`, qui n’aura jamais de serveur applicatif. Le démarrage affiche un « 2 » manuscrit au-dessus du titre dans une **police embarquée** (`lib/fonts/kalam-700-splash.woff2`, ~3,5 Ko) : un fichier de plus **servi par le site lui-même et précaché** — aucune police tierce, aucun Google Fonts, `font-src 'self'` inchangé.
->
-> **v1.99.8 (tutoriel d’accueil refondu)** : **aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
->
-> **v1.99.6 (guide et aide réécrits)** : **aucun changement réseau**, aucun domaine, aucune requête — textes seulement.
->
-> **v1.99.5 (plus de consigne fantôme à la suppression de l’itinéraire)** : **aucun changement réseau**, aucun domaine, aucune requête.
->
-> **v1.99.4 (inter-plans : la suite ne passe que par le portail)** : **aucun changement réseau**, aucun domaine, aucune requête.
->
-> **v1.99.3 (supprimer l’itinéraire depuis la question de recalcul)** : **aucun changement réseau**, aucun domaine, aucune requête (un bouton de plus dans une fenêtre).
->
-> **v1.99.2 (guidage des itinéraires inter-plans)** : **aucun changement réseau**, aucun domaine, aucune requête. Les données des autres plans étaient déjà lues sur l’appareil pour calculer le trajet ; le guidage en garde simplement les croisements.
->
-> **v1.99.1 (guidage de plaque en plaque ; coupe de l’itinéraire derrière soi)** : **aucun changement réseau**, aucun domaine, aucune requête. La coupe de l’itinéraire et le guidage se calculent sur l’appareil.
->
-> **v1.99.0 (fonctionnalités optionnelles ; Aide IA dans la Documentation)** : **aucun changement réseau**, aucun domaine, aucune requête. **Un capteur de moins écouté par défaut** : l’indicateur de batterie est désormais une option désactivée — tant qu’il l’est, l’app n’interroge pas le niveau de batterie du téléphone. L’Aide IA lit toujours `AI_CONTEXT.md` sur le même serveur, seulement quand on la demande.
->
-> **v1.98.26 (calques en modification à l’import de session ; import unifié ; « Nouveau type… »)** : **aucun changement réseau**, aucun domaine, aucune requête. Tout se passe sur l’appareil.
->
-> **v1.98.25 (Mode Secours, vague 8b)** : **aucun changement réseau**, aucun domaine, aucune requête. La couverture est calculée sur l'appareil.
->
-> **v1.98.24 (Mode Secours, vague 8a)** : **aucun changement réseau**, aucun domaine, aucune requête. Évacuation, bilan des engagés, durées, recalage et PDF sont calculés sur l'appareil.
->
-> **v1.98.23 (Mode Secours, retours KARMA)** : **aucun changement réseau**, aucun domaine, aucune requête (affichage de la vue équipe et textes d'aide seulement).
->
-> **v1.98.22 (Mode Secours, test terrain)** : **moins de réseau**. Le **rapport PDF** n'ouvre plus la Vue OSM pour la capturer : sa page surface est désormais une carte des accès tirée du plan, sur l'appareil — aucune tuile OpenStreetMap demandée. Le **briefing pompiers** garde la capture OSM, en option, après cette carte. Aucun nouveau domaine, aucune nouvelle requête.
->
-> **v1.98.21 (Mode Secours, retours de test)** : **aucun changement réseau**, aucun domaine, aucune requête.
->
-> **v1.98.20 (Mode Secours, vague 7b)** : **aucun changement réseau**, aucun domaine, aucune requête. Le contrôle hors-ligne au lancement lit le **cache local** du navigateur (rien n'est demandé au serveur) ; la couverture est calculée sur l'appareil.
->
-> **v1.98.19 (Mode Secours, vague 7a)** : **aucun changement réseau**, aucun domaine, aucune requête. La main courante et le compte des remontés restent sur l'appareil ; ils voyagent dans le fichier de rapport que tu transmets toi-même.
->
-> **v1.98.18 (Mode Secours, guidage)** : **aucun changement réseau**, aucun domaine, aucune requête. Le guidage et la feuille de route sont calculés sur l'appareil, à partir du plan déjà chargé.
->
-> **v1.98.17 (affichage iPhone)** : **aucun changement réseau**, aucun domaine, aucune requête. Deux corrections de mise en page.
->
-> **v1.98.16 (Mode Secours, vague 5)** : **aucun changement réseau**, aucun domaine, aucune requête. Alertes de retard et rappel sont calculés et notés **sur l'appareil** : l'app n'envoie rien aux autres téléphones (le rappel se transmet par radio). Départ, rentrée, rappel et position de la victime voyagent dans le fichier de rapport que tu transmets toi-même.
->
-> **v1.98.15 (Mode Secours, niveaux vides)** : **aucun changement réseau**, aucun domaine, aucune requête. Le contenu des niveaux est lu dans le plan déjà chargé.
->
-> **v1.98.14 (Mode Secours, retours terrain)** : **aucun changement réseau**, aucun domaine, aucune requête. Les coordonnées GPS affichées sont calculées sur l'appareil à partir du géoréférencement du plan ; l'état replié des équipes reste dans le navigateur.
->
-> **v1.98.13 (doc, langues et thème clair)** : **aucun changement réseau**, aucun domaine, aucune requête. Textes, couleurs et format des dates sont locaux. Le tutoriel mentionne désormais les tuiles OpenStreetMap de la Vue OSM parmi les requêtes émises — c'était déjà le cas depuis la v1.90.2 et documenté ici.
->
-> **v1.98.12 (Mode Secours, 4e relecture)** : **aucun changement réseau**, aucun domaine, aucune requête. Fusion des rapports, historique des phases et PDF restent calculés sur l'appareil ; la capture de la vue OSM du briefing ne fait qu'exclure les boutons de zoom de l'image.
->
-> **v1.98.11 (Mode Secours, vague 4)** : **aucun changement réseau**, aucun domaine, aucune requête. Durées, calage d'itinéraire et contrôle de version du plan sont calculés sur l'appareil.
->
-> **v1.98.10 (Mode Secours, 3e relecture)** : **aucun changement réseau**, aucun domaine, aucune requête. Les identités des points sont calculées sur chaque appareil à partir du plan lui-même : rien n'est échangé ni demandé à un serveur.
->
-> **v1.98.9 (Mode Secours, 2e relecture)** : **aucun changement réseau**, aucun domaine, aucune requête. Les étapes, photos et rapports restent sur l'appareil ; les rapports circulent toujours comme des fichiers que tu transmets toi-même.
->
-> **v1.98.8 (Mode Secours, reprise après relecture)** : **aucun changement réseau**, aucun domaine, aucune requête. Les corrections portent sur des données locales (étapes, photos gardées sur l'appareil, PDF fabriqués sur place) ; la Vue OSM trace l'itinéraire autrement, avec les mêmes tuiles.
->
-> **v1.98.7 (Mode Secours, documents papier)** : **aucun changement réseau**, aucun domaine, aucune requête. Les PDF de briefing et de rapport sont fabriqués sur ton appareil, à partir du plan déjà chargé ; ils sont seulement plus légers et plus complets.
->
-> **v1.98.6 (Mode Secours, saisie du plan)** : **aucun changement réseau**, aucun domaine, aucune requête. La sélection de galeries, l'ordre des étapes, le niveau des points et la mise à jour des étapes en cours d'intervention sont calculés sur ton appareil.
->
-> **v1.98.5 (correctifs du Mode Secours)** : **aucun changement réseau**, aucun domaine, aucune requête. Le plan de secours et les rapports d'équipe circulent toujours comme des **fichiers** que tu transmets toi-même (AirDrop, câble, messagerie) ; l'app ne fait que les lire sur ton appareil. Ce qui change est local : l'import garde les identifiants du scénario, et la fusion d'un rapport départage mieux les statuts.
->
-> **v1.98.4 (tuiles du fond à la demande)** : **moins de requêtes, aucun domaine nouveau.** Sur un plan tuilé servi par le serveur, l'app ne télécharge plus que les tuiles du fond proches de ce que tu regardes (mesuré : 12 au lieu de 864 au zoom le plus fin) ; les autres le sont quand tu t'en approches. Même serveur, mêmes fichiers — seulement moins, et plus tard. Le reste est local (mémoire de l'appareil).
->
-> **v1.98.3 (itinéraire plus rapide, réglages de performance)** : **aucun changement réseau**, aucun domaine, aucune requête. Le calcul d'itinéraire est plus rapide (même résultat, calculé sur ton appareil), et les réglages de performance masquent ou simplifient à l'affichage les tracés déjà chargés — rien n'est téléchargé ni envoyé en plus.
->
-> **v1.98.2 (correctifs du tour du backlog)** : **aucun domaine nouveau, aucune requête nouvelle vers l'extérieur.** Un seul changement de ce que l'app télécharge, et il est sur **son propre serveur** : le fichier `js/planOffline.js` (le module qui rend un plan serveur disponible hors connexion) rejoint la liste des fichiers mis de côté à l'installation — il était déjà téléchargé à l'ouverture, il l'est maintenant aussi pour marcher sans réseau. Le reste est local : suppression des documents d'un plan sur ton appareil, calcul de la mémoire de l'export image, codes de l'export anonymisé.
->
-> **v1.98.1 (sortie mise en pause au changement de plan)** : **aucun changement réseau**, aucune requête, aucun domaine. La mise en pause d'une sortie et sa reprise se font dans le carnet stocké sur ton appareil (IndexedDB) ; la relance du suivi utilise les capteurs du téléphone déjà employés par le tracker, rien ne part sur le réseau.
->
-> **v1.98.0 (guidage de l'itinéraire)** : **aucun changement réseau**, aucun domaine, aucune requête. Le guidage (bandeau « Dans 40 m, tourner à gauche », feuille de route, schéma des carrefours) calcule tout **sur ton appareil**, à partir de l'itinéraire déjà calculé localement et de ta position estimée ; rien n'est envoyé. Le nouveau module `js/itiGuidage.js` est servi par le même serveur que le reste de l'app et **mis en cache hors-ligne** (précache du service worker). Son seul stockage : ton choix Auto / Jamais et une suggestion déjà faite, dans le localStorage de ton navigateur.
->
-> **v1.97.12 (mise en page du bouton de copie)** : **aucun changement réseau**, aucun domaine, aucune requête — seule la place du bouton « Copier ma position » change dans l'écran d'urgence. Ce qu'il copie et où ça va restent identiques : le presse-papier de ton appareil, rien d'autre.
->
-> **v1.97.11 (indicateur de batterie)** : **aucun changement réseau**, aucun domaine, aucune requête. L'écran d'urgence n'affiche plus d'indicateur de batterie quand le capteur est indisponible ou que tu as décoché le réglage — et décocher ce réglage coupe aussi l'écoute du capteur, comme depuis la v1.85.2.
->
-> **v1.97.10 (copier sa position)** : **100 % local**, aucune requête, aucun domaine. Le bouton « Copier ma position » écrit dans le **presse-papier de ton appareil** — l'app n'envoie rien, ne géolocalise rien et n'interroge aucun service : les coordonnées sont calculées sur place à partir du calibrage de ton plan. C'est **toi** qui décides ensuite de les coller quelque part. ⚠️ Rappel : le presse-papier est lisible par d'autres applications de ton appareil — comme pour tout ce que tu copies.
->
-> **v1.97.9 (moins de requêtes à l'ouverture d'un plan)** : **100 % local**, aucun domaine nouveau — et **21 requêtes en MOINS** par ouverture de plan. L'app demandait à ton serveur, icône par icône, si elle était livrée dans le dossier du plan ; un plan généré avec cette version le **déclare** dans son fichier de configuration, donc plus aucune question à poser. Un plan plus ancien conserve l'ancien comportement (ces requêtes restent adressées **au domaine qui sert l'app**, jamais ailleurs) jusqu'à sa régénération.
->
-> **v1.97.8 (documents d'un plan dans le Carnet)** : **100 % local**, aucun domaine nouveau, aucune requête vers l'extérieur. Un PDF livré dans le ZIP d'un plan est **recopié sur ton appareil** (base locale du Mode Histoire) à l'ouverture de ce plan, pour qu'il reste consultable depuis « Mon carnet » sans recharger le plan. La lecture se fait depuis le fichier déjà présent (ZIP extrait en mémoire, ou même domaine que l'app pour un plan servi) ; rien n'est envoyé nulle part, et tu peux supprimer cette copie.
->
-> **v1.97.7 (écran d'urgence épuré)** : **100 % local**, aucun domaine nouveau, **aucune requête nouvelle**. L'écran d'urgence affiche désormais une seule position : quand ton plan est géoréférencé, les coordonnées GPS sont **calculées sur ton téléphone** à partir du calibrage enregistré localement — aucun service de localisation n'est interrogé, rien ne sort de l'appareil.
->
-> **v1.97.6 (cache hors-ligne, écran d'urgence, fonds de carte)** : **100 % local**, aucun domaine nouveau. Deux changements touchent le réseau, tous deux dans le sens de MOINS de trafic et de PLUS de hors-ligne : (1) le ménage automatique du cache n'efface plus les fichiers dont un plan a besoin pour s'ouvrir — un plan déjà consulté reste donc consultable sans réseau ; (2) trois écrans (mini-carte d'urgence, Vue OSM, export KMZ) demandaient leurs tuiles à une adresse qui n'existait pas sur une instance servie en HTTP — ils les demandent maintenant au bon endroit, **sur le même domaine que l'app**, là où ils n'obtenaient rien.
->
-> **v1.97.5 (réparation des plans aux réglages impossibles)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Une valeur lue dans le fichier de ton plan est remplacée par la valeur d'usine si elle est hors bornes ; le fichier, lui, n'est pas modifié.
->
-> **v1.97.4 (zoom à deux doigts en mode « plan orienté »)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Un réglage d'interaction rendu à la bibliothèque de cartographie.
->
-> **v1.97.3 (affichage aux bords en mode « plan orienté »)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Du calcul d'affichage : l'app décide mieux quelles tuiles déjà présentes sur l'appareil rester affichées. Rien n'est téléchargé ni envoyé.
->
-> **v1.97.2 (placement du bouton « Recentrer »)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Un bouton qui se déplace de quelques pixels à l'écran.
->
-> **v1.97.1 (correctif d'affichage du mode « plan orienté »)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Les tuiles hors écran sont simplement retirées de l'affichage pendant que la carte tourne : elles étaient déjà sur l'appareil, rien n'est téléchargé ni envoyé.
->
-> **v1.97.0 (mode « plan orienté »)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Faire tourner la carte est un calcul d'affichage : la rotation vient de la boussole de ton appareil, déjà utilisée par le tracker, et **rien n'en sort**. Le choix d'activer le mode vit dans les préférences de ton navigateur (`localStorage`). Un fichier JavaScript de plus au précache (`js/mapBearing.js`).
->
-> **v1.96.0 (réglages du podomètre globaux)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Taille de pas, seuil et cooldown quittent le plan-config pour les préférences de ton navigateur (`localStorage`), qui voyagent dans l'export de profil que TU déclenches. Un ZIP généré contient donc trois clés de moins, rien de plus.
->
-> **v1.95.0 (dossiers de « Mes plans », étiquettes à la génération)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle. Les dossiers, leur mode et les appartenances vivent dans le registre de ton navigateur (`localStorage`), voyagent dans l'export de profil que TU déclenches, et — sur une instance auto-hébergée — peuvent être proposés par le `data/index.json` de ce serveur, un fichier que l'app lisait déjà. Les étiquettes saisies dans le Générateur sont écrites dans le ZIP que tu produis, rien d'autre. La copie d'un ZIP mémorisé est désormais une vraie copie (plus un lien vers le fichier du disque) : elle ne sort pas plus du navigateur qu'avant.
->
-> **v1.94.0 (import multiple de plans)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les archives sont lues **dans le navigateur**, et rangées soit par une autorisation d'accès au fichier d'origine, soit par une copie dans le stockage local — les mêmes emplacements que l'ajout d'un plan à l'unité. Aucun octet n'est envoyé nulle part, et la fonction marche hors ligne.
-
-> **v1.93.0 (prise en charge des GeoTIFF)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le `.tif` est lu **dans le navigateur** (`FileReader` → `ArrayBuffer`), décodé en mémoire et ré-encodé en PNG par le canvas ; **aucun octet du fichier ne quitte l'appareil**, et aucune bibliothèque externe n'est chargée pour cela (pas de CDN, rien de vendoré). La reprojection Lambert 93 / Web Mercator → WGS84 est du calcul local. Un GeoTIFF **géoréférence** le plan : les fonctions qui demandent ensuite des tuiles OSM (Vue OSM) deviennent disponibles pour ce plan, exactement comme après un calage saisi à la main — c'est le seul effet réseau, indirect et inchangé.
-
-> **v1.92.0 (Réglages : application immédiate, portée explicite, géoref en sous-modale)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les réglages restent dans `localStorage` (clés `myktamap_plan_prefs_<plan>`, `myktamap_perf_toggles_v2_<plan>`, `myktamap_kmz_calib_<plan>`, nouvelle clé d'interface `myktamap_cfg_groupes_v1` = groupes repliés). Le reset ne réécrit plus `app_user_prefs`.
-
-> **v1.91.2 (recherche plein texte de la documentation + docs bulle / Détails)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. La recherche parcourt le texte déjà chargé dans la modale (`docs/applications/README_USER*.md`, même origine, déjà déclaré) — rien n'est envoyé nulle part.
-
-> **v1.91.1 (Vue OSM de l'accueil — l'ancien plan principal restait dans la pile)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif de la pile de plans du widget OSM (règle de promotion du principal partagée, ligne fantôme retirable, purge des groupes morts). Les tuiles OSM ne sont demandées que pour les plans effectivement rendus, comme avant.
-
-> **v1.91.0 (audit ergonomie — sécurité, filets de données, état visible, verrou temporisé)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Contrôle du 13/09 : le bloc « 🛡️ Périmètre de garantie » cite `myktamap.fr` et `dev.myktamap.fr` **en dur** aux deux endroits (modale « Que fait l'app sur le réseau ? » et cette page), jamais dérivés de l'origine — une copie servie ailleurs se désavoue au lieu de s'adapter (verrouillé par `check-audit-domaine.js`). Le verrou temporisé du code d'accès et de la gate est calculé sur l'horloge de l'appareil, sans aucun appel. Rappel de transparence, déjà vrai avant cette version : la **commande vocale** (opt-in, désactivée par défaut) repose sur l'API de reconnaissance du navigateur, qui peut envoyer l'audio au service de son éditeur (Google pour Chrome, Apple pour Safari) — ce n'est pas un appel de l'app et il n'apparaît pas dans son journal ; l'app le dit désormais quand elle est hors ligne au lieu d'afficher « Erreur : network ». Les notes d'un point lues à voix haute (synthèse vocale) restent 100 % locales.
-
-> **v1.90.17 (pastille bloquée après Ctrl+Z — étendu aux zones et structures)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Extension du correctif v1.90.16 (tracé) aux zones et aux structures : après avoir annulé (Ctrl+Z) une forme en cours de dessin, le bouton de l'outil restait « allumé » alors qu'il était inactif, et il devenait impossible de reprendre le dessin. Correctif d'interface pur. Aucun effet réseau.
->
-> **v1.90.16 (le bouton d'un tracé restait allumé après un Ctrl+Z jusqu'au vide — correctif)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'interface pur : après avoir annulé (Ctrl+Z) tous les points d'un tracé en cours de dessin, le bouton de l'outil restait visuellement « allumé » alors qu'il était devenu inactif — le raccourci clavier ne passait pas par la même fermeture que les boutons de suppression. Aucun effet réseau.
->
-> **v1.90.15 (Vue OSM figée au retour à l'accueil — l'appel qui plantait en silence)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'un plantage interne introduit en v1.90.12 : au retour à l'accueil, le rafraîchissement de la Vue OSM appelait une fonction mal nommée et échouait en silence — la vue restait figée, un plan chargé pour la première fois n'y apparaissait qu'après un redémarrage. Aucun effet réseau.
->
-> **v1.90.14 (mode Incognito : la gate se réaffichait sur une instance à mot de passe)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif : en mode privé (Incognito), sur une installation qui définit son propre mot de passe d'accès, l'écran de code se réaffichait à tort. Le mode privé relit du disque une courte liste de clés — dont le déverrouillage — pour ne pas re-demander le mot de passe à chaque fenêtre privée ; la mémoire du déverrouillage **par mot de passe d'instance** (ajoutée avec cette fonctionnalité) avait été oubliée de cette liste. Les écritures restent isolées comme avant : le mode privé ne persiste toujours rien sur le disque.
->
-> **v1.90.13 (plantage de la Vue OSM au retour à l'accueil — correctif)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'un plantage interne : au retour à l'accueil, le widget OSM se reconstruit, et une image de plan qui finissait de charger juste après pouvait provoquer une erreur (`Cannot read null`) qui bloquait l'affichage. Cause purement interne (une image chargée après la destruction de sa carte) — aucun effet réseau.
->
-> **v1.90.12 (au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Détail d'affichage dans la suite du correctif v1.90.11 : au retour à l'accueil, le widget OSM s'ouvre désormais sur le plan que vous venez de quitter, au lieu de sa sélection précédente. Purement interne.
->
-> **v1.90.11 (la Vue OSM d'un plan tout juste chargé marche sans redémarrer)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'affichage : après avoir chargé un nouveau plan puis être revenu à l'accueil, sa Vue OSM ne s'activait qu'après un redémarrage complet. Le widget de l'accueil se rafraîchit désormais au retour à l'accueil. Purement interne — aucun effet réseau (les tuiles OSM restent régies par le même réglage qu'avant).
->
-> **v1.90.10 (niveau manquant à l'ouverture de la Vue OSM — correctif d'affichage)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'affichage : dans la Vue OSM d'un plan à plusieurs niveaux, un niveau pourtant actif pouvait manquer à l'ouverture (il fallait le décocher puis le recocher). Purement un ordre de rendu interne — aucun effet réseau.
->
-> **v1.90.9 (même une licence pro servie par l'instance ne contourne plus son mot de passe)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Achève le correctif v1.90.7/8 : sur une installation qui publie un mot de passe d'accès, **plus aucune licence pro ne l'ouvre à la place du mot de passe** — y compris le `Licence-pro.json` que l'installation sert elle-même. Ce fichier est récupéré par **tous** les visiteurs ; le laisser bypasser rendait le mot de passe muet. La licence active désormais le **mode pro** une fois le mot de passe saisi, elle n'est plus une clé d'accès. Une installation **sans** mot de passe s'ouvre toujours directement avec sa licence.
->
-> **v1.90.8 (la licence pro importée ne contourne plus le mot de passe d'instance)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Suite du correctif de sécurité v1.90.7 : sur une installation qui publie un mot de passe d'accès, **importer soi-même un fichier de licence pro n'ouvre plus l'application** — il fallait fermer cette porte, sinon elle contournait le mot de passe. Une licence **fournie par l'installation elle-même** (côté serveur) reste acceptée : c'est le choix du déployeur, pas un contournement. La vérification reste **entièrement locale**.
->
-> **v1.90.7 (le mot de passe d'instance devient exclusif — correctif de sécurité)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. Correctif de sécurité, sans effet réseau. Depuis la v1.90.6, une instance auto-hébergée peut publier l'empreinte d'un mot de passe ; désormais, **quand elle le fait, c'est le SEUL mot de passe qui ouvre son application** — le code communautaire n'ouvre plus une instance protégée. Sans ce correctif, quiconque connaît le code communautaire (public, il ouvre le site de démonstration) aurait pu ouvrir n'importe quelle instance privée. La vérification reste **entièrement locale** : votre navigateur compare l'empreinte, rien n'est transmis.
->
-> **v1.90.6 (mot de passe d'accès propre à une instance)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. Une instance auto-hébergée peut publier l'**empreinte** (SHA-256) d'un mot de passe dans son `data/index.json` — **le même fichier, déjà lu à chaque démarrage**. Ses visiteurs ouvrent alors l'app avec ce mot de passe **et uniquement lui** : quand une instance publie son empreinte, le code communautaire n'ouvre plus cette instance (v1.90.7). Côté réseau : **aucune requête ajoutée pour qui est déjà entré**, et une seule lecture de `data/index.json` — vers votre propre serveur — quand l'écran de code s'affiche et que le code communautaire n'a pas fonctionné. Le mot de passe lui-même n'est **jamais** transmis : c'est votre navigateur qui calcule l'empreinte et la compare, sur place.
->
-> 🔒 **Ce que ça vaut, dit franchement.** `index.json` est **public** : l'empreinte l'est donc aussi, et quelqu'un de motivé peut tenter de retrouver le mot de passe hors ligne. C'est **exactement** la situation du code communautaire, dont l'empreinte est lisible sur GitHub depuis toujours — le niveau de protection ne baisse pas, **mais il ne monte pas non plus**. C'est une barrière **sociale**, **jamais une authentification**.
->
-> **v1.90.5 (bouton « Retrouver les noms » dans les statistiques)** : ⚠️ **Une requête, et seulement si vous cliquez.** Les statistiques du profil peuvent afficher un type personnalisé par son identifiant, quand son nom n'a jamais été mémorisé. Un bouton **« Retrouver les noms »** va alors chercher ce nom dans le descriptif de chaque plan. Pour un plan hébergé sur **votre propre serveur**, cela demande son `plan-config.json` **à ce serveur** — le même fichier que celui déjà lu à l'ouverture du plan, à la même adresse. Pour un plan local, la lecture se fait **dans le navigateur**, sur l'archive déjà mémorisée.
->
-> **Rien ne part tant que vous ne cliquez pas** : le bouton annonce le nombre de plans qu'il va lire, et il n'y a **aucune requête automatique** à l'ouverture de la fenêtre. Aucun tiers n'est contacté, aucune de vos données n'est envoyée — on **lit**, on n'envoie rien. Les noms trouvés sont gardés dans le stockage local de votre navigateur, donc l'opération ne se refait pas.
->
-> **v1.90.4 (filtre par étiquette dans les statistiques du profil)** : **100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Le nouveau graphique et son filtre travaillent sur des décomptes **déjà calculés dans votre navigateur**, et le filtre lui-même n'est **écrit nulle part** : il vit le temps où la fenêtre est ouverte.
->
-> **v1.90.3 (les types personnalisés retrouvent leur nom dans les statistiques)** : **100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Correction d'affichage : dans les statistiques du profil, un type que vous avez créé vous-même apparaissait sous son identifiant interne. Son nom est désormais retenu **sur votre appareil** au moment où vous ouvrez le plan, puis réutilisé pour l'affichage. Rien n'est lu ailleurs que dans le stockage local de votre navigateur.
->
-> **v1.90.2 (la Vue OSM passe à ACTIVÉE PAR DÉFAUT)** : ⚠️ **Le seul changement de ce type depuis la création de l'app — à lire même si vous ne lisez rien d'autre.** La **Vue OSM** (vos plans calibrés GPS affichés au-dessus d'une carte du monde) était **désactivée par défaut** ; elle est désormais **activée PAR DÉFAUT**. Concrètement : si vous possédez au moins un plan géoréférencé, **l'écran d'accueil demande des tuiles de fond de carte à `tile.openstreetmap.org` dès son chargement, sans que vous cliquiez sur quoi que ce soit**. C'est la **seule** requête que MyKTAMap adresse à un tiers, et elle était jusqu'ici conditionnée à votre accord explicite.
->
-> **Ce qui sort, exactement** : les **coordonnées des tuiles** affichées (donc la zone géographique que vous regardez) et votre adresse IP, comme pour n'importe quel site consulté. **Aucune donnée de vos plans ne part** : ni points, ni tracés, ni photos, ni sessions, ni le nom du plan — le fond arrive du serveur, vos données restent dessinées par-dessus, sur votre appareil.
->
-> **Si vous aviez décoché la case, elle reste décochée.** Un refus explicite n'est jamais réécrasé, ni par cette version ni par les suivantes. Le changement ne concerne que ceux qui n'avaient **jamais touché** au réglage. La première fois que la vue s'affiche pour cette raison, **un bandeau vous le dit** et vous rappelle où la couper (⚙️ Configuration).
->
-> **Trois situations où rien ne change, et qui restent prioritaires sur ce défaut** : le **mode hors-ligne strict**, le **mode incognito**, et le simple fait de n'avoir **aucun plan géoréférencé** — dans ces trois cas, aucune requête n'est émise. La **whitelist reste identique** : `tile.openstreetmap.org` y figurait déjà.
->
-> **v1.90.2 (le tuilage n'est plus un réglage de l'écran de chargement)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le sélecteur de découpage d'image quitte l'écran de chargement : l'application décide seule, comme elle le faisait déjà pour la quasi-totalité des plans. Le réglage reste accessible dans la fiche ℹ️ Infos des plans que ça concerne réellement. **Changement d'interface uniquement** : les mêmes fichiers sont demandés, aux mêmes adresses, sur votre serveur.
->
-> **v1.90.1 (étiquettes venues du serveur + import de profil verrouillé en mode kiosque)** : **100 % local**, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Deux changements, tous deux **dans le navigateur** : (1) la liste de plans que sert **votre propre serveur** (`data/index.json`, lue à chaque démarrage depuis toujours) peut désormais porter des **étiquettes** par plan — c'est **le même fichier, à la même adresse**, avec un champ de plus ; les étiquettes que **vous** posez restent prioritaires et ne sont jamais écrasées. (2) Sur une instance configurée pour ne proposer **que** les plans de son serveur, l'**import de profil est refusé** — il pouvait rapporter des plans que le mode masque et, surtout, réécrire vos préférences d'affichage au point de **vider la liste**. L'**export** de profil reste entièrement disponible : vos données sortent quand vous le décidez.
->
-> **v1.90.0 (télécharger un plan serveur depuis la liste)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. Le bouton de téléchargement hors-ligne, jusqu'ici seulement dans la fiche ℹ️ Infos, apparaît désormais **directement sur la ligne** d'un plan hébergé sur **votre propre serveur**. Il ne déclenche rien tout seul : il affiche l'état, et c'est vous qui lancez le téléchargement. Les fichiers demandés sont ceux du plan, sur votre serveur, exactement comme avant.
->
-> **v1.89.0 (Vue OSM des plans serveur + installation allégée)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Moins de réseau, pas plus** : le plan de démonstration (~2 Mo) n'est plus téléchargé à l'installation — il se charge comme n'importe quel plan, quand vous l'ouvrez. Par ailleurs, la Vue OSM de l'accueil sait désormais lire un plan hébergé sur **votre propre serveur** : elle demande son descriptif et ses calques **à ce serveur**, les mêmes fichiers que ceux déjà servis à l'affichage du plan. Aucun tiers n'est contacté.
->
-> **v1.88.4 (les plans importés s'affichent enfin en mode serveur)** : **100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Un plan créé par un **import SIG, GPX ou KMZ** et hébergé sur **votre propre serveur** demandait son image et ses données à une adresse qui n'existait pas — ces imports écrivaient bien les fichiers dans le dossier `data/` de l'archive, mais les déclaraient sans ce dossier. Invisible tant que le plan restait dans votre navigateur, bloquant dès qu'il était servi. Corrigé pour les futurs imports, **et pour ceux déjà en ligne** : rien à re-déployer. Les fichiers demandés sont les mêmes, simplement à la bonne adresse.
->
-> **v1.88.3 (les images découpées cherchées au bon endroit)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. Sur un plan hébergé sur **votre propre serveur**, l'application vérifie désormais où se trouvent réellement les images découpées, au lieu de le déduire de l'emplacement de l'image principale — une déduction fausse dès que le plan avait été déposé selon une recette plus ancienne, d'où des plans qui marchaient et d'autres non. Concrètement : **une à deux requêtes de plus à l'ouverture d'un plan**, sur une seule image témoin, **vers votre serveur uniquement**.
->
-> **v1.88.2 (Service Worker réparé + liste serveur à jour)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Correctif important** : depuis la v1.88.0, une erreur interne dans le Service Worker faisait échouer son interception des requêtes — l'application continuait de fonctionner en ligne, mais **elle ne servait plus ses fichiers depuis son cache**, donc le mode hors-ligne était atteint et chaque requête repartait vers le serveur. Réparé. Deux autres changements, tous deux **vers votre serveur uniquement** : la liste des plans du serveur (`data/index.json`) est désormais demandée en **`no-store`**, pour qu'une liste modifiée ne remonte plus depuis le cache du navigateur ; et un plan retiré de cette liste est retiré de « Mes plans » au démarrage — **aucune de vos données n'est supprimée** (sessions, photos, géoréférencement restent).
->
-> **v1.88.1 (débordement de l'accueil à 125 % de zoom)** : **100 % local**, aucune requête, aucun domaine, aucune donnée. Correction d'affichage uniquement : sur l'accueil, le bloc de réglage d'image de la carte de chargement débordait sur le pied de page quand l'affichage de Windows est réglé à 125 %. Il est désormais replié par défaut, et la colonne peut défiler si son contenu grandit à l'avenir. Rien d'autre ne change.
->
-> **v1.88.0 (savoir qu'un plan hors-ligne est périmé)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. **Une nouveauté réseau, vers votre serveur et lui seul** : à l'ouverture de la fiche d'un plan téléchargé pour le hors-ligne, l'application demande à votre serveur si les fichiers du plan ont changé. Ce sont des requêtes **conditionnelles** — le serveur répond « rien n'a bougé » avec un **corps vide** dans la quasi-totalité des cas, donc quelques centaines d'octets en tout. Les tuiles d'image en sont exclues (elles se déduisent de l'image, qui est vérifiée) : cela fait une quinzaine de requêtes pour un plan comme celui de démonstration. Rien n'est envoyé, rien n'est stocké côté serveur, et ces requêtes ne sont **pas** mises en cache.
->
-> **v1.87.2 (les icônes d'un plan servi, sondées)** : **100 % local**, aucun domaine nouveau, aucune donnée qui sort. Correction d'une régression introduite en v1.86.2 : sur un plan hébergé sur **votre propre serveur**, certaines icônes de l'application — dont celle du tracker — étaient cherchées dans le dossier du plan au lieu de la racine du site, et ne s'affichaient plus. L'application **demande désormais au serveur** si l'icône se trouve dans le dossier du plan, et ne l'y prend que si la réponse est positive. Cela ajoute, à l'ouverture d'un plan serveur, une petite requête par icône déclarée — **vers votre serveur uniquement**, sur des fichiers déjà servis par ailleurs, et mises en cache ensuite.
->
-> **v1.87.1 (le hors-ligne dit ce qui manque)** : **100 % local**, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Correction d'affichage sur le téléchargement hors-ligne : quand un fichier déclaré par un plan n'existe pas sur le serveur, l'application le **nomme** et considère le plan comme disponible, au lieu d'annoncer « incomplet » indéfiniment et d'inviter à retélécharger sans fin un fichier absent. Les fichiers demandés sont exactement les mêmes qu'avant.
->
-> **v1.87.0 (télécharger un plan serveur pour le hors-ligne)** : **100 % local**. un plan hébergé sur **votre propre serveur** peut être téléchargé en entier pour le hors-ligne. Le bouton lance le téléchargement de son image, de ses données et de toutes ses tuiles — **depuis votre serveur, et lui seul**. Aucun domaine externe n'est contacté, rien n'est envoyé : ce sont des requêtes de lecture vers les mêmes fichiers que ceux déjà servis à l'affichage, simplement demandés d'un coup au lieu d'au fil du zoom. Le résultat est stocké **dans votre navigateur**, dans un espace réservé au plan, que vous pouvez vider quand vous voulez depuis la même fiche.
->
-> **v1.86.2 (les icônes personnalisées d'un plan servi)** : **100 % local**. Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Une icône que vous avez ajoutée à un plan hébergé sur **votre propre serveur** est désormais cherchée **dans le dossier du plan**, où elle se trouve, au lieu de la racine du site, où elle n'a jamais été. Les icônes livrées avec l'application continuent d'être servies depuis la racine — c'est le catalogue interne de l'app qui départage, pas une devinette. Mêmes fichiers, même serveur, bonne adresse.
->
-> **v1.86.1 (déployer un plan sur son serveur : il suffit de dézipper)** : **100 % local**. Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Un plan déposé sur **votre propre serveur** voit enfin ses fichiers trouvés : ses images, ses données et ses tuiles sont désormais cherchées **dans le dossier du plan** et non plus à la racine du site, où elles n'étaient jamais. Ce sont les mêmes fichiers, sur le même serveur, demandés à la bonne adresse — rien de plus n'est téléchargé. Les déploiements déjà en place, dont les chemins avaient été corrigés à la main, sont inchangés.
->
-> **v1.86.0 (le tuilage, audité)** : **100 % local**. Aucune requête nouvelle vers un tiers, aucune donnée qui sort. Une seule nouveauté réseau, et elle reste **sur ton propre serveur** : un plan hébergé et découpé en tuiles va désormais chercher ces tuiles en HTTP dans son propre dossier (`data/<plan>/tiles/…`) — avant, elles n'étaient cherchées qu'en mémoire, donc jamais trouvées, et la carte restait blanche. Aucun domaine externe n'est contacté. Le reste est de l'interface : le sélecteur d'image passe de cinq choix à deux, un plan déjà découpé utilise toujours ses tuiles, et un repli affiche l'image entière si les tuiles sont inatteignables. Le stockage est inchangé. Un bouton **ConfAdmin** apparaît en Mode Développeur : il ouvre une page **locale** du site, rien n'y est envoyé.
->
-> **v1.85.4 (la langue et le tuilage retrouvent leur place)** : **100 % local**. Aucune requête nouvelle, aucun domaine nouveau, aucune donnée qui sort. Trois déplacements d'interface et une correction d'affichage : le **sélecteur de langue** quitte les réglages du mode plan (il pilotait toute l'application depuis l'écran d'un seul plan) et ne vit plus que hors plan — ⚙️ Configuration de l'accueil et écran de déverrouillage ; le **tuilage de l'image** descend dans la carte de chargement, contre le bouton « Charger » ; et la mention « (s'applique à tous tes plans) » cesse de s'afficher avec ses balises HTML en clair. Le stockage est inchangé : la langue reste dans `myktamap_app_lang` (localStorage), le tuilage n'est toujours mémorisé nulle part et le preset retenu par plan reste dans le registre des plans. Deux garde-fous s'ajoutent au pre-commit, dont `check-i18n.js` qui existait mais n'y était pas branché.
-
-> **v1.85.3 (portée des réglages : plan vs application)** : **100 % local**. Uniquement des déplacements de réglages entre deux écrans et un changement de clé de stockage (`app_user_prefs` → prefs du plan) pour la navigation intelligente. **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
->
-> **v1.85.2 (reprise de sortie, fusion au carnet, wake lock réparé)** : **100 % local**. La reprise et la fusion lisent et écrivent la base IndexedDB du Carnet, déjà présente ; le wake lock relit une préférence de `localStorage`. **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
->
-> **v1.85.1 (affichage mobile : panneaux centrés, bandeau de mesure)** : **100 % local**. Deux corrections d'interface uniquement — position d'un panneau, icône d'un bandeau — plus une préférence d'affichage écrite dans `localStorage` (`app_user_prefs.panneauxAncres`). **Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.**
->
-> **v1.85.0 (corriger un calque de données sans quitter la carte)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** « Modifier » un calque **relit le fichier déjà présent dans ton plan**, sur ton appareil — c'est la même lecture que celle faite à l'ouverture du plan, pas une requête de plus. Son contenu va dans la **sauvegarde de session de ton navigateur** (`localStorage`), qui n'a jamais quitté ton appareil et ne le quitte pas davantage ici. ⚠️ Point de transparence utile : cette copie peut peser **plus d'un mégaoctet** sur un gros relevé, et l'app te l'annonce **avant** en te montrant la place déjà occupée — c'est du stockage local, rien n'est envoyé. « Exporter » produit un fichier **téléchargé sur ton appareil**, que tu es seul à décider de partager.  🎯 Le **relevé de coordonnées** ne va rien chercher en ligne non plus : il lit une position que la carte affichée connaît déjà — aucun géocodeur, aucune requête. La copie va dans **ton presse-papier**, nulle part ailleurs. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
->
-> **v1.84.0 (plans par étiquette en Vue OSM, légende des imports SIG)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** Afficher d'un coup tous les plans d'une étiquette ne va rien chercher en ligne : les étiquettes sont **celles que tu as tapées toi-même** dans ta bibliothèque, rangées dans le stockage local de ton navigateur, et les plans sont lus **sur ton appareil** (mêmes archives locales qu'avant, simplement plusieurs d'affilée). Le correctif de la légende des imports SIG ne touche qu'au **contenu du fichier de plan que tu fabriques toi-même**, téléchargé sur ton appareil et envoyé nulle part. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0 ; **afficher plus de plans n'en demande pas davantage**, le nombre de tuiles dépend de la zone regardée, pas du nombre de plans posés dessus.
->
-> **v1.83.1 (légende des imports SIG)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** Le correctif ne touche qu'au **contenu du fichier de plan que tu fabriques toi-même** : les noms et les couleurs que tu choisis pour la légende y sont désormais écrits en entier au lieu d'être perdus. Ce fichier est **téléchargé sur ton appareil** et n'est envoyé nulle part — c'est toi qui décides de le partager, ou non. Rien d'autre ne change : ni requête, ni permission, ni stockage. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
->
-> **v1.83.0 (profondeur des niveaux, profil en long, mesure en Vue OSM)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** Les profondeurs de niveaux sont un **chiffre que tu saisis toi-même**, rangé dans le stockage local de ton navigateur ou dans le fichier de ton plan — rien n'est interrogé pour l'obtenir, aucun modèle de terrain, aucun service d'altitude. Le **profil en long** est un calcul fait sur ton appareil à partir de ton itinéraire. La **mesure en Vue OSM** est de la trigonométrie sur des coordonnées déjà présentes : aucun service de calcul de distance n'est appelé. L'**altitude dans les exports** part dans les fichiers que tu télécharges toi-même et que tu partages, comme le reste de leur contenu. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
->
-> **v1.82.1 (podomètre, persistance des réglages, tous les niveaux à l'ouverture)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** Le correctif du podomètre touche un **capteur de l'appareil** déjà utilisé depuis toujours (`devicemotion`, l'accéléromètre) : il était mal interprété, il l'est correctement — **aucune mesure ne sort de ton téléphone**, et aucune permission nouvelle n'est demandée. La réparation des plans déjà créés se fait **à leur ouverture, sur ton appareil**, en corrigeant une valeur du fichier de plan local. Les réglages de pas sont désormais conservés dans le **stockage local de ton navigateur**, par plan — même emplacement que l'échelle depuis la v1.76.1. L'affichage de tous les niveaux à l'ouverture, la case qui permet d'y renoncer et le reclassement d'un objet sont de l'affichage et de la donnée locale. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
->
-> **v1.82.0 (import SIG : relevés de carrière, Lambert 93, découpage d'atlas)** : **100 % local, aucune requête nouvelle, aucun domaine ajouté.** La conversion du **Lambert 93** est un calcul fait sur ton appareil — une cinquantaine de lignes de trigonométrie ajoutées à l'app, et surtout **aucun service de reprojection n'est interrogé** : c'était l'enjeu, beaucoup d'outils envoient les coordonnées à un serveur pour ça. Les fichiers SIG que tu importes sont lus **dans le navigateur** et n'en sortent pas. L'outil de découpage d'atlas (`scripts/decouper-atlas.js`) ne fait pas partie de l'application : c'est un utilitaire qu'on lance à la main sur son ordinateur, hors navigateur, sans réseau. Le tuilage des plans, les couleurs par niveau et les correctifs d'échelle ne touchent à rien de réseau. Whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.
->
-> **v1.81.0 (écart de calage des liaisons, travail de session en Vue OSM)** : **100 % local, aucune requête nouvelle.** L'« écart de calage » d'une liaison est un **calcul fait sur ton appareil** à partir de deux informations que tu as toi-même saisies (le géoréférencement de chaque plan) — rien n'est envoyé nulle part pour l'obtenir, et aucun service extérieur n'est interrogé. L'affichage du **travail de session** en Vue OSM lit un fichier déjà présent dans ton navigateur (la sauvegarde automatique de ta session, `myktamap_session_v1_<plan>`), qui n'a jamais quitté ton appareil et ne le quitte pas davantage ici. Les correctifs d'icônes et de mise en page ne touchent à rien de réseau. Aucun nouveau domaine, whitelist `connect-src` inchangée. ⚠️ Rappel inchangé : la Vue OSM **télécharge des fonds de carte** auprès d'OpenStreetMap quand tu l'ouvres — c'est le seul appel extérieur de cet écran, il existe depuis la v1.40.0 et n'est pas modifié.
->
-> **v1.80.0 (documentation en espagnol, Aide intégrée réparée)** : **100 % local** — la doc espagnole est un **fichier de plus livré avec l'app** (`README_USER.es.md`), lu depuis ton appareil exactement comme les versions française et anglaise, et **précaché** pour rester disponible hors connexion. Le reste du lot (réparations de l'Aide, mise en forme sortie vers la feuille de style, garde-fous internes) ne touche à rien de réseau. L'**Aide intégrée** a migré du code vers les dictionnaires `lang/` : ça ne change rien au réseau non plus, ces dictionnaires étant **déjà** livrés et précachés avec l'app depuis la v1.45.0 — l'Aide lit désormais un fichier qui était de toute façon là. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.6 (« Affiner le tracé » à la demande, clic « Je suis ici » instantané)** : **100 % local** — le recalcul suit les mêmes tracés du plan déjà chargés dans ton navigateur, avec le même moteur d'itinéraire qu'avant ; ce qui change est **quand** le calcul a lieu (à ta demande ou à l'archivage, plus au moment du clic), pas où il se fait. Le trajet redessiné vit dans ta base locale de sorties, à côté du tracé brut qui n'est jamais remplacé. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.5 (distance des « 📍 Je suis ici », carnet, garde-fou de release)** : **100 % local** — la distance estimée est calculée **dans ton navigateur** à partir des tracés du plan déjà chargé (même moteur d’itinéraire que le bouton Itinéraire) ; aucune position, aucun repère et aucune distance ne quitte l’appareil. Le reste du lot (carnet, garde-fou de release) est du stockage local et de l’outillage interne. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.4 (langue dès le premier écran, tutoriel multilingue)** : **100 % local** — le sélecteur charge les dictionnaires de langue **déjà précachés** par l'application (`lang/*.json`, même origine), le tutoriel lit ces mêmes dictionnaires. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.3 (hygiène du stockage : backups par plan, purge à la suppression, nettoyeur d'orphelines)** : **100 % local** — tout se passe entre ta liste de plans et le stockage de ton navigateur (localStorage + IndexedDB). Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.2 (entretien : vérification des traductions, docs dépoussiérées)** : changement **100 % outillage interne** (vérificateur de traductions) + retrait d'une section de doc périmée. Aucun changement réseau d'aucune sorte, whitelist `connect-src` inchangée.
->
-> **v1.79.1 (popup doublon systématique, renommage d'affichage)** : **100 % local** — la détection de doublon compare des noms déjà présents dans ton navigateur, le nom d'affichage vit dans le même registre local que les tags. Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.79.0 (profil complet avec archives, HOME PC)** : **100 % local** — le ZIP « profil complet » est assemblé **dans ton navigateur** (les archives viennent de la base locale de l'app, le fichier est téléchargé par toi) et l'import le lit de même, sans aucun envoi. Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.78.0 (organisation de la bibliothèque : tags, épinglage, filtre, suppression déplacée)** : **100 % local** — tags, épinglages et filtres vivent dans le stockage local de ton navigateur (le même registre de plans qu'avant, deux champs de plus). Aucune requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.77.0 (netteté OSM au zoom, couleurs de légende sur OSM, outillage, nettoyage)** : traitement **100 % local** — les tuiles détaillées chargées au zoom dans l'aperçu OSM de l'accueil viennent du **ZIP du plan déjà sur ton appareil** (extraction locale, AUCUNE requête — seul le fond de carte OpenStreetMap reste, inchangé, opt-in) ; les couleurs personnalisées sont lues dans le **stockage local**. Le nettoyage de code supprime des fichiers jamais téléchargés par l'app (cartes de débogage de la bibliothèque Leaflet). Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.76.4 (overlay KMZ des grands plans, finitions Mode Développeur)** : traitement **100 % local** — la réduction d'image pour Google Earth se fait dans le navigateur (canvas, tuiles déjà locales), le KMZ est téléchargé par toi. Aucune nouvelle requête, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.76.3 (Mode Développeur, confirmation d'itinéraire)** : le Mode Développeur lit la documentation technique via des requêtes **same-origin** (`docs/*.md`, même domaine que l'app, à la demande, uniquement quand TU ouvres un document) — **aucune nouvelle origine réseau, whitelist `connect-src` inchangée**. Le mot de passe est vérifié **localement** (hash SHA-256 dans le code, aucune requête). La confirmation d'itinéraire est purement locale.
->
-> **v1.76.2 (convertisseur de résolution/recalage de l'Éditeur de données)** : outil **100 % local** — les fichiers `.json` et les images dont on lit les dimensions sont traités dans le navigateur, les fichiers convertis sont **téléchargés par toi**. Aucune requête réseau, aucun nouveau domaine, whitelist `connect-src` inchangée.
->
-> **v1.76.1 (train v1.76 complet — la v1.76.0 n'a été servie que sur le domaine de dev)** : mêmes garanties, périmètre élargi. En plus de la personnalisation des couleurs : **bordures indépendantes** (zones/piliers), **liaison d'un type hérité** à la légende (bouton ➕ Lier), **estimation du point B** du géoréférencement (calcul entièrement local à partir du point A, de l'échelle et de l'orientation Nord — aucune requête, aucun service de géocodage), **échelle mémorisée par plan** (localStorage), et lecture des dimensions d'images dans l'en-tête du fichier (traitement local, permet de refuser proprement les images trop grandes pour le navigateur). **Aucune nouvelle surface réseau, aucun nouveau domaine, whitelist `connect-src` inchangée.**
->
 > **v1.76.0 (personnalisation de la légende : couleurs des types, légende voyageant avec les exports)** : **aucune nouvelle surface réseau, aucun nouveau domaine, whitelist `connect-src` inchangée.** Le détail :
 > - **Couleur des types** — le choix vit dans la **sauvegarde de session locale** (localStorage, clé `myktamap_session_v1_<planId>`), le rendu est recalculé **sur l'appareil** par `js/styleResolver.js` (nouveau fichier statique, ajouté au précache — même origine). Aucun échange réseau.
 > - **La légende voyage avec les exports** — point de transparence : les fichiers que **tu génères et télécharges toi-même** (calque de données, JSON/ZIP de session, KMZ, GPX) embarquent désormais la **définition de tes types personnalisés** : les noms que tu as tapés et les couleurs choisies. C'est le but (que le destinataire retrouve ta légende), mais si tu partages ces fichiers, ces libellés partent avec — comme tes annotations. L'export **anonymisé** reste disponible. Aucun de ces fichiers n'est envoyé nulle part par l'app : ils vont dans ton dossier Téléchargements, point.
@@ -714,7 +1005,7 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   modale Documentation (bouton « 📖 Doc » du loader). Cause racine : un
   commentaire HTML inséré dans un template literal JavaScript contenait
   des caractères backticks (`` ` ``) qui fermaient prématurément le
-  `modal.innerHTML = \`...\`` → HTML tronqué → modale cassée. Fix : les
+  `` modal.innerHTML = `...` `` → HTML tronqué → modale cassée. Fix : les
   backticks ont été remplacés par `&amp;nbsp;` dans le commentaire. Aucun
   impact réseau, aucun impact privacy — bug de syntaxe JS pur, corrigé
   côté client.

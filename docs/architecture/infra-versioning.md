@@ -480,7 +480,7 @@ la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la sect
 « 🗓️ Version actuelle » (digest des nouveautés) à jour à chaque release marquante, et
 NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
 gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
-| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `.html` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` + `.html` (note de la version, page à part depuis le 07/10/2026) | À chaque release (verdict réseau attendu par les users qui auditent) |
+| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` (note `### vX.Y.Z (titre)` en tête de « Notes par version », page à part depuis le 07/10/2026). Les deux `.html` servis sont **générés** : `node scripts/audit-html.js` (voir « Pages d'audit générées » ci-dessous) | À chaque release (verdict réseau attendu par les users qui auditent) |
 | 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
 
@@ -491,13 +491,32 @@ ou SKIPé sur chacun des 4. Format type :
 ```
 Sync 4 axes docs (4)
   📱 In-app   : SKIP justifié (perf interne, aucun changement UX)
-  🔒 Audit    : NETWORK_AUDIT.md + .html (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md + .html — entrée v1.X.Y
+  🔒 Audit    : NETWORK_AUDIT.md (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md — ### vX.Y.Z ; .html régénérés
   📖 Dev      : README.md — MAJ "Version courante"
   🤖 Archi IA : perf-memory.md §X (pattern + gain + À NE PAS faire)
 ```
 
 Le **SKIP** est OK et même utile (explicite que la non-modif est intentionnelle), mais
 ne JAMAIS oublier UN des 4 axes silencieusement.
+
+**Pages d'audit générées** (10/10/2026). `NETWORK_AUDIT.html` et `NETWORK_AUDIT_HISTORIQUE.html` (ouvertes depuis
+⚙️ → 🔒 Confidentialité, précachées pour le hors-ligne) sont le **rendu** de leurs `.md`, seule source :
+- `node scripts/audit-html.js` les réécrit ; `--check` n'écrit rien et sort en 1 si une page diffère. Reproductible
+  (aucune date ni hasard, fins de ligne LF : deux passages = mêmes octets).
+- Moteur Markdown autonome `scripts/md-mini.js` (copie du moteur du site de documentation, même auteur — le dépôt
+  community ne dépend d'aucun autre dépôt). Tout HTML brut du `.md` est échappé ; liens `javascript:`/`data:` refusés ;
+  un lien vers l'autre `.md` d'audit vise sa page `.html`.
+- Gabarit dans `audit-html.js` (retour, pied community/pro) ; mise en page `docs/applications/audit.css` ; pied
+  `docs/applications/audit-pied.js` (pose `.kta-instance-pro` d'après `Licence-pro.json`). Aucun style ni script
+  écrit dans la page (CSP `script-src 'self'`). Les tableaux défilent dans leur cadre : pas de débordement à 390 px.
+- Conventions du `.md` : la citation sous le `# titre` devient le chapeau (`.meta`, « À jour pour la version ») ; un
+  `---` juste avant un `##` disparaît (le titre porte déjà son filet) ; une ligne `<!-- kta:classe nom -->` pose la
+  classe `nom` sur le bloc suivant (`kta-promesse`, `kta-alerte`, `kta-auteur`), invisible sur GitHub.
+- 🛡️ `scripts/check-audit-html.js` (pré-commit, donc CI — bloquant) : chaque `.html` **de l'index** doit être
+  exactement le rendu de son `.md` de l'index (ni `.md` modifié sans régénérer, ni `.html` retouché à la main), et
+  `audit.css` / `audit-pied.js` / les deux pages doivent être dans `sw.js > ASSETS_TO_CACHE`. Il ne lit pas
+  `git diff --cached` : contrôle complet à chaque passage, valable tel quel en CI (pas de `KTA_FICHIERS_CI`).
+  `check-release-docs.js` (commit-msg, au bump) exige en plus `### vX.Y.Z` dans l'historique `.md`.
 
 #### 81.2 Règle B — `version.json > notes` USER-FRIENDLY
 
@@ -679,7 +698,7 @@ documentées ici pour la doctrine.
 | | Contrôle | Dérogeable |
 |---|---|---|
 | 🔒 **Noyau** | `sw.js > CACHE_NAME` et `js/copyright.js > build` portent la version de `version.json` | ❌ jamais — un échec ici = l'app ne se met pas à jour chez l'user |
-| 📄 **Doc** | `README.md` (bloc « Version courante » + entrée en tête du journal) · `NETWORK_AUDIT.md`/`.html` (en-tête « À jour pour la version » + entrée d'historique) · `AI_CONTEXT.md` a bougé dans le commit | ⚠️ oui |
+| 📄 **Doc** | `README.md` (bloc « Version courante » + entrée en tête du journal) · `NETWORK_AUDIT.md`/`.html` (en-tête « À jour pour la version ») + historique (`### vX.Y.Z` dans le `.md`, `<h3>` dans le `.html` généré) · `AI_CONTEXT.md` a bougé dans le commit | ⚠️ oui |
 
 **Déroger** : une ligne `Docs-deroge: <motif · risque accepté · rattrapage>` dans le message (≥ 5 caractères, lignes commentées `#` ignorées — sinon la trace disparaîtrait du commit final). Cas légitime canonique : le hotfix « bump de cache seul » type v1.75.1.
 
