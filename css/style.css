@@ -11114,7 +11114,10 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   vertical-align: middle;
 }
 .kta-cnx-chip[hidden],
-.kta-cnx-bloc[hidden] { display: none !important; }
+.kta-cnx-bloc[hidden],
+.kta-cnx-bloc-audit[hidden],
+.kta-cnx-bloc-lien-ligne[hidden] { display: none !important; }
+.kta-cnx-bloc-lien-ligne { text-align: center; margin: 10px 0 4px 0; }
 .kta-cnx-chip:focus-visible {
   outline: 2px solid #8cb4ff;
   outline-offset: 1px;

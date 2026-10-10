@@ -243,6 +243,21 @@
         t.classList.add(cls);
       }
       if (d) d.textContent = _t("home.serveur.explication." + _cle(_etat), { raison: _raison || "?" });
+      // Installation reliée : la suite de la modale (« 100 % client-side », liste blanche) ne décrit que
+      // l'app de base. On le dit, et on mène à la page de transparence de l'installation si elle en publie une.
+      const relie = _etat === "on" || _etat === "down";
+      const lien = relie && _connexion && _connexion.transparence;
+      const audit = bloc.querySelector(".kta-cnx-bloc-audit");
+      if (audit) {
+        audit.textContent = relie ? _t(lien ? "home.serveur.audit.avecPage" : "home.serveur.audit.sansPage") : "";
+        audit.hidden = !relie;
+      }
+      const ligne = bloc.querySelector(".kta-cnx-bloc-lien-ligne");
+      if (ligne) {
+        const b = ligne.querySelector(".kta-cnx-bloc-lien");
+        if (b) b.textContent = _t("home.serveur.audit.ouvrir");
+        ligne.hidden = !lien;
+      }
       bloc.hidden = false;
     }
 
@@ -278,6 +293,14 @@
           return;
         }
         if (typeof window._ouvrirNetDocModal === "function") window._ouvrirNetDocModal();
+      });
+    }
+    const blocCnx = document.getElementById("loaderNetDocCnx");
+    const lien = blocCnx && blocCnx.querySelector(".kta-cnx-bloc-lien");
+    if (lien && !lien._ktaCable) {
+      lien._ktaCable = true;
+      lien.addEventListener("click", function () {
+        if (_connexion && _connexion.transparence) window.open(_connexion.transparence, "_blank", "noopener");
       });
     }
     // Les libellés sont traduits au rendu : on attend les dicos.

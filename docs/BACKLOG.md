@@ -148,16 +148,6 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 - 🔬 Pastille hors-ligne : coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange
   (hors réseau) et thème clair non testés en navigateur ; la progression avance par paquets de 10.
 - ⚪ Un vieil export de profil réécrit la clé `myktamap_network_paranoia_v1` (inerte) ; purge possible en 1 ligne si gênant.
-- 🟠 **Page d'audit réseau fausse en mode pro** (KARMA, 10/10/2026) : `NETWORK_AUDIT.html` (bouton de
-  `homeConfig.js:1511`) décrit l'app community, où rien ne quitte l'appareil. Sur une installation reliée à un serveur
-  (comptes, synchro, temps réel, Secours partagé), elle est en grande partie fausse. Deux pistes :
-  a) **rediriger** : une prise neutre (`KtaExtensions`, ex. lien d'audit fourni par l'extension) que le pro remplit
-  avec sa page de transparence (`modules/transparence.html` + `GET /api/transparence`, faits de CETTE installation) ;
-  sans extension, rien ne change ;
-  b) **adapter** : un bandeau en tête de la page community, quand la connexion serveur est active : « cette
-  installation échange aussi avec son serveur, voir sa page de transparence ».
-  Reco : a) + le bandeau de b) en repli si l'extension ne fournit pas de lien. Contrat dans
-  `community-server-line.md` §3, garde-fou `check-extensions.js`. Choix à trancher par KARMA avant de coder.
 
 ## 📚 Guide utilisateur — reliquats de l'audit du 03/10/2026
 
