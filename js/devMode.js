@@ -118,6 +118,10 @@
     });
   }
 
+  function _outilsExt() {
+    return (window.KtaExtensions && typeof window.KtaExtensions.outilsDev === "function") ? window.KtaExtensions.outilsDev() : [];
+  }
+
   // ---- Section HOME (peuple le conteneur de index.html) ----
   function initSection() {
     const wrap = document.getElementById("kta-devmode-wrap");
@@ -135,6 +139,10 @@
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' + t("home.debug.showLogs") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">🏗️ ' + t("devmode.confadmin") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">' + t("home.inspector.swBtn") + '</button>' +
+          // Outils fournis par une extension (prise « outilsDev ») : aucun sans extension.
+          _outilsExt().map(function(o, i) {
+            return '<button class="loader-btn-secondary" type="button" data-devmode-outil="' + i + '" style="width:100%; margin-top:8px;"></button>';
+          }).join("") +
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hint") + '</p>'
         ) : (
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hintOff") + '</p>'
@@ -172,6 +180,15 @@
         // 🔧 Inspecteur Service Worker (lot C, 03/10/2026) : déplacé ici depuis
         // ⚙️ Configuration › Système & maintenance. Pour tous, l'état du cache
         // hors-ligne est la pastille du pied de page de l'accueil.
+        const outils = _outilsExt();
+        wrap.querySelectorAll("[data-devmode-outil]").forEach(function(b) {
+          const o = outils[Number(b.getAttribute("data-devmode-outil"))];
+          if (!o) return;
+          b.textContent = o.libelle;   // texte de l'extension : jamais en HTML
+          b.addEventListener("click", function() {
+            try { window.open(o.page, "_blank", "noopener"); } catch (e) { console.warn("[DevMode] outil :", e); }
+          });
+        });
         document.getElementById("loaderSwInspectorBtn").addEventListener("click", function() {
           if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") window.SwInspector.ouvrir();
           else console.warn("[DevMode] Module SwInspector indisponible");
@@ -186,6 +203,8 @@
     if (window.I18n && typeof window.I18n.onChange === "function" && !window._devModeI18nHooked) {
       window._devModeI18nHooked = true;
       window.I18n.onChange(rendre);
+      // Une extension déclarée après l'accueil (modules chargés en asynchrone) : ses outils apparaissent.
+      window.addEventListener("mktm:extensions-changees", rendre);
     }
     if (window.I18n && typeof window.I18n.init === "function") {
       window.I18n.init().then(rendre);

@@ -185,6 +185,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   fenêtre « Mon profil » les montre **après la photo et le pseudo, avant le grade**, et le panneau ⚙️ Configuration dans un bloc
   « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
   10 au plus, action protégée ; sans extension, rien n'apparaît.
+- **Outils du Mode Développeur** (10/10/2026) : la prise `outilsDev() → [{ libelle, page }]` ajoute des boutons à la
+  section 🛠️ Mode Développeur, **seulement quand il est actif** ; `page` est une page `.html` du même site (chemin
+  relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
+  10 au plus. Une extension déclarée après l'accueil fait redessiner la section (événement
+  `mktm:extensions-changees`, émis par `register`). Sans extension, rien n'apparaît.
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets

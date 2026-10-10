@@ -362,9 +362,11 @@
       return false;
     }
     _extensions.push(ext);
+    // Les écrans déjà dessinés (Mode Développeur…) se redessinent : une extension arrive APRÈS l'accueil.
+    try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -591,6 +593,21 @@
   // connecté ; le panneau ⚙️ Configuration dans un bloc « Installation » (ex. gérer
   // les comptes, pour un admin). Texte seulement (60 car.), 10 au plus, action
   // protégée ; erreur ou forme inattendue = aucune action.
+  // Prise d'INFORMATION « outilsDev » (10/10/2026) : pages d'outils d'une extension, proposées dans le Mode
+  // Développeur (js/devMode.js) quand il est actif. ext.outilsDev() → [{ libelle, page }] ; page = .html du MÊME site,
+  // chemin relatif (mêmes règles que serverConnection.transparence). Une erreur ou une entrée invalide est ignorée.
+  const PAGE_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/;
+  function outilsDev() {
+    const ext = _prise("outilsDev");
+    if (!ext || typeof ext.outilsDev !== "function") return [];
+    try {
+      const l = ext.outilsDev();
+      return (Array.isArray(l) ? l : []).filter(function (o) {
+        return o && typeof o.libelle === "string" && o.libelle.trim() && typeof o.page === "string" &&
+          PAGE_RE.test(o.page) && o.page.indexOf("..") < 0 && o.page.indexOf("//") < 0;
+      }).slice(0, 10).map(function (o) { return { libelle: o.libelle.trim().slice(0, 60), page: o.page }; });
+    } catch (e) { console.warn("[Extensions] outilsDev :", e); return []; }
+  }
   function actionsCompte(lieu) {
     const ext = _prise("actionsCompte");
     if (!ext || typeof ext.actionsCompte !== "function") return [];
@@ -1153,6 +1170,7 @@
     API_VERSION: API_VERSION,
     register: register,
     aPrise: aPrise,
+    outilsDev: outilsDev,
     signaler: signaler,
     chargerModules: chargerModules,
     modulesEtat: modulesEtat,
