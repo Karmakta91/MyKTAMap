@@ -170,7 +170,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 | Mode Secours partagé | Sortant : l'événement `mktm:secours-scenario-mutated` (déjà émis). Entrant : une prise pour appliquer au scénario une modification reçue d'un autre appareil | Le Mode Secours vit dans community ; seul l'entrant manque |
 
 - **Une instance = une adresse** : chaque instance a son propre domaine, donc le navigateur
-  isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app.
+  isole ses données (stockage par origine). Pas de sélecteur d'instances dans l'app. Une extension qui sert
+  **plusieurs organisations à la même adresse** n'en garde qu'une active par appareil et efface ce qu'elle a
+  synchronisé au changement (prise « effacement à la déconnexion ») : community ne préfixe pas ses stores.
+  Le fragment d'URL (`#…`) est laissé intact au démarrage (`swRegister.js` le recopie quand il nettoie l'adresse) :
+  une extension peut y lire ses propres paramètres (lien d'invitation) avant toute autre action.
 
 - **Requêtes de backend jamais en cache** (v2.7.1) : `requete()` marque ses requêtes (`X-Kta-Ext`, `cache: "no-store"`) et le SW ne touche jamais une requête marquée ou portant `Authorization` — indispensable quand le backend est servi à la même adresse que l'app (proxy `/api`), sinon ses réponses (données de compte, synchro) seraient mises en cache sur l'appareil.
 - **Dossiers de l'instance** : prise facultative `plans.dossiers()` → `[{ id, name, color?, order?, rule? }]` et champ
