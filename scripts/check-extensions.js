@@ -588,6 +588,44 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 erreur de l'extension → null (les dossiers existants ne sont pas libérés)", (await K3.dossiersExtension()) === null);
   }
 
+  // ═════════ 6 sexies. PHOTOS DES POINTS (prise « photos », 10/10/2026) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : completerPoint → 0, completerPlan → { 0, 0 } (rien n'est appelé)",
+      (await K.photosCompleterPoint("p", "pt_x")) === 0 &&
+      JSON.stringify(await K.photosCompleterPlan("p")) === JSON.stringify({ ajoutees: 0, total: 0 }));
+    const appels = [];
+    K.register({ nom: "ph", apiVersion: 1, photos: {
+      completerPoint: (p, pt) => { appels.push([p, pt]); return Promise.resolve(2); },
+      completerPlan: () => Promise.resolve({ ajoutees: 3, total: 7, autre: "x" }) } });
+    t("prise photos : arguments transmis, nombre rendu", (await K.photosCompleterPoint("p", "pt_x")) === 2 &&
+      appels.length === 1 && appels[0][0] === "p" && appels[0][1] === "pt_x");
+    t("prise photos : completerPlan nettoyé ({ ajoutees, total })",
+      JSON.stringify(await K.photosCompleterPlan("p")) === JSON.stringify({ ajoutees: 3, total: 7 }));
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ph2", apiVersion: 1, photos: { completerPoint: () => { throw new Error("x"); },
+      completerPlan: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → 0 / { 0, 0 }, aucune exception",
+      (await K2.photosCompleterPoint("p", "a")) === 0 && (await K2.photosCompleterPlan("p")).ajoutees === 0);
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "ph3", apiVersion: 1, photos: { completerPoint: () => "beaucoup", completerPlan: () => null } });
+    t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
+    const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
+    t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos"]/.test(EXT));
+    t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
+      /K\.aPrise\("photos"\)\) \{\s*K\.photosCompleterPoint\(/.test(U) && /!K\.aPrise\("photos"\)\) return;/.test(ED));
+    t("🩸 restorePhoto sans opts.source = dépôt d'une EXTENSION (source « extension » : pas de renvoi au serveur)",
+      /: "extension";/.test(PH) && /_emettre\(rec\.planId, \[id\], "ajout", source\)/.test(PH));
+    const purge = PH.slice(PH.indexOf("function deletePhotosForPlan("), PH.indexOf("function restorePhoto("));
+    const vide = PH.slice(PH.indexOf("function clearAll("), PH.indexOf("function getStorageInfo("));
+    t("🩸 purges LOCALES (plan retiré, déconnexion, réinitialisation) : AUCUN événement de suppression",
+      purge.length > 0 && !/_emettre/.test(purge) && vide.length > 0 && !/_emettre/.test(vide));
+    const RESTAURE = ["js/main.js", "js/interfaceImportExport.js", "js/profileExportImport.js"];
+    t("restaurations de l'app marquées source « import » (session, plan ZIP, profil)",
+      RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import" \}\)/.test(lire(f))));
+  }
+
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════
   {
     const MAIN = lire("js/main.js"), HL = lire("js/homeLoader.js"), PROF = lire("js/profileExportImport.js"),

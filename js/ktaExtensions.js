@@ -366,7 +366,7 @@
     try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -640,6 +640,40 @@
       bloc.appendChild(b);
     });
     return bloc;
+  }
+
+  // ── Photos des points (prise d'INFORMATION `photos`, 10/10/2026) ──
+  // L'extension déclare photos: { completerPoint(planId, pointId) → Promise<number>,
+  //                               completerPlan(planId) → Promise<{ ajoutees, total }> }.
+  // Elle dépose les photos qui manquent sur l'appareil par MyKTAMapPhotos.restorePhoto ;
+  // l'app réaffiche si quelque chose est arrivé. Attente bornée à 8 s, puis abandon
+  // silencieux ; erreur = ignorée (journalisée [Photos]) : l'app montre ce qui est local.
+  // Sans extension : aucune attente, rien n'est appelé.
+  const PHOTOS_DELAI_MS = 8000;
+  function _photosBorne(appel, defaut, nom) {
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(appel).catch(function (e) { console.warn("[Photos] extension « " + nom + " » :", e); return defaut; }),
+      new Promise(function (r) {
+        delai = setTimeout(function () { console.warn("[Photos] extension « " + nom + " » : délai dépassé"); r(defaut); }, PHOTOS_DELAI_MS);
+      })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+  function photosCompleterPoint(planId, pointId) {
+    const ext = _prise("photos");
+    if (!ext || typeof ext.photos.completerPoint !== "function" || !planId || !pointId) return Promise.resolve(0);
+    return _photosBorne(function () { return ext.photos.completerPoint(String(planId), String(pointId)); }, 0, "completerPoint")
+      .then(function (n) { return (Number.isInteger(n) && n > 0) ? n : 0; });
+  }
+  function photosCompleterPlan(planId) {
+    const ext = _prise("photos");
+    const rien = { ajoutees: 0, total: 0 };
+    if (!ext || typeof ext.photos.completerPlan !== "function" || !planId) return Promise.resolve(rien);
+    return _photosBorne(function () { return ext.photos.completerPlan(String(planId)); }, rien, "completerPlan")
+      .then(function (r) {
+        const n = function (v) { return (Number.isInteger(v) && v > 0) ? v : 0; };
+        return (r && typeof r === "object") ? { ajoutees: n(r.ajoutees), total: n(r.total) } : rien;
+      });
   }
 
   // ── Changements reçus (synchro entrante) ──
@@ -1217,6 +1251,8 @@
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
+    photosCompleterPoint: photosCompleterPoint,
+    photosCompleterPlan: photosCompleterPlan,
     badgePlan: badgePlan,
     panneauExtension: panneauExtension,
     ouvrirPanneau: ouvrirPanneau,

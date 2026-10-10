@@ -324,6 +324,7 @@
               mime:     ph.mime || blob.type || "image/jpeg",
               size:     ph.size || blob.size || 0,
               addedAt:  ph.addedAt || null,
+              fiche:    ph.fiche || undefined,   // 📸 fiche du point (retrouver une photo sans point)
               data:     b64   // base64-encoded blob content
             });
           }
@@ -1073,8 +1074,9 @@ photos: false, histoirePdfs: false, crashes: false
               mime:      ph.mime,
               size:      ph.size || blob.size,
               createdAt: ph.addedAt || Date.now(),
+              fiche:     ph.fiche,
               blob:      blob
-            });
+            }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
             n++;
           } catch(e) {
             console.warn("[ProfileExportImport] restore photo " + ph.id + " échec :", e);

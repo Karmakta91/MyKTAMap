@@ -1495,6 +1495,13 @@
       window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
       return;
     }
+    // 📸 Fiche des photos des points (retrouver le point s'il disparaît) : les points
+    // d'AVANT d'abord, puis ceux d'après qui l'emportent — un point retiré par le
+    // tableau garde ainsi la fiche de son dernier état, ses photos restent « sans point ».
+    const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
+    if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(_data));
+    }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
     // Carte masquée par l'éditeur : le résultat ne se voit pas → toast warn (visible en « Essentielles »).

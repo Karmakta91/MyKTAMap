@@ -26,8 +26,31 @@
  *     mime:      "image/jpeg",       // MIME type
  *     size:      234567,             // bytes (= blob.size, cache)
  *     createdAt: 1700000000000,      // Date.now() à l'ajout
- *     meta:      { caption: "..." }  // metadata user optionnelle
+ *     meta:      { caption: "..." }, // metadata user optionnelle
+ *     fiche:     { nom, x, y, niveau, type, maj }  // fiche du point (facultative)
  *   }
+ *
+ * 📸 Fiche du point (vague « Photos », 10/10/2026) : ce qu'il faut pour
+ * RETROUVER le point d'une photo s'il est supprimé — nom, coordonnées image
+ * (comme dans la session), niveau, type (1er tag), maj (ms). Posée à l'ajout
+ * et au rattachement, remise à jour quand le point est enregistré (éditeur,
+ * tableau) ou supprimé. Absente des anciennes photos : jamais exigée.
+ * Supprimer un point NE supprime PAS ses photos : elles apparaissent « sans
+ * point » dans 🧰 Outils > 📸 Mes photos (js/photosGalerie.js), où
+ * l'utilisateur les rattache, recrée le point, les enregistre ou les supprime.
+ *
+ * 📣 Événement `mktm:photos-changees` sur window, APRÈS l'écriture IDB :
+ *   detail = { planId, photoIds: [...], action, source? }
+ *   action ∈ "ajout" | "suppression" | "rattachement" | "fiche"
+ *   source = "extension" : écriture faite par restorePhoto() sans opts.source
+ *            (= une extension qui dépose une photo reçue) — elle ne doit pas
+ *            la renvoyer à son serveur ;
+ *            "import" : restauration par l'app (session, plan ZIP, profil).
+ *   🩸 Les PURGES LOCALES n'émettent RIEN : deletePhotosForPlan (plan retiré
+ *   de l'appareil, déconnexion, réimport de session) et clearAll
+ *   (réinitialisation, import de profil). Ce n'est pas l'utilisateur qui
+ *   supprime ses photos : une extension qui propagerait ces suppressions
+ *   effacerait celles de l'équipe.
  *
  * Décisions de design KARMA-validées (B1.a) :
  *   - Source : caméra + galerie (UI géré en B1.b)
@@ -57,6 +80,13 @@
  *   - generateId()                          → string (photoId neuf)
  *   - isAvailable()                         → boolean (IDB supporté ?)
  *   - getStorageInfo()                      → Promise<{used, quota}> approx.
+ *   - listerPlan(planId)   → Promise<[{ id, planId, pointId, mime, size, createdAt, fiche }]> (SANS blob)
+ *   - listerTout()         → idem, toutes les photos de l'appareil
+ *   - rattacher(photoIds, planId, pointId, fiche) → Promise<number> (pointId + fiche)
+ *   - supprimerPhotos(photoIds)             → Promise<number> (geste utilisateur)
+ *   - ficheDepuisPoint(point)               → fiche | null
+ *   - majFichesPoints(planId, points)       → Promise<number> (fiches des photos de ces points)
+ *   - restorePhoto(record, opts)            → opts.source : "extension" (défaut) | "import"
  *
  * Toutes les fonctions retournent des Promises (asynchrones). Gestion
  * gracieuse des erreurs : on log warn + return null/false/array vide
@@ -217,6 +247,62 @@
   }
 
   // ============================================================
+  // 📣 ÉVÉNEMENT mktm:photos-changees (contrat community ↔ extension)
+  // ============================================================
+  // Toujours APRÈS la fin de la transaction (appelé dans le .then de _tx).
+  // Un écouteur en erreur ne casse jamais l'écriture.
+  const ACTIONS = { ajout: 1, suppression: 1, rattachement: 1, fiche: 1 };
+  function _emettre(planId, photoIds, action, source) {
+    const ids = (photoIds || []).filter(Boolean).map(String);
+    if (!ids.length || !ACTIONS[action]) return;
+    const detail = { planId: String(planId || ""), photoIds: ids, action: action };
+    if (source) detail.source = source;
+    try { window.dispatchEvent(new CustomEvent("mktm:photos-changees", { detail: detail })); }
+    catch (e) { console.warn("[Photos] événement photos-changees :", e); }
+  }
+
+  // ============================================================
+  // 📸 FICHE DU POINT
+  // ============================================================
+  // Forme normalisée, ou null (coordonnées absentes : une fiche sans position
+  // ne permet pas de recréer le point, elle n'a pas d'intérêt).
+  function _fiche(f) {
+    if (!f || typeof f !== "object") return null;
+    const x = Number(f.x), y = Number(f.y);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    return {
+      nom:    String(f.nom == null ? "" : f.nom).slice(0, 200),
+      x:      x,
+      y:      y,
+      niveau: Number.isInteger(f.niveau) ? f.niveau : null,
+      type:   (typeof f.type === "string" && f.type) ? f.type.slice(0, 80) : null,
+      maj:    (typeof f.maj === "number" && isFinite(f.maj)) ? f.maj : Date.now()
+    };
+  }
+  // Fiche d'un point de session ou de calque ({ nom|id, x, y, level, tags }).
+  function ficheDepuisPoint(pt) {
+    if (!pt || typeof pt !== "object") return null;
+    return _fiche({
+      nom: pt.nom || pt.id || "",
+      x: pt.x, y: pt.y,
+      niveau: Number.isInteger(pt.level) ? pt.level : null,
+      type: Array.isArray(pt.tags) && pt.tags.length ? String(pt.tags[0]) : null,
+      maj: Date.now()
+    });
+  }
+  function _memeFiche(a, b) {
+    if (!a || !b) return false;
+    return a.nom === b.nom && a.x === b.x && a.y === b.y && a.niveau === b.niveau && a.type === b.type;
+  }
+  // Ce que rendent listerPlan / listerTout : tout sauf le blob.
+  function _sansBlob(rec) {
+    return {
+      id: rec.id, planId: rec.planId, pointId: rec.pointId, mime: rec.mime,
+      size: rec.size || 0, createdAt: rec.createdAt || 0, fiche: rec.fiche || null
+    };
+  }
+
+  // ============================================================
   // COMPRESSION D'UN BLOB IMAGE
   // ============================================================
   // Pipeline : Blob → Image → Canvas redimensionné → Blob JPEG compressé.
@@ -327,6 +413,8 @@
           createdAt: Date.now(),
           meta:      opts.meta || {}
         };
+        const fiche = _fiche(opts.fiche);
+        if (fiche) record.fiche = fiche;
 
         return _tx("readwrite", function(store) {
           return _reqPromise(store.add(record)).then(function() {
@@ -340,6 +428,9 @@
             }
             return record.id;
           });
+        }).then(function(id) {
+          _emettre(record.planId, [id], "ajout");
+          return id;
         });
       });
     }).catch(function(err) {
@@ -442,15 +533,51 @@
   // ============================================================
   // SUPPRESSION
   // ============================================================
+  // Suppression VOULUE (geste utilisateur, ou photo d'un plan retirée de sa
+  // nouvelle version) : émet « suppression ». Le planId de l'événement est lu
+  // dans l'enregistrement, dans la même transaction.
   function deletePhoto(photoId) {
     if (!photoId) return Promise.resolve(false);
+    let planId = null;
     return _tx("readwrite", function(store) {
-      return _reqPromise(store.delete(photoId)).then(function() {
-        return true;
+      return new Promise(function(resolve, reject) {
+        const g = store.get(photoId);
+        g.onsuccess = function() {
+          if (g.result) planId = g.result.planId;
+          const d = store.delete(photoId);
+          d.onsuccess = function() { resolve(true); };
+          d.onerror = function() { reject(d.error); };
+        };
+        g.onerror = function() { reject(g.error); };
       });
+    }).then(function(ok) {
+      if (planId !== null) _emettre(planId, [photoId], "suppression");
+      return ok;
     }).catch(function(e) {
       console.warn("[Photos] deletePhoto erreur :", e);
       return false;
+    });
+  }
+
+  // Plusieurs photos, une transaction, un événement par plan. → nombre supprimé.
+  function supprimerPhotos(photoIds) {
+    const ids = (Array.isArray(photoIds) ? photoIds : []).filter(Boolean).map(String);
+    if (!ids.length) return Promise.resolve(0);
+    const parPlan = {};
+    return _tx("readwrite", function(store) {
+      return Promise.all(ids.map(function(id) {
+        return _reqPromise(store.get(id)).then(function(rec) {
+          if (!rec) return 0;
+          (parPlan[rec.planId] = parPlan[rec.planId] || []).push(id);
+          return _reqPromise(store.delete(id)).then(function() { return 1; });
+        });
+      })).then(function(r) { return r.reduce(function(a, b) { return a + b; }, 0); });
+    }).then(function(n) {
+      Object.keys(parPlan).forEach(function(p) { _emettre(p, parPlan[p], "suppression"); });
+      return n;
+    }).catch(function(e) {
+      console.warn("[Photos] supprimerPhotos erreur :", e);
+      return 0;
     });
   }
 
@@ -462,6 +589,9 @@
           return _reqPromise(store.delete(rec.id));
         });
         return Promise.all(promises).then(function() { return arr.length; });
+      }).then(function(n) {
+        _emettre(planId, arr.map(function(r) { return r.id; }), "suppression");
+        return n;
       });
     }).catch(function(e) {
       console.warn("[Photos] deletePhotosForPoint erreur :", e);
@@ -469,6 +599,8 @@
     });
   }
 
+  // 🩸 PURGE LOCALE (plan retiré de l'appareil, déconnexion, réimport de
+  // session) : AUCUN événement — cf en-tête.
   function deletePhotosForPlan(planId) {
     return getAllPhotosForPlan(planId).then(function(arr) {
       if (arr.length === 0) return 0;
@@ -505,11 +637,17 @@
   //
   // Le `record` doit contenir au moins : {id, planId, pointId, blob}. Les
   // autres champs (mime, size, createdAt, meta) sont passés si présents,
-  // sinon valeurs par défaut.
-  function restorePhoto(record) {
+  // sinon valeurs par défaut. `record.fiche` est gardée si elle est valide.
+  //
+  // 📣 opts.source (10/10/2026) : "extension" PAR DÉFAUT — c'est le chemin par
+  // lequel une extension dépose une photo reçue de son serveur, et elle ne doit
+  // pas la renvoyer. Les restaurations de l'app (session, plan ZIP, profil)
+  // passent { source: "import" }.
+  function restorePhoto(record, opts) {
     if (!record || !record.id || !record.planId || !record.pointId || !record.blob) {
       return Promise.reject(new Error("restorePhoto : record incomplet"));
     }
+    const source = (opts && typeof opts.source === "string" && opts.source) ? opts.source : "extension";
     const rec = {
       id:        String(record.id),
       planId:    String(record.planId),
@@ -520,10 +658,15 @@
       createdAt: record.createdAt || Date.now(),
       meta:      record.meta      || {}
     };
+    const fiche = _fiche(record.fiche);
+    if (fiche) rec.fiche = fiche;
     return _tx("readwrite", function(store) {
       return _reqPromise(store.put(rec)).then(function() {
         return rec.id;
       });
+    }).then(function(id) {
+      _emettre(rec.planId, [id], "ajout", source);
+      return id;
     });
   }
 
@@ -548,6 +691,7 @@
     }
     if (oldPointId === newPointId) return Promise.resolve(0);
 
+    const migres = [];
     return _tx("readwrite", function(store) {
       const idx = store.index("by_plan_point");
       const range = IDBKeyRange.only([String(planId), String(oldPointId)]);
@@ -565,6 +709,7 @@
           const put = cursor.update(rec);
           put.onsuccess = function() {
             count++;
+            migres.push(rec.id);
             cursor.continue();
           };
           put.onerror = function() {
@@ -579,6 +724,7 @@
     }).then(function(n) {
       if (n > 0) console.log("[Photos] renamePointId :", n, "photos migrées",
                               oldPointId, "→", newPointId);
+      _emettre(planId, migres, "rattachement");
       return n;
     }).catch(function(e) {
       console.warn("[Photos] renamePointId erreur :", e);
@@ -614,28 +760,129 @@
     });
   }
 
+  // Rattache des photos à une clé, dans UNE transaction. Lecture et écriture
+  // dans les RAPPELS des requêtes (pas de .then entre les deux) : la
+  // transaction reste active, comme dans renamePointId. `planId` (facultatif)
+  // limite aux photos de ce plan ; `fiche` (facultative) remplace la fiche.
+  // Ne supprime jamais rien. → Promise<[{ id, planId }]> réellement modifiées.
+  function _poserPointId(photoIds, pointId, planId, fiche) {
+    const ids = (photoIds || []).filter(Boolean).map(String);
+    if (!ids.length || !pointId) return Promise.resolve([]);
+    const faits = [];
+    return _tx("readwrite", function(store) {
+      return Promise.all(ids.map(function(id) {
+        return new Promise(function(resolve, reject) {
+          const g = store.get(id);
+          g.onsuccess = function() {
+            const rec = g.result;
+            if (!rec || (planId && rec.planId !== String(planId))) { resolve(); return; }
+            rec.pointId = String(pointId);
+            if (fiche) rec.fiche = fiche;
+            const put = store.put(rec);
+            put.onsuccess = function() { faits.push({ id: rec.id, planId: rec.planId }); resolve(); };
+            put.onerror = function() { reject(put.error); };
+          };
+          g.onerror = function() { reject(g.error); };
+        });
+      }));
+    }).then(function() { return faits; });
+  }
+  function _emettreParPlan(faits, action) {
+    const parPlan = {};
+    faits.forEach(function(f) { (parPlan[f.planId] = parPlan[f.planId] || []).push(f.id); });
+    Object.keys(parPlan).forEach(function(p) { _emettre(p, parPlan[p], action); });
+  }
+
   // Rattache UNE photo à une clé (geste « C'est ce point », migration).
   // Ne supprime jamais rien : seul `pointId` change.
   function setPhotoPointId(photoId, pointId) {
     if (!photoId || !pointId) return Promise.resolve(false);
-    // Lecture et écriture dans les RAPPELS de la requête (pas de .then entre
-    // les deux) : la transaction reste active, comme dans renamePointId.
-    return _tx("readwrite", function(store) {
-      return new Promise(function(resolve, reject) {
-        const g = store.get(String(photoId));
-        g.onsuccess = function() {
-          const rec = g.result;
-          if (!rec) { resolve(false); return; }
-          rec.pointId = String(pointId);
-          const put = store.put(rec);
-          put.onsuccess = function() { resolve(true); };
-          put.onerror = function() { reject(put.error); };
-        };
-        g.onerror = function() { reject(g.error); };
-      });
+    return _poserPointId([photoId], pointId, null, null).then(function(faits) {
+      _emettreParPlan(faits, "rattachement");
+      return faits.length > 0;
     }).catch(function(e) {
       console.warn("[Photos] setPhotoPointId erreur :", e);
       return false;
+    });
+  }
+
+  // 📸 Contrat (10/10/2026) : rattache des photos d'un plan à un point
+  // (pointId = uid du point, ou son nom s'il n'en a pas) et pose sa fiche.
+  // Seules les photos de CE plan sont touchées. → Promise<number>.
+  function rattacher(photoIds, planId, pointId, fiche) {
+    if (!planId || !pointId) return Promise.resolve(0);
+    return _poserPointId(photoIds, pointId, String(planId), _fiche(fiche)).then(function(faits) {
+      if (faits.length) console.log("[Photos] rattacher :", faits.length, "photo(s) →", pointId);
+      _emettreParPlan(faits, "rattachement");
+      return faits.length;
+    }).catch(function(e) {
+      console.warn("[Photos] rattacher erreur :", e);
+      return 0;
+    });
+  }
+
+  // Liste SANS blob (le blob reste en base : galerie, extension, comptages).
+  function listerPlan(planId) {
+    return getAllPhotosForPlan(planId).then(function(arr) { return arr.map(_sansBlob); });
+  }
+  function listerTout() {
+    return _tx("readonly", function(store) {
+      return _reqPromise(store.getAll()).then(function(arr) {
+        return (Array.isArray(arr) ? arr : []).map(_sansBlob);
+      });
+    }).catch(function(e) {
+      console.warn("[Photos] listerTout erreur :", e);
+      return [];
+    });
+  }
+
+  // Remet à jour la fiche des photos de ces points (éditeur, tableau,
+  // suppression d'un point). Une photo appartient à un point si sa clé vaut
+  // son uid ou, à défaut, son nom (lecture double, cf getPhotosForPointRef).
+  // Une clé de nom portée par PLUSIEURS points de la liste n'est pas touchée
+  // (on ne devine pas). Le dernier point d'une même clé gagne. Seules les
+  // fiches qui CHANGENT sont écrites. → Promise<number>.
+  function majFichesPoints(planId, points) {
+    if (!planId || !Array.isArray(points) || !points.length) return Promise.resolve(0);
+    const parUid = new Map(), parNom = new Map(), nomsVus = new Map();
+    points.forEach(function(pt) {
+      if (!pt) return;
+      if (typeof pt.uid === "string" && pt.uid) parUid.set(pt.uid, pt);
+      const n = pt.id != null ? String(pt.id) : "";
+      if (!n) return;
+      // un même point passé deux fois (avant / après) ne fait pas une ambiguïté
+      const cle = pt.uid || ("#" + n + "@" + pt.x + "," + pt.y);
+      if (!nomsVus.has(n)) nomsVus.set(n, new Set());
+      nomsVus.get(n).add(cle);
+      parNom.set(n, pt);
+    });
+    const faits = [];
+    return _tx("readwrite", function(store) {
+      const idx = store.index("by_plan");
+      return new Promise(function(resolve, reject) {
+        const req = idx.openCursor(IDBKeyRange.only(String(planId)));
+        req.onsuccess = function(ev) {
+          const cursor = ev.target.result;
+          if (!cursor) { resolve(); return; }
+          const rec = cursor.value;
+          const cle = String(rec.pointId || "");
+          let pt = parUid.get(cle) || null;
+          if (!pt && parNom.has(cle) && nomsVus.get(cle).size === 1) pt = parNom.get(cle);
+          const f = pt ? ficheDepuisPoint(pt) : null;
+          if (!f || _memeFiche(f, rec.fiche)) { cursor.continue(); return; }
+          rec.fiche = f;
+          const put = cursor.update(rec);
+          put.onsuccess = function() { faits.push(rec.id); cursor.continue(); };
+          put.onerror = function() { cursor.continue(); };
+        };
+        req.onerror = function() { reject(req.error); };
+      });
+    }).then(function() {
+      _emettre(planId, faits, "fiche");
+      return faits.length;
+    }).catch(function(e) {
+      console.warn("[Photos] majFichesPoints erreur :", e);
+      return 0;
     });
   }
 
@@ -650,6 +897,9 @@
           rec.planId = String(nouveauId);
           return _reqPromise(store.put(rec));
         })).then(function() { return recs.length; });
+      }).then(function(n) {
+        _emettre(nouveauId, recs.map(function(r) { return r.id; }), "rattachement");
+        return n;
       });
     }).catch(function(e) {
       console.warn("[Photos] changerPlan erreur :", e);
@@ -681,11 +931,13 @@
         const cle = String(rec.pointId || "");
         if (!cle || uids.has(cle)) return;
         const c = parNom.get(cle) || [];
-        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) ops.push(setPhotoPointId(rec.id, c[0].uid));
+        if (c.length === 1 && typeof c[0].uid === "string" && c[0].uid) ops.push(_poserPointId([rec.id], c[0].uid, null, null));
         else if (c.length > 1) ambigues++;
       });
       return Promise.all(ops).then(function(r) {
-        const migrees = r.filter(Boolean).length;
+        const faits = [].concat.apply([], r);
+        _emettreParPlan(faits, "rattachement");   // un seul événement pour toute la passe
+        const migrees = faits.length;
         if (migrees || ambigues) {
           console.log("[Photos] migration v2.3.0 : " + migrees + " photo(s) rattachée(s) à l'uid de leur point" +
                       (ambigues ? ", " + ambigues + " à rattacher (nom porté par plusieurs points)" : ""));
@@ -698,6 +950,7 @@
     });
   }
 
+  // 🩸 PURGE LOCALE (réinitialisation, import de profil) : AUCUN événement.
   function clearAll() {
     return _tx("readwrite", function(store) {
       return _reqPromise(store.clear()).then(function() {
@@ -762,6 +1015,13 @@
     changerPlan:             changerPlan,
     migrerPhotosPlan:        migrerPhotosPlan,
     restorePhoto:            restorePhoto,
+    // 📸 vague « Photos » (10/10/2026) — contrat community ↔ extension
+    listerPlan:              listerPlan,
+    listerTout:              listerTout,
+    rattacher:               rattacher,
+    supprimerPhotos:         supprimerPhotos,
+    ficheDepuisPoint:        ficheDepuisPoint,
+    majFichesPoints:         majFichesPoints,
     clearAll:                clearAll,
     getStorageInfo:          getStorageInfo,
     // Constantes exposées pour l'UI (B1.b) qui peut afficher les limites

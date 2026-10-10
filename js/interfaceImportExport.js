@@ -675,7 +675,7 @@ function ouvrirImportSession(fichierInitial) {
             blob:    p.blob,
             mime:    p.mime,
             size:    p.size
-          });
+          }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
         });
         return Promise.all(promises).then(function() {
           console.log("[Import] Photos restaurées :", _pendingPhotosToRestore.length);

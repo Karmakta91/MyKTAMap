@@ -1036,7 +1036,12 @@ window._ktaPlanifierMigrationPhotos = function() {
       (window.getEditorPoints ? window.getEditorPoints() || [] : []).map(function(p) { return Object.assign({ layerId: "editor" }, p); }),
       (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
     ).filter(Boolean).map(function(p) { return { uid: p.uid, id: p.id, x: p.x, y: p.y, layerId: p.layerId }; });
-    window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    const _migr = window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    // 📸 Photos « sans point » de ce plan : signal discret (toast), APRÈS la migration
+    // (une photo encore rangée sous un nom n'est pas « sans point »). Une fois par ouverture.
+    if (window.KtaPhotosGalerie && typeof window.KtaPhotosGalerie.apresOuverturePlan === "function") {
+      Promise.resolve(_migr).then(function() { window.KtaPhotosGalerie.apresOuverturePlan(planId); });
+    }
     try { if (window.Favoris && window.Favoris.migrerVersUid) window.Favoris.migrerVersUid(pts); } catch(e) { console.warn("[Main] migration favoris :", e); }
     try { if (window.InterPlanLinks && window.InterPlanLinks.migrerVersUid) window.InterPlanLinks.migrerVersUid(planId, pts); } catch(e) { console.warn("[Main] migration liaisons :", e); }
   }, 2000);
@@ -1765,7 +1770,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 mime:    info.mime || "image/jpeg",
                 size:    info.size || blob.size,
                 meta:    { origine: "plan" }   // 🆔 v2.5.0 : seules celles-ci peuvent être retirées
-              });
+              }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;
             } catch(e) {
               console.warn("[Loader] restorePhoto échoué pour", pid, ":", e);

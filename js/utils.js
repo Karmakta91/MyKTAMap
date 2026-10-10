@@ -1738,7 +1738,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     _objectUrls.clear();
   }
 
-  marker.on("popupopen", function(ev) {
+  marker.on("popupopen", function _hydraterPhotos(ev) {
     if (!window.MyKTAMapPhotos) return;
     // Récupère l'élément du slot dans le DOM du popup ouvert
     const popupEl = ev.popup && ev.popup.getElement ? ev.popup.getElement() : null;
@@ -1879,6 +1879,16 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     }).catch(function(e) {
       console.warn("[Popup photos] getPhotosForPoint erreur :", e);
     });
+
+    // 📸 Installation reliée (prise `photos`) : l'extension dépose les photos de ce
+    // point qui manquent sur l'appareil (8 s max) ; si elle en a déposé et que la
+    // fiche est toujours ouverte, on la réhydrate UNE fois. Sans extension : rien.
+    const K = window.KtaExtensions;
+    if (!ev._ktaRelance && K && typeof K.aPrise === "function" && K.aPrise("photos")) {
+      K.photosCompleterPoint(planId, pointUid || pid).then(function(n) {
+        if (n > 0 && marker.isPopupOpen && marker.isPopupOpen()) _hydraterPhotos({ popup: ev.popup, _ktaRelance: true });
+      });
+    }
   });
 
   marker.on("popupclose", function() {
