@@ -57,6 +57,12 @@
   let _currentPlanId = null;
   // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
   let _quotaWarned   = false;
+  // 🩸 10/10/2026 (retour testeur en prod) : la sauvegarde automatique ne supprime le slot d'un plan QUE si la
+  // session de cette page l'a chargé (restaurée) ou écrit. Avant : une session écartée (nom de plan différent)
+  // était effacée au 1er tick — carte vide = « état vide » = removeItem, sans un mot.
+  let _slotAssume    = false;
+  // Question « restaurer la session d'un autre nom ? » en cours : aucune écriture tant qu'elle n'est pas tranchée.
+  let _decisionEnAttente = false;
   // 🆕 v1.8.1 : ID du setTimeout de la phase 2 de restore (itinéraire différé).
   // Permet d'annuler la phase 2 si l'user clique "Effacer la session" avant
   // que les 1500ms ne soient écoulés — sinon l'itinéraire réapparaissait
@@ -306,6 +312,7 @@
 
   function save(opts) {
     if (!_currentPlanId) return false;
+    if (_decisionEnAttente) return false;
 
     // Throttle : sauf si force=true (beforeunload, visibilitychange) on
     // skip si le main thread est sous pression
@@ -329,7 +336,7 @@
       // UNIQUEMENT au slot du plan courant — les autres plans gardent
       // leur session.
       const _k = _storageKeyFor(_currentPlanId);
-      if (_k) {
+      if (_k && _slotAssume) {
         try { localStorage.removeItem(_k); } catch(e) {}
       }
       _lastHash = hash;
@@ -382,6 +389,7 @@
     if (!_writeKey) return false;
     try {
       localStorage.setItem(_writeKey, JSON.stringify(payload));
+      _slotAssume = true;
       _lastHash = hash;
       _quotaWarned = false;  // reset si le save remarche après libération de place
       _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
@@ -474,6 +482,7 @@
     if (_k) {
       try { localStorage.removeItem(_k); } catch(e) {}
     }
+    _slotAssume = false;
     // 🔄 v1.85.0 — 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
     // Effacer la session detruit les objets rapatries ; laisser le verrou
     // masquerait alors le calque d origine, et l utilisateur verrait son
@@ -984,8 +993,16 @@
   //    dans son slot et sera restaurée naturellement quand l'user
   //    reviendra sur ce plan.
   //  - Démarre le polling pour la session courante.
+  // Nom de plan comparé comme l'accueil le fait (homeLoader.js > _normId) : casse, accents, ponctuation ignorés.
+  function _normNomPlan(s) {
+    return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "");
+  }
+
   function onPlanLoaded(planId) {
     _stopPolling();
+    _slotAssume = false;
+    _decisionEnAttente = false;
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
     // l'user a chargé une session avec itinéraire (phase 2 setTimeout
     // de 1500ms en cours) puis a fait un plan switch (🗂️) avant que
@@ -1041,20 +1058,54 @@
       const currentName = _currentPlanName();
       const nameMatch   = (!saved.planName || !currentName)
                             ? true
-                            : (saved.planName === currentName);
+                            : (_normNomPlan(saved.planName) === _normNomPlan(currentName));
 
       if (nameMatch) {
         restored = _applyRestore(saved);
-        if (restored) _afficherModaleSession(restored);
-      } else if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-        console.log("[SessionPersist] Session écartée (nameMatch ko) — saved=",
-                    saved.planId, "/", saved.planName,
-                    " current=", _currentPlanId, "/", currentName);
+        if (restored) { _slotAssume = true; _afficherModaleSession(restored); }
+      } else {
+        // 🩸 10/10/2026 (retour testeur en prod) : nom vraiment différent (plan renommé par sa nouvelle version, ou
+        // collision d'identifiant). Avant : écartée en silence PUIS effacée par l'autosauvegarde. Désormais : copie
+        // dans 📦 Backups, écriture suspendue, et l'utilisateur tranche.
+        console.warn("[SessionPersist] session d'un autre nom de plan :", saved.planName, "≠", currentName);
+        _proposerSessionAutreNom(saved, currentName, planId);
       }
     }
     _startPolling();
     _verifierMemoire(false);
     return restored;
+  }
+
+  function _proposerSessionAutreNom(saved, nomActuel, planId) {
+    _decisionEnAttente = true;
+    const esc = window.ktaEsc || function (x) { return String(x); };
+    const copie = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
+      ? Promise.resolve(window.SessionBackups.snapshot("session-autre-nom")).catch(function () { return null; })
+      : Promise.resolve(null);
+    copie.then(function () {
+      if (_currentPlanId !== planId) { _decisionEnAttente = false; return null; }   // plan changé entre-temps
+      if (typeof window.ktaConfirm !== "function") return true;
+      return window.ktaConfirm(_trModule("session.autreNom.msg", { ancien: esc(saved.planName), actuel: esc(nomActuel) }), {
+        titre: _trModule("session.autreNom.titre"),
+        okLabel: _trModule("session.autreNom.restaurer"), cancelLabel: _trModule("session.autreNom.ignorer")
+      });
+    }).then(function (ok) {
+      if (_currentPlanId !== planId) return;
+      _decisionEnAttente = false;
+      if (ok) {
+        const r = _applyRestore(saved);
+        if (r) {
+          _slotAssume = true;
+          // Réécrite tout de suite sous le nom ACTUEL : sinon rien ne change, rien n'est réécrit, et la même
+          // question reviendrait à chaque ouverture du plan.
+          _lastHash = null;
+          save({ force: true });
+          _afficherModaleSession(r);
+        }
+      } else if (ok === false && window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(_trModule("session.autreNom.ignoree"), "warn", { important: true });
+      }
+    });
   }
 
   // ========== MÉMOIRE DES SESSIONS (localStorage ~5 Mo) ==========

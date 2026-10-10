@@ -13,10 +13,10 @@ jauge « 💾 Mémoire des sessions » (📊 Détails de la session, ⚠️ sur 
 chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`, `utils.js`), écritures de
 `updateChecker.js` protégées (avant : « Plus tard » jetait `QuotaExceededError`, invite à chaque ouverture). Reste :
 
-- 🔴 **Session supprimée en silence** si le nom du plan a changé (casse, accent, libellé) : `sessionPersist.js:1041-1055`
-  compare `saved.planName === nom courant` strictement, ignore la session sans message, puis le 1er tick d'autosauvegarde
-  (carte vide) fait `removeItem` (`:326-334`). Corriger : comparaison tolérante (celle de `homeLoader.js:436-458`), ne
-  JAMAIS supprimer une session non restaurée, et le dire (« session d'une autre version du plan trouvée »).
+- ✅ **Session supprimée en silence si le nom du plan change** — corrigé le 10/10/2026 : comparaison tolérante,
+  question « Session d'une autre version du plan » (copie dans 📦 Backups), l'autosauvegarde ne supprime plus un slot
+  qu'elle n'a pas chargé. Si l'utilisateur choisit « Ignorer », la question revient à la prochaine ouverture du plan
+  (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
 - 🟠 **« 💥 Forcer un reset complet » dans la fenêtre de mise à jour** (`fr.json` `alerts.update.*`) : l'enlever de là
   (🆘 Dépannage seulement) ; sa confirmation doit lister ce qui sera perdu (N points, N photos, N backups) et
   proposer d'exporter avant.
