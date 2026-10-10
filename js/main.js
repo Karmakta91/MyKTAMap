@@ -2220,6 +2220,10 @@ window.proposerRedemarrageLangue = function() {
   let _gateDelegueeOk = false;
   if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
     const _mods = await window.KtaExtensions.chargerModules();
+    // Splash terminé AVANT d'ouvrir la gate déléguée : gate.ouvrir() dessine son écran tout de suite
+    // (pro : connexion), qui apparaissait par-dessus le splash encore affiché (constat KARMA du 10/10/2026,
+    // mesuré : écran de connexion à 1,2 s, splash présent et sans fondu).
+    if (_mods && _mods.demandes > 0) await _splashEnd();
     const _gate = window.KtaExtensions.gateDeleguee();
     if (_gate) {
       await _splashEnd();
