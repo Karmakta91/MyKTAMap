@@ -245,7 +245,7 @@ Write-Host ""
 Write-Host "  Aucun script n'exécute l'app dans un navigateur. Les marches" -ForegroundColor Yellow
 Write-Host "  suivantes ne peuvent être confirmées que par toi :" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "    [ ] Marche 2 — smoke test 12 points sur dev.myktamap.fr, cache vidé"
+Write-Host "    [ ] Marche 2 — smoke test 13 points sur dev.myktamap.fr, cache vidé"
 Write-Host "    [ ] Marche 3 — checkup ciblé des modules touchés par cette release"
 Write-Host "    [ ] Marche 4 — trempage 24-48 h sur dev, usage réel"
 Write-Host ""
@@ -307,8 +307,8 @@ Ok "retour sur $branche"
 Write-Host ""
 Write-Host "🎉 $vJson est sur main." -ForegroundColor Green
 Write-Host ""
-Write-Host "   Il reste le déploiement PROD, qui est manuel :" -ForegroundColor Yellow
-Write-Host "     sur le VPS : sh /data/scripts/deploy-prod.sh   (script hors dépôt)" -ForegroundColor Yellow
-Write-Host "   puis ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
+Write-Host "   Le déploiement PROD est automatique : dès que la CI de main est verte, le VPS le prend" -ForegroundColor Yellow
+Write-Host "   dans les 5 minutes (auto-deploy.sh ; pause possible par le menu 0 du VPS)." -ForegroundColor Yellow
+Write-Host "   Ensuite : ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
 Write-Host "   Ce qui tourne vraiment, dev et prod : scripts\release\etat-sites.ps1" -ForegroundColor Yellow
 Write-Host ""

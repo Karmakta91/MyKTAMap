@@ -5,7 +5,8 @@
 # (core.hooksPath), contournables (--no-verify), absents de l'éditeur web de GitHub. Ce workflow
 # les rejoue à chaque push et PR : syntaxe, contrôles des commits reçus (anti-fuite pro, data/
 # hors Git) puis tous les garde-fous du pre-commit. Node pur, aucune installation.
-# La protection de `main` (Settings › Branches) exige ce check avant tout merge.
+# Pas de protection de branche (payante en dépôt privé) : merge-main.ps1 exige la marque verte
+# (refs/ci/verte/<branche>, posée par le job « marquer-vert ») avant tout merge sur main.
 # =====================================================================
 
 name: CI

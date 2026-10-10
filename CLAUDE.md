@@ -49,8 +49,8 @@
   marche 1ter de la porte), l'écart avec le distant, **la CI GitHub verte sur le commit à merger** (branche poussée
   telle quelle ; tient lieu de protection de branche, payante en dépôt privé — état illisible = dérogation `DEROGE`),
   puis **demande de confirmer les marches 2-4 de la porte** (aucun script n'ouvre un navigateur), merge, tague et
-  publie. `-DryRun` montre tout sans rien toucher. Prod ensuite : `deploy-prod.sh` sur le VPS.
-- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
+  publie. `-DryRun` montre tout sans rien toucher. Prod ensuite : automatique (`auto-deploy.sh` déploie `main` dans les 5 min si sa CI est verte), puis `/killsw.html` une fois.
+- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 13 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
 - `push main` / `push --force` / `reset --hard` → **bloqués en dur** (`.claude/hooks/guard-git.js`).
@@ -99,7 +99,7 @@
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 | **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** — ne liste que l'OUVERT : son silence ne prouve pas qu'une feature manque (cf ci-dessous) |
 | **Une feature « manque » ? une dette « existe » ?** | AVANT de l'annoncer : `grep` le symbole et les mots-clés dans `js/`, puis le journal `README.md`, puis `docs/architecture/<sujet>.md` (état actuel). Le code est la seule source qui ne ment pas |
-| Porte de release : smoke test 12 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
+| Porte de release : smoke test 13 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
 | **Méthode de travail avec l'IA** (rôles, hooks, garde-fous, porte, audits, doc, tokens) — guide transposable, à donner à un tiers ou à son IA | `docs/IA_POUR_LES_NULS.md` |
 
 ## 📝 Style KARMA
