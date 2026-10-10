@@ -2122,6 +2122,14 @@ window.proposerRedemarrageLangue = function() {
     catch (e) { console.warn("[Main] I18n.init a échoué (fallback FR) :", e); }
   }
 
+  // 💾 Sessions : chargées depuis IndexedDB (et migrées du localStorage au 1er
+  // lancement) AVANT tout rendu qui les lit — accueil, stats, restauration.
+  // Jamais de rejet : IndexedDB indisponible = repli localStorage (js/sessionStore.js).
+  if (window.KtaSessionStore && typeof window.KtaSessionStore.init === "function") {
+    try { await window.KtaSessionStore.init(); }
+    catch (e) { console.warn("[Main] KtaSessionStore.init a échoué :", e); }
+  }
+
   // 🌍 v1.45.0 — Traduit le HOME (statique, déjà dans le DOM) depuis le dico +
   // initialise son sélecteur de langue. Fait AVANT le splash → le HOME est déjà
   // dans la bonne langue quand il devient visible.

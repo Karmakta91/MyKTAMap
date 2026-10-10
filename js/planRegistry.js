@@ -186,7 +186,7 @@
 
   // 🧹 v1.79.3 (décision KARMA — reco 2:a) — PURGE des données associées à
   // un plan (appelée par le 🗑️ de la modale ℹ️ Infos et le nettoyeur
-  // d'orphelins de l'inspecteur DB). Supprime : session auto (LS), géoref/
+  // d'orphelins de l'inspecteur DB). Supprime : session auto (KtaSessionStore), géoref/
   // calibration KMZ (LS), photos (IDB), backups (IDB). PRÉSERVE
   // volontairement : le Carnet et les PDF/notes du Mode Histoire (famille
   // « Récits » — l'HISTOIRE survit aux plans, design v1.69) et les liaisons
@@ -196,10 +196,9 @@
     const bilan = { session: false, calib: false, photos: 0, backups: 0 };
     if (!id) return bilan;
     try {
-      if (localStorage.getItem("myktamap_session_v1_" + id) != null) {
-        localStorage.removeItem("myktamap_session_v1_" + id);
-        bilan.session = true;
-      }
+      const S = window.KtaSessionStore;
+      if (S.lire(id) != null) bilan.session = true;
+      S.retirer(id);   // + son ancienne copie localStorage d'avant la migration IndexedDB
     } catch(e) {}
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
@@ -218,22 +217,23 @@
 
   // ☁️ TRANSFERT des données associées d'un plan vers un autre id : la copie
   // locale d'un plan publié est remplacée par sa version ☁️ (même archive).
-  // Session (LS, planId réécrit), calage, photos, favoris, liaisons. Refusé si
+  // Session (KtaSessionStore, planId réécrit), calage, photos, favoris, liaisons. Refusé si
   // la cible a déjà une session : on n'écrase jamais. Les sauvegardes de
   // session restent à l'ancien id (purgées avec lui) — instantanés du passé.
   async function transferAssociatedData(ancienId, nouveauId) {
     const bilan = { ok: false, session: false, calib: false, photos: 0, favoris: 0, liaisons: 0 };
     if (!ancienId || !nouveauId || ancienId === nouveauId) return bilan;
-    const cleS = function(id) { return "myktamap_session_v1_" + id; };
+    const S = window.KtaSessionStore;
     try {
-      if (localStorage.getItem(cleS(nouveauId)) != null) { bilan.raison = "cible-occupee"; return bilan; }
-      const brut = localStorage.getItem(cleS(ancienId));
+      if (S.lire(nouveauId) != null) { bilan.raison = "cible-occupee"; return bilan; }
+      const brut = S.lire(ancienId);
       if (brut != null) {
         let txt = brut;
         try { const o = JSON.parse(brut); if (o && typeof o === "object") { o.planId = nouveauId; txt = JSON.stringify(o); } }
         catch (e) { /* illisible : copié tel quel */ }
-        localStorage.setItem(cleS(nouveauId), txt);
-        localStorage.removeItem(cleS(ancienId));
+        // Copie CONFIRMÉE avant d'effacer l'ancienne : jamais les deux perdues à la fois.
+        await S.ecrireDurable(nouveauId, txt);
+        S.retirer(ancienId);
         bilan.session = true;
       }
       const cal = localStorage.getItem("myktamap_kmz_calib_" + ancienId);

@@ -1272,12 +1272,10 @@ async function _genererEtatInstallation() {
   } catch(e) {}
   // Sessions persistées (tailles uniquement)
   try {
-    let n = 0, tot = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.indexOf("myktamap_session_v1_") === 0) { n++; tot += (localStorage.getItem(k) || "").length; }
-    }
-    L.push("- Sessions sauvegardées : " + n + " (" + Math.round(tot / 1024) + " Ko au total)");
+    const st = window.KtaSessionStore;
+    const ids = st.ids();
+    const tot = ids.reduce(function(n, id) { return n + st.taille(id); }, 0);
+    L.push("- Sessions sauvegardées : " + ids.length + " (" + Math.round(tot / 1024) + " Ko au total, stockage " + st.mode() + ")");
   } catch(e) {}
   // Dernières erreurs/avertissements du buffer de logs (debug.js)
   try {

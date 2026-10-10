@@ -162,6 +162,7 @@ const ASSETS_TO_CACHE = [
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
   "./js/incognitoMode.js",
+  "./js/sessionStore.js",
   // 🆕 v1.28.2 : détecteur de licence pro via présence de /Licence-pro.json.
   // 100% transparent côté community (fichier absent → 404 silencieux → mode
   // community par défaut). Module sans effet visible si pas de Licence-pro.json.

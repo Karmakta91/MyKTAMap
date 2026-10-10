@@ -14,7 +14,7 @@
 //   - Liste des plans (registry, méta seulement — pas les ZIPs binaires)
 //   - Préférences utilisateur (app_user_prefs + theme + ...)
 //   - Favoris (toutes les listes par plan)
-//   - Sessions actives (slots `myktamap_session_v1_<planId>`)
+//   - Sessions actives (KtaSessionStore : une par plan)
 //   - 📔 Le Carnet (IDB `myktamap_journal` > `sorties`) — 🆕 v1.74.0, coché
 //     par défaut. Refs photos seulement, ~2-8 Ko/sortie (plafond 500).
 //   - Snapshots IDB (myktamap_backups, FIFO 10/plan)
@@ -236,18 +236,15 @@
   }
 
   function _collectSessions() {
-    // Loop tous les slots myktamap_session_v1_<planId>
+    // Toutes les sessions par plan (KtaSessionStore : IndexedDB, ou localStorage en repli)
     const sessions = {};
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (!key || !key.startsWith("myktamap_session_v1_")) continue;
-        const planId = key.slice("myktamap_session_v1_".length);
-        if (!planId) continue;
-        const raw = localStorage.getItem(key);
-        const parsed = _safeJsonParse(raw);
+      const st = window.KtaSessionStore;
+      st.ids().forEach(function(planId) {
+        if (!planId) return;
+        const parsed = _safeJsonParse(st.lire(planId));
         if (parsed) sessions[planId] = parsed;
-      }
+      });
       // Inclure aussi le legacy slot unique si présent (cas user qui upgrade
       // depuis v1.16.0 sans avoir bouté en v1.16.1+)
       const legacyRaw = localStorage.getItem("myktamap_session_v1");
@@ -953,6 +950,8 @@ photos: false, histoirePdfs: false, crashes: false
     if (include.sessions !== false && s.sessions && typeof s.sessions === "object") {
       try {
         let n = 0;
+        const st = window.KtaSessionStore;
+        const ecritures = [];
         Object.keys(s.sessions).forEach(function(planId) {
           if (planId === "__legacy__") {
             // Le slot legacy myktamap_session_v1 sera migré au prochain boot par
@@ -960,16 +959,17 @@ photos: false, histoirePdfs: false, crashes: false
             // la clé legacy.
             localStorage.setItem("myktamap_session_v1", JSON.stringify(s.sessions[planId]));
           } else {
-            const key = "myktamap_session_v1_" + planId;
             if (mode === "merge") {
               // Skip si on a déjà une session pour ce plan (= ne pas écraser la
               // session en cours de l'user sur le nouvel appareil)
-              if (localStorage.getItem(key) != null) return;
+              if (st.lire(planId) != null) return;
             }
-            localStorage.setItem(key, JSON.stringify(s.sessions[planId]));
+            // Écriture ATTENDUE : l'import se termine par un rechargement proposé.
+            ecritures.push(st.ecrireDurable(planId, JSON.stringify(s.sessions[planId])));
           }
           n++;
         });
+        await Promise.all(ecritures);
         result.applied.sessions = n;
       } catch(e) {
         console.warn("[ProfileExportImport] apply sessions échec :", e);

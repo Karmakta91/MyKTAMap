@@ -236,6 +236,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   déplace session (planId réécrit), calage, photos, favoris et liaisons (refus si la cible a déjà une session) ; l'id
   registre d'un plan ☁️ vient de `window.ktaIdRegistreExtension(extId)` (seule fabrique). Réponse perdue : l'accueil
   relit `plans.lister()` 3 min et reconnaît un plan NOUVEAU de ce nom.
+- **Lire la session d'un plan non ouvert** (10/10/2026) : `window.KtaSessionStore.lire(planId)` → JSON texte | null
+  (synchrone, depuis la mémoire ; `ids()` liste les plans qui en ont une, `ecrireDurable(planId, brut)` → Promise). Les
+  sessions vivent en IndexedDB : `localStorage["myktamap_session_v1_<planId>"]` n'est plus qu'une ancienne copie gardée
+  30 jours après la migration (ou le stockage de repli si IndexedDB est refusé) — une extension qui le lit en direct lit
+  une version périmée. Détail : `session-data.md` §9.0.
 - **Plusieurs comptes sur un plan** (05/10/2026, audit multi-utilisateur) — sans extension, rien ne change :
   - `appliquerChangements` ne réécrit que les familles touchées (sinon fiche fermée, dessin coupé) ; le tracé /
     la zone / la structure **en cours** est repris par son uid ; l'historique d'annulation **repart de zéro**

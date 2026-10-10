@@ -362,7 +362,7 @@
             } catch(e) {}
             // 🆕 v1.54.0 : scan session pour les spéciaux (tracker + niveaux annotés)
             try {
-              const sraw = localStorage.getItem("myktamap_session_v1_" + p.id);
+              const sraw = window.KtaSessionStore.lire(p.id);
               if (sraw) {
                 const s = JSON.parse(sraw);
                 const tl = Array.isArray(s.trackerTimeline) ? s.trackerTimeline : [];
@@ -648,6 +648,8 @@
         { db: "myktamap_handles", store: "handles", blobFields: [] },
         { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
+        // Sessions auto-sauvegardées (js/sessionStore.js, IndexedDB depuis le 10/10/2026).
+        { db: "myktamap_sessions", store: "sessions", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
         { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
@@ -1547,12 +1549,7 @@
             }
           }
         } catch(e) {}
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.startsWith("myktamap_session_v1_")) nbSessions++;
-          }
-        } catch(e) {}
+        try { nbSessions = window.KtaSessionStore.ids().length; } catch(e) {}
         if (window.SessionBackups && window.SessionBackups.listAll) {
           try { const arr = await window.SessionBackups.listAll(); nbBackups = arr.length; } catch(e) {}
         }
@@ -1790,8 +1787,8 @@
       };
 
       // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
-      // Itère le PlanRegistry, pour chaque plan lit son slot localStorage
-      // `myktamap_session_v1_<planId>` (lecture instantanée), compte
+      // Itère le PlanRegistry, pour chaque plan lit sa session (KtaSessionStore,
+      // lecture instantanée depuis la mémoire), compte
       // editorPoints + roads et somme la longueur cumulée des tracés en
       // pixels. `await new Promise(r => setTimeout(r, 0))` entre 2 plans
       // pour laisser respirer le thread UI (vital sur mobile avec 10+ plans).
@@ -1939,7 +1936,7 @@
           let pointsByTag = {}, roadsByType = {};
           let zonesByType = {}, structsByType = {};
           try {
-            const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+            const raw = window.KtaSessionStore.lire(plan.id);
             if (raw) {
               const data = JSON.parse(raw);
               const eps = Array.isArray(data.editorPoints) ? data.editorPoints : [];
@@ -2016,11 +2013,11 @@
               });
             }
             // 🏷️ v1.90.5 — La SESSION du plan porte aussi ses renommages, et
-            // elle est déjà en localStorage : c'est gratuit, on la lit toujours.
+            // elle est déjà en mémoire (KtaSessionStore) : c'est gratuit, on la lit toujours.
             // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
             // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
             try {
-              const brut = localStorage.getItem("myktamap_session_v1_" + plan.id);
+              const brut = window.KtaSessionStore.lire(plan.id);
               if (brut) {
                 const noms = _nomsDepuisLegende((JSON.parse(brut) || {}).customLegend);
                 Object.keys(noms).forEach(function(k) {

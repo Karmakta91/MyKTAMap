@@ -87,7 +87,7 @@
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
 | Multi-langue (i18n), dicos `lang/`, `window.I18n`, migration | `docs/architecture/i18n.md` |
-| Session, photos, undo, recherche, stats, favoris, **Carnet (sorties)** | `docs/architecture/session-data.md` |
+| Session (**stockage IndexedDB `js/sessionStore.js`** — jamais `localStorage["myktamap_session_v1_…"]` en direct, `check-session-store.js`), photos, undo, recherche, stats, favoris, **Carnet (sorties)** | `docs/architecture/session-data.md` §9.0 |
 | Import **SIG** (GeoJSON/KML/KMZ), CRS, écran de correspondance | `js/sigImport.js` (en-tête) · `scripts/check-lambert93.js` |
 | Profil : avatar, rangs, hauts faits, **fond d'écran du HOME** | `js/userProfile.js` (en-tête) · `js/homeProfile.js` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |

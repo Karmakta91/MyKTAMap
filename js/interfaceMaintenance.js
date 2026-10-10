@@ -748,7 +748,7 @@ function _resetFlowConfirmation() {
             // effacer » laissait donc en place photos, backups, profil, crashes (et
             // maintenant le carnet). Liste alignée sur memInspector.KNOWN_IDB_DBS.
             const knownDbs = [
-              "myktamap_handles", "myktamap_backups", "myktamap_photos",
+              "myktamap_handles", "myktamap_backups", "myktamap_sessions", "myktamap_photos",
               "myktamap_profile", "myktamap_crashes", "myktamap_journal",
               "myktamap_histoire_pdfs", "myktamap_secours_photos", "myktamap_osm_tiles"
             ];

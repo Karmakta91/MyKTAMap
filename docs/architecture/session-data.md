@@ -7,9 +7,35 @@
 
 ### 9. Auto-save de session (`sessionPersist.js`, depuis 08/05/2026)
 
-Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]` jusqu'à v1.16.0, puis **per-plan `myktamap_session_v1_<planId>` depuis v1.16.1** (cf §57).
+Sauvegarde silencieuse de la session active (editor + roads + zones + measure…), **une par plan** (`planId`, cf §57), stockée par **`window.KtaSessionStore`** (`js/sessionStore.js`) : **IndexedDB** (base `myktamap_sessions`) depuis le 10/10/2026, localStorage (`myktamap_session_v1_<planId>`) en repli seulement.
 
-**Stratégie** : ~~slot unique~~ **slot PAR PLAN (v1.16.1+)**, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+#### 9.0 Où vivent les sessions — `js/sessionStore.js`
+
+Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appareil : un relevé dense le remplissait et plus rien ne se sauvegardait (retour testeur en prod, v2.13.2). Les sessions sont donc en IndexedDB, dont le quota est une part de l'espace libre de l'appareil.
+
+| | |
+|---|---|
+| Base | `myktamap_sessions` v1 — store `sessions` `{ planId, brut, savedAt, ecritLe }` (le JSON **texte**, identique à l'ancienne valeur localStorage) · store `migration` `{ planId, le }` |
+| Lecture | **synchrone** : `init()` charge toutes les sessions en mémoire ; `lire(planId)` / `ids()` / `taille()` lisent la mémoire. Les lecteurs (accueil, liaisons, stats, export de profil, inspecteur) n'ont pas changé de forme |
+| Écriture | `ecrire(planId, brut, { force })` met la mémoire à jour tout de suite et part en IDB en arrière-plan : **une transaction à la fois par plan**, la plus récente gagne (file `_aEcrire` / `_enVol`). Résultat asynchrone via `surResultat(fn)` → `SessionPersist` ne pose « enregistré » qu'à la confirmation ; un échec oublie l'empreinte (le tick suivant réessaie), un refus faute de place alerte (« Mémoire des sessions pleine » + bandeau) |
+| Fermeture | une écriture lancée dans `beforeunload` peut ne pas aboutir. Toute écriture **forcée** (fermeture, arrière-plan, changement de plan) et toute écriture encore en vol au `pagehide` / passage en arrière-plan est doublée d'un **tampon synchrone** `localStorage["myktamap_session_tampon_v1_<planId>"]`, retiré dès que IDB confirme. Au démarrage, un tampon plus récent (`savedAt`) que la copie IDB la remplace (copie relue et vérifiée). ⚠️ Un tampon ne tient que si la session tient dans le localStorage |
+| Écriture attendue | `ecrireDurable(planId, brut)` → Promise : restauration d'un 📦 Backup (rechargement juste après), import de profil, transfert de plan local → ☁️ (`PlanRegistry.transferAssociatedData` : copie **confirmée** avant d'effacer l'ancienne) |
+| Effacement | `retirer(planId)` efface aussi l'ancienne copie localStorage et l'entrée `migration` (sinon la migration la ressusciterait) |
+| Démarrage | `main.js > initApp` **attend** `KtaSessionStore.init()` juste après `I18n.init`, avant tout rendu qui lit une session. Avant la fin de l'init (`mode() === "attente"`), `lire()` lit le localStorage |
+| Plusieurs onglets | `BroadcastChannel("myktamap-sessions")` : après une écriture confirmée, les autres onglets relisent ce plan (sauf s'ils ont eux-mêmes une écriture en cours pour lui) |
+| Repli `ls` | IndexedDB indisponible ou muet 8 s (navigation privée stricte), ou une copie de migration qui ne se relit pas à l'identique → **tout reste en localStorage**, comportement d'avant. Le mode incognito de l'app (`?incognito=1`) est aussi en `ls` : son leurre de localStorage ne lit rien du disque, alors qu'IDB serait lu |
+
+**Migration (1er lancement, décision KARMA 10/10/2026)** — idempotente, reprise si interrompue :
+1. chaque `myktamap_session_v1_<planId>` du localStorage absent d'IDB est **copié, relu dans une autre transaction et comparé caractère pour caractère** ; le registre `migration` note la copie vérifiée ;
+2. une copie localStorage **plus récente** (`savedAt`) que celle d'IDB (démarrage passé en repli, onglet d'une ancienne version) est recopiée, **après** une copie de la version IDB dans 📦 Backups (raison `avant-reprise-ls`) ;
+3. une copie localStorage déjà migrée mais dont la session IDB a été effacée (plan retiré) est supprimée, jamais ressuscitée ;
+4. l'ancienne copie localStorage est **gardée 30 jours** puis retirée (`purgerAnciennesCopies`, à chaque démarrage) — **sauf localStorage ≥ 90 %** : retirée dès la copie vérifiée, **après** un Backup (`SessionBackups.snapshotPayload`, raison `migration-idb`). Jamais si la copie IDB n'est pas au moins aussi récente. Un localStorage plein (`mktm:stockage-plein`) déclenche la même purge d'urgence.
+
+**Jauge « 💾 Mémoire des sessions »** (`ktaStockageLocal.mesurer()`, `js/utils.js`) : en mode `idb`, `car`/`limite` = `navigator.storage.estimate()` (usage et quota **du site**, plans, photos et caches compris — c'est ce quota qui refuse une écriture IDB), `carSessions` = total des sessions ; alerte à 80 % au chargement d'un plan, et « pleine » sur une écriture IDB refusée (`QuotaExceededError`). En mode `ls`, mesure du localStorage face à 5 000 000 comme avant. Clés i18n `…Idb` / `…_idb` pour les textes du mode IndexedDB.
+
+**Règle** : aucun module ne lit ni n'écrit `myktamap_session_v1_<planId>` directement — toujours `window.KtaSessionStore` (ou `SessionPersist.getSaved(planId)`).
+
+**Stratégie** : **une session PAR PLAN**, polling 1.5s, comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
 
 - **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
 - **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
@@ -727,24 +753,9 @@ Hotfix PATCH au-dessus de v1.16.0. Une seule modif structurelle, fort impact UX 
 
 Avant v1.16.1, `SessionPersist` écrivait dans un **slot unique** `localStorage["myktamap_session_v1"]`. Quand l'utilisateur switchait de plan, le helper `onPlanLoaded` détectait le mismatch `planId` et faisait `clear()` systématiquement → la session du plan précédent était écrasée par celle du plan courant. Pour récupérer la session d'un plan déjà visité, il fallait obligatoirement passer par un snapshot (Backup IDB) — alors qu'on aurait juste voulu retomber sur l'état d'avant en revenant naturellement sur le plan.
 
-#### 57.2 Structure localStorage par plan
+#### 57.2 Une session par plan
 
-Helpers dans `js/sessionPersist.js` :
-
-```js
-const STORAGE_PREFIX = "myktamap_session_v1_";
-function _storageKeyFor(planId) {
-  if (!planId) return null;
-  return STORAGE_PREFIX + planId;
-}
-const STORAGE_KEY_LEGACY = "myktamap_session_v1";   // pour migration uniquement
-```
-
-Toutes les opérations `save / getSaved / clear / lecture initiale` ciblent désormais `_storageKeyFor(_currentPlanId)`. Le wipe automatique sur mismatch dans `onPlanLoaded` est **supprimé** — chaque plan garde sa session en parallèle dans son slot dédié.
-
-| Avant v1.16.1 | Depuis v1.16.1 |
-|---|---|
-| `myktamap_session_v1` (un seul, écrasé au switch) | `myktamap_session_v1_<planId>` (N slots indépendants) |
+Toutes les opérations `save / getSaved / clear / lecture initiale` de `js/sessionPersist.js` passent par `window.KtaSessionStore` avec `_currentPlanId` (stockage : cf §9.0 — IndexedDB, repli localStorage `myktamap_session_v1_<planId>`). Le wipe automatique sur mismatch dans `onPlanLoaded` est **supprimé** — chaque plan garde sa session en parallèle. Sans `js/sessionStore.js` (page partielle), `SessionPersist` retombe sur le localStorage direct (`_STORE_LS`).
 
 #### 57.3 Migration transparente
 
@@ -764,7 +775,8 @@ L'utilisateur qui upgrade depuis v1.16.0 ou antérieur ne perd **rien** : sa ses
 Dans `js/sessionBackups.js` :
 
 - `_readCurrentSessionPayload()` lit en priorité le slot per-plan du planId courant (`window._currentLoadedPlanId` ou `PlanRegistry.getLastPlanId()`), fallback sur l'ancien slot unique si pas encore migré (cas du tout premier snapshot pre-migration au boot)
-- `restore(id)` écrit le payload dans la clé `myktamap_session_v1_ + targetPlanId` (extrait de `entry.payload.planId` ou `entry.planId`), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` AVANT le `location.reload()` → l'app recharge automatiquement le bon plan au reload, et SessionPersist restaure naturellement le bon slot
+- `restore(id)` écrit le payload dans la session de `targetPlanId` par `KtaSessionStore.ecrireDurable` (écriture IDB **attendue**), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` AVANT le `location.reload()` → l'app recharge automatiquement le bon plan au reload, et SessionPersist restaure naturellement la bonne session
+- `snapshotPayload(payload, raison)` copie une session **quelconque** (pas forcément celle du plan ouvert) : utilisée par la migration IndexedDB avant de retirer une ancienne copie. Identifiants strictement croissants dans la page (deux copies dans la même milliseconde ne s'écrasent pas)
 
 #### 57.5 Sources de vérité v1.16.1
 
@@ -779,7 +791,7 @@ Dans `js/sessionBackups.js` :
 
 #### 57.7 À NE PAS faire
 
-- ❌ Lire/écrire directement `localStorage["myktamap_session_v1"]` (legacy) dans un nouveau module — toujours utiliser `_storageKeyFor(planId)` via SessionPersist
+- ❌ Lire/écrire directement `localStorage["myktamap_session_v1"]` (legacy) ou `myktamap_session_v1_<planId>` dans un module — toujours `window.KtaSessionStore` (cf §9.0)
 - ❌ Remettre un `clear()` systématique au mismatch planId dans `onPlanLoaded` — détruirait la session du plan précédent (régression vers le comportement v1.16.0)
 - ❌ Supprimer la migration `_migrerAncienSlotUniqueSiBesoin` avant d'être certain que tous les utilisateurs ont au moins booté une fois en v1.16.1+ (laisser quelques cycles de safety net)
 - ❌ Faire un restore SessionBackups sans appeler `PlanRegistry.setLastPlanId(targetPlanId)` avant le reload — sinon l'app recharge le dernier plan ouvert, qui peut être différent du plan source du snapshot
@@ -1461,10 +1473,10 @@ Le calque entier donne **une seule source de vérité** : la reconstruction devi
 | | |
 |---|---|
 | Poids en session | **225 o/objet** (mesuré sur les extraits Gironde) → ~**1,1 Mo** pour 5 000 objets |
-| Plafond `localStorage` | ~**5 Mo pour tout le domaine**, tous plans confondus |
+| Plafond | sessions en IndexedDB : **quota du site** (part de l'espace libre de l'appareil) ; en repli localStorage : ~**5 Mo pour tout le domaine**, tous plans confondus |
 | Aggravant | `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde |
 
-`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points) et `occupationLocalStorage()` somme les clés réelles. La confirmation donne les deux. **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
+`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points). La confirmation donne aussi l'occupation : en IndexedDB, le total des sessions face au quota du site (`filter.calque.confirmIdb`) ; en repli localStorage, `occupationLocalStorage()` (somme des clés réelles, plafond ~5 Mo). **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
 
 ### 🔒 Le verrou d'affichage
 

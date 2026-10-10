@@ -568,7 +568,7 @@
   // ---------------------------------------------------------------
   // LECTURE DES POINTS D'UN PLAN NON CHARGÉ
   // ---------------------------------------------------------------
-  // Session : localStorage myktamap_session_v1_<planId> → editorPoints[].
+  // Session : KtaSessionStore.lire(planId) (js/sessionStore.js) → editorPoints[].
   // Datalayers : serveur → fetch path/plan-config.json + fichiers ;
   //              local  → ZIP IndexedDB (PlanRegistry.getBlob) via JSZip.
   // Retourne Promise<[{id, nom, x, y, tags, source, level}]>.
@@ -602,7 +602,7 @@
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
     try {
-      const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+      const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
         const sess = JSON.parse(raw);
         (sess.editorPoints || []).forEach(function(p) {
@@ -705,7 +705,7 @@
     }
     // 1) Session du plan
     try {
-      const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+      const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
         const sess = JSON.parse(raw);
         _absorber(sess.roads, sess.zones);

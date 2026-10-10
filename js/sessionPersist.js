@@ -8,7 +8,10 @@
 // SESSION PERSIST — auto-sauvegarde de la session active
 // =========================
 // Stratégie :
-//  - 🆕 v1.16.1 — Slot PAR PLAN dans localStorage : `myktamap_session_v1_<planId>`.
+//  - Slot PAR PLAN : `myktamap_session_v1_<planId>` — stocké en IndexedDB depuis
+//    le 10/10/2026 via window.KtaSessionStore (js/sessionStore.js : lecture
+//    synchrone depuis la mémoire, écriture en arrière-plan + tampon de fermeture,
+//    repli localStorage si IndexedDB est indisponible).
 //    Plus de wipe au plan switch. L'user peut quitter le plan A, charger le
 //    plan B, faire des modifs, puis revenir sur A → ses modifs sur A sont
 //    restaurées automatiquement (avant : la session A était écrasée par
@@ -38,6 +41,15 @@
     if (!planId) return null;
     return STORAGE_PREFIX + planId;
   }
+  // Stockage des sessions (js/sessionStore.js). Repli localStorage direct si le module manque
+  // (page de test, chargement partiel) : même API, comportement d'avant.
+  const _STORE_LS = {
+    mode: function() { return "ls"; },
+    lire: function(id) { try { return localStorage.getItem(STORAGE_PREFIX + id); } catch(e) { return null; } },
+    ecrire: function(id, brut) { localStorage.setItem(STORAGE_PREFIX + id, brut); return true; },
+    retirer: function(id) { try { localStorage.removeItem(STORAGE_PREFIX + id); } catch(e) {} }
+  };
+  function _store() { return window.KtaSessionStore || _STORE_LS; }
   // Ancien slot unique conservé en lecture seule pour la migration au boot.
   const STORAGE_KEY_LEGACY = "myktamap_session_v1";
   const POLL_INTERVAL_MS      = 1500;   // défaut (~real-time)
@@ -114,14 +126,14 @@
     // Si le nouveau slot existe déjà et est plus récent, ne pas écraser
     let existing;
     try {
-      const existingRaw = localStorage.getItem(newKey);
+      const existingRaw = _store().lire(payload.planId);
       existing = existingRaw ? JSON.parse(existingRaw) : null;
     } catch(e) { existing = null; }
     const legacyTs   = Date.parse(payload.savedAt  || 0) || 0;
     const existingTs = Date.parse(existing && existing.savedAt || 0) || 0;
     if (!existing || legacyTs > existingTs) {
       try {
-        localStorage.setItem(newKey, raw);
+        _store().ecrire(payload.planId, raw, { force: true });
         console.log("[SessionPersist] Migration legacy → per-plan : slot copié pour", payload.planId);
       } catch(e) {
         console.warn("[SessionPersist] Migration échouée (quota ?) :", e);
@@ -335,9 +347,8 @@
       // courant (utile après "Effacer la session"). 🆕 v1.16.1 : on touche
       // UNIQUEMENT au slot du plan courant — les autres plans gardent
       // leur session.
-      const _k = _storageKeyFor(_currentPlanId);
-      if (_k && _slotAssume) {
-        try { localStorage.removeItem(_k); } catch(e) {}
+      if (_currentPlanId && _slotAssume) {
+        try { _store().retirer(_currentPlanId); } catch(e) {}
       }
       _lastHash = hash;
       return false;
@@ -388,42 +399,67 @@
     const _writeKey = _storageKeyFor(_currentPlanId);
     if (!_writeKey) return false;
     try {
-      localStorage.setItem(_writeKey, JSON.stringify(payload));
+      const S = _store();
+      S.ecrire(_currentPlanId, JSON.stringify(payload), { force: !!force });
       _slotAssume = true;
       _lastHash = hash;
-      _quotaWarned = false;  // reset si le save remarche après libération de place
-      _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
-      _lastSaveTs = Date.now();    // 🚨 Q46 : « enregistré il y a N s » dans 📊 Détails
-      _lastSaveKo = false;
+      // En IndexedDB, l'écriture se confirme plus tard (écouteur surResultat plus bas) : l'état « enregistré »
+      // n'est posé qu'à la confirmation. En localStorage, setItem a déjà réussi.
+      if (S.mode() !== "idb" && S.mode() !== "attente") _ecritureReussie();
       return true;
     } catch(e) {
-      console.warn("[SessionPersist] save échoué :", e);
-      // Détection quota dépassé : sur mobile c'est très souvent un signe que
-      // le navigateur va commencer à purger / killer l'onglet. On alerte
-      // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
-      // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
-      // suivants tant que le problème dure.
-      const isQuota =
-        e && (e.name === "QuotaExceededError" ||
-              e.code === 22 ||                       // historique Chrome/Safari
-              e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
-              /quota|storage/i.test(e.message || ""));
-      if (isQuota && !_quotaWarned && window.OOMGuard) {
-        _quotaWarned = true;
-        window.OOMGuard.showToast(
-          (window.I18n && window.I18n.t) ? window.I18n.t("session.toast.storageFull")
-            : "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
-          "error"
-        );
-      }
-      // 🚨 B5 (audit ergonomie 13/09/2026) : le toast ne passait qu'UNE fois
-      // (10 s, remplaçable par n'importe quel autre) puis l'app échouait en
-      // silence pendant des heures. Bandeau PERSISTANT tant que le save échoue,
-      // avec le bouton d'export ; il tombe au premier save réussi.
-      if (isQuota) _afficherBandeauStockage();
-      _lastSaveKo = true;   // Q46 : l'écran de détails le dira en rouge
+      _ecritureEchouee(e);
       return false;
     }
+  }
+
+  function _ecritureReussie() {
+    _quotaWarned = false;  // reset si le save remarche après libération de place
+    _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
+    _lastSaveTs = Date.now();    // 🚨 Q46 : « enregistré il y a N s » dans 📊 Détails
+    _lastSaveKo = false;
+  }
+
+  function _ecritureEchouee(e) {
+    console.warn("[SessionPersist] save échoué :", e);
+    // Détection quota dépassé : sur mobile c'est très souvent un signe que
+    // le navigateur va commencer à purger / killer l'onglet. On alerte
+    // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
+    // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
+    // suivants tant que le problème dure.
+    const isQuota =
+      e && (e.name === "QuotaExceededError" ||
+            e.code === 22 ||                       // historique Chrome/Safari
+            e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
+            /quota|storage/i.test(e.message || ""));
+    if (isQuota && !_quotaWarned && window.OOMGuard) {
+      _quotaWarned = true;
+      window.OOMGuard.showToast(
+        (window.I18n && window.I18n.t) ? window.I18n.t("session.toast.storageFull")
+          : "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
+        "error"
+      );
+    }
+    // 🚨 B5 (audit ergonomie 13/09/2026) : le toast ne passait qu'UNE fois
+    // (10 s, remplaçable par n'importe quel autre) puis l'app échouait en
+    // silence pendant des heures. Bandeau PERSISTANT tant que le save échoue,
+    // avec le bouton d'export ; il tombe au premier save réussi.
+    if (isQuota) _afficherBandeauStockage();
+    // En IndexedDB, un refus faute de place = la mémoire des sessions est pleine : on le dit
+    // (en localStorage, c'est l'événement mktm:stockage-plein qui s'en charge).
+    if (isQuota && _store().mode() === "idb") _verifierMemoire(true);
+    _lastSaveKo = true;   // Q46 : l'écran de détails le dira en rouge
+  }
+
+  // Résultat (asynchrone) d'une écriture IndexedDB. Échec → l'empreinte est oubliée :
+  // le prochain tick de sauvegarde réessaie avec l'état courant.
+  if (window.KtaSessionStore && typeof window.KtaSessionStore.surResultat === "function") {
+    window.KtaSessionStore.surResultat(function(r) {
+      if (!r || r.planId !== _currentPlanId) return;
+      if (r.ok) { _ecritureReussie(); return; }
+      _lastHash = null;
+      _ecritureEchouee(r.erreur || new Error("IndexedDB"));
+    });
   }
 
   // 🆕 v1.16.1 — getSaved accepte un planId optionnel. Sans argument →
@@ -434,7 +470,7 @@
     const lookupId = planId || _currentPlanId;
     if (!lookupId) return null;
     try {
-      const raw = localStorage.getItem(_storageKeyFor(lookupId));
+      const raw = _store().lire(lookupId);
       if (!raw) return null;
       const payload = JSON.parse(raw);
       if (!payload || payload.version !== VERSION) return null;
@@ -478,9 +514,8 @@
     }
     // 🆕 v1.16.1 : on efface UNIQUEMENT le slot du plan courant — les
     // autres plans gardent leur session intacte.
-    const _k = _storageKeyFor(_currentPlanId);
-    if (_k) {
-      try { localStorage.removeItem(_k); } catch(e) {}
+    if (_currentPlanId) {
+      try { _store().retirer(_currentPlanId); } catch(e) {}
     }
     _slotAssume = false;
     // 🔄 v1.85.0 — 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
@@ -1108,11 +1143,14 @@
     });
   }
 
-  // ========== MÉMOIRE DES SESSIONS (localStorage ~5 Mo) ==========
-  // 10/10/2026 (testeur en prod : points disparus, invite de mise à jour à chaque ouverture) : un localStorage
-  // plein ne se voyait qu'APRÈS la panne (bandeau d'échec de sauvegarde). On prévient AVANT, au chargement d'un
-  // plan (≥ 80 %), et dès qu'une écriture échoue faute de place (événement mktm:stockage-plein, utils.js).
-  // Une fois par page et par niveau : jamais une fenêtre à chaque plan ouvert.
+  // ========== MÉMOIRE DES SESSIONS ==========
+  // 10/10/2026 (testeur en prod : points disparus, invite de mise à jour à chaque ouverture) : une mémoire pleine
+  // ne se voyait qu'APRÈS la panne (bandeau d'échec de sauvegarde). On prévient AVANT, au chargement d'un plan
+  // (≥ 80 %), et dès qu'une écriture échoue faute de place. Une fois par page et par niveau : jamais une fenêtre à
+  // chaque plan ouvert. Deux mémoires possibles (ktaStockageLocal.mesurer().mode) :
+  //   - « idb » (normal) : quota du navigateur pour le site (navigator.storage.estimate) — une part de l'espace
+  //     libre de l'appareil ; plein = une écriture IndexedDB refusée (QuotaExceededError).
+  //   - « ls » (repli : IndexedDB indisponible) : localStorage ~5 Mo, plein = événement mktm:stockage-plein.
   const _memoireAlertee = { presque: false, plein: false };
   function _verifierMemoire(plein) {
     const S = window.ktaStockageLocal;
@@ -1122,15 +1160,21 @@
     if (!niveau || _memoireAlertee[niveau] || (niveau === "presque" && _memoireAlertee.plein)) return;
     _memoireAlertee[niveau] = true;
     const pct = Math.min(100, Math.round(m.ratio * 100));
-    window.ktaConfirm(_trModule(niveau === "plein" ? "session.memoire.pleinMsg" : "session.memoire.presqueMsg",
-      { pct: pct, occupe: S.mo(m.car), limite: S.mo(m.limite) }), {
+    const idb = m.mode === "idb" ? "Idb" : "";
+    window.ktaConfirm(_trModule((niveau === "plein" ? "session.memoire.pleinMsg" : "session.memoire.presqueMsg") + idb,
+      { pct: pct, occupe: S.mo(m.car), limite: m.limite ? S.mo(m.limite) : "?" }), {
       titre: _trModule(niveau === "plein" ? "session.memoire.pleinTitre" : "session.memoire.presqueTitre"),
       okLabel: _trModule("session.memoire.voir"), cancelLabel: _trModule("session.memoire.plusTard")
     }).then(function (ok) {
       if (ok && typeof window.ktaOuvrirDetailsSession === "function") window.ktaOuvrirDetailsSession();
     });
   }
-  window.addEventListener("mktm:stockage-plein", function () { _verifierMemoire(true); });
+  // localStorage plein : ne concerne les sessions qu'en repli localStorage. En IndexedDB, le module de stockage
+  // retire les anciennes copies d'avant la migration (déjà vérifiées) pour refaire de la place.
+  window.addEventListener("mktm:stockage-plein", function () {
+    if (_store().mode() === "idb") return;
+    _verifierMemoire(true);
+  });
 
   // ========== SAFETY NETS ==========
 
