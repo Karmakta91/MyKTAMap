@@ -5,7 +5,8 @@
 > ni son code : il décrit **l'organisation** autour de l'IA (rôles, interdits, garde-fous, vérifications,
 > intégration continue, déploiement, audits, documentation). Les encadrés « 📦 Dans ce dépôt » montrent comment
 > c'est fait ici, avec les vrais chemins de fichiers, pour qu'une IA qui lit ce document dans le dépôt puisse aller
-> vérifier.
+> vérifier. Lu ailleurs (sur le site de documentation, par exemple), ces chemins désignent des fichiers du dépôt de
+> l'application : ils ne sont pas tous publiés, et le document se comprend sans eux.
 >
 > Rédigé le 16/09/2026 (v1.95.0), mis à jour le 10/10/2026 (v2.13.2 : intégration continue, marque verte,
 > déploiement automatique, dépendances, dépôt client, travail en vagues multi-agents). Auteur : KARMA + Claude.
@@ -58,7 +59,7 @@ les raconte (§14), parce que c'est la partie la plus utile.
 | **L'IA intégratrice** (quand on travaille en vagues, §9) | Écrit les missions des agents, fusionne leurs branches, **revérifie elle-même** leur travail, lance la suite complète | Ce qui entre dans la branche de travail. Rien de plus que l'IA de code |
 | **Les agents d'une vague** | Chacun code une mission bornée dans sa propre copie de travail, avec sa propre pile de test, et rend un rapport | Rien hors de leur mission |
 | **Les garde-fous automatiques** (hooks, scripts, CI) | Vérifient sans fatigue, à chaque édition, à chaque commit et à chaque push | Refusent, ne négocient pas |
-| **Le collaborateur externe** (ici : la branche `Chig_Dev`) | Travaille sur sa propre branche | L'IA n'y touche jamais, même en lecture-écriture « pour aider » |
+| **Le collaborateur externe** (ici : un contributeur, avec sa branche à lui) | Travaille sur sa propre branche | L'IA n'y touche jamais, même en lecture-écriture « pour aider » |
 
 Le point important : **l'IA n'est pas « un simple assistant », c'est un conseiller payé pour voir ce qui
 manque**. On lui demande un topo avant de coder, avec des choix numérotés et une recommandation. On attend
@@ -252,8 +253,9 @@ refuse tout commit contenant un nom de module, une clé de stockage, un en-tête
 ou un chemin appartenant au dépôt pro. En local, il n'analyse que les fichiers **stagés** (rapide) ; en CI, les
 fichiers des commits reçus. Il connaît une courte liste d'exceptions (le script lui-même, le hook).
 
-La frontière vaut dans l'autre sens aussi, et à un troisième étage : le dépôt pro est **interne** (il contient la
-clé qui signe les licences), et les clients reçoivent un **troisième dépôt**, produit par export (§8.7). Chaque
+La frontière vaut dans l'autre sens aussi, et à un troisième étage : le dépôt pro est **interne** (outillage et
+historique qui ne regardent pas les clients), et les clients reçoivent un **troisième dépôt**, produit par export
+(§8.7). Chaque
 passage d'un dépôt à l'autre a son propre contrôle anti-fuite.
 
 ---
@@ -420,7 +422,7 @@ moitié.
 | `main` | **Toujours déployable.** On n'y arrive que par la porte (§7) | Le propriétaire, via le script de merge | Prod, automatiquement (§8.5) |
 | Branche de travail (ici `Karma_dev`) | Là où l'IA et le propriétaire travaillent au quotidien | Les deux | Dev, automatiquement |
 | Branches d'agents (une par mission, §9) | Le travail d'un agent pendant une vague, dans sa copie de travail | L'agent, puis l'intégrateur qui la fusionne | Jamais : elles ne sont pas poussées |
-| Branche du collaborateur (ici `Chig_Dev`) | Son espace | Lui seul. L'IA est bloquée en dur | — |
+| Branche du collaborateur | Son espace | Lui seul. L'IA est bloquée en dur | — |
 
 ### 8.2 Une version = trois endroits d'accord, et un seul bump par mise en prod
 
@@ -516,8 +518,9 @@ faite juste avant le déploiement. La procédure complète, avec l'exercice à j
 
 ### 8.7 Le dépôt pro : interne, et un export pour les clients
 
-Le dépôt pro contient la clé qui signe les licences et l'outil de signature, dans ses fichiers et dans son
-historique. Il ne se clone **jamais** chez un client ni sur un serveur. Les clients reçoivent un **troisième dépôt**
+Le dépôt pro contient de l'outillage interne (dont celui des licences) et un historique qui ne regardent pas les
+clients ; la clé qui signe les licences, elle, ne vit dans aucun dépôt. Il ne se clone **jamais** chez un client
+ni sur un serveur. Les clients reçoivent un **troisième dépôt**
 (le « dépôt client »), produit par un script d'export :
 
 1. il lit la version au point exporté et **exige la marque verte** de la CI sur ce commit (le dépôt client n'a
@@ -631,7 +634,7 @@ version, sensation de dérive).
 | Audit | Question posée | Comment on le fait | Sortie |
 |---|---|---|---|
 | **Réseau & confidentialité** | Qu'est-ce que l'app envoie sur le réseau, à qui, et comment l'utilisateur peut-il le vérifier lui-même ? | Inventaire de toutes les connexions sortantes, politique de sécurité du navigateur (CSP), procédure de vérification par l'utilisateur, interrupteur de chaque tiers contacté | Une **page de transparence** publique, mise à jour à **chaque version** (contrôlé par le garde-fou de release) |
-| **Sécurité (offensive)** | Que peut faire un attaquant contre le serveur ou l'app ? | Audit externe déposé dans le dépôt mais **ignoré par Git** (il décrit comment exfiltrer des données réelles : il ne doit partir ni sur GitHub ni en prod) | Rapport local, corrections dans le journal |
+| **Sécurité (offensive)** | Que peut faire un attaquant contre le serveur ou l'app ? | Audit externe gardé **hors de Git** (un rapport offensif décrit des attaques possibles tant qu'elles ne sont pas corrigées : il ne part ni sur GitHub ni en ligne) | Rapport local, corrections dans le journal |
 | **CI/CD** | Les contrôles tournent-ils là où personne ne peut les sauter ? Que met-on en ligne, quand, et comment revient-on en arrière ? | Relecture des hooks, workflows, scripts de merge et de déploiement, puis questions fermées au propriétaire | La CI (§6), la marque verte, Dependabot, le déploiement automatique et sa procédure de retour arrière |
 | **Code mort** | Qu'est-ce qui n'est plus appelé nulle part ? | Deux agents IA **indépendants** + un scan des clés de traduction, puis vérification humaine avant toute suppression | Lots de suppression commités un par un ; ce qui est « mort mais gardé exprès » est listé pour ne pas être re-signalé |
 | **Ergonomie** | Un utilisateur non développeur s'en sort-il ? Les fonctions de sécurité sont-elles fiables ? | 8 agents IA avec une **persona** (ergonome de métier), lecture du code et de la doc, puis vérification manuelle des bloquants par l'IA principale | Rapport avec bloquants / quick wins / lourds, écarts doc ↔ app, manques vs concurrents ; arbitrage du propriétaire consigné |
@@ -716,7 +719,7 @@ release vérifie que trois d'entre eux ont bougé :
 | `docs/architecture/<sujet>.md` | Source de vérité technique par sous-système | **L'état actuel, pas l'historique** : on réécrit la partie concernée, on n'empile pas de section par version |
 | `docs/architecture/gotchas.md` | Pièges connus, renommages | Chaque piège raconte pourquoi il a survécu si longtemps |
 | `docs/audits/` | Rapports d'audit datés + index | Archivés **immédiatement** (§10.1) |
-| `docs/applications/` | Docs servies **dans l'app** : user, contexte IA, transparence réseau, CGU, auto-hébergement | Ce sont des pages publiques : jamais de secret, jamais de note de travail. C'est **le seul** dossier de doc mis en ligne |
+| `docs/applications/` | Docs servies **dans l'app** : user, contexte IA, transparence réseau, CGU, auto-hébergement | Ce sont des pages publiques : jamais de secret, jamais de note de travail. C'est **le seul** dossier de doc livré avec l'app ; le site de documentation n'y ajoute que des docs choisies **une par une** et relues |
 | Fichier de contexte de l'IA | Règles + table d'orientation | Court (§4.4) |
 | En-tête de chaque module de code | Ce qu'il fait, ses pièges, ses dépendances | 40 lignes qui évitent d'en lire 4 000 |
 | Commentaire au-dessus d'un workflow ou d'un script de release | Pourquoi il existe, quel incident, ce qu'il ne fait pas | Un fichier de CI sans commentaire devient intouchable |
@@ -805,7 +808,7 @@ histoires derrière lui.
 | **Trois erreurs d'exécution en une semaine** (08/2026) | Variable hors portée, classe CSS fantôme, identifiant supprimé mais encore exporté : la vérification de syntaxe passe, l'app meurt au démarrage | Smoke navigateur automatisé + script qui **charge réellement** les modules et vérifie chaque export annoncé |
 | **Des garde-fous qui ne tournaient que sur le poste** (audit du 08/10/2026) | Un poste sans hooks, un `--no-verify` ou un commit depuis l'éditeur web passaient sans aucun contrôle ni trace | La CI rejoue tout à chaque push, commit par commit (§6) |
 | **Upload partiel sur le serveur** (3× en une semaine) | Un dossier oublié : doc périmée en ligne, clés de traduction « manquantes » alors que le dépôt était sain | Script de déploiement complet, puis déploiement automatique depuis Git (§8.5) + point 13 du smoke manuel qui vérifie **sur le serveur** |
-| **La doc interne servie en ligne** (audit du 09/10/2026) | Un outil de l'app affichait la doc technique ; pour fonctionner, il fallait la déployer, donc la rendre lisible par tous | Outil retiré ; seul `docs/applications/` est mis en ligne, et un garde-fou refuse le retour d'une lecture de doc interne |
+| **La doc interne servie en ligne** (audit du 09/10/2026) | Un outil de l'app affichait la doc technique ; pour fonctionner, il fallait la déployer, donc la rendre lisible par tous | Outil retiré ; seul `docs/applications/` est livré avec l'app, et un garde-fou refuse le retour d'une lecture de doc interne |
 | **Une CI rouge mal expliquée** (10/10/2026) | Un test d'envois simultanés échouait en CI. Première explication, plausible : une tâche périodique du serveur tombait en pleine suite. Correctif commité dans ce sens. Faux : la suite était trop courte pour que la tâche tombe dedans ; c'était une **vraie course** entre deux envois, qu'un utilisateur pouvait subir | **Preuve par reproduction avant d'affirmer une cause** : on a élargi artificiellement la fenêtre (une pause ajoutée exprès, non commitée) — ancien code 30 échecs sur 30, corrigé 30 succès sur 30. Le message du correctif dit que le précédent accusait à tort |
 | **Des relances « réussies » qui n'avaient pas eu lieu** (10/2026) | Le lanceur de tests navigateur ne lit que **son premier argument** : `lanceur a b c` ne jouait que `a`, en silence. Des scénarios ont été donnés pour relancés et verts alors qu'ils n'avaient pas tourné | **Vérifier ce que l'outil a VRAIMENT exécuté** (le nombre de scénarios et de contrôles affiché), pas ce qu'on lui a demandé. La syntaxe correcte est une liste séparée par des virgules (`a,b,c`) |
 | **Un export refusé « sans raison »** (10/2026) | L'export vers le dépôt client exigeait la marque verte ; un commit local pas encore poussé avait déplacé la tête de branche, qui ne correspondait plus au commit marqué | Comportement voulu, mais à connaître : **la marque verte vise un commit précis** (§6.4). On pousse, on attend la CI, puis on exporte |
