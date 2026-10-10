@@ -15,7 +15,7 @@
 # Worker. Le HTTP (8080) redirige vers HTTPS.
 #
 # Volumes optionnels :
-#   -v /mes/plans:/usr/share/nginx/html/data/plans  → bind tes plans
+#   -v /mon/data:/usr/share/nginx/html/data  → tes plans + data/index.json (remplace le relevé fictif)
 #   -v /mes/certs:/etc/nginx/certs                   → cert TLS user-fournit
 #
 # Variables d'env :

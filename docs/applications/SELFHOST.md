@@ -3,13 +3,17 @@
 > Guide pour déployer une instance MyKTAMap avec **vos plans pré-installés** —
 > l'archétype : une asso qui publie les plans de son secteur pour ses membres.
 > Aucun backend, aucune base de données : **des fichiers statiques, c'est tout.**
+>
+> Ce guide dit **quoi servir** (vos plans, `data/index.json`). Pour **installer** l'app elle-même :
+> [avec Docker](DOCKER_INSTALL.md) ou [sans Docker (Nginx)](../INSTALLATION_SELFHOST.md).
 
 ---
 
 ## Ce que vous obtenez
 
 - Votre copie de MyKTAMap, servie par n'importe quel hébergement de fichiers
-  (mutualisé FTP, GitHub Pages, nginx, Docker — cf. section Docker du README utilisateur).
+  (mutualisé FTP, GitHub Pages, Nginx, Docker), **en HTTPS** : sans lui, l'app ne s'installe pas et ne marche pas
+  hors ligne.
 - Vos plans visibles dès l'ouverture dans « 📚 Mes plans » (badge 🌐), chargés en 1 clic.
 - Vos **liaisons inter-plan** (portails) livrées d'office à tous les visiteurs.
 - Un **sous-titre à vous** (ex. « Club spéléo du Nord ») sur l'écran de démarrage et l'accueil — et sur les PDF exportés.
@@ -18,10 +22,12 @@
 
 ## Étapes
 
-1. **Récupérer l'app** : téléchargez une release (ou clonez le repo) et déposez tout le contenu sur votre hébergement.
+1. **Récupérer l'app** : téléchargez le ZIP d'une release et déposez son contenu sur votre hébergement. (Depuis
+   un clone du dépôt, ne déposez que ce que l'app sert : la liste d'exclusions est dans
+   [l'installation sans Docker](../INSTALLATION_SELFHOST.md) § 4.2.)
 2. **Préparer vos plans** : chaque plan est un ZIP généré par MyKTAMap (Générateur, ou export d'un plan existant).
    Décompressez chaque ZIP dans `data/<id>/` — le dossier doit contenir `plan-config.json` à sa racine.
-   L'`<id>` est à vous (minuscules, sans espace) : `data/carrieres-nord/`, `data/reseau-sud/`…
+   L'`<id>` est à vous (minuscules, sans espace) : `data/carrieres-nord/`, `data/secteur-sud/`…
 3. **Générer `data/index.json`** : ouvrez **`confadmin.html`** à la racine de votre instance
    (ex. `https://votre-site.fr/confadmin.html`). La page :
    - lit vos ZIPs (localement, rien n'est envoyé) et pré-remplit la liste des plans ;
@@ -65,7 +71,7 @@
 - `subtitle` : remplace « Cartographie souterraine » (démarrage, accueil, en-tête des PDF exportés). Le nom MyKTAMap reste.
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.
-- `serverConnection` (v2.0.0) : **réservé aux instances qui greffent des modules de connexion à un serveur.**
+- `serverConnection` : **réservé aux instances qui greffent des modules de connexion à un serveur.**
   Un kiosque n'en a pas besoin : sans ce champ, l'app affiche « Base de données : désactivée » dans son pied de page.
   Forme : `{ "state": "on", "api": "https://api.exemple.org", "modules": ["pro/sync.js"] }` — `api` en
   `https://` (elle peut vivre sur un autre domaine que l'app : ajoutez alors son origine à `connect-src`
@@ -74,25 +80,25 @@
   « Licence requise » tant qu'aucun `Licence-pro.json` n'est posé à la racine, « Configurée, aucun module »
   sinon, « Configuration invalide » (en rouge, visible de tous) si le champ est mal formé. ConfAdmin
   (bloc 🔌, replié) écrit ce champ avec les mêmes règles et refuse de télécharger un index invalide.
-  Contrat complet : `docs/architecture/community-server-line.md` §3.
+  Contrat complet : [Points d'extension (API)](../architecture/community-server-line.md) (§ 3).
 - `plans[].tags` : étiquettes proposées pour ce plan (**12 max, 24 caractères chacune** ; au-delà, l'app
   rogne). Elles s'affichent sous le nom du plan chez le visiteur et servent ses chips-filtres.
   **L'index propose, l'utilisateur dispose** : dès qu'un visiteur édite les étiquettes d'un plan, les
   vôtres ne l'écrasent plus jamais — et s'il vide le champ, elles ne repoussent pas. Vous restez maître
   de celles que **vous** avez posées : les retirer de votre index les retire chez lui.
-- ⚠️ **`serverPlansOnly` refuse aussi l'import de profil** (depuis v1.90.1). Un profil rapporterait des
+- ⚠️ **`serverPlansOnly` refuse aussi l'import de profil**. Un profil rapporterait des
   plans que votre instance ne propose pas, et surtout il transporte les préférences d'affichage : importé
   avec « afficher les plans du serveur » décoché, il **vidait l'accueil** — et la case pour le rétablir est
   justement masquée par le mode. L'**export** de profil, lui, reste ouvert : les données du visiteur lui
   appartiennent.
 - `accessHash` : SHA-256 d'un **mot de passe propre à votre instance**. Vos visiteurs peuvent alors ouvrir
   l'app avec **ce** mot de passe, **et lui seul** : dès que vous en publiez un, le code communautaire
-  n'ouvre plus votre instance (v1.90.7). 🩸 *Sinon quiconque connaît le code communautaire — distribué
+  n'ouvre plus votre instance. *Sinon quiconque connaît le code communautaire — distribué
   largement, il ouvre la prod qui n'héberge rien — ouvrirait votre instance, et le mot de passe ne
   protégerait rien.*
-  - 🔒 **Et aucune licence pro ne contourne ce mot de passe** (v1.90.8, complété v1.90.9) : dès que vous
+  - 🔒 **Et aucune licence pro ne contourne ce mot de passe** : dès que vous
     publiez un `accessHash`, le `Licence-pro.json` que **vous** servez (`/Licence-pro.json` côté serveur)
-    n'ouvre pas l'app sans le mot de passe. Un visiteur ne peut plus importer de licence lui-même. 🩸 *Le vôtre est fetché par TOUS
+    n'ouvre pas l'app sans le mot de passe. Un visiteur ne peut pas non plus importer de licence lui-même. *Le vôtre est fetché par TOUS
     les visiteurs : le laisser bypasser aurait rendu votre mot de passe muet — tout le monde serait entré.*
     La licence accorde le **mode pro** (les outils d'édition) APRÈS la saisie du mot de passe ; elle n'est
     plus une clé d'accès.
@@ -103,7 +109,7 @@
     communautaire, dont le hash est lisible sur GitHub depuis toujours — le niveau de protection ne baisse
     donc pas, mais **il ne monte pas non plus**. C'est une barrière **sociale** (« il faut connaître le
     code »), **jamais une authentification**. N'y mettez rien que vous ne diriez pas à voix haute.
-  - **Le changer** re-demande le mot de passe à vos visiteurs **dès leur prochain lancement de l'app** (v2.6.0) — jamais au milieu de
+  - **Le changer** re-demande le mot de passe à vos visiteurs **dès leur prochain lancement de l'app** — jamais au milieu de
     leur session. **Le retirer** de l'index re-demande aussi. En revanche, un visiteur **hors ligne** garde
     son accès : une coupure réseau ne doit pas enfermer quelqu'un dehors.
 - ⚠️ Ces réglages **allègent l'interface**, ils ne « sécurisent » rien : MyKTAMap community n'est pas bridable, par principe.
@@ -119,4 +125,4 @@
 - **Mise à jour de l'app** : re-déposez simplement les fichiers d'une release plus récente ;
   votre `data/` et votre `index.json` ne bougent pas.
 - **Licence** : MyKTAMap est sous **CC BY-NC-SA 4.0** — l'usage commercial d'une instance
-  nécessite un accord préalable de l'auteur (KARMA).
+  nécessite un accord préalable de l'auteur (contact@myktamap.fr).
