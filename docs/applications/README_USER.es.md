@@ -962,6 +962,7 @@ En la ventana Perfil, **📤 Exportar mi perfil** genera un archivo que lleva to
 
 - **PDF del Modo Historia**: desmarcados por defecto, porque un plano puede llevar hasta 100 MB. Marcados, se colocan de nuevo en su sitio al importar, sin duplicados si vuelves a importar.
 - **Archivos de planos**: marca los planos memorizados que quieras llevarte (nada viene marcado); la exportación se convierte en un `.zip` «perfil completo» y la importación vincula cada archivo a su plano. Por encima de unos 50 MB en iPhone/iPad (500 MB en otros), la app pide confirmación. Si el navegador borró un archivo, la exportación te dice cuáles faltan. Los planos en «volver a seleccionar» no aparecen: su ZIP está en tu disco, no en la app.
+- **Planos de una organización (☁️)**: ni ellos ni sus sesiones, fotos, favoritos o copias van en el archivo, y un perfil importado no restaura ninguno (el resumen de importación dice cuántos se ignoraron): se recuperan al conectarse a la organización.
 
 **📥 Importar un perfil** te deja elegir las secciones y el modo: **🔄 Merge** añade sin sobrescribir (recomendado), **♻️ Replace** vacía antes las secciones marcadas. En Merge, un plano que ya tiene su archivo en el dispositivo conserva el suyo. Al final se propone recargar la app. En una instalación que solo ofrece los planos de su servidor, la importación de perfil se rechaza (podría ocultar esos planos); la exportación sigue siendo posible.
 

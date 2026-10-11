@@ -31,6 +31,9 @@
 //     (`myktamap_unlock_v1`) : décision KARMA "Non jamais" — risque de
 //     fuite si l'export est partagé par erreur. L'user redéfinit son PIN
 //     sur le nouvel appareil.
+//   - ☁️ Les plans d'une ORGANISATION (registre `type: "ext"`) et tout ce qui
+//     s'y rattache, par les modales seulement (option `exclureExtensions`,
+//     cf _sansPlansExtension) : ils se récupèrent en se connectant.
 //
 // FORMAT FICHIER :
 //   JSON unique versionné `{type: "myktamap-profile-export", version: 1, ...}`.
@@ -44,6 +47,7 @@
 //
 // API : window.ProfileExportImport = {
 //   buildProfile(opts),           // assemble selon opts.sections (checkboxes)
+//                                 // opts.exclureExtensions (modales seulement) : rien d'un plan ☁️
 //   computeSectionSizes(),        // pour afficher les MB par section
 //   exportToFile(opts),           // build + Blob + download (JSON classique)
 //   buildProfileArchive(opts),    // 📦 v1.79.0 : conteneur ZIP profil.json + plans/<id>.zip
@@ -148,6 +152,120 @@
       console.warn("[ProfileExportImport] _base64ToBlob échec :", e);
       return null;
     }
+  }
+
+  // ───────── ☁️ PLANS D'UNE ORGANISATION (11/10/2026) ─────────
+  // Un plan fourni par une extension (registre `type: "ext"`, badge ☁️)
+  // appartient à l'organisation, pas à l'utilisateur : ni lui, ni sa session,
+  // ni ses photos ne partent dans le profil EXPORTÉ PAR L'UTILISATEUR (fichier
+  // en clair, même si l'organisation chiffre ses données), et un profil
+  // importé n'en restaure aucun (plans fantômes d'une autre organisation,
+  // annotations venues d'ailleurs). Ils se récupèrent en se connectant.
+  // Option explicite `exclureExtensions: true`, posée par les SEULES modales
+  // (export/import) : un appel programmatique sans l'option garde le
+  // comportement historique. Sans plan ☁️ sur l'appareil ni dans le fichier,
+  // rien ne change.
+  // Reconnaissance : l'entrée de registre `type: "ext"` (appareil + fichier
+  // importé), ou à défaut l'id sorti de la fabrique des plans d'extension
+  // (`ktaEstIdRegistreExtension`, main.js) — une session sans sa ligne de
+  // registre reste reconnue.
+
+  function _estIdFabriqueExtension(id) {
+    if (typeof window.ktaEstIdRegistreExtension === "function") return window.ktaEstIdRegistreExtension(id);
+    return typeof id === "string" && id.indexOf("ext_") === 0;
+  }
+
+  // → prédicat (planId) → bool. `plansEnPlus` : registre d'un profil importé.
+  function _predicatExtension(plansEnPlus) {
+    const ids = new Set();
+    const ajouter = function(liste) {
+      (Array.isArray(liste) ? liste : []).forEach(function(p) {
+        if (p && p.type === "ext" && p.id) ids.add(String(p.id));
+      });
+    };
+    const local = _safeJsonParse(localStorage.getItem("myktamap_plans"));
+    if (local) ajouter(local.plans);
+    ajouter(plansEnPlus);
+    return function(id) {
+      if (id == null || id === "") return false;
+      return ids.has(String(id)) || _estIdFabriqueExtension(String(id));
+    };
+  }
+
+  // Retire des sections tout ce qui est rattaché à un plan ☁️. Pur : rend des
+  // copies, ne touche ni l'appareil ni l'objet reçu.
+  // → { sections, plans: Set des ids ☁️ rencontrés }
+  function _sansPlansExtension(sections, estExt) {
+    const vus = new Set();
+    const ext = function(id) { if (estExt(id)) { vus.add(String(id)); return true; } return false; };
+    const out = Object.assign({}, sections || {});
+    const parPlanId = function(o) { return !(o && ext(o.planId)); };
+
+    if (out.registry && Array.isArray(out.registry.plans)) {
+      const r = Object.assign({}, out.registry);
+      r.plans = r.plans.filter(function(p) {
+        if (p && (p.type === "ext" || ext(p.id))) { if (p.id) vus.add(String(p.id)); return false; }
+        return true;
+      }).map(function(p) {
+        if (p && p.folderId && _estIdFabriqueExtension(p.folderId)) {
+          const c = Object.assign({}, p); delete c.folderId; delete c.folderSrc; return c;
+        }
+        return p;
+      });
+      if (r.lastPlanId && ext(r.lastPlanId)) r.lastPlanId = null;
+      // Dossiers fournis par l'extension (même fabrique d'id) : leurs noms sont
+      // ceux de l'organisation.
+      if (Array.isArray(r.folders)) {
+        r.folders = r.folders.filter(function(f) { return !(f && _estIdFabriqueExtension(f.id)); });
+        if (!r.folders.length) delete r.folders;
+      }
+      out.registry = r;
+    }
+    if (out.preferences && typeof out.preferences === "object") {
+      const liens = out.preferences.myktamap_interplan_links_v1;
+      if (liens && typeof liens === "object" && Array.isArray(liens.links)) {
+        out.preferences = Object.assign({}, out.preferences);
+        out.preferences.myktamap_interplan_links_v1 = Object.assign({}, liens, {
+          links: liens.links.filter(function(l) {
+            const a = ext(l && l.a && l.a.planId), b = ext(l && l.b && l.b.planId);
+            return !a && !b;
+          })
+        });
+      }
+    }
+    if (out.perPlanLs && typeof out.perPlanLs === "object") {
+      const pp = {};
+      Object.keys(out.perPlanLs).forEach(function(cle) {
+        const pre = PER_PLAN_PREFIXES.find(function(x) { return cle.indexOf(x) === 0; });
+        if (pre && ext(cle.slice(pre.length))) return;
+        pp[cle] = out.perPlanLs[cle];
+      });
+      out.perPlanLs = pp;
+    }
+    if (out.favoris && out.favoris.byPlan && typeof out.favoris.byPlan === "object") {
+      const bp = {};
+      Object.keys(out.favoris.byPlan).forEach(function(pid) { if (!ext(pid)) bp[pid] = out.favoris.byPlan[pid]; });
+      out.favoris = Object.assign({}, out.favoris, { byPlan: bp });
+    }
+    if (out.sessions && typeof out.sessions === "object") {
+      const ss = {};
+      Object.keys(out.sessions).forEach(function(pid) {
+        const v = out.sessions[pid];
+        if (pid === "__legacy__" ? (v && ext(v.planId)) : ext(pid)) return;
+        ss[pid] = v;
+      });
+      out.sessions = ss;
+    }
+    if (Array.isArray(out.carnet))  out.carnet  = out.carnet.filter(parPlanId);
+    if (Array.isArray(out.backups)) out.backups = out.backups.filter(parPlanId);
+    if (Array.isArray(out.crashes)) out.crashes = out.crashes.filter(parPlanId);
+    if (out.photos && Array.isArray(out.photos.photos)) {
+      out.photos = Object.assign({}, out.photos, { photos: out.photos.photos.filter(parPlanId) });
+    }
+    if (out.histoirePdfs && Array.isArray(out.histoirePdfs.docs)) {
+      out.histoirePdfs = Object.assign({}, out.histoirePdfs, { docs: out.histoirePdfs.docs.filter(parPlanId) });
+    }
+    return { sections: out, plans: vus };
   }
 
   // ───────── COLLECTE PAR SECTION ─────────
@@ -300,7 +418,7 @@
     }
   }
 
-  async function _collectPhotos() {
+  async function _collectPhotos(estExt) {
     if (!window.MyKTAMapPhotos) return { photos: [], note: "Module MyKTAMapPhotos indisponible" };
     try {
       // On boucle tous les plans connus du registry et on récupère leurs photos
@@ -309,6 +427,7 @@
       const allPhotos = [];
       for (const p of reg.plans) {
         if (!p.id) continue;
+        if (estExt && (p.type === "ext" || estExt(p.id))) continue;   // ☁️ jamais encodé pour rien
         try {
           const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
           if (!Array.isArray(photos)) continue;
@@ -347,7 +466,7 @@
   // ferait exploser des exports en silence.
   // Lecture via `window.JournalUi.histoire` — le schéma IDB n'est PAS
   // redupliqué ici (cf. le commentaire de l'API côté journalUi.js).
-  async function _collectHistoirePdfs() {
+  async function _collectHistoirePdfs(estExt) {
     const api = window.JournalUi && window.JournalUi.histoire;
     if (!api || typeof api.lister !== "function") {
       return { docs: [], note: "Module JournalUi indisponible" };
@@ -357,6 +476,7 @@
       if (!Array.isArray(metas) || !metas.length) return { docs: [] };
       const out = [];
       for (const m of metas) {
+        if (estExt && m && estExt(m.planId)) continue;   // ☁️ jamais lu pour rien
         try {
           const rec = await api.getDoc(m.id);
           if (!rec || !rec.blob) continue;
@@ -441,12 +561,15 @@
 
   /**
    * Assemble le profil selon les sections demandées.
-   * @param {Object} opts - { include: { registry, preferences, favoris, sessions, carnet, backups, tutorial, photos, crashes } }
+   * @param {Object} opts - { include: { registry, preferences, favoris, sessions, carnet, backups, tutorial, photos, crashes },
+   *                          exclureExtensions: bool (☁️ chemin utilisateur : rien d'un plan d'organisation) }
    * @returns {Promise<Object>} le profil complet sérialisable
    */
   async function buildProfile(opts) {
     opts = opts || {};
     const include = opts.include || {};
+    // ☁️ Chemin utilisateur seulement (modale d'export) — cf _sansPlansExtension.
+    const estExt = opts.exclureExtensions === true ? _predicatExtension() : null;
     const profile = {
       type:       FORMAT_TYPE,
       version:    FORMAT_VERSION,
@@ -464,9 +587,10 @@
     if (include.user !== false)        profile.sections.user        = await _collectUser();
     if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet(); // 🆕 v1.74.0
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
-    if (include.photos === true)       profile.sections.photos      = await _collectPhotos();
-    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(); // 🆕 v1.81.0 (D1)
+    if (include.photos === true)       profile.sections.photos      = await _collectPhotos(estExt);
+    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(estExt); // 🆕 v1.81.0 (D1)
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
+    if (estExt) profile.sections = _sansPlansExtension(profile.sections, estExt).sections;
     return profile;
   }
 
@@ -474,10 +598,18 @@
    * Calcule les tailles estimées des sections (avant export) pour affichage UI.
    * @returns {Promise<Object>} { registry: {count, bytes}, preferences: {...}, ... }
    */
-  async function computeSectionSizes() {
+  async function computeSectionSizes(opts) {
     const sizes = {};
+    // ☁️ Mêmes exclusions que buildProfile (modale d'export) : les tailles
+    // affichées sont celles du fichier qui partira.
+    const estExt = (opts && opts.exclureExtensions === true) ? _predicatExtension() : null;
+    const filtrer = function(nom, val) {
+      if (!estExt || val == null) return val;
+      const o = {}; o[nom] = val;
+      return _sansPlansExtension(o, estExt).sections[nom];
+    };
     // Registry
-    const reg = _collectRegistry();
+    const reg = filtrer("registry", _collectRegistry());
     sizes.registry = {
       count: (reg && reg.plans) ? reg.plans.length : 0,
       bytes: reg ? JSON.stringify(reg).length : 0
@@ -489,13 +621,13 @@
       bytes: JSON.stringify(prefs).length
     };
     // 🆕 v1.39.15 — perPlanLs (georef GPS + calibrations layers + avoidances iti + note Histoire)
-    const perPlan = _collectPerPlanLsKeys();
+    const perPlan = filtrer("perPlanLs", _collectPerPlanLsKeys());
     sizes.perPlanLs = {
       count: Object.keys(perPlan).length,
       bytes: JSON.stringify(perPlan).length
     };
     // Favoris
-    const favs = _collectFavoris();
+    const favs = filtrer("favoris", _collectFavoris());
     let favCount = 0;
     if (favs && favs.byPlan) {
       Object.keys(favs.byPlan).forEach(function(pid) {
@@ -507,7 +639,7 @@
       bytes: favs ? JSON.stringify(favs).length : 0
     };
     // Sessions
-    const sess = _collectSessions();
+    const sess = filtrer("sessions", _collectSessions());
     sizes.sessions = {
       count: Object.keys(sess).length,
       bytes: JSON.stringify(sess).length
@@ -532,7 +664,7 @@
     }
     // Carnet (async) — 🆕 v1.74.0
     try {
-      const carnet = await _collectCarnet();
+      const carnet = filtrer("carnet", await _collectCarnet());
       sizes.carnet = {
         count: carnet.length,
         bytes: JSON.stringify(carnet).length
@@ -540,7 +672,7 @@
     } catch(e) { sizes.carnet = { count: 0, bytes: 0 }; }
     // Backups (async)
     try {
-      const backups = await _collectBackups();
+      const backups = filtrer("backups", await _collectBackups());
       sizes.backups = {
         count: backups.length,
         bytes: JSON.stringify(backups).length
@@ -549,7 +681,7 @@
     // Photos (count + bytes IDB total, sans collecter le base64 qui serait lent)
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.getAllPhotosForPlan === "function") {
       try {
-        const reg2 = _collectRegistry();
+        const reg2 = filtrer("registry", _collectRegistry());
         let count = 0, bytes = 0;
         if (reg2 && reg2.plans) {
           for (const p of reg2.plans) {
@@ -576,7 +708,10 @@
       try {
         const docs = await window.JournalUi.histoire.lister();
         let n = 0, b = 0;
-        (Array.isArray(docs) ? docs : []).forEach(function(d) { n++; b += (d.size || 0); });
+        (Array.isArray(docs) ? docs : []).forEach(function(d) {
+          if (estExt && d && estExt(d.planId)) return;
+          n++; b += (d.size || 0);
+        });
         sizes.histoirePdfs = { count: n, bytes: Math.round(b * 1.34) };
       } catch(e) { sizes.histoirePdfs = { count: 0, bytes: 0 }; }
     } else {
@@ -584,12 +719,19 @@
     }
     // Crashes
     try {
-      const crashes = await _collectCrashes();
+      const crashes = filtrer("crashes", await _collectCrashes());
       sizes.crashes = {
         count: crashes.length,
         bytes: JSON.stringify(crashes).length
       };
     } catch(e) { sizes.crashes = { count: 0, bytes: 0 }; }
+    // ☁️ Nombre de plans d'organisation laissés de côté (note de la modale).
+    if (estExt) {
+      sizes.extExclus = _sansPlansExtension({
+        registry: _collectRegistry(), perPlanLs: _collectPerPlanLsKeys(),
+        favoris: _collectFavoris(), sessions: _collectSessions()
+      }, estExt).plans.size;
+    }
     return sizes;
   }
 
@@ -695,13 +837,16 @@
    * le lot continue (bilan chiffré).
    * @returns {Promise<{restaures, conserves, orphelins, echecs: string[]}>}
    */
-  async function _restaurerArchives(zipConteneur, mode) {
-    const bilan = { restaures: 0, conserves: 0, orphelins: 0, echecs: [] };
+  async function _restaurerArchives(zipConteneur, mode, estExt) {
+    const bilan = { restaures: 0, conserves: 0, orphelins: 0, echecs: [], extIgnores: [] };
     const entrees = [];
     zipConteneur.folder("plans").forEach(function(chemin, entry) {
       if (!entry.dir && /\.zip$/i.test(chemin)) entrees.push({ id: chemin.replace(/\.zip$/i, ""), entry: entry });
     });
     for (const e of entrees) {
+      // ☁️ L'archive d'un plan d'organisation ne s'installe jamais depuis un
+      // fichier (elle écraserait celle que fournit l'organisation).
+      if (estExt && estExt(e.id)) { bilan.extIgnores.push(e.id); continue; }
       const p = window.PlanRegistry ? window.PlanRegistry.findById(e.id) : null;
       if (!p) { bilan.orphelins++; continue; }   // pas d'entrée registre → blob sans foyer
       if (mode !== "replace" && p.storedBlob === true) {
@@ -801,10 +946,38 @@
 
   // ───────── APPLY (= injection dans le système) ─────────
 
+  // Écrit `records` dans un store IDB (keyPath "id") et ferme la base.
+  // vider : mode « replace ». garder(record) → bool : ce que le vidage épargne
+  // (☁️ données d'un plan d'organisation) ; absent = vidage total historique.
+  // Lecture puis suppressions puis écritures DANS LA MÊME transaction, dans
+  // cet ordre : un curseur ouvert avant les put() effacerait les nouveaux.
+  function _remplirStore(db, nom, records, vider, garder) {
+    return new Promise(function(resolve, reject) {
+      const tx = db.transaction([nom], "readwrite");
+      const store = tx.objectStore(nom);
+      const poser = function() { records.forEach(function(r) { try { store.put(r); } catch(e) {} }); };
+      if (!vider) poser();
+      else if (!garder) { store.clear(); poser(); }
+      else {
+        const req = store.getAll();
+        req.onsuccess = function() {
+          (req.result || []).forEach(function(r) {
+            if (r && r.id != null && !garder(r)) { try { store.delete(r.id); } catch(e) {} }
+          });
+          poser();
+        };
+      }
+      tx.oncomplete = function() { db.close(); resolve(); };
+      tx.onerror    = function() { db.close(); reject(tx.error); };
+    });
+  }
+
   /**
    * Injecte le profil dans le système.
    * @param {Object} profile - retourné par parseProfile()
-   * @param {Object} opts - { mode: "merge"|"replace", include: { sectionName: bool } }
+   * @param {Object} opts - { mode: "merge"|"replace", include: { sectionName: bool },
+   *                          exclureExtensions: bool (☁️ modale d'import : rien d'un plan d'organisation
+   *                          n'est restauré, ni effacé en mode « replace » → result.ignores) }
    * @returns {Promise<Object>} résultat avec compteurs par section
    */
   async function applyProfile(profile, opts) {
@@ -816,14 +989,32 @@
       favoris: true, sessions: true, carnet: true, backups: true, tutorial: true,
 photos: false, histoirePdfs: false, crashes: false
     };
-    const s = profile.sections;
+    let s = profile.sections;
     const result = { ok: true, mode: mode, applied: {} };
+    // ☁️ Chemin utilisateur seulement (modale d'import) — cf _sansPlansExtension.
+    // Ce qui appartient à un plan d'organisation est IGNORÉ à l'arrivée et, en
+    // mode « replace », ce que l'appareil en a déjà est CONSERVÉ (il se
+    // resynchronise avec l'organisation, pas avec un fichier).
+    const estExt = opts.exclureExtensions === true
+      ? _predicatExtension(s.registry && s.registry.plans) : null;
+    if (estExt) {
+      const tri = _sansPlansExtension(s, estExt);
+      s = tri.sections;
+      result.ignores = { plansExtension: tri.plans.size, ids: Array.from(tri.plans) };
+    }
+    const garderExt = estExt ? function(r) { return !!(r && estExt(r.planId)); } : null;
 
     // ─── Registry ───
     if (include.registry !== false && s.registry && Array.isArray(s.registry.plans)) {
       try {
         const raw = localStorage.getItem("myktamap_plans");
         let store = _safeJsonParse(raw) || { version: 1, plans: [] };
+        if (!Array.isArray(store.plans)) store.plans = [];
+        // ☁️ Conservés en remplacement : entrées et dossiers de l'organisation.
+        const extLocaux = estExt ? store.plans.filter(function(p) { return p && p.type === "ext"; }) : [];
+        const dossiersExtLocaux = estExt ? (store.folders || []).filter(function(f) {
+          return f && _estIdFabriqueExtension(f.id);
+        }) : [];
         // 📁 16/09/2026 — DOSSIERS : fusion par nom (casse ignorée, l'id local
         // gagne) en mode Fusionner, remplacement en mode Remplacer ; le
         // folderId des plans qui ARRIVENT est traduit. Les plans déjà présents
@@ -832,7 +1023,13 @@ photos: false, histoirePdfs: false, crashes: false
         const fusion = (window.PlanRegistry && typeof window.PlanRegistry.fusionnerDossiers === "function")
           ? window.PlanRegistry.fusionnerDossiers(store.folders, s.registry.folders, mode)
           : { folders: (mode === "replace") ? [] : (store.folders || []), table: {} };
-        if (fusion.folders.length) store.folders = fusion.folders; else delete store.folders;
+        let dossiers = fusion.folders;
+        if (mode === "replace" && dossiersExtLocaux.length) {
+          dossiers = dossiers.concat(dossiersExtLocaux.filter(function(f) {
+            return !dossiers.some(function(x) { return x.id === f.id; });
+          }));
+        }
+        if (dossiers.length) store.folders = dossiers; else delete store.folders;
         if (mode === "replace" && s.registry.plansView) store.plansView = s.registry.plansView;
         const traduire = function(p) {
           const c = Object.assign({}, p);
@@ -843,7 +1040,7 @@ photos: false, histoirePdfs: false, crashes: false
           return c;
         };
         if (mode === "replace") {
-          store.plans = s.registry.plans.map(traduire);
+          store.plans = s.registry.plans.map(traduire).concat(extLocaux);
         } else {
           // merge anti-doublon sur id
           s.registry.plans.forEach(function(p) {
@@ -887,6 +1084,18 @@ photos: false, histoirePdfs: false, crashes: false
             const links = (val && Array.isArray(val.links)) ? val.links : [];
             const added = window.InterPlanLinks.importLinks(links);
             console.log("[ProfileExportImport] Liaisons inter-plan fusionnées : +" + added);
+          } else if (key === "myktamap_interplan_links_v1" && estExt && val && Array.isArray(val.links)) {
+            // ☁️ Remplacement : les liaisons locales qui touchent un plan
+            // d'organisation restent (le fichier n'en apporte plus aucune).
+            const local = _safeJsonParse(localStorage.getItem(key));
+            const gardees = (local && Array.isArray(local.links) ? local.links : []).filter(function(l) {
+              return l && ((l.a && estExt(l.a.planId)) || (l.b && estExt(l.b.planId)));
+            });
+            const ids = {};
+            val.links.forEach(function(l) { if (l && l.id) ids[l.id] = true; });
+            localStorage.setItem(key, JSON.stringify(Object.assign({}, val, {
+              links: val.links.concat(gardees.filter(function(l) { return !ids[l.id]; }))
+            })));
           } else {
             // Autres clés : remplacement direct (replace ou merge, c'est juste un toggle)
             localStorage.setItem(key,
@@ -997,17 +1206,9 @@ photos: false, histoirePdfs: false, crashes: false
           req.onsuccess = function() { resolve(req.result); };
           req.onerror   = function() { reject(req.error); };
         });
-        const tx = db.transaction(["sorties"], "readwrite");
-        const store = tx.objectStore("sorties");
-        if (mode === "replace") store.clear();
-        s.carnet.forEach(function(r) {
-          // Filtre défensif : un record sans id ferait échouer put() (keyPath).
-          if (r && typeof r === "object" && r.id) { try { store.put(r); } catch(e) {} }
-        });
-        await new Promise(function(resolve, reject) {
-          tx.oncomplete = function() { db.close(); resolve(); };
-          tx.onerror    = function() { db.close(); reject(tx.error); };
-        });
+        // Filtre défensif : un record sans id ferait échouer put() (keyPath).
+        const sorties = s.carnet.filter(function(r) { return r && typeof r === "object" && r.id; });
+        await _remplirStore(db, "sorties", sorties, mode === "replace", garderExt);
         result.applied.carnet = s.carnet.length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply carnet échec :", e);
@@ -1029,14 +1230,7 @@ photos: false, histoirePdfs: false, crashes: false
           req.onsuccess = function() { resolve(req.result); };
           req.onerror   = function() { reject(req.error); };
         });
-        const tx = db.transaction(["backups"], "readwrite");
-        const store = tx.objectStore("backups");
-        if (mode === "replace") store.clear();
-        s.backups.forEach(function(b) { try { store.put(b); } catch(e) {} });
-        await new Promise(function(resolve, reject) {
-          tx.oncomplete = function() { db.close(); resolve(); };
-          tx.onerror    = function() { db.close(); reject(tx.error); };
-        });
+        await _remplirStore(db, "backups", s.backups, mode === "replace", garderExt);
         result.applied.backups = s.backups.length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply backups échec :", e);
@@ -1055,7 +1249,15 @@ photos: false, histoirePdfs: false, crashes: false
     if (include.photos !== false && s.photos && Array.isArray(s.photos.photos) && s.photos.photos.length > 0
         && window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.restorePhoto === "function") {
       try {
-        if (mode === "replace") {
+        if (mode === "replace" && estExt && typeof window.MyKTAMapPhotos.listerTout === "function"
+            && typeof window.MyKTAMapPhotos.deletePhotosForPlan === "function") {
+          // ☁️ Wipe des photos de tous les plans SAUF ceux d'une organisation
+          const plans = new Set();
+          (await window.MyKTAMapPhotos.listerTout()).forEach(function(ph) {
+            if (ph && ph.planId && !estExt(ph.planId)) plans.add(ph.planId);
+          });
+          for (const pid of plans) await window.MyKTAMapPhotos.deletePhotosForPlan(pid);
+        } else if (mode === "replace") {
           // Wipe toutes les photos de tous les plans existants
           if (typeof window.MyKTAMapPhotos.clearAll === "function") {
             await window.MyKTAMapPhotos.clearAll();
@@ -1151,14 +1353,7 @@ photos: false, histoirePdfs: false, crashes: false
           req.onsuccess = function() { resolve(req.result); };
           req.onerror   = function() { reject(req.error); };
         });
-        const tx = db.transaction(["crashes"], "readwrite");
-        const store = tx.objectStore("crashes");
-        if (mode === "replace") store.clear();
-        s.crashes.forEach(function(c) { try { store.put(c); } catch(e) {} });
-        await new Promise(function(resolve, reject) {
-          tx.oncomplete = function() { db.close(); resolve(); };
-          tx.onerror    = function() { db.close(); reject(tx.error); };
-        });
+        await _remplirStore(db, "crashes", s.crashes, mode === "replace", garderExt);
         result.applied.crashes = s.crashes.length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply crashes échec :", e);
@@ -1208,7 +1403,7 @@ photos: false, histoirePdfs: false, crashes: false
 
     // Calcul async des tailles
     let sizes;
-    try { sizes = await computeSectionSizes(); }
+    try { sizes = await computeSectionSizes({ exclureExtensions: true }); }
     catch(e) {
       const c = document.getElementById("kta-profile-export-corps");
       if (c) c.innerHTML = '<div class="kta-mem-warn">❌ ' + _escHtml(window.I18n.t("profileio.error_prefix", { error: (e.message || e) })) + '</div>';
@@ -1230,6 +1425,9 @@ photos: false, histoirePdfs: false, crashes: false
     html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:#ffae80;">';
     html += '🔐 ' + T("profileio.export_security");
     html += '</p>';
+    if (sizes.extExclus > 0) {
+      html += '<p class="kta-profile-intro kta-tx-info">☁️ ' + _escHtml(T("profileio.export_ext_exclus", { n: sizes.extExclus })) + '</p>';
+    }
 
     html += '<div class="kta-profile-sections">';
     html += _renderSectionRow("user",        "👤", T("profileio.sec_user_label"),        sizes.user,        true,  T("profileio.sec_user_hint"));
@@ -1321,8 +1519,8 @@ photos: false, histoirePdfs: false, crashes: false
           const origText = btnGo.textContent;
           btnGo.disabled = true; btnGo.textContent = "⏳ " + window.I18n.t("profileio.generating");
           const promesse = planIds.length
-            ? exportArchiveToFile({ include: include, planIds: planIds })
-            : exportToFile({ include: include });
+            ? exportArchiveToFile({ include: include, planIds: planIds, exclureExtensions: true })
+            : exportToFile({ include: include, exclureExtensions: true });
           promesse.then(function(res) {
             btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
             // Archives évincées par le quota → dit franchement, pas un zip muet.
@@ -1441,7 +1639,7 @@ photos: false, histoirePdfs: false, crashes: false
         if (!entree) { window.ktaAlerte(window.I18n.t("profileio.arch_pas_profil"), { type: "erreur" }); return; }
         text = await entree.async("string");
         zipConteneur.folder("plans").forEach(function(chemin, e2) {
-          if (!e2.dir && /\.zip$/i.test(chemin)) nbArchives++;
+          if (!e2.dir && /\.zip$/i.test(chemin)) nbArchives++;   // (☁️ triées à la restauration)
         });
       } else {
         text = await file.text();
@@ -1460,7 +1658,11 @@ photos: false, histoirePdfs: false, crashes: false
 
     const profile = parsed.profile;
     const isLegacy = (parsed.format === "legacy");
-    const stats = computeImportStats(profile);
+    // ☁️ L'aperçu compte ce qui sera VRAIMENT restauré (plans d'organisation
+    // retirés, comme le fera applyProfile avec exclureExtensions).
+    const estExt = _predicatExtension(profile.sections.registry && profile.sections.registry.plans);
+    const stats = computeImportStats({ sections: _sansPlansExtension(profile.sections, estExt).sections,
+                                       appVersion: profile.appVersion, exportedAt: profile.exportedAt });
 
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-import-modal";
@@ -1512,7 +1714,7 @@ photos: false, histoirePdfs: false, crashes: false
       const btn = document.getElementById("kta-profile-import-go");
       const orig = btn.textContent;
       btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("profileio.importing");
-      applyProfile(profile, { mode: mode, include: include }).then(async function(res) {
+      applyProfile(profile, { mode: mode, include: include, exclureExtensions: true }).then(async function(res) {
         if (!res || !res.ok) {
           btn.disabled = false; btn.textContent = orig;
           window.ktaAlerte(window.I18n.t("profileio.import_fail",
@@ -1525,7 +1727,7 @@ photos: false, histoirePdfs: false, crashes: false
         const cbArch = document.getElementById("kta-profile-import-archives");
         if (zipConteneur && cbArch && cbArch.checked) {
           btn.textContent = "⏳ " + window.I18n.t("profileio.arch_restauration");
-          try { res.archives = await _restaurerArchives(zipConteneur, mode); }
+          try { res.archives = await _restaurerArchives(zipConteneur, mode, estExt); }
           catch(e) { res.archives = { restaures: 0, conserves: 0, orphelins: 0, echecs: ["(" + (e.message || e) + ")"] }; }
         }
         btn.textContent = "✅ " + window.I18n.t("profileio.imported_done");
@@ -1626,6 +1828,14 @@ photos: false, histoirePdfs: false, crashes: false
           T("profileio.arch_bilan_echecs", { n: a.echecs.length }) + '</strong> : ' +
           _escHtml(a.echecs.join(", ")) + '</li>');
       }
+    }
+    // ☁️ Plans d'organisation ignorés (fichier : sections + archives)
+    // (une archive dont le plan est déjà compté ne l'est qu'une fois)
+    const idsExt = new Set((res.ignores && res.ignores.ids) || []);
+    ((res.archives && res.archives.extIgnores) || []).forEach(function(id) { idsExt.add(id); });
+    const nExt = idsExt.size;
+    if (nExt > 0) {
+      parts.push('<li class="kta-tx-info">☁️ ' + _escHtml(T("profileio.done_ext_ignores", { n: nExt })) + '</li>');
     }
     const summaryHtml = parts.length
       ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'

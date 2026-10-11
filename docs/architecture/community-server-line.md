@@ -293,10 +293,17 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `source: "extension"` = écrit par `restorePhoto` **sans** `opts.source` (le dépôt d'une extension : à ne pas
   renvoyer) ; `source: "import"` = restauration par l'app (session, plan ZIP, profil). 🩸 Les **purges locales**
   n'émettent rien : `deletePhotosForPlan` (plan retiré de l'appareil, déconnexion — `effacerDonneesExtension` —,
-  réimport de session) et `clearAll` (réinitialisation, import de profil) — une extension qui les propagerait
+  réimport de session, import de profil en remplacement par la modale — plans ☁️ épargnés) et `clearAll`
+  (réinitialisation, import de profil hors modale) — une extension qui les propagerait
   effacerait les photos de l'équipe. Supprimer un point ne supprime jamais ses photos (« sans point »,
   `session-data.md` §42). API photos ajoutée pour l'extension : `listerPlan(planId)` (sans blob),
   `rattacher(photoIds, planId, pointId, fiche)`, `restorePhoto(record, opts?)`.
+- **Profil de l'utilisateur** (11/10/2026) : les modales d'export / import du profil ne transportent **rien** d'un
+  plan ☁️ (registre `type: "ext"`, ou id reconnu par `ktaEstIdRegistreExtension`) — ni entrée, ni session, photos,
+  favoris, liaisons, sauvegardes, carnet, archive : le fichier est en clair et un profil importé ne doit pas créer
+  de plans fantômes d'une autre organisation. Bilan d'import : « N plans de l'organisation ignorés ». Aucune prise :
+  le registre suffit. Un appel **programmatique** de `ProfileExportImport.buildProfile` / `applyProfile` sans
+  `exclureExtensions: true` garde le comportement historique (tout part) — détail : `session-data.md` §42.
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
   ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
   `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :

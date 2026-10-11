@@ -962,6 +962,7 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 
 - **History Mode PDFs**: unticked by default, because one map can carry up to 100 MB of them. Ticked, they are put back in place on import, with no duplicates if you import again.
 - **Map archives**: tick the stored maps to take along (nothing is ticked by default); the export becomes a “full profile” `.zip` and the import attaches each archive to its map. Beyond about 50 MB on iPhone/iPad (500 MB elsewhere), the app asks for confirmation. If the browser deleted an archive, the export tells you which ones are missing. Maps in “re-select” mode are not listed: their ZIP is on your disk, not in the app.
+- **An organisation's maps (☁️)**: neither they nor their sessions, photos, favourites or backups go into the file, and an imported profile restores none of them (the import summary says how many were ignored): you get them back by signing in to the organisation.
 
 **📥 Import a profile** lets you choose the sections and the mode: **🔄 Merge** adds without overwriting (recommended), **♻️ Replace** first empties the ticked sections. In Merge, a map that already has its archive on the device keeps its own. A reload of the app is offered at the end. On an installation that only offers its server's maps, profile import is refused (it could hide those maps); export remains possible.
 

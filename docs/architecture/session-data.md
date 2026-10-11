@@ -154,7 +154,7 @@ gardées indéfiniment, jamais effacées sans confirmation). ⏪ Annuler la supp
 ses photos le retrouvent sans rien réécrire. Restent effacées : la suppression d'une photo dans la fiche du point,
 la suppression d'un plan (`PlanRegistry` purge ses photos), **💥 Tout réinitialiser**, le **réimport d'une session
 ZIP** (remplacement : photos du plan effacées puis restaurées depuis le fichier) et l'import de profil en mode
-remplacement. L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
+remplacement (sauf celles des plans ☁️ d'une organisation, cf ci-dessous). L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
 disparues de la nouvelle version (v2.5.0) — jamais une photo prise par l'utilisateur.
 
 **🧰 Outils > 📸 Mes photos** — `js/photosGalerie.js` → `window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId),
@@ -192,7 +192,18 @@ photos/
 ```
 Helpers `sessionExporter.js` : `_collecterPhotosPlan(pointIdsSet)` (les photos suivent le filtre des points),
 `_extDepuisMime`, `_formatBytes` (`window._kta_formatBytes`), `_packerZipSession`, `_enrichirPointsAvecPhotos`
-(`point.photos = [ids]` sur une copie). L'export de profil emporte les photos de tous les plans (fiche comprise).
+(`point.photos = [ids]` sur une copie). L'export de profil emporte les photos de tous les plans (fiche comprise),
+**sauf ceux d'une organisation**.
+
+**☁️ Profil et plans d'une organisation** (11/10/2026) : un plan fourni par une extension (registre `type: "ext"`,
+ou id sorti de la fabrique `ktaIdRegistreExtension` — `ktaEstIdRegistreExtension`, `main.js`) appartient à
+l'organisation. Les **modales** d'export et d'import du profil passent `exclureExtensions: true`
+(`profileExportImport.js > _sansPlansExtension`, fonction pure) : ni son entrée de registre (`lastPlanId` et dossiers
+`ext_…` compris), ni sa session, ses clés par plan, favoris, liaisons inter-plans, sorties du carnet, sauvegardes,
+photos, PDF d'histoire, crashs ou archive ne partent dans le fichier, et un profil importé n'en restaure aucun ; en
+mode remplacement, ce que l'appareil en a déjà est **conservé**. Le bilan d'import dit combien de plans ont été
+ignorés (`result.ignores`). **Sans l'option** (appel programmatique de `buildProfile` / `applyProfile`), le
+comportement historique est inchangé : c'est le chemin d'une extension qui sauvegarde les données du compte.
 Générateur (`createConf.js`) : case « 📸 Inclure les photos » en mode Modifier (→ `data/photos/` du plan, fusion
 dédoublonnée avec un datalayer ZIP importé). Compteur 📸 de l'en-tête (`countPhotosForPlan`) et détail par point
 dans « 📊 Détails de la session ».

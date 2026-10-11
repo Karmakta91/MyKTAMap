@@ -962,6 +962,7 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 
 - **PDF du Mode Histoire** : décochés au départ, car un plan peut en porter jusqu'à 100 Mo. Cochés, ils sont remis en place à l'import, sans doublon si tu réimportes.
 - **Archives de plans** : coche les plans mémorisés à emporter (rien n'est coché au départ) ; l'export devient un `.zip` « profil complet » et l'import rattache chaque archive à son plan. Au-delà d'environ 50 Mo sur iPhone/iPad (500 Mo ailleurs), l'app demande confirmation. Si le navigateur a supprimé une archive, l'export te dit lesquelles manquent. Les plans en « re-sélection » n'y figurent pas : leur ZIP est sur ton disque, pas dans l'app.
+- **Plans d'une organisation (☁️)** : ni eux, ni leurs sessions, photos, favoris ou sauvegardes ne partent dans le fichier, et un profil importé n'en restaure aucun (le bilan d'import dit combien ont été ignorés) : ils se récupèrent en se connectant à l'organisation.
 
 **📥 Importer un profil** te laisse choisir les sections et le mode : **🔄 Merge** ajoute sans écraser (recommandé), **♻️ Replace** vide d'abord les sections cochées. En Merge, un plan qui a déjà son archive sur l'appareil garde la sienne. Un rechargement de l'app est proposé à la fin. Sur une installation qui ne propose que les plans de son serveur, l'import de profil est refusé (il pourrait masquer ces plans) ; l'export reste possible.
 

@@ -82,7 +82,8 @@ verif(
 
 // --- B. les 5 points de branchement -------------------------------------
 const POINTS = [
-  ["collecte",          /profile\.sections\.histoirePdfs\s*=\s*await _collectHistoirePdfs\(\)/],
+  // (estExt) : la modale d'export saute les plans ☁️ d'une organisation
+  ["collecte",          /profile\.sections\.histoirePdfs\s*=\s*await _collectHistoirePdfs\((?:estExt)?\)/],
   ["estimation taille", /sizes\.histoirePdfs\s*=\s*\{/],
   ["ligne d'export",    /_renderSectionRow\("histoirePdfs"/],
   ["récap final",       /histoirePdfs:\s*"📄/],

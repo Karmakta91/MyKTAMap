@@ -260,6 +260,12 @@ function _ktaInstanceIndisponible(motif) {
 window.ktaIdRegistreExtension = function(extId) {
   return "ext_" + String(extId).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
 };
+// Réciproque : cet id du registre (plan, ou dossier fourni par l'extension — même
+// préfixe) sort-il de cette fabrique ? Sert quand la ligne du registre manque
+// (profil importé : session ou photo d'un plan ☁️ arrivée sans son entrée).
+window.ktaEstIdRegistreExtension = function(id) {
+  return typeof id === "string" && id.indexOf("ext_") === 0;
+};
 async function _decouvrirPlansExtension() {
   if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
   const liste = await window.KtaExtensions.listerPlansExtension();
