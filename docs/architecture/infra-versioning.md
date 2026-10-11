@@ -723,15 +723,16 @@ documentées ici pour la doctrine.
 
 ### 85. Déploiement des sites — Git sur le VPS, sans FTP (07/10/2026)
 
-- Scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
+- Scripts dans un dépôt **privé** séparé (`MyKTAMap-hebergement`, depuis le 12/10/2026 ; jamais dans ce dépôt
+  public), posés sur le VPS : `deploy-dev.sh` →
   `/data/www/dev.myktamap.fr` sur `Karma_dev` ; `deploy-prod.sh` → `/data/www/myktamap.fr` sur `main` (confirmation
-  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt client, `PRO`) ;
+  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt pro, `PRO`) ;
   `kta-serveur.sh` = « menu 0 » qui les appelle.
 - **Mise à jour automatique** (décision KARMA du 09/10/2026) : `auto-deploy.sh`, lancé par cron toutes les 5 min,
   compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** : le job
   `marquer-vert` de `ci.yml` pose `refs/ci/verte/<branche>` sur chaque commit poussé qui passe, lue par le VPS avec
-  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
-  de CI). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
+  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, `main` doit être vert des deux
+  côtés (community et pro). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
   (`/data/scripts/PAUSE-<domaine>`, menu 0 → 8). Conséquence : `main` mergé = prod en ligne dans les 5 minutes.
 - **Retour arrière** : menu 0 → 4 / 5 (pose la pause, sinon la branche reviendrait) — procédure complète, pro
   compris : `docs/RELEASE_GATE.md` § Retour arrière.
