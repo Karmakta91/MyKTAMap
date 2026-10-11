@@ -19,11 +19,10 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 
 ## 🧰 Barre d'outils de droite — boutons en double (retour KARMA du 11/10/2026, v2.14.0, iPhone)
 
-- 🟠 **Outil Mesure actif : ses boutons apparaissent deux fois** dans la barre de droite — deux 📐 (longueur) et deux
-  ⬛ (surface), en plus du ✕ qui ferme la mesure (le bas de l'écran affiche bien « 85.5 m · 544 m² »). À reproduire
-  (ouvrir un plan, lancer la mesure, regarder la barre) : bouton injecté à chaque activation sans retirer le
-  précédent (`js/measure.js` / `js/refonteInterface.js`) ? Corriger, et un contrôle qui vérifie qu'un outil n'a
-  qu'un bouton dans la barre.
+- 🟡 **Reste un doublon 📐** quand la mesure est ouverte : le groupe 📐 Mesure et sa sous-action 📐 Distance. Fait le
+  12/10/2026 : la SURFACE mesurée prend ♦️ partout (plus de confusion avec ⬛ Zones), le groupe ne reflète plus
+  l'icône du mode actif. Ce n'était pas une injection en double mais l'accordéon (groupe + sous-actions). Piste :
+  une icône propre à la Distance (📏 est pris par la distance totale des tracés en barre d'état).
 
 ## 👥 Plusieurs personnes sur la même carte (retour KARMA du 11/10/2026, capture sur téléphone)
 
