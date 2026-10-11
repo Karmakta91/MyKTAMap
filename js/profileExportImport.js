@@ -1066,9 +1066,14 @@ photos: false, histoirePdfs: false, crashes: false
     // ─── Preferences ───
     if (include.preferences !== false && s.preferences && typeof s.preferences === "object") {
       try {
+        let appliquees = 0;
         Object.keys(s.preferences).forEach(function(key) {
+          // Garde anti-pollution (comme perPlanLs) : seules les préférences que l'export produit sont écrites.
+          // Un fichier ne peut pas poser une autre clé (session, extension, réglage de sécurité).
+          if (PREF_KEYS.indexOf(key) === -1) return;
           const val = s.preferences[key];
           if (val == null) return;
+          appliquees++;
           // app_user_prefs en mode merge : on fusionne les sous-clés
           if (key === "app_user_prefs" && mode === "merge") {
             const existingRaw = localStorage.getItem(key);
@@ -1102,7 +1107,7 @@ photos: false, histoirePdfs: false, crashes: false
               typeof val === "string" ? val : JSON.stringify(val));
           }
         });
-        result.applied.preferences = Object.keys(s.preferences).length;
+        result.applied.preferences = appliquees;
       } catch(e) {
         console.warn("[ProfileExportImport] apply preferences échec :", e);
       }
