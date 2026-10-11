@@ -964,7 +964,7 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 - **Archives de plans** : coche les plans mémorisés à emporter (rien n'est coché au départ) ; l'export devient un `.zip` « profil complet » et l'import rattache chaque archive à son plan. Au-delà d'environ 50 Mo sur iPhone/iPad (500 Mo ailleurs), l'app demande confirmation. Si le navigateur a supprimé une archive, l'export te dit lesquelles manquent. Les plans en « re-sélection » n'y figurent pas : leur ZIP est sur ton disque, pas dans l'app.
 - **Plans d'une organisation (☁️)** : ni eux, ni leurs sessions, photos, favoris ou sauvegardes ne partent dans le fichier, et un profil importé n'en restaure aucun (le bilan d'import dit combien ont été ignorés) : ils se récupèrent en se connectant à l'organisation.
 
-**📥 Importer un profil** te laisse choisir les sections et le mode : **🔄 Merge** ajoute sans écraser (recommandé), **♻️ Replace** vide d'abord les sections cochées. En Merge, un plan qui a déjà son archive sur l'appareil garde la sienne. Un rechargement de l'app est proposé à la fin. Sur une installation qui ne propose que les plans de son serveur, l'import de profil est refusé (il pourrait masquer ces plans) ; l'export reste possible.
+**📥 Importer un profil** te laisse choisir les sections et le mode : **🔄 Merge** ajoute sans écraser (recommandé), **♻️ Replace** vide d'abord les sections cochées. En Merge, un plan qui a déjà son archive sur l'appareil garde la sienne. Seules les préférences qu'un export produit sont reprises : un fichier modifié à la main ne peut pas poser d'autre réglage. Un rechargement de l'app est proposé à la fin. Sur une installation qui ne propose que les plans de son serveur, l'import de profil est refusé (il pourrait masquer ces plans) ; l'export reste possible.
 
 ---
 
@@ -1738,7 +1738,7 @@ Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et 
 
 L'édition pro est installée par **la personne qui gère ton installation** : elle pose la licence sur le serveur, il n'y a rien à faire de ton côté. Ton profil affiche alors ✓ Édition pro active, et l'écran de démarrage « Édition professionnelle ». L'application ne propose plus d'importer une licence toi-même : une licence importée sur un appareil n'activait aucune fonction pro.
 
-Une licence est **signée par l'auteur** et émise pour une adresse et une durée. Si elle expire, ou si le serveur la refuse, l'application **reste fermée** sur l'écran « Licence de l'installation invalide » — jamais rouverte en mode communautaire : préviens la personne qui gère l'installation. Ce qui est gardé sur l'appareil n'est pas effacé.
+Une licence est **signée par l'auteur** et émise pour une adresse et une durée. Si elle expire, ou si le serveur la refuse, l'application **reste fermée** sur l'écran « Licence de l'installation invalide » — jamais rouverte en mode communautaire : préviens la personne qui gère l'installation (le lien **💼 Découvrir ou renouveler la licence pro** de cet écran présente la licence). Ce qui est gardé sur l'appareil n'est pas effacé.
 
 > ⚖️ La licence est **nominative** : la partager avec un tiers non autorisé enfreint le contrat passé avec l'auteur.
 ### 🛡️ Plans révoqués

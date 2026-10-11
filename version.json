@@ -1,8 +1,8 @@
 {
-  "version": "v2.13.2",
-  "released": "2026-10-10",
+  "version": "v2.14.0",
+  "released": "2026-10-11",
   "notes": [
-    "💾 Tes sessions sont mieux protégées : l'app te prévient avant que sa mémoire soit pleine (jauge dans 📊 Détails de la session), ne perd plus une session quand un plan change de nom, et retrouve les sauvegardes d'une ancienne version du plan. La fenêtre de mise à jour ne revient plus à chaque ouverture et ne propose plus d'effacer toutes tes données.",
-    "💬 Messages et confirmations dans les fenêtres de l'app, PDF avec leurs accents, carte plus fluide, 🔆 Affichage XL (ex-« Mode urgence ») et Sortie d'urgence qui prévient si la sortie trouvée est coupée. Sécurité renforcée."
+    "💾 Tes sessions ne sont plus limitées à 5 Mo et ne se perdent plus en silence (jauge dans 📊 Détails de la session). Nouveau : 🧰 Outils › 📸 Mes photos retrouve toutes tes photos, même celles d'un point supprimé.",
+    "💬 Messages dans les fenêtres de l'app, PDF avec leurs accents, 🔆 Affichage XL (ex-« Mode urgence »), Sortie d'urgence qui prévient si la sortie trouvée est coupée, carte plus fluide et sécurité renforcée."
   ]
 }

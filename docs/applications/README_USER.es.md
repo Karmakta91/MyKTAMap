@@ -964,7 +964,7 @@ En la ventana Perfil, **📤 Exportar mi perfil** genera un archivo que lleva to
 - **Archivos de planos**: marca los planos memorizados que quieras llevarte (nada viene marcado); la exportación se convierte en un `.zip` «perfil completo» y la importación vincula cada archivo a su plano. Por encima de unos 50 MB en iPhone/iPad (500 MB en otros), la app pide confirmación. Si el navegador borró un archivo, la exportación te dice cuáles faltan. Los planos en «volver a seleccionar» no aparecen: su ZIP está en tu disco, no en la app.
 - **Planos de una organización (☁️)**: ni ellos ni sus sesiones, fotos, favoritos o copias van en el archivo, y un perfil importado no restaura ninguno (el resumen de importación dice cuántos se ignoraron): se recuperan al conectarse a la organización.
 
-**📥 Importar un perfil** te deja elegir las secciones y el modo: **🔄 Merge** añade sin sobrescribir (recomendado), **♻️ Replace** vacía antes las secciones marcadas. En Merge, un plano que ya tiene su archivo en el dispositivo conserva el suyo. Al final se propone recargar la app. En una instalación que solo ofrece los planos de su servidor, la importación de perfil se rechaza (podría ocultar esos planos); la exportación sigue siendo posible.
+**📥 Importar un perfil** te deja elegir las secciones y el modo: **🔄 Merge** añade sin sobrescribir (recomendado), **♻️ Replace** vacía antes las secciones marcadas. En Merge, un plano que ya tiene su archivo en el dispositivo conserva el suyo. Solo se recuperan las preferencias que produce una exportación: un archivo modificado a mano no puede fijar ningún otro ajuste. Al final se propone recargar la app. En una instalación que solo ofrece los planos de su servidor, la importación de perfil se rechaza (podría ocultar esos planos); la exportación sigue siendo posible.
 
 ---
 
@@ -1738,7 +1738,7 @@ Más sencillo aún: deja el ZIP del plano tal cual (sin descomprimirlo) y declá
 
 La edición pro la instala **la persona que gestiona tu instalación**: coloca la licencia en el servidor, no tienes nada que hacer. Tu perfil muestra entonces ✓ Edición pro activa, y la pantalla de arranque «Edición profesional». La aplicación ya no propone importar una licencia por tu cuenta: una licencia importada en un dispositivo no activaba ninguna función pro.
 
-Una licencia está **firmada por el autor** y se emite para una dirección y un periodo. Si caduca, o si el servidor la rechaza, la aplicación **permanece cerrada** en la pantalla «Licencia de la instalación no válida», nunca reabierta en modo comunitario: avisa a la persona que gestiona la instalación. Lo que se guarda en el dispositivo no se borra.
+Una licencia está **firmada por el autor** y se emite para una dirección y un periodo. Si caduca, o si el servidor la rechaza, la aplicación **permanece cerrada** en la pantalla «Licencia de la instalación no válida», nunca reabierta en modo comunitario: avisa a la persona que gestiona la instalación (el enlace **💼 Descubrir o renovar la licencia pro** de esta pantalla presenta la licencia). Lo que se guarda en el dispositivo no se borra.
 
 > ⚖️ La licencia es **nominativa**: compartirla con un tercero no autorizado infringe el contrato firmado con el autor.
 ### 🛡️ Planos revocados

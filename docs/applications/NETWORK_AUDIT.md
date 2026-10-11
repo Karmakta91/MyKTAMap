@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.13.2** (10 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.14.0** (11 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -546,11 +546,12 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 
 | Espace | Contenu | Comment l'inspecter |
 |---|---|---|
-| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, `myktamap_wake_lock_v1` boolean, `myktamap_session_v1_<planId>` per-plan **avec trackerTimeline + trackerStartTs** — impact taille : ~1800 entries × ~80 bytes ≈ ~140 KB pour une session de 30 min de tracking continu, soit ~2 % du quota 5 MB localStorage typique navigateur, etc.) | F12 → Application → Local Storage |
+| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, `myktamap_wake_lock_v1` boolean, `myktamap_session_tampon_v1_<planId>` = copie de secours d'une session écrite à la fermeture de l'app, retirée dès que la base des sessions a confirmé, etc.) | F12 → Application → Local Storage |
 | **localStorage → `myktamap_plan_stats_v1_<planId>`** | Cache de stats agrégées par plan : `{pois, roads, distPx, breakdowns: {pointsByTag, roadsByType, zonesByType, structsByType}, ts, source}`. Counts uniquement (jamais de Blob/photo data). JSON-serialisé strictement local. Alimenté par `_computePlanStatsLive` + `_persisterStatsPlanCourant` (agrégation session + embedded via getters publics). | F12 → Application → Local Storage |
 | **localStorage → `myktamap_loader_bar_stats_v1`** | Configuration de la bandeau profil du loader : array de keys (`["time", "storage", "plans"]`). Default `["time", "storage"]`. Persistance pure locale, aucune transmission. | F12 → Application → Local Storage |
 | **localStorage → `myktamap_skip_server_plans_v1`** | Boolean `"true"` / `"false"`. Si actif, les plans serveur ne sont pas inscrits au boot. ⚠️ le `fetch("data/index.json")` (same-origin, déjà whitelisté) a TOUJOURS lieu au boot — il porte la config d'instance kiosque (sous-titre, flags, liaisons) qui doit s'appliquer même pref active ; la pref ne skippe QUE l'enregistrement des plans. Le SW sert ce fichier en **network-first** (timeout 3 s, fallback cache — même pattern que les dicos i18n) : aucune nouvelle URL, aucune donnée sortante, 1 requête same-origin par boot. | F12 → Application → Local Storage |
 | **IndexedDB → `myktamap_handles`** | Handles FS Access API (Chrome desktop) + blobs ZIP des plans mémorisés (mobile/Safari/Firefox) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_sessions`** | Tes sessions, une par plan (points, tracés, zones, **trackerTimeline** incluse). Elles vivaient dans le localStorage, plafonné à ~5 Mo par site ; elles y sont copiées au premier lancement, relues et comparées, l'ancienne copie étant gardée 30 jours. En navigation privée (IndexedDB refusé) ou en incognito de l'app, elles restent en localStorage (`myktamap_session_v1_<planId>`). **Local pur, jamais transmis.** | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_backups`** | 10 snapshots FIFO de session, **trackerTimeline incluse** (impact taille IDB proportionnel) | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_photos`** | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_crashes`** | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |

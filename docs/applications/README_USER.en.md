@@ -964,7 +964,7 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 - **Map archives**: tick the stored maps to take along (nothing is ticked by default); the export becomes a “full profile” `.zip` and the import attaches each archive to its map. Beyond about 50 MB on iPhone/iPad (500 MB elsewhere), the app asks for confirmation. If the browser deleted an archive, the export tells you which ones are missing. Maps in “re-select” mode are not listed: their ZIP is on your disk, not in the app.
 - **An organisation's maps (☁️)**: neither they nor their sessions, photos, favourites or backups go into the file, and an imported profile restores none of them (the import summary says how many were ignored): you get them back by signing in to the organisation.
 
-**📥 Import a profile** lets you choose the sections and the mode: **🔄 Merge** adds without overwriting (recommended), **♻️ Replace** first empties the ticked sections. In Merge, a map that already has its archive on the device keeps its own. A reload of the app is offered at the end. On an installation that only offers its server's maps, profile import is refused (it could hide those maps); export remains possible.
+**📥 Import a profile** lets you choose the sections and the mode: **🔄 Merge** adds without overwriting (recommended), **♻️ Replace** first empties the ticked sections. In Merge, a map that already has its archive on the device keeps its own. Only the preferences an export produces are taken back: a file edited by hand cannot set any other setting. A reload of the app is offered at the end. On an installation that only offers its server's maps, profile import is refused (it could hide those maps); export remains possible.
 
 ---
 
@@ -1738,7 +1738,7 @@ Even simpler: drop the map's ZIP as is (without unzipping it) and declare it wit
 
 The pro edition is installed by **the person who manages your installation**: they put the licence on the server, there is nothing to do on your side. Your profile then shows ✓ Pro edition active, and the startup screen "Professional edition". The app no longer offers to import a licence yourself: a licence imported on a device did not turn on any pro feature.
 
-A licence is **signed by the author** and issued for one address and a set period. If it expires, or if the server refuses it, the app **stays closed** on the "Installation licence invalid" screen — never reopened in community mode: tell the person who manages the installation. What is kept on the device is not erased.
+A licence is **signed by the author** and issued for one address and a set period. If it expires, or if the server refuses it, the app **stays closed** on the "Installation licence invalid" screen — never reopened in community mode: tell the person who manages the installation (the **💼 Discover or renew the pro licence** link on this screen presents the licence). What is kept on the device is not erased.
 
 > ⚖️ The license is **personal**: sharing it with an unauthorised third party breaches the contract made with the author.
 ### 🛡️ Revoked maps

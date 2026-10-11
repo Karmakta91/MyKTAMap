@@ -19,7 +19,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.13.2` (10/10/2026)
+## 📦 Version courante — `v2.14.0` (11/10/2026)
+
+> 📸 **v2.14.0 — Release de prod depuis v2.11.0 (regroupe v2.12.0 → v2.13.2)** : sessions en IndexedDB (fini le plafond ~5 Mo du localStorage, migration vérifiée) ; 🧰 Outils › 📸 Mes photos (galerie, photos d'un point supprimé rattachées ou recréées) ; export / import de profil sans les plans d'une organisation, import limité aux préférences connues ; guides reliés à doc.myktamap.fr ; écran de licence invalide avec lien vers la licence pro ; prises d'extension neutres (rubriques du compte, rubrique d'aide, outils du Mode Développeur) ; splash avant la gate déléguée ; pages d'audit réseau générées ; sonde d'intégrité des sites.
 
 > 💾 **v2.13.2 — Sessions protégées (retour testeur en prod)** : jauge « 💾 Mémoire des sessions » + alerte avant saturation du localStorage ; session d'un plan renommé plus jamais effacée en silence (question + copie en Backups) ; 📦 Backups d'une autre version du plan restaurables dans le plan ouvert ; fenêtre de mise à jour sans « reset complet » et qui ne boucle plus stockage plein ; badge de version ⏳ quand la mise à jour attend un redémarrage.
 
@@ -576,6 +578,32 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.14.0 (11/10/2026) — Release de prod : sessions sans plafond de 5 Mo, galerie des photos (branche `Karma_dev`)
+
+Un seul bump pour tout ce qui part en prod depuis v2.11.0 : les entrées v2.12.0 → v2.13.2 ci-dessous, plus les commits
+sans bump listés ici. Les notes de `version.json` décrivent l'écart avec la prod, pas avec v2.13.2.
+
+- 💾 **Sessions en IndexedDB** (`0d1d003`, `8d6b585`) : `js/sessionStore.js` (`window.KtaSessionStore`, base
+  `myktamap_sessions`) — lecture synchrone en mémoire, écriture en arrière-plan, tampon localStorage à la fermeture,
+  migration copiée / relue / comparée (ancienne copie gardée 30 jours), repli localStorage en navigation privée ou
+  incognito. Jauge sur le quota du site. Garde-fou `check-session-store.js`.
+- 📸 **🧰 Outils › 📸 Mes photos** (`5476375`, `8c26ad5`) : galerie de toutes les photos, groupe « ⚠️ Sans point »,
+  rattacher, recréer le point (même uid), enregistrer en ZIP, supprimer avec confirmation ; fiche du point gardée
+  avec la photo ; prise neutre `photos` et événement `mktm:photos-changees`.
+- 👤 **Profil** : export / import par les modales sans les plans d'une organisation (☁️) ni ce qui les touche
+  (`2f1d375`) ; l'import n'écrit plus que les préférences de `PREF_KEYS` (`5beb70b`).
+- 🧩 **Points d'extension neutres** (no-op sans extension) : prise `outilsDev` (`cd043d1`), prise `aide` — une
+  rubrique dans l'Aide intégrée (`9f5d53a`), `actionsCompte` en rubriques / état / fin et carte de compte (`371d1eb`) ;
+  le splash se termine avant la gate déléguée (`4bb1127`) ; lien « 💼 Découvrir ou renouveler la licence pro » sur
+  l'écran de licence invalide (`3e12b67`).
+- 📖 **Docs** : lien vers doc.myktamap.fr (`df0086a`), guides, Aide IA et docs publiques relus (`47d1a3f`, `dbdadc1`,
+  `64d16e8`) ; pages d'audit réseau générées depuis leurs `.md` (`c0c3f3b`) ; CSP stricte servie sur dev et prod
+  (`4aeff05`) ; alerte « documentation remise à neuf » retirée (`7109487`). Release : Aide intégrée (photos sans
+  point, profil sans plans d'organisation) et guides ×3 (import de profil, lien licence) complétés.
+- 🚦 **Outillage** : correctifs Sonar du nouveau code (`77cd586`) ; sonde d'intégrité horaire du code servi
+  (`ef5f6d2`, `6a3e0a9`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; « Stockage local » liste `myktamap_sessions`.
 
 #### v2.13.2 (10/10/2026) — Sessions protégées : mémoire visible, plus de perte silencieuse (branche `Karma_dev`)
 

@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.14.0 (sessions sans limite de 5 Mo, galerie des photos)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Tes sessions passent du localStorage à une base IndexedDB du navigateur : toujours sur ton appareil, jamais envoyées ; la page d'audit liste cette base dans « Stockage local ». La galerie 📸 Mes photos et l'export de profil ne lisent que ce qui est déjà sur l'appareil. Les guides finissent par un lien vers doc.myktamap.fr, et l'écran « Licence de l'installation invalide » d'une installation reliée propose la présentation de la licence pro : ce sont des liens, ouverts seulement si tu les touches. La page d'audit est désormais générée depuis son texte source (même contenu, lisible sur téléphone).
+
 ### v2.13.2 (sessions protégées)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Tout est local : la mesure de la mémoire des sessions lit le stockage du navigateur sur ton appareil, rien n'est envoyé.
