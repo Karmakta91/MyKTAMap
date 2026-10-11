@@ -22653,10 +22653,15 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
   text-transform: uppercase; color: #8cb4ff; }
 .kta-ext-compte-btn { width: 100%; margin-bottom: 6px; }
 /* Ligne d'état (pas un bouton) : sauvegarde des données perso, serveur injoignable. */
-.kta-ext-compte-etat { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+.kta-ext-compte-etat { display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin-bottom: 6px; padding: 6px 2px; font-size: 14px; color: #c8d0e0; }
-.kta-ext-compte-lien { background: none; border: none; padding: 4px 0; font: inherit; font-size: 13px;
-  color: #8cb4ff; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.kta-ext-compte-etat > span { flex: 1 1 auto; min-width: 0; }
+/* Action d'une ligne d'état : petite pastille, pas un lien souligné (retour KARMA du 11/10/2026). */
+.kta-ext-compte-lien { flex: 0 0 auto; padding: 5px 10px; border: 1px solid rgba(140, 180, 255, 0.35);
+  border-radius: 999px; background: rgba(140, 180, 255, 0.1); font: inherit; font-size: 13px; font-weight: 600;
+  color: #c8d0e0; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.kta-ext-compte-lien:hover { border-color: #8cb4ff; color: #e8eaf0; }
+html.kta-theme-light .kta-ext-compte-lien { color: #1a1f2e; background: rgba(140, 180, 255, 0.15); }
 /* Action à part, en bas (Se déconnecter) : séparée, sobre. */
 .kta-ext-compte-fin { display: block; width: 100%; margin-top: 16px; padding: 10px; border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12); background: transparent; color: #c8d0e0; font: inherit;
