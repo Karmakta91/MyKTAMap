@@ -1936,6 +1936,24 @@
         try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
       }
+      // 🖼️ 12/10/2026 — Plan ENTIER (export et aperçu) d'un plan tuilé V2 : si TOUTES les tuiles
+      // du niveau utile sont déjà sur l'appareil (archive du plan, ou Cache Storage d'un plan
+      // serveur), le fond est composé depuis elles — l'image de base (42 Mo mesurés sur un relevé
+      // lourd) n'est plus retéléchargée. Même niveau de détail (z = 0 dès l'échelle 0,5 ; aucun
+      // plafond de tuiles), bords calés sur le pixel. Une tuile absente ou illisible → image de
+      // base, peinte par-dessus, comme avant.
+      const _plein = { x: 0, y: 0, w: baseW, h: baseH };
+      if (!region && config.plan && config.plan.tiledV2 && typeof window.ktaTuilesSurAppareil === "function"
+          && typeof window.ktaDessinerRegionTuiles === "function") {
+        try {
+          const _o = { plafond: Infinity, aligner: true };
+          if (await window.ktaTuilesSurAppareil(config, _plein, scale, _o)) {
+            const r = await window.ktaDessinerRegionTuiles(ctx, config, _plein, scale, _o);
+            fondFait = !!(r && r.ok && !r.manquantes);
+            console.log("[Export] fond depuis les tuiles de l'appareil :", fondFait ? "oui" : "non", r);
+          }
+        } catch(e) { console.warn("[Export] fond depuis les tuiles :", e); }
+      }
       if (!fondFait) {
         try {
           const baseImg = await loadImage(config.plan.baseImage);

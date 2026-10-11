@@ -639,7 +639,7 @@ Promise.all([
   t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
 }).catch(function (e) {
   t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
-}).then(_osmServeur).then(_lruZip).then(_regionTuiles).then(_opaciteCalque).then(function () {
+}).then(_osmServeur).then(_lruZip).then(_regionTuiles).then(_fondExportTuiles).then(_opaciteCalque).then(function () {
   console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);
@@ -787,5 +787,103 @@ function _regionTuiles() {
       (SM.match(/await _rendreRegionPlan\(/g) || []).length === 3 && SM.indexOf("_echelleCanvasPlan") < 0);
   }).catch(function (e) {
     t("§18 le bac à sable de la région s'exécute sans planter — " + (e && e.message), false);
+  });
+}
+
+// ───────── 19. 🖼️ EXPORT DU PLAN ENTIER : LE FOND VIENT DES TUILES DÉJÀ SUR L'APPAREIL ─────────
+// 🩸 Mesuré le 26/09/2026 sur un relevé lourd tuilé : l'export image retéléchargeait l'image
+// de base (42 Mo) alors que 30 Mo de tuiles étaient déjà sur l'appareil. `ktaTuilesSurAppareil`
+// dit si TOUTES les tuiles du niveau utile sont là (archive du plan, ou Cache Storage d'un plan
+// serveur — sans réseau) ; l'export compose alors le fond depuis elles, sans plafond de tuiles
+// (qualité inchangée : z = 0 dès l'échelle 0,5) et bords calés sur le pixel (pas de filet).
+// Falsification : retirer le test du cache (toujours true), le plafond Infinity ou `aligner` → rouge.
+function _fondExportTuiles() {
+  const vm19 = require("vm");
+  const W = 13000, H = 1100, TS = 512;   // 26 colonnes × 3 rangées = 78 tuiles à z0
+  const charger = function (win) {
+    win.window = win;
+    const c = vm19.createContext(win);
+    vm19.runInContext("var window = this; var navigator = this.navigator; var URL = this.URL; var Image = this.Image;" +
+      " var Blob = this.Blob; var caches = this.caches;" + fs.readFileSync("js/tiling.js", "utf8"), c);
+    return win;
+  };
+  function FausseImage() { this.naturalWidth = TS; this.naturalHeight = TS; }
+  Object.defineProperty(FausseImage.prototype, "src", { set: function (v) { this._src = v; const s = this; setTimeout(function () { s.onload && s.onload(); }, 0); }, get: function () { return this._src; } });
+  const base = function (extra) {
+    return Object.assign({ console: { log() {}, warn() {}, error() {} }, Image: FausseImage, Blob: function () {},
+      URL: { createObjectURL: function (f) { return "blob:" + f.chemin; }, revokeObjectURL: function () {} },
+      fetch: function () { return Promise.reject(new Error("pas de réseau")); }, navigator: {},
+      requestAnimationFrame: function (f) { return setTimeout(f, 0); }, L: {}, map: null, setTimeout: setTimeout }, extra);
+  };
+  const tiling = { version: 2, tileSize: TS, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 };
+  const plein = { x: 0, y: 0, w: W, h: H };
+  // a) plan importé (ZIP) : tuiles dans RUNTIME_ASSETS
+  const assets = {};
+  for (let k = 1; k <= 3; k++) for (let c = 0; c < 26; c++) {
+    const ch = "data/tiles/z0/x" + c + "_y-" + k + ".jpg";
+    assets[ch] = { file: { chemin: ch }, url: null };
+  }
+  const pcZip = { plan: { tiledV2: true, imageWidth: W, imageHeight: H, baseImage: "blob:base" }, tiling: tiling };
+  const wZip = charger(base({ RUNTIME_ASSETS: assets }));
+  // b) plan serveur : tuiles dans le Cache Storage (faux caches.match), RUNTIME_ASSETS vide
+  const enCache = new Set(), demandes = [];
+  for (let k = 1; k <= 3; k++) for (let c = 0; c < 26; c++) enCache.add("srv/tiles/z0/x" + c + "_y-" + k + ".jpg");
+  const wSrv = charger(base({ RUNTIME_ASSETS: {}, caches: { match: function (u) {
+    demandes.push(u); return Promise.resolve(enCache.has(u) ? { ok: true } : undefined); } } }));
+  const pcSrv = { plan: { tiledV2: true, imageWidth: W, imageHeight: H, baseImage: "srv/plan.jpg" },
+                  tiling: Object.assign({ tilesDir: "srv/tiles" }, tiling) };
+  const wSansCache = charger(base({ RUNTIME_ASSETS: {} }));
+  const o = { plafond: Infinity, aligner: true };
+  return wZip.ktaTuilesSurAppareil(pcZip, plein, 1, o).then(function (a) {
+    t("🖼️ plan ZIP : toutes les tuiles z0 sont dans l'archive → fond depuis les tuiles", a === true);
+    delete assets["data/tiles/z0/x25_y-3.jpg"];
+    return wZip.ktaTuilesSurAppareil(pcZip, plein, 1, o);
+  }).then(function (a) {
+    t("🖼️ plan ZIP : UNE tuile absente → false (l'export garde l'image de base)", a === false);
+    return wSrv.ktaTuilesSurAppareil(pcSrv, plein, 1, o);
+  }).then(function (a) {
+    t("🖼️ plan serveur : 78 tuiles trouvées dans le Cache Storage → true, sans réseau",
+      a === true && demandes.length === 78 && demandes.every(function (u) { return u.indexOf("srv/tiles/z0/") === 0; }));
+    enCache.delete("srv/tiles/z0/x3_y-2.jpg");
+    return wSrv.ktaTuilesSurAppareil(pcSrv, plein, 1, o);
+  }).then(function (a) {
+    t("🖼️ plan serveur : une tuile hors cache → false (rien n'est téléchargé pour l'export)", a === false);
+    return wSansCache.ktaTuilesSurAppareil(pcSrv, plein, 1, o);
+  }).then(function (a) {
+    t("🖼️ navigateur sans Cache Storage → false (comportement d'avant)", a === false);
+    // Plafond : 78 tuiles < 600 → z0 de toute façon ; on force un plafond bas pour prouver qu'Infinity le lève.
+    return Promise.all([
+      wSrv.ktaDessinerRegionTuiles({ drawImage: function () {} }, pcSrv, plein, 1, { plafond: 10 }),
+      wSrv.ktaDessinerRegionTuiles({ drawImage: function () {} }, pcSrv, plein, 1, { plafond: Infinity })
+    ]);
+  }).then(function (r) {
+    t("🖼️ qualité : sans plafond, le plan entier reste au niveau z0 (un plafond bas le ferait descendre)",
+      r[0].z < 0 && r[1].z === 0, [r[0].z, r[1].z]);
+    const d = [];
+    return wSrv.ktaDessinerRegionTuiles({ drawImage: function (img, sx, sy, sw, sh, x, y, w, h) {
+      d.push({ x: x, y: y, w: w, h: h }); } }, pcSrv, plein, 0.3, o).then(function () { return d; });
+  }).then(function (d) {
+    const entiers = d.length > 0 && d.every(function (e) {
+      return [e.x, e.y, e.w, e.h].every(function (v) { return Number.isInteger(v); });
+    });
+    // Contiguïté : sur une même rangée, chaque tuile commence au plus tard où finit la précédente.
+    const rangs = {};
+    d.forEach(function (e) { (rangs[e.y] = rangs[e.y] || []).push(e); });
+    const jointif = Object.keys(rangs).every(function (y) {
+      const l = rangs[y].sort(function (a, b) { return a.x - b.x; });
+      return l.every(function (e, i) { return i === 0 || e.x <= l[i - 1].x + l[i - 1].w; });
+    });
+    t("🖼️ aligner : à l'échelle 0,3, tuiles posées sur des pixels entiers, sans filet entre voisines",
+      entiers && jointif, d.slice(0, 3));
+    const EXP = fs.readFileSync("js/exporter.js", "utf8");
+    t("🖼️ export : plan entier tuilé V2 → ktaTuilesSurAppareil puis ktaDessinerRegionTuiles (plafond Infinity, aligner),"
+      + " image de base sinon",
+      /if \(!region && config\.plan && config\.plan\.tiledV2 && typeof window\.ktaTuilesSurAppareil === "function"/.test(EXP) &&
+      /const _o = \{ plafond: Infinity, aligner: true \};/.test(EXP) &&
+      /await window\.ktaTuilesSurAppareil\(config, _plein, scale, _o\)/.test(EXP) &&
+      /fondFait = !!\(r && r\.ok && !r\.manquantes\);/.test(EXP) &&
+      EXP.indexOf("await window.ktaTuilesSurAppareil(") < EXP.indexOf("const baseImg = await loadImage(config.plan.baseImage);"));
+  }).catch(function (e) {
+    t("§19 le bac à sable du fond d'export s'exécute sans planter — " + (e && e.message), false);
   });
 }

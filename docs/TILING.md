@@ -233,5 +233,16 @@ détaillé est pris. Rend `{ ok, tuiles, manquantes, z }` ; `ok: false` sur un p
 
 Sert à l'option `region` de l'export (`exporter.js`) : les **cartes PDF du Mode Secours** ne rendent plus le plan
 entier sous 16 Mpx (limite des canvas de Safari iOS) — leur mémoire est bornée par la carte, plus par le plan.
-Gardé par `check-tiling.js` § 18 (placement des tuiles, niveau choisi, révocation, câblage). Le chemin d'une tuile
+Gardé par `check-tiling.js` § 18 (placement des tuiles, niveau choisi, révocation, câblage).
+
+**Plan entier (export image et son aperçu, 12/10/2026).** Sans `region`, l'export d'un plan V2 demande d'abord
+`window.ktaTuilesSurAppareil(pc, region, echelle, opts)` : toutes les tuiles du niveau utile sont-elles sur
+l'appareil — dans `RUNTIME_ASSETS` (plan importé) ou dans le **Cache Storage** (`caches.match` : cache du service
+worker ou cache hors-ligne `myktamap-plan-<id>`) ? Si oui, le fond est peint par `ktaDessinerRegionTuiles(…, { plafond:
+Infinity, aligner: true })` : aucun plafond de tuiles (le niveau reste celui que demande l'échelle — z = 0 dès 0,5,
+même détail que l'image de base), bords de tuile calés sur le pixel (pas de filet à une échelle fractionnaire).
+Une seule tuile absente, ou une tuile illisible au dessin → l'image de base, comme avant (jamais de trou, rien
+n'est téléchargé pour composer le fond). Gain mesuré sur un relevé lourd : l'image de base (42 Mo) n'est plus
+retéléchargée quand ses ~30 Mo de tuiles sont déjà là. La grille (niveau, colonnes, rangées) est calculée à un
+seul endroit, `_grilleRegionTuiles`, pour le test de présence et le dessin. Gardé par `check-tiling.js` § 19. Le chemin d'une tuile
 dans le ZIP n'est écrit qu'à un endroit : `_cheminTuileZipExt` (§ 6 du même contrôle).

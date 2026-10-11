@@ -92,16 +92,14 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 - **Mode Secours v1.98.24 sur iPhone** : « Suivre mon parcours » démarre le suivi (permission des capteurs iOS
   demandée dans le geste) ; valider une étape recale la position (question au-delà de 30 m) ; écran XL avec un long
   itinéraire ; champ « Retour impératif » (sélecteur d'heure natif).
+- **Photos et export (12/10/2026)**, vérifiés au harnais seulement : réimport d'une session ZIP (photos ajoutées,
+  aucune effacée, toast de bilan) ; refus au-delà de 5 photos au rattachement ; analyse d'un gros plan depuis
+  l'accueil (lecture partielle de l'archive — `DecompressionStream("deflate-raw")` : Safari ≥ 16.4) ; export
+  image d'un plan tuilé hors-ligne (fond depuis les tuiles : aucun filet entre tuiles, même netteté).
 - ⚠️ **Toujours tester APRÈS un bump** : le service worker ne change de cache qu'au bump de `CACHE_NAME`. Entre deux
   commits, un téléphone qui a déjà chargé l'app garde l'ancien JS — c'est ce qui a fait voir à KARMA un « tourner à
   gauche » déjà corrigé (27/09/2026).
 - La validation **iOS/Safari** d'un changement de rendu vit dans `docs/RELEASE_GATE.md`, pas ici.
-
-## 🔎 Performance sur relevé lourd — mesuré le 26/09/2026, gardé
-
-Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
-
-- 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 

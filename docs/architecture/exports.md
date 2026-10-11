@@ -220,7 +220,9 @@ opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...
        (wrapper public dans exporter.js qui appelle _genererCanvasExport ;
         option `region: { x, y, w, h }` en unités plan = ne rendre que ce rectangle :
         fond depuis les tuiles V2 (`ktaDessinerRegionTuiles`) ou sous-rectangle de l'image,
-        le reste translaté ; la légende se dessine après restauration — cartes PDF Secours)
+        le reste translaté ; la légende se dessine après restauration — cartes PDF Secours ;
+        sans région, plan tuilé V2 dont toutes les tuiles du niveau utile sont sur l'appareil
+        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée)
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins
