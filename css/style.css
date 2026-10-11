@@ -1,4 +1,8 @@
 html, body {
+  /* 🐛 12/10/2026 (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
+     tout élément sans police explicite (fenêtres posées sur <html>, textes d'aide) retombait sur la police par
+     défaut du navigateur, à empattements. Police de la charte à la base ; les titres « KTA Main » gardent la leur. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
      pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
      `viewport-fit=cover` (iOS 16+). Fallback `100vh` pour iOS 15 et
