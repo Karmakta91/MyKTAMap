@@ -1472,7 +1472,7 @@ objet absent, ne pas fermer la bulle.
 
 ## 🔄 Rapatrier un calque de données dans la session (v1.85.0)
 
-**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé de Bordeaux importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
+**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé réel importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
 
 ### 🩸 La cause est structurelle, pas ergonomique
 
@@ -1494,11 +1494,11 @@ Le calque entier donne **une seule source de vérité** : la reconstruction devi
 
 | | |
 |---|---|
-| Poids en session | **225 o/objet** (mesuré sur les extraits Gironde) → ~**1,1 Mo** pour 5 000 objets |
+| Poids en session | **225 o/objet** (mesuré sur des extraits de relevés réels) → ~**1,1 Mo** pour 5 000 objets |
 | Plafond | sessions en IndexedDB : **quota du site** (part de l'espace libre de l'appareil) ; en repli localStorage : ~**5 Mo pour tout le domaine**, tous plans confondus |
 | Aggravant | `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde |
 
-`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points). La confirmation donne aussi l'occupation : en IndexedDB, le total des sessions face au quota du site (`filter.calque.confirmIdb`) ; en repli localStorage, `occupationLocalStorage()` (somme des clés réelles, plafond ~5 Mo). **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
+`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé réel, pas pour un calque de douze points). La confirmation donne aussi l'occupation : en IndexedDB, le total des sessions face au quota du site (`filter.calque.confirmIdb`) ; en repli localStorage, `occupationLocalStorage()` (somme des clés réelles, plafond ~5 Mo). **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
 
 ### 🔒 Le verrou d'affichage
 

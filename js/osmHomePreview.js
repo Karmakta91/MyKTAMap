@@ -2592,7 +2592,7 @@
   // ═══════════════════════════════════════════════════════════
   // LE BESOIN (KARMA, 04/09) : un atlas départemental découpé produit des
   // DIZAINES de plans du même secteur — « je veux voir d'un coup tous les
-  // plans étiquetés GIRONDE ». Les deux moitiés existaient depuis longtemps
+  // plans étiquetés SECTEUR ». Les deux moitiés existaient depuis longtemps
   // sans se parler : `plan.tags` (registre, v1.78.0, saisi depuis la
   // bibliothèque) et la pile multi-plans (v1.71.0), dont le seul chemin
   // d'ajout était un `<select>` UN PLAN À LA FOIS.
@@ -2603,7 +2603,7 @@
   // d'où un intitulé qui dit explicitement « étiquette de plan ».
   //
   // 🔠 Regroupement INSENSIBLE À LA CASSE : `PlanRegistry.setTags` dédoublonne
-  // par plan, pas entre plans. « Gironde » sur l'un et « GIRONDE » sur l'autre
+  // par plan, pas entre plans. « Secteur » sur l'un et « SECTEUR » sur l'autre
   // afficherait deux chips pour ce que l'utilisateur tient pour une seule
   // étiquette — et chacune ne montrerait que la moitié de ses plans.
   function _etiquettesDesPlans() {

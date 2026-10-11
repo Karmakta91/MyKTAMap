@@ -25,7 +25,7 @@ serveur est coupée, et ne sont jamais commités ici. Le repo community peut, lu
 
 ## 2. Le mode serveur « kiosque » — ce qu'il EST
 
-Un déployeur (asso, collectif — archétype « serveur Gironde ») copie l'app statique et
+Un déployeur (asso, collectif — archétype « serveur départemental ») copie l'app statique et
 pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (généré par
 `confadmin.html`). C'est **la même app**, avec de la configuration de contenu :
 
@@ -33,7 +33,7 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 |---|---|---|
 | Plans pré-installés | `index.json > plans[]` | depuis toujours (auto-discovery) |
 | Liaisons inter-plan fournies | `index.json > liaisons` (merge par id, ids `server_<id>`) | v1.73.0 |
-| Sous-titre personnalisé (ex. « Gironde ») | `index.json > config.subtitle` | v1.73.0 |
+| Sous-titre personnalisé (ex. « Secteur Nord ») | `index.json > config.subtitle` | v1.73.0 |
 | Masquer l'import de plans | `index.json > config.serverPlansOnly` | v1.73.0 |
 | Masquer le Générateur | `index.json > config.disableGenerator` | v1.73.0 |
 | Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |

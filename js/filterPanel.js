@@ -926,7 +926,7 @@
   // ============================================================
   // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION
   // ============================================================
-  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur les relevés Gironde :
+  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur des relevés réels :
   // 225 octets par objet, donc ~1,1 Mo pour un relevé SIG de 5 000 objets —
   // quand `localStorage` plafonne vers 5 Mo POUR TOUT LE DOMAINE et que
   // `SessionPersist` re-sérialise la session entière à chaque sauvegarde.

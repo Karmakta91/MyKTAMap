@@ -43,9 +43,9 @@ const IMPM = lire("js/importMasse.js");
   t("PlanRegistry.normaliserTags est extractible", src.length > 0);
   if (src) {
     const jouer = function (arr) { const sb = { out: null, arr: arr }; vm.runInNewContext(src + "\nout = normaliserTags(arr);", sb); return sb.out; };
-    t("trim + vides éliminés", JSON.stringify(jouer([" gironde ", "", "  "])) === JSON.stringify(["gironde"]));
-    t("doublons éliminés SANS tenir compte de la casse (« Gironde » et « GIRONDE » = une étiquette)",
-      JSON.stringify(jouer(["Gironde", "GIRONDE", "gironde"])) === JSON.stringify(["Gironde"]));
+    t("trim + vides éliminés", JSON.stringify(jouer([" secteur ", "", "  "])) === JSON.stringify(["secteur"]));
+    t("doublons éliminés SANS tenir compte de la casse (« Secteur » et « SECTEUR » = une étiquette)",
+      JSON.stringify(jouer(["Secteur", "SECTEUR", "secteur"])) === JSON.stringify(["Secteur"]));
     t("12 étiquettes maximum", jouer("abcdefghijklmnop".split("")).length === 12);
     t("24 caractères maximum par étiquette", jouer(["x".repeat(40)])[0].length === 24);
     t("entrée absente ou non-liste : liste vide, sans planter", jouer(null).length === 0 && jouer("a,b").length === 0);

@@ -2112,7 +2112,7 @@
       //   inclure → on ne garde QUE les plans qui la portent
       //   exclure → on retire les plans qui la portent, quoi qu'il arrive
       // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué
-      // « gironde » ET « brouillon », avec gironde inclus et brouillon exclu,
+      // « secteur » ET « brouillon », avec secteur inclus et brouillon exclu,
       // est ÉCARTÉ. L'inverse ferait rentrer par une porte ce qu'on a fermé par
       // l'autre — et c'est exactement le cas d'usage (« sors-moi l'atlas »).
       //

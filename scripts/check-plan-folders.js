@@ -14,7 +14,7 @@
 //   2. Un dossier déclaré par l'index se renomme ou se supprime localement :
 //      il revient au boot suivant, l'utilisateur ne comprend pas.
 //   3. Supprimer un dossier emporte ses plans.
-//   4. Deux « Gironde » après un import de profil ou de liste.
+//   4. Deux « Secteur » après un import de profil ou de liste.
 //   5. Un folderId orphelin (dossier absent) fait planter la liste au lieu de
 //      valoir « Non classés ».
 //   6. La mise à jour d'un plan (même id) ou la découverte serveur (merge
@@ -58,10 +58,10 @@ function registre(lsInitial) {
   PR.addOrUpdate({ id: "a", type: "local", name: "A" });
   PR.addOrUpdate({ id: "b", type: "local", name: "B" });
   t("sans dossier : le magasin n'a pas de clé folders (rétro-compat : rien ne change)", !/"folders"/.test(mem.myktamap_plans));
-  const g = PR.createFolder("  Gironde  ");
+  const g = PR.createFolder("  Secteur  ");
   t("créer un dossier : nom nettoyé, id lisible, couleur posée, replié par défaut, src user",
-    g && g.name === "Gironde" && g.id === "f_gironde" && /^#/.test(g.color) && g.collapsed === true && g.src === "user");
-  t("🩸 même nom, casse ignorée = MÊME dossier (jamais deux Gironde)", PR.createFolder("gironde").id === g.id && PR.getFolders().length === 1);
+    g && g.name === "Secteur" && g.id === "f_secteur" && /^#/.test(g.color) && g.collapsed === true && g.src === "user");
+  t("🩸 même nom, casse ignorée = MÊME dossier (jamais deux Secteur)", PR.createFolder("secteur").id === g.id && PR.getFolders().length === 1);
   t("nom vide refusé", PR.createFolder("   ") === null);
   t("ranger un plan à la main : folderId + folderSrc user", PR.setPlanFolder("a", g.id, "user") && PR.findById("a").folderId === g.id && PR.findById("a").folderSrc === "user");
   t("ranger vers un dossier inexistant : refusé", PR.setPlanFolder("b", "f_nope", "user") === false && !PR.findById("b").folderId);
@@ -69,7 +69,7 @@ function registre(lsInitial) {
     PR.setPlanFolder("a", null, "user") && !PR.findById("a").folderId && PR.findById("a").folderSrc === "user");
   PR.setPlanFolder("a", g.id, "user");
   t("renommer : ok, et refus d'un nom déjà pris par un autre dossier",
-    PR.renameFolder(g.id, "Gironde Sud") && PR.createFolder("Calcaire") && PR.renameFolder(g.id, "calcaire") === false);
+    PR.renameFolder(g.id, "Secteur Sud") && PR.createFolder("Calcaire") && PR.renameFolder(g.id, "calcaire") === false);
   const c = PR.findFolderByName("Calcaire");
   t("ordre : monter/descendre renumérote densément", PR.moveFolder(c.id, -1) && PR.getFolders()[0].id === c.id && PR.getFolders().map(function (f) { return f.order; }).join(",") === "0,1");
   t("🩸 supprimer un dossier ne supprime JAMAIS un plan : il repasse en Non classés",
@@ -84,36 +84,36 @@ function registre(lsInitial) {
   const { PR } = registre();
   PR.addOrUpdate({ id: "s1", type: "server", name: "S1" });
   PR.addOrUpdate({ id: "s2", type: "server", name: "S2" });
-  const table = PR.applyIndexFolders([{ id: "gironde", name: "Gironde", color: "#123456" }, { id: "calc", name: "Calcaire" }]);
-  const g = PR.findFolder("gironde");
+  const table = PR.applyIndexFolders([{ id: "secteur", name: "Secteur", color: "#123456" }, { id: "calc", name: "Calcaire" }]);
+  const g = PR.findFolder("secteur");
   t("dossiers de l'index créés sous leur id, verrouillés (src index), couleur et ordre repris",
-    g && g.src === "index" && g.color === "#123456" && g.order === 0 && PR.findFolder("calc") && PR.findFolder("calc").order === 1 && table.gironde === "gironde");
+    g && g.src === "index" && g.color === "#123456" && g.order === 0 && PR.findFolder("calc") && PR.findFolder("calc").order === 1 && table.secteur === "secteur");
   t("🩸 un dossier de l'index ne se renomme pas, ne change pas de couleur, ne se supprime pas",
-    PR.renameFolder("gironde", "X") === false && PR.setFolderColor("gironde", "#000") === false && PR.deleteFolder("gironde") === false && PR.findFolder("gironde"));
-  t("…mais se replie et se réordonne", PR.setFolderCollapsed("gironde", false) && PR.moveFolder("gironde", 1) && PR.getFolders()[1].id === "gironde");
-  t("l'index range un plan : folderSrc index", PR.setPlanFolder("s1", "gironde", "index") && PR.findById("s1").folderSrc === "index");
+    PR.renameFolder("secteur", "X") === false && PR.setFolderColor("secteur", "#000") === false && PR.deleteFolder("secteur") === false && PR.findFolder("secteur"));
+  t("…mais se replie et se réordonne", PR.setFolderCollapsed("secteur", false) && PR.moveFolder("secteur", 1) && PR.getFolders()[1].id === "secteur");
+  t("l'index range un plan : folderSrc index", PR.setPlanFolder("s1", "secteur", "index") && PR.findById("s1").folderSrc === "index");
   t("🩸 l'utilisateur déplace ce plan → l'index ne le reprend PLUS (ni vers un dossier, ni hors)",
-    PR.setPlanFolder("s1", "calc", "user") && PR.setPlanFolder("s1", "gironde", "index") === false && PR.setPlanFolder("s1", null, "index") === false && PR.findById("s1").folderId === "calc");
+    PR.setPlanFolder("s1", "calc", "user") && PR.setPlanFolder("s1", "secteur", "index") === false && PR.setPlanFolder("s1", null, "index") === false && PR.findById("s1").folderId === "calc");
   t("un plan rangé par l'index en sort si l'index ne le range plus (origine index)",
-    PR.setPlanFolder("s2", "gironde", "index") && PR.setPlanFolder("s2", null, "index") && !PR.findById("s2").folderId && !PR.findById("s2").folderSrc);
+    PR.setPlanFolder("s2", "secteur", "index") && PR.setPlanFolder("s2", null, "index") && !PR.findById("s2").folderId && !PR.findById("s2").folderSrc);
   // dossier user homonyme AVANT que l'index le déclare
   const { PR: PR2 } = registre();
-  const mien = PR2.createFolder("Gironde");
-  const tbl = PR2.applyIndexFolders([{ id: "gironde", name: "gironde" }]);
+  const mien = PR2.createFolder("Secteur");
+  const tbl = PR2.applyIndexFolders([{ id: "secteur", name: "secteur" }]);
   t("🩸 un dossier user homonyme DEVIENT celui de l'index (même id local, verrouillé), et la table traduit l'id déclaré",
-    PR2.getFolders().length === 1 && PR2.findFolder(mien.id).src === "index" && tbl.gironde === mien.id);
+    PR2.getFolders().length === 1 && PR2.findFolder(mien.id).src === "index" && tbl.secteur === mien.id);
   const lib = PR2.applyIndexFolders([]);
   t("l'index ne déclare plus le dossier → LIBÉRÉ (src user), jamais supprimé",
-    Object.keys(lib).length === 0 && PR2.findFolder(mien.id) && PR2.findFolder(mien.id).src === "user" && PR2.renameFolder(mien.id, "Gironde bis"));
+    Object.keys(lib).length === 0 && PR2.findFolder(mien.id) && PR2.findFolder(mien.id).src === "user" && PR2.renameFolder(mien.id, "Secteur bis"));
 }
 
 // ---------- 3. Fusion (liste .config / profil) et robustesse ----------
 {
   const { PR } = registre();
-  const locaux = [{ id: "f_gironde", name: "Gironde", color: "#111", order: 0, collapsed: true, src: "index" }];
-  const r = PR.fusionnerDossiers(locaux, [{ id: "g2", name: "GIRONDE" }, { id: "x", name: "Silex", src: "index" }], "merge");
-  t("🩸 fusion par nom : un seul Gironde, l'id LOCAL gagne, la table traduit l'id importé",
-    r.folders.length === 2 && r.table.g2 === "f_gironde" && r.table.x === "x" && r.folders[1].name === "Silex");
+  const locaux = [{ id: "f_secteur", name: "Secteur", color: "#111", order: 0, collapsed: true, src: "index" }];
+  const r = PR.fusionnerDossiers(locaux, [{ id: "g2", name: "SECTEUR" }, { id: "x", name: "Silex", src: "index" }], "merge");
+  t("🩸 fusion par nom : un seul Secteur, l'id LOCAL gagne, la table traduit l'id importé",
+    r.folders.length === 2 && r.table.g2 === "f_secteur" && r.table.x === "x" && r.folders[1].name === "Silex");
   t("un dossier importé arrive toujours « user » (le verrou n'a de sens que si l'index local le redéclare)", r.folders[1].src === "user");
   t("la fusion est PURE (les dossiers locaux ne sont pas mutés)", locaux[0].src === "index" && locaux.length === 1);
   const rr = PR.fusionnerDossiers(locaux, [{ id: "n", name: "Nouveau" }], "replace");
@@ -134,9 +134,9 @@ function registre(lsInitial) {
 // ---------- 3 bis. Règles par étiquette (marche 2) ----------
 {
   const { PR } = registre();
-  PR.addOrUpdate({ id: "r1", type: "local", name: "R1", tags: ["Gironde", "calcaire"] });
+  PR.addOrUpdate({ id: "r1", type: "local", name: "R1", tags: ["Secteur", "calcaire"] });
   PR.addOrUpdate({ id: "r2", type: "local", name: "R2", tags: ["silex"] });
-  const g = PR.createFolder("Gironde", { rule: { tags: [" gironde "] } });
+  const g = PR.createFolder("Secteur", { rule: { tags: [" secteur "] } });
   t("règle : un plan étiqueté rejoint le dossier SANS folderId (rien d'écrit sur le plan)",
     PR.planFolderId(PR.findById("r1")) === g.id && !PR.findById("r1").folderId && PR.planFolderByRule(PR.findById("r1")));
   t("règle : un plan sans l'étiquette n'y est pas", PR.planFolderId(PR.findById("r2")) === null);
@@ -147,10 +147,10 @@ function registre(lsInitial) {
   t("remis à la main dans le dossier à règle → exclusion levée", PR.setPlanFolder("r1", g.id, "user") && !PR.findById("r1").folderExclude);
   t("setFolderRule normalise, s'applique, et se vide", PR.setFolderRule(g.id, ["", " Silex "]) && PR.findFolder(g.id).rule.tags[0] === "Silex" &&
     PR.planFolderId(PR.findById("r2")) === g.id && PR.setFolderRule(g.id, []) && !PR.findFolder(g.id).rule);
-  t("supprimer un dossier nettoie ses exclusions", (PR.setFolderRule(g.id, ["gironde"]), PR.setPlanFolder("r1", null, "user"), PR.deleteFolder(g.id), !PR.findById("r1").folderExclude));
+  t("supprimer un dossier nettoie ses exclusions", (PR.setFolderRule(g.id, ["secteur"]), PR.setPlanFolder("r1", null, "user"), PR.deleteFolder(g.id), !PR.findById("r1").folderExclude));
   const { PR: PR2 } = registre();
-  PR2.applyIndexFolders([{ id: "gir", name: "Gironde", rule: { tags: ["gironde"] } }]);
-  t("l'index déclare une règle : posée, et non modifiable localement", PR2.findFolder("gir").rule.tags[0] === "gironde" && PR2.setFolderRule("gir", ["x"]) === false);
+  PR2.applyIndexFolders([{ id: "sec", name: "Secteur", rule: { tags: ["secteur"] } }]);
+  t("l'index déclare une règle : posée, et non modifiable localement", PR2.findFolder("sec").rule.tags[0] === "secteur" && PR2.setFolderRule("sec", ["x"]) === false);
   const fus = PR2.fusionnerDossiers([], [{ id: "a", name: "A", rule: { tags: ["t"] } }], "merge");
   t("la fusion de profil transporte la règle", fus.folders[0].rule && fus.folders[0].rule.tags[0] === "t");
 }
@@ -211,4 +211,4 @@ function registre(lsInitial) {
 
 console.log("");
 if (echecs) { console.log("💥 dossiers de « Mes plans » : " + echecs + " contrôle(s) en échec"); process.exit(1); }
-console.log("🎉 dossiers : l'index propose, l'utilisateur dispose, jamais deux Gironde, jamais un plan perdu");
+console.log("🎉 dossiers : l'index propose, l'utilisateur dispose, jamais deux Secteur, jamais un plan perdu");

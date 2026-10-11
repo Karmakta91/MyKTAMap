@@ -618,7 +618,7 @@
     return (_data.folders || []).find(function(f) { return f.id === id; }) || null;
   }
   // Même nom, casse ignorée = même dossier. C'est la clé de fusion de l'import
-  // de profil et de l'index : jamais deux « Gironde ».
+  // de profil et de l'index : jamais deux « Secteur ».
   function findFolderByName(nom) {
     init();
     const k = _nomDossier(nom).toLowerCase();

@@ -8,7 +8,7 @@
 // =====================================================================
 // 🔄 calqueSession.js — RAPATRIER UN CALQUE DE DONNEES DANS LA SESSION
 // =====================================================================
-// LE BESOIN (KARMA, 04/09/2026) : sur un releve de Bordeaux importe du SIG,
+// LE BESOIN (KARMA, 04/09/2026) : sur un releve reel importe du SIG,
 // corriger un front de taille en trace imposait HUIT etapes — passer par
 // l'Editeur de donnees, exporter le calque en JSON, le convertir en session
 // via l'ecran Conversion, masquer le calque a la main, reimporter le fichier
@@ -39,7 +39,7 @@
 // devient « l'export de session REMPLACE le fichier du calque ». Pas d'ids,
 // pas de dedoublonnage, pas de doublon possible — par construction.
 //
-// 💰 SON PRIX, MESURE (04/09, sur les extraits Gironde) : 225 octets par objet
+// 💰 SON PRIX, MESURE (04/09, sur des extraits de releves reels) : 225 octets par objet
 // en format session. Un releve SIG de 5 000 objets pese donc ~1,1 Mo, quand
 // `localStorage` plafonne vers 5 Mo POUR TOUT LE DOMAINE et que
 // `SessionPersist` re-serialise la session ENTIERE a chaque sauvegarde. D'ou
@@ -161,7 +161,7 @@ window.CalqueSession = (function () {
 
   // Poids qu'aurait le calque une fois en session. On mesure le VRAI JSON
   // plutot que d'appliquer les 225 o/objet releves le 04/09 : cette moyenne
-  // vaut pour les releves Gironde, pas pour un calque de douze points.
+  // vaut pour des releves reels, pas pour un calque de douze points.
   function peser(id) {
     const lc = _cfgCalque(id);
     if (!lc || !lc.file) return Promise.resolve(null);

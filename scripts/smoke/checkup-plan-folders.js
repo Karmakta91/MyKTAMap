@@ -31,8 +31,8 @@ function registre(nPlans) {
   return JSON.stringify({ version: "1.0", lastPlanId: null, plans: plans });
 }
 const INDEX_DOSSIERS = {
-  folders: [{ id: "gironde", name: "Gironde", color: "#123456" }, { id: "calcaire", name: "Calcaire" }],
-  plans: [{ id: "s1", path: "data/test", name: "Serveur 1", folder: "gironde" }, { id: "s2", path: "data/test", name: "Serveur 2", folder: "gironde" }]
+  folders: [{ id: "secteur", name: "Secteur", color: "#123456" }, { id: "calcaire", name: "Calcaire" }],
+  plans: [{ id: "s1", path: "data/test", name: "Serveur 1", folder: "secteur" }, { id: "s2", path: "data/test", name: "Serveur 2", folder: "secteur" }]
 };
 const echecs = [];
 function t(msg, ok) { console.log((ok ? "✅ " : "❌ ") + msg); if (!ok) echecs.push(msg); }
@@ -107,11 +107,11 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
 
     // créer un dossier par l'écran, y déplacer un plan par 📁
     await p.click("#loaderPlansFolderNew");
-    await p.fill("#kta-plans-folder-name", "Gironde");
+    await p.fill("#kta-plans-folder-name", "Secteur");
     await p.keyboard.press("Enter");
     await p.waitForTimeout(200);
-    const cree = await p.evaluate(function () { const f = window.PlanRegistry.findFolderByName("gironde"); return f ? { id: f.id, ouvert: f.collapsed === false } : null; });
-    t("➕ crée le dossier « Gironde » (déplié) et il apparaît", !!cree && cree.ouvert && (await p.$$('.kta-plans-folder-head[data-folder="' + cree.id + '"]')).length === 1);
+    const cree = await p.evaluate(function () { const f = window.PlanRegistry.findFolderByName("secteur"); return f ? { id: f.id, ouvert: f.collapsed === false } : null; });
+    t("➕ crée le dossier « Secteur » (déplié) et il apparaît", !!cree && cree.ouvert && (await p.$$('.kta-plans-folder-head[data-folder="' + cree.id + '"]')).length === 1);
     // (KARMA, après v1.95.0) : plus de bouton 📁 par ligne — un seul plan se range par ☑ puis « Déplacer vers… », ou par glisser
     t("aucun bouton 📁 « Déplacer vers » sur les lignes", (await p.$$(".kta-plan-row-move")).length === 0);
     await p.click("#loaderPlansSelect");
@@ -119,7 +119,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     await p.click("#loaderPlansSelectMove");
     await p.click('.kta-plans-sheet-item[data-fid="' + cree.id + '"]');
     await p.waitForTimeout(200);
-    t("☑ un seul plan coché → Déplacer vers → il est dans Gironde (origine user), sélection close",
+    t("☑ un seul plan coché → Déplacer vers → il est dans Secteur (origine user), sélection close",
       await p.evaluate(function (fid) { const pl = window.PlanRegistry.findById("local_p57"); return pl.folderId === fid && pl.folderSrc === "user" && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
     // sélection multiple
     await p.click("#loaderPlansSelect");
@@ -141,7 +141,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("« Déplacer 2 vers… » range les deux d'un coup et sort du mode sélection",
       await p.evaluate(function (fid) { return ["local_p58", "local_p59"].every(function (id) { return window.PlanRegistry.findById(id).folderId === fid; }) && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
 
-    // 6. glisser PC (HTML5, à la souris) : local_p60 (non classé) → en-tête Gironde.
+    // 6. glisser PC (HTML5, à la souris) : local_p60 (non classé) → en-tête Secteur.
     // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — un mouvement LENT
     // (petits pas) déclenchait dragstart avant mon seuil maison, qui l'annulait.
     const src = await p.$('.plan-row[data-id="local_p60"]');
@@ -169,14 +169,14 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     p = await ouvrir(ctx, { index: INDEX_DOSSIERS });
     await p.waitForTimeout(800);
     const idx1 = await p.evaluate(function () {
-      const PR = window.PlanRegistry; const g = PR.findFolder("gironde"), c = PR.findFolder("calcaire");
+      const PR = window.PlanRegistry; const g = PR.findFolder("secteur"), c = PR.findFolder("calcaire");
       const s1 = PR.getAll().find(function (x) { return x.type === "server" && /Serveur 1/.test(x.name); });
       return { g: g && g.src, c: c && c.src, couleur: g && g.color, s1: s1 ? { fid: s1.folderId, src: s1.folderSrc, id: s1.id } : null };
     });
-    t("index.json → dossiers Gironde et Calcaire créés, verrouillés (src index), couleur reprise, Serveur 1 rangé par l'index",
-      idx1.g === "index" && idx1.c === "index" && idx1.couleur === "#123456" && idx1.s1 && idx1.s1.fid === "gironde" && idx1.s1.src === "index");
+    t("index.json → dossiers Secteur et Calcaire créés, verrouillés (src index), couleur reprise, Serveur 1 rangé par l'index",
+      idx1.g === "index" && idx1.c === "index" && idx1.couleur === "#123456" && idx1.s1 && idx1.s1.fid === "secteur" && idx1.s1.src === "index");
     await modeVue(p, "folders");
-    await p.click('.kta-plans-folder-head[data-folder="gironde"] .kta-plans-folder-menu');
+    await p.click('.kta-plans-folder-head[data-folder="secteur"] .kta-plans-folder-menu');
     await p.waitForTimeout(150);
     const verrou = await p.evaluate(function () {
       const nom = document.getElementById("kta-plans-folder-name"); const del = document.querySelector("[data-del]");

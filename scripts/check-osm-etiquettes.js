@@ -5,11 +5,11 @@
 // =====================================================================
 // Éprouve l'AJOUT DE PLANS PAR ÉTIQUETTE dans la pile multi-plans de la Vue
 // OSM du HOME (demande KARMA du 04/09 : « afficher d'un coup tous les plans
-// tagués GIRONDE »), sur deux points qui régressent en silence :
+// tagués SECTEUR »), sur deux points qui régressent en silence :
 //
 //   1. LE REGROUPEMENT EST INSENSIBLE À LA CASSE. `PlanRegistry.setTags`
-//      dédoublonne les étiquettes D'UN plan, jamais ENTRE plans : « Gironde »
-//      sur l'un et « GIRONDE » sur l'autre donneraient deux chips, chacun ne
+//      dédoublonne les étiquettes D'UN plan, jamais ENTRE plans : « Secteur »
+//      sur l'un et « SECTEUR » sur l'autre donneraient deux chips, chacun ne
 //      montrant que la moitié de ses plans. Le bug ne se voit que si on a
 //      justement tapé les deux orthographes — donc jamais chez celui qui code.
 //
@@ -37,11 +37,11 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 
 // Registre de test : casses mélangées, étiquettes vides, plan sans étiquette.
 const PLANS = [
-  { id: "a", tags: ["Gironde", "carriere"] },
-  { id: "b", tags: ["GIRONDE"] },
-  { id: "c", tags: ["gironde", "test"] },
+  { id: "a", tags: ["Secteur", "carriere"] },
+  { id: "b", tags: ["SECTEUR"] },
+  { id: "c", tags: ["secteur", "test"] },
   { id: "d", tags: [] },
-  { id: "e", tags: ["  ", null, "Gironde"] },
+  { id: "e", tags: ["  ", null, "Secteur"] },
   { id: "f", tags: ["Solo"] }
 ];
 
@@ -60,12 +60,12 @@ vm.runInContext(
 
 // ───────── 1. regroupement ─────────
 const e = ctx._et();
-t("casse ignoree : Gironde / GIRONDE / gironde = UNE etiquette",
-  !!e.gironde && e.gironde.ids.length === 4);
+t("casse ignoree : Secteur / SECTEUR / secteur = UNE etiquette",
+  !!e.secteur && e.secteur.ids.length === 4);
 t("  -> les 4 bons plans, dans l'ordre du registre",
-  JSON.stringify(e.gironde && e.gironde.ids) === JSON.stringify(["a", "b", "c", "e"]));
+  JSON.stringify(e.secteur && e.secteur.ids) === JSON.stringify(["a", "b", "c", "e"]));
 t("  -> le libelle affiche est la 1re orthographe rencontree",
-  e.gironde && e.gironde.libelle === "Gironde");
+  e.secteur && e.secteur.libelle === "Secteur");
 t("etiquettes vides / null ecartees", !e[""] && !e["null"] && !e["  "]);
 t("une etiquette a UN seul plan existe (c'est le rendu qui la masque)",
   !!e.solo && e.solo.ids.length === 1);
@@ -76,18 +76,18 @@ t("un plan sans etiquette n'apparait nulle part",
 const reset = () => { ctx._ajout = null; ctx._retrait = null; };
 
 ctx._stackOrder.length = 0; reset();
-ctx._bascule("gironde");
+ctx._bascule("secteur");
 t("pile vide : le clic AJOUTE les 4",
   JSON.stringify(ctx._ajout) === JSON.stringify(["a", "b", "c", "e"]));
 
 ctx._stackOrder.push("a", "c"); reset();
-ctx._bascule("gironde");
+ctx._bascule("secteur");
 t("pile partielle : n'ajoute QUE les manquants (pas de doublon)",
   JSON.stringify(ctx._ajout) === JSON.stringify(["b", "e"]));
 t("  -> et ne retire rien", ctx._retrait === null);
 
 ctx._stackOrder.push("b", "e"); reset();
-ctx._bascule("gironde");
+ctx._bascule("secteur");
 t("pile complete : le clic RETIRE les 4",
   JSON.stringify(ctx._retrait) === JSON.stringify(["a", "b", "c", "e"]));
 t("  -> et n'ajoute rien", ctx._ajout === null);
