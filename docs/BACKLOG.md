@@ -17,6 +17,17 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
   ouverture (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
 - ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
 
+## 👥 Plusieurs personnes sur la même carte (retour KARMA du 11/10/2026, capture sur téléphone)
+
+- 🟠 **On ne distingue pas qui est qui** : sur la capture, deux marqueurs identiques (triangles bleus), sans pastille ni
+  étiquette lisible. **À vérifier d'abord** : ces triangles sont-ils les présences (`js/ktaPresences.js` dessine une
+  pastille à l'initiale + une étiquette « pseudo · il y a N min ») ou un autre marqueur (tracker, itinéraire) ? Puis :
+  une couleur par personne, stable (dérivée de l'identifiant, palette lisible en clair et en sombre — aujourd'hui seule
+  une équipe Secours a sa couleur, trace toujours `#8cb4ff`), et l'étiquette lisible à tous les zooms.
+- 🟡 **Masquer une personne** depuis le menu équipe : on masque déjà sa **trace** et son **itinéraire**
+  (`masquerTrace`, `masquerItineraire`), pas son **marqueur**. Ajouter « Masquer <pseudo> » (marqueur + trace),
+  réversible, oublié au changement de plan comme les autres masquages.
+
 ## 📸 Photos (galerie « Mes photos » livrée le 10/10/2026) — reliquats
 
 - 🟠 **Le réimport d'une session ZIP efface TOUTES les photos du plan**, y compris celles sans point
