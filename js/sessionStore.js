@@ -325,14 +325,13 @@
 
   function estimation() { return _estim; }
   function actualiserEstimation() {
-    try {
-      if (navigator.storage && typeof navigator.storage.estimate === "function") {
-        return navigator.storage.estimate().then(function (e) {
-          if (e && e.quota > 0) { _estim = { usage: e.usage || 0, quota: e.quota }; _estimTs = Date.now(); }
-          return _estim;
-        }).catch(function () { return _estim; });
-      }
-    } catch (e) { /* rien */ }
+    if (navigator.storage && typeof navigator.storage.estimate === "function") {
+      // Le refus éventuel est rattrapé par .catch : la promesse rend toujours la dernière estimation connue.
+      return navigator.storage.estimate().then(function (e) {
+        if (e && e.quota > 0) { _estim = { usage: e.usage || 0, quota: e.quota }; _estimTs = Date.now(); }
+        return _estim;
+      }).catch(function () { return _estim; });
+    }
     return Promise.resolve(_estim);
   }
   function _actualiserEstimationParfois() {

@@ -678,7 +678,14 @@
     if (!n) return;
     dossier.file("_index.json", JSON.stringify({ version: 1, planId: planId, photos: idx }, null, 2));
     const blob = await zip.generateAsync({ type: "blob" });
-    const propre = function (s) { return String(s || "").replace(/[^\w\-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "photos"; };
+    // Coupe des « _ » de bord en temps linéaire (une alternative ancrée ^_+|_+$ peut revenir en arrière, Sonar S8786).
+    const propre = function (s) {
+      const t = String(s || "").replace(/[^\w-]+/g, "_");
+      let a = 0, b = t.length;
+      while (a < b && t.charAt(a) === "_") a++;
+      while (b > a && t.charAt(b - 1) === "_") b--;
+      return t.slice(a, b).slice(0, 40) || "photos";
+    };
     const jour = new Date().toISOString().slice(0, 10);
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);

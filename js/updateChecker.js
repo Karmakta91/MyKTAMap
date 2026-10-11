@@ -131,7 +131,7 @@
 
   function _isSnoozed() {
     let since = 0;
-    try { since = parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10); } catch (e) { since = 0; }
+    try { since = Number.parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10); } catch (e) { since = 0; }
     if (!since) return false;
     return (Date.now() - since) < POSTPONE_MS;
   }

@@ -269,14 +269,14 @@
   function _fiche(f) {
     if (!f || typeof f !== "object") return null;
     const x = Number(f.x), y = Number(f.y);
-    if (!isFinite(x) || !isFinite(y)) return null;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     return {
       nom:    String(f.nom == null ? "" : f.nom).slice(0, 200),
       x:      x,
       y:      y,
       niveau: Number.isInteger(f.niveau) ? f.niveau : null,
       type:   (typeof f.type === "string" && f.type) ? f.type.slice(0, 80) : null,
-      maj:    (typeof f.maj === "number" && isFinite(f.maj)) ? f.maj : Date.now()
+      maj:    (typeof f.maj === "number" && Number.isFinite(f.maj)) ? f.maj : Date.now()
     };
   }
   // Fiche d'un point de session ou de calque ({ nom|id, x, y, level, tags }).

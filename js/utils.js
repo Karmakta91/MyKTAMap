@@ -729,7 +729,7 @@ window.ktaAlerte = function(message, opts) {
   try {
     if (!document.documentElement || typeof window.ktaConfirm !== "function") throw new Error("interface indisponible");
     const esc = typeof window.ktaEsc === "function" ? window.ktaEsc
-      : function(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+      : function(s) { return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); };
     const t = function(k, repli) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli; };
     return window.ktaConfirm(opts.html ? texte : esc(texte), {
       sansAnnuler: true,
