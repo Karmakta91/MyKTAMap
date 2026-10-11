@@ -1441,17 +1441,9 @@ function afficherConfig() {
             ${window.I18n.t("config.incognito.start.desc")}
           </div>
         </div>`}
-        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
-        ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.privacy", "global")}
-
-        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
-             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
-             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
-             général, et le carnet est accessible depuis le home »). Il reste
-             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
-             réglages rapatriés en v1.85.3. -->
-
+        <!-- 🔒 CONFIDENTIALITÉ & SÉCURITÉ : groupe RETIRÉ des Réglages du plan le 12/10/2026 (capture KARMA : titre
+             qui ne déroulait rien). Son seul contenu, l'interrupteur du carnet (📔 Q49, v1.92.0 L4), VIT DANS
+             ⚙️ CONFIGURATION DE L'ACCUEIL ; il reste lisible ici dans « 🏠 Réglés depuis l'accueil ». -->
 
         <!-- ════════ 8. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
         ${_cfgGroupeFin()}

@@ -1130,7 +1130,7 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
   - **🧭 Navigation intelligente** *(ce plan)* : voir « 🔭 Pour aller plus loin ».
 - **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes ; disponible en français uniquement : le bouton n'apparaît que si l'app est en français. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
 - **🚀 Performance** *(ce plan)* — le **🚀 Mode ULTRA** pour les gros plans qui font planter le téléphone (voir « 🔭 Pour aller plus loin ») ; sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement**.
-- **🧩 Fonctionnalités optionnelles** et **🔒 Confidentialité & sécurité** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito).
+- **🧩 Fonctionnalités optionnelles** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito). La confidentialité se règle dans ⚙️ Configuration de l'accueil.
 - **🛠️ Système & maintenance** — le **mode performance** du plan, en lecture seule.
 
 En bas, **↺ Valeurs par défaut** (après confirmation) remet ce plan à ses valeurs d'origine (échelle, départ, navigation intelligente, ronds, Nord), la détection des pas aux valeurs de l'app, et replace le suivi au départ. Les réglages de l'accueil ne bougent pas.

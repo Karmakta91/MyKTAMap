@@ -1130,7 +1130,7 @@ Sin botón Aplicar: cada campo se guarda al momento (un destello verde lo confir
   - **🧭 Navegación inteligente** *(este plano)*: ver «🔭 Para ir más lejos».
 - **🎨 Visualización** — **🎨 Fondo bajo el plano** *(este plano)*: negro, blanco o gris neutro bajo las partes transparentes del plano (por defecto: el que recomienda el plano, si no según el tema); la exportación de imagen lo usa; **⚪ Mostrar círculos en las intersecciones** *(este plano)*; **🎤 Comandos de voz (BETA)** *(todos los planos)*: un botón 🎤 para manejar la app con la voz, di «ayuda» para la lista de comandos; disponible solo en francés: el botón solo aparece si la app está en francés. Una opción que tu navegador no admite sigue visible, en gris, con el motivo.
 - **🚀 Rendimiento** *(este plano)* — el **🚀 Modo ULTRA** para los planos grandes que hacen fallar el teléfono (ver «🔭 Para ir más lejos»); en un plano multinivel, **🏗️ Mostrar todos los niveles al iniciar**.
-- **🧩 Funciones opcionales** y **🔒 Privacidad y seguridad** — las mismas casillas que en ⚙️ Configuración (opciones, modo incógnito).
+- **🧩 Funciones opcionales** — las mismas casillas que en ⚙️ Configuración (opciones, modo incógnito). La privacidad se ajusta en ⚙️ Configuración de la pantalla de inicio.
 - **🛠️ Sistema y mantenimiento** — el **modo rendimiento** del plano, en modo lectura.
 
 Abajo, **↺ Valores por defecto** (tras confirmación) devuelve este plano a sus valores de origen (escala, inicio, navegación inteligente, círculos, Norte), la detección de pasos a los valores de la app, y vuelve a colocar el seguimiento en el inicio. Los ajustes de la pantalla de inicio no cambian.

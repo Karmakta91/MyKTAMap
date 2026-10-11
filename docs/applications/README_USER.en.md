@@ -1130,7 +1130,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
 - **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands; available in French only: the button only appears when the app is in French. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
-- **🧩 Optional features** and **🔒 Privacy & security** — the same boxes as in ⚙️ Configuration (options, incognito mode).
+- **🧩 Optional features** — the same boxes as in ⚙️ Configuration (options, incognito mode). Privacy is set in ⚙️ Configuration on the home screen.
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.
 
 At the bottom, **↺ Default values** (after confirmation) puts this map back to its original values (scale, start, smart navigation, circles, North), step detection back to the app's values, and moves tracking back to the start. The home screen settings do not change.

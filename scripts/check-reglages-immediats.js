@@ -102,9 +102,9 @@ const UIC = lire("js/interfaceConfig.js");
 
 // ---------- 4. Portée, groupes, globaux, géoref ----------
 {
-  t("🩸 8 groupes ouverts par _cfgGroupeDebut, badges de portée présents", (UIC.match(/\$\{_cfgGroupeDebut\("config\.group\./g) || []).length === 8 && /config\.scope\.badgePlan/.test(UIC) && /config\.scope\.badgeGlobal/.test(UIC) && /config\.scope\.badgeMixte/.test(UIC));
-  t("🩸 les 8 groupes portent une pastille (aucun `null`) — KARMA : « Affichage n'a pas la pastille »", !/_cfgGroupeDebut\("config\.group\.[a-zA-Z]+", null/.test(UIC));
-  t("🩸 …et 8 fermés par _cfgGroupeFin (un de moins : un groupe avale le suivant)", (UIC.match(/\$\{_cfgGroupeFin\(\)\}/g) || []).length === 8);
+  t("🩸 7 groupes ouverts par _cfgGroupeDebut, badges de portée présents", (UIC.match(/\$\{_cfgGroupeDebut\("config\.group\./g) || []).length === 7 && /config\.scope\.badgePlan/.test(UIC) && /config\.scope\.badgeGlobal/.test(UIC) && /config\.scope\.badgeMixte/.test(UIC));
+  t("🩸 les 7 groupes portent une pastille (aucun `null`) — KARMA : « Affichage n'a pas la pastille »", !/_cfgGroupeDebut\("config\.group\.[a-zA-Z]+", null/.test(UIC));
+  t("🩸 …et 7 fermés par _cfgGroupeFin (un de moins : un groupe avale le suivant)", (UIC.match(/\$\{_cfgGroupeFin\(\)\}/g) || []).length === 7);   // 7 depuis le 12/10/2026 (confidentialité retirée)
   t("groupes repliables, choix mémorisé", /_bindCfgGroupes\(modal\)/.test(UIC) && /myktamap_cfg_groupes_v1/.test(UIC));
   t("les globaux de l'accueil sont LUS ici (lecture seule) avec le chemin pour les changer", /_renderCfgGlobauxLectureSeule\(\)/.test(UIC) && /_retourLoaderAvecConfirm/.test(UIC));
   t("🩸 géoref : sous-modale ENFANT de la modale, handlers posés à l'ouverture", /parent\.appendChild\(sub\);\n\s*_bindCfgGeorefHandlers\(\);/.test(UIC) && /\$\{_renderCfgGeorefLanceur\(\)\}/.test(UIC) && !/\$\{_renderCfgGeorefSection\(\)\}/.test(UIC));

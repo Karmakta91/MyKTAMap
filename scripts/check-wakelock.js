@@ -213,7 +213,7 @@ function geste(ctx) {
     t("🩸 optionnels : c'est un GROUPE de 1er niveau, pas une sous-section d'Affichage",
       /config\.group\.optionnels/.test(UIC) &&
       UIC.indexOf("config.group.optionnels") > UIC.indexOf("config.group.perf") &&
-      UIC.indexOf("config.group.optionnels") < UIC.indexOf("config.group.privacy"));
+      UIC.indexOf("config.group.optionnels") < UIC.indexOf("config.group.system"));   // privacy retiré le 12/10/2026
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
       t("i18n " + l + " : config.group.optionnels", typeof D["config.group.optionnels"] === "string");
