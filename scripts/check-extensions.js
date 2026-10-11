@@ -631,6 +631,31 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: A3 } = nouveauContexte(null);
     A3.register({ nom: "a3", apiVersion: 1, aide: () => ({ titre: "T", sections: "pas une liste" }) });
     t("aide : extension en erreur ou forme inattendue → null", A2.aide() === null && A3.aide() === null);
+    const { K: A4 } = nouveauContexte(null);
+    A4.register({ nom: "a4", apiVersion: 1, aide: () => ({ titre: "T", sections: [{ id: "cle-coffre", titre: "a", html: "" },
+      { id: "Pas Bon!", titre: "b", html: "" }] }) });
+    t("aide : id stable « ext-<id> » si valide, sinon le rang", A4.aide().sections.map((s) => s.slug).join() === "ext-cle-coffre,ext-1");
+    t("aide : une section d'extension s'ouvre par ktaOuvrirAideSection(« ext-… »)",
+      /slug\.indexOf\("ext-"\) === 0/.test(lire("js/interfaceDocs.js")));
+
+    // ── Actions du compte en rubriques (11/10/2026) : groupe, ligne d'état, action « fin » ──
+    const { K: C1 } = nouveauContexte(null);
+    const f = () => {};
+    C1.register({ nom: "c1", apiVersion: 1, actionsCompte: () => [
+      { libelle: "Clés", action: f, groupe: "Mon compte" },
+      { libelle: "Sauvegardé", type: "etat", groupe: "Données", lien: "Sauvegarder", action: f },
+      { libelle: "Hors ligne", type: "etat" },
+      { libelle: "Lien sans action", type: "etat", lien: "x" },
+      { libelle: "Sans action" },
+      { libelle: "Partir", action: f, type: "fin" }] });
+    const ac = C1.actionsCompte("profil");
+    t("actions du compte : groupe, état (lien seulement avec une action), fin ; entrée sans action écartée",
+      ac.length === 5 && ac[0].groupe === "Mon compte" && ac[1].type === "etat" && ac[1].lien === "Sauvegarder" &&
+      ac[2].action === null && !ac[3].lien && ac[3].action === null && ac[4].type === "fin");
+    t("actions du compte : forme d'avant (libellé + action) inchangée",
+      (() => { const { K } = nouveauContexte(null); K.register({ nom: "c2", apiVersion: 1,
+        actionsCompte: () => [{ libelle: "A", action: f }] }); const a = K.actionsCompte("profil");
+        return a.length === 1 && a[0].groupe === "" && a[0].type === "" && a[0].action === f; })());
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",

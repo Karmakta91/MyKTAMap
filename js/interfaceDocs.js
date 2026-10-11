@@ -784,6 +784,15 @@ function ktaAideContextuelleActive() {
 // le slug est inconnu — l'appelant saura que le lien est mort au lieu d'ouvrir
 // une fenêtre vide.
 function ktaOuvrirAideSection(slug) {
+  // Section d'une rubrique d'extension (prise « aide », slug « ext-… ») : lue à l'ouverture.
+  if (typeof slug === "string" && slug.indexOf("ext-") === 0) {
+    const ext = (window.KtaExtensions && typeof window.KtaExtensions.aide === "function")
+      ? window.KtaExtensions.aide() : null;
+    const s = ext && ext.sections.find(function(x) { return x.slug === slug; });
+    if (!s) { console.warn("[Aide] section d'extension inconnue :", slug); return false; }
+    _aideOuvrirSousModal(s);
+    return true;
+  }
   if (!slug || AIDE_SECTIONS.indexOf(slug) < 0) {
     console.warn("[Aide] section inconnue :", slug);
     return false;

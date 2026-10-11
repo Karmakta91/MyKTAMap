@@ -184,7 +184,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Actions du compte** : la prise `actionsCompte(lieu)` (« profil » | « config ») rend les actions à proposer ; la
   fenêtre « Mon profil » les montre **après la photo et le pseudo, avant le grade**, et le panneau ⚙️ Configuration dans un bloc
   « Installation » (ex. gérer les comptes, pour un admin) — même rendu (`blocActionsCompte`). Texte seulement,
-  10 au plus, action protégée ; sans extension, rien n'apparaît.
+  16 au plus, action protégée ; sans extension, rien n'apparaît. Entrée `{ libelle, action, groupe?, type? }`
+  (11/10/2026) : `groupe` pose un intitulé de rubrique quand il change ; `type: "etat"` = ligne d'état (pas un
+  bouton ; `action` + `lien` facultatifs donnent un petit lien) ; `type: "fin"` = action à part, en bas (déconnexion).
+  Dans « Mon profil », le compte (`compte() → { pseudo, libelle, details? }`) s'affiche en carte : pseudo, rôle en
+  pastille, `details` en dessous (ex. l'organisation).
 - **Outils du Mode Développeur** (10/10/2026) : la prise `outilsDev() → [{ libelle, page }]` ajoute des boutons à la
   section 🛠️ Mode Développeur, **seulement quand il est actif** ; `page` est une page `.html` du même site (chemin
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,

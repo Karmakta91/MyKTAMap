@@ -629,7 +629,10 @@
       const sections = r.sections.filter(function (s) {
         return s && typeof s.titre === "string" && s.titre.trim() && typeof s.html === "string";
       }).slice(0, 20).map(function (s, i) {
-        return { slug: "ext-" + i, titre: s.titre.trim().slice(0, 80), raccourci: "", html: _nettoyerHtml(s.html) };
+        // `id` facultatif (lettres, chiffres, tirets) : slug stable « ext-<id> » pour ouvrir la section depuis
+        // l'extension (window.ktaOuvrirAideSection) ; sinon « ext-<rang> ».
+        const id = typeof s.id === "string" && /^[a-z0-9-]{1,40}$/.test(s.id) ? s.id : String(i);
+        return { slug: "ext-" + id, titre: s.titre.trim().slice(0, 80), raccourci: "", html: _nettoyerHtml(s.html) };
       });
       return sections.length ? { titre: r.titre.trim().slice(0, 60), sections: sections } : null;
     } catch (e) { console.warn("[Extensions] aide :", e); return null; }
@@ -639,30 +642,75 @@
     if (!ext || typeof ext.actionsCompte !== "function") return [];
     try {
       const l = ext.actionsCompte(lieu);
+      // Entrée : { libelle, action, groupe?, type? } (11/10/2026, retour KARMA « menu pas ergonomique ») —
+      // `groupe` : intitulé de rubrique (texte, 30 car.), posé quand il change ; `type` : « etat » = ligne d'état
+      // (texte ; `action` + `lien` facultatifs → petit lien à droite), « fin » = action à part, en bas (déconnexion).
       return (Array.isArray(l) ? l : []).filter(function (a) {
-        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
-      }).slice(0, 10).map(function (a) { return { libelle: a.libelle.trim().slice(0, 60), action: a.action }; });
+        return a && typeof a.libelle === "string" && a.libelle.trim() &&
+          (typeof a.action === "function" || a.type === "etat");
+      }).slice(0, 16).map(function (a) {
+        const e = { libelle: a.libelle.trim().slice(0, 60), action: typeof a.action === "function" ? a.action : null,
+          groupe: typeof a.groupe === "string" ? a.groupe.trim().slice(0, 30) : "",
+          type: a.type === "etat" || a.type === "fin" ? a.type : "" };
+        if (e.type === "etat" && e.action && typeof a.lien === "string" && a.lien.trim()) e.lien = a.lien.trim().slice(0, 30);
+        if (e.type === "etat" && !e.lien) e.action = null;
+        return e;
+      });
     } catch (e) { console.warn("[Extensions] actionsCompte :", e); return []; }
   }
+  function _lancerAction(a) {
+    try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
+  }
   // Bloc prêt à insérer (même rendu dans les deux fenêtres) ; null s'il n'y a rien à montrer.
+  // « Mon profil » : carte du compte (pseudo, rôle en pastille, précision), puis les rubriques, puis l'action « fin ».
   function blocActionsCompte(lieu, titre) {
     const actions = actionsCompte(lieu);
     const c = compte();
     if (!actions.length && !(lieu === "profil" && c)) return null;
-    const bloc = document.createElement("div");
-    bloc.className = "kta-aide-section kta-ext-compte";
-    const h = document.createElement("div");
-    h.className = "kta-ext-compte-titre";
-    h.textContent = String(titre || "") + (c ? " — " + c.pseudo + (c.libelle ? " · " + c.libelle : "") : "");
-    bloc.appendChild(h);
+    const el = function (tag, cls, texte) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (texte) n.textContent = texte;
+      return n;
+    };
+    const bloc = el("div", "kta-aide-section kta-ext-compte");
+    bloc.appendChild(el("div", "kta-ext-compte-titre", String(titre || "")));
+    if (lieu === "profil" && c) {
+      const carte = el("div", "kta-ext-compte-carte");
+      const ligne = el("div", "kta-ext-compte-qui");
+      ligne.appendChild(el("span", "kta-ext-compte-pseudo", "👤 " + c.pseudo));
+      if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
+      carte.appendChild(ligne);
+      if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
+      bloc.appendChild(carte);
+    }
+    let groupe = null;
+    const fin = [];
     actions.forEach(function (a) {
-      const b = document.createElement("button");
+      if (a.type === "fin") { fin.push(a); return; }
+      if (a.groupe && a.groupe !== groupe) bloc.appendChild(el("div", "kta-ext-compte-groupe", a.groupe));
+      groupe = a.groupe || groupe;
+      if (a.type === "etat") {
+        const l = el("div", "kta-ext-compte-etat");
+        l.appendChild(el("span", "", a.libelle));
+        if (a.lien) {
+          const b = el("button", "kta-ext-compte-lien", a.lien);
+          b.type = "button";
+          b.addEventListener("click", function () { _lancerAction(a); });
+          l.appendChild(b);
+        }
+        bloc.appendChild(l);
+        return;
+      }
+      const b = el("button", "loader-btn-secondary kta-ext-compte-btn", a.libelle);
       b.type = "button";
-      b.className = "loader-btn-secondary kta-ext-compte-btn";
-      b.textContent = a.libelle;
-      b.addEventListener("click", function () {
-        try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
-      });
+      b.addEventListener("click", function () { _lancerAction(a); });
+      bloc.appendChild(b);
+    });
+    fin.forEach(function (a) {
+      const b = el("button", "kta-ext-compte-fin", a.libelle);
+      b.type = "button";
+      b.addEventListener("click", function () { _lancerAction(a); });
       bloc.appendChild(b);
     });
     return bloc;
@@ -833,7 +881,9 @@
       if (!c || typeof c.pseudo !== "string" || !c.pseudo.trim()) return null;
       return {
         pseudo: c.pseudo.trim().slice(0, 40),
-        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : ""
+        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : "",
+        // Ligne de précision sous le pseudo, dans « Mon profil » seulement (ex. l'organisation) ; facultative.
+        details: typeof c.details === "string" ? c.details.trim().slice(0, 80) : ""
       };
     } catch (e) { console.warn("[Extensions] compte :", e); return null; }
   }
