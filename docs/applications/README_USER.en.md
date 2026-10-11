@@ -1756,6 +1756,10 @@ There is nothing else to do.
 
 In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
+### 📖 All the documentation online
+
+This guide, and everything around it, can also be read on **[doc.myktamap.fr](https://doc.myktamap.fr/)** (mostly in French): installing your own copy (with or without Docker), understanding what the app sends over the network, security and keys in the pro edition, and how each version is checked before it reaches you.
+
 ---
 
 *MyKTAMap — User Guide*

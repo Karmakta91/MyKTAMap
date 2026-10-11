@@ -5,6 +5,7 @@
 **🌍 Environnements :**
 - 🟢 Production : [myktamap.fr](https://myktamap.fr)
 - 🔧 Développement : [dev.myktamap.fr](https://dev.myktamap.fr)
+- 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr) (guides, installation, sécurité, comment on livre)
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 

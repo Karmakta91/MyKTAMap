@@ -1756,6 +1756,10 @@ Il n'y a rien d'autre à faire.
 
 Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 
+### 📖 Toute la documentation en ligne
+
+Ce guide, et tout ce qui l'entoure, se lit aussi sur **[doc.myktamap.fr](https://doc.myktamap.fr/)** : installer sa propre copie (avec ou sans Docker), comprendre ce que l'application envoie sur le réseau, la sécurité et les clés de l'édition pro, et comment chaque version est vérifiée avant d'arriver jusqu'à toi.
+
 ---
 
 *MyKTAMap — Guide Utilisateur*

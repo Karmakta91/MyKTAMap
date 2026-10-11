@@ -1756,6 +1756,10 @@ No hay nada más que hacer.
 
 En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto. El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 
+### 📖 Toda la documentación en línea
+
+Esta guía, y todo lo que la rodea, también se puede leer en **[doc.myktamap.fr](https://doc.myktamap.fr/)** (sobre todo en francés): instalar tu propia copia (con o sin Docker), entender lo que la aplicación envía por la red, la seguridad y las claves de la edición pro, y cómo se comprueba cada versión antes de llegar a ti.
+
 ---
 
 *MyKTAMap — Guía de usuario*
