@@ -186,7 +186,7 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 
 Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
 
-- 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
+- 🟡 **Autres noms réels dans le code et les docs internes** : le nom du département des relevés est neutralisé partout (12/10/2026, garde-fou `check-noms-reels.js`) ; d'autres noms de lieu ou de plan réels restent dans le journal `README.md`, quelques commentaires `js/` et `docs/architecture/`. Liste remise à KARMA hors dépôt (jamais ici). À trancher nom par nom : neutraliser, puis ajouter au garde-fou (empreinte ou liste locale `~/.myktamap/noms-interdits.txt`).
 - ⚪ **Mot de passe d'installation oublié** : seul l'effacement des données du site lève le verrou (le démarrage attend le mot de passe, `main.js`). Ne concerne plus que les installations qui publient un mot de passe (le code communautaire en dur est supprimé depuis le 04/10/2026). Pas de voie de secours dans l'app — décision de produit, à confirmer.
 - ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
 
@@ -330,7 +330,7 @@ fix de la v1.77.0.*
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |
 | **Journal des notifications (cloche)** | Enterré le 29/09 |
 | **Dossier « 🌐 Serveur » automatique** (Mes plans) | Enterré le 29/09 |
-| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
+| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne sur relevés réels sont dans l'historique Git de ce fichier |
 | **Test de l'import SIG sur de vrais exports QGIS** | Enterré le 29/09 (le harnais couvre parsers, CRS, Lambert 93) |
 | **Transparence des plans issus d'un scan** | Enterré le 29/09 : un JPEG n'a pas d'alpha ; l'opacité compense, c'est accepté |
 | **Plan orienté : indicateur de Nord, contre-rotation des tooltips, inertie du pan** | « Bien comme ça pour le moment » (KARMA, 29/09) |

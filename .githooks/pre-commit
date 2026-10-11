@@ -23,6 +23,12 @@ fi
 # Lance les checkers
 node scripts/check-no-pro-leak.js || exit $?
 
+# 🗺️ 12/10/2026 — Dépôt public : aucun nom réel lié aux relevés de terrain
+# (département des relevés, ses variantes). Comparaison par EMPREINTE sha256 :
+# le nom n'est pas écrit dans le contrôle. Fichiers indexés ; en CI (`CI`
+# posé), tous les fichiers suivis. BLOQUANT, sans dérogation.
+node scripts/check-noms-reels.js || exit $?
+
 # 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
 node scripts/check-modal-lifecycle.js
 
@@ -170,7 +176,7 @@ node scripts/check-geotiff.js || exit $?
 node scripts/check-plan-tags.js || exit $?
 
 # 📁 Dossiers de « Mes plans » (v1.95.0) : le registre est EXÉCUTÉ (bac à sable),
-# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux Gironde,
+# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux « Secteur »,
 # jamais un plan perdu, règles par étiquette, glisser réservé au pointeur fin,
 # sélecteur dans la ligne de titre (0 px). BLOQUANT.
 node scripts/check-plan-folders.js || exit $?
@@ -225,7 +231,7 @@ node scripts/check-plan-config-borne.js || exit $?
 
 # 🏷️ Ajout de plans PAR ETIQUETTE dans la pile multi-plans de la Vue OSM du
 # HOME. Deux regles y regressent en silence : le regroupement INSENSIBLE A LA
-# CASSE (« Gironde » et « GIRONDE » doivent faire UNE etiquette — sinon deux
+# CASSE (« Secteur » et « SECTEUR » doivent faire UNE etiquette — sinon deux
 # chips montrent chacun la moitie de leurs plans, et le bug ne se voit que si
 # on a justement tape les deux orthographes), et l ASYMETRIE du clic (ajouter
 # seulement les manquants, retirer seulement quand ils y sont tous). BLOQUANT.

@@ -206,8 +206,9 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 - **`ci.yml`** (push `Karma_dev` / `main`, PR) : `node --check`, **`scripts/ci-commits.sh`** (anti-fuite pro et
   `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
-  `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI`), puis **`.githooks/pre-commit`** (tous
-  les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
+  `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI` ; `check-noms-reels --message` relit
+  le message de chaque commit), puis **`.githooks/pre-commit`** (tous les garde-fous ; `check-noms-reels` y relit
+  **tous** les fichiers suivis, `CI` étant posé). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
 - **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
   commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
 - **`ci.yml` › `tableau-garde-fous`** (chaque run, en parallèle, **indicatif**) : `scripts/garde-fous-tableau.js`
@@ -662,6 +663,7 @@ documentées ici pour la doctrine.
 | Script | Garde quoi | Bug fondateur |
 |---|---|---|
 | `check-no-pro-leak.js` | frontière community ↔ pro : aucun fichier pro (`*.php`, `pro/`, `backend/`, modules pro nommés) | — (préventif) |
+| `check-noms-reels.js` | dépôt public : aucun nom réel lié aux relevés (département des relevés et variantes) dans un fichier suivi, un chemin ou un message de commit (`--message`, branché aussi au `commit-msg` et à `ci-commits.sh`). Comparaison par **empreinte sha256** du mot normalisé (accents, casse, camelCase, `_`) : le nom n'est pas écrit dans le contrôle — limite : une empreinte de mot courant se retrouve par essai d'une liste de candidats. Liste hors dépôt facultative `~/.myktamap/noms-interdits.txt` (mots en clair, poste seul). Fichiers indexés ; en CI ou `--tout`, tous les fichiers suivis. Hors portée : `data/`, `lib/`, binaires. Sans dérogation | nom du département des relevés réels resté en exemple d'étiquette, de dossier, de sous-titre et de mesure dans `js/`, `scripts/`, le journal et `docs/architecture/` au passage public du dépôt (11/10/2026) |
 | `check-connexion-serveur.js` | connexion serveur (v2.0.0) : validation de l'app ET de ConfAdmin exécutées sur la même table de cas, états, index injoignable ≠ connexion coupée, licence importée insuffisante, aucune requête dans `ktaExtensions.js` | — (préventif, né avec la fonction) |
 | `check-export-anonyme.js` | export anonymisé : exécute `_anonymiserSession` sur une session piégée et cherche le marqueur dans TOUT le JSON produit | liaisons inter-plan (vrais noms de plan et de point) livrées par l'export anonymisé de v1.57.0 à v2.0.0 |
 | `check-uid.js` | identifiants stables (v2.1.0) + traces de suppression et fusion (v2.2.0, `historyManager` exécuté sur de faux tableaux) : exécute `js/ktaUid.js` (doublons régénérés, jamais d'écrasement, copie = uid neuf) + câblage des sites (setters, migration, touch, calques, Générateurs, rien vers KMZ/GPX) | — (préventif, né avec la fonction ; vise la perte silencieuse d'un objet à la future fusion) |
