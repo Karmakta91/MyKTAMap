@@ -664,7 +664,7 @@ Up to **5 photos per point**, kept on your device only. In the add or edit windo
 
 **Viewing them**: the point's popup shows the thumbnails — a tap opens full screen (pinch or mouse wheel to zoom, swipe to go to the next one, `← →` and `Esc` on PC). The **📸** counter in the top bar opens the session details.
 
-**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; a re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code; a photo that cannot be cleaned is left out.
+**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point). A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card; a photo that cannot be cleaned is left out.
 
 **📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
 

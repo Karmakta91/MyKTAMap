@@ -37,8 +37,6 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 
 ## 📸 Photos (galerie « Mes photos » livrée le 10/10/2026) — reliquats
 
-- 🟡 La fiche du point (nom, position) ne voyage pas dans les ZIP de session (elle voyage dans l'export de profil et
-  dans « Enregistrer » de la galerie).
 - 🟡 Analyse d'un gros plan depuis l'accueil (photos sans point) : décompresse son archive — coût mémoire sur téléphone.
 
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter

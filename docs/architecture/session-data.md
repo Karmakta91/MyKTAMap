@@ -194,10 +194,14 @@ déjà en base (→ `null`, aucun événement).
 `session.json` + `photos/` ; réimport = fusion des photos (ci-dessus). Format commun :
 ```
 photos/
-├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file}}}
+├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file, fiche?}}}
 └── <photoId>.<ext>
 ```
-Helpers `sessionExporter.js` : `_collecterPhotosPlan(pointIdsSet)` (les photos suivent le filtre des points),
+**Fiche du point dans l'index** (12/10/2026) : `fiche` (cf ci-dessus) écrite par `_entreeIndexPhoto` — seul écrivain
+des trois index (Full, Avancé, Conversion) — et relue au réimport (passée à `restorePhoto`, ignorée si la photo est
+déjà en base). Facultative : un ZIP d'avant se relit comme avant. **Jamais en export anonymisé** (`_stripperExifPhotos`
+ne la recopie pas, `_anonymiserSession` la retire — `check-export-anonyme.js`). Gardé par `check-photos.js`.
+Helpers `sessionExporter.js` : `_collecterPhotosPlan(pointIdsSet)` (les photos suivent le filtre des points, fiche comprise),
 `_extDepuisMime`, `_formatBytes` (`window._kta_formatBytes`), `_packerZipSession`, `_enrichirPointsAvecPhotos`
 (`point.photos = [ids]` sur une copie). L'export de profil emporte les photos de tous les plans (fiche comprise),
 **sauf ceux d'une organisation**.

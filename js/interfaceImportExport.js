@@ -396,7 +396,7 @@ function ouvrirImportSession(fichierInitial) {
 
   // 🆕 v1.9.3-B1d : ZIP avec photos (session.json + photos/) en plus du JSON pur.
   // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
-  // et la validation. Format : [{id, pointId, mime, size, blob}, ...]
+  // et la validation. Format : [{id, pointId, mime, size, blob, fiche}, ...]
   let _pendingPhotosToRestore = null;
   // 🆕 v1.34.29 — PDF Mode Histoire embarqué dans le ZIP (chemin
   // `mode-histoire/<name>`). Format : { blob, name } ou null si absent.
@@ -555,7 +555,8 @@ function ouvrirImportSession(fichierInitial) {
                 pointId: info.pointId,
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
-                blob:    blob
+                blob:    blob,
+                fiche:   info.fiche || null   // 📸 12/10/2026 — absente des anciens ZIP
               };
             });
           });
@@ -680,7 +681,8 @@ function ouvrirImportSession(fichierInitial) {
           pointId: String(p.pointId == null ? "" : p.pointId),
           blob:    p.blob,
           mime:    p.mime,
-          size:    p.size
+          size:    p.size,
+          fiche:   p.fiche   // 📸 fiche du point (facultative, validée par restorePhoto)
         }, { source: "import", siAbsente: true })   // 📣 restauration de l'app (≠ dépôt d'une extension)
           .then(function(id) { if (id) bilan.ajoutees++; else bilan.deja++; })
           .catch(function(e) { bilan.echecs++; console.warn("[Import] photo non restaurée :", p.id, e); });

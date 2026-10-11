@@ -71,14 +71,23 @@ const session = {
   user: { nom: M }, userProfile: { surnom: M }, author: M
 };
 
+// 📸 12/10/2026 — les photos portent la FICHE de leur point (nom, position) dans
+// l'index des ZIP de session : elle ne doit jamais sortir d'un export anonymisé.
+const photos = [{ id: "ph1", pointId: "pt_UIDMARK1", mime: "image/jpeg", size: 1, blob: null,
+  fiche: { nom: M + " Salle", x: 10, y: 20, niveau: null, type: "salle", maj: 1 } }];
+const enrichir = extraireFonction(SRC, "_enrichirPointsAvecPhotos");
+t("_enrichirPointsAvecPhotos est extractible de js/sessionExporter.js", !!enrichir);
 const ctx = vm.createContext({ console: { log() {}, warn() {}, error() {} } });
 let out = null;
 try {
-  vm.runInContext(code + "; this.__out = _anonymiserSession(__s, []);", Object.assign(ctx, { __s: session }));
+  vm.runInContext(code + ";" + (enrichir || "") + "; this.__out = _anonymiserSession(__s, __p);",
+    Object.assign(ctx, { __s: session, __p: photos }));
   out = ctx.__out;
 } catch (e) {
   t("_anonymiserSession s'exécute — " + e.message, false);
 }
+t("📸 la fiche du point (nom réel, position) est retirée des photos anonymisées",
+  photos.every((p) => !("fiche" in p)) && JSON.stringify(photos).indexOf(M) < 0);
 
 if (out) {
   t("🩸 les liaisons inter-plan (vrais noms de plan et de point) sont retirées", !("interPlanLinks" in out));

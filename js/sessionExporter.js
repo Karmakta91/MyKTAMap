@@ -1575,7 +1575,8 @@
                 pointId: info.pointId,
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
-                blob:    blob
+                blob:    blob,
+                fiche:   info.fiche || null
               };
             });
           });
@@ -1642,7 +1643,8 @@
           blob:    rec.blob,
           mime:    rec.mime || "image/jpeg",
           pointId: rec.pointId,
-          size:    rec.size || (rec.blob && rec.blob.size) || 0
+          size:    rec.size || (rec.blob && rec.blob.size) || 0,
+          fiche:   rec.fiche || null   // 📸 12/10/2026 — cf _entreeIndexPhoto
         };
       });
       return { photos: photos, totalSize: totalSize };
@@ -1669,6 +1671,19 @@
   }
   // Expose pour les autres modules / l'UI (counter de la modale)
   if (typeof window !== "undefined") window._kta_formatBytes = _formatBytes;
+
+  // Entrée de photos/_index.json — UN SEUL format pour Full, Avancé et Conversion.
+  // 📸 12/10/2026 : la FICHE du point (nom, position, niveau, type) voyage aussi,
+  // comme dans l'export de profil et « Enregistrer » de la galerie : une photo
+  // dont le point a disparu reste récupérable (♻️ Recréer le point) après un
+  // réimport. Champ facultatif : les ZIP sans fiche se relisent comme avant.
+  // 🔒 Jamais en export anonymisé : _stripperExifPhotos ne la recopie pas et
+  // _anonymiserSession la retire (check-export-anonyme.js).
+  function _entreeIndexPhoto(p, name) {
+    const e = { pointId: p.pointId, mime: p.mime, size: p.size, file: name };
+    if (p.fiche && typeof p.fiche === "object") e.fiche = p.fiche;
+    return e;
+  }
 
   // Packe un payload session + des photos dans un ZIP. Retourne Promise<Blob>.
   // Structure du ZIP :
@@ -1698,12 +1713,7 @@
         const ext = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,
@@ -1848,6 +1858,7 @@
         n++;
         p.id      = "photo-anon-" + n;
         p.pointId = idMap[String(p.pointId)] || "";
+        delete p.fiche;   // 📸 nom réel + position du point : jamais dans un export anonymisé
         p.mime    = p.mime || "image/jpeg";
       });
       session.editorPoints = _enrichirPointsAvecPhotos(session.editorPoints, photos);
@@ -2450,12 +2461,7 @@
         const ext  = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,
@@ -2689,7 +2695,8 @@
           blob:    p.blob,
           mime:    p.mime,
           pointId: p.pointId,
-          size:    p.size
+          size:    p.size,
+          fiche:   p.fiche || null
         };
       });
       // Ajoute photosCount/TotalKB pour cohérence avec l'export Full
@@ -2882,12 +2889,7 @@
         const ext  = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,

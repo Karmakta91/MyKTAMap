@@ -12,6 +12,9 @@
 //      photos « sans point » gardées pour récupération. Désormais : FUSION
 //      (`restorePhoto(…, { siAbsente: true })`), rien d'existant n'est touché.
 //   2. Le rattachement depuis 📸 Mes photos ne vérifiait pas la limite de 5.
+//   3. La fiche du point (nom, position) ne voyageait pas dans les ZIP de
+//      session : une photo dont le point avait disparu n'était plus
+//      récupérable (♻️ Recréer) après un réimport.
 //
 // COMMENT : le VRAI js/photos.js est chargé dans un `vm` sur une fausse
 // IndexedDB (Map en mémoire, requêtes asynchrones, transaction qui se ferme
@@ -175,10 +178,45 @@ function cablage() {
     ["fr", "en", "es"].every((l) => !!JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"))["photosgal.limite.refus"]));
 }
 
-photos().then(cablage).catch(function (e) {
+// ───────── 3. La fiche du point voyage dans les ZIP de session ─────────
+// Écriture : un seul helper pour les 3 index (Full, Avancé, Conversion) ; la
+// collecte emporte la fiche. Relecture : l'import la lit et la passe à
+// restorePhoto. Un ZIP sans fiche (d'avant le 12/10/2026) se relit comme avant.
+function fiche() {
+  const SE = fs.readFileSync("js/sessionExporter.js", "utf8");
+  const i = SE.indexOf("function _entreeIndexPhoto(");
+  let corps = null;
+  if (i >= 0) {
+    let prof = 0;
+    for (let k = SE.indexOf("{", i); k < SE.length; k++) {
+      if (SE[k] === "{") prof++;
+      else if (SE[k] === "}") { prof--; if (prof === 0) { corps = SE.slice(i, k + 1); break; } }
+    }
+  }
+  t("🧾 _entreeIndexPhoto est extractible de js/sessionExporter.js", !!corps);
+  if (!corps) return;
+  const f = vm.runInNewContext("(" + corps + ")");
+  const fi = { nom: "Salle", x: 1, y: 2, niveau: 0, type: "salle", maj: 5 };
+  const avec = f({ pointId: "pt_a", mime: "image/jpeg", size: 3, fiche: fi }, "ph.jpg");
+  const sans = f({ pointId: "pt_a", mime: "image/jpeg", size: 3, fiche: null }, "ph.jpg");
+  t("🧾 l'entrée d'index emporte la fiche du point quand la photo en a une",
+    avec.fiche === fi && avec.pointId === "pt_a" && avec.file === "ph.jpg");
+  t("🧾 sans fiche : entrée identique à l'ancien format (pas de clé fiche)",
+    !("fiche" in sans) && Object.keys(sans).join() === "pointId,mime,size,file");
+  t("🧾 les 3 écrivains de photos/_index.json passent par _entreeIndexPhoto (aucune entrée écrite à la main)",
+    (SE.match(/idx\[p\.id\] = _entreeIndexPhoto\(p, name\);/g) || []).length === 3 && !/idx\[p\.id\] = \{/.test(SE));
+  const col = SE.slice(SE.indexOf("function _collecterPhotosPlan("), SE.indexOf("function _extDepuisMime("));
+  t("🧾 la collecte des photos du plan emporte leur fiche", /fiche:\s*rec\.fiche/.test(col));
+  const IMP = fs.readFileSync("js/interfaceImportExport.js", "utf8");
+  const parse = IMP.slice(IMP.indexOf("function _parseSessionZip("), IMP.indexOf("function chargerFichier("));
+  t("🧾 l'import de session relit la fiche de l'index (info.fiche, facultative)", /fiche:\s*info\.fiche \|\| null/.test(parse));
+  t("🧾 …et la passe à restorePhoto (validée là-bas par _fiche)", /fiche:\s*p\.fiche[\s\S]{0,120}siAbsente: true/.test(IMP));
+}
+
+photos().then(cablage).then(fiche).catch(function (e) {
   t("le bac à sable photos s'exécute sans planter — " + (e && e.message), false);
 }).then(function () {
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
-  console.log("🎉 photos : rien n'est effacé au réimport, la limite de 5 tient au rattachement");
+  console.log("🎉 photos : rien n'est effacé au réimport, la limite de 5 tient au rattachement, la fiche voyage");
 });
