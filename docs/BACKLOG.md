@@ -17,6 +17,14 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
   ouverture (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
 - ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
 
+## 🧰 Barre d'outils de droite — boutons en double (retour KARMA du 11/10/2026, v2.14.0, iPhone)
+
+- 🟠 **Outil Mesure actif : ses boutons apparaissent deux fois** dans la barre de droite — deux 📐 (longueur) et deux
+  ⬛ (surface), en plus du ✕ qui ferme la mesure (le bas de l'écran affiche bien « 85.5 m · 544 m² »). À reproduire
+  (ouvrir un plan, lancer la mesure, regarder la barre) : bouton injecté à chaque activation sans retirer le
+  précédent (`js/measure.js` / `js/refonteInterface.js`) ? Corriger, et un contrôle qui vérifie qu'un outil n'a
+  qu'un bouton dans la barre.
+
 ## 👥 Plusieurs personnes sur la même carte (retour KARMA du 11/10/2026, capture sur téléphone)
 
 - 🟠 **On ne distingue pas qui est qui** : sur la capture, deux marqueurs identiques (triangles bleus), sans pastille ni
