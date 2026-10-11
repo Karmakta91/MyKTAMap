@@ -364,9 +364,10 @@
     _extensions.push(ext);
     // Les écrans déjà dessinés (Mode Développeur…) se redessinent : une extension arrive APRÈS l'accueil.
     try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
+    if (ext.outilHome) _poserOutilHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -661,12 +662,85 @@
   function _lancerAction(a) {
     try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
   }
-  // Bloc prêt à insérer (même rendu dans les deux fenêtres) ; null s'il n'y a rien à montrer.
-  // « Mon profil » : carte du compte (pseudo, rôle en pastille, précision), puis les rubriques, puis l'action « fin ».
+
+  // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome », 11/10/2026) ──
+  // ext.outilHome() → { libelle } (texte, 40 car.) ou null : UNE tuile ajoutée à 🧰 Outils de l'accueil, qui ouvre
+  // une fenêtre avec le bloc du compte au lieu « outils » (actionsCompte("outils")). Sans extension (ou null) :
+  // aucune tuile — myktamap.fr ne change pas. Erreur ou forme inattendue = rien.
+  function outilHome() {
+    const ext = _prise("outilHome");
+    if (!ext || typeof ext.outilHome !== "function") return null;
+    try {
+      const o = ext.outilHome();
+      if (!o || typeof o.libelle !== "string" || !o.libelle.trim()) return null;
+      return { libelle: o.libelle.trim().slice(0, 40) };
+    } catch (e) { console.warn("[Extensions] outilHome :", e); return null; }
+  }
+  function _fermerOutilHome() {
+    const ov = document.getElementById("kta-ext-outil-modal");
+    if (!ov) return;
+    if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
+    ov.remove();
+  }
+  function ouvrirOutilHome() {
+    const o = outilHome();
+    if (!o) return false;
+    _fermerOutilHome();
+    // Une action du bloc ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
+    const ov = document.createElement("div");
+    ov.id = "kta-ext-outil-modal";
+    ov.className = "kta-readme-modal-overlay";
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite kta-ext-outil-boite";
+    const tete = document.createElement("div");
+    tete.className = "kta-readme-modal-header";
+    const titre = document.createElement("div");
+    titre.className = "kta-readme-modal-titre";
+    titre.textContent = o.libelle;
+    const croix = document.createElement("button");
+    croix.type = "button";
+    croix.className = "kta-panneau-close";
+    croix.textContent = "✕";
+    croix.addEventListener("click", _fermerOutilHome);
+    tete.appendChild(titre); tete.appendChild(croix);
+    const corps = document.createElement("div");
+    corps.className = "kta-readme-modal-corps";
+    const bloc = blocActionsCompte("outils", "");
+    if (bloc) {
+      bloc.addEventListener("click", function (e) { if (e.target.closest("button")) _fermerOutilHome(); }, true);
+      corps.appendChild(bloc);
+    }
+    boite.appendChild(tete); boite.appendChild(corps); ov.appendChild(boite);
+    ov.addEventListener("click", function (e) { if (e.target === ov) _fermerOutilHome(); });
+    ov.__esc = function (e) { if (e.key === "Escape") { e.stopPropagation(); _fermerOutilHome(); } };
+    document.addEventListener("keydown", ov.__esc, true);
+    document.documentElement.appendChild(ov);
+    return true;
+  }
+  // Pose (ou retire) la tuile dans 🧰 Outils de l'accueil, à la déclaration d'une extension et au chargement.
+  function _poserOutilHome() {
+    if (typeof document === "undefined" || !document.querySelector) return;
+    const zone = document.querySelector(".loader-secondary-actions");
+    const vieux = document.getElementById("loaderExtOutilBtn");
+    const o = outilHome();
+    if (!o) { if (vieux) vieux.remove(); return; }
+    if (!zone) return;
+    const b = vieux || document.createElement("button");
+    b.type = "button";
+    b.id = "loaderExtOutilBtn";
+    b.className = "loader-btn-secondary";
+    b.textContent = o.libelle;
+    if (!vieux) { b.addEventListener("click", ouvrirOutilHome); zone.insertBefore(b, zone.firstChild); }
+  }
+  // Bloc prêt à insérer ; null s'il n'y a rien à montrer. Lieux : « profil » (Mon profil), « config » (⚙️),
+  // « outils » (fenêtre de la tuile d'extension de 🧰 Outils, 11/10/2026). Profil et outils : carte du compte
+  // (pseudo, rôle en pastille, précision), puis les rubriques, puis l'action « fin ». Dans « Mon profil », quand
+  // l'extension a une tuile d'outils, la carte porte un lien vers sa fenêtre (les actions y vivent).
   function blocActionsCompte(lieu, titre) {
     const actions = actionsCompte(lieu);
     const c = compte();
-    if (!actions.length && !(lieu === "profil" && c)) return null;
+    const carteVisible = (lieu === "profil" || lieu === "outils") && c;
+    if (!actions.length && !carteVisible) return null;
     const el = function (tag, cls, texte) {
       const n = document.createElement(tag);
       if (cls) n.className = cls;
@@ -674,14 +748,21 @@
       return n;
     };
     const bloc = el("div", "kta-aide-section kta-ext-compte");
-    bloc.appendChild(el("div", "kta-ext-compte-titre", String(titre || "")));
-    if (lieu === "profil" && c) {
+    if (titre) bloc.appendChild(el("div", "kta-ext-compte-titre", String(titre)));
+    if (carteVisible) {
       const carte = el("div", "kta-ext-compte-carte");
       const ligne = el("div", "kta-ext-compte-qui");
       ligne.appendChild(el("span", "kta-ext-compte-pseudo", "👤 " + c.pseudo));
       if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
       carte.appendChild(ligne);
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
+      const outil = lieu === "profil" ? outilHome() : null;
+      if (outil) {
+        const lien = el("button", "kta-ext-compte-lien kta-ext-compte-gerer", "Gérer › " + outil.libelle);
+        lien.type = "button";
+        lien.addEventListener("click", ouvrirOutilHome);
+        carte.appendChild(lien);
+      }
       bloc.appendChild(carte);
     }
     let groupe = null;
@@ -1276,6 +1357,14 @@
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }
 
+  // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("mktm:compte-changed", _poserOutilHome);
+    if (typeof document !== "undefined" && document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", _poserOutilHome);
+    }
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
@@ -1337,6 +1426,8 @@
     fermerPanneau: fermerPanneau,
     quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
+    outilHome: outilHome,
+    ouvrirOutilHome: ouvrirOutilHome,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,

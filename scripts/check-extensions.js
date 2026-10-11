@@ -612,7 +612,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
     const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
-      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide"]/.test(EXT));
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"]/.test(EXT));
 
     // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
     const { K: A0 } = nouveauContexte(null);
@@ -656,6 +656,20 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (() => { const { K } = nouveauContexte(null); K.register({ nom: "c2", apiVersion: 1,
         actionsCompte: () => [{ libelle: "A", action: f }] }); const a = K.actionsCompte("profil");
         return a.length === 1 && a[0].groupe === "" && a[0].type === "" && a[0].action === f; })());
+    // ── Tuile d'extension dans 🧰 Outils (11/10/2026) ──
+    const { K: O0 } = nouveauContexte(null);
+    t("outilHome : sans extension → null (aucune tuile)", O0.outilHome() === null && O0.ouvrirOutilHome() === false);
+    const { K: O1 } = nouveauContexte(null);
+    O1.register({ nom: "o1", apiVersion: 1, outilHome: () => ({ libelle: "  🏢 Mon organisation  " }) });
+    t("outilHome : libellé lu et nettoyé", O1.outilHome() && O1.outilHome().libelle === "🏢 Mon organisation");
+    const { K: O2 } = nouveauContexte(null);
+    O2.register({ nom: "o2", apiVersion: 1, outilHome: () => { throw new Error("x"); } });
+    const { K: O3 } = nouveauContexte(null);
+    O3.register({ nom: "o3", apiVersion: 1, outilHome: () => null });
+    t("outilHome : erreur ou null (non connecté) → aucune tuile", O2.outilHome() === null && O3.outilHome() === null);
+    t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
+      EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
+      EXT.includes('blocActionsCompte("outils", "")'));
     t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
       /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",

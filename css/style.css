@@ -22662,6 +22662,9 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
   border: 1px solid rgba(255, 255, 255, 0.12); background: transparent; color: #c8d0e0; font: inherit;
   font-size: 15px; cursor: pointer; }
 .kta-ext-compte-fin:hover { border-color: #8cb4ff; color: #e8eaf0; }
+/* Lien « Gérer › <tuile d'outils> » sur la carte du compte (Mon profil), et fenêtre de la tuile (🧰 Outils). */
+.kta-ext-compte-gerer { display: block; margin-top: 6px; text-align: left; }
+.kta-ext-outil-boite { max-width: 520px; width: calc(100% - 32px); }
 html.kta-theme-light .kta-ext-compte-pseudo { color: #1a1f2e; }
 html.kta-theme-light .kta-ext-compte-etat,
 html.kta-theme-light .kta-ext-compte-fin { color: #3a4458; }

@@ -189,6 +189,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   bouton ; `action` + `lien` facultatifs donnent un petit lien) ; `type: "fin"` = action à part, en bas (déconnexion).
   Dans « Mon profil », le compte (`compte() → { pseudo, libelle, details? }`) s'affiche en carte : pseudo, rôle en
   pastille, `details` en dessous (ex. l'organisation).
+- **Tuile d'outils** (11/10/2026) : la prise `outilHome() → { libelle } | null` ajoute UNE tuile à 🧰 Outils de
+  l'accueil ; elle ouvre une fenêtre avec la carte du compte et les actions du lieu « outils »
+  (`actionsCompte("outils")`, mêmes rubriques). « Mon profil » garde la carte, avec un lien « Gérer › <tuile> ».
+  Sans extension, ou `null` (non connecté), aucune tuile ; la tuile suit `mktm:compte-changed`.
 - **Outils du Mode Développeur** (10/10/2026) : la prise `outilsDev() → [{ libelle, page }]` ajoute des boutons à la
   section 🛠️ Mode Développeur, **seulement quand il est actif** ; `page` est une page `.html` du même site (chemin
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
