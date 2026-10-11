@@ -102,6 +102,71 @@
     }
     throw new Error("calque introuvable : " + file);
   }
+  // 📦 Lecture PARTIELLE de l'archive d'un plan (12/10/2026). Avant,
+  // JSZip.loadAsync(blob) chargeait TOUTE l'archive en mémoire (JSZip lit le
+  // Blob entier dans un ArrayBuffer : un plan de 200 Mo = 200 Mo de RAM, sur
+  // téléphone, pour lire quelques Ko de points). Ici on ne lit que la fin du
+  // fichier (répertoire central) puis les seules entrées demandées, par
+  // Blob.slice — le Blob d'IndexedDB reste sur le disque. Inflate par
+  // DecompressionStream("deflate-raw"). Rend null si ce n'est pas faisable
+  // (navigateur sans deflate-raw, ZIP64, archive chiffrée ou exotique) :
+  // l'appelant retombe alors sur JSZip, comme avant.
+  // → { noms: [...], a(nom), texte(nom) → Promise<string> } | null
+  async function _lecteurZipPartiel(blob) {
+    if (!blob || typeof blob.slice !== "function" || typeof DecompressionStream === "undefined") return null;
+    try { new DecompressionStream("deflate-raw"); } catch (e) { return null; }
+    const taille = blob.size;
+    const finLue = Math.min(taille, 22 + 65535);
+    const fin = new DataView(await blob.slice(taille - finLue, taille).arrayBuffer());
+    let eocd = -1;
+    for (let i = finLue - 22; i >= 0; i--) { if (fin.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+    if (eocd < 0) return null;
+    const nb = fin.getUint16(eocd + 10, true), cdTaille = fin.getUint32(eocd + 12, true);
+    const cdDebut = fin.getUint32(eocd + 16, true);
+    if (nb === 0xffff || cdDebut === 0xffffffff || cdTaille === 0xffffffff) return null;   // ZIP64
+    if (cdDebut + cdTaille > taille) return null;
+    const cd = new DataView(await blob.slice(cdDebut, cdDebut + cdTaille).arrayBuffer());
+    const dec = new TextDecoder("utf-8");
+    const entrees = new Map(), noms = [];
+    let o = 0;
+    for (let k = 0; k < nb; k++) {
+      if (o + 46 > cd.byteLength || cd.getUint32(o, true) !== 0x02014b50) return null;
+      const lnNom = cd.getUint16(o + 28, true);
+      const nom = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + o + 46, lnNom));
+      entrees.set(nom, {
+        drapeaux: cd.getUint16(o + 8, true), methode: cd.getUint16(o + 10, true),
+        tailleC: cd.getUint32(o + 20, true), local: cd.getUint32(o + 42, true)
+      });
+      noms.push(nom);
+      o += 46 + lnNom + cd.getUint16(o + 30, true) + cd.getUint16(o + 32, true);
+    }
+    async function texte(nom) {
+      const e = entrees.get(nom);
+      if (!e) throw new Error("entrée absente : " + nom);
+      if ((e.drapeaux & 1) || (e.methode !== 0 && e.methode !== 8)) throw new Error("entrée illisible : " + nom);
+      const lh = new DataView(await blob.slice(e.local, e.local + 30).arrayBuffer());
+      if (lh.getUint32(0, true) !== 0x04034b50) throw new Error("en-tête local invalide : " + nom);
+      const debut = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+      const morceau = blob.slice(debut, debut + e.tailleC);
+      if (e.methode === 0) return morceau.text();
+      return new Response(morceau.stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+    }
+    return { noms: noms, a: function (n) { return entrees.has(n); }, texte: texte };
+  }
+  // Archive d'un plan : lecture partielle, sinon JSZip (archive entière en mémoire, comme avant).
+  async function _ouvrirArchive(blob) {
+    try {
+      const l = await _lecteurZipPartiel(blob);
+      if (l) return l;
+    } catch (e) { console.warn("[Photos] lecture partielle de l'archive impossible, repli JSZip :", e); }
+    if (!window.JSZip) return null;
+    const zip = await window.JSZip.loadAsync(blob);
+    return {
+      noms: Object.keys(zip.files),
+      a: function (n) { return !!zip.file(n); },
+      texte: function (n) { return zip.file(n).async("string"); }
+    };
+  }
   // Points des calques d'un plan NON ouvert. ok = false si on n'a pas pu tout lire.
   async function _lireCalques(plan) {
     const pts = [];
@@ -112,23 +177,22 @@
         for (let i = 0; i < layers.length; i++) _ajouterDepuisCalque(await _jsonCalque(plan.path, layers[i].file), pts);
         return { pts: pts, ok: true };
       }
-      if (!window.PlanRegistry || !window.JSZip) return { pts: pts, ok: false };
+      if (!window.PlanRegistry) return { pts: pts, ok: false };
       const blob = await window.PlanRegistry.getBlob(plan.id);
       if (!blob) return { pts: pts, ok: false };
-      const zip = await window.JSZip.loadAsync(blob);
-      let cfgFile = zip.file("plan-config.json");
-      if (!cfgFile) {
-        const cand = Object.keys(zip.files).find(function (n) { return /(^|\/)plan-config\.json$/.test(n); });
-        if (cand) cfgFile = zip.file(cand);
-      }
-      if (!cfgFile) return { pts: pts, ok: false };
-      const base = cfgFile.name.replace(/plan-config\.json$/, "");
-      const cfg = JSON.parse(await cfgFile.async("string"));
+      const zip = await _ouvrirArchive(blob);
+      if (!zip) return { pts: pts, ok: false };
+      let cfgNom = zip.a("plan-config.json") ? "plan-config.json" : null;
+      if (!cfgNom) cfgNom = zip.noms.find(function (n) { return /(^|\/)plan-config\.json$/.test(n); }) || null;
+      if (!cfgNom) return { pts: pts, ok: false };
+      const base = cfgNom.replace(/plan-config\.json$/, "");
+      const cfg = JSON.parse(await zip.texte(cfgNom));
       const layers = (cfg && cfg.dataLayers) || [];
       for (let i = 0; i < layers.length; i++) {
-        const f = zip.file(base + layers[i].file) || zip.file(layers[i].file);
-        if (!f) return { pts: pts, ok: false };
-        _ajouterDepuisCalque(JSON.parse(await f.async("string")), pts);
+        const f = layers[i].file;
+        const nom = zip.a(base + f) ? base + f : (zip.a(f) ? f : null);
+        if (!nom) return { pts: pts, ok: false };
+        _ajouterDepuisCalque(JSON.parse(await zip.texte(nom)), pts);
       }
       return { pts: pts, ok: true };
     } catch (e) {

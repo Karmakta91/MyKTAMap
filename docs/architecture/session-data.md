@@ -167,7 +167,11 @@ apresOuverturePlan(planId) }`. Liste des plans qui ont des photos (nombre, taill
 les plans ☁️ sans photo locale), puis par plan : vignettes groupées par point, groupe **⚠️ Sans point** en tête.
 - **« Sans point »** : clé qui ne correspond à AUCUN point connu du plan — session (`KtaSessionStore` ; les objets
   reçus d'une installation reliée y sont fusionnés), points des calques (fichiers du plan serveur, ou archive ZIP
-  gardée — `PlanRegistry.getBlob`). Plan ouvert : points vivants (`getEditorPoints` + `getAllEmbeddedPoints`), et
+  gardée — `PlanRegistry.getBlob`). L'archive est lue **partiellement** (`_lecteurZipPartiel`, 12/10/2026) : fin du
+  fichier (répertoire central) puis les seuls `plan-config.json` et calques, par `Blob.slice` + `DecompressionStream
+  ("deflate-raw")` — jamais les images. Avant, `JSZip.loadAsync` chargeait toute l'archive en mémoire (un plan de
+  75 Mo = 75 Mo de RAM pour quelques Ko de points) ; mesuré au garde-fou : 87 Ko lus sur 7,4 Mo d'archive. Repli JSZip
+  (comportement d'avant) si le navigateur n'a pas `deflate-raw`, sur un ZIP64 ou une entrée chiffrée. Plan ouvert : points vivants (`getEditorPoints` + `getAllEmbeddedPoints`), et
   les fichiers du plan en complément si une photo n'y est pas retrouvée (les calques arrivent par lots).
   🩸 Points non lisibles d'ici (archive absente, serveur injoignable, plan ☁️ pas encore ouvert, plan absent) →
   **🔎 à vérifier à l'ouverture du plan**, jamais « sans point » par défaut.

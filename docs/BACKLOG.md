@@ -35,10 +35,6 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
   (`masquerTrace`, `masquerItineraire`), pas son **marqueur**. Ajouter « Masquer <pseudo> » (marqueur + trace),
   réversible, oublié au changement de plan comme les autres masquages.
 
-## 📸 Photos (galerie « Mes photos » livrée le 10/10/2026) — reliquats
-
-- 🟡 Analyse d'un gros plan depuis l'accueil (photos sans point) : décompresse son archive — coût mémoire sur téléphone.
-
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
 
 | Sujet | Décision | Qui |

@@ -213,7 +213,65 @@ function fiche() {
   t("🧾 …et la passe à restorePhoto (validée là-bas par _fiche)", /fiche:\s*p\.fiche[\s\S]{0,120}siAbsente: true/.test(IMP));
 }
 
-photos().then(cablage).then(fiche).catch(function (e) {
+// ───────── 4. Analyse depuis l'accueil : l'archive n'est PAS chargée en entier ─────────
+// 🩸 JSZip.loadAsync(blob) lit tout le Blob en mémoire : un plan de 200 Mo coûtait
+// 200 Mo de RAM pour lire quelques Ko de points. `_lecteurZipPartiel` (extrait du
+// vrai photosGalerie.js) ne lit que le répertoire central et les entrées demandées.
+// Mesure : on compte les octets réellement lus par Blob.slice.
+async function archivePartielle() {
+  const GAL = fs.readFileSync("js/photosGalerie.js", "utf8");
+  const i = GAL.indexOf("async function _lecteurZipPartiel(");
+  let corps = null;
+  if (i >= 0) {
+    let prof = 0;
+    for (let k = GAL.indexOf("{", i); k < GAL.length; k++) {
+      if (GAL[k] === "{") prof++;
+      else if (GAL[k] === "}") { prof--; if (prof === 0) { corps = GAL.slice(i, k + 1); break; } }
+    }
+  }
+  t("📦 _lecteurZipPartiel est extractible de js/photosGalerie.js", !!corps);
+  if (!corps) return;
+  const lire = vm.runInNewContext("(" + corps + ")", {
+    DecompressionStream: DecompressionStream, Response: Response, TextDecoder: TextDecoder,
+    DataView: DataView, Uint8Array: Uint8Array, Map: Map, Error: Error, Math: Math
+  });
+  const JSZip = require("../lib/jszip.min.js");
+  const zip = new JSZip();
+  const points = { data: [{ id: "Salle", nom: "Salle", x: 10, y: 20, uid: "pt_a" }] };
+  zip.file("plan/plan-config.json", JSON.stringify({ dataLayers: [{ id: "p", file: "data/points.json" }] }));
+  zip.file("plan/data/points.json", JSON.stringify(points));
+  zip.file("plan/data/légende é.json", JSON.stringify({ ok: "é" }), { compression: "STORE" });
+  const image = new Uint8Array(6 * 1024 * 1024);
+  for (let k = 0; k < image.length; k++) image[k] = (k * 2654435761) >>> 24;   // incompressible
+  zip.file("plan/data/fond.jpg", image, { compression: "STORE" });
+  for (let k = 0; k < 300; k++) zip.file("plan/data/tiles/z0/x" + k + "_y-1.jpg", image.subarray(0, 4096), { compression: "STORE" });
+  const vrai = new Blob([await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" })]);
+  let lus = 0;
+  const espion = (b) => ({
+    size: b.size,
+    slice: (a, z) => { const s = b.slice(a, z); lus += s.size; return s; }
+  });
+  const l = await lire(espion(vrai));
+  t("📦 l'archive est lue sans JSZip (répertoire central + entrées demandées)",
+    !!l && l.noms.filter((n) => !n.endsWith("/")).length === 304, l && l.noms.length);
+  if (!l) return;
+  const cfg = JSON.parse(await l.texte("plan/plan-config.json"));
+  const pts = JSON.parse(await l.texte("plan/" + cfg.dataLayers[0].file));
+  const leg = JSON.parse(await l.texte("plan/data/légende é.json"));
+  t("📦 entrées compressées (deflate) et stockées relues à l'identique, noms UTF-8 compris",
+    pts.data[0].uid === "pt_a" && leg.ok === "é" && l.a("plan/data/fond.jpg") && !l.a("absent.json"));
+  const ko = Math.round(lus / 1024), total = Math.round(vrai.size / 1024);
+  t("📦 octets lus : " + ko + " Ko sur " + total + " Ko d'archive (< 2 %) — les images ne sont jamais lues",
+    lus < vrai.size * 0.02, { lus: lus, taille: vrai.size });
+  const pasZip = await lire(new Blob([new Uint8Array(100)]));
+  t("📦 un fichier qui n'est pas un ZIP → null (l'appelant retombe sur JSZip, comme avant)", pasZip === null);
+  t("📦 l'analyse passe par _ouvrirArchive (lecture partielle, repli JSZip), plus par JSZip.loadAsync direct",
+    /const zip = await _ouvrirArchive\(blob\);/.test(GAL) &&
+    (GAL.match(/await window\.JSZip\.loadAsync\(/g) || []).length === 1 &&
+    GAL.indexOf("await window.JSZip.loadAsync(") > GAL.indexOf("async function _ouvrirArchive("));
+}
+
+photos().then(cablage).then(fiche).then(archivePartielle).catch(function (e) {
   t("le bac à sable photos s'exécute sans planter — " + (e && e.message), false);
 }).then(function () {
   console.log("");
