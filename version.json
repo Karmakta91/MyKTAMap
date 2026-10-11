@@ -1,5 +1,5 @@
 {
-  "version": "v2.14.0",
+  "version": "v2.14.1",
   "released": "2026-10-11",
   "notes": [
     "💾 Tes sessions ne sont plus limitées à 5 Mo et ne se perdent plus en silence (jauge dans 📊 Détails de la session). Nouveau : 🧰 Outils › 📸 Mes photos retrouve toutes tes photos, même celles d'un point supprimé.",

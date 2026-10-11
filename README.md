@@ -19,8 +19,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.14.0` (11/10/2026)
+## 📦 Version courante — `v2.14.1` (11/10/2026)
 
+> 🧰 **v2.14.1** : sur une installation reliée, les actions du compte passent dans une tuile de 🧰 Outils (prise `outilHome`), 👤 Mon profil redevient celui du community ; Aide IA : le code source est public (CC BY-NC-SA 4.0).
+>
 > 📸 **v2.14.0 — Release de prod depuis v2.11.0 (regroupe v2.12.0 → v2.13.2)** : sessions en IndexedDB (fini le plafond ~5 Mo du localStorage, migration vérifiée) ; 🧰 Outils › 📸 Mes photos (galerie, photos d'un point supprimé rattachées ou recréées) ; export / import de profil sans les plans d'une organisation, import limité aux préférences connues ; guides reliés à doc.myktamap.fr ; écran de licence invalide avec lien vers la licence pro ; prises d'extension neutres (rubriques du compte, rubrique d'aide, outils du Mode Développeur) ; splash avant la gate déléguée ; pages d'audit réseau générées ; sonde d'intégrité des sites.
 
 > 💾 **v2.13.2 — Sessions protégées (retour testeur en prod)** : jauge « 💾 Mémoire des sessions » + alerte avant saturation du localStorage ; session d'un plan renommé plus jamais effacée en silence (question + copie en Backups) ; 📦 Backups d'une autre version du plan restaurables dans le plan ouvert ; fenêtre de mise à jour sans « reset complet » et qui ne boucle plus stockage plein ; badge de version ⏳ quand la mise à jour attend un redémarrage.
@@ -578,6 +580,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.14.1 (11/10/2026) — Tuile d'outils d'une installation reliée (branche `Karma_dev`)
+
+Petit bump avant le merge (KARMA), pour que les appareils déjà en v2.14.0 (dev, pro.myktamap.fr) reçoivent les
+changements suivants (le cache ne se renouvelle qu'au changement de `CACHE_NAME`) : prise neutre `outilHome` —
+une extension pose UNE tuile dans 🧰 Outils de l'accueil, qui ouvre une fenêtre avec la carte du compte et les actions
+du lieu « outils » ; 👤 Mon profil garde la carte et un lien « Gérer » (`js/ktaExtensions.js`, `check-extensions` :
+187 OK). Aide IA : le code source est public sur GitHub (contradiction levée). Rien ne change sans extension.
 
 #### v2.14.0 (11/10/2026) — Release de prod : sessions sans plafond de 5 Mo, galerie des photos (branche `Karma_dev`)
 
