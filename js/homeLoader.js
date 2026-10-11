@@ -2058,8 +2058,14 @@ function planRowHTML(plan) {
         // Configuration restait décochée et la rangée de l'accueil visible mais sans effet (audit 05/10/2026).
         const cbSkip = document.getElementById("loaderSkipServerPlansCb");
         if (cbSkip) cbSkip.checked = skipServer;
+        // 11/10/2026 (retour KARMA) : aucun plan dans data/ → ni la case de l'accueil, ni la section de Configuration.
+        // Exception : « Ne pas charger les plans du site » ACTIVE — la liste du site n'est alors pas lue, on ne sait
+        // pas si elle a des plans, et l'option doit rester visible pour pouvoir être désactivée.
+        const aDesPlansSite = all.some(function(p) { return p.type === "server"; });
         const rangeeFiltres = document.querySelector(".loader-plans-filters");
-        if (rangeeFiltres) rangeeFiltres.style.display = skipServer ? "none" : "";
+        if (rangeeFiltres) rangeeFiltres.style.display = (skipServer || !aDesPlansSite) ? "none" : "";
+        const sectionSite = document.getElementById("loaderSitePlansSection");
+        if (sectionSite) sectionSite.style.display = (!skipServer && !aDesPlansSite) ? "none" : "";
 
         // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
         // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).
@@ -3271,9 +3277,8 @@ function planRowHTML(plan) {
         if (skipCb) skipCb.checked = window._loaderSkipServerPlans();
         // Masque/montre le toggle home selon la pref
         const homeFilterRow = document.querySelector(".loader-plans-filters");
-        if (homeFilterRow) {
-          homeFilterRow.style.display = window._loaderSkipServerPlans() ? "none" : "";
-        }
+        if (homeFilterRow && window._loaderSkipServerPlans()) homeFilterRow.style.display = "none";
+        // (l'affichage inverse est décidé par refreshPlansList : il sait s'il existe des plans du site)
       }
       const skipServerCb = document.getElementById("loaderSkipServerPlansCb");
       if (skipServerCb) {
