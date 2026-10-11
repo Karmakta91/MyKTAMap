@@ -366,7 +366,7 @@
     try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -607,6 +607,32 @@
           PAGE_RE.test(o.page) && o.page.indexOf("..") < 0 && o.page.indexOf("//") < 0;
       }).slice(0, 10).map(function (o) { return { libelle: o.libelle.trim().slice(0, 60), page: o.page }; });
     } catch (e) { console.warn("[Extensions] outilsDev :", e); return []; }
+  }
+  // Prise d'INFORMATION « aide » (11/10/2026) : UNE rubrique fournie par une extension, ajoutée à l'Aide intégrée
+  // (js/interfaceDocs.js) juste avant « Pour aller plus loin ». ext.aide() → { titre, sections: [{ titre, html }] },
+  // lue au rendu (langue courante). Le HTML de mise en forme est admis (l'extension est du code de la page : ce
+  // nettoyage est une hygiène, pas une frontière) — sans script, cadre, formulaire, gestionnaire on* ni lien
+  // javascript:. Erreur ou forme inattendue = rien ; sans extension, l'aide reste celle du community.
+  function _nettoyerHtml(h) {
+    return String(h)
+      .replace(/<(script|style|iframe|object|embed|form)\b[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<\/?(script|style|iframe|object|embed|form|link|meta|base)\b[^>]*>/gi, "")
+      .replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+      .replace(/(href|src)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, "$1=\"#\"");
+  }
+  function aide() {
+    const ext = _prise("aide");
+    if (!ext || typeof ext.aide !== "function") return null;
+    try {
+      const r = ext.aide();
+      if (!r || typeof r.titre !== "string" || !r.titre.trim() || !Array.isArray(r.sections)) return null;
+      const sections = r.sections.filter(function (s) {
+        return s && typeof s.titre === "string" && s.titre.trim() && typeof s.html === "string";
+      }).slice(0, 20).map(function (s, i) {
+        return { slug: "ext-" + i, titre: s.titre.trim().slice(0, 80), raccourci: "", html: _nettoyerHtml(s.html) };
+      });
+      return sections.length ? { titre: r.titre.trim().slice(0, 60), sections: sections } : null;
+    } catch (e) { console.warn("[Extensions] aide :", e); return null; }
   }
   function actionsCompte(lieu) {
     const ext = _prise("actionsCompte");
@@ -1205,6 +1231,7 @@
     register: register,
     aPrise: aPrise,
     outilsDev: outilsDev,
+    aide: aide,
     signaler: signaler,
     chargerModules: chargerModules,
     modulesEtat: modulesEtat,

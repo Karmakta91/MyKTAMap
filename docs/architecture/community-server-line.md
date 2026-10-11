@@ -190,6 +190,12 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   relatif, mêmes règles que `serverConnection.transparence`), ouverte dans un nouvel onglet ; libellé en texte,
   10 au plus. Une extension déclarée après l'accueil fait redessiner la section (événement
   `mktm:extensions-changees`, émis par `register`). Sans extension, rien n'apparaît.
+- **Rubrique d'aide** (11/10/2026) : la prise `aide() → { titre, sections: [{ titre, html }] }` ajoute UNE rubrique
+  à l'Aide intégrée, juste avant « Pour aller plus loin » (ex. la sécurité et les clés du pro). Lue au rendu (langue
+  courante), 20 sections au plus ; HTML de mise en forme admis mais nettoyé (ni script, cadre, formulaire,
+  gestionnaire `on*`, ni lien `javascript:` — hygiène, l'extension étant du code de la page) ; recherche du sommaire
+  comprise. Erreur ou forme inattendue = rien ; sans extension, l'aide reste celle du community
+  (`scripts/check-extensions.js`).
 - **Changements reçus** : `appliquerChangements(lot)` applique au plan **ouvert** des objets et traces de
   suppression venus du serveur, par la même fusion que les sessions (`KtaUid.fusionnerCalques` : par `uid`, le
   plus récent gagne, une trace postérieure l'emporte). L'itinéraire en cours n'est jamais touché ; les objets

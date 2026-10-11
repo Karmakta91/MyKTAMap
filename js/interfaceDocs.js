@@ -1057,9 +1057,28 @@ function _aideRendreHub(corps) {
   cheatRow.dataset.aideTitre = window.ktaDocNormaliser(libCheat);
   hub.appendChild(cheatRow);
 
+  // Rubrique fournie par une extension (prise « aide », ex. sécurité du pro) : posée avant « Pour aller plus
+  // loin ». Sans extension, KtaExtensions.aide() rend null et rien n'apparaît.
+  function ajouterRubriqueExtension() {
+    const ext = (window.KtaExtensions && typeof window.KtaExtensions.aide === "function")
+      ? window.KtaExtensions.aide() : null;
+    if (!ext) return;
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = ext.titre;
+    hub.appendChild(ct);
+    ext.sections.forEach(function(s) {
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
+      r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
+      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      hub.appendChild(r);
+    });
+  }
+
   // Catégories + lignes
   const used = {};
   AIDE_CATEGORIES.forEach(function(cat) {
+    if (cat.cle === "plus-loin") ajouterRubriqueExtension();
     const rows = [];
     cat.slugs.forEach(function(slug) {
       if (AIDE_SECTIONS.indexOf(slug) < 0) return;   // slug inconnu : ignoré

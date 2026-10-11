@@ -612,7 +612,27 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
     const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
-      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos"]/.test(EXT));
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide"]/.test(EXT));
+
+    // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
+    const { K: A0 } = nouveauContexte(null);
+    t("aide : sans extension → null (l'aide reste celle du community)", A0.aide() === null);
+    const { K: A1 } = nouveauContexte(null);
+    A1.register({ nom: "a1", apiVersion: 1, aide: () => ({ titre: " 🔐 Sécurité ", sections: [
+      { titre: "Clés", html: "<p onclick=\"x()\">a</p><script>alert(1)</script><a href=\"javascript:x()\">l</a>" },
+      { titre: "", html: "<p>vide</p>" }, null, { titre: "Sans corps" }] }) });
+    const a1 = A1.aide();
+    t("aide : rubrique lue, entrées invalides écartées", a1 && a1.titre === "🔐 Sécurité" && a1.sections.length === 1 &&
+      a1.sections[0].slug === "ext-0");
+    t("🩸 aide : ni script, ni gestionnaire on*, ni lien javascript:", a1 && !/script|onclick|javascript:/i.test(a1.sections[0].html) &&
+      /<p>a<\/p>/.test(a1.sections[0].html));
+    const { K: A2 } = nouveauContexte(null);
+    A2.register({ nom: "a2", apiVersion: 1, aide: () => { throw new Error("x"); } });
+    const { K: A3 } = nouveauContexte(null);
+    A3.register({ nom: "a3", apiVersion: 1, aide: () => ({ titre: "T", sections: "pas une liste" }) });
+    t("aide : extension en erreur ou forme inattendue → null", A2.aide() === null && A3.aide() === null);
+    t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
+      /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
     t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
       /K\.aPrise\("photos"\)\) \{\s*K\.photosCompleterPoint\(/.test(U) && /!K\.aPrise\("photos"\)\) return;/.test(ED));
     t("🩸 restorePhoto sans opts.source = dépôt d'une EXTENSION (source « extension » : pas de renvoi au serveur)",
