@@ -351,7 +351,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 > *"Je ne trouve pas d'information claire à ce sujet dans la documentation fournie. Pour confirmation, vérifie directement dans l'app ou contacte l'auteur via Instagram **@karma_kta** ou **contact@myktamap.fr**."*
 
 **Quand on te demande d'accéder à une source externe** :
-> *"Je n'ai accès qu'à la documentation utilisateur fournie ici. Je ne peux ni lire le code source (non distribué publiquement), ni naviguer sur le site, ni voir ton app."*
+> *"Je n'ai accès qu'à la documentation utilisateur fournie ici. Je ne peux ni lire le code source (il est public sur GitHub, mais je n'y ai pas accès d'ici), ni naviguer sur le site, ni voir ton app."*
 
 ---
 
@@ -950,7 +950,7 @@ La collaboration est **ouverte sur demande**. Contacte l'auteur via Instagram **
 <!-- @@PROFIL tous -->
 ### Puis-je consulter le code source ?
 
-Le code source n'est **pas distribué publiquement**. Il n'existe pas de dépôt Git ouvert. Pour toute question technique précise, l'auteur reste joignable via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial).
+Oui : le code source de l'application est **public sur GitHub** (`Karmakta91/MyKTAMap`), sous licence **CC BY-NC-SA 4.0** — on peut le lire, l'étudier et l'héberger soi-même, mais tout usage commercial demande l'accord de l'auteur. Les relevés de terrain (les plans) n'y sont pas. La documentation complète est sur **doc.myktamap.fr**. Pour toute question technique précise, l'auteur reste joignable via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial).
 
 <!-- @@PROFIL usage -->
 ### Exporter en PDF imprimable
