@@ -816,16 +816,16 @@ El historial se **olvida** al recargar la página o cambiar de plano, y una nuev
 
 ---
 
-## 📐 Medición de distancia y ⬛ de superficie
+## 📐 Medición de distancia y ♦️ de superficie
 
 En el grupo **📐 Medición**:
 
 - **📐 Distancia** — toca puntos; el total aparece abajo a la izquierda, con la longitud de cada segmento y los ángulos.
-- **⬛ Superficie** — toca al menos 3 puntos; el área aparece en m², y en hectáreas a partir de 10 000 m².
+- **♦️ Superficie** — toca al menos 3 puntos; el área aparece en m², y en hectáreas a partir de 10 000 m².
 
 Las dos mediciones conviven: pasar de una a otra no las borra, y tu siguiente toque va a la que está encendida. Su precisión depende de la escala del plano (calibrada en ⚙️ Ajustes). Se conservan con tu sesión.
 
-**❌ Borrar** ofrece **↩️ Último punto** (en la medición encendida), **🗑️ Toda la distancia 📐**, **🗑️ Toda la superficie ⬛** o **Borrar todo (📐 + ⬛)**.
+**❌ Borrar** ofrece **↩️ Último punto** (en la medición encendida), **🗑️ Toda la distancia 📐**, **🗑️ Toda la superficie ♦️** o **Borrar todo (📐 + ♦️)**.
 
 ---
 

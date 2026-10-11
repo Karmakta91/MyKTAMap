@@ -816,16 +816,16 @@ L'historique est **oublié** quand tu recharges la page ou changes de plan, et u
 
 ---
 
-## 📐 Mesure de distance et ⬛ de surface
+## 📐 Mesure de distance et ♦️ de surface
 
 Dans le groupe **📐 Mesure** :
 
 - **📐 Distance** — tape des points ; le total s'affiche en bas à gauche, avec la longueur de chaque segment et les angles.
-- **⬛ Surface** — tape au moins 3 points ; l'aire s'affiche en m², puis en hectares au-delà de 10 000 m².
+- **♦️ Surface** — tape au moins 3 points ; l'aire s'affiche en m², puis en hectares au-delà de 10 000 m².
 
 Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et le prochain tap va à celle qui est allumée. Leur précision dépend de l'échelle du plan (calibrée dans ⚙️ Réglages). Elles sont gardées avec ta session.
 
-**❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ⬛** ou **Tout effacer (📐 + ⬛)**.
+**❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ♦️** ou **Tout effacer (📐 + ♦️)**.
 
 ---
 

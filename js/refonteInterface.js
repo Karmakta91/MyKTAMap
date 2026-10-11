@@ -753,9 +753,9 @@
     const mesureIconEl = mesureEl ? mesureEl.querySelector(".kta-refonte-stat-icon") : null;
     if (valD && valS) {
       if (mesureIconEl) mesureIconEl.textContent = "📐";
-      _setStat("kta-refonte-stat-mesure", valD + " · ⬛ " + valS);
+      _setStat("kta-refonte-stat-mesure", valD + " · ♦️ " + valS);
     } else if (valS) {
-      if (mesureIconEl) mesureIconEl.textContent = "⬛";
+      if (mesureIconEl) mesureIconEl.textContent = "♦️";
       _setStat("kta-refonte-stat-mesure", valS);
     } else if (valD) {
       if (mesureIconEl) mesureIconEl.textContent = "📐";
@@ -1315,7 +1315,7 @@
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">⬛ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
+      h += '<span class="kta-refonte-stats-label">♦️ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
       h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.surface.points }) + ')</span>';
       h += '</div>';
     }
@@ -1414,7 +1414,7 @@
       const surfTxt = (typeof window.formatSurface === "function")
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
-      lines.push("## ⬛ " + window.I18n.t("ui.refonte.export_mesure_surface_titre"));
+      lines.push("## ♦️ " + window.I18n.t("ui.refonte.export_mesure_surface_titre"));
       lines.push(window.I18n.t("ui.refonte.export_mesure_surface", { surf: surfTxt, n: stats.mesure.surface.points }));
       lines.push("");
     }
@@ -1730,7 +1730,7 @@
           ? window.formatSurface(surfM2, 1)
           : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
         html += '<li>' +
-          '<strong>⬛ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
+          '<strong>♦️ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
           '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + window.I18n.t("ui.refonte.label_n_vertices", { n: mesureSurfDetail.length }) + ')</span>' +
         '</li>';
       }

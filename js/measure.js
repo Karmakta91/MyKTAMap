@@ -335,13 +335,13 @@ function _afficherMesureValeur() {
       ? window.formatSurface(surfM2, 1)
       : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
     const cls = (_activeMode === "surface") ? "kta-measure-line kta-measure-active-line" : "kta-measure-line";
-    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">⬛</span>' + window.I18n.t("measure.label.surface", { val: txtS }) + '</div>';
+    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">♦️</span>' + window.I18n.t("measure.label.surface", { val: txtS }) + '</div>';
   }
 
   // Aucune mesure en cours → libellé invitant à cliquer selon le mode actif
   if (!hasDistance && !hasSurface) {
     if (window.modeMesure) {
-      const icon = (_activeMode === "surface") ? "⬛" : "📐";
+      const icon = (_activeMode === "surface") ? "♦️" : "📐";
       const txt  = (_activeMode === "surface")
         ? window.I18n.t("measure.hint.surface")
         : window.I18n.t("measure.hint.distance");

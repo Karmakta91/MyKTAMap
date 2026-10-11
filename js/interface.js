@@ -2844,11 +2844,11 @@ _setGroupeModeActif("tracker", isTracking, null);
               _setGroupeModeActif("mesure", false);
             }
           };
-          _setGroupeModeActif("mesure", true, "📐");
+          _setGroupeModeActif("mesure", true);   // 📐 fixe, surligné
         }
       },
       {
-        icone: "⬛",
+        icone: "♦️",
         titre: window.I18n.t("ui.subaction.mesureSurface"),
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
@@ -2876,7 +2876,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           // Reflet sur le bouton principal du groupe pour qu'on voie d'un
           // coup d'œil qu'on est en mode surface (au lieu de l'icône 📐 par
           // défaut du groupe Mesure).
-          _setGroupeModeActif("mesure", true, "⬛");
+          _setGroupeModeActif("mesure", true);   // 📐 fixe, surligné (11/10/2026 : plus de reflet)
           if (window.OOMGuard && window.OOMGuard.showToast) {
             window.OOMGuard.showToast(
               window.I18n.t("ui.toast.surfaceMode"),

@@ -816,16 +816,16 @@ The history is **forgotten** when you reload the page or change map, and a new a
 
 ---
 
-## 📐 Distance and ⬛ area measurement
+## 📐 Distance and ♦️ area measurement
 
 In the **📐 Measurement** group:
 
 - **📐 Distance** — tap points; the total appears at the bottom left, with the length of each segment and the angles.
-- **⬛ Surface** — tap at least 3 points; the area appears in m², then in hectares beyond 10,000 m².
+- **♦️ Surface** — tap at least 3 points; the area appears in m², then in hectares beyond 10,000 m².
 
 The two measurements coexist: switching from one to the other does not erase them, and your next tap goes to the one that is lit. Their accuracy depends on the map's scale (calibrated in ⚙️ Settings). They are kept with your session.
 
-**❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ⬛** or **Erase everything (📐 + ⬛)**.
+**❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
 
 ---
 
