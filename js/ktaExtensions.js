@@ -758,7 +758,7 @@
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
       const outil = lieu === "profil" ? outilHome() : null;
       if (outil) {
-        const lien = el("button", "kta-ext-compte-lien kta-ext-compte-gerer", "Gérer › " + outil.libelle);
+        const lien = el("button", "kta-ext-compte-gerer", outil.libelle + "  ›");
         lien.type = "button";
         lien.addEventListener("click", ouvrirOutilHome);
         carte.appendChild(lien);

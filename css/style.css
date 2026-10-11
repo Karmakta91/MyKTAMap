@@ -22663,7 +22663,12 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
   font-size: 15px; cursor: pointer; }
 .kta-ext-compte-fin:hover { border-color: #8cb4ff; color: #e8eaf0; }
 /* Lien « Gérer › <tuile d'outils> » sur la carte du compte (Mon profil), et fenêtre de la tuile (🧰 Outils). */
-.kta-ext-compte-gerer { display: block; margin-top: 6px; text-align: left; }
+/* Un vrai bouton, pas un lien souligné (retour KARMA du 11/10/2026 : « lien hypertexte pas beau »). */
+.kta-ext-compte-gerer { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 12px;
+  border: 1px solid rgba(140, 180, 255, 0.35); border-radius: 999px; background: rgba(140, 180, 255, 0.1);
+  color: #c8d0e0; text-decoration: none; font-size: 14px; font-weight: 600; }
+.kta-ext-compte-gerer:hover { border-color: #8cb4ff; color: #e8eaf0; }
+html.kta-theme-light .kta-ext-compte-gerer { color: #1a1f2e; background: rgba(140, 180, 255, 0.15); }
 .kta-ext-outil-boite { max-width: 520px; width: calc(100% - 32px); }
 html.kta-theme-light .kta-ext-compte-pseudo { color: #1a1f2e; }
 html.kta-theme-light .kta-ext-compte-etat,
