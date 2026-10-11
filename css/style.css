@@ -814,20 +814,33 @@ html.kta-theme-light .kta-readme-modal-close:hover {
    BOUTONS GÉNÉRIQUES
    ============================================== */
 
+/* 🐛 12/10/2026 (capture KARMA, iPhone, Réglages : « Calibrer », « Reset », « Ouvrir le géoréférencement ») :
+   `.kta-btn` seul n'avait ni fond ni couleur → bouton natif du navigateur, blanc à texte bleu, hors charte.
+   Défaut = apparence discrète de la charte (celle de -ghost) ; les variantes, définies après, l'emportent. */
 .kta-btn {
   padding: 7px 14px;
   border-radius: 7px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border: none;
+  background: rgba(255,255,255,0.07);
+  color: #c0c8d8;
+  border: 1px solid rgba(255,255,255,0.12);
   transition: opacity 0.15s, background 0.15s;
 }
 .kta-btn:hover { opacity: 0.85; }
+/* :where() = priorité nulle : toute variante (primary, danger, classes du Secours…) l'emporte en thème clair. */
+:where(html.kta-theme-light) .kta-btn {
+  background: rgba(0, 0, 0, 0.04);
+  color: #3a4458;
+  border-color: rgba(0, 0, 0, 0.18);
+}
 
 .kta-btn-primary {
   background: #1f6feb;
   color: #fff;
+  border: none;
 }
 
 .kta-btn-ghost {
