@@ -653,39 +653,46 @@ function ouvrirImportSession(fichierInitial) {
 
     // 🆕 v1.9.3-B1d : restauration des photos en IDB AVANT de pousser
     // editorPoints (= avant que la grille puisse interroger IDB).
-    // Stratégie : on purge TOUTES les photos du plan courant en IDB,
-    // puis on injecte celles du ZIP. C'est le comportement attendu
-    // (= un import est un remplacement, pas un merge — cohérent avec
-    // points/roads/zones qui sont aussi reset+set).
+    // 📸 12/10/2026 — FUSION, plus de purge. Avant : toutes les photos du plan
+    // étaient effacées puis remplacées par celles du ZIP — y compris les photos
+    // « sans point » gardées pour récupération, sans confirmation (règle
+    // produit : une photo n'est jamais effacée sans confirmation). Désormais
+    // les photos du fichier s'AJOUTENT ; une photo déjà en base (même id) est
+    // gardée telle quelle (`siAbsente` : son rattachement ou sa fiche peuvent
+    // être plus récents que l'export) ; rien d'existant n'est supprimé. Une
+    // photo dont le point n'est plus dans la session importée apparaît « sans
+    // point » dans 📸 Mes photos — exactement comme après la suppression d'un
+    // point. → Promise<{ ajoutees, deja, echecs }>.
     function _restorerPhotos() {
+      const bilan = { ajoutees: 0, deja: 0, echecs: 0 };
       if (!_pendingPhotosToRestore || _pendingPhotosToRestore.length === 0) {
-        return Promise.resolve(0);
+        return Promise.resolve(bilan);
       }
       if (!window.MyKTAMapPhotos) {
         console.warn("[Import] MyKTAMapPhotos indispo — photos ignorées");
-        return Promise.resolve(0);
+        return Promise.resolve(bilan);
       }
       const planId = window._currentLoadedPlanId || "default";
-      return window.MyKTAMapPhotos.deletePhotosForPlan(planId).then(function() {
-        const promises = _pendingPhotosToRestore.map(function(p) {
-          return window.MyKTAMapPhotos.restorePhoto({
-            id:      p.id,
-            planId:  planId,
-            pointId: String(p.pointId),
-            blob:    p.blob,
-            mime:    p.mime,
-            size:    p.size
-          }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
-        });
-        return Promise.all(promises).then(function() {
-          console.log("[Import] Photos restaurées :", _pendingPhotosToRestore.length);
-          return _pendingPhotosToRestore.length;
-        });
+      const promises = _pendingPhotosToRestore.map(function(p) {
+        return window.MyKTAMapPhotos.restorePhoto({
+          id:      p.id,
+          planId:  planId,
+          pointId: String(p.pointId == null ? "" : p.pointId),
+          blob:    p.blob,
+          mime:    p.mime,
+          size:    p.size
+        }, { source: "import", siAbsente: true })   // 📣 restauration de l'app (≠ dépôt d'une extension)
+          .then(function(id) { if (id) bilan.ajoutees++; else bilan.deja++; })
+          .catch(function(e) { bilan.echecs++; console.warn("[Import] photo non restaurée :", p.id, e); });
+      });
+      return Promise.all(promises).then(function() {
+        console.log("[Import] Photos fusionnées :", bilan);
+        return bilan;
       });
     }
 
     // 🚨 B3 (audit ergonomie 13/09/2026) : un import REMPLACE tout (points,
-    // tracés, zones, structures, photos purgées en base) — sans snapshot,
+    // tracés, zones, structures, photos AJOUTÉES depuis le 12/10/2026) — sans snapshot,
     // alors que sessionBackups.js listait « import qui écrase » parmi ses
     // déclencheurs et que l'UI le promettait. Snapshot ATTENDU avant tout.
     let _snapshotAvantImport = false;
@@ -696,7 +703,7 @@ function ouvrirImportSession(fichierInitial) {
     _snapAvant.then(function(snap) {
       _snapshotAvantImport = !!snap;
       return _restorerPhotos();
-    }).then(function() {
+    }).then(function(bilanPhotos) {
       try {
         _preparerIdentitesImport(dataParsee);   // 🆔 v2.2.0
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
@@ -797,6 +804,15 @@ function ouvrirImportSession(fichierInitial) {
         fermer();
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
+        }
+        // 📸 Bilan de la fusion des photos (rien d'existant n'a été effacé).
+        const _bp = bilanPhotos || { ajoutees: 0, deja: 0, echecs: 0 };
+        if ((_bp.ajoutees || _bp.deja || _bp.echecs)
+            && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t("impexp.session.toastPhotos",
+            { n: _bp.ajoutees, deja: _bp.deja }) +
+            (_bp.echecs ? " " + window.I18n.t("impexp.session.toastPhotosEchecs", { n: _bp.echecs }) : ""),
+            _bp.echecs ? "warn" : "info");
         }
         if (_calquesRemis && _calquesRemis.rapatries.length
             && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {

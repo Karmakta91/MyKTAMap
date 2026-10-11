@@ -47,7 +47,7 @@
  *            la renvoyer à son serveur ;
  *            "import" : restauration par l'app (session, plan ZIP, profil).
  *   🩸 Les PURGES LOCALES n'émettent RIEN : deletePhotosForPlan (plan retiré
- *   de l'appareil, déconnexion, réimport de session) et clearAll
+ *   de l'appareil, déconnexion) et clearAll
  *   (réinitialisation, import de profil). Ce n'est pas l'utilisateur qui
  *   supprime ses photos : une extension qui propagerait ces suppressions
  *   effacerait celles de l'équipe.
@@ -83,10 +83,12 @@
  *   - listerPlan(planId)   → Promise<[{ id, planId, pointId, mime, size, createdAt, fiche }]> (SANS blob)
  *   - listerTout()         → idem, toutes les photos de l'appareil
  *   - rattacher(photoIds, planId, pointId, fiche) → Promise<number> (pointId + fiche)
+ *   - placesPourPoint(planId, { uid, id }, photoIds) → Promise<{ ok, deja, ajout, max, libres }>
  *   - supprimerPhotos(photoIds)             → Promise<number> (geste utilisateur)
  *   - ficheDepuisPoint(point)               → fiche | null
  *   - majFichesPoints(planId, points)       → Promise<number> (fiches des photos de ces points)
  *   - restorePhoto(record, opts)            → opts.source : "extension" (défaut) | "import"
+ *     opts.siAbsente : fusion, une photo déjà en base n'est pas réécrite (→ null)
  *
  * Toutes les fonctions retournent des Promises (asynchrones). Gestion
  * gracieuse des erreurs : on log warn + return null/false/array vide
@@ -599,8 +601,8 @@
     });
   }
 
-  // 🩸 PURGE LOCALE (plan retiré de l'appareil, déconnexion, réimport de
-  // session) : AUCUN événement — cf en-tête.
+  // 🩸 PURGE LOCALE (plan retiré de l'appareil, déconnexion) : AUCUN
+  // événement — cf en-tête. Le réimport de session ne purge plus (fusion).
   function deletePhotosForPlan(planId) {
     return getAllPhotosForPlan(planId).then(function(arr) {
       if (arr.length === 0) return 0;
@@ -642,7 +644,7 @@
   // 📣 opts.source (10/10/2026) : "extension" PAR DÉFAUT — c'est le chemin par
   // lequel une extension dépose une photo reçue de son serveur, et elle ne doit
   // pas la renvoyer. Les restaurations de l'app (session, plan ZIP, profil)
-  // passent { source: "import" }.
+  // passent { source: "import" }. Le réimport de session ajoute { siAbsente }.
   function restorePhoto(record, opts) {
     if (!record || !record.id || !record.planId || !record.pointId || !record.blob) {
       return Promise.reject(new Error("restorePhoto : record incomplet"));
@@ -660,6 +662,28 @@
     };
     const fiche = _fiche(record.fiche);
     if (fiche) rec.fiche = fiche;
+    // 📸 opts.siAbsente (12/10/2026, réimport de session = FUSION) : une photo
+    // déjà en base (même id, quel que soit son plan) n'est PAS réécrite — elle
+    // a pu être rattachée ou recevoir une fiche plus récente depuis l'export.
+    // Lecture et écriture dans les rappels : une seule transaction.
+    // → Promise<id> si écrite, Promise<null> si déjà présente (aucun événement).
+    if (opts && opts.siAbsente) {
+      return _tx("readwrite", function(store) {
+        return new Promise(function(resolve, reject) {
+          const g = store.get(rec.id);
+          g.onsuccess = function() {
+            if (g.result) { resolve(null); return; }
+            const put = store.put(rec);
+            put.onsuccess = function() { resolve(rec.id); };
+            put.onerror = function() { reject(put.error); };
+          };
+          g.onerror = function() { reject(g.error); };
+        });
+      }).then(function(id) {
+        if (id) _emettre(rec.planId, [id], "ajout", source);
+        return id;
+      });
+    }
     return _tx("readwrite", function(store) {
       return _reqPromise(store.put(rec)).then(function() {
         return rec.id;
@@ -818,6 +842,26 @@
     }).catch(function(e) {
       console.warn("[Photos] rattacher erreur :", e);
       return 0;
+    });
+  }
+
+  // 📸 Limite au rattachement (12/10/2026) : le point `ref` ({ uid, id }) peut-il
+  // recevoir ces photos sans dépasser MAX_PHOTOS_PER_POINT ? Lecture double
+  // (uid, puis nom) comme la bulle. Les photos déjà sur ce point ne comptent
+  // pas deux fois. Ne refuse que l'AJOUT : un point déjà au-delà (photos
+  // d'avant la limite, restauration) garde tout. → Promise<{ ok, deja, ajout,
+  // max, libres }>. L'appelant (galerie) refuse et explique si !ok.
+  function placesPourPoint(planId, ref, photoIds) {
+    const ids = (Array.isArray(photoIds) ? photoIds : []).filter(Boolean).map(String);
+    return getPhotosForPointRef(planId, ref).then(function(deja) {
+      const dejaIds = new Set(deja.map(function(r) { return String(r.id); }));
+      const ajout = ids.filter(function(id) { return !dejaIds.has(id); }).length;
+      const n = dejaIds.size;
+      return {
+        ok: ajout === 0 || n + ajout <= MAX_PHOTOS_PER_POINT,
+        deja: n, ajout: ajout, max: MAX_PHOTOS_PER_POINT,
+        libres: Math.max(0, MAX_PHOTOS_PER_POINT - n)
+      };
     });
   }
 
@@ -1019,6 +1063,7 @@
     listerPlan:              listerPlan,
     listerTout:              listerTout,
     rattacher:               rattacher,
+    placesPourPoint:         placesPourPoint,   // 📸 limite de 5 au rattachement (12/10/2026)
     supprimerPhotos:         supprimerPhotos,
     ficheDepuisPoint:        ficheDepuisPoint,
     majFichesPoints:         majFichesPoints,

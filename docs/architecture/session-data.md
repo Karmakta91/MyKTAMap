@@ -128,8 +128,10 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 index `by_plan` et `by_plan_point` ([planId, pointId]). Enregistrement : `{ id, planId, pointId, blob, mime, size,
 createdAt, meta, fiche? }`. Compression à l'ajout (canvas → JPEG, 1920 px max côté long, q 0.85 ; 0.92 sans resize
 pour une petite photo) : toute photo est ré-encodée, l'EXIF (GPS compris) ne survit pas. **5 photos max par point**
-à l'ajout (`MAX_PHOTOS_PER_POINT`) ; une restauration ou un rattachement ne le vérifient pas (rien n'est refusé
-de ce qui existe déjà).
+(`MAX_PHOTOS_PER_POINT`) à l'ajout et au **rattachement** depuis la galerie (`placesPourPoint(planId, { uid, id },
+photoIds)`, lecture double uid/nom, une photo déjà sur le point ne compte pas deux fois) : au-delà, refus expliqué
+(`ktaAlerte`, nombre de photos et places libres), rien n'est rattaché. Seul l'**ajout** est refusé : un point déjà
+au-delà (photos d'avant la limite) garde tout. Une restauration (session, plan ZIP, profil) ne vérifie pas la limite.
 
 **Clé du point** (`pointId`) = l'**uid** du point (`js/ktaUid.js`), son nom pour les photos d'avant la v2.3.0.
 Lecture double `getPhotosForPointRef(planId, { uid, id })` ; migration douce nom → uid à l'ouverture d'un plan
@@ -152,9 +154,12 @@ ObjectURL suivies (`window._ktaAllPhotoUrls`) et révoquées à la fermeture / a
 **Supprimer un point ne supprime PAS ses photos** (décision KARMA 10/10/2026 : récupération, pas nettoyage ;
 gardées indéfiniment, jamais effacées sans confirmation). ⏪ Annuler la suppression rend le point avec son uid :
 ses photos le retrouvent sans rien réécrire. Restent effacées : la suppression d'une photo dans la fiche du point,
-la suppression d'un plan (`PlanRegistry` purge ses photos), **💥 Tout réinitialiser**, le **réimport d'une session
-ZIP** (remplacement : photos du plan effacées puis restaurées depuis le fichier) et l'import de profil en mode
-remplacement (sauf celles des plans ☁️ d'une organisation, cf ci-dessous). L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
+la suppression d'un plan (`PlanRegistry` purge ses photos), **💥 Tout réinitialiser** et l'import de profil en mode
+remplacement (sauf celles des plans ☁️ d'une organisation, cf ci-dessous). Le **réimport d'une session ZIP** est une
+**fusion** (12/10/2026) : les photos du fichier s'ajoutent (`restorePhoto(…, { source: "import", siAbsente: true })`),
+une photo déjà en base (même id) est gardée telle quelle (son rattachement ou sa fiche peuvent être plus récents),
+rien n'est supprimé ; un toast fait le bilan (ajoutées, déjà présentes, illisibles). Une photo dont le point n'est plus
+dans la session importée passe « sans point », comme après la suppression d'un point. L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
 disparues de la nouvelle version (v2.5.0) — jamais une photo prise par l'utilisateur.
 
 **🧰 Outils > 📸 Mes photos** — `js/photosGalerie.js` → `window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId),
@@ -167,7 +172,8 @@ les plans ☁️ sans photo locale), puis par plan : vignettes groupées par poi
   🩸 Points non lisibles d'ici (archive absente, serveur injoignable, plan ☁️ pas encore ouvert, plan absent) →
   **🔎 à vérifier à l'ouverture du plan**, jamais « sans point » par défaut.
 - Actions d'un point disparu : **🔗 Rattacher** (`rattacher(photoIds, planId, pointId, fiche)` ; liste filtrable
-  des points, ou **🗺️ Choisir sur la carte** si le plan est ouvert : on ouvre la bulle du point voulu) ;
+  des points, ou **🗺️ Choisir sur la carte** si le plan est ouvert : on ouvre la bulle du point voulu ; refusé au-delà
+  de 5 photos sur le point visé, cf limite ci-dessus) ;
   **♻️ Recréer le point** (seulement avec une fiche : position, niveau, type, nom ; **même uid** si la clé en est un,
   donc photos et serveur le retrouvent sans changer de clé ; entrée d'historique ⏪ ; plan fermé → proposé à
   l'ouverture, la recréation se fait quand le plan a fini de charger) ; **💾 Enregistrer** (ZIP
@@ -181,10 +187,11 @@ les plans ☁️ sans photo locale), puis par plan : vignettes groupées par poi
 **Événement `mktm:photos-changees`** et prise d'extension `photos` (installation reliée) : contrat dans
 `community-server-line.md` §3. Toute écriture voulue émet (`ajout`, `suppression`, `rattachement`, `fiche`) ;
 les purges locales (`deletePhotosForPlan`, `clearAll`) n'émettent rien ; `restorePhoto(record, { source })` :
-`"extension"` par défaut, `"import"` pour les restaurations de l'app.
+`"extension"` par défaut, `"import"` pour les restaurations de l'app ; `siAbsente: true` n'écrit pas une photo
+déjà en base (→ `null`, aucun événement).
 
 **Exports** (rétrocompat : sans photo cochée → format sans photos) : Session Full / Avancé / Conversion → ZIP
-`session.json` + `photos/` ; réimport = remplacement (ci-dessus). Format commun :
+`session.json` + `photos/` ; réimport = fusion des photos (ci-dessus). Format commun :
 ```
 photos/
 ├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file}}}

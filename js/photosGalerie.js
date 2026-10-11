@@ -549,8 +549,25 @@
     setTimeout(function () { try { filtre.focus(); } catch (e) { /* rien */ } }, 30);
   }
 
+  // 📸 Limite de 5 photos par point, vérifiée AVANT de rattacher (12/10/2026) :
+  // au-delà, refus expliqué — rien n'est rattaché, rien n'est supprimé, le
+  // groupe reste « sans point ». Un point déjà au-delà (photos d'avant la
+  // limite) garde tout : seul l'ajout est refusé. → Promise<boolean>.
+  async function _placeSurPoint(planId, g, p) {
+    const P = _P();
+    if (!P || typeof P.placesPourPoint !== "function") return true;
+    let r;
+    try { r = await P.placesPourPoint(planId, { uid: p.uid, id: p.id }, g.photos.map(function (x) { return x.id; })); }
+    catch (e) { console.warn("[Photos] places du point illisibles :", e); return true; }
+    if (r.ok) return true;
+    await window.ktaAlerte(_t("photosgal.limite.refus",
+      { nom: p.nom || p.id, max: r.max, deja: r.deja, ajout: r.ajout, libres: r.libres }));
+    return false;
+  }
+
   async function _rattacherA(planId, g, p) {
     const P = _P();
+    if (!(await _placeSurPoint(planId, g, p))) return;
     const n = await P.rattacher(g.photos.map(function (x) { return x.id; }), planId, p.uid || p.id, P.ficheDepuisPoint(p));
     _toast(_t("photosgal.rattache", { n: n, nom: p.nom || p.id }), "info");
     if (_corps()) _vuePlan(planId);
@@ -583,7 +600,10 @@
       const x = ll.lng, y = imgH - ll.lat;
       const p = _pointsVivants().find(function (q) { return Math.abs(q.x - x) < 0.01 && Math.abs(q.y - y) < 0.01 && (q.uid || q.id); });
       if (!p) { _toast(_t("photosgal.carte.pasUnPoint"), "warn"); return; }
-      window.ktaConfirm(_esc(_t("photosgal.carte.confirmer", { n: g.photos.length, nom: p.nom || p.id }))).then(function (ok) {
+      _placeSurPoint(planId, g, p).then(function (place) {
+        if (!place) return false;
+        return window.ktaConfirm(_esc(_t("photosgal.carte.confirmer", { n: g.photos.length, nom: p.nom || p.id })));
+      }).then(function (ok) {
         if (!ok) return;
         const P = _P();
         P.rattacher(g.photos.map(function (q) { return q.id; }), planId, p.uid || p.id, P.ficheDepuisPoint(p)).then(function (n) {

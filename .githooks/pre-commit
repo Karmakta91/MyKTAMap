@@ -604,3 +604,9 @@ node scripts/check-session-store.js || exit $?
 # sont le rendu de leurs .md (scripts/audit-html.js). Refuse un .md modifié sans régénérer, ou un .html
 # retouché à la main (lu dans l'index) ; vérifie que audit.css / audit-pied.js sont précachés. BLOQUANT.
 node scripts/check-audit-html.js || exit $?
+
+# 📸 12/10/2026 — Photos : le réimport d'une session ZIP effaçait TOUTES les photos
+# du plan (photos « sans point » comprises, sans confirmation) ; le rattachement de
+# la galerie ignorait la limite de 5 par point. Le VRAI photos.js tourne sur une
+# fausse IndexedDB (fusion siAbsente, places du point) + câblage import/galerie. BLOQUANT.
+node scripts/check-photos.js || exit $?

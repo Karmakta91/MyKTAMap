@@ -681,8 +681,9 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 purges LOCALES (plan retiré, déconnexion, réinitialisation) : AUCUN événement de suppression",
       purge.length > 0 && !/_emettre/.test(purge) && vide.length > 0 && !/_emettre/.test(vide));
     const RESTAURE = ["js/main.js", "js/interfaceImportExport.js", "js/profileExportImport.js"];
+    // (d'autres options peuvent suivre : `siAbsente: true` pour la fusion du réimport de session, 12/10/2026)
     t("restaurations de l'app marquées source « import » (session, plan ZIP, profil)",
-      RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import" \}\)/.test(lire(f))));
+      RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import"(?:, \w+: \w+)* \}\)/.test(lire(f))));
   }
 
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════

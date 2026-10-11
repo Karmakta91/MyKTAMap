@@ -37,13 +37,9 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 
 ## 📸 Photos (galerie « Mes photos » livrée le 10/10/2026) — reliquats
 
-- 🟠 **Le réimport d'une session ZIP efface TOUTES les photos du plan**, y compris celles sans point
-  (`interface.js > _restorerPhotos`, comportement historique) — contredit « jamais effacé sans confirmation ». À
-  remplacer par une fusion, ou au moins une confirmation avec le nombre de photos perdues.
 - 🟡 La fiche du point (nom, position) ne voyage pas dans les ZIP de session (elle voyage dans l'export de profil et
   dans « Enregistrer » de la galerie).
 - 🟡 Analyse d'un gros plan depuis l'accueil (photos sans point) : décompresse son archive — coût mémoire sur téléphone.
-- 🟡 La limite de 5 photos par point n'est pas vérifiée au rattachement (rien d'existant n'est refusé).
 
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
 
