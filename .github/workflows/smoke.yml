@@ -8,7 +8,7 @@
 #
 # Déclenchement manuel seulement (onglet Actions › Smoke › Run workflow) : ~1 min d'installation de Chromium,
 # trop lourd pour chaque push. C'est la marche 1bis de docs/RELEASE_GATE.md sans poste (lançable depuis un
-# téléphone, sur n'importe quelle branche) ; la marche 2 (12 points sur dev.myktamap.fr) reste manuelle.
+# téléphone, sur n'importe quelle branche) ; la marche 2 (13 points sur dev.myktamap.fr) reste manuelle.
 #
 # Plan : un checkout ne contient que ce que Git suit dans data/ — data/index.json et le relevé fictif data/test
 # (aucun relevé réel ne part sur le dépôt). Le smoke ouvre donc le relevé fictif ; l'étape « Plan de test »
