@@ -5294,6 +5294,8 @@
   "osm_mode.search.noResult": "Aucun résultat dans les plans géoréférencés.",
   "osm_mode.warn.perf": "⚡ Le mode OSM affiche des plans complets sur la carte : sur mobile ou avec de gros plans, l'affichage peut être plus lent.",
   "osm_mode.multi.add": "➕ Ajouter un plan…",
+  "osm_mode.multi.addFolder": "📁 Ajouter tout le dossier ({n})",
+  "osm_mode.multi.folderConfirm": "Afficher les {n} plans du dossier « {tag} » ?\n\nLa pile passerait à {total} plans affichés en même temps : au-delà de 3, l’affichage et la mémoire peuvent souffrir, surtout sur mobile.",
   "osm_mode.multi.tagsTitre": "🏷️ Afficher par étiquette de plan",
   "osm_mode.multi.tagAjouterTitle": "{n} plans portent cette étiquette — clic pour tous les afficher",
   "osm_mode.multi.tagRetirerTitle": "Tous affichés — clic pour les retirer de la carte",

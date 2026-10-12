@@ -5294,6 +5294,8 @@
   "osm_mode.search.noResult": "No result among georeferenced plans.",
   "osm_mode.warn.perf": "⚡ OSM mode displays full plans on the map: on mobile or with large plans, rendering may be slower.",
   "osm_mode.multi.add": "➕ Add a plan…",
+  "osm_mode.multi.addFolder": "📁 Add the whole folder ({n})",
+  "osm_mode.multi.folderConfirm": "Show the {n} maps of the folder “{tag}”?\n\nThe stack would reach {total} maps shown at once: beyond 3, display and memory can suffer, especially on mobile.",
   "osm_mode.multi.tagsTitre": "🏷️ Show by plan label",
   "osm_mode.multi.tagAjouterTitle": "{n} plans carry this label — click to show them all",
   "osm_mode.multi.tagRetirerTitle": "All shown — click to remove them from the map",

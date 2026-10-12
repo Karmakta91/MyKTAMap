@@ -5294,6 +5294,8 @@
   "osm_mode.search.noResult": "Ningún resultado en los mapas georreferenciados.",
   "osm_mode.warn.perf": "⚡ El modo OSM muestra mapas completos en el mapa: en móvil o con mapas grandes, la visualización puede ser más lenta.",
   "osm_mode.multi.add": "➕ Añadir un mapa…",
+  "osm_mode.multi.addFolder": "📁 Añadir toda la carpeta ({n})",
+  "osm_mode.multi.folderConfirm": "¿Mostrar los {n} mapas de la carpeta «{tag}»?\n\nLa pila pasaría a {total} mapas mostrados a la vez: más allá de 3, la visualización y la memoria pueden resentirse, sobre todo en móvil.",
   "osm_mode.multi.tagsTitre": "🏷️ Mostrar por etiqueta de mapa",
   "osm_mode.multi.tagAjouterTitle": "{n} mapas llevan esta etiqueta: haz clic para mostrarlos todos",
   "osm_mode.multi.tagRetirerTitle": "Todos mostrados: haz clic para quitarlos del mapa",
