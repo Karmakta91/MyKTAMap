@@ -586,7 +586,8 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 Bump demandé par KARMA (« go bump »), juste après la prod v2.15.0.
 
-- **Vue OSM, iPhone** (`bd98638`) : le sous-calque des tuiles de chaque plan (qui porte l'opacité depuis le 08/10) était placé sous les tracés par un z-index négatif ; Safari iOS le repeignait derrière le fond OSM pendant le glissé (plan qui disparaît puis revient, même seul). Premier enfant du calque du plan, sans z-index, couche de composition propre. `check-tiling` refuse le retour du z-index négatif. Non reproduit au harnais (PC, émulation iPhone) : à confirmer sur iPhone avant le merge.
+- **Vue OSM, iPhone** (`bd98638`) : le sous-calque des tuiles de chaque plan (qui porte l'opacité depuis le 08/10) était placé sous les tracés par un z-index négatif ; Safari iOS le repeignait derrière le fond OSM pendant le glissé (plan qui disparaît puis revient, même seul). Premier enfant du calque du plan, sans z-index, couche de composition propre. `check-tiling` refuse le retour du z-index négatif. Non reproduit au harnais (PC, émulation iPhone) ; **confirmé corrigé sur iPhone par KARMA** le 12/10/2026.
+- **Vue OSM, noms de plans** (`ba51af4`) : avec une extension, la Vue OSM de l'accueil gardait les noms de la première lecture de la liste (pas encore traités) jusqu'à l'ouverture d'un plan ; elle suit désormais `mktm:plans-extension-changes`, comme « Mes plans ».
 - **Ajout par dossier** (`c159675`) : menu « Ajouter un plan » de Plans & filtres OSM groupé par dossier de « Mes plans » ; « 📁 Ajouter tout le dossier (n) » passe par le lot des étiquettes (confirmation au-delà de 3 plans, chargements en série).
 - **Image déposée** (`07605aa`) : .jpg/.png/.webp sur « Ajouter un plan » → Générateur, image posée, étape Nom préremplie.
 - **Dépôt public** (`eb62a60`) : domaine de développement retiré du README, de la modale réseau et de l'audit ; `check-audit-domaine` le refuse.
