@@ -26,6 +26,12 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
+        // Rubriques repliables, comme les Réglages du plan (même balisage, mémoire à part).
+        // Une seule liaison : la fenêtre n'est jamais reconstruite.
+        if (configModal && !configModal.dataset.groupesLies && typeof window.ktaGroupesRepliables === "function") {
+          configModal.dataset.groupesLies = "1";
+          window.ktaGroupesRepliables(configModal, "myktamap_home_cfg_groupes_v1");
+        }
         // 🧩 Bloc « Installation » en tête (ex. gérer les comptes, pour un admin) :
         // actions fournies par l'extension de l'installation, recalculées à chaque ouverture.
         if (configModal && window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {

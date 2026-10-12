@@ -772,11 +772,14 @@ function _cfgGroupeDebut(cle, portee, premier) {
 }
 function _cfgGroupeFin() { return '</div></div>'; }
 
-function _cfgLireGroupesReplies() {
-  try { return JSON.parse(localStorage.getItem(_CFG_LS_GROUPES) || "{}") || {}; } catch (e) { return {}; }
-}
-function _bindCfgGroupes(modal) {
-  const etat   = _cfgLireGroupesReplies();
+// Partagé avec les Réglages de l'ACCUEIL (homeConfig.js, même balisage dans index.html) :
+// `cleLs` sépare la mémoire des deux fenêtres, qui ont des rubriques de même nom.
+function _bindCfgGroupes(modal, cleLs) {
+  const LS     = cleLs || _CFG_LS_GROUPES;
+  const lire   = function () {
+    try { return JSON.parse(localStorage.getItem(LS) || "{}") || {}; } catch (e) { return {}; }
+  };
+  const etat   = lire();
   const etroit = !!(window.matchMedia && window.matchMedia("(max-width: 1023px)").matches);
   modal.querySelectorAll(".kta-cfg-group").forEach(function (g, i) {
     const cle   = g.getAttribute("data-cfg-group");
@@ -793,8 +796,8 @@ function _bindCfgGroupes(modal) {
     poser();
     const basculer = function () {
       replie = !replie; poser();
-      const e = _cfgLireGroupesReplies(); e[cle] = replie;
-      try { localStorage.setItem(_CFG_LS_GROUPES, JSON.stringify(e)); } catch (err) {}
+      const e = lire(); e[cle] = replie;
+      try { localStorage.setItem(LS, JSON.stringify(e)); } catch (err) {}
     };
     titre.addEventListener("click", basculer);
     titre.addEventListener("keydown", function (e) {
@@ -802,6 +805,7 @@ function _bindCfgGroupes(modal) {
     });
   });
 }
+window.ktaGroupesRepliables = _bindCfgGroupes;
 
 // 🌍 Les réglages de l'ACCUEIL, en lecture seule : on voit leur valeur d'ici,
 // et le chemin pour les changer — sans les rendre modifiables depuis un plan.

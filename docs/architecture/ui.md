@@ -379,7 +379,7 @@ défaut). Plus de réglage global ni de bouton sur l'accueil. Calcul sauté au-d
 
 #### ⚙️ Modale Réglages (mode carte) — état v1.92.0 (L4, audit ergonomie)
 
-`js/interfaceConfig.js > afficherConfig()`. **Huit groupes**, chacun rendu par `_cfgGroupeDebut(cle, portee)` … `_cfgGroupeFin()` (`.kta-cfg-group` > titre `.kta-cfg-group-titre` cliquable avec badge de portée `.kta-cfg-scope-plan` / `-global` > `.kta-cfg-group-corps`) ; repli mémorisé dans `localStorage.myktamap_cfg_groupes_v1`, replié par défaut sur écran étroit sauf le premier groupe.
+`js/interfaceConfig.js > afficherConfig()`. **Huit groupes**, chacun rendu par `_cfgGroupeDebut(cle, portee)` … `_cfgGroupeFin()` (`.kta-cfg-group` > titre `.kta-cfg-group-titre` cliquable avec badge de portée `.kta-cfg-scope-plan` / `-global` > `.kta-cfg-group-corps`) ; repli mémorisé dans `localStorage.myktamap_cfg_groupes_v1`, replié par défaut sur écran étroit sauf le premier groupe. **Même mécanique dans la Configuration de l'ACCUEIL** (`#loaderConfigModal`) : ses 5 rubriques portent le même balisage, écrit dans `index.html` (`data-i18n` sur `.kta-cfg-group-libelle`, pas sur le titre, sinon la traduction effacerait le chevron), liées une fois à la 1re ouverture par `homeConfig.js` via `window.ktaGroupesRepliables(modale, "myktamap_home_cfg_groupes_v1")` — mémoire séparée, les deux fenêtres ont des rubriques de même nom.
 
 | # | Groupe (clé) | Portée | Contenu |
 |---|---|---|---|

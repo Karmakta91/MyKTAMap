@@ -690,7 +690,9 @@
              ════════════════════════════════════════════════════════════════ -->
 
         <!-- ═══ GROUPE 1 : 🌍 Application ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.application" style="margin:4px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🌍 Application</div>
+        <div class="kta-cfg-group" data-cfg-group="config.group.application">
+        <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:4px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.application">🌍 Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-corps">
 
         <!-- 🌍 v1.46.0 (KARMA) — Sélecteur de LANGUE GLOBALE de l'app, déplacé du
              header HOME vers ici (après Incognito). Pilote toute l'interface
@@ -706,8 +708,12 @@
           <div class="kta-cfg-lang-hint" data-i18n="home.lang.hint">Choix mémorisé globalement. Pilote toute l'interface (menus, modales, aide).</div>
         </div>
 
+        </div></div><!-- /kta-cfg-group -->
+
         <!-- ═══ GROUPE 2 : 🎨 Affichage ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.affichage" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🎨 Affichage</div>
+        <div class="kta-cfg-group" data-cfg-group="config.group.affichage">
+        <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">🎨 Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-corps">
 
         <!-- ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX RAPATRIÉS ICI
              depuis la config du mode plan. Ils valent pour TOUS les plans :
@@ -812,6 +818,8 @@
           </label>
         </div>
 
+        </div></div><!-- /kta-cfg-group -->
+
         <!-- ═══ GROUPE 2 bis : 🧩 Fonctionnalités optionnelles ═══
              (ex-« Options via capteur » v1.85.2, élargi le 01/10/2026, décision
              KARMA : désencombrer l'app). Tout est OFF par défaut. Réglages
@@ -820,7 +828,9 @@
              divergence possible.
              ⚠️ Une option dont le capteur manque n'est PAS masquée : elle
              s'affiche désactivée avec sa raison (cf. window.ktaCapteurRefuse). -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.optionnels" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;">🧩 Fonctionnalités optionnelles</div>
+        <div class="kta-cfg-group" data-cfg-group="config.group.optionnels">
+        <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-corps">
         <div class="kta-aide-section">
           <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;" data-i18n-html="config.optionnels.intro">Fonctions secondaires, désactivées par défaut.</div>
           <label class="kta-net-paranoia-toggle" id="loaderReplayRow">
@@ -875,8 +885,12 @@
                mémorisé et ne vaut que pour le chargement qu'on lance : le
                ranger parmi les réglages le faisait passer pour une préférence
                durable, ce qu'il n'a jamais été. -->
+        </div></div><!-- /kta-cfg-group -->
+
         <!-- ═══ GROUPE 4 : 🔒 Confidentialité & sécurité ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.privacy" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🔒 Confidentialité &amp; sécurité</div>
+        <div class="kta-cfg-group" data-cfg-group="config.group.privacy">
+        <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">🔒 Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-corps">
 
         <!-- 🕵️ v1.31.9 : Mode incognito — bouton accessible AVANT chargement
              plan (home/loader) pour tester un import en mode privé directement.
@@ -990,8 +1004,12 @@
           </label>
         </div>
 
+        </div></div><!-- /kta-cfg-group -->
+
         <!-- ═══ GROUPE 5 : 🛠️ Système & maintenance ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.system" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🛠️ Système &amp; maintenance</div>
+        <div class="kta-cfg-group" data-cfg-group="config.group.system">
+        <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.system">🛠️ Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-corps">
 
         <!-- 🐛 Logs détaillés
              v1.7.3 (suite KARMA) : ajout du bouton 📋 Afficher les logs juste
@@ -1049,6 +1067,7 @@
           </button>
         </div>
 
+        </div></div><!-- /kta-cfg-group -->
       </div>
     </div>
   </div>
