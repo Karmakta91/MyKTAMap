@@ -345,7 +345,6 @@
           <button class="kta-panneau-close" id="kta-tbl-close-accueil">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">${window.I18n.t("tabledit.accueil.aide")}</p>
           <div id="kta-tbl-accueil-err" class="kta-conv-erreur" style="display:${errMsg ? "block" : "none"}; margin-bottom:12px;">${errMsg ? _escapeHtml(errMsg) : ""}</div>
           <div class="kta-tbl-sources">
             ${planDispo ? `<button class="kta-tbl-source-card" id="kta-tbl-src-plan">
@@ -579,10 +578,6 @@
           <button class="kta-panneau-close" id="kta-tbl-close-import">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-            ${window.I18n.t("tabledit.import.aide")}
-          </p>
-
           <div class="kta-tbl-drop" id="kta-tbl-drop">
             <div style="font-size:32px; opacity:0.6;">📂</div>
             <div style="margin-top:8px;">${window.I18n.t("tabledit.import.drop.titre")}</div>
@@ -1671,7 +1666,6 @@
           <button class="kta-panneau-close" id="kta-tbl-dedup-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${t("tabledit.dedup.intro")}</p>
           <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${t("tabledit.dedup.fichiers")}</div>
           <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${t("tabledit.dedup.choisirFichiers")}
@@ -1758,7 +1752,7 @@
         <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
           <input type="file" id="${id}_img" accept="image/*" style="display:none;">
         </label>
-        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
     };
     // Paire de correspondance : xA,yA (plan source) → xB,yB (plan destination)
     const champPaire = function(id, titre, hint) {
@@ -1769,7 +1763,7 @@
           <input class="kta-cfg-input" id="${id}_xb" type="number" step="any" placeholder="xB">
           <input class="kta-cfg-input" id="${id}_yb" type="number" step="any" placeholder="yB">
         </div>
-        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
     };
     sub.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:500px; height:auto; max-height:90vh;">
@@ -1781,13 +1775,13 @@
           <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
           <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
-          ${champRes("kta-tbl-resol-src", "", "", window.I18n.t("tabledit.resol.sourceHint"))}
+          ${champRes("kta-tbl-resol-src", "", "", "")}
           <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
-          ${champRes("kta-tbl-resol-dst", w0, h0, window.I18n.t("tabledit.resol.destHint"))}
+          ${champRes("kta-tbl-resol-dst", w0, h0, "")}
 
           <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">🎯 ${window.I18n.t("tabledit.resol.recalTitre")}</div>
           <p style="color:#8892a4; margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
-          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), window.I18n.t("tabledit.resol.paireHint"))}
+          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), "")}
           <div class="kta-planner-grille" style="margin:8px 0 2px;">
             <label class="kta-cfg-label" for="kta-tbl-resol-theta">${window.I18n.t("tabledit.resol.rotation")}</label>
             <input class="kta-cfg-input" id="kta-tbl-resol-theta" type="number" step="any" value="0">
