@@ -1137,7 +1137,7 @@
   "home.incognito.indispo": "Module IncognitoMode indisponible. Recharge la page.",
   "home.add.drop": "Glisse un fichier ici",
   "home.add.dropSub": "ou clique pour sélectionner",
-  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif",
+  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif · .jpg · .png",
   "home.loader.sigUnavailable": "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG ».",
   "home.add.editData": "📊 Éditeur de données",
   "home.add.generate": "🏗️ Générer un plan",
@@ -2869,7 +2869,7 @@
   "netlog.bodyNoTitle": "Aucune donnée envoyée",
   "home.loader.kmzUnavailable": "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.",
   "home.loader.gpxUnavailable": "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.",
-  "home.loader.badFileType": "Le fichier doit être une archive .zip, un .kmz, un .gpx, un export SIG (.geojson, .kml) ou un GeoTIFF (.tif)",
+  "home.loader.badFileType": "Le fichier doit être une archive .zip, un .kmz, un .gpx, un export SIG (.geojson, .kml), un GeoTIFF (.tif) ou une image (.jpg, .png, .webp)",
   "ipr.err.titre": "Itinéraire inter-plan impossible",
   "ipr.err.noPlan": "Charge d'abord un plan pour calculer un itinéraire inter-plan.",
   "ipr.err.samePlan": "Ce point est sur le plan en cours — utilise l'itinéraire classique.",
@@ -5607,6 +5607,9 @@
   "tiff.err.inconnue": "erreur inconnue",
   "gen.router.tiffRoute": "🗺️ {nom} : GeoTIFF détecté — chargé comme image de fond, géoréf lu dans le fichier",
   "home.loader.tiffRoute": " — ouverture du Générateur, géoréf et échelle lus dans le fichier…",
+  "home.loader.imageRoute": " — ouverture du Générateur, il ne reste qu'à nommer le plan…",
+  "home.loader.imageSeule": "Une seule image à la fois : seule la première est utilisée.",
+  "home.loader.imageUnavailable": "Générateur indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là.",
   "home.loader.tiffUnavailable": "Module GeoTIFF indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là.",
   "gen.tiff.echelle": " · échelle {px} px/m"
 }

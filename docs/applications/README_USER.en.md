@@ -154,7 +154,7 @@ The home screen offers:
 
 - **▶️ Resume [name]** — reopens the last map you used.
 - **📚 My maps** — every map you have already opened (🌐 server or 💾 local), most recent first; maps available on the server show up there on their own. A tap reopens the map.
-- **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list.
+- **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list. An **image** (`.jpg`, `.png`, `.webp`) dropped there opens the **Generator** with the image as background: you just name the map.
 - **🏗️ Generate a map** — creates a map from scratch.
 
 > 🔄 **Re-importing a regenerated map** — if your ZIP has the **same name** as a map in your list (whatever the author and version), the app asks what to do instead of overwriting it or stacking a duplicate:

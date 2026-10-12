@@ -154,7 +154,7 @@ L'écran d'accueil propose :
 
 - **▶️ Reprendre [nom]** — rouvre le dernier plan utilisé.
 - **📚 Mes plans** — tous les plans déjà ouverts (🌐 serveur ou 💾 local), du plus récent au plus ancien ; les plans disponibles sur le serveur y apparaissent d'eux-mêmes. Un appui rouvre le plan.
-- **📦 Ajouter un plan** — glisse ton fichier ZIP sur la zone (ou appuie dessus pour le choisir), puis **▶️ Charger ce plan**. Le plan rejoint ta liste.
+- **📦 Ajouter un plan** — glisse ton fichier ZIP sur la zone (ou appuie dessus pour le choisir), puis **▶️ Charger ce plan**. Le plan rejoint ta liste. Une **image** (`.jpg`, `.png`, `.webp`) déposée là ouvre le **Générateur** avec l'image comme fond : il ne reste qu'à nommer le plan.
 - **🏗️ Générer un plan** — crée un plan à partir de zéro.
 
 > 🔄 **Réimporter un plan regénéré** — si ton ZIP porte le **même nom** qu'un plan de ta liste (quels que soient l'auteur et la version), l'app te demande quoi faire au lieu d'écraser ou d'empiler un doublon :

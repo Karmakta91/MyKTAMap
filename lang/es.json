@@ -1137,7 +1137,7 @@
   "home.incognito.indispo": "Módulo IncognitoMode no disponible. Recarga la página.",
   "home.add.drop": "Arrastra un archivo aquí",
   "home.add.dropSub": "o haz clic para seleccionar",
-  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif",
+  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif · .jpg · .png",
   "home.loader.sigUnavailable": "Módulo de importación SIG no disponible — abre 🏗️ Generar un mapa y usa «Convertir desde SIG».",
   "home.add.editData": "📊 Editor de datos",
   "home.add.generate": "🏗️ Generar un mapa",
@@ -2882,7 +2882,7 @@
   "netlog.bodyNoTitle": "Ningún dato enviado",
   "home.loader.kmzUnavailable": "Módulo de importación KMZ no disponible — abre 🏗️ Generar un mapa y usa la importación KMZ desde allí.",
   "home.loader.gpxUnavailable": "Módulo de importación GPX no disponible — abre 🏗️ Generar un mapa y usa la importación GPX desde allí.",
-  "home.loader.badFileType": "El archivo debe ser un .zip, un .kmz, un .gpx, una exportación SIG (.geojson, .kml) o un GeoTIFF (.tif)",
+  "home.loader.badFileType": "El archivo debe ser un .zip, un .kmz, un .gpx, una exportación SIG (.geojson, .kml), un GeoTIFF (.tif) o una imagen (.jpg, .png, .webp)",
   "ipr.err.titre": "Ruta entre mapas imposible",
   "ipr.err.noPlan": "Carga primero un mapa para calcular una ruta entre mapas.",
   "ipr.err.samePlan": "Este punto está en el mapa actual — usa la ruta clásica.",
@@ -5607,6 +5607,9 @@
   "tiff.err.inconnue": "error desconocido",
   "gen.router.tiffRoute": "🗺️ {nom}: GeoTIFF detectado — cargado como imagen de fondo, georreferenciación leída del archivo",
   "home.loader.tiffRoute": " — abriendo el generador de mapas, georreferenciación y escala leídas del archivo…",
+  "home.loader.imageRoute": " — abriendo el generador de mapas, solo falta darle un nombre…",
+  "home.loader.imageSeule": "Una sola imagen a la vez: solo se usa la primera.",
+  "home.loader.imageUnavailable": "Generador no disponible — abre 🏗️ Generar un mapa y elige la imagen desde allí.",
   "home.loader.tiffUnavailable": "Módulo GeoTIFF no disponible — abre 🏗️ Generar un mapa y elige la imagen desde allí.",
   "gen.tiff.echelle": " · escala {px} px/m"
 }

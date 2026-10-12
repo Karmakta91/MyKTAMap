@@ -1137,7 +1137,7 @@
   "home.incognito.indispo": "IncognitoMode module unavailable. Reload the page.",
   "home.add.drop": "Drop a file here",
   "home.add.dropSub": "or click to select",
-  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif",
+  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif · .jpg · .png",
   "home.loader.sigUnavailable": "GIS import module unavailable — open 🏗️ Generate a map and use \"Convert from GIS\".",
   "home.add.editData": "📊 Data editor",
   "home.add.generate": "🏗️ Generate a map",
@@ -2869,7 +2869,7 @@
   "netlog.bodyNoTitle": "No data sent",
   "home.loader.kmzUnavailable": "KMZ import module unavailable — open 🏗️ Generate a plan and use the KMZ import from there.",
   "home.loader.gpxUnavailable": "GPX import module unavailable — open 🏗️ Generate a plan and use the GPX import from there.",
-  "home.loader.badFileType": "The file must be a .zip archive, a .kmz, a .gpx, a GIS export (.geojson, .kml) or a GeoTIFF (.tif)",
+  "home.loader.badFileType": "The file must be a .zip archive, a .kmz, a .gpx, a GIS export (.geojson, .kml), a GeoTIFF (.tif) or an image (.jpg, .png, .webp)",
   "ipr.err.titre": "Inter-plan route impossible",
   "ipr.err.noPlan": "Load a plan first to compute an inter-plan route.",
   "ipr.err.samePlan": "This point is on the current plan — use the classic route.",
@@ -5607,6 +5607,9 @@
   "tiff.err.inconnue": "unknown error",
   "gen.router.tiffRoute": "🗺️ {nom}: GeoTIFF detected — loaded as the background image, georeferencing read from the file",
   "home.loader.tiffRoute": " — opening the plan generator, georeferencing and scale read from the file…",
+  "home.loader.imageRoute": " — opening the plan generator, just name the map…",
+  "home.loader.imageSeule": "One image at a time: only the first one is used.",
+  "home.loader.imageUnavailable": "Plan generator unavailable — open 🏗️ Generate a map and pick the image from there.",
   "home.loader.tiffUnavailable": "GeoTIFF module unavailable — open 🏗️ Generate a map and pick the image from there.",
   "gen.tiff.echelle": " · scale {px} px/m"
 }

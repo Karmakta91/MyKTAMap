@@ -154,7 +154,7 @@ La pantalla de inicio ofrece:
 
 - **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
 - **📚 Mis mapas** — todos los mapas que ya has abierto (🌐 servidor o 💾 local), del más reciente al más antiguo; los mapas disponibles en el servidor aparecen ahí solos. Una pulsación vuelve a abrir el mapa.
-- **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista.
+- **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista. Una **imagen** (`.jpg`, `.png`, `.webp`) soltada ahí abre el **Generador** con la imagen como fondo: solo falta darle un nombre al mapa.
 - **🏗️ Generar un mapa** — crea un mapa desde cero.
 
 > 🔄 **Volver a importar un mapa regenerado** — si tu ZIP tiene el **mismo nombre** que un mapa de tu lista (sean cuales sean el autor y la versión), la app te pregunta qué hacer en lugar de sobrescribirlo o apilar un duplicado:
