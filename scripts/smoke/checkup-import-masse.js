@@ -23,6 +23,7 @@ const path = require("path");
 const fs   = require("fs");
 const os   = require("os");
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const server = require("./server.js");
 const ROOT  = path.resolve(__dirname, "..", "..");
@@ -99,7 +100,7 @@ async function etatBlobs(p) {
   let nav;
   try {
     const opts = process.env.KTA_CHROMIUM ? { executablePath: process.env.KTA_CHROMIUM } : {};
-    nav = await chromium.launch(opts).catch(function () { return chromium.launch({ channel: "chromium" }); });
+    nav = await lancerNavigateur(chromium, opts);
     const ctx = await nav.newContext({ serviceWorkers: "block", viewport: { width: 1400, height: 900 } });
     await ctx.addInitScript(function (ls) { for (const k in ls) if (!localStorage.getItem(k)) localStorage.setItem(k, ls[k]); }, LS);
 

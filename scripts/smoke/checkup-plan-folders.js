@@ -18,6 +18,7 @@
 // (Playwright + Chromium ; KTA_CHROMIUM=<chrome.exe> pour imposer l'exécutable.)
 "use strict";
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const server = require("./server.js");
 const URL = "http://127.0.0.1:8123/index.html";
 const LS = {
@@ -55,7 +56,7 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
   let nav;
   try {
     const opts = process.env.KTA_CHROMIUM ? { executablePath: process.env.KTA_CHROMIUM } : {};
-    nav = await chromium.launch(opts).catch(function () { return chromium.launch({ channel: "chromium" }); });
+    nav = await lancerNavigateur(chromium, opts);
 
     // ── 1-2-3. PC 1536×800, 60 plans ──
     let ctx = await nav.newContext({ serviceWorkers: "block", viewport: { width: 1536, height: 800 } });

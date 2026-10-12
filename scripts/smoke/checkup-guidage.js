@@ -32,6 +32,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const os = require("os");
@@ -67,11 +68,7 @@ function inf(msg) { console.log("  •  " + msg); }
 (async function main() {
   fs.mkdirSync(SHOTS, { recursive: true });
   let nav;
-  try { nav = await chromium.launch(); }
-  catch (e) {
-    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
-    nav = await chromium.launch({ channel: "chromium" });
-  }
+  nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   await page.addInitScript(function (ls) {
     for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }

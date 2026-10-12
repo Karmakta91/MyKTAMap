@@ -31,6 +31,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 
 const PORT = 8123;                       // server.js lit son port dans argv[2] :
 const BASE = "http://127.0.0.1:" + PORT;   // sans argv, server.js écoute 8123
@@ -56,11 +57,7 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
 (async function main() {
   const server = require("./server.js");
   let nav;
-  try { nav = await chromium.launch(); }
-  catch (e) {
-    if (!/Executable doesn't exist/i.test(String(e && e.message))) throw e;
-    nav = await chromium.launch({ channel: "chromium" });
-  }
+  nav = await lancerNavigateur(chromium);
   const ctx = await nav.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   page.on("pageerror", function (e) { pb("pageerror : " + String(e).slice(0, 180)); });

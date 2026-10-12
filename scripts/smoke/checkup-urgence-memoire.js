@@ -35,6 +35,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
@@ -66,11 +67,7 @@ function inf(m) { console.log("  •  " + m); }
 
 (async function main() {
   let nav;
-  try { nav = await chromium.launch(); }
-  catch (e) {
-    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
-    nav = await chromium.launch({ channel: "chromium" });
-  }
+  nav = await lancerNavigateur(chromium);
   // 📋 `clipboard-read` : sans cette permission, on ne pourrait PAS vérifier ce
   // qui a été copié — seulement que le bouton dit l'avoir fait.
   const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,

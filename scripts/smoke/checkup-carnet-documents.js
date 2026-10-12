@@ -30,6 +30,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
@@ -144,11 +145,7 @@ async function passe(nav, avecSync) {
 
 (async function main() {
   let nav;
-  try { nav = await chromium.launch(); }
-  catch (e) {
-    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
-    nav = await chromium.launch({ channel: "chromium" });
-  }
+  nav = await lancerNavigateur(chromium);
 
   try {
     if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");
