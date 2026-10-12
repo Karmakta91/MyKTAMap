@@ -12025,24 +12025,6 @@ body.kta-multilevel-active .kta-compass-widget {
   line-height: 1;
 }
 
-.kta-compass-full-hint {
-  color: #c8d0e0;
-  font-size: 14px;
-  margin: 12px 18px 6px;
-  text-align: left;
-}
-
-.kta-compass-full-list {
-  margin: 0 18px 14px;
-  padding-left: 22px;
-  text-align: left;
-  color: #c8d0e0;
-  font-size: 13px;
-}
-.kta-compass-full-list li {
-  margin-bottom: 4px;
-}
-
 .kta-compass-full-note {
   background: rgba(255, 107, 107, 0.06);
   border-left: 3px solid rgba(255, 107, 107, 0.55);

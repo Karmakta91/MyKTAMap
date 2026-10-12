@@ -332,7 +332,7 @@
     if (!_corps()) return;
     const total = tout.reduce(function (a, ph) { return a + (ph.size || 0); }, 0);
     const lignes = Array.from(parPlan.keys()).sort(function (a, b) { return _nomPlan(a).localeCompare(_nomPlan(b)); });
-    let html = '<p class="kta-ipl-hint">' + _esc(_t("photosgal.intro")) + '</p>';
+    let html = "";
     if (!lignes.length) {
       html += '<p class="kta-ipl-empty">' + _esc(_t("photosgal.vide")) + '</p>';
     } else {

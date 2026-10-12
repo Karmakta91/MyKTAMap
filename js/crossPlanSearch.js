@@ -150,7 +150,7 @@
     function _renderResults() {
       const f = String(input.value || "").toLowerCase().trim();
       if (!f) {
-        resEl.innerHTML = '<p class="kta-ipl-empty">' + _esc(_t("xps.hintType")) + '</p>';
+        resEl.innerHTML = "";
         return;
       }
       const matches = _index.filter(function(e) {

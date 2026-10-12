@@ -1387,23 +1387,6 @@ window.afficherModaleAideIA = function() {
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.concept.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
-            window.I18n.t("aiia.concept.body") +
-          '</p>' +
-        '</div>' +
-
-        '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.how.titre") + '</div>' +
-          '<ol style="color:#c8d0e0; line-height:1.7; font-size:13px; padding-left:22px; margin:0;">' +
-            '<li>' + window.I18n.t("aiia.how.step1") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step2") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step3") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step4") + '</li>' +
-          '</ol>' +
-        '</div>' +
-
-        '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
           '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#c8d0e0;">' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +

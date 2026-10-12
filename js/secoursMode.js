@@ -2767,9 +2767,6 @@
               levelsHtml +
             '</select>' +
           '</div>' +
-          '<div class="kta-secours-form-hint">' +
-            t("secours.newequipe.hint") +
-          '</div>' +
           '<div class="kta-secours-form-actions">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm">' + t("secours.btn.creerEquipe") + '</button>' +
@@ -3588,7 +3585,6 @@
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
-                    '<p style="margin:0 0 14px 0;">' + t("secours.import.previewIntro") + '</p>' +
 
                     '<div class="kta-secours-import-preview-card">' +
                       '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || t("secours.import.sansNom")) + '</div>' +
@@ -6617,7 +6613,6 @@
         '<div style="font-size:32px;">🚒</div>' +
         '<div>' +
           '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">' + t("secours.briefing.titre") + '</div>' +
-          '<div style="font-size:12px;color:' + pal.textMuted + ';margin-top:2px;">' + t("secours.briefing.sousTitre") + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="background:' + pal.sectionBg + ';border-radius:8px;padding:14px 16px;margin-bottom:14px;">' +
