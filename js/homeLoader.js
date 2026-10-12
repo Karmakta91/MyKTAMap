@@ -415,7 +415,7 @@
       // Configuration de l'accueil → « Mémoriser le plan dans l'app au premier
       // chargement », ACTIVÉ par défaut. Cette fonction est la source de
       // vérité unique : lue ici, par l'import multiple (défaut de la case
-      // « Précharger ») et par homeConfig (la case du réglage).
+      // « Mémoriser les plans dans l'app ») et par homeConfig (la case du réglage).
       window.ktaMemoriserPlanActif = function () {
         try { return localStorage.getItem("myktamap_memoriser_plan") !== "0"; } catch (e) { return true; }
       };

@@ -1864,7 +1864,7 @@
   "impmasse.politique.ignorer": "leave it as is",
   "impmasse.politique.remplacer": "replace it",
   "impmasse.politique.titre": "If a map is already in my list:",
-  "impmasse.precharger.label": "💾 Preload the ZIP",
+  "impmasse.precharger.label": "💾 Store the maps in the app",
   "impmasse.resume.poidsSansCopie": "{total} in total, nothing is copied: each ZIP will be asked for on its first opening",
   "impmasse.prog": "⏳ {i} / {total} — {nom}",
   "impmasse.resume.compte": "{ajout} to add · {ignore} already there · {refus} refused",

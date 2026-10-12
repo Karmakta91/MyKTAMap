@@ -1601,7 +1601,7 @@ Dans la section **🧰 Outils** de l'accueil, **📦 Importer plusieurs plans** 
 
 - **Plan déjà dans ta liste** : un seul choix pour tout le lot, le laisser tel quel (par défaut), le remplacer ou garder les deux.
 - **📁 Ranger dans :** choisis le dossier de « Mes plans » qui reçoit le lot (par défaut « Non classés »).
-- **💾 Précharger le ZIP** (cochée par défaut, comme « Mémoriser le plan dans l'app au premier chargement ») : l'app garde les fichiers, et chaque plan s'ouvre ensuite **sans resélectionner son ZIP**. Décochée, rien n'est copié et le ZIP te sera demandé à la première ouverture.
+- **💾 Mémoriser les plans dans l'app** (cochée par défaut, comme le réglage « Mémoriser le plan dans l'app au premier chargement ») : l'app garde les fichiers, et chaque plan s'ouvre ensuite **sans resélectionner son ZIP**. Décochée, rien n'est copié et le ZIP te sera demandé à la première ouverture.
 - **La place est vérifiée avant** : si le lot ne rentre pas, l'import ne commence pas et l'app te dit combien il manque. Si la place s'épuise en route, l'import s'arrête net et garde les plans déjà ajoutés.
 
 ### 🚀 Optimiser ton plan

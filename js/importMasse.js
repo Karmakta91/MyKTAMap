@@ -34,7 +34,7 @@
 // ouverture, et la copie en IndexedDB restait orpheline. Le drapeau est posé
 // après le rangement réussi, jamais avant.
 //
-// Le rangement est une OPTION, « Précharger le ZIP », dont le défaut suit le
+// Le rangement est une OPTION, « Mémoriser les plans dans l'app », dont le défaut suit le
 // réglage ⚙️ Configuration de l'accueil → « Mémoriser le plan dans l'app au
 // premier chargement » (activé par défaut). Décochée, seule l'entrée est écrite : la liste demande le fichier à la
 // première ouverture (chemin `reSelectionnerZipPourPlan`, le même qu'un plan
@@ -71,7 +71,7 @@
   const MARGE_QUOTA = 0.85;
 
   function _t(k, p) { return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k; }
-  // Défaut de « Précharger » = le réglage de l'accueil (source de vérité
+  // Défaut de « Mémoriser les plans » = le réglage de l'accueil (source de vérité
   // unique, définie par homeLoader). Sans lui : vrai.
   function _memoriserParDefaut() {
     return (typeof window.ktaMemoriserPlanActif === "function") ? !!window.ktaMemoriserPlanActif() : true;
@@ -236,7 +236,7 @@
     }
     opts = opts || {};
     const onProgres = typeof opts.onProgres === "function" ? opts.onProgres : function() {};
-    // Précharger = ranger le ZIP (copie ou autorisation permanente). VRAI par
+    // Mémoriser = ranger le ZIP (copie ou autorisation permanente). VRAI par
     // défaut : c'est l'absence du drapeau qui faisait redemander le fichier.
     const precharger = opts.precharger !== false;
     const rapport = { ajoutes: [], ignores: [], refuses: [], arrete: null };

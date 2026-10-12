@@ -1601,7 +1601,7 @@ En la sección **🧰 Herramientas** de la pantalla de inicio, **📦 Importar v
 
 - **Plano ya en tu lista**: una sola elección para todo el lote, dejarlo como está (por defecto), sustituirlo o conservar los dos.
 - **📁 Guardar en:** elige la carpeta de «Mis mapas» que recibe el lote («Sin clasificar» por defecto).
-- **💾 Precargar el ZIP** (marcada por defecto, como «Memorizar el plano en la app en la primera carga»): la app guarda los archivos, y cada plano se abre luego **sin volver a seleccionar su ZIP**. Desmarcada, no se copia nada y el ZIP se te pedirá la primera vez que abras cada plano.
+- **💾 Memorizar los planos en la app** (marcada por defecto, como el ajuste «Memorizar el plano en la app en la primera carga»): la app guarda los archivos, y cada plano se abre luego **sin volver a seleccionar su ZIP**. Desmarcada, no se copia nada y el ZIP se te pedirá la primera vez que abras cada plano.
 - **El espacio se comprueba antes**: si el lote no cabe, la importación no empieza y la app te dice cuánto falta. Si el espacio se agota por el camino, la importación se detiene en seco y conserva los planos ya añadidos.
 
 ### 🚀 Optimizar tu plano

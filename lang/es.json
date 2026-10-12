@@ -1864,7 +1864,7 @@
   "impmasse.politique.ignorer": "dejarlo como está",
   "impmasse.politique.remplacer": "reemplazarlo",
   "impmasse.politique.titre": "Si un plano ya está en mi lista:",
-  "impmasse.precharger.label": "💾 Precargar el ZIP",
+  "impmasse.precharger.label": "💾 Memorizar los planos en la app",
   "impmasse.resume.poidsSansCopie": "{total} en total, no se copia nada: cada ZIP se pedirá la primera vez que se abra",
   "impmasse.prog": "⏳ {i} / {total} — {nom}",
   "impmasse.resume.compte": "{ajout} por añadir · {ignore} ya están · {refus} rechazado(s)",

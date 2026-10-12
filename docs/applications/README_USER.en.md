@@ -1601,7 +1601,7 @@ In the **🧰 Tools** section of the home screen, **📦 Import several maps** a
 
 - **Map already in your list**: one choice for the whole batch, leave it as it is (default), replace it or keep both.
 - **📁 File into:** choose the "My maps" folder that receives the batch ("Unfiled" by default).
-- **💾 Preload the ZIP** (ticked by default, like "Store the map in the app on first load"): the app keeps the files, and each map then opens **without selecting its ZIP again**. Unticked, nothing is copied and the ZIP will be asked for the first time you open each map.
+- **💾 Store the maps in the app** (ticked by default, like the "Store the map in the app on first load" setting): the app keeps the files, and each map then opens **without selecting its ZIP again**. Unticked, nothing is copied and the ZIP will be asked for the first time you open each map.
 - **Space is checked beforehand**: if the batch does not fit, the import does not start and the app tells you how much is missing. If space runs out along the way, the import stops at once and keeps the maps already added.
 
 ### 🚀 Optimize your map
