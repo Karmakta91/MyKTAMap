@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.15.1 (plans de la Vue OSM sur iPhone, ajout par dossier)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Affichage seulement : les plans de la Vue OSM ne disparaissent plus pendant qu'on déplace la carte sur iPhone, et le menu d'ajout de plans se range par dossier. Une image déposée sur « Ajouter un plan » ouvre le Générateur sur l'appareil, sans rien envoyer.
+
 ### v2.15.0 (interface allégée)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Les fenêtres perdent la plupart de leurs paragraphes d'explication et les réglages de l'accueil se replient : changements d'affichage seulement. La recherche multi-plans ne demande plus d'abord une adresse fausse (un 404 en moins par calque sur les anciens plans du site) ; l'export image d'un plan tuilé réutilise les tuiles déjà sur l'appareil au lieu de retélécharger l'image.

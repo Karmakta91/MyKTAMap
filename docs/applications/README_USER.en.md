@@ -606,7 +606,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
-- ➕ add a map, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;
+- ➕ add a map — the menu groups them by **folder** of “My maps”, and “📁 Add the whole folder” shows them all at once —, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;
 - on each row, 5 mini-buttons hide the image, points, paths, zones or structures of that map;
 - **by label**: the labels shared by at least two of your georeferenced maps appear as chips; one click shows all their maps, a second one removes them. Beyond 3 maps, the app asks for confirmation and loads them one by one (slower on mobile).
 

@@ -606,7 +606,7 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **🗂️ Plusieurs plans à la fois** : le bouton **≡** du bandeau ouvre une fenêtre avec les réglages d'affichage, le filtre par tag et la pile des plans affichés :
 
-- ➕ ajouter un plan, ▲▼ le passer dessus ou dessous, un curseur d'**opacité** par plan, ✕ le retirer ; ◉ marque le plan principal ;
+- ➕ ajouter un plan — le menu les range par **dossier** de « Mes plans », et « 📁 Ajouter tout le dossier » les affiche d'un coup —, ▲▼ le passer dessus ou dessous, un curseur d'**opacité** par plan, ✕ le retirer ; ◉ marque le plan principal ;
 - sur chaque ligne, 5 mini-boutons masquent l'image, les points, les tracés, les zones ou les structures de ce plan ;
 - **par étiquette** : les étiquettes partagées par au moins deux de tes plans géoréférencés apparaissent en puces ; un clic affiche tous leurs plans, un second les retire. Au-delà de 3 plans, l'app demande confirmation et les charge un par un (plus lent sur mobile).
 
