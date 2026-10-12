@@ -70,28 +70,25 @@ function _renderPerfUltraSection() {
   // du HOME. Rendu ici, hors ULTRA, seulement pour un plan multi-niveau.
   const rowNiveaux = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
     ? '<div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>' +
-      row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux,
-          window.I18n.t("config.perfultra.tousNiveaux.hint"))
+      row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux, "")
     : "";
   // « 👁️ Ne rendre que les éléments visibles » (viewportCull) n'a plus de case
   // depuis le 10/10/2026 (décision KARMA) : le levier reste piloté par le preset
   // ULTRA, et une valeur déjà enregistrée pour le plan est toujours relue.
   return `
     <div class="kta-aide-section">
-      <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        ${window.I18n.t("config.perfultra.intro")}
-      </p>
+      <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
       ${row("cfg_perf_ultra", window.I18n.t("config.perfultra.ultra.label"), s.ultra,
-            window.I18n.t("config.perfultra.ultra.hint"))}
+            "")}
       <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
-            window.I18n.t("config.perfultra.decim.hint"))}
+            "")}
       ${row("cfg_perf_animOff", window.I18n.t("config.perfultra.animOff.label"), s.animOff,
-            window.I18n.t("config.perfultra.animOff.hint"), true)}
+            "", true)}
       ${row("cfg_perf_noIntersect", window.I18n.t("config.perfultra.noIntersect.label"), s.noIntersect,
-            window.I18n.t("config.perfultra.noIntersect.hint"))}
+            "")}
       ${row("cfg_perf_noTooltips", window.I18n.t("config.perfultra.noTooltips.label"), s.noTooltips,
-            window.I18n.t("config.perfultra.noTooltips.hint"))}
+            "")}
       ${row("cfg_perf_slowSave", window.I18n.t("config.perfultra.slowSave.label"), s.slowSave,
             window.I18n.t("config.perfultra.slowSave.hint"))}
       ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
@@ -163,9 +160,6 @@ function _renderCfgGeorefSection() {
 
   return '' +
     '<div class="kta-aide-section">' +
-      '<p style="font-size:12px; color:#8892a4; margin:4px 0 12px; line-height:1.5;">' +
-        window.I18n.t("config.georef.intro") +
-      '</p>' +
 
       // ===== Point A =====
       // 🆕 v1.21.0-fix1 : ajout des 2 boutons d'aide à la saisie (parité
@@ -828,7 +822,6 @@ function _renderCfgGlobauxLectureSeule() {
   ];
   return '<div class="kta-aide-section kta-cfg-globaux">' +
     '<div class="kta-aide-section-titre">' + t("config.globaux.titre") + '</div>' +
-    '<div class="kta-cfg-globaux-hint">' + t("config.globaux.hint") + '</div>' +
     '<dl class="kta-cfg-globaux-liste">' +
       lignes.map(function (l) { return '<dt>' + l[0] + '</dt><dd>' + l[1] + '</dd>'; }).join("") +
     '</dl>' +
@@ -1098,9 +1091,6 @@ function afficherConfig() {
             <span style="font-size:20px;">🎬</span>
             <span><strong>${window.I18n.t("config.presentation.btn")}</strong></span>
           </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px; text-align:center;">
-            ${window.I18n.t("config.presentation.desc")}
-          </div>
         </div>
 
         ${_renderCfgGlobauxLectureSeule()}
@@ -1179,10 +1169,6 @@ function afficherConfig() {
         <!-- 🆕 v1.49.0 (Lot C) — prérequis échelle PX/M (demande KARMA) : position de
              départ, détection de pas et navigation intelligente dépendent tous de
              l'échelle m/px. Bleu (info/prérequis) ≠ ambre (réglages dangereux). -->
-        <div style="margin:0 0 10px; padding:8px 10px; background:rgba(140,180,255,0.1); border:1px solid rgba(140,180,255,0.35); border-radius:6px; font-size:12px; color:#a8c4ff; line-height:1.45;">
-          ${window.I18n.t("config.navTracker.scaleWarn")}
-        </div>
-
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
           <div class="kta-cfg-grille">
@@ -1232,9 +1218,6 @@ function afficherConfig() {
             <input type="checkbox" id="cfg_smartNav" ${c.smartNav === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.smartnav.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.smartnav.hint")}
-              </span>
             </span>
           </label>
           <!-- 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé + avertissement -->
@@ -1245,12 +1228,10 @@ function afficherConfig() {
             <label class="kta-cfg-label">${window.I18n.t("config.smartnav.radiusLabel")}</label>
             <input class="kta-cfg-input" id="cfg_smartNavRadius" type="number" step="0.5" min="1" max="50" value="${Number.isFinite(c.smartNavRadiusM) ? c.smartNavRadiusM : 6}">
           </div>
-          <div style="font-size:11px; color:#8892a4; margin:-2px 0 8px; line-height:1.4;">${window.I18n.t("config.smartnav.radiusHint")}</div>
           <div class="kta-cfg-row">
             <label class="kta-cfg-label">${window.I18n.t("config.smartnav.headingLabel")}</label>
             <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" max="5" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
           </div>
-          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
 
         </div>
 
@@ -1284,15 +1265,11 @@ function afficherConfig() {
             <option value="blanc">${window.I18n.t("config.fond.blanc")}</option>
             <option value="gris">${window.I18n.t("config.fond.gris")}</option>
           </select>
-          <div class="kta-perf-ultra-hint" style="margin:4px 0 10px;">${window.I18n.t("config.fond.hint")}</div>
 
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.display.intersections.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.intersections.hint")}
-              </span>
             </span>
           </label>
 
@@ -1326,9 +1303,7 @@ function afficherConfig() {
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-              <span class="kta-perf-ultra-hint" id="cfg_wake_lock_hint">
-                ${window.I18n.t("config.display.wakelock.hint")}
-              </span>
+              <span class="kta-perf-ultra-hint" id="cfg_wake_lock_hint"></span>
             </span>
           </label>
 
@@ -1342,9 +1317,7 @@ function afficherConfig() {
             <input type="checkbox" id="cfg_voice">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-              <span class="kta-perf-ultra-hint" id="cfg_voice_hint">
-                ${window.I18n.t("config.display.voice.hint")}
-              </span>
+              <span class="kta-perf-ultra-hint" id="cfg_voice_hint"></span>
             </span>
           </label>
         </div>
@@ -1370,15 +1343,11 @@ function afficherConfig() {
                pouvait pas savoir que c'est son système qui refuse. -->
           <div class="kta-aide-section" style="margin-top:16px;">
             <div class="kta-aide-section-titre">${window.I18n.t("config.optionnels.titre")}</div>
-            <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;">
-              ${window.I18n.t("config.optionnels.intro")}
-            </div>
 
             <label class="kta-perf-ultra-row" id="cfg_replay_row">
               <input type="checkbox" id="cfg_replay" ${c.replayEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">${window.I18n.t("config.replay.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-                <span class="kta-perf-ultra-hint">${window.I18n.t("config.replay.hint")}</span>
               </span>
             </label>
 
@@ -1386,7 +1355,6 @@ function afficherConfig() {
               <input type="checkbox" id="cfg_heatmap" ${c.heatmapEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">${window.I18n.t("config.heatmap.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-                <span class="kta-perf-ultra-hint">${window.I18n.t("config.heatmap.hint")}</span>
               </span>
             </label>
 
@@ -1394,9 +1362,7 @@ function afficherConfig() {
               <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-                <span class="kta-perf-ultra-hint" id="cfg_batterie_hint">
-                  ${window.I18n.t("config.batterie.hint")}
-                </span>
+                <span class="kta-perf-ultra-hint" id="cfg_batterie_hint"></span>
               </span>
             </label>
 
@@ -1404,9 +1370,7 @@ function afficherConfig() {
               <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-                <span class="kta-perf-ultra-hint" id="cfg_vibration_hint">
-                  ${window.I18n.t("config.display.vibration.hint")}
-                </span>
+                <span class="kta-perf-ultra-hint" id="cfg_vibration_hint"></span>
               </span>
             </label>
           </div>
@@ -1423,27 +1387,20 @@ function afficherConfig() {
             <span style="font-size:18px;">🕵️</span>
             <span><strong>${window.I18n.t("home.privacy.incognitoRelieLabel")}</strong></span>
           </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("home.privacy.incognitoRelieHint")}
-          </div>
+          <div class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">${window.I18n.t("home.privacy.incognitoRelieHint")}</div>
         </div>` : (window.IncognitoMode && window.IncognitoMode.active) ? `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">✕</span>
             <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
           </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.incognito.quit.desc")}
-          </div>
+          <div class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">${window.I18n.t("home.privacy.incognitoQuitHint")}</div>
         </div>` : `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">🕵️</span>
             <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
           </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.incognito.start.desc")}
-          </div>
         </div>`}
         <!-- 🔒 CONFIDENTIALITÉ & SÉCURITÉ : groupe RETIRÉ des Réglages du plan le 12/10/2026 (capture KARMA : titre
              qui ne déroulait rien). Son seul contenu, l'interrupteur du carnet (📔 Q49, v1.92.0 L4), VIT DANS
@@ -1945,9 +1902,6 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         // SECTION 1 : Niveau actif (single-select)
         '<div class="kta-niv-section">' +
           '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.active.titre") + '</div>' +
-          '<p class="kta-niv-section-hint">' +
-            window.I18n.t("config.niveaux.active.hint") +
-          '</p>' +
           '<div class="kta-niv-segmented">' +
             '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="' + window.I18n.t("config.niveaux.addBelow") + '">−</button>' +
             segmented +
@@ -1958,9 +1912,6 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         // SECTION 2 : Niveaux visibles (multi-select)
         '<div class="kta-niv-section">' +
           '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
-          '<p class="kta-niv-section-hint">' +
-            window.I18n.t("config.niveaux.visible.hint") +
-          '</p>' +
           '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
           '<div class="kta-niv-vis-actions">' +
             '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">' + window.I18n.t("config.niveaux.visible.all") + '</button>' +
@@ -2285,9 +2236,6 @@ function _ouvrirCreationJonction(btnSub) {
         '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="' + window.I18n.t("config.jonction.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="margin:0 0 12px 0; font-size:13px; color:#c8d0e0;">' +
-          window.I18n.t("config.jonction.intro") +
-        '</p>' +
         '<div class="kta-jct-grille">' +
           '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.fromLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-from">' + _optionsHtml(cur) + '</select>' +

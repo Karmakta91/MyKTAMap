@@ -310,8 +310,8 @@ function geste(ctx) {
     t("🩸 batterie : défaut OFF donc test en `=== true`",
       /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled === true/.test(CFG) &&
       !/batterieEnabled\s*!==\s*false/.test(CFG + UIC));
-    ["config.optionnels.titre", "config.optionnels.intro", "config.capteurs.refuse",
-     "config.capteurs.refuseIos", "config.batterie.label", "config.batterie.hint",
+    ["config.optionnels.titre", "config.capteurs.refuse",
+     "config.capteurs.refuseIos", "config.batterie.label",
      "config.batterie.toastOn", "config.batterie.toastOff"].forEach(function (k) {
       ["fr", "en", "es"].forEach(function (l) {
         const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
