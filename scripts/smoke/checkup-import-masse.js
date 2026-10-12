@@ -23,6 +23,7 @@ const path = require("path");
 const fs   = require("fs");
 const os   = require("os");
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const server = require("./server.js");
 const ROOT  = path.resolve(__dirname, "..", "..");
 const JSZip = require(path.join(ROOT, "lib", "jszip.min.js"));
@@ -107,9 +108,9 @@ async function etatBlobs(p) {
     await p.click("#loaderImportMasseBtn");
     await p.waitForSelector("#kta-impm-input", { state: "attached", timeout: 5000 });
     await p.setInputFiles("#kta-impm-input", zips);
-    await p.waitForFunction(function () { const b = document.getElementById("kta-impm-lancer"); return b && !b.disabled; }, null, { timeout: 15000 });
+    await attendre(p, function () { const b = document.getElementById("kta-impm-lancer"); return b && !b.disabled; }, 15000);
     await p.click("#kta-impm-lancer");
-    await p.waitForFunction(function () { const b = document.getElementById("kta-impm-lancer"); return b && b.dataset.fini === "1"; }, null, { timeout: 30000 });
+    await attendre(p, function () { const b = document.getElementById("kta-impm-lancer"); return b && b.dataset.fini === "1"; }, 30000);
     console.log("   " + (await p.textContent("#kta-impm-resume")).trim());
 
     const e1 = await etatBlobs(p);
@@ -143,10 +144,10 @@ async function etatBlobs(p) {
       await ligne.click();
       // Ouvert = le plan courant porte son nom (indépendant de la façon dont
       // l'accueil se masque). On laisse jusqu'à 10 s à un vrai chargement.
-      await p.waitForFunction(function () {
+      await attendre(p, function () {
         return (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name === "Checkup import 2") ||
                !!document.getElementById("planIntrouvableModal");
-      }, null, { timeout: 10000 }).catch(function () {});
+      }, 10000).catch(function () {});
       const etat = await p.evaluate(function () {
         const st = document.getElementById("loaderStatus");
         return {

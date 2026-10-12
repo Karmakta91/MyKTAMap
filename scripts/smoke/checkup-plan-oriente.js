@@ -36,6 +36,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
 const server = require("./server.js");
@@ -93,9 +94,9 @@ function inf(msg) { console.log("  •  " + msg); }
       if (b) b.click();
     });
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    await page.waitForFunction(function () {
+    await attendre(page, function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
-    }, null, { timeout: 20000 });
+    }, 20000);
     await page.waitForTimeout(2500);
     ok("plan chargé (« " + PLAN.nom + " »), MapBearing présent");
     if (!PLAN.fictif) {
@@ -905,9 +906,9 @@ function inf(msg) { console.log("  •  " + msg); }
       const b = document.getElementById("kta-alert-ok"); if (b) b.click();
     });
     await portrait.getByText(PLAN.nom, { exact: false }).first().click();
-    await portrait.waitForFunction(function () {
+    await attendre(portrait, function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
-    }, null, { timeout: 20000 });
+    }, 20000);
     await portrait.waitForTimeout(2500);
 
     const t17 = await portrait.evaluate(async function () {
@@ -1020,9 +1021,9 @@ function inf(msg) { console.log("  •  " + msg); }
     await tactile.waitForTimeout(2500);
     await tactile.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
     await tactile.getByText(PLAN.nom, { exact: false }).first().click();
-    await tactile.waitForFunction(function () {
+    await attendre(tactile, function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
-    }, null, { timeout: 60000 });
+    }, 60000);
     await tactile.waitForTimeout(4000);
 
     const cdp = await tactile.context().newCDPSession(tactile);

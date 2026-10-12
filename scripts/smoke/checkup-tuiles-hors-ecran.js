@@ -23,6 +23,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
 const server = require("./server.js");
@@ -73,9 +74,9 @@ function inf(m) { console.log("  •  " + m); }
     await page.waitForTimeout(2500);
     await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    await page.waitForFunction(function () {
+    await attendre(page, function () {
       return !!window.map && !!window._tilingV2State && window._tilingV2State.currentLevel !== null;
-    }, null, { timeout: 90000 });
+    }, 90000);
     await page.waitForTimeout(3000);
 
     // État : tuiles du niveau, tuiles posées, part de l'écran (dans le plan)

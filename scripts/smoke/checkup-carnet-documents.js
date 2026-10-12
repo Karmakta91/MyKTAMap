@@ -30,6 +30,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
 const server = require("./server.js");
@@ -71,7 +72,7 @@ async function passe(nav, avecSync) {
   await page.waitForTimeout(2500);
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
   await page.getByText(PLAN.nom, { exact: false }).first().click();
-  await page.waitForFunction(function () { return !!window.PLAN_CONFIG && !!window.map; }, null, { timeout: 60000 });
+  await attendre(page, function () { return !!window.PLAN_CONFIG && !!window.map; }, 60000);
   await page.waitForTimeout(4000);
 
   const r = await page.evaluate(async function (args) {

@@ -32,6 +32,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -93,9 +94,9 @@ function inf(msg) { console.log("  •  " + msg); }
     await page.waitForTimeout(2500);
     await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
     await page.getByText(PLAN, { exact: false }).first().click();
-    await page.waitForFunction(function () {
+    await attendre(page, function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.ItiGuidage && !!window.Pathfinder;
-    }, null, { timeout: 30000 });
+    }, 30000);
     await page.waitForTimeout(3000);
     ok("plan chargé, ItiGuidage présent");
 
@@ -124,9 +125,9 @@ function inf(msg) { console.log("  •  " + msg); }
       window.startTracking();
     }, choix.a);
     await page.evaluate(function (b) { window.itineraireYAller(b.x, b.y, b.nom); }, choix.b);
-    await page.waitForFunction(function () {
+    await attendre(page, function () {
       return (window.getRoads() || []).some(function (r) { return r.type === "itinerary"; });
-    }, null, { timeout: 180000 });
+    }, 180000);
     await page.evaluate(function () { window.ItiGuidage.rafraichir(); });
     await page.waitForTimeout(800);
 

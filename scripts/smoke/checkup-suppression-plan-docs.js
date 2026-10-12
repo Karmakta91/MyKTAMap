@@ -24,6 +24,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:8123";
@@ -47,9 +48,9 @@ async function passe(nav, docsA, cocher) {
     for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
   }, LS_PREGATES);
   await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(function () {
+  await attendre(page, function () {
     return !!(window.PlanRegistry && window.JournalUi && window.JournalUi.histoire && window.refreshPlansList);
-  }, null, { timeout: 30000 });
+  }, 30000);
   await page.waitForTimeout(2500);
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
 
