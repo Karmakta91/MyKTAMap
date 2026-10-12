@@ -2917,9 +2917,6 @@
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + t("secours.role.sortie") + '</label>' +
             '</div>' +
           '</div>' +
-          '<div class="kta-secours-form-hint">' +
-            t("secours.assign.hint") +
-          '</div>' +
           '<div class="kta-secours-form-actions">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm">' + t("secours.btn.assigner") + '</button>' +
@@ -5763,9 +5760,6 @@
                (hotfix18) au format .mkmsec.observations.json. */
           '</div>' +
 
-          '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
-            t("secours.rapport.footerHint") +
-          '</p>' +
 
           '<div style="margin-top:14px; display:flex; justify-content:flex-end;">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport">' + t("secours.btn.fermer") + '</button>' +
@@ -6638,9 +6632,6 @@
           _renderToggleOpt("opt-struct",  t("secours.briefing.optStruct"),  true) +
           _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) +
         '</div>' +
-      '</div>' +
-      '<div style="font-size:11px;color:' + pal.textMuted + ';margin-bottom:14px;line-height:1.5;">' +
-        t("secours.briefing.sectionsTexteHint") +
       '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
         '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">' + t("secours.btn.annulerSimple") + '</button>' +
@@ -8474,9 +8465,6 @@
   // ============================================================
   function _renderListView() {
     let html = '<div class="kta-secours-list-header">' +
-                 '<p class="kta-secours-hint">' +
-                   t("secours.list.intro") +
-                 '</p>' +
                  '<div class="kta-secours-list-header-actions">' +
                    '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
                      t("secours.list.btnNouveau") +
@@ -8553,9 +8541,6 @@
                '<label for="kta-sec-create-incident">' + t("secours.create.incidentLabel") + '</label>' +
                '<input type="datetime-local" id="kta-sec-create-incident">' +
              '</div>' +
-             '<div class="kta-secours-form-hint">' +
-               t("secours.create.hint") +
-             '</div>' +
              '<div class="kta-secours-form-actions">' +
                '<button class="kta-btn kta-btn-ghost" data-action="cancel-create">' + t("secours.btn.annuler") + '</button>' +
                '<button class="kta-btn kta-btn-primary" data-action="confirm-create">' + t("secours.btn.creerContinuer") + '</button>' +
@@ -8581,10 +8566,7 @@
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
       // 1 phase → juste un hint + bouton
-      html += '<p class="kta-secours-hint">' +
-                t("secours.phases.hint1") +
-              '</p>' +
-              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
+      html += '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
                 t("secours.phases.btnAjouter") +
               '</button>';
     } else {
@@ -8816,9 +8798,6 @@
                      '<button class="kta-panneau-close" data-action="close-debrief-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
-                     '<p class="kta-secours-hint" style="margin-top:0;">' +
-                       t("secours.debrief.intro") +
-                     '</p>' +
                      '<div class="kta-secours-form-row">' +
                        '<label for="kta-sec-debrief-text"><strong>' + t("secours.debrief.notesLabel") + '</strong>' +
                          ' <span class="kta-secours-hint" style="font-weight:normal;">' + t("secours.debrief.notesHint") + '</span>' +
@@ -8953,10 +8932,7 @@
                            _escHtml(g.nom) +
                          '</span>';
                 }).join("") +
-              '</div>' +
-              '<p class="kta-secours-hint" style="margin-top:10px;">' +
-                t("secours.launchNext.hint") +
-              '</p>';
+              '</div>';
     }
     html += '</div>' +
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
@@ -9099,7 +9075,6 @@
     html += '<details class="kta-secours-section">' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
-                '<p class="kta-secours-hint">' + t("secours.edit.exportHint") + '</p>' +
                 '<div class="kta-secours-export-actions">' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + t("secours.edit.exportKmz") + '</button>' +
@@ -9378,9 +9353,6 @@
     return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-cta">' +
              '<div class="kta-secours-lancer-bandeau-info">' +
                '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.ctaTitre") + '</div>' +
-               '<div class="kta-secours-lancer-bandeau-sub">' +
-                 t("secours.bandeau.ctaSub") +
-               '</div>' +
              '</div>' +
              '<button class="kta-btn kta-btn-primary kta-btn-lg" data-action="ouvrir-lancer-modale">' +
                t("secours.bandeau.ctaBtn") +
@@ -9498,9 +9470,6 @@
               '</div>' +
             '</label>' +
           '</div>' +
-          '<p style="margin-top:14px; color:#8892a4; font-size:13px; font-style:italic;">' +
-            t("secours.lancer.hint") +
-          '</p>' +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">' + t("secours.btn.annulerCroix") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">' + t("secours.btn.demarrerMaintenant") + '</button>' +
@@ -10190,9 +10159,6 @@
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
              '<div class="kta-secours-tool-block-titre">' + t("secours.heatmap.titre") + '</div>' +
-             '<div class="kta-secours-tool-block-desc">' +
-               t("secours.heatmap.desc") +
-             '</div>' +
              '<div class="kta-secours-tool-block-actions">' +
                '<button class="kta-btn kta-btn-' + (isActive ? "primary" : "secondary") +
                  ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
