@@ -1,13 +1,8 @@
 # 📘 MyKTAMap
 
-**📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr)** — guides utilisateur, installation, sécurité, comment chaque version est vérifiée. · Licence [CC BY-NC-SA 4.0](LICENSE) (usage commercial sur accord).
+**🟢 Application : [myktamap.fr](https://myktamap.fr) · 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr)** — guides utilisateur, installation, sécurité, comment chaque version est vérifiée. · Licence [CC BY-NC-SA 4.0](LICENSE) (usage commercial sur accord).
 
 > Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains / industriels). **100 % hors-ligne**, sans GPS requis, sans framework.
-
-**🌍 Environnements :**
-- 🟢 Production : [myktamap.fr](https://myktamap.fr)
-- 🔧 Développement : [dev.myktamap.fr](https://dev.myktamap.fr)
-- 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr) (guides, installation, sécurité, comment on livre)
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 

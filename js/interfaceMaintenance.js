@@ -181,7 +181,6 @@ function ouvrirCalibrageEchelle() {
 // mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
 // PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
 //   - Prod (myktamap.fr) → https://myktamap.fr/ping.html
-//   - Dev  (dev.myktamap.fr)   → https://dev.myktamap.fr/ping.html
 //   - Prod future (myktamap.fr)         → https://myktamap.fr/ping.html
 //   - Local (localhost:8080)            → http://localhost:8080/ping.html
 //

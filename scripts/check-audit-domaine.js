@@ -18,7 +18,9 @@
 // « Périmètre de garantie : evil.com » et demanderait de vérifier que l'URL
 // commence par https://evil.com. L'audit se validerait lui-même partout — le
 // contraire exact de sa raison d'être. Il doit se DÉSAVOUER hors du domaine
-// officiel, donc citer les deux domaines en dur, dans les trois langues.
+// officiel, donc citer myktamap.fr en dur, dans les trois langues. Le domaine de
+// développement n'est plus annoncé publiquement (décision KARMA du 12/10/2026) :
+// le citer est refusé.
 //
 // Usage : node scripts/check-audit-domaine.js [racine]
 "use strict";
@@ -39,11 +41,12 @@ for (const lang of ["fr", "en", "es"]) {
   const d = JSON.parse(lire("lang/" + lang + ".json"));
   const t = (k) => (typeof d[k] === "string" ? d[k] : "");
   verif(RE_PROD.test(t("home.netdoc.scopeTitle")), "🌍 " + lang + " : le titre du bloc cite myktamap.fr en dur");
-  verif(RE_PROD.test(t("home.netdoc.scope1")) && RE_DEV.test(t("home.netdoc.scope1")), "🌍 " + lang + " : scope1 cite myktamap.fr ET dev.myktamap.fr en dur");
-  verif(/https:\/\/myktamap\.fr/.test(t("home.netdoc.scope3")) && /https:\/\/dev\.myktamap\.fr/.test(t("home.netdoc.scope3")),
-        "🩸 " + lang + " : la consigne « vérifie l'URL » cite les deux URL officielles en dur");
+  verif(RE_PROD.test(t("home.netdoc.scope1")), "🌍 " + lang + " : scope1 cite myktamap.fr en dur");
+  verif(/https:\/\/myktamap\.fr/.test(t("home.netdoc.scope3")),
+        "🩸 " + lang + " : la consigne « vérifie l'URL » cite l'URL officielle en dur");
   const tout = ["scopeTitle", "scope1", "scope2", "scope3"].map(k => t("home.netdoc." + k)).join("\n");
   verif(!RE_LOC.test(tout), "🩸 " + lang + " : aucune origine calculée dans le bloc");
+  verif(!RE_DEV.test(tout), "🔒 " + lang + " : le domaine de développement n'est pas cité");
 }
 {
   const idx = lire("index.html");
@@ -63,14 +66,15 @@ for (const lang of ["fr", "en", "es"]) {
   const j = html.indexOf("Le modèle technique", i);
   const sec = (i >= 0 && j > i) ? html.slice(i, j) : "";
   verif(sec.length > 0, "NETWORK_AUDIT.html : section « Périmètre de cette garantie » présente");
-  verif(/<code>myktamap\.fr<\/code>/.test(sec) && /https:\/\/myktamap\.fr/.test(sec) && /https:\/\/dev\.myktamap\.fr/.test(sec),
-        "🩸 NETWORK_AUDIT.html : les deux domaines officiels sont écrits en dur dans la section");
+  verif(/<code>myktamap\.fr<\/code>/.test(sec) && /https:\/\/myktamap\.fr/.test(sec),
+        "🩸 NETWORK_AUDIT.html : le domaine officiel est écrit en dur dans la section");
+  verif(!RE_DEV.test(html), "🔒 NETWORK_AUDIT.html : le domaine de développement n'est pas cité");
   verif(!RE_LOC.test(sec) && !/<script/i.test(sec), "🩸 NETWORK_AUDIT.html : la section n'a ni script ni origine calculée");
   const md = lire("docs/applications/NETWORK_AUDIT.md");
   const mi = md.indexOf("Périmètre de cette garantie");
   const mj = md.indexOf("Le modèle technique", mi);
   const msec = (mi >= 0 && mj > mi) ? md.slice(mi, mj) : "";
-  verif(/`myktamap\.fr`/.test(msec) && /https:\/\/myktamap\.fr/.test(msec) && /https:\/\/dev\.myktamap\.fr/.test(msec) && !RE_LOC.test(msec),
+  verif(/`myktamap\.fr`/.test(msec) && /https:\/\/myktamap\.fr/.test(msec) && !RE_LOC.test(msec) && !RE_DEV.test(md),
         "🩸 NETWORK_AUDIT.md : idem, domaines en dur, aucune origine calculée");
 }
 

@@ -708,7 +708,7 @@ window.ktaConfirm = function(message, opts) {
 };
 
 // 💬 09/10/2026 — window.ktaAlerte(message, opts) → Promise (résolue à la fermeture).
-// Remplace alert() natif (hors charte, ignore le thème, « dev.myktamap.fr indique… », bloquable par iOS
+// Remplace alert() natif (hors charte, ignore le thème, « <domaine> indique… », bloquable par iOS
 // en PWA, fige l'app). Fenêtre de ktaConfirm à un seul bouton. Règle (KARMA) : message à LIRE POUR
 // AGIR (erreur qui bloque, consigne) → ktaAlerte ; message qui CONFIRME ce qui vient de se passer →
 // toast (OOMGuard.showToast). Le message est du TEXTE (échappé, retours à la ligne gardés) : un
