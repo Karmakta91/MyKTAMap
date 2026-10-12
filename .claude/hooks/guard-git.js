@@ -102,7 +102,10 @@ process.stdin.on("end", () => {
     }
 
     // 6) push vers main, dans TOUT dépôt : un merge sur main part en ligne tout seul
-    const mentionneMain = /\bmain\b/.test(norm);
+    // Seuls les ARGUMENTS d'une commande git push comptent (12/10/2026 : « git add js/main.js && git push … » était
+    // bloqué à tort). « main » = une branche : mot entier, éventuellement après « : » ou « refs/heads/ ».
+    const pushs = norm.split(/&&|\|\||;|\|/).map((s) => s.trim()).filter((s) => /^git(\s+-c\s+\S+)*\s+push\b/.test(s));
+    const mentionneMain = pushs.some((s) => /(^|[\s:+])(refs\/heads\/)?main(?=\s|$|:)/.test(s.replace(/^git(\s+-c\s+\S+)*\s+push/, "")));
     // push "nu" : pas de refspec explicite (ex. "git push" ou "git push origin")
     const aRefspecExplicite = /\bgit\s+push\s+\S+\s+\S+/.test(norm);
     const nuSurMain = !aRefspecExplicite && currentBranch() === "main";
