@@ -132,7 +132,7 @@
   let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
 
   // ═══ 🗂️ v1.71.0 — MULTI-PLANS (lot 2, topo KARMA : « croisement de données
-  // OSM », cas Paris 13e + 14e + galeries techniques ensemble) ═══
+  // OSM », cas de plusieurs relevés voisins + galeries techniques ensemble) ═══
   // Le plan SÉLECTIONNÉ (dropdown) reste le « principal » (fitBounds, slider
   // d'opacité du bandeau). Les autres plans géoréférencés peuvent être AJOUTÉS
   // par-dessus/dessous via le panneau 🗂️ du mode OSM.
@@ -2409,7 +2409,7 @@
   // ═══════════════════════════════════════════════════════════
   // 🗂️ v1.71.0 — PILE MULTI-PLANS (lot 2 : croisement de données OSM)
   // ═══════════════════════════════════════════════════════════
-  // Cas d'usage KARMA : Paris 13e + 14e + galeries techniques de tout Paris
+  // Cas d'usage KARMA : plusieurs relevés voisins + galeries techniques d'une ville
   // sur la même carte, avec ordre d'affichage et opacité PAR PLAN.
   // Le plan sélectionné (dropdown) reste le « principal » ; les autres sont
   // ajoutés via le panneau 🗂️ (fullscreen uniquement, comme la recherche).

@@ -2137,7 +2137,7 @@ function planRowHTML(plan) {
         // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
         const visibles = filtered.filter(function(p) {
           // ✏️ v1.79.1 — le filtre matche le nom AFFICHÉ **et** le nom réel
-          // (retrouver « Cata KARMA » ou « Catacombes » doit marcher pareil).
+          // (retrouver « Releve KARMA » ou « Relevé » doit marcher pareil).
           if (_plansNameFilter &&
               String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
               String(p.displayName || "").toLowerCase().indexOf(_plansNameFilter) === -1) return false;

@@ -1398,7 +1398,7 @@ Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jou
 
 - 🎯 **Le besoin** : un plan scanné puis calé dans QGIS ressort en GeoTIFF, image et calage dans le même fichier. Le Générateur ne lisait ni l'un ni l'autre — il fallait re-saisir deux points GPS déjà posés.
 - 🗺️ **`js/tiffGeoref.js`** (nouveau, KARMA) : lecture de l'IFD0, calage par `ModelPixelScale` (33550) + `ModelTiepoint` (33922) ou `ModelTransformation` (34264), EPSG par `GeoKeyDirectory` (34735) ; décodage LZW (avec prédicteur horizontal), Deflate et non compressé ; ré-encodage PNG par le canvas. API `window.TiffGeoref = { estTiff, lire, EXT_ACCEPTEES, _interne }`.
-- 🧠 **Pourquoi pas `geotiff.js` vendoré (~300 Ko)** : mesuré sur 39 plans réels de carrières franciliennes calés sous QGIS — compression LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), prédicteur 1 ×39, Scale+Tiepoint ×39. Le sous-ensemble suffit ; **tout le reste est refusé en le nommant** (33 raisons, chacune disant quoi réexporter).
+- 🧠 **Pourquoi pas `geotiff.js` vendoré (~300 Ko)** : mesuré sur 39 plans réels de carrières calés sous QGIS — compression LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), prédicteur 1 ×39, Scale+Tiepoint ×39. Le sous-ensemble suffit ; **tout le reste est refusé en le nommant** (33 raisons, chacune disant quoi réexporter).
 - 📐 **Le calage se déduit exactement** : `Scale + Tiepoint` décrit une image nord en haut sans rotation, donc deux coins opposés la décrivent entièrement — précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Aucun `pointC` affine nécessaire, aucune approximation introduite.
 - 🌍 **Web Mercator (EPSG:3857)** ajouté à `sigImport.js` à côté de Lambert 93 : 7 plans du corpus sortent dans ce CRS. Mercator **sphérique** sur un rayon de 6 378 137 m — c'est la définition d'EPSG:3857, pas une approximation de confort. Aucune copie locale des maths : une implémentation par projection, verrouillée par son garde-fou.
 - 🔌 **Intégration** : `.tif/.tiff` explicites dans les `accept` du Générateur et de l'accueil (le type `image/*` seul ne les propose pas de façon fiable selon l'OS) ; le PNG converti est ré-injecté dans le même input, donc dimensions, tuilage V2 et ZIP reprennent sans rien savoir du TIFF.
@@ -2007,7 +2007,7 @@ Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jou
 #### v1.79.1 (10/08/2026) — Plans homonymes : popup systématique + renommage d'affichage
 
 - 📚 **La popup doublon se déclenche dès que le NOM matche** (bug KARMA « même nom → pas de popup, et le plan ne s'ajoute jamais à la liste ») : le détecteur v1.73.1 exigeait même auteur ET version différente — un ZIP régénéré (même nom + même version) **écrasait silencieusement** l'entrée existante via l'id commun `genLocalId(nom, version)`, y compris l'entrée d'un plan homonyme d'un **autre auteur** (fusion de deux plans distincts : archives, tags, sessions mélangés). Désormais : import frais + nom local identique = la popup tranche (Mettre à jour / Garder les deux / annuler) ; les rechargements ciblés (clic de row, re-sélection) restent exemptés. **« Garder les deux » apprend la collision d'id** : nom+version identiques → suffixe `_2`, `_3`… (sans ça, le choix mentait — les deux plans fusionnaient quand même).
-- ✏️ **Renommage d'AFFICHAGE d'un plan** (demande KARMA « deux Catacombes d'auteurs différents ») : ℹ️ Infos → « Renommer l'affichage » — `displayName` local (40 car., vide = retour à l'origine), le **vrai `name` jamais touché** (nameMatch de re-sélection, double-check session, détection doublon, nom de fichier 💾 s'y réfèrent). `PlanRegistry.displayName()` = helper unique, **13 surfaces migrées** (liste, Reprendre, modale Infos live, popup doublon, recherche HOME, dropdown + recherche OSM, switcher carte, graphe liaisons) ; filtre 🔎 sur les deux noms, tri sur l'affiché ; suit l'export de profil et le `.config` gratuitement. 4 clés i18n ×3.
+- ✏️ **Renommage d'AFFICHAGE d'un plan** (demande KARMA « deux plans du même réseau d'auteurs différents ») : ℹ️ Infos → « Renommer l'affichage » — `displayName` local (40 car., vide = retour à l'origine), le **vrai `name` jamais touché** (nameMatch de re-sélection, double-check session, détection doublon, nom de fichier 💾 s'y réfèrent). `PlanRegistry.displayName()` = helper unique, **13 surfaces migrées** (liste, Reprendre, modale Infos live, popup doublon, recherche HOME, dropdown + recherche OSM, switcher carte, graphe liaisons) ; filtre 🔎 sur les deux noms, tri sur l'affiché ; suit l'export de profil et le `.config` gratuitement. 4 clés i18n ×3.
 
 #### v1.79.0 (09/08/2026) — Le profil emporte les archives de plans, HOME PC structurel
 
@@ -2139,7 +2139,7 @@ Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jou
 - 17 clés i18n `gen.wiz.*` fr/en/es. **Sources** v1.72.1. Aucune nouvelle surface réseau.
 
 
-**🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA Paris 13e + 14e + galeries techniques)** :
+**🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA : plusieurs relevés voisins + galeries techniques)** :
 - **Refactor pivot** : les 2 rendus du widget deviennent **paramétrés** — `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` (les wrappers historiques délèguent) et `_renderDataLayersOnMiniMap(data, georef, cible?)` (33 références internes aliasées `dataL/poiL/…` ; sans `cible` = groupes module du plan principal, avec = groupes d'un plan ajouté). Zéro duplication des ~460 lignes de rendu data.
 - **Pile multi-plans** : `_stackOrder` (index 0 = au-dessus, contient AUSSI le principal) + `_extraLayers` (6 groupes Leaflet par plan ajouté) + `_extraOpacity`. zIndex = 200 + rang×5 posé sur chaque `imageOverlay.rotated` (`setZIndex` au réordonnancement, sans re-render). RAM-only (composition = geste de session). Blob URLs jamais révoquées (cache `_planDataCache`) → retrait/re-ajout gratuit.
 - **Panneau 🗂️** (fullscreen uniquement, comme la recherche) : lignes dans l'ordre de la pile — ▲▼ (ordre), slider **opacité par plan** (la ligne du principal pilote AUSSI le slider du bandeau, synchro bidirectionnelle), ✕ retirer (pas sur le principal, marqué ◉), sélecteur ➕ des plans georef restants.
@@ -2327,7 +2327,7 @@ Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jou
 - **Cause racine** : des **points consécutifs dupliqués** `[A,A,B,B,…]` dans `_pointsDistance` — héritage de l'ancien bug de handlers de clic empilés (corrigé côté saisie depuis), mais **les sessions sauvées à cette époque re-restaurent les doublons** via SessionPersist. Chaque sommet portait un segment interne de 0 px → label « 0.0 m » posé sur le point + **tous les angles skippés** (`len < 1e-6`).
 - **Fix 3 couches** (`js/measure.js`, helper `_dedupPointsConsecutifs`, seuil 0.01 px) : ① **saisie** — clic coïncident avec le dernier point ignoré ; ② **restore** — `setMeasurePoints`/`setMeasurePointsSurface` dédupliquent → les **sessions polluées se réparent au chargement** (re-sauvées propres) ; ③ **rendu** — labels segments + angles calculés sur la géométrie dédupliquée (robuste quelle que soit la source). Les vrais points (≥ 0.01 px) ne sont jamais fusionnés. Aucun impact `calculDistance`/`calculSurface` (segments 0 = 0 m ; shoelace insensible aux doublons).
 - **Testé** : harness Leaflet factice — scénario `[A,A,B,B,C,C]` → segments « 10.0 m »/« 8.0 m » + angle **90°** affiché, résultat strictement identique à une saisie propre ; helper unitaire (fusion < 0.01 px, conservation 0.5 px, tableaux vides).
-- **Inclut le bump du commit `c829c30`** (docs légaux, passé sans bump) : CGU **sans** le volet Val-d'Oise (retiré) + **intrusion en lieu privé approfondie** — art. 226-4 (verbatim) & 544, et **responsabilité en cas de dommages ou de secours** : art. 1240-1241 Code civil (verbatim), secours en principe gratuits (CGCT L.2321-2) mais **facturables** pour une activité de loisir (CGCT L.2331-4) + réparation du dommage causé par faute/imprudence. Puce « responsabilité » de la gate enrichie (fr/en).
+- **Inclut le bump du commit `c829c30`** (docs légaux, passé sans bump) : CGU **sans** le volet départemental (retiré) + **intrusion en lieu privé approfondie** — art. 226-4 (verbatim) & 544, et **responsabilité en cas de dommages ou de secours** : art. 1240-1241 Code civil (verbatim), secours en principe gratuits (CGCT L.2321-2) mais **facturables** pour une activité de loisir (CGCT L.2331-4) + réparation du dommage causé par faute/imprudence. Puce « responsabilité » de la gate enrichie (fr/en).
 - **Sources** v1.56.2. Aucune nouvelle surface réseau.
 
 **⚖️ v1.56.0 (15/07/2026)** — **Conditions d'utilisation (avertissement légal) + séquenceur de premier lancement** :
@@ -3889,7 +3889,7 @@ KARMA après v1.40.x : *« fait tout d'un coup et on testera »* après confirma
 ├────────────────────────────────────────────────────────────┤
 │ INFOS                                                       │
 │ Scenario : Recherche Marc — 15/06/2026                     │
-│ Plan     : Four à Chaux Oise                               │
+│ Plan     : Secteur Nord                                    │
 │ Genere le 07/06/2026 à 14:32                               │
 ├────────────────────────────────────────────────────────────┤
 │ LOCALISATION SUR LA CARTE                                  │
@@ -3909,7 +3909,7 @@ KARMA après v1.40.x : *« fait tout d'un coup et on testera »* après confirma
 ├────────────────────────────────────────────────────────────┤
 │ POI CRITIQUES (acces / sorties)                            │
 │ Point d'entree (urgence pompiers) (1) :                    │
-│   - Cavage principal Oise (niveau 0)                       │
+│   - Galerie principale (niveau 0)                          │
 │ Cavage ouvert (3) :                                         │
 │   - Cavage Nord                                             │
 │   - Cavage Est                                              │
@@ -4859,7 +4859,7 @@ const color = _resolveEquipeColor(g.couleurIdx);   // ✅ vrai hex string
 
 **📦 v1.40.35** (07/06/2026) — **Hotfix Mode Sortie d'urgence : conversion pixels → mètres oubliée (distance affichée × scale)** :
 
-KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de distance totalement différente de ce que on affiche en path finder (qui est bon). Cavage : Oise 4.63 km au lieu de 944,5m dans mon cas »*.
+KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de distance totalement différente de ce que on affiche en path finder (qui est bon). Secteur : 4.63 km au lieu de 944,5m dans mon cas »*.
 
 🎯 **Cause racine** (classique d'oubli d'unité)
 
@@ -4872,7 +4872,7 @@ KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de
 
 Le pathfinder retourne un path en **pixels plan**, et `_calculerDistPathfinder` cumule les distances euclidiennes en pixels (`distPx: d`). Sans la division par `APP_CONFIG.scale` (px par mètre), `formatDistance` interprète le nombre comme mètres → affichage gonflé du ratio scale.
 
-Sur le plan **Cavage Oise** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m réels × 4.9 ≈ 4628 m → affiché "4.63 km".
+Sur le plan **relevé réel** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m réels × 4.9 ≈ 4628 m → affiché "4.63 km".
 
 🔧 **Fix v1.40.35** dans `js/sortieUrgence.js` ligne 106
 
@@ -4901,7 +4901,7 @@ Sur le plan **Cavage Oise** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m ré
 
 Cohérent avec le pattern de `lostMode.js` et `measure.js`. Le fallback `scale = 1` (= si `APP_CONFIG.scale` indispo) revient au comportement précédent (affichage "px") pour ne pas masquer un bug de configuration.
 
-📊 **Avant / Après** (exemple Cavage Oise, KARMA)
+📊 **Avant / Après** (exemple relevé réel, KARMA)
 
 | | Avant v1.40.35 | Après v1.40.35 |
 |---|---|---|
@@ -4914,7 +4914,7 @@ Cohérent avec le pattern de `lostMode.js` et `measure.js`. Le fallback `scale =
 🔍 **Audit global** (vérifié par grep) : tous les autres usages de `distPx` dans `sortieUrgence.js` (lignes 245 + 285) passent par `_formatDist` → fix global avec **une seule modif**. Le tri ligne 187 utilise `distPx - distPx` (cohérence préservée, l'unité n'importe pas tant qu'elle est cohérente).
 
 🧪 **Tests à faire**
-- Plan Cavage Oise + position tracker à 944 m d'une sortie → mode `🚨 Sortie urgence` affiche **"944 m"** (et plus "4.63 km")
+- Relevé réel + position tracker à 944 m d'une sortie → mode `🚨 Sortie urgence` affiche **"944 m"** (et plus "4.63 km")
 - Vérifier que la même distance s'affiche identique côté pathfinder normal (`🗺️ Itinéraire`)
 - Cas court (< 1 km) : affichage `XXX m`
 - Cas long (> 1 km) : affichage `X.XX km`
@@ -5723,7 +5723,7 @@ Cascade essayée :
 
 **🧪 Tests à faire** :
 
-Ouvre la console F12 sur la HOME avec Catacombes sélectionné. Tu devrais voir :
+Ouvre la console F12 sur la HOME avec un plan réel sélectionné. Tu devrais voir :
 
 ```
 [OsmHomePreview] Icons extraits : N tag(s) | tags : salle, pa, pc, ...
@@ -5807,7 +5807,7 @@ Priorité : `road.color` natif (rare pour embedded) > mapping par type > fallbac
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes → POI avec **vraies icônes** (maison, PA, danger, chatière, …) au lieu de cercles jaunes
+- [ ] Plan réel → POI avec **vraies icônes** (maison, PA, danger, chatière, …) au lieu de cercles jaunes
 - [ ] Log console : `Icons extraits : N tag(s)` (probablement ~20)
 - [ ] Roads colorées : principal en vert, secondaire en violet, etc. (cohérent map principale)
 - [ ] Roads un peu plus épaisses (weight 3)
@@ -5889,7 +5889,7 @@ Régression :
 
 **📦 v1.40.11** : Vue OSM HOME — amélioration résolution gros plans (z=-2 sur 16K) :
 
-KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment augmenter la reso car bcp trop dégradé »*. v1.40.10 utilisait `MAX_TILES_HOME = 40`, suffisant pour Catacombes 4K (z=0 natif) mais insuffisant pour les très gros plans (16K fallback à minNativeZoom = z=-3 trop dégradé).
+KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment augmenter la reso car bcp trop dégradé »*. v1.40.10 utilisait `MAX_TILES_HOME = 40`, suffisant pour plan 4K (z=0 natif) mais insuffisant pour les très gros plans (16K fallback à minNativeZoom = z=-3 trop dégradé).
 
 **Fix** : `MAX_TILES_HOME = 40` → **80**.
 
@@ -5897,7 +5897,7 @@ KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment au
 
 | Taille plan | v1.40.10 (MAX=40) | v1.40.11 (MAX=80) | Gain résolution |
 |---|---|---|---|
-| 4K (Catacombes 4000×2251) | z=0 natif (40 tuiles) | z=0 natif (40 tuiles) | inchangé ✅ |
+| 4K (4000 px de large) | z=0 natif (40 tuiles) | z=0 natif (40 tuiles) | inchangé ✅ |
 | 8K (8000×4500) | z=-2 (4 tuiles) | z=-1 (40 tuiles) | ×2 |
 | 12K (12000×8000) | z=-3 (3 tuiles) | z=-2 (24 tuiles) | ×2 |
 | 16K (16000×16000) | z=-3 (16 tuiles) | z=-2 (64 tuiles) | **×2 ← FIX KARMA** |
@@ -5925,7 +5925,7 @@ Nouvelle description :
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes 4K → toujours z=0 natif (inchangé v1.40.10)
+- [ ] Plan plan 4K → toujours z=0 natif (inchangé v1.40.10)
 - [ ] Plan 16K → log console : `Tiles V2 : 64 tuile(s) rendues à z=-2 (scale x4)` (au lieu de z=-3 x8)
 - [ ] Plan 16K visuel : nettement plus net (×2 résolution)
 - [ ] Plan 8K → monte aussi à z=-1 (×2 résolution)
@@ -5934,7 +5934,7 @@ Nouvelle description :
 
 **📦 v1.40.10** : Vue OSM HOME — niveau natif z=0 (résolution ×2) :
 
-KARMA : *« toujours trop flou en OSM HOME augmente legerement stp / fait comme on fait en mode map tuile adapté »*. v1.40.7 avait bumpé `MAX_TILES_HOME = 12` → z=-1 sur Catacombes (scale ×2), pas encore assez net.
+KARMA : *« toujours trop flou en OSM HOME augmente legerement stp / fait comme on fait en mode map tuile adapté »*. v1.40.7 avait bumpé `MAX_TILES_HOME = 12` → z=-1 sur un plan 4K (scale ×2), pas encore assez net.
 
 **Analyse "fait comme en mode map tuile adapté"** :
 
@@ -5942,7 +5942,7 @@ La modale OsmView full-screen utilise `MAX_TILES_BASELINE = 20` au boot, MAIS sw
 
 Le widget HOME a une carte fixe (pas de zoom user) → pour avoir le même rendu net que la modale "après zoom", il faut monter direct à z=0 natif.
 
-**Fix** : `MAX_TILES_HOME = 12` → **40**. Pour Catacombes 4000×2251 :
+**Fix** : `MAX_TILES_HOME = 12` → **40**. Pour un plan 4K :
 
 | Version | MAX_TILES | Niveau choisi | Scale | Tuiles | RAM décodée | Résolution |
 |---|---|---|---|---|---|---|
@@ -5965,7 +5965,7 @@ Le widget HOME a une carte fixe (pas de zoom user) → pour avoir le même rendu
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes → log console : `Tiles V2 : 40 tuile(s) rendues à z=0 (scale x1)`
+- [ ] Plan réel → log console : `Tiles V2 : 40 tuile(s) rendues à z=0 (scale x1)`
 - [ ] Image plan sur mini-carte → résolution native, lignes/labels parfaitement nets
 - [ ] Slider opacité → continue de fonctionner
 - [ ] Plein écran ⛶ → image plan toujours nette
@@ -6077,11 +6077,11 @@ Résultat visuel : fond uniforme `#e5dcc5` sur TOUTE la page d'accueil, depuis l
 
 **📦 v1.40.7** : Vue OSM HOME — niveau de tuiles adaptatif (fix flou) :
 
-KARMA : *« pas mal, mais le rendu est trop flou »*. v1.40.6 utilisait `minNativeZoom` fixe (z=-3 pour Catacombes = scale ×8) pour garantir la safety RAM mobile. Résultat : 1 tuile de ~500×282 px étirée sur la mini-carte → flou.
+KARMA : *« pas mal, mais le rendu est trop flou »*. v1.40.6 utilisait `minNativeZoom` fixe (z=-3 pour un plan 4K = scale ×8) pour garantir la safety RAM mobile. Résultat : 1 tuile de ~500×282 px étirée sur la mini-carte → flou.
 
 **Fix** : réplique l'heuristique `_choisirNiveauBaseline` de `osmView.js` v1.39.11 — choisit le niveau **le plus zoomé** tel que `cols × rows ≤ MAX_TILES_HOME` (12 tuiles, budget RAM mini-carte ~12 MB décodé).
 
-**Exemple plan 4000×2251 (Catacombes)** :
+**Exemple plan 4K (4000 px de large)** :
 
 | Niveau | Scale | Tuiles totales | RAM (1 MB/tuile RGBA décodée) | Choisi v1.40.7 ? |
 |---|---|---|---|---|
@@ -6118,7 +6118,7 @@ Utilisé dans `_extractV2TilesOverview` à la place du `const z = config.tiling.
 
 **Tests à faire** :
 
-- [ ] Plan Catacombes → log console : `Tiles V2 : N tuile(s) rendues à z=-1 (scale x2)` (au lieu de z=-3 x8)
+- [ ] Plan réel → log console : `Tiles V2 : N tuile(s) rendues à z=-1 (scale x2)` (au lieu de z=-3 x8)
 - [ ] Mini-carte → image plan **nette** (lignes/symboles cataphiles lisibles)
 - [ ] Slider opacité → continue de fonctionner
 - [ ] Plein écran ⛶ → image plan nette aussi
@@ -6185,7 +6185,7 @@ _loadPlanDataForPreview(planId)
 
 **🧪 Tests à faire** :
 
-- [ ] Plan Catacombes V2 → mini-carte montre l'image du plan + POI + Roads + Zones par-dessus OSM
+- [ ] Plan réel V2 → mini-carte montre l'image du plan + POI + Roads + Zones par-dessus OSM
 - [ ] Log console : `[OsmHomePreview] Tiles V2 : N tuile(s) rendues à z=-3 (scale x8)`
 - [ ] Slider 🎚️ → l'image plan devient plus/moins transparente en live
 - [ ] Plan V1 → log "(plan V1, pas de tuiles)" + widget normal sans image plan
@@ -6215,7 +6215,7 @@ const poiArray = Array.isArray(json.data)         ? json.data
 
 Pourquoi 2 formats ? `json.data` = format embedded standard (`createConf.js > _genererZip` génère `{ data: [...] }`). `json.editorPoints` = format `.mkmsession` export utilisateur (`sessionExporter.js`).
 
-Test : `[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct` (sur plan Catacombes typique).
+Test : `[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct` (sur plan réel typique).
 
 **🐛 Bug 2 — Override CSS thème clair pas appliqué** :
 
@@ -6238,7 +6238,7 @@ Fix v1.40.5 : **déplacement du bloc d'overrides v1.40.3 en TOUTE FIN de fichier
 
 **🧪 Tests à faire** :
 
-- [ ] Plan Catacombes → POI/Roads/Zones/Structures visibles avec compteurs > 0 dans la console
+- [ ] Plan réel → POI/Roads/Zones/Structures visibles avec compteurs > 0 dans la console
 - [ ] Bascule thème clair → toutes les sections (Mes plans + Reprendre + Vue OSM + Ajouter) en `#e5dcc5` uniforme matchant le footer
 - [ ] Thème sombre → aucun changement
 - [ ] Re-sélection plan → instantané (cache RAM préservé v1.40.4)
@@ -6249,7 +6249,7 @@ Fix v1.40.5 : **déplacement du bloc d'overrides v1.40.3 en TOUTE FIN de fichier
 
 **📦 v1.40.4** : Vue OSM HOME — data layers embedded (POI + Roads + Zones + Structures) :
 
-KARMA : *« je n'ai aucune data de catacombe layer POI, zone, afficher sur mon OSM j'ai que les deux point de calage »*. v1.40.0-3 affichaient uniquement les markers georef `pointA`/`pointB` (= mode léger documenté). KARMA veut voir les data embedded.
+KARMA : *« je n'ai aucune data de layer POI, zone, afficher sur mon OSM j'ai que les deux point de calage »*. v1.40.0-3 affichaient uniquement les markers georef `pointA`/`pointB` (= mode léger documenté). KARMA veut voir les data embedded.
 
 **Refonte : extraction ZIP partielle à la sélection** :
 
@@ -6314,7 +6314,7 @@ _loadPlanDataForPreview(planId)
 
 **Tests à faire** :
 
-- ✅ Plan Catacombes (v2 tuilé, dataLayers nombreux) → POI/Roads/Zones/Structures visibles après ~500ms
+- ✅ Plan réel (v2 tuilé, dataLayers nombreux) → POI/Roads/Zones/Structures visibles après ~500ms
 - ✅ Plan v1 simple → idem (pipeline indépendant du tiling)
 - ✅ Plan serveur sans cache local → fallback markers georef seuls (pas de crash)
 - ✅ Plan avec blob purgé → idem
@@ -6414,7 +6414,7 @@ html.kta-theme-light #resumeBox,
 - Autres sections du loader pas concernées (kta-loader-profile-bar, kta-loader-copyright, …)
 - Pas d'impact sur le mode map (changements isolés au loader/HOME)
 
-**📝 Note futur** : si KARMA remonte que le bandeau `Bienvenue/Mon profil` ou `Reprendre Catacombes` ne matche pas non plus, on étendra le selector en v1.40.4.
+**📝 Note futur** : si KARMA remonte que le bandeau `Bienvenue/Mon profil` ou `Reprendre <plan>` ne matche pas non plus, on étendra le selector en v1.40.4.
 
 **📦 v1.40.2** : Vue OSM HOME — ⛶ refonte plein écran inline :
 
@@ -6480,7 +6480,7 @@ Avantages :
 - ~30 lignes de gestion sessionStorage / hooks `kta:planConfigReady` / simulation clic plan row supprimées
 - Le module passe de ~430 → ~400 lignes, plus simple à maintenir
 
-**📝 Note KARMA pour bug 2 ("pas de data affichées en HOME catacombes")** : v1.40.0 documentait que le mode léger n'affiche QUE les markers pointA/pointB georef (= pas de data layers POI). Si tu veux les POI/Roads/Zones embedded sur la mini-carte HOME, ça nécessite une extraction ZIP partielle (helper `_loadPlanForPreview` mentionné dans v1.40.0 mais reporté pour garder le boot HOME léger). Si tu veux qu'on attaque ça → futur v1.40.3 ou v1.41.0.
+**📝 Note KARMA pour bug 2 ("pas de data affichées en HOME du plan réel")** : v1.40.0 documentait que le mode léger n'affiche QUE les markers pointA/pointB georef (= pas de data layers POI). Si tu veux les POI/Roads/Zones embedded sur la mini-carte HOME, ça nécessite une extraction ZIP partielle (helper `_loadPlanForPreview` mentionné dans v1.40.0 mais reporté pour garder le boot HOME léger). Si tu veux qu'on attaque ça → futur v1.40.3 ou v1.41.0.
 
 **📦 v1.40.1** : Vue OSM HOME — masquage offline-first + thème clair :
 
@@ -6968,19 +6968,19 @@ Roadmap KARMA Step 1/4 sur la Vue OSM : *« on va augmenter le truc en plusieurs
 
 **📦 v1.39.11** : Vue OSM — niveau adaptatif + viewport culling :
 
-KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop basse on voit rien »*. Diagnostic confirmé — v1.39.10 utilisait `z = minNativeZoom` (scale ×8, 1×1 tuile pour un plan 4000×2251) pour rester safe sur mobile mais la résolution était insuffisante pour identifier les détails.
+KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop basse on voit rien »*. Diagnostic confirmé — v1.39.10 utilisait `z = minNativeZoom` (scale ×8, 1×1 tuile pour un plan 4000×2250) pour rester safe sur mobile mais la résolution était insuffisante pour identifier les détails.
 
 **Topo & reco** : reproduction du pattern Leaflet TileLayer natif (qu'on imite déjà dans `tiling.js > _renderNiveau` pour la map principale) — niveau adaptatif au zoom + viewport culling pour charger uniquement les tuiles visibles. Plus le user zoom dans OSM, plus on monte en résolution. Plus il dézoome, plus on redescend pour économiser RAM.
 
 **Fix v1.39.11** :
-- **Heuristique baseline au boot** : `_choisirNiveauBaseline(tiling, planW, planH)` choisit le niveau le plus zoomé tel que `cols × rows ≤ MAX_TILES_BASELINE` (20 tuiles, budget RAM mobile ~20 MB décodé). Pour un plan 4000×2251 → z=-1 (scale ×2, 4×3=12 tuiles). Pour un plan 16K×16K → z=-3 (4×4=16 tuiles, reste prudent).
+- **Heuristique baseline au boot** : `_choisirNiveauBaseline(tiling, planW, planH)` choisit le niveau le plus zoomé tel que `cols × rows ≤ MAX_TILES_BASELINE` (20 tuiles, budget RAM mobile ~20 MB décodé). Pour un plan 4000×2250 → z=-1 (scale ×2, 4×3=12 tuiles). Pour un plan 16K×16K → z=-3 (4×4=16 tuiles, reste prudent).
 - **Mapping zoom OSM ↔ niveau plan** : `_targetLevelForZoom(osmZoom, tiling)` mappe `delta = osmZoom - baselineOsmZoom` vers `targetZ = baseLevel + delta`, clamp dans `[minNativeZoom, maxNativeZoom]`. Invariant valide car OSM ET tiling V2 doublent la résolution par cran de zoom — relation 1:1.
 - **Calcul `_baselineOsmZoom`** : `_computePlanBbox(proj, planW, planH)` projette les 4 coins du plan en latlng via la georef, puis `_osmMap.getBoundsZoom(_planBbox)` donne le zoom OSM où le plan tient au fit. Stocké 1 fois au boot, sert de référence pour le delta.
 - **Viewport culling AABB** : `_tileIntersectsBounds(tl, tr, bl, mapBounds)` reconstruit le 4e coin par parallélogramme (`br = tr + bl - tl`) et teste `mapBounds.intersects(tileBbox)`. Padding 10% sur mapBounds pour pré-charger les bordures (anti-flash au pan rapide). Pattern aligné sur §81 P5 (markers POI viewport culling) et `tiling.js`.
 - **Tracker `_tilesByPath`** : map `path → {overlay, tl, tr, bl}` pour add/remove idempotent. Au render d'un niveau : skip les paths déjà présents (éviter les doublons), puis cull ceux qui ne sont plus visibles. Coût mémoire négligeable (1 entrée par tuile visible).
 - **Handler `zoomend moveend`** : `_onMoveEnd` re-évalue le niveau cible, appelle `_renderLevel(targetZ)` qui gère le switch interne (cleanup intégral si nouveau niveau, juste add+cull si même niveau). Unbind dans `close()` pour éviter les listeners orphelins.
 
-**Avant / Après** (plan 4000×2251 typique)
+**Avant / Après** (plan 4000×2250 typique)
 
 | | v1.39.10 | v1.39.11 |
 |---|---|---|
@@ -6993,7 +6993,7 @@ KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop b
 | RAM décodée | ~1 MB | ~6-12 MB (visible viewport, scale ×2) |
 
 **Tests à faire** :
-- ✅ Plan 4000×2251 V2 → ouverture Vue OSM, tuiles z=-1 nettes
+- ✅ Plan 4000×2250 V2 → ouverture Vue OSM, tuiles z=-1 nettes
 - ✅ Zoom OSM proche → swap auto vers z=0 (rés max native du plan)
 - ✅ Zoom OSM dézoomé → swap auto vers z=-2 puis z=-3 (overview, économe)
 - ✅ Pan rapide → tuiles cullées et re-ajoutées au pad 10%, pas de flash blanc grossier
@@ -7011,7 +7011,7 @@ KARMA retour terrain v1.39.0-9 : *« ca crash sur mobile, surment psk on charge 
 
 **Fix v1.39.10** :
 - **Gate V2 strict** : nouvelle `_isV2Plan()` check `tiledV2 === true && tiling.minNativeZoom finite && tiling.tileSize finite`. Si non-V2 → `alert()` pédagogique au clic du bouton 🌍 avec instruction "Ouvre Générateur → Modifier → coche 🧱 Convertir en V2 tuile" + abort (pas de modale, pas de ping, pas d'OSM tiles téléchargées). Préserve la philosophie 100% offline si pas opt-in.
-- **Rendu via tuiles minNativeZoom** : `_renderTilesV2OnOsm(proj, tiling)` itère sur les tuiles du niveau le plus dézoomé (`z = minNativeZoom`, typiquement `-3` → scale ×8). Exemple plan 4000×2251 : `8×5 = 40` tuiles z=0 (~12 MB) → `1×1 = 1` tuile z=-3 (~200 KB). 99% économie RAM/GPU.
+- **Rendu via tuiles minNativeZoom** : `_renderTilesV2OnOsm(proj, tiling)` itère sur les tuiles du niveau le plus dézoomé (`z = minNativeZoom`, typiquement `-3` → scale ×8). Exemple plan 4000×2250 : `8×5 = 40` tuiles z=0 (~12 MB) → `1×1 = 1` tuile z=-3 (~200 KB). 99% économie RAM/GPU.
 - **Convention CRS.Simple respectée** : flip Y pixel (`pxTop = planH - k * tileSize * scale`, `pxBottom = planH - (k-1) * tileSize * scale`) avant projection via `proj.planToLatLng(x, y)`. 1 `L.imageOverlay.rotated(url, tl, tr, bl)` par tuile = N parallélogrammes alignés sur la georef.
 - **Lazy fetch reproduit** : reprise fidèle du pattern `tiling.js > _renderNiveau` — pre-extract via `_extractLazyAsset(path)` Promise.all si Phase 2 Pack RAM actif (`asset.file === null && asset._zipPath`). Puis `_resolveTileUrl(path)` réplique `_resoudreUrlTuile` (création blob URL si nécessaire, asset.url réutilisé sinon).
 - **Cohérence cross-module** : `asset.url` est **partagé** avec `tiling.js` via `window.RUNTIME_ASSETS[path]`. NE PAS `URL.revokeObjectURL` au `close()` de la modale OSM → casserait l'affichage de la map principale. La création est idempotente (réutilise une URL existante si déjà créée par tiling.js).
@@ -7194,7 +7194,7 @@ Bug remonté KARMA terrain : *« le control Z casse toujours la suite d'un trac�
 
 **E. 📦 Bump** : sw.js v1.36.2 → v1.37.0 + `__MKM__.build` v1.37.0 + `version.json > version` + notes user-friendly. Nouveau module `js/northPicker.js` ajouté à `ASSETS_TO_CACHE` + chargé dans `index.html` AVANT `interfaceConfig.js` (dépendance `window.openNorthCalibrationPicker`).
 
-**📦 v1.36.2** : Fix ronds intersections de tracés + déplacement option per-plan dans ⚙️ Réglages. (1) **Bug fix** — sur les plans denses (Catacombes 2024+, > 200 tracés) les cercles colorés aux intersections de tracés disparaissaient silencieusement. Cause racine identifiée : seuil interne `ROAD_INTERSECTION_MAX_ROADS = 200` dans `js/road.js > _calculerIntersectionsRoads()` qui faisait un short-circuit muet du calcul sans message d'erreur. Seuil remonté à **500** (couvre les plans actuels les plus denses + marge confort, perf O(N²) reste acceptable sur cette taille — mesurée < 80 ms sur Catacombes 2024). (2) **Déplacement UX** — le toggle « ⚪ Afficher les ronds aux intersections de tracés » a été **retiré de Configuration home** (où il était global à TOUS les plans, peu intuitif) et **déplacé per-plan dans ⚙️ Réglages mode carte**. Nouveaux helpers dans `js/config.js` : `window.getPlanShowsIntersections(planId)` + `window.setPlanShowsIntersections(planId, value)` avec cascade lecture **per-plan → global → default true**. Persistance via nouvelle clé `localStorage > myktamap_plan_prefs_<planId>` (objet `{showRoadIntersections: bool, …}`) — réservé pour d'autres préférences per-plan futures. `js/road.js` ligne 571 : `APP_CONFIG.showRoadIntersections !== false` → appel au helper. `index.html` : suppression checkbox `#loaderShowIntersectionsCb` + handler. `js/interfaceConfig.js` : nouveau toggle `#cfg_show_intersections` dans section Réglages map mode (à côté de scaledMarkers / Wake Lock). Bump cache v1.36.1 → v1.36.2 + bump `__MKM__.build` + `version.json > version` + notes user-friendly.
+**📦 v1.36.2** : Fix ronds intersections de tracés + déplacement option per-plan dans ⚙️ Réglages. (1) **Bug fix** — sur les plans denses (relevé dense récent, > 200 tracés) les cercles colorés aux intersections de tracés disparaissaient silencieusement. Cause racine identifiée : seuil interne `ROAD_INTERSECTION_MAX_ROADS = 200` dans `js/road.js > _calculerIntersectionsRoads()` qui faisait un short-circuit muet du calcul sans message d'erreur. Seuil remonté à **500** (couvre les plans actuels les plus denses + marge confort, perf O(N²) reste acceptable sur cette taille — mesurée < 80 ms sur un relevé dense récent). (2) **Déplacement UX** — le toggle « ⚪ Afficher les ronds aux intersections de tracés » a été **retiré de Configuration home** (où il était global à TOUS les plans, peu intuitif) et **déplacé per-plan dans ⚙️ Réglages mode carte**. Nouveaux helpers dans `js/config.js` : `window.getPlanShowsIntersections(planId)` + `window.setPlanShowsIntersections(planId, value)` avec cascade lecture **per-plan → global → default true**. Persistance via nouvelle clé `localStorage > myktamap_plan_prefs_<planId>` (objet `{showRoadIntersections: bool, …}`) — réservé pour d'autres préférences per-plan futures. `js/road.js` ligne 571 : `APP_CONFIG.showRoadIntersections !== false` → appel au helper. `index.html` : suppression checkbox `#loaderShowIntersectionsCb` + handler. `js/interfaceConfig.js` : nouveau toggle `#cfg_show_intersections` dans section Réglages map mode (à côté de scaledMarkers / Wake Lock). Bump cache v1.36.1 → v1.36.2 + bump `__MKM__.build` + `version.json > version` + notes user-friendly.
 
 **📦 v1.35.1** : Hotfix Mode Sortie d'urgence — codes courts. : v1.35.0 cherchait les libellés humains ("puits à échelon ouvert", "escalier de service ouvert", "cavage ouvert") dans les tags des POIs alors que les tags réels sont des **codes courts** : `cao` (Cavage Ouvert), `peo` (Puits à Échelon Ouvert), `eso` (Escalier de Service Ouvert) — feedback KARMA. Versions fermées (`caf`/`pef`/`esf`) restent volontairement exclues (impassables). Modifs uniquement `js/sortieUrgence.js > TYPES_SORTIE` array + message d'erreur quand aucune sortie trouvée. Bump cache v1.35.0 → v1.35.1.
 
@@ -7250,7 +7250,7 @@ Tous les calls sont gardés par `if (window.kta_vibrate)` (no-op si module pas c
 - **Fuite #4 — `js/lostMode.js _renderOnMap`** : `const svgRenderer = L.svg(...)` était déclaré dans le scope de la fonction. À chaque appel (= chaque recalcul de zone Lost), un NOUVEAU `L.svg()` était créé et `addTo(window.map)`, mais l'ancien restait attaché dans `map._layers` (jamais retiré par `_clearLayers` qui ne le connaissait pas). Sur user qui ajuste les critères de recherche plusieurs fois, accumulation linéaire de SVG renderers dans le DOM Leaflet → fuite mémoire + ralentissement du re-render. Fix : promouvoir au scope module (`let _svgRenderer = null`), ajouter `removeLayer(_svgRenderer)` dans `_clearLayers`, garder l'alias `const svgRenderer = _svgRenderer` pour rétro-compat des lignes suivantes (404, 421, 436, 495).
 - **Gain RAM total estimé** : ~5-20 Mo économisés sur usage typique long, plus si l'user est intense (tracker + Live + Lost). Combiné avec Phase 2 light, on attaque le crash iPhone PWA sur plusieurs vecteurs.
 **📦 v1.34.14** : Fix `registerEmbeddedRoad` batch + retrait debug "Refonte UI v1".
-**📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot. : KARMA stack trace v1.34.13 montre `renderRoads → window.registerEmbeddedRoad → utils.js:1703 forEach → ajouterPointsDepuisJSON`. Le bug : `ajouterPointsDepuisJSON` itère sur tous les `json.roads[]` d'un dataLayer, et pour CHAQUE road appelle `registerEmbeddedRoad` qui à son tour appelle `renderRoads()` complet. Sur le plan KARMA (catacombes_2024 avec 150+ roads dans un dataLayer), ça générait 150+ appels successifs de `renderRoads` au boot — chacun rendant tout depuis zéro. Fix : (1) `js/road.js registerEmbeddedRoad(road, layer, skipRender)` — ajout d'un 3e paramètre optionnel `skipRender` (défaut `false` pour backward compat) qui skip le re-render auto. (2) `js/utils.js ajouterPointsDepuisJSON` — passe `skipRender=true` dans la boucle `roadsToRender.forEach`, track via `_ktaEmbeddedRoadRegistered` si au moins une road a été register, puis trigger UN SEUL `renderRoads()` à la fin du forEach (= **1 render au lieu de 150+**). Gain perf important au boot des plans avec dataLayer roads denses. Bug latent probablement depuis l'introduction de `registerEmbeddedRoad` (v1.21.1+), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false`. Bonus : (a) retrait demande KARMA du banner `console.info("[Refonte UI v1] Nouvelle interface active...")` dans `js/refonteInterface.js` (la refonte est défaut depuis v1.8.1, plus besoin de le rappeler), (b) retrait de l'instrumentation diagnostic v1.34.13 (`_rrCallCount`/`_rrWindowStart`/`_rrStacksLogged` + Error().stack au burst) dans `js/road.js renderRoads`, restauration de la forme compacte d'origine.
+**📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot. : KARMA stack trace v1.34.13 montre `renderRoads → window.registerEmbeddedRoad → utils.js:1703 forEach → ajouterPointsDepuisJSON`. Le bug : `ajouterPointsDepuisJSON` itère sur tous les `json.roads[]` d'un dataLayer, et pour CHAQUE road appelle `registerEmbeddedRoad` qui à son tour appelle `renderRoads()` complet. Sur le plan KARMA (un relevé réel avec 150+ roads dans un dataLayer), ça générait 150+ appels successifs de `renderRoads` au boot — chacun rendant tout depuis zéro. Fix : (1) `js/road.js registerEmbeddedRoad(road, layer, skipRender)` — ajout d'un 3e paramètre optionnel `skipRender` (défaut `false` pour backward compat) qui skip le re-render auto. (2) `js/utils.js ajouterPointsDepuisJSON` — passe `skipRender=true` dans la boucle `roadsToRender.forEach`, track via `_ktaEmbeddedRoadRegistered` si au moins une road a été register, puis trigger UN SEUL `renderRoads()` à la fin du forEach (= **1 render au lieu de 150+**). Gain perf important au boot des plans avec dataLayer roads denses. Bug latent probablement depuis l'introduction de `registerEmbeddedRoad` (v1.21.1+), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false`. Bonus : (a) retrait demande KARMA du banner `console.info("[Refonte UI v1] Nouvelle interface active...")` dans `js/refonteInterface.js` (la refonte est défaut depuis v1.8.1, plus besoin de le rappeler), (b) retrait de l'instrumentation diagnostic v1.34.13 (`_rrCallCount`/`_rrWindowStart`/`_rrStacksLogged` + Error().stack au burst) dans `js/road.js renderRoads`, restauration de la forme compacte d'origine.
 **📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot.
 **📦 v1.34.12** : Hotfix v1.34.11 — `_lazyZipRef` wipé prématurément.
 **📦 v1.34.11** : Pack RAM Phase 2 light — Lazy tile + LRU file release. : KARMA logs v1.34.12 (mode debug ON) montrent `[Road] renderRoads — roadsData : 0 tracés` répété 150+ fois successivement après `[Main] Application lancée`. `appliquerFiltreNiveau` (`js/interfaceConfig.js l1361`) appelle `renderRoads` directement SANS throttle, contrairement à `_renderRoadsThrottled` (250ms throttle) utilisé pour les events Leaflet. Hypothèse : un orchestrateur (sessionPersist restore ? interfaceConfig setup ? autre init multi-niveau ?) déclenche `appliquerFiltreNiveau` en boucle au boot. Bug latent probablement depuis v1.21.5 (refonte filtres), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false` (= 99% des users). Instrumentation : compteur rolling window 1s dans `renderRoads`. Si ≥5 appels dans la fenêtre, log `console.warn` avec `Error().stack` (limité à 3 stacks pour éviter le spam). KARMA reproduit, partage la stack F12 → identification de la source → fix propre en v1.34.14. Aucun changement fonctionnel.
@@ -8975,7 +8975,7 @@ MyKTAMap — Rapport État Mémoire
 
 🧠 RUNTIME
 ─────────────────────────────────────────
-Plan chargé : Carrière du Val V3 (4000×2251)
+Plan chargé : Relevé réel V3 (4000×2250)
   Auteur : KARMA
   M-LVL : ON | V2 tuilé : OFF
   Calques image : 1 | Calques data : 4

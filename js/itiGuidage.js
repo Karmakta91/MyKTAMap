@@ -18,7 +18,7 @@
 // Règles (cf l'étude, §« Logique quand annoncer ») :
 //   • un croisement se dit, même pour aller tout droit ;
 //   • un virage SANS croisement ne se dit pas : tant qu'il n'y a qu'un chemin,
-//     suivre la galerie suffit (retour KARMA, catacombes, 27/09/2026) ;
+//     suivre la galerie suffit (retour KARMA, relevé réel, 27/09/2026) ;
 //   • l'angle se mesure sur une fenêtre de quelques mètres, pas au segment
 //     voisin (le dessin à la main tremble) ;
 //   • les événements trop proches fusionnent en un seul ;
@@ -179,7 +179,7 @@
     function capOut(s) { return _capEntre(ch, s, s + W); }
 
     // 1) Candidats : les croisements posés sur le trajet, ET RIEN D'AUTRE.
-    // 🩸 27/09/2026 (retour KARMA sur les catacombes) — les virages francs du
+    // 🩸 27/09/2026 (retour KARMA sur un relevé réel) — les virages francs du
     // dessin SANS croisement étaient annoncés aussi (« le tracé ne montre pas
     // toutes les ouvertures »). Sur un réseau de galeries, c'est du bruit :
     // tant qu'il n'y a qu'un chemin, suivre la galerie suffit. Un virage ne se

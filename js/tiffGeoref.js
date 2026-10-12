@@ -22,7 +22,7 @@
 //      navigateur (aucun encodeur à écrire : `canvas.toBlob` suffit).
 //
 // ⚠️ POURQUOI PAS `geotiff.js` (~300 Ko vendored) : mesuré sur un corpus réel
-// de 39 plans de carrières franciliens calés sous QGIS, la totalité tient
+// de 39 plans de carrières calés sous QGIS, la totalité tient
 // dans un sous-ensemble minuscule du format —
 //   compression : LZW ×30, aucune ×9 · pixels : 39/39 en RGB 8/8/8
 //   organisation : 39/39 en bandes (`strips`), aucune tuilée, PlanarConfig 1

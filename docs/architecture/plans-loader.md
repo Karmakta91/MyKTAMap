@@ -581,7 +581,7 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 | Calage | `ModelPixelScale` (33550) + `ModelTiepoint` (33922), ou `ModelTransformation` (34264) ; EPSG par `GeoKeyDirectory` (34735) |
 | Pixels | LZW (prédicteur horizontal géré), Deflate, non compressé — puis ré-encodage PNG par le canvas |
 
-**Pourquoi aucune bibliothèque vendorée** (`geotiff.js` ≈ 300 Ko) : mesuré sur un corpus réel de 39 plans de carrières franciliens calés sous QGIS — LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), `PlanarConfig` 1 ×39, prédicteur 1 ×39, `Scale+Tiepoint` ×39, 2,2 Mpx au maximum. On lit ce sous-ensemble et **on refuse le reste en le nommant** : 33 raisons distinctes (`tiff.err.*`), chacune disant quoi réexporter.
+**Pourquoi aucune bibliothèque vendorée** (`geotiff.js` ≈ 300 Ko) : mesuré sur un corpus réel de 39 plans de carrières calés sous QGIS — LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), `PlanarConfig` 1 ×39, prédicteur 1 ×39, `Scale+Tiepoint` ×39, 2,2 Mpx au maximum. On lit ce sous-ensemble et **on refuse le reste en le nommant** : 33 raisons distinctes (`tiff.err.*`), chacune disant quoi réexporter.
 
 **Le calage se déduit exactement** : `Scale + Tiepoint` décrit une image nord en haut **sans rotation** — deux coins opposés la décrivent entièrement, ce qui est précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Aucun `pointC` affine nécessaire, aucune approximation introduite. Un calage porteur d'une rotation est **refusé**, pas approché.
 

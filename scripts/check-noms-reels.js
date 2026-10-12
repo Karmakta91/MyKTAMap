@@ -45,13 +45,19 @@ const path = require("path");
 const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 
-// Département des relevés réels : nom, gentilé (4 formes).
+// Département des relevés réels : nom, gentilé (4 formes) ; puis voir ci-dessous.
 const EMPREINTES = [
   "c7952202475c602e69a9a0c415068969811aed2284c205da10a80341fb71d6ca",
   "8a39acd3528ca3a8342c0596ef71324fb87892438c2afadbe96f8da6bfb1f10c",
   "dd11fffd7e6f8825ab12e5eab367bd88d10ceca5919f876c1a143e89eebeded3",
   "5eea13e2a372b09ee93e46b173516b7b6cdfdb0070c82aabe7881dab8f6502e6",
-  "b80c5a59ec16115c16f44f7738acb781d92b45426dcb16329e03bf373d39cba5"
+  "b80c5a59ec16115c16f44f7738acb781d92b45426dcb16329e03bf373d39cba5",
+  // Nom d'un plan réel (12/10/2026) puis région des relevés (4 formes).
+  "cc61e6cd50aa732dc321e588f0a1a9457f14f06d163b0a53c50055d36e88421f",
+  "2800e0072f7dbacb939635c08cdc3af7706a15cd6c7fcfe5865021da33c7ddb4",
+  "2a726e56c80adf3acf37f5204ad1bbc111f16606d632fe4727d96510072ce5db",
+  "492ca6c94c41ac1d86e7b786236f0bed60d946b11c4f0b279e73f1d74a06c116",
+  "13beeaca798b0913d97a9ebc116251930049cb311a78d8c63b6d97a82c5a7d9b"
 ];
 
 const LISTE_LOCALE = path.join(os.homedir(), ".myktamap", "noms-interdits.txt");

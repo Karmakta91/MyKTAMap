@@ -22,7 +22,7 @@
 // 🐛 CRASH MOBILE (fix v1.39.10)
 //   Avant v1.39.10, on chargeait l'image complète du plan via
 //   `L.imageOverlay.rotated(baseImage, ...)` → sur mobile (iPhone PWA budget
-//   ~500 MB), un plan 4000×2251 saturait le GPU (OOM crash silencieux).
+//   ~500 MB), un plan 4000×2250 saturait le GPU (OOM crash silencieux).
 //   Depuis v1.39.10, on ne supporte QUE les plans V2 tuilés.
 //
 // 🏗️ MULTI-LVL OSM (v1.39.16)

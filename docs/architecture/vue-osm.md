@@ -213,7 +213,7 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 
 | Plan | Niveau v1.40.11 | Tuiles | RAM décodée |
 |---|---|---|---|
-| 4K Catacombes | z=0 natif | 40 | 40 MB |
+| 4K (relevé réel) | z=0 natif | 40 | 40 MB |
 | 8K | z=-1 | 40 | 40 MB |
 | 12K | z=-2 | 24 | 24 MB |
 | 16K | z=-2 | 64 | 64 MB |

@@ -286,7 +286,7 @@
     return true;
   }
 
-  // ✏️ v1.79.1 (KARMA « deux Catacombes d'auteurs différents — renommer
+  // ✏️ v1.79.1 (KARMA « deux plans du même réseau d'auteurs différents — renommer
   // depuis le HOME pour différencier ») — NOM D'AFFICHAGE local. On ne
   // touche JAMAIS à `name` (le vrai nom du plan-config) : il sert aux
   // vérifications fonctionnelles (nameMatch de la re-sélection de ZIP,

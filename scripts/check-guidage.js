@@ -323,7 +323,7 @@ async function evacuationBrancard() {
     t("dessin tremblé : aucune consigne avant l'arrivée", sansArrivee(it.guide).length === 0);
   }
 
-  // 4) Coude SANS croisement → tu, même franc (retour KARMA, catacombes :
+  // 4) Coude SANS croisement → tu, même franc (retour KARMA, relevé réel :
   //    tant qu'il n'y a qu'un chemin, suivre la galerie suffit)
   {
     const w = bac([R("principal", [[0, 500], [300, 500], [300, 100]])]);

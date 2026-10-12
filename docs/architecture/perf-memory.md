@@ -219,7 +219,7 @@ Trade-off : on n'a pas le lazy loading natif de GridLayer. Mais on garde le gain
 {
   "plan": {
     "imageWidth": 4000,
-    "imageHeight": 2251,
+    "imageHeight": 2250,
     "tiledV2": true,            // ← flag activant le runtime Option B
     "baseImage": "..."          // gardé pour rétrocompat / fallback éventuel
   },

@@ -136,7 +136,7 @@ remplacent celles du plan.
       "id": "ipl_<ts36>_<rand>",
       "a": { "planId": "local_gm1_v2", "planName": "GM1", "pointId": "PA1",
              "pointNom": "Puits nord", "x": 4843, "y": 2002, "level": 0, "source": "session" },
-      "b": { "planId": "server_data_oise", "planName": "Oise", "pointId": "",
+      "b": { "planId": "server_data_secteur", "planName": "Secteur", "pointId": "",
              "pointNom": "Accès cave", "x": 120, "y": 88, "source": "data" },
       "createdAt": "2026-07-21T10:00:00.000Z"
     }

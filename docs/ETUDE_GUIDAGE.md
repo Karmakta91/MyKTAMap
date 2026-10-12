@@ -54,7 +54,7 @@ dessiné : il faut une logique de croisements.
    croisement. On retient donc les croisements du graphe **situés sur le tracé** de l'itinéraire.
 3. **Angle mesuré sur une fenêtre de quelques mètres** avant et après, pas sur le segment voisin (le dessin à
    la main tremble).
-4. **Virage sans croisement : jamais annoncé** (retour KARMA du 27/09/2026 sur les catacombes). Tant qu'il n'y
+4. **Virage sans croisement : jamais annoncé** (retour KARMA du 27/09/2026 sur un relevé réel). Tant qu'il n'y
    a qu'un chemin, suivre la galerie suffit : seul un croisement, là où il y a un choix, produit une consigne
    de virage. *(La première version annonçait les virages francs ; c'était une surinterprétation de
    l'argument « chambre à piliers », qui visait « la 3e à gauche ».)*

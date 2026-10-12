@@ -354,7 +354,7 @@ function _typeGagnant(typeA, typeB) {
 // Seuil dynamique selon le toggle PerfUltra.noIntersect : 50 en mode aggressive,
 // 500 en mode normal. Lu à chaque appel pour réagir aux changements à chaud.
 // 🆕 v1.36.2 — seuil 200 → 500 (cause racine bug "ronds disparus") : les plans
-// denses récents (Catacombes 2024+, cf KARMA report) dépassaient silencieusement
+// denses récents (relevé dense récent, cf KARMA report) dépassaient silencieusement
 // les 200 routes ; le pre-check à _calculerIntersectionsRoads renvoyait [] sans
 // alerter l'user (juste console.warn jamais lu). Avec 500 on couvre la grande
 // majorité des plans réels. Pour les très gros (>500), un toast UI explicite
@@ -760,7 +760,7 @@ function _targetLayerForRoad(roadType) {
 // (`window.layerEditor`, cible de l'addTo ligne ~640). Le FeatureGroup
 // gardait sa référence interne → les anciens cercles s'accumulaient à
 // chaque re-render. Mesuré en session debug : 719 cercles fantômes dans
-// layerEditor pour 9 intersections réellement calculées (plan Catacombes,
+// layerEditor pour 9 intersections réellement calculées (relevé réel,
 // après plusieurs toggles de filtre). Fix : retirer du FeatureGroup parent
 // quand le cercle y est (removeLayer propage aussi le retrait de la map),
 // fallback layer.remove() sinon.
