@@ -614,12 +614,67 @@
   // lue au rendu (langue courante). Le HTML de mise en forme est admis (l'extension est du code de la page : ce
   // nettoyage est une hygiène, pas une frontière) — sans script, cadre, formulaire, gestionnaire on* ni lien
   // javascript:. Erreur ou forme inattendue = rien ; sans extension, l'aide reste celle du community.
+  // Un seul passage, balise par balise (12/10/2026) : les expressions régulières d'avant revenaient en arrière
+  // (coût quadratique sur un fragment mal fermé, Sonar S8786). Mêmes règles : éléments à contenu dangereux retirés
+  // AVEC leur contenu, link/meta/base retirés, attributs on* retirés, href/src « javascript: » → « # ».
+  const _HTML_BLOC = { script: 1, style: 1, iframe: 1, object: 1, embed: 1, form: 1 };
+  const _HTML_SEUL = { link: 1, meta: 1, base: 1 };
+  function _attributsSurs(brut) {
+    let out = "", i = 0;
+    const n = brut.length, blanc = (c) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f";
+    while (i < n) {
+      while (i < n && blanc(brut[i])) i++;
+      if (i >= n) break;
+      if (brut[i] === "/") { out += " /"; i++; continue; }
+      let j = i;
+      while (j < n && !blanc(brut[j]) && brut[j] !== "=" && brut[j] !== "/") j++;
+      const nom = brut.slice(i, j).toLowerCase();
+      i = j;
+      while (i < n && blanc(brut[i])) i++;
+      let valeur = null;
+      if (brut[i] === "=") {
+        i++;
+        while (i < n && blanc(brut[i])) i++;
+        const q = brut[i];
+        if (q === "\"" || q === "'") {
+          const fin = brut.indexOf(q, i + 1);
+          valeur = brut.slice(i + 1, fin < 0 ? n : fin); i = fin < 0 ? n : fin + 1;
+        } else {
+          let k = i;
+          while (k < n && !blanc(brut[k])) k++;
+          valeur = brut.slice(i, k); i = k;
+        }
+      }
+      if (!nom || nom.slice(0, 2) === "on") continue;
+      if ((nom === "href" || nom === "src") && valeur !== null &&
+          valeur.trim().toLowerCase().replace(/[\t\n\r ]/g, "").indexOf("javascript:") === 0) valeur = "#";
+      out += " " + nom + (valeur === null ? "" : "=\"" + valeur.replace(/"/g, "&quot;") + "\"");
+    }
+    return out;
+  }
   function _nettoyerHtml(h) {
-    return String(h)
-      .replace(/<(script|style|iframe|object|embed|form)\b[\s\S]*?<\/\1\s*>/gi, "")
-      .replace(/<\/?(script|style|iframe|object|embed|form|link|meta|base)\b[^>]*>/gi, "")
-      .replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-      .replace(/(href|src)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, "$1=\"#\"");
+    const s = String(h);
+    let out = "", i = 0, bloc = null;
+    while (i < s.length) {
+      const lt = s.indexOf("<", i);
+      if (lt < 0) { if (!bloc) out += s.slice(i); break; }
+      if (!bloc) out += s.slice(i, lt);
+      const gt = s.indexOf(">", lt + 1);
+      if (gt < 0) break;                                   // balise jamais fermée : on s'arrête là
+      const corps = s.slice(lt + 1, gt);
+      const ferme = corps[0] === "/";
+      let k = ferme ? 1 : 0;
+      const debut = k;
+      while (k < corps.length && /[A-Za-z0-9]/.test(corps[k])) k++;
+      const nom = corps.slice(debut, k).toLowerCase();
+      i = gt + 1;
+      if (bloc) { if (ferme && nom === bloc) bloc = null; continue; }
+      if (!nom || !/[a-z]/.test(nom[0])) { out += "&lt;" + corps.replace(/</g, "&lt;") + "&gt;"; continue; }
+      if (_HTML_BLOC[nom]) { if (!ferme) bloc = nom; continue; }
+      if (_HTML_SEUL[nom]) continue;
+      out += ferme ? "</" + nom + ">" : "<" + nom + _attributsSurs(corps.slice(k)) + ">";
+    }
+    return out;
   }
   function aide() {
     const ext = _prise("aide");

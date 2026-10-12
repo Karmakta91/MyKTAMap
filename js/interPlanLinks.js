@@ -589,7 +589,8 @@
   async function _fetchLayerJson(basePath, file) {
     // Chemin déjà complet (il commence par le dossier du plan) : on le prend tel quel, sans passer par
     // l'URL doublée qui finit en 404 (bruit dans la console à chaque recherche multi-plans).
-    const base = String(basePath).replace(/\/+$/, "");
+    let base = String(basePath);
+    while (base.endsWith("/")) base = base.slice(0, -1);   // boucle, pas /\/+$/ (retour arrière, Sonar S8786)
     const f = String(file);
     const essais = f.indexOf(base + "/") === 0 ? [f] : [base + "/" + f];
     if (f.indexOf("/") >= 0 && essais.indexOf(f) < 0) essais.push(f);

@@ -141,6 +141,22 @@ function _readmePathForLang(lang) {
 // Normalisation 1:1 (même longueur en unités UTF-16) : minuscules, accents
 // retirés — « Réglages » se trouve avec « reglages », et les positions restent
 // celles du texte d'origine (indispensable pour surligner sans décaler).
+// Texte d'un fragment HTML (balises remplacées par une espace), en un passage — pas /<[^>]+>/g, dont le retour
+// arrière est quadratique sur un « < » sans « > » (Sonar S8786).
+function _aideSansBalises(h) {
+  const s = String(h || "");
+  let out = "", i = 0;
+  while (i < s.length) {
+    const lt = s.indexOf("<", i);
+    if (lt < 0) { out += s.slice(i); break; }
+    const gt = s.indexOf(">", lt + 1);
+    if (gt < 0) { out += s.slice(i); break; }
+    out += s.slice(i, lt) + " ";
+    i = gt + 1;
+  }
+  return out;
+}
+
 window.ktaDocNormaliser = function(s) {
   let out = "";
   for (const ch of String(s || "")) {
@@ -1079,7 +1095,7 @@ function _aideRendreHub(corps) {
     ext.sections.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
-      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   }
@@ -1106,7 +1122,7 @@ function _aideRendreHub(corps) {
       // sont dans le corps des sections. Titre + contenu (balises retirées),
       // accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
-      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   });
@@ -1128,7 +1144,7 @@ function _aideRendreHub(corps) {
       // sont dans le corps des sections. Titre + contenu (balises retirées),
       // accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
-      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   }

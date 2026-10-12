@@ -779,6 +779,9 @@ function _bindCfgGroupes(modal, cleLs) {
     const cle   = g.getAttribute("data-cfg-group");
     const titre = g.querySelector(".kta-cfg-group-titre");
     if (!titre) return;
+    // Rôle et focus posés ICI, avec le clavier qui va avec (le balisage statique de l'accueil n'en porte pas).
+    titre.setAttribute("role", "button");
+    titre.tabIndex = 0;
     // Défaut : tout ouvert en colonnes (PC) ; sur écran étroit, tout replié
     // sauf le premier groupe. Le choix de l'utilisateur est mémorisé.
     let replie = (typeof etat[cle] === "boolean") ? etat[cle] : (etroit && i > 0);
