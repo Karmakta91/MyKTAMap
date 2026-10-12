@@ -1144,7 +1144,7 @@
   "home.incognito.indispo": "Módulo IncognitoMode no disponible. Recarga la página.",
   "home.add.drop": "Arrastra un archivo aquí",
   "home.add.dropSub": "o haz clic para seleccionar",
-  "home.add.dropSig": "<span class=\"zip-drop-formats-titre\">Formatos aceptados</span><span class=\"zip-drop-format\"><strong>.zip</strong> — un plano de MyKTAMap</span><span class=\"zip-drop-format\"><strong>.kmz</strong> · <strong>.gpx</strong> — un levantamiento de Google Earth o GPS</span><span class=\"zip-drop-format\"><strong>.geojson</strong> · <strong>.kml</strong> · <strong>.json</strong> — una exportación SIG (QGIS…)</span><span class=\"zip-drop-format\"><strong>.tif</strong> · <strong>.tiff</strong> — un GeoTIFF ya ajustado: georreferenciación y escala leídas del archivo</span>",
+  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif",
   "home.loader.sigUnavailable": "Módulo de importación SIG no disponible — abre 🏗️ Generar un mapa y usa «Convertir desde SIG».",
   "home.add.editData": "📊 Editor de datos",
   "home.add.generate": "🏗️ Generar un mapa",

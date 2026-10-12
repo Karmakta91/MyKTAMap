@@ -21348,30 +21348,8 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   color: #8892a4;
   opacity: 0.9;
 }
-.zip-drop-sig strong { color: #a8b3c8; font-weight: 600; }
-/* 🧹 14/09/2026 (KARMA : « ce passage très fouillis ») — les formats acceptés
-   étaient annoncés en UNE phrase, tirets et points médians mêlés. Une ligne
-   par format, alignée à gauche dans une zone par ailleurs centrée : l'œil
-   compare des débuts de ligne au lieu de relire une phrase. */
-.zip-drop-formats-titre {
-  display: block;
-  margin-bottom: 4px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #a8b3c8;
-}
-.zip-drop-format {
-  display: block;
-  text-align: left;
-  max-width: 34em;
-  margin: 0 auto;
-  padding-left: 10px;
-  text-indent: -10px;   /* le retour à la ligne s'aligne sous le texte */
-}
-.zip-drop-format::before { content: "· "; opacity: 0.6; }
-html.kta-theme-light .zip-drop-formats-titre { color: #3a4256; }
+/* 12/10/2026 (KARMA) : une seule ligne d'extensions, plus de liste commentée. */
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
-html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 
 /* ═══════════════════════════════════════════════════════════════════
    📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)

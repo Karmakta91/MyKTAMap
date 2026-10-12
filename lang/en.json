@@ -1144,7 +1144,7 @@
   "home.incognito.indispo": "IncognitoMode module unavailable. Reload the page.",
   "home.add.drop": "Drop a file here",
   "home.add.dropSub": "or click to select",
-  "home.add.dropSig": "<span class=\"zip-drop-formats-titre\">Accepted formats</span><span class=\"zip-drop-format\"><strong>.zip</strong> — a MyKTAMap map</span><span class=\"zip-drop-format\"><strong>.kmz</strong> · <strong>.gpx</strong> — a Google Earth or GPS survey</span><span class=\"zip-drop-format\"><strong>.geojson</strong> · <strong>.kml</strong> · <strong>.json</strong> — a GIS export (QGIS…)</span><span class=\"zip-drop-format\"><strong>.tif</strong> · <strong>.tiff</strong> — an already-aligned GeoTIFF: georeferencing and scale read from the file</span>",
+  "home.add.dropSig": ".zip · .kmz · .gpx · .geojson · .kml · .json · .tif",
   "home.loader.sigUnavailable": "GIS import module unavailable — open 🏗️ Generate a map and use \"Convert from GIS\".",
   "home.add.editData": "📊 Data editor",
   "home.add.generate": "🏗️ Generate a map",
