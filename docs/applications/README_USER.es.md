@@ -1508,7 +1508,7 @@ El botón **🏗️ Generar un mapa** de la pantalla de inicio abre el **Generad
 
 - **🧙 Asistente**: el Generador avanza **paso a paso** (nombre, imagen, capas…). Los pasos opcionales se saltan con un clic (**⏭ Omitir**), y un **✅ Resumen antes de generar** muestra lo que está completo, omitido o falta, con avisos útiles (por ejemplo: sin georreferenciación GPS, ni Vista OSM ni exportación KMZ / GPX). **🗒️ Mostrar todo** muestra en cambio el formulario entero de una vez; tu elección se recuerda.
 - **🚀 Simple / ⚙️ Avanzado**: el modo Simple se limita a lo esencial (imagen, nombre, versión, V2 — la imagen cortada en teselas, ver «🧱 Convertir a teselas V2» —, multinivel) y carga los iconos por defecto; el modo Avanzado da acceso a todas las opciones.
-- **📂 Cargar un archivo** acepta un **ZIP de MyKTAMap** (para modificarlo), un **KMZ**, un **GPX**, una **exportación SIG** (`.geojson`, `.kml`) o un **GeoTIFF**. Si no, rellena el formulario para crear un plano desde cero.
+- **📂 Cargar un archivo** acepta un **ZIP de MyKTAMap** (para modificarlo), un **KMZ** o un **GPX** exportado por MyKTAMap (el GPX da un fondo en blanco calado automáticamente), una **exportación SIG** (`.geojson`, `.kml`) o un **GeoTIFF**. Si no, rellena el formulario para crear un plano desde cero.
 
 Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 
@@ -1519,8 +1519,11 @@ Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 - **Mapa de colisión** (opcional).
 - **Posición de inicio del tracker**: centrada automáticamente en el plano; **🎯 Recentrar la posición de inicio** la devuelve al centro.
 - **Capas de imagen** (leyendas, anotaciones) y **capas de datos**: hasta 10 de cada. La capa **Añadidos** se incluye siempre.
-- **Parámetros de tracking**: posición de inicio, escala, sensibilidad.
+- **Parámetros de tracking**: escala y orientación del **Norte** (0 si la parte superior del plano es el Norte; cada uno puede corregirla en sus Ajustes).
 - **Iconos y tags**: **↺ Cargar predeterminados** rellena los iconos estándar, **+ Añadir un tag** crea un tipo propio. Los tags `default` y `track` son obligatorios.
+- **🏷️ Leyenda del mapa**: los renombrados, ocultamientos y entradas añadidas valen para todos los que abren el plano; cada uno puede luego cambiarla para sí.
+- **🌐 Georreferenciación GPS** (opcional): dos puntos A y B, más un punto C para un plano deformado. Sin ella, ni Vista OSM ni exportación KMZ / GPX.
+- **📖 PDF Historia** (opcional): uno o varios PDF, al principio de la lista en el Modo Historia. Al modificar, se conservan los del plano.
 
 #### 📂 Modificar un plano existente
 

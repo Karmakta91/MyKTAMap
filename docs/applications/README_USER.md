@@ -1508,7 +1508,7 @@ Le bouton **🏗️ Générer un plan** de l'accueil ouvre le **Générateur** (
 
 - **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
 - **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2 — l'image découpée en tuiles, voir « 🧱 Convertir en V2 tuilé » —, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
-- **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ**, un **GPX**, un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
+- **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ** ou un **GPX** exporté par MyKTAMap (le GPX donne un fond vierge calé automatiquement), un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
 
 Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 
@@ -1519,8 +1519,11 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 - **Carte de collision** (optionnelle).
 - **Position de départ du tracker** : centrée automatiquement sur le plan ; **🎯 Recentrer la position de départ** la remet au centre.
 - **Calques image** (légendes, annotations) et **calques de données** : jusqu'à 10 de chaque. Le calque **Ajouts** est toujours inclus.
-- **Paramètres de tracking** : position de départ, échelle, sensibilité.
+- **Paramètres de tracking** : échelle et orientation du **Nord** (0 si le haut du plan est le Nord ; chacun peut la corriger dans ses Réglages).
 - **Icônes & tags** : **↺ Charger défauts** pré-remplit les icônes standard, **+ Ajouter un tag** crée un type à toi. Les tags `default` et `track` sont obligatoires.
+- **🏷️ Légende du plan** : renommages, masquages et entrées ajoutées valent pour tous ceux qui ouvrent le plan ; chacun peut ensuite la modifier pour lui.
+- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX.
+- **📖 PDF Histoire** (facultatif) : un ou plusieurs PDF, en tête de liste dans le Mode Histoire. En modification, ceux du plan sont conservés.
 
 #### 📂 Modifier un plan existant
 

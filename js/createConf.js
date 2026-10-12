@@ -180,6 +180,8 @@ function afficherPlanner() {
           <button type="button" class="kta-planner-mode-btn" data-mode="simple" role="tab">${window.I18n.t("gen.mode.simple")}</button>
           <button type="button" class="kta-planner-mode-btn" data-mode="avance" role="tab">${window.I18n.t("gen.mode.avance")}</button>
         </div>
+        <!-- Vide depuis l'allègement des textes : garde sa rangée pleine largeur
+             (cf. style.css « LE TROU ») et sert d'ancre à la barre d'étapes. -->
         <p class="kta-planner-mode-hint" id="kta-planner-mode-hint"></p>
 
         <!-- 🧹 v1.29.0-fix3 (KARMA "doublon") — Boutons "Importer depuis KMZ"
@@ -193,7 +195,7 @@ function afficherPlanner() {
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section kta-pl-col-full">
           <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-            <span>${window.I18n.t("gen.zip.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.zip.titreHint")}</span></span>
+            <span>${window.I18n.t("gen.zip.titre")}</span>
             <!-- 📥 Bouton Conf exemple — déplacé ici depuis la home loader en v1.7.3.
                  Permet de télécharger le ZIP d'exemple myktamap.zip pour avoir un
                  plan de référence à modifier (workflow recommandé pour débutants). -->
@@ -203,8 +205,6 @@ function afficherPlanner() {
               ${window.I18n.t("gen.zip.exempleBtn")}
             </button>
           </div>
-          <p class="kta-planner-info">${window.I18n.t("gen.zip.info")}</p>
-
           <div class="kta-conv-drop" id="kta-planner-zip-drop" style="position:relative; overflow:hidden;">
             <span style="font-size:28px;">📦</span>
             <span id="kta-planner-zip-label">${window.I18n.t("gen.zip.dropLabel")}</span>
@@ -265,7 +265,6 @@ function afficherPlanner() {
             <input type="checkbox" id="pl_multiLevel">
             <span>
               <strong>${window.I18n.t("gen.mlvl.label")}</strong>
-              <em>${window.I18n.t("gen.mlvl.hint")}</em>
             </span>
           </label>
 
@@ -303,7 +302,6 @@ function afficherPlanner() {
               <input type="checkbox" id="pl_photos" checked>
               <span>
                 <strong>${window.I18n.t("gen.photos.label")} <span class="kta-ses-count" id="pl_photos_count" style="margin-left:6px;">${window.I18n.t("gen.photos.loading")}</span></strong>
-                <em>${window.I18n.t("gen.photos.hint")}</em>
               </span>
             </label>
           </div>
@@ -325,7 +323,7 @@ function afficherPlanner() {
             </label>
             <label class="kta-planner-image-mode-row">
               <input type="radio" name="pl_image_mode" value="vierge">
-              <span>🎨 <strong>${window.I18n.t("gen.images.modeVierge")}</strong> <span class="kta-planner-hint">${window.I18n.t("gen.images.modeViergeHint")}</span></span>
+              <span>🎨 <strong>${window.I18n.t("gen.images.modeVierge")}</strong></span>
             </label>
           </div>
 
@@ -377,7 +375,6 @@ function afficherPlanner() {
 
           <!-- 🆕 BLOC VIERGE (caché par défaut, généré dynamiquement) -->
           <div id="pl_image_vierge_block" style="display:none;">
-            <p class="kta-planner-info">${window.I18n.t("gen.vierge.info")}</p>
             <div class="kta-planner-grille">
               <label class="kta-cfg-label">${window.I18n.t("gen.vierge.largeur")} <span class="kta-planner-req">*</span></label>
               <input class="kta-cfg-input" id="pl_vierge_w" type="number" min="500" max="12000" step="100" value="4000">
@@ -391,24 +388,24 @@ function afficherPlanner() {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
               <label class="kta-export-radio-row">
                 <input type="radio" name="pl_vierge_color" value="white" checked>
-                <span>⬜ ${window.I18n.t("gen.couleur.blanc")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.blancHint")}</span></span>
+                <span>⬜ ${window.I18n.t("gen.couleur.blanc")}</span>
               </label>
               <label class="kta-export-radio-row">
                 <input type="radio" name="pl_vierge_color" value="gray">
-                <span>▫️ ${window.I18n.t("gen.couleur.gris")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.grisHint")}</span></span>
+                <span>▫️ ${window.I18n.t("gen.couleur.gris")}</span>
               </label>
               <label class="kta-export-radio-row">
                 <input type="radio" name="pl_vierge_color" value="black">
-                <span>⬛ ${window.I18n.t("gen.couleur.noir")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.noirHint")}</span></span>
+                <span>⬛ ${window.I18n.t("gen.couleur.noir")}</span>
               </label>
               <label class="kta-export-radio-row">
                 <input type="radio" name="pl_vierge_color" value="sepia">
-                <span>📜 ${window.I18n.t("gen.couleur.sepia")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.sepiaHint")}</span></span>
+                <span>📜 ${window.I18n.t("gen.couleur.sepia")}</span>
               </label>
               <!-- 🫥 07/10/2026 (KARMA) : fond transparent — le plan prend le fond de la Vue OSM, ou celui choisi en mode carte. -->
               <label class="kta-export-radio-row" style="grid-column:1 / -1;">
                 <input type="radio" name="pl_vierge_color" value="transparent">
-                <span>🫥 ${window.I18n.t("gen.couleur.transparent")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.transparentHint")}</span></span>
+                <span>🫥 ${window.I18n.t("gen.couleur.transparent")}</span>
               </label>
             </div>
 
@@ -430,7 +427,6 @@ function afficherPlanner() {
               <option value="gris">${window.I18n.t("config.fond.gris")}</option>
             </select>
           </div>
-          <p class="kta-planner-hint" style="margin:4px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.fond.hint")}</p>
         </div>
 
         <!-- v1.14.20-hotfix11 (KARMA capture : « dans générateur, met
@@ -460,14 +456,12 @@ function afficherPlanner() {
             ${window.I18n.t("gen.dataLayers.titre")}
             <button class="kta-planner-add-btn" id="pl_addDataLayer" type="button">${window.I18n.t("gen.btn.ajouter")}</button>
           </div>
-          <p class="kta-planner-info">${window.I18n.t("gen.dataLayers.editorInfo")}</p>
 
           <!-- 🆕 v1.9.3-B1d.γ.2 (KARMA "pas très clair, il faut cliquer sur importer un zip dans data layer") :
                Encadré dédié et visible pour l'import ZIP datalayer, sorti du titre
                où il était masqué. Bouton large + texte explicite. -->
           <div class="kta-planner-import-zip-box">
             <div class="kta-planner-import-zip-titre">${window.I18n.t("gen.dataLayers.importTitre")}</div>
-            <p class="kta-planner-import-zip-hint">${window.I18n.t("gen.dataLayers.importHint")}</p>
             <button class="kta-btn kta-btn-primary kta-planner-import-zip-btn" id="pl_importDataZip" type="button">
               ${window.I18n.t("gen.dataLayers.importBtn")}
             </button>
@@ -488,13 +482,11 @@ function afficherPlanner() {
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">
               ${window.I18n.t("gen.tracking.posX")}
-              <span class="kta-planner-hint">${window.I18n.t("gen.tracking.posAutoHint")}</span>
             </label>
             <input class="kta-cfg-input" id="pl_startX" type="number" placeholder="auto = W/2">
 
             <label class="kta-cfg-label">
               ${window.I18n.t("gen.tracking.posY")}
-              <span class="kta-planner-hint">${window.I18n.t("gen.tracking.posAutoHint")}</span>
             </label>
             <input class="kta-cfg-input" id="pl_startY" type="number" placeholder="auto = H/2">
 
@@ -520,7 +512,6 @@ function afficherPlanner() {
           <div class="kta-planner-tracking-actions">
             <button type="button" class="kta-planner-add-btn" id="pl_resetStartCenter" title="${window.I18n.t("gen.tracking.recentrerTitle")}">${window.I18n.t("gen.tracking.recentrerBtn")}</button>
           </div>
-          <p class="kta-planner-hint" style="margin:8px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.tracking.nordExplain")}</p>
         </div>
 
         <!-- 6. ICÔNES & TAGS -->
@@ -532,8 +523,6 @@ function afficherPlanner() {
               <button class="kta-planner-add-btn" id="pl_addIconRow">${window.I18n.t("gen.icons.ajouterTag")}</button>
             </div>
           </div>
-
-          <p class="kta-planner-info">${window.I18n.t("gen.icons.info")}</p>
 
           <div class="kta-planner-icon-header">
             <span style="width:36px;flex-shrink:0;"></span>
@@ -561,7 +550,7 @@ function afficherPlanner() {
              on restore la session. Subtil mais évite de modifier le
              module legendCustomization.js pour cette release. -->
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
-          <div class="kta-aide-section-titre">${window.I18n.t("gen.legende.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.legende.titreHint")}</span></div>
+          <div class="kta-aide-section-titre">${window.I18n.t("gen.legende.titre")}</div>
           <p class="kta-planner-info">${window.I18n.t("gen.legende.info")}</p>
           <div id="pl_legend_status" class="kta-planner-legend-status">${window.I18n.t("gen.legende.aucune")}</div>
           <div class="kta-planner-legend-actions">
@@ -580,7 +569,6 @@ function afficherPlanner() {
              ET dans Reglages > Georeferencement (mode map). -->
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">${window.I18n.t("gen.georef.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></div>
-          <p class="kta-planner-info">${window.I18n.t("gen.georef.info")}</p>
           <div class="kta-kmz-section" style="margin:8px 0;">
             <div class="kta-kmz-section-titre">${window.I18n.t("gen.georef.pointA")}</div>
             <div class="kta-kmz-pt-grille">
@@ -634,7 +622,6 @@ function afficherPlanner() {
              import session via IDB (compat v1.34.20 inchangée). -->
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">${window.I18n.t("gen.histoire.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></div>
-          <p class="kta-planner-info">${window.I18n.t("gen.histoire.info")}</p>
           <!-- 📄 v1.71.0 (KARMA « on peut mettre juste un PDF ? ») — MULTI :
                input multiple + liste de fichiers, chacun retirable. Le ZIP
                embarque data/<nom>.pdf par document ; plan-config écrit
@@ -646,7 +633,6 @@ function afficherPlanner() {
             <span class="kta-planner-upload-nom" id="pl_histoirePdf_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
           </div>
           <div id="pl_histoirePdf_liste" class="kta-planner-hist-liste"></div>
-          <p class="kta-planner-hint" style="margin:6px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.histoire.modifierHint")}</p>
         </div>
 
         <div id="kta-planner-erreur" class="kta-conv-erreur kta-pl-col-full" style="display:none;"></div>
@@ -1201,16 +1187,6 @@ function _appliquerPlannerMode(mode) {
   document.querySelectorAll("#kta-planner-mode-switcher .kta-planner-mode-btn").forEach(function(btn) {
     btn.classList.toggle("kta-actif", btn.dataset.mode === mode);
   });
-
-  // Hint texte sous le switcher
-  const hint = document.getElementById("kta-planner-mode-hint");
-  if (hint) {
-    if (mode === "simple") {
-      hint.textContent = window.I18n.t("gen.mode.simpleHint");
-    } else {
-      hint.textContent = window.I18n.t("gen.mode.avanceHint");
-    }
-  }
 
   // Masquer le switcher en mode Modifier (forcé en Avancé)
   const sw = document.getElementById("kta-planner-mode-switcher");
@@ -2291,7 +2267,6 @@ function _ajouterImageLayer(prefill) {
     <div class="kta-planner-calib-section" style="margin-top:8px; padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px dashed rgba(255,255,255,0.1);">
       <div style="font-size:11.5px; color:#8892a4; margin-bottom:4px;">
         📐 <strong>${window.I18n.t("gen.calib.titre")}</strong>
-        <span style="color:#f4c542;">${window.I18n.t("gen.calib.warn")}</span>
       </div>
       <div id="${id}_calib_hint" style="font-size:11px; color:#8892a4; margin-bottom:4px; min-height:14px;">${window.I18n.t("gen.calib.hintChoisir")}</div>
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -2918,11 +2893,6 @@ function _afficherAvertissementV2(checkbox) {
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p class="kta-v2-warn-lead">' + window.I18n.t("gen.v2warn.lead") + '</p>' +
-        '<ul>' +
-          '<li>' + window.I18n.t("gen.v2warn.cpu") + '</li>' +
-          '<li>' + window.I18n.t("gen.v2warn.ram") + '</li>' +
-          '<li>' + window.I18n.t("gen.v2warn.duree") + '</li>' +
-        '</ul>' +
         '<div class="kta-v2-warn-section kta-v2-warn-section-bad">' +
           '<div class="kta-v2-warn-section-titre">' + window.I18n.t("gen.v2warn.mobileTitre") + '</div>' +
           '<p>' + window.I18n.t("gen.v2warn.mobileTxt") + '</p>' +
@@ -2931,7 +2901,6 @@ function _afficherAvertissementV2(checkbox) {
           '<div class="kta-v2-warn-section-titre">' + window.I18n.t("gen.v2warn.pcTitre") + '</div>' +
           '<p>' + window.I18n.t("gen.v2warn.pcTxt") + '</p>' +
         '</div>' +
-        '<p class="kta-v2-warn-note">' + window.I18n.t("gen.v2warn.note") + '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-v2-warn-cancel" type="button">' + window.I18n.t("gen.v2warn.cancelBtn") + '</button>' +
@@ -4309,7 +4278,6 @@ function _afficherImporterKmz(prefilledFile) {
       </div>
       <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
 
-        <p class="kta-planner-info" style="margin-bottom:14px;">${window.I18n.t("gen.kmz.intro")}</p>
         <div style="padding:8px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${window.I18n.t("gen.kmz.phase1")}</div>
 
         <!-- 1. UPLOAD -->
@@ -4347,7 +4315,7 @@ function _afficherImporterKmz(prefilledFile) {
             <input class="kta-cfg-input" id="kta-kmz-imp-tags" type="text" placeholder="${window.I18n.t("gen.infos.tagsPlaceholder")}" title="${window.I18n.t("gen.infos.tagsHint")}">
           </div>
 
-          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.kmz.typesInfo")}</p>
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.imp.typesInfo")}</p>
 
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">${window.I18n.t("gen.imp.pointsTag")}</label>
@@ -4388,18 +4356,17 @@ function _afficherImporterKmz(prefilledFile) {
                une utilisation mobile sans saturer la mémoire), M-LVL active
                le multi-niveau dans le plan-config.json. -->
           <div style="margin-top:14px;">
-            <label class="kta-planner-tiling-v2-row" title="${window.I18n.t("gen.kmz.v2RowTitle")}">
+            <label class="kta-planner-tiling-v2-row" title="${window.I18n.t("gen.v2.rowTitle")}">
               <input type="checkbox" id="kta-kmz-imp-v2">
               <span>
                 <strong>${window.I18n.t("gen.v2.label")}</strong>
-                <em>${window.I18n.t("gen.kmz.v2Hint")}</em>
+                <em>${window.I18n.t("gen.v2.hint")}</em>
               </span>
             </label>
             <label class="kta-planner-multilevel-row" style="margin-top:8px;">
               <input type="checkbox" id="kta-kmz-imp-mlvl">
               <span>
                 <strong>${window.I18n.t("gen.mlvl.label")}</strong>
-                <em>${window.I18n.t("gen.kmz.mlvlHint")}</em>
               </span>
             </label>
           </div>
@@ -4906,8 +4873,6 @@ function _afficherImporterGpx(prefilledFile) {
       </div>
       <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
 
-        <p class="kta-planner-info" style="margin-bottom:14px;">${window.I18n.t("gen.gpx.intro")}</p>
-        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${window.I18n.t("gen.gpx.roundtrip")}</div>
 
         <!-- 1. UPLOAD -->
         <div class="kta-aide-section" id="kta-gpx-imp-step-upload">
@@ -4944,7 +4909,6 @@ function _afficherImporterGpx(prefilledFile) {
             <input class="kta-cfg-input" id="kta-gpx-imp-tags" type="text" placeholder="${window.I18n.t("gen.infos.tagsPlaceholder")}" title="${window.I18n.t("gen.infos.tagsHint")}">
           </div>
 
-          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.gpx.canvasInfo")}</p>
 
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">${window.I18n.t("gen.vierge.largeur")}</label>
@@ -4958,23 +4922,23 @@ function _afficherImporterGpx(prefilledFile) {
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
             <label class="kta-export-radio-row">
               <input type="radio" name="gpx_imp_color" value="white">
-              <span>⬜ ${window.I18n.t("gen.couleur.blanc")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.blancHint")}</span></span>
+              <span>⬜ ${window.I18n.t("gen.couleur.blanc")}</span>
             </label>
             <label class="kta-export-radio-row">
               <input type="radio" name="gpx_imp_color" value="gray">
-              <span>▫️ ${window.I18n.t("gen.couleur.gris")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.grisHint")}</span></span>
+              <span>▫️ ${window.I18n.t("gen.couleur.gris")}</span>
             </label>
             <label class="kta-export-radio-row">
               <input type="radio" name="gpx_imp_color" value="black">
-              <span>⬛ ${window.I18n.t("gen.couleur.noir")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.noirHint")}</span></span>
+              <span>⬛ ${window.I18n.t("gen.couleur.noir")}</span>
             </label>
             <label class="kta-export-radio-row">
               <input type="radio" name="gpx_imp_color" value="sepia" checked>
-              <span>📜 ${window.I18n.t("gen.couleur.sepia")} <span style="color:#8892a4; font-size:11px;">${window.I18n.t("gen.couleur.sepiaHint")}</span></span>
+              <span>📜 ${window.I18n.t("gen.couleur.sepia")}</span>
             </label>
           </div>
 
-          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.gpx.typesInfo")}</p>
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.imp.typesInfo")}</p>
 
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">${window.I18n.t("gen.imp.pointsTag")}</label>
@@ -5002,7 +4966,7 @@ function _afficherImporterGpx(prefilledFile) {
 
           <!-- Options V2 + M-LVL (cohérent avec _afficherImporterKmz hotfix12) -->
           <div style="margin-top:14px;">
-            <label class="kta-planner-tiling-v2-row" title="${window.I18n.t("gen.gpx.v2RowTitle")}">
+            <label class="kta-planner-tiling-v2-row" title="${window.I18n.t("gen.v2.rowTitle")}">
               <input type="checkbox" id="kta-gpx-imp-v2">
               <span>
                 <strong>${window.I18n.t("gen.v2.label")}</strong>
@@ -5013,7 +4977,6 @@ function _afficherImporterGpx(prefilledFile) {
               <input type="checkbox" id="kta-gpx-imp-mlvl">
               <span>
                 <strong>${window.I18n.t("gen.mlvl.label")}</strong>
-                <em>${window.I18n.t("gen.gpx.mlvlHint")}</em>
               </span>
             </label>
           </div>
@@ -5283,7 +5246,6 @@ function _afficherImporterSig(prefilledFile) {
       </div>
       <div class="kta-readme-modal-corps">
 
-        <p class="kta-planner-info" style="margin-bottom:14px;">${T("gen.sig.intro")}</p>
         <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${T("gen.sig.crsInfo")}</div>
 
         <div class="kta-aide-section">
@@ -5370,7 +5332,7 @@ function _afficherImporterSig(prefilledFile) {
           <div style="margin-top:14px;">
             <label class="kta-planner-multilevel-row">
               <input type="checkbox" id="kta-sig-imp-mlvl">
-              <span><strong>${T("gen.mlvl.label")}</strong><em>${T("gen.gpx.mlvlHint")}</em></span>
+              <span><strong>${T("gen.mlvl.label")}</strong></span>
             </label>
           </div>
         </div>

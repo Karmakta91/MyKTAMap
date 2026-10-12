@@ -1508,7 +1508,7 @@ The **🏗️ Generate a map** button on the home screen opens the **Generator**
 
 - **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
 - **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
-- **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ**, a **GPX**, a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
+- **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ** or a **GPX** exported by MyKTAMap (the GPX gives a blank background georeferenced automatically), a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 
 When you're ready, **📦 Generate ZIP** downloads the archive.
 
@@ -1519,8 +1519,11 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Collision map** (optional).
 - **Tracker start position**: centred on the map automatically; **🎯 Recenter the start position** puts it back in the centre.
 - **Image layers** (legends, annotations) and **data layers**: up to 10 of each. The **Additions** layer is always included.
-- **Tracking parameters**: start position, scale, sensitivity.
+- **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
+- **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.
+- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export.
+- **📖 History PDF** (optional): one or more PDFs, at the top of the list in History Mode. When editing, the map's existing ones are kept.
 
 #### 📂 Edit an existing map
 

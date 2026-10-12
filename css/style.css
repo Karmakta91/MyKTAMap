@@ -6751,12 +6751,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   color: #f4c542;
   font-weight: 600;
 }
-.kta-planner-multilevel-row em {
-  color: #8892a4;
-  font-style: italic;
-  font-size: 11.5px;
-  line-height: 1.5;
-}
 .kta-planner-dim-icon {
   font-size: 16px;
   line-height: 1.45;
@@ -8957,13 +8951,6 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-weight: 700;
   color: #f4c542;
   margin-bottom: 6px;
-}
-
-.kta-planner-import-zip-hint {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #c8d0e0;
-  line-height: 1.5;
 }
 
 .kta-planner-import-zip-btn {
@@ -11804,15 +11791,6 @@ a.kta-level-btn {
   font-size: 13px;
   color: #c8d0e0;
   line-height: 1.55;
-}
-.kta-v2-warn-note {
-  font-style: italic;
-  font-size: 13px;
-  color: #a8b3c8;
-  background: rgba(140, 180, 255, 0.06);
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin: 14px 0 0;
 }
 
 /* =========================
@@ -17731,6 +17709,10 @@ body.kta-theme-light .kta-legend-label:focus {
   box-shadow: 0 1px 4px rgba(244, 197, 66, 0.35);
 }
 
+.kta-planner-mode-hint:empty {
+  margin: 0;
+  padding: 0;
+}
 .kta-planner-mode-hint {
   margin: 0 0 12px;
   padding: 6px 12px;
