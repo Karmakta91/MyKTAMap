@@ -1,4 +1,8 @@
 html, body {
+  /* 🐛 12/10/2026 (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
+     tout élément sans police explicite (fenêtres posées sur <html>, textes d'aide) retombait sur la police par
+     défaut du navigateur, à empattements. Police de la charte à la base ; les titres « KTA Main » gardent la leur. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
      pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
      `viewport-fit=cover` (iOS 16+). Fallback `100vh` pour iOS 15 et
@@ -814,20 +818,33 @@ html.kta-theme-light .kta-readme-modal-close:hover {
    BOUTONS GÉNÉRIQUES
    ============================================== */
 
+/* 🐛 12/10/2026 (capture KARMA, iPhone, Réglages : « Calibrer », « Reset », « Ouvrir le géoréférencement ») :
+   `.kta-btn` seul n'avait ni fond ni couleur → bouton natif du navigateur, blanc à texte bleu, hors charte.
+   Défaut = apparence discrète de la charte (celle de -ghost) ; les variantes, définies après, l'emportent. */
 .kta-btn {
   padding: 7px 14px;
   border-radius: 7px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  border: none;
+  background: rgba(255,255,255,0.07);
+  color: #c0c8d8;
+  border: 1px solid rgba(255,255,255,0.12);
   transition: opacity 0.15s, background 0.15s;
 }
 .kta-btn:hover { opacity: 0.85; }
+/* :where() = priorité nulle : toute variante (primary, danger, classes du Secours…) l'emporte en thème clair. */
+:where(html.kta-theme-light) .kta-btn {
+  background: rgba(0, 0, 0, 0.04);
+  color: #3a4458;
+  border-color: rgba(0, 0, 0, 0.18);
+}
 
 .kta-btn-primary {
   background: #1f6feb;
   color: #fff;
+  border: none;
 }
 
 .kta-btn-ghost {
@@ -5609,17 +5626,20 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   background: rgba(140,180,255,0.16);
   border-color: rgba(140,180,255,0.5);
 }
-.kta-cfg-lang-hint {
+/* Emplacement d'une RAISON sous une option (capteur refusé, incognito
+   indisponible…) : vide la plupart du temps, il ne prend alors aucune place.
+   Les réglages n'ont plus de paragraphe d'explication permanent (12/10/2026) :
+   le libellé suffit, le détail vit dans le Guide et l'aide intégrée. */
+.kta-cfg-raison {
+  display: block;
   font-size: 11.5px;
   color: #8892a4;
-  margin-top: 8px;
   line-height: 1.5;
-  padding: 0 4px;
 }
-/* 🆕 v1.46.4 (audit P3-LOW #5) : variante thème clair du hint langue (était
-   #8892a4 → trop pâle/illisible sur le fond crème). Aligné sur le muted clair. */
-body.kta-theme-light .kta-cfg-lang-hint,
-html.kta-theme-light .kta-cfg-lang-hint { color: var(--kta-light-text-muted, #6b6354); }
+.kta-cfg-raison:empty,
+.kta-perf-ultra-hint:empty { display: none; }
+body.kta-theme-light .kta-cfg-raison,
+html.kta-theme-light .kta-cfg-raison { color: var(--kta-light-text-muted, #6b6354); }
 body.kta-theme-light .kta-cfg-lang-label,
 html.kta-theme-light .kta-cfg-lang-label { color: #2a2118; }
 body.kta-theme-light .kta-cfg-lang-select,
@@ -6730,12 +6750,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-planner-multilevel-row strong {
   color: #f4c542;
   font-weight: 600;
-}
-.kta-planner-multilevel-row em {
-  color: #8892a4;
-  font-style: italic;
-  font-size: 11.5px;
-  line-height: 1.5;
 }
 .kta-planner-dim-icon {
   font-size: 16px;
@@ -8939,13 +8953,6 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   margin-bottom: 6px;
 }
 
-.kta-planner-import-zip-hint {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #c8d0e0;
-  line-height: 1.5;
-}
-
 .kta-planner-import-zip-btn {
   width: 100%;
   padding: 9px 12px !important;
@@ -9078,6 +9085,15 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 @keyframes kta-group-mode-pulse {
   0%, 100% { opacity: 1;   transform: scale(1);   }
   50%      { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* 🔒 Outil de dessin grisé : plan relié en droit « lire » (interface.js > _majOutilsLectureSeule).
+   Reste cliquable : le clic rappelle « lecture seule ». Même rendu que ⏪/⏩ sans historique. */
+.leaflet-bar a.kta-outil-lecture-seule,
+.leaflet-bar a.kta-outil-lecture-seule:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 /* =========================
@@ -10094,13 +10110,6 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 .kta-iti-speed-btn.kta-iti-speed-active .kta-iti-speed-kmh {
   color: #00d4ff;
 }
-.kta-iti-speed-hint {
-  margin: 8px 0 0 0;
-  font-size: 11.5px;
-  color: #8892a4;
-  font-style: italic;
-  line-height: 1.45;
-}
 
 /* 🆕 v1.23.0 Phase 2 / Feature C — Bloc contexte importé depuis Lost Mode
 
@@ -11083,6 +11092,8 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 }
 .kta-instance-indispo-boite h2 { margin: 0 0 10px; font-size: 18px; color: #f4c542; }
 .kta-instance-indispo-boite p { margin: 0 0 18px; font-size: 14px; line-height: 1.5; color: #c8d0e0; }
+.kta-instance-indispo-lien { display: block; margin-top: 14px; font-size: 13px; color: #f4c542; text-decoration: none; }
+.kta-instance-indispo-lien:hover, .kta-instance-indispo-lien:focus-visible { text-decoration: underline; }
 
 /* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
    vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
@@ -11105,7 +11116,10 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   vertical-align: middle;
 }
 .kta-cnx-chip[hidden],
-.kta-cnx-bloc[hidden] { display: none !important; }
+.kta-cnx-bloc[hidden],
+.kta-cnx-bloc-audit[hidden],
+.kta-cnx-bloc-lien-ligne[hidden] { display: none !important; }
+.kta-cnx-bloc-lien-ligne { text-align: center; margin: 10px 0 4px 0; }
 .kta-cnx-chip:focus-visible {
   outline: 2px solid #8cb4ff;
   outline-offset: 1px;
@@ -11183,12 +11197,6 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
-}
-.kta-alert-selector-hint {
-  font-size: 12.5px;
-  color: #8892a4;
-  margin: 0 0 14px 0;
-  font-style: italic;
 }
 .kta-alert-selector-list {
   display: flex;
@@ -11459,12 +11467,6 @@ a.kta-level-btn {
   text-transform: uppercase;
   color: #f4c542;
   margin-bottom: 6px;
-}
-.kta-niv-section-hint {
-  font-size: 12px;
-  color: #8892a4;
-  margin: 0 0 10px 0;
-  line-height: 1.5;
 }
 
 /* Grille checkboxes visibles */
@@ -11790,15 +11792,6 @@ a.kta-level-btn {
   color: #c8d0e0;
   line-height: 1.55;
 }
-.kta-v2-warn-note {
-  font-style: italic;
-  font-size: 13px;
-  color: #a8b3c8;
-  background: rgba(140, 180, 255, 0.06);
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin: 14px 0 0;
-}
 
 /* =========================
    TRACKER WARNING MODAL — popup avertissement au démarrage du tracker
@@ -12030,24 +12023,6 @@ body.kta-multilevel-active .kta-compass-widget {
   font-weight: 600;
   color: #c8d0e0;
   line-height: 1;
-}
-
-.kta-compass-full-hint {
-  color: #c8d0e0;
-  font-size: 14px;
-  margin: 12px 18px 6px;
-  text-align: left;
-}
-
-.kta-compass-full-list {
-  margin: 0 18px 14px;
-  padding-left: 22px;
-  text-align: left;
-  color: #c8d0e0;
-  font-size: 13px;
-}
-.kta-compass-full-list li {
-  margin-bottom: 4px;
 }
 
 .kta-compass-full-note {
@@ -13660,14 +13635,13 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-togg
    🆕 v1.8.1-refonte-9 fix KARMA : classe `.kta-measure-distance`
    (anglais "measure", pas "mesure" FR comme j'avais écrit avant).
    Le label "Distance : 0 m" restait visible en mode refonte car
-   ma règle .kta-mesure-distance ne matchait jamais.
+   l'ancienne règle (orthographe FR « mesure ») ne matchait jamais.
 
    La classe .kta-measure-label-control est un legacy alias potentiel
    (gardé par sécurité), et #measureLabel est l'id du même élément
    (double protection). */
 body.kta-refonte-v1 .kta-iti-distance,
 body.kta-refonte-v1 .kta-measure-distance,
-body.kta-refonte-v1 .kta-mesure-distance,        /* legacy fallback */
 body.kta-refonte-v1 .kta-measure-label-control,
 body.kta-refonte-v1 #measureLabel {
   display: none !important;
@@ -14660,8 +14634,7 @@ body.kta-theme-light .kta-measure-distance .kta-measure-active-line {
 body.kta-theme-light .kta-measure-distance .kta-measure-line + .kta-measure-line {
   border-top-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-iti-distance,
-body.kta-theme-light .kta-rd-total-pill {
+body.kta-theme-light .kta-iti-distance {
   background: var(--kta-light-bg-elevated) !important;
   color: #0a4f6b !important;
   border-color: rgba(10, 79, 107, 0.4) !important;
@@ -15503,14 +15476,12 @@ body.kta-theme-light #resumeBox *,
 body.kta-theme-light #panelZip * {
   color: var(--kta-light-text);
 }
-body.kta-theme-light #allPlansList li,
-body.kta-theme-light .plan-card {
+body.kta-theme-light #allPlansList li {
   background: rgba(0,0,0,0.03) !important;
   border: 1px solid var(--kta-light-border) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light #allPlansList li:hover,
-body.kta-theme-light .plan-card:hover {
+body.kta-theme-light #allPlansList li:hover {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
@@ -16587,7 +16558,7 @@ html.kta-theme-light .zip-drop-zone {
   color: #2a2620 !important;
 }
 html.kta-theme-light .zip-drop-zone:hover,
-html.kta-theme-light .zip-drop-zone.drag-over {
+html.kta-theme-light .zip-drop-zone.dragover {   /* classe posée par homeLoader.js */
   background: rgba(244, 197, 66, 0.10) !important;
   border-color: #f4c542 !important;
 }
@@ -16638,7 +16609,6 @@ html.kta-theme-light .loader-plans-filter-row:hover {
 }
 
 /* === Liste des plans (allPlansList) — les lignes individuelles === */
-html.kta-theme-light .loader-plans-list .plan-card,
 html.kta-theme-light .loader-plans-list li {
   background: rgba(0, 0, 0, 0.03) !important;
   border: 1px solid rgba(154, 135, 84, 0.20) !important;
@@ -16648,7 +16618,6 @@ html.kta-theme-light .loader-plans-list li {
   margin-bottom: 6px !important;
   box-shadow: 0 1px 3px rgba(80, 60, 30, 0.06) !important;
 }
-html.kta-theme-light .loader-plans-list .plan-card:hover,
 html.kta-theme-light .loader-plans-list li:hover {
   background: rgba(244, 197, 66, 0.10) !important;
   border-color: var(--kta-light-accent) !important;
@@ -16952,23 +16921,19 @@ html.kta-theme-light .kta-modal-actions button:hover {
   background: rgba(244, 197, 66, 0.18) !important;
   border-color: var(--kta-light-accent) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary,
 html.kta-theme-light .kta-modal-actions button.kta-btn-primary {
   background: var(--kta-light-accent) !important;
   color: #2a2620 !important;
   border-color: var(--kta-light-accent-hover) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary:hover,
 html.kta-theme-light .kta-modal-actions button.kta-btn-primary:hover {
   background: var(--kta-light-accent-hover) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger,
 html.kta-theme-light .kta-modal-actions button.kta-btn-danger {
   background: rgba(220, 50, 50, 0.10) !important;
   color: #b02020 !important;
   border-color: rgba(220, 50, 50, 0.45) !important;
 }
-html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger:hover,
 html.kta-theme-light .kta-modal-actions button.kta-btn-danger:hover {
   background: rgba(220, 50, 50, 0.22) !important;
 }
@@ -17726,6 +17691,10 @@ body.kta-theme-light .kta-legend-label:focus {
   box-shadow: 0 1px 4px rgba(244, 197, 66, 0.35);
 }
 
+.kta-planner-mode-hint:empty {
+  margin: 0;
+  padding: 0;
+}
 .kta-planner-mode-hint {
   margin: 0 0 12px;
   padding: 6px 12px;
@@ -18879,13 +18848,6 @@ html.kta-theme-light .kta-profile-pies-card-title {
   font-size: 11.5px;
 }
 .kta-profile-plansstats-table tfoot th:first-child { text-align: left; }
-.kta-profile-plansstats-note {
-  margin: 6px 0 0;
-  font-size: 10.5px;
-  color: #8892a4;
-  font-style: italic;
-  line-height: 1.4;
-}
 
 /* Thème clair — section plans stats */
 body.kta-theme-light .kta-profile-plansstats,
@@ -19457,7 +19419,6 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
    Variant thème clair : orange charte plus saturé (#b8860b).
    ========================================================================= */
 .kta-btn:focus-visible,
-.kta-btn-action:focus-visible,
 .kta-btn-primary:focus-visible,
 .kta-btn-secondary:focus-visible,
 .kta-btn-danger:focus-visible,
@@ -19473,8 +19434,6 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
 
 body.kta-theme-light .kta-btn:focus-visible,
 html.kta-theme-light .kta-btn:focus-visible,
-body.kta-theme-light .kta-btn-action:focus-visible,
-html.kta-theme-light .kta-btn-action:focus-visible,
 body.kta-theme-light .kta-btn-primary:focus-visible,
 html.kta-theme-light .kta-btn-primary:focus-visible,
 body.kta-theme-light .kta-btn-secondary:focus-visible,
@@ -21371,30 +21330,8 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   color: #8892a4;
   opacity: 0.9;
 }
-.zip-drop-sig strong { color: #a8b3c8; font-weight: 600; }
-/* 🧹 14/09/2026 (KARMA : « ce passage très fouillis ») — les formats acceptés
-   étaient annoncés en UNE phrase, tirets et points médians mêlés. Une ligne
-   par format, alignée à gauche dans une zone par ailleurs centrée : l'œil
-   compare des débuts de ligne au lieu de relire une phrase. */
-.zip-drop-formats-titre {
-  display: block;
-  margin-bottom: 4px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #a8b3c8;
-}
-.zip-drop-format {
-  display: block;
-  text-align: left;
-  max-width: 34em;
-  margin: 0 auto;
-  padding-left: 10px;
-  text-indent: -10px;   /* le retour à la ligne s'aligne sous le texte */
-}
-.zip-drop-format::before { content: "· "; opacity: 0.6; }
-html.kta-theme-light .zip-drop-formats-titre { color: #3a4256; }
+/* 12/10/2026 (KARMA) : une seule ligne d'extensions, plus de liste commentée. */
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
-html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 
 /* ═══════════════════════════════════════════════════════════════════
    📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
@@ -22120,7 +22057,6 @@ html.kta-theme-light .kta-readme-search-count { color: #5a6478; }
 }
 input.kta-cfg-ok { animation: kta-cfg-ok-flash 1.2s ease-out; }
 input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(255, 91, 69, 0.4) !important; }
-.kta-cfg-globaux-hint { font-size: 11.5px; color: #8892a4; line-height: 1.5; margin: 2px 0 8px; }
 .kta-cfg-globaux-liste {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -22227,7 +22163,6 @@ html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }
 }
 .kta-impm-precharger input { margin: 3px 0 0; flex: none; }
 .kta-impm-precharger-label { display: block; color: #e8eaf0; }
-.kta-impm-precharger-info { display: block; color: #8892a4; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
 .kta-impm-resume { font-size: 12.5px; color: #c8d0e0; margin-bottom: 8px; min-height: 18px; }
 .kta-impm-alerte {
   font-size: 12.5px;
@@ -22394,7 +22329,6 @@ html.kta-theme-light .kta-bearing-recentrer {
 .kta-guid-feuille-overlay { z-index: 100001; }
 .kta-guid-feuille-boite { max-width: 520px; }
 .kta-guid-feuille-resume { color: #c8d0e0; margin: 0 0 10px; font-size: 13px; }
-.kta-guid-feuille-note { color: #8892a4; font-size: 12px; margin: 10px 0 0; }
 .kta-guid-feuille-liste { list-style: none; margin: 0; padding: 0; }
 .kta-guid-feuille-ligne {
   display: flex;
@@ -22637,9 +22571,47 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
 
 /* 🧩 Actions du compte d'une installation reliée (Mon profil, Configuration) —
    bloc fourni par KtaExtensions.blocActionsCompte. */
-.kta-ext-compte { margin-bottom: 12px; }
-.kta-ext-compte-titre { font-weight: 700; color: #f4c542; margin-bottom: 8px; }
+.kta-ext-compte { margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+.kta-ext-compte-titre { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #8892a4; margin-bottom: 8px; }
+.kta-ext-compte-carte { padding: 10px 12px; margin-bottom: 4px; border-radius: 10px;
+  background: rgba(140, 180, 255, 0.08); border: 1px solid rgba(140, 180, 255, 0.18); }
+.kta-ext-compte-qui { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kta-ext-compte-pseudo { font-size: 17px; font-weight: 700; color: #e8eaf0; }
+.kta-ext-compte-role { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  color: #1a1f2e; background: #f4c542; }
+.kta-ext-compte-details { margin-top: 4px; font-size: 13px; color: #8892a4; }
+/* Rubriques (Mon compte, Mes données perso, Organisation) : intitulé discret, puis ses actions. */
+.kta-ext-compte-groupe { margin: 14px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #8cb4ff; }
 .kta-ext-compte-btn { width: 100%; margin-bottom: 6px; }
+/* Ligne d'état (pas un bouton) : sauvegarde des données perso, serveur injoignable. */
+.kta-ext-compte-etat { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 6px; padding: 6px 2px; font-size: 14px; color: #c8d0e0; }
+.kta-ext-compte-etat > span { flex: 1 1 auto; min-width: 0; }
+/* Action d'une ligne d'état : petite pastille, pas un lien souligné (retour KARMA du 11/10/2026). */
+.kta-ext-compte-lien { flex: 0 0 auto; padding: 5px 10px; border: 1px solid rgba(140, 180, 255, 0.35);
+  border-radius: 999px; background: rgba(140, 180, 255, 0.1); font: inherit; font-size: 13px; font-weight: 600;
+  color: #c8d0e0; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.kta-ext-compte-lien:hover { border-color: #8cb4ff; color: #e8eaf0; }
+html.kta-theme-light .kta-ext-compte-lien { color: #1a1f2e; background: rgba(140, 180, 255, 0.15); }
+/* Action à part, en bas (Se déconnecter) : séparée, sobre. */
+.kta-ext-compte-fin { display: block; width: 100%; margin-top: 16px; padding: 10px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12); background: transparent; color: #c8d0e0; font: inherit;
+  font-size: 15px; cursor: pointer; }
+.kta-ext-compte-fin:hover { border-color: #8cb4ff; color: #e8eaf0; }
+/* Lien « Gérer › <tuile d'outils> » sur la carte du compte (Mon profil), et fenêtre de la tuile (🧰 Outils). */
+/* Un vrai bouton, pas un lien souligné (retour KARMA du 11/10/2026 : « lien hypertexte pas beau »). */
+.kta-ext-compte-gerer { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 12px;
+  border: 1px solid rgba(140, 180, 255, 0.35); border-radius: 999px; background: rgba(140, 180, 255, 0.1);
+  color: #c8d0e0; text-decoration: none; font-size: 14px; font-weight: 600; }
+.kta-ext-compte-gerer:hover { border-color: #8cb4ff; color: #e8eaf0; }
+html.kta-theme-light .kta-ext-compte-gerer { color: #1a1f2e; background: rgba(140, 180, 255, 0.15); }
+.kta-ext-outil-boite { max-width: 520px; width: calc(100% - 32px); }
+html.kta-theme-light .kta-ext-compte-pseudo { color: #1a1f2e; }
+html.kta-theme-light .kta-ext-compte-etat,
+html.kta-theme-light .kta-ext-compte-fin { color: #3a4458; }
+html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 
 /* 📡 Présences d'une installation reliée (js/ktaPresences.js) */
 .kta-presence-icone { background: none; border: none; }
@@ -22674,3 +22646,106 @@ html.kta-theme-light .kta-readme-modal-overlay select option { background: #fdf8
   display: inline-block; transform: translate(8px, -50%); white-space: nowrap; font-size: 11px; padding: 1px 6px;
   border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #f4c542; border: 1px solid #f4c542; pointer-events: none;
 }
+
+/* ── 💾 Mémoire des sessions (Détails de la session, 10/10/2026) ──
+   Les sessions vivent dans le localStorage (~5 Mo par site) : jauge + plans les plus lourds. */
+.kta-memoire-jauge { height: 10px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; margin: 4px 0 6px; }
+.kta-memoire-barre { height: 100%; border-radius: 6px; background: #6ee287; transition: width .3s; }
+.kta-memoire-barre.kta-memoire-presque { background: #f4c542; }
+.kta-memoire-barre.kta-memoire-plein { background: #ff8c8c; }
+.kta-refonte-session-badge.kta-memoire-presque { color: #f4c542; }
+.kta-refonte-session-badge.kta-memoire-plein { color: #ff8c8c; }
+.kta-memoire-legende { font-size: 12px; color: #8892a4; line-height: 1.5; }
+.kta-memoire-conseil { font-size: 12.5px; line-height: 1.5; margin: 4px 0 6px; }
+.kta-memoire-plans { list-style: none; margin: 6px 0; padding: 0; }
+.kta-memoire-plans li { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #c8d0e0;
+  padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.kta-memoire-plans li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kta-memoire-plans li b { font-weight: 600; color: #e8eaf0; white-space: nowrap; }
+html.kta-theme-light .kta-memoire-jauge, body.kta-theme-light .kta-memoire-jauge { background: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-barre, body.kta-theme-light .kta-memoire-barre { background: #1e7a3a; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-presque, body.kta-theme-light .kta-memoire-barre.kta-memoire-presque { background: #b8860b; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-plein, body.kta-theme-light .kta-memoire-barre.kta-memoire-plein { background: #a01818; }
+html.kta-theme-light .kta-memoire-legende, body.kta-theme-light .kta-memoire-legende { color: #6b6354; }
+html.kta-theme-light .kta-memoire-plans li, body.kta-theme-light .kta-memoire-plans li { color: #2a2620; border-bottom-color: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-plans li b, body.kta-theme-light .kta-memoire-plans li b { color: #2a2620; }
+
+/* ⏳ Mise à jour acceptée, ancien code encore chargé (10/10/2026) : ambre, SANS clignoter —
+   le clignotement était pris pour « la mise à jour m'est demandée à chaque ouverture ». */
+.kta-loader-copyright-version.kta-loader-copyright-version-attente {
+  cursor: pointer;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.45);
+  animation: none;
+}
+html.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente,
+body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente {
+  color: #8b5a00;
+  background: rgba(184, 134, 11, 0.12);
+  border-color: rgba(184, 134, 11, 0.45);
+}
+
+/* ============================================================
+   📸 MES PHOTOS — galerie (js/photosGalerie.js, 10/10/2026)
+   Réutilise la modale des liaisons (.kta-ipl-boite, boutons de plan, filtre) ;
+   ici seulement ce qui lui est propre. Mobile d'abord : vignettes en grille
+   fluide, actions qui passent à la ligne, aucun débordement à 390 px.
+   ============================================================ */
+.kta-phg-boite { width: min(720px, 96vw) !important; max-width: min(720px, 96vw) !important; }
+.kta-phg-corps { overflow-x: hidden; }
+/* Fenêtres posées sur <html> (hors <body>) : la police du body ne leur arrive pas. */
+.kta-phg-boite, .kta-phg-pick-boite, .kta-phg-signal, .kta-phg-floater {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.kta-phg-total { font-size: 12px; color: #8892a4; margin: 0 0 10px 0; }
+.kta-phg-barre { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-bottom: 8px; }
+.kta-phg-plan-titre { font-size: 15px; font-weight: 600; color: #f4c542; margin: 4px 0 6px; overflow-wrap: anywhere; }
+.kta-phg-section { margin: 14px 0 6px; }
+.kta-phg-section-titre { font-size: 13.5px; font-weight: 600; color: #e8eaf0; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.kta-phg-badge {
+  display: inline-block; min-width: 20px; padding: 1px 7px; border-radius: 10px;
+  font-size: 11.5px; text-align: center; background: rgba(140, 180, 255, 0.18); color: #8cb4ff;
+}
+.kta-phg-sec-sans .kta-phg-badge { background: rgba(244, 197, 66, 0.2); color: #f4c542; }
+.kta-phg-texte { font-size: 12.5px; color: #c8d0e0; line-height: 1.5; margin: 0 0 8px 0; }
+.kta-phg-carte {
+  background: rgba(140, 180, 255, 0.05); border: 1px solid rgba(140, 180, 255, 0.16);
+  border-radius: 8px; padding: 9px 10px; margin-bottom: 8px; min-width: 0;
+}
+.kta-phg-sec-sans .kta-phg-carte { border-color: rgba(244, 197, 66, 0.35); background: rgba(244, 197, 66, 0.05); }
+.kta-phg-carte-titre { font-size: 13.5px; color: #e8eaf0; font-weight: 600; overflow-wrap: anywhere; }
+.kta-phg-carte-meta { font-size: 11.5px; color: #8892a4; margin: 2px 0 6px; overflow-wrap: anywhere; }
+.kta-phg-vignettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.kta-phg-vignette {
+  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06); cursor: zoom-in; min-height: 40px;
+}
+.kta-phg-vignette:focus-visible { outline: 2px solid #8cb4ff; outline-offset: 1px; }
+.kta-phg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.kta-phg-action { flex: 0 1 auto; }
+.kta-phg-danger { color: #ff8080 !important; border-color: rgba(255, 128, 128, 0.4) !important; }
+.kta-phg-pick-liste { margin-top: 8px; max-height: 50vh; overflow-y: auto; }
+.kta-phg-carte-btn { width: 100%; margin-bottom: 8px; }
+/* Signal à l'ouverture d'un plan (toast maison : il porte un bouton). En BAS, au-dessus de la barre
+   du plan : en haut, les toasts de l'ouverture (session, sortie reprise) le recouvraient. */
+.kta-phg-signal, .kta-phg-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  max-width: min(440px, calc(100vw - 24px)); box-sizing: border-box;
+  background: #1a1f2e; border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid #f4c542;
+  border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 9px 10px 9px 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  z-index: 99998; color: #e8eaf0; font-size: 13px;
+}
+.kta-phg-signal > span, .kta-phg-floater > span { flex: 1 1 160px; min-width: 0; }
+.kta-phg-floater { border-left-color: #8cb4ff; }
+.kta-phg-signal-x { background: none; border: none; color: #8892a4; font-size: 15px; cursor: pointer; padding: 2px 4px; }
+html.kta-theme-light .kta-phg-section-titre,
+html.kta-theme-light .kta-phg-carte-titre { color: var(--kta-light-text, #1a1f2e); }
+html.kta-theme-light .kta-phg-texte { color: var(--kta-light-text-2, #38414f); }
+html.kta-theme-light .kta-phg-plan-titre { color: #8b5a00; }
+html.kta-theme-light .kta-phg-signal,
+html.kta-theme-light .kta-phg-floater { background: #ffffff; color: var(--kta-light-text, #1a1f2e); border-color: rgba(0, 0, 0, 0.12); }
+html.kta-theme-light .kta-phg-signal { border-left-color: #b8860b; }
+html.kta-theme-light .kta-phg-floater { border-left-color: #3a6fd8; }

@@ -102,17 +102,22 @@
     }
   }
 
+  // 🩸 10/10/2026 (testeur en prod : « la mise à jour m'est demandée à chaque ouverture ») : ces écritures
+  // n'étaient pas protégées. localStorage plein → _markSeen jetait, la version n'était jamais notée, la
+  // fenêtre revenait à CHAQUE ouverture et « Plus tard » ne faisait rien. Désormais : écriture protégée
+  // (ktaStockageLocal.ecrire → événement mktm:stockage-plein, qui explique à l'utilisateur quoi faire).
+  function _ecrire(cle, valeur) {
+    if (window.ktaStockageLocal) return window.ktaStockageLocal.ecrire(cle, valeur);
+    try { localStorage.setItem(cle, valeur); return true; } catch (e) { return false; }
+  }
+
   function _getKnownVersion() {
-    return localStorage.getItem(LS_VERSION);
+    try { return localStorage.getItem(LS_VERSION); } catch (e) { return null; }
   }
 
   function _setKnownVersion(version, data) {
-    localStorage.setItem(LS_VERSION, version);
-    try {
-      localStorage.setItem(LS_DATA, JSON.stringify(data));
-    } catch(e) {
-      // Quota — pas critique
-    }
+    // Les données (notes) d'abord ne servent qu'à l'affichage : la version passe en premier.
+    if (_ecrire(LS_VERSION, version)) _ecrire(LS_DATA, JSON.stringify(data));
   }
 
   function _getLastKnownData() {
@@ -125,17 +130,18 @@
   }
 
   function _isSnoozed() {
-    const since = parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10);
+    let since = 0;
+    try { since = Number.parseInt(localStorage.getItem(LS_POSTPONED) || "0", 10); } catch (e) { since = 0; }
     if (!since) return false;
     return (Date.now() - since) < POSTPONE_MS;
   }
 
   function _snooze() {
-    localStorage.setItem(LS_POSTPONED, String(Date.now()));
+    _ecrire(LS_POSTPONED, String(Date.now()));
   }
 
   function _clearSnooze() {
-    localStorage.removeItem(LS_POSTPONED);
+    try { localStorage.removeItem(LS_POSTPONED); } catch (e) { /* rien */ }
   }
 
   // 🆕 v1.20.0 — Comparison sémantique X.Y.Z (au lieu de comparison string).
@@ -258,14 +264,6 @@
         }
       },
       // 💥 Reset complet — purge tout (fallback en cas de problème)
-      onAcceptHard: function() {
-        _markSeen();
-        if (typeof window.viderCacheAppli === "function") {
-          window.viderCacheAppli();
-        } else {
-          window.location.reload();
-        }
-      },
       onPostpone: function() {
         _snooze();
       }
@@ -317,12 +315,23 @@
     // gérer aussi le cas downgrade serveur (remote < known) → message neutre
     // "à jour" (= pas de fausse promesse d'upgrade qui régresserait).
     const _cmpShow = remote && remote.version ? compareSemver(remote.version, known) : 0;
+    // 🩸 10/10/2026 : version acceptée mais ANCIEN code encore chargé (le badge de l'accueil montre ⏳) — on ne
+    // répond plus « déjà à jour » : on propose de relancer la mise à jour douce, qui recharge le nouveau code.
+    const charge = (window.__MKM__ && window.__MKM__.build) || null;
+    if (remote && remote.version && _cmpShow <= 0 && charge && compareSemver(remote.version, charge) > 0 &&
+        typeof window.ktaConfirm === "function") {
+      const ok = await window.ktaConfirm(window.I18n.t("update.attente.msg", { v: remote.version, charge: charge }), {
+        titre: window.I18n.t("update.attente.titre"), okLabel: window.I18n.t("update.attente.relancer")
+      });
+      if (ok && typeof window.mettreAJourCodeSeul === "function") window.mettreAJourCodeSeul();
+      return { status: "pending-reload", remote: remote };
+    }
     if (!remote || !remote.version || _cmpShow <= 0) {
       // Pas d'update dispo (égalité OU downgrade serveur) — message neutre
       if (typeof window.afficherModaleAlerteAbsente === "function") {
         window.afficherModaleAlerteAbsente("up-to-date");
       } else {
-        alert(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
+        window.ktaAlerte(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
       }
       return { status: "up-to-date", remote: remote };
     }
@@ -340,14 +349,6 @@
           _markSeen();
           if (typeof window.mettreAJourCodeSeul === "function") {
             window.mettreAJourCodeSeul();
-          } else {
-            window.location.reload();
-          }
-        },
-        onAcceptHard: function() {
-          _markSeen();
-          if (typeof window.viderCacheAppli === "function") {
-            window.viderCacheAppli();
           } else {
             window.location.reload();
           }

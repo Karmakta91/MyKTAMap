@@ -220,7 +220,9 @@ opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...
        (wrapper public dans exporter.js qui appelle _genererCanvasExport ;
         option `region: { x, y, w, h }` en unités plan = ne rendre que ce rectangle :
         fond depuis les tuiles V2 (`ktaDessinerRegionTuiles`) ou sous-rectangle de l'image,
-        le reste translaté ; la légende se dessine après restauration — cartes PDF Secours)
+        le reste translaté ; la légende se dessine après restauration — cartes PDF Secours ;
+        sans région, plan tuilé V2 dont toutes les tuiles du niveau utile sont sur l'appareil
+        (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée)
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins
@@ -280,9 +282,19 @@ Helper public dans exporter.js : `window.MyKTAMapExporterGenererCanvasLegende(us
 
 Adapté impression papier (vs styles dark theme natifs de l'app).
 
-#### 44.6 ⚠️ Pas d'emoji dans pdf.text()
+#### 44.6 ⚠️ Texte de pdf.text() : accents oui, symboles non
 
-jsPDF Helvetica latin1 → emojis Unicode rendus en mojibake (`📍` → `O=UI...`). **Règle absolue** : aucun caractère hors Latin-1 dans les chaînes passées à `pdf.text()`. Le crédit footer "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr" est OK (· = U+00B7 dans Latin-1).
+La police standard de jsPDF (Helvetica, encodage WinAnsi) affiche **tous les accents français et espagnols**
+(é è ê à ç ô œ Œ É…, ñ á í ó ú ¿ ¡) et la typographie « » ’ — … € ° · (PDF d'échantillon du 09/10/2026). Hors
+police : flèches (→), coches (✓ ✗), ⚠, emojis, ≥ ≤ — rendus en charabia (`📍` → `O=UI...`), et la ligne entière se
+désorganise. Jusqu'au 09/10/2026 on croyait l'inverse : les libellés PDF étaient écrits sans accents et le code
+retirait ceux du texte libre (`normalize("NFD")`) — c'était faux.
+
+**Règle** : libellés PDF des dicos avec leurs accents, sans caractère hors police ; tout texte libre (nom d'équipe,
+note, libellé saisi) passe par **`window.ktaTextePdf(s)`** (`utils.js`), qui garde les accents, convertit → ✓ ≥ en
+`->` `OK` `>=` et retire le reste. 🛡️ `scripts/check-pdf-texte.js` (pré-commit, bloquant) : libellés PDF des 3 dicos
+(clés `.pdf.`, `Ascii`, `secours.surf.*`, `secours.briefing.footer`) sans caractère hors police, aucun
+`normalize("NFD")` dans les modules PDF.
 
 Les emojis dans la légende sont OK car la légende est rendue en image canvas (= browser DOM rendering qui supporte Unicode) avant d'être posée dans le PDF via `addImage`.
 

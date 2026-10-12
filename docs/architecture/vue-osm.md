@@ -213,7 +213,7 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 
 | Plan | Niveau v1.40.11 | Tuiles | RAM décodée |
 |---|---|---|---|
-| 4K Catacombes | z=0 natif | 40 | 40 MB |
+| 4K (relevé réel) | z=0 natif | 40 | 40 MB |
 | 8K | z=-1 | 40 | 40 MB |
 | 12K | z=-2 | 24 | 24 MB |
 | 16K | z=-2 | 64 | 64 MB |
@@ -697,7 +697,7 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 | Règle | Pourquoi |
 |---|---|
-| Regroupement **insensible à la casse** (`_etiquettesDesPlans`, clé minuscule → `{libelle, ids}`) | `setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans. « Gironde » + « GIRONDE » = deux chips montrant chacun la moitié de leurs plans. Ne se voit que si on a tapé les deux orthographes |
+| Regroupement **insensible à la casse** (`_etiquettesDesPlans`, clé minuscule → `{libelle, ids}`) | `setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans. « Secteur » + « SECTEUR » = deux chips montrant chacun la moitié de leurs plans. Ne se voit que si on a tapé les deux orthographes |
 | Chip masqué à **1 seul plan** | Le `<select>` juste en dessous fait déjà ce travail ; vingt chips à un plan noieraient les deux qui servent |
 | Clic **asymétrique** (`_basculerEtiquettePlans`) : ajoute les **manquants**, ne retire que si **tous** présents | Ré-ajouter un plan déjà monté le dupliquerait dans `_stackOrder`. Et sans le retrait groupé, vingt plans se défont en vingt clics sur des ✕ |
 

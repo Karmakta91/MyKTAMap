@@ -570,7 +570,9 @@ const remplace = (o, tag, valeurs, type) => {
       "Sans ça, le plan sort au défaut d'usine (4,9 px/m) et l'app affiche « Incohérence échelle " +
       "critique » sur un plan pourtant parfaitement calé.");
 
-    const libelles = ["gen.zip.dropLabel", "gen.zip.info", "gen.zip.titreHint",
+    // gen.zip.info / gen.zip.titreHint retirés (allègement des textes, 12/10/2026) :
+    // la zone de dépôt ne liste plus les formats qu'à un seul endroit, son libellé.
+    const libelles = ["gen.zip.dropLabel",
                       "gen.router.badExt", "gen.images.modeUploadHint",
                       "home.add.dropSig", "home.loader.badFileType"];
     const muets = [];

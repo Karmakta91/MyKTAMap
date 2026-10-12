@@ -8,7 +8,8 @@
 # web de GitHub, ne passe plus en silence.
 #
 #   - data/ : commit par commit, avec SON message (la dérogation `Data-deroge:` reste possible) ;
-#   - anti-fuite : tous les fichiers touchés par la plage, contenu tel qu'il est au dernier commit.
+#   - anti-fuite : tous les fichiers touchés par la plage, contenu tel qu'il est au dernier commit ;
+#   - noms réels : le message de chaque commit (les fichiers, eux, sont tous relus par le pre-commit en CI).
 #
 # Plage : PR → base..HEAD ; push → avant..HEAD ; branche neuve / historique réécrit → dernier commit.
 # Variables (posées par .github/workflows/ci.yml) : KTA_BASE (PR), KTA_AVANT (push).
@@ -29,6 +30,10 @@ for c in $(git rev-list "$plage"); do
   git log -1 --format=%B "$c" > "$msg"
   if ! KTA_FICHIERS_CI="$fichiers" node scripts/check-data-hors-git.js "$msg"; then
     echo "   ↑ commit $(git log -1 --format='%h %s' "$c")"
+    ko=1
+  fi
+  if ! node scripts/check-noms-reels.js --message "$msg"; then
+    echo "   ↑ commit $(git log -1 --format='%h' "$c") (message)"
     ko=1
   fi
 done

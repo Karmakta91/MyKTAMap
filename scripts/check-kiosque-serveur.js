@@ -95,8 +95,11 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     const jouer = (kiosque) => {
       let vu = null, sorti = false;
       const sb = {
+        // Le refus passe par window.ktaAlerte depuis le 09/10/2026 (plus d'alert() natif) ; alert gardé
+        // pour qu'un retour au natif reste reconnu comme « le dit à l'utilisateur ».
         window: { ktaKiosqueServeurSeul: function () { return kiosque; },
-                  I18n: { t: function (k) { return k; } } },
+                  I18n: { t: function (k) { return k; } },
+                  ktaAlerte: function (msg) { vu = msg; return Promise.resolve(); } },
         alert: function (msg) { vu = msg; }
       };
       // Le `return` du bloc n'est légal que dans une fonction : on l'enveloppe.

@@ -1,0 +1,5 @@
+{
+  "plans": [
+    { "id": "test", "path": "data/test", "name": "Relevé fictif de test", "version": "V1", "multiLevel": true }
+  ]
+}

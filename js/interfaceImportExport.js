@@ -98,6 +98,7 @@ function telechargerSessionJSON() {
 // IMPORT SESSION JSON
 // =========================
 function importerSessionJSON(file) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const reader = new FileReader();
 
   reader.onload = function (e) {
@@ -105,7 +106,7 @@ function importerSessionJSON(file) {
       const data = JSON.parse(e.target.result);
 
       if (data.type !== "devmap-session") {
-        alert(window.I18n.t("impexp.fileInvalid"));
+        window.ktaAlerte(window.I18n.t("impexp.fileInvalid"), { type: "erreur" });
         return;
       }
 
@@ -127,10 +128,13 @@ function importerSessionJSON(file) {
         window.InterPlanLinks.importLinks(data.interPlanLinks || []);
       }
 
-      alert(window.I18n.t("impexp.importDone"));
+      // Fin d'import : rien ne le signale autrement (points hors vue) → toast warn, visible par défaut.
+      const msgFin = window.I18n.t("impexp.importDone");
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgFin, "warn", { important: true });
+      else window.ktaAlerte(msgFin);
     } catch (err) {
       console.error(err);
-      alert(window.I18n.t("impexp.importError"));
+      window.ktaAlerte(window.I18n.t("impexp.importError"), { type: "erreur" });
     }
   };
 
@@ -146,11 +150,12 @@ function importerSessionJSON(file) {
 // Flow : sélection fichier → preview (X points / Y tracés) → confirm
 // → ajout aux annotations session avec snapshot HistoryManager (undo OK).
 window.ouvrirImportGpx = function(fichierInitial) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-gpx-modal");
   if (existing) { existing.remove(); if (!fichierInitial) return; }
 
   if (!window.GpxIO) {
-    alert(window.I18n.t("impexp.gpxIoUnavailable"));
+    window.ktaAlerte(window.I18n.t("impexp.gpxIoUnavailable"), { type: "erreur" });
     return;
   }
   const calibre = window.GpxIO.verifierCalibrage();
@@ -174,7 +179,6 @@ window.ouvrirImportGpx = function(fichierInitial) {
         :
           '<div class="kta-aide-section">' +
             '<p>' + window.I18n.t("impexp.gpx.intro") + '</p>' +
-            '<p>' + window.I18n.t("impexp.gpx.compat") + '</p>' +
             '<p>' + window.I18n.t("impexp.gpx.undoable") + '</p>' +
           '</div>' +
           '<div class="kta-aide-section">' +
@@ -284,6 +288,7 @@ window.ouvrirImportGpx = function(fichierInitial) {
 //   .gpx         → ouvrirImportGpx(file)     : aperçu + « ajoute, Ctrl+Z »
 // Le nom ouvrirImportChoix est gardé (appelé par le menu ⬇️ de interface.js).
 window.ouvrirImportChoix = function() {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const ancien = document.getElementById("kta-import-fichier");
   if (ancien) ancien.remove();  // sélecteur précédent annulé par l'user
   const input = document.createElement("input");
@@ -301,13 +306,14 @@ window.ouvrirImportChoix = function() {
 };
 
 window.ouvrirImportFichier = function(file) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   if (/\.gpx$/i.test(file.name)) {
     if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx(file);
-    else alert(window.I18n.t("impexp.gpxModuleUnavailable"));
+    else window.ktaAlerte(window.I18n.t("impexp.gpxModuleUnavailable"), { type: "erreur" });
   } else if (/\.(json|zip)$/i.test(file.name)) {
     ouvrirImportSession(file);
   } else {
-    alert(window.I18n.t("impexp.extInconnue", { name: file.name }));
+    window.ktaAlerte(window.I18n.t("impexp.extInconnue", { name: file.name }));
   }
 };
 
@@ -315,6 +321,7 @@ window.ouvrirImportFichier = function(file) {
 // IMPORT SESSION — modale plein écran
 // =========================
 function ouvrirImportSession(fichierInitial) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
   const existing = document.getElementById("kta-import-modal");
   if (existing) { existing.remove(); if (!fichierInitial) return; }
 
@@ -388,7 +395,7 @@ function ouvrirImportSession(fichierInitial) {
 
   // 🆕 v1.9.3-B1d : ZIP avec photos (session.json + photos/) en plus du JSON pur.
   // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
-  // et la validation. Format : [{id, pointId, mime, size, blob}, ...]
+  // et la validation. Format : [{id, pointId, mime, size, blob, fiche}, ...]
   let _pendingPhotosToRestore = null;
   // 🆕 v1.34.29 — PDF Mode Histoire embarqué dans le ZIP (chemin
   // `mode-histoire/<name>`). Format : { blob, name } ou null si absent.
@@ -547,7 +554,8 @@ function ouvrirImportSession(fichierInitial) {
                 pointId: info.pointId,
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
-                blob:    blob
+                blob:    blob,
+                fiche:   info.fiche || null   // 📸 12/10/2026 — absente des anciens ZIP
               };
             });
           });
@@ -645,39 +653,47 @@ function ouvrirImportSession(fichierInitial) {
 
     // 🆕 v1.9.3-B1d : restauration des photos en IDB AVANT de pousser
     // editorPoints (= avant que la grille puisse interroger IDB).
-    // Stratégie : on purge TOUTES les photos du plan courant en IDB,
-    // puis on injecte celles du ZIP. C'est le comportement attendu
-    // (= un import est un remplacement, pas un merge — cohérent avec
-    // points/roads/zones qui sont aussi reset+set).
+    // 📸 12/10/2026 — FUSION, plus de purge. Avant : toutes les photos du plan
+    // étaient effacées puis remplacées par celles du ZIP — y compris les photos
+    // « sans point » gardées pour récupération, sans confirmation (règle
+    // produit : une photo n'est jamais effacée sans confirmation). Désormais
+    // les photos du fichier s'AJOUTENT ; une photo déjà en base (même id) est
+    // gardée telle quelle (`siAbsente` : son rattachement ou sa fiche peuvent
+    // être plus récents que l'export) ; rien d'existant n'est supprimé. Une
+    // photo dont le point n'est plus dans la session importée apparaît « sans
+    // point » dans 📸 Mes photos — exactement comme après la suppression d'un
+    // point. → Promise<{ ajoutees, deja, echecs }>.
     function _restorerPhotos() {
+      const bilan = { ajoutees: 0, deja: 0, echecs: 0 };
       if (!_pendingPhotosToRestore || _pendingPhotosToRestore.length === 0) {
-        return Promise.resolve(0);
+        return Promise.resolve(bilan);
       }
       if (!window.MyKTAMapPhotos) {
         console.warn("[Import] MyKTAMapPhotos indispo — photos ignorées");
-        return Promise.resolve(0);
+        return Promise.resolve(bilan);
       }
       const planId = window._currentLoadedPlanId || "default";
-      return window.MyKTAMapPhotos.deletePhotosForPlan(planId).then(function() {
-        const promises = _pendingPhotosToRestore.map(function(p) {
-          return window.MyKTAMapPhotos.restorePhoto({
-            id:      p.id,
-            planId:  planId,
-            pointId: String(p.pointId),
-            blob:    p.blob,
-            mime:    p.mime,
-            size:    p.size
-          });
-        });
-        return Promise.all(promises).then(function() {
-          console.log("[Import] Photos restaurées :", _pendingPhotosToRestore.length);
-          return _pendingPhotosToRestore.length;
-        });
+      const promises = _pendingPhotosToRestore.map(function(p) {
+        return window.MyKTAMapPhotos.restorePhoto({
+          id:      p.id,
+          planId:  planId,
+          pointId: String(p.pointId == null ? "" : p.pointId),
+          blob:    p.blob,
+          mime:    p.mime,
+          size:    p.size,
+          fiche:   p.fiche   // 📸 fiche du point (facultative, validée par restorePhoto)
+        }, { source: "import", siAbsente: true })   // 📣 restauration de l'app (≠ dépôt d'une extension)
+          .then(function(id) { if (id) bilan.ajoutees++; else bilan.deja++; })
+          .catch(function(e) { bilan.echecs++; console.warn("[Import] photo non restaurée :", p.id, e); });
+      });
+      return Promise.all(promises).then(function() {
+        console.log("[Import] Photos fusionnées :", bilan);
+        return bilan;
       });
     }
 
     // 🚨 B3 (audit ergonomie 13/09/2026) : un import REMPLACE tout (points,
-    // tracés, zones, structures, photos purgées en base) — sans snapshot,
+    // tracés, zones, structures, photos AJOUTÉES depuis le 12/10/2026) — sans snapshot,
     // alors que sessionBackups.js listait « import qui écrase » parmi ses
     // déclencheurs et que l'UI le promettait. Snapshot ATTENDU avant tout.
     let _snapshotAvantImport = false;
@@ -688,7 +704,7 @@ function ouvrirImportSession(fichierInitial) {
     _snapAvant.then(function(snap) {
       _snapshotAvantImport = !!snap;
       return _restorerPhotos();
-    }).then(function() {
+    }).then(function(bilanPhotos) {
       try {
         _preparerIdentitesImport(dataParsee);   // 🆔 v2.2.0
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
@@ -789,6 +805,15 @@ function ouvrirImportSession(fichierInitial) {
         fermer();
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
+        }
+        // 📸 Bilan de la fusion des photos (rien d'existant n'a été effacé).
+        const _bp = bilanPhotos || { ajoutees: 0, deja: 0, echecs: 0 };
+        if ((_bp.ajoutees || _bp.deja || _bp.echecs)
+            && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t("impexp.session.toastPhotos",
+            { n: _bp.ajoutees, deja: _bp.deja }) +
+            (_bp.echecs ? " " + window.I18n.t("impexp.session.toastPhotosEchecs", { n: _bp.echecs }) : ""),
+            _bp.echecs ? "warn" : "info");
         }
         if (_calquesRemis && _calquesRemis.rapatries.length
             && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {

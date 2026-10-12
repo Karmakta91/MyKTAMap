@@ -91,6 +91,8 @@
   const KNOWN_IDB_DBS = [
     { name: "myktamap_handles", stores: ["handles", "blobs"] },
     { name: "myktamap_backups", stores: ["backups"] },
+    // Sessions auto-sauvegardées (js/sessionStore.js, depuis le 10/10/2026)
+    { name: "myktamap_sessions", stores: ["sessions", "migration"] },
     { name: "myktamap_photos",  stores: ["photos"] },
     // 🆕 v1.20.0 — Crash Reports (cf js/crashReports.js)
     { name: "myktamap_crashes", stores: ["crashes"] },
@@ -382,19 +384,22 @@
       const entree = function(id) {
         return parId[id] || (parId[id] = { id: id, sessionBytes: 0, calib: false, blobBytes: 0, handle: false, photos: 0, photoBytes: 0, backups: 0, nom: null });
       };
-      // LS : sessions + calibs
+      // Sessions (KtaSessionStore : IndexedDB, ou localStorage en repli)
+      const st = window.KtaSessionStore;
+      st.ids().forEach(function(id) {
+        if (!id || id === "default" || vivants.has(id)) return;
+        const e = entree(id);
+        const val = st.lire(id) || "";
+        e.sessionBytes = val.length;
+        try { const p = JSON.parse(val); if (p && p.planName) e.nom = p.planName; } catch(err) {}
+      });
+      // LS : calibs
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        let id = null, type = null;
-        if (k.indexOf("myktamap_session_v1_") === 0) { id = k.slice("myktamap_session_v1_".length); type = "session"; }
-        else if (k.indexOf("myktamap_kmz_calib_") === 0) { id = k.slice("myktamap_kmz_calib_".length); type = "calib"; }
+        if (!k || k.indexOf("myktamap_kmz_calib_") !== 0) continue;
+        const id = k.slice("myktamap_kmz_calib_".length);
         if (!id || id === "default" || vivants.has(id)) continue;
-        const e = entree(id);
-        const val = localStorage.getItem(k) || "";
-        if (type === "session") {
-          e.sessionBytes = val.length;
-          try { const p = JSON.parse(val); if (p && p.planName) e.nom = p.planName; } catch(err) {}
-        } else e.calib = true;
+        entree(id).calib = true;
       }
       // IDB myktamap_handles : blobs (archives ZIP) + handles FS
       try {
@@ -933,9 +938,7 @@
       const plans = (rep && rep.orphelins && rep.orphelins.plans) || [];
       if (!plans.length) return;
       const msg = _t("orph.confirm", { n: plans.length, taille: _formatBytes(rep.orphelins.totalBytes) });
-      const ok = (typeof window.ktaConfirm === "function")
-        ? await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") })
-        : confirm(msg);
+      const ok = await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") });
       if (!ok) return;
       btn.disabled = true; btn.textContent = "⏳";
       for (const e of plans) {
@@ -951,15 +954,15 @@
       const id = parseInt(this.dataset.crashId, 10);
       _copierCrashReport(id, this);
     });
-    _lc.delegate(corps, "click", ".kta-mem-crash-del", function() {
+    _lc.delegate(corps, "click", ".kta-mem-crash-del", async function() {
       const id = parseInt(this.dataset.crashId, 10);
-      if (!confirm(_t("crash.confirm.del"))) return;
+      if (!(await window.ktaConfirm(_t("crash.confirm.del")))) return;
       if (window.CrashReports && typeof window.CrashReports.remove === "function") {
         window.CrashReports.remove(id).then(_refreshAndRender);
       }
     });
-    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", function() {
-      if (!confirm(_t("crash.confirm.clearAll"))) return;
+    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", async function() {
+      if (!(await window.ktaConfirm(_t("crash.confirm.clearAll")))) return;
       if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
         window.CrashReports.clearAll().then(_refreshAndRender);
       }
@@ -1016,7 +1019,7 @@
         if (btn.isConnected) btn.textContent = orig;
       }, 1800);
     }).catch(function(e) {
-      alert(_t("copy.fail", { detail: (e.message || e) }));
+      window.ktaAlerte(_t("copy.fail", { detail: (e.message || e) }), { type: "erreur", zIndex: 100150 });
     });
   }
 
@@ -1084,7 +1087,7 @@
           if (btn.isConnected) btn.textContent = orig;
         }, 1800);
       }).catch(function(e) {
-        alert(_t("copy.fail", { detail: (e.message || e) }));
+        window.ktaAlerte(_t("copy.fail", { detail: (e.message || e) }), { type: "erreur" });
       });
     });
 
@@ -1097,24 +1100,15 @@
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }
 
+  // Copie déléguée au helper commun (utils.js) : il tente navigator.clipboard puis
+  // retombe sur execCommand (HTTP local, clipboard refusé). On garde la forme
+  // Promise résolue / rejetée attendue par les appelants.
   function _copyToClipboard(text) {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(text);
+    if (typeof window.ktaCopierTexte !== "function") {
+      return Promise.reject(new Error("ktaCopierTexte indisponible"));
     }
-    // Fallback textarea + execCommand (anciens browsers + contextes non-sécurisés)
-    return new Promise(function(resolve, reject) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (ok) resolve(); else reject(new Error("execCommand copy failed"));
-      } catch(e) { reject(e); }
+    return window.ktaCopierTexte(text).then(function(ok) {
+      if (!ok) throw new Error("clipboard + execCommand KO");
     });
   }
 

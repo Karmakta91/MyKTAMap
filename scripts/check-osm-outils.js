@@ -383,7 +383,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   // c'est un réglage global, il n'avait rien à faire dans la config d'un plan).
   t("réglage : la case existe dans ⚙️ Configuration de l'accueil",
     /id="loaderPanneauxAncres"/.test(fs.readFileSync("index.html", "utf8")));
-  ["config.panneaux.label", "config.panneaux.hint"].forEach(function (k) {
+  ["config.panneaux.label"].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
       t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);

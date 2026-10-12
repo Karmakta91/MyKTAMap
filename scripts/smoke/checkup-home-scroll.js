@@ -47,6 +47,7 @@
 // =====================================================================
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const server = require("./server.js");
 
 const URL = "http://127.0.0.1:8123/index.html";
@@ -219,7 +220,7 @@ async function testerConfig(nav, W, H, zoom) {
   console.log("🖥️  checkup HOME — scroll et footer en petite fenêtre\n");
   let nav;
   try {
-    nav = await chromium.launch().catch(function () { return chromium.launch({ channel: "chromium" }); });
+    nav = await lancerNavigateur(chromium);
     for (const [W, H, Z] of CONFIGS) await testerConfig(nav, W, H, Z);
   } catch (e) {
     console.error("\n❌ checkup impossible : " + e.message);

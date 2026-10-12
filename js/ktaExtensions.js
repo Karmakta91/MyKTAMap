@@ -243,6 +243,21 @@
         t.classList.add(cls);
       }
       if (d) d.textContent = _t("home.serveur.explication." + _cle(_etat), { raison: _raison || "?" });
+      // Installation reliée : la suite de la modale (« 100 % client-side », liste blanche) ne décrit que
+      // l'app de base. On le dit, et on mène à la page de transparence de l'installation si elle en publie une.
+      const relie = _etat === "on" || _etat === "down";
+      const lien = relie && _connexion && _connexion.transparence;
+      const audit = bloc.querySelector(".kta-cnx-bloc-audit");
+      if (audit) {
+        audit.textContent = relie ? _t(lien ? "home.serveur.audit.avecPage" : "home.serveur.audit.sansPage") : "";
+        audit.hidden = !relie;
+      }
+      const ligne = bloc.querySelector(".kta-cnx-bloc-lien-ligne");
+      if (ligne) {
+        const b = ligne.querySelector(".kta-cnx-bloc-lien");
+        if (b) b.textContent = _t("home.serveur.audit.ouvrir");
+        ligne.hidden = !lien;
+      }
       bloc.hidden = false;
     }
 
@@ -278,6 +293,14 @@
           return;
         }
         if (typeof window._ouvrirNetDocModal === "function") window._ouvrirNetDocModal();
+      });
+    }
+    const blocCnx = document.getElementById("loaderNetDocCnx");
+    const lien = blocCnx && blocCnx.querySelector(".kta-cnx-bloc-lien");
+    if (lien && !lien._ktaCable) {
+      lien._ktaCable = true;
+      lien.addEventListener("click", function () {
+        if (_connexion && _connexion.transparence) window.open(_connexion.transparence, "_blank", "noopener");
       });
     }
     // Les libellés sont traduits au rendu : on attend les dicos.
@@ -339,9 +362,12 @@
       return false;
     }
     _extensions.push(ext);
+    // Les écrans déjà dessinés (Mode Développeur…) se redessinent : une extension arrive APRÈS l'accueil.
+    try { window.dispatchEvent(new CustomEvent("mktm:extensions-changees")); } catch (e) { /* rien */ }
+    if (ext.outilHome) _poserOutilHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -358,6 +384,12 @@
     if (etat !== "on" && etat !== "down" && etat !== "licence" && etat !== null) return false;
     _signal = etat;
     _signalRaison = etat === "licence" ? String(raison || "").slice(0, 40) : "";
+    // Un module qui vient de JOINDRE son serveur dit que le réseau est revenu : l'indicateur « réseau coupé »
+    // (posé par l'événement offline) ne doit pas rester collant jusqu'à un événement online qui peut ne jamais
+    // venir (retour d'une autre appli sur téléphone). Sauf si le navigateur se dit encore hors ligne.
+    if (etat === "on" && _reseauCoupe && typeof navigator !== "undefined" && navigator.onLine !== false) {
+      _reseauCoupe = false;
+    }
     _recalculer();
     return true;
   }
@@ -562,38 +594,296 @@
   // connecté ; le panneau ⚙️ Configuration dans un bloc « Installation » (ex. gérer
   // les comptes, pour un admin). Texte seulement (60 car.), 10 au plus, action
   // protégée ; erreur ou forme inattendue = aucune action.
+  // Prise d'INFORMATION « outilsDev » (10/10/2026) : pages d'outils d'une extension, proposées dans le Mode
+  // Développeur (js/devMode.js) quand il est actif. ext.outilsDev() → [{ libelle, page }] ; page = .html du MÊME site,
+  // chemin relatif (mêmes règles que serverConnection.transparence). Une erreur ou une entrée invalide est ignorée.
+  const PAGE_RE = /^[A-Za-z0-9_][A-Za-z0-9_./-]*\.html$/;
+  function outilsDev() {
+    const ext = _prise("outilsDev");
+    if (!ext || typeof ext.outilsDev !== "function") return [];
+    try {
+      const l = ext.outilsDev();
+      return (Array.isArray(l) ? l : []).filter(function (o) {
+        return o && typeof o.libelle === "string" && o.libelle.trim() && typeof o.page === "string" &&
+          PAGE_RE.test(o.page) && o.page.indexOf("..") < 0 && o.page.indexOf("//") < 0;
+      }).slice(0, 10).map(function (o) { return { libelle: o.libelle.trim().slice(0, 60), page: o.page }; });
+    } catch (e) { console.warn("[Extensions] outilsDev :", e); return []; }
+  }
+  // Prise d'INFORMATION « aide » (11/10/2026) : UNE rubrique fournie par une extension, ajoutée à l'Aide intégrée
+  // (js/interfaceDocs.js) juste avant « Pour aller plus loin ». ext.aide() → { titre, sections: [{ titre, html }] },
+  // lue au rendu (langue courante). Le HTML de mise en forme est admis (l'extension est du code de la page : ce
+  // nettoyage est une hygiène, pas une frontière) — sans script, cadre, formulaire, gestionnaire on* ni lien
+  // javascript:. Erreur ou forme inattendue = rien ; sans extension, l'aide reste celle du community.
+  // Un seul passage, balise par balise (12/10/2026) : les expressions régulières d'avant revenaient en arrière
+  // (coût quadratique sur un fragment mal fermé, Sonar S8786). Mêmes règles : éléments à contenu dangereux retirés
+  // AVEC leur contenu, link/meta/base retirés, attributs on* retirés, href/src « javascript: » → « # ».
+  const _HTML_BLOC = { script: 1, style: 1, iframe: 1, object: 1, embed: 1, form: 1 };
+  const _HTML_SEUL = { link: 1, meta: 1, base: 1 };
+  function _attributsSurs(brut) {
+    let out = "", i = 0;
+    const n = brut.length, blanc = (c) => c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f";
+    while (i < n) {
+      while (i < n && blanc(brut[i])) i++;
+      if (i >= n) break;
+      if (brut[i] === "/") { out += " /"; i++; continue; }
+      let j = i;
+      while (j < n && !blanc(brut[j]) && brut[j] !== "=" && brut[j] !== "/") j++;
+      const nom = brut.slice(i, j).toLowerCase();
+      i = j;
+      while (i < n && blanc(brut[i])) i++;
+      let valeur = null;
+      if (brut[i] === "=") {
+        i++;
+        while (i < n && blanc(brut[i])) i++;
+        const q = brut[i];
+        if (q === "\"" || q === "'") {
+          const fin = brut.indexOf(q, i + 1);
+          valeur = brut.slice(i + 1, fin < 0 ? n : fin); i = fin < 0 ? n : fin + 1;
+        } else {
+          let k = i;
+          while (k < n && !blanc(brut[k])) k++;
+          valeur = brut.slice(i, k); i = k;
+        }
+      }
+      if (!nom || nom.slice(0, 2) === "on") continue;
+      if ((nom === "href" || nom === "src") && valeur !== null &&
+          valeur.trim().toLowerCase().replace(/[\t\n\r ]/g, "").indexOf("javascript:") === 0) valeur = "#";
+      out += " " + nom + (valeur === null ? "" : "=\"" + valeur.replaceAll("\"", "&quot;") + "\"");
+    }
+    return out;
+  }
+  function _nettoyerHtml(h) {
+    const s = String(h);
+    let out = "", i = 0, bloc = null;
+    while (i < s.length) {
+      const lt = s.indexOf("<", i);
+      if (lt < 0) { if (!bloc) out += s.slice(i); break; }
+      if (!bloc) out += s.slice(i, lt);
+      const gt = s.indexOf(">", lt + 1);
+      if (gt < 0) break;                                   // balise jamais fermée : on s'arrête là
+      const corps = s.slice(lt + 1, gt);
+      const ferme = corps[0] === "/";
+      let k = ferme ? 1 : 0;
+      const debut = k;
+      while (k < corps.length && /[A-Za-z0-9]/.test(corps[k])) k++;
+      const nom = corps.slice(debut, k).toLowerCase();
+      i = gt + 1;
+      if (bloc) { if (ferme && nom === bloc) bloc = null; continue; }
+      if (!nom || !/[a-z]/.test(nom[0])) { out += "&lt;" + corps.replaceAll("<", "&lt;") + "&gt;"; continue; }
+      if (_HTML_BLOC[nom]) { if (!ferme) bloc = nom; continue; }
+      if (_HTML_SEUL[nom]) continue;
+      out += ferme ? "</" + nom + ">" : "<" + nom + _attributsSurs(corps.slice(k)) + ">";
+    }
+    return out;
+  }
+  function aide() {
+    const ext = _prise("aide");
+    if (!ext || typeof ext.aide !== "function") return null;
+    try {
+      const r = ext.aide();
+      if (!r || typeof r.titre !== "string" || !r.titre.trim() || !Array.isArray(r.sections)) return null;
+      const sections = r.sections.filter(function (s) {
+        return s && typeof s.titre === "string" && s.titre.trim() && typeof s.html === "string";
+      }).slice(0, 20).map(function (s, i) {
+        // `id` facultatif (lettres, chiffres, tirets) : slug stable « ext-<id> » pour ouvrir la section depuis
+        // l'extension (window.ktaOuvrirAideSection) ; sinon « ext-<rang> ».
+        const id = typeof s.id === "string" && /^[a-z0-9-]{1,40}$/.test(s.id) ? s.id : String(i);
+        return { slug: "ext-" + id, titre: s.titre.trim().slice(0, 80), raccourci: "", html: _nettoyerHtml(s.html) };
+      });
+      return sections.length ? { titre: r.titre.trim().slice(0, 60), sections: sections } : null;
+    } catch (e) { console.warn("[Extensions] aide :", e); return null; }
+  }
   function actionsCompte(lieu) {
     const ext = _prise("actionsCompte");
     if (!ext || typeof ext.actionsCompte !== "function") return [];
     try {
       const l = ext.actionsCompte(lieu);
+      // Entrée : { libelle, action, groupe?, type? } (11/10/2026, retour KARMA « menu pas ergonomique ») —
+      // `groupe` : intitulé de rubrique (texte, 30 car.), posé quand il change ; `type` : « etat » = ligne d'état
+      // (texte ; `action` + `lien` facultatifs → petit lien à droite), « fin » = action à part, en bas (déconnexion).
       return (Array.isArray(l) ? l : []).filter(function (a) {
-        return a && typeof a.libelle === "string" && a.libelle.trim() && typeof a.action === "function";
-      }).slice(0, 10).map(function (a) { return { libelle: a.libelle.trim().slice(0, 60), action: a.action }; });
+        return a && typeof a.libelle === "string" && a.libelle.trim() &&
+          (typeof a.action === "function" || a.type === "etat");
+      }).slice(0, 16).map(function (a) {
+        const e = { libelle: a.libelle.trim().slice(0, 60), action: typeof a.action === "function" ? a.action : null,
+          groupe: typeof a.groupe === "string" ? a.groupe.trim().slice(0, 30) : "",
+          type: a.type === "etat" || a.type === "fin" ? a.type : "" };
+        if (e.type === "etat" && e.action && typeof a.lien === "string" && a.lien.trim()) e.lien = a.lien.trim().slice(0, 30);
+        if (e.type === "etat" && !e.lien) e.action = null;
+        return e;
+      });
     } catch (e) { console.warn("[Extensions] actionsCompte :", e); return []; }
   }
-  // Bloc prêt à insérer (même rendu dans les deux fenêtres) ; null s'il n'y a rien à montrer.
+  function _lancerAction(a) {
+    try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
+  }
+
+  // ── Tuile d'extension dans 🧰 Outils (prise d'INFORMATION « outilHome », 11/10/2026) ──
+  // ext.outilHome() → { libelle } (texte, 40 car.) ou null : UNE tuile ajoutée à 🧰 Outils de l'accueil, qui ouvre
+  // une fenêtre avec le bloc du compte au lieu « outils » (actionsCompte("outils")). Sans extension (ou null) :
+  // aucune tuile — myktamap.fr ne change pas. Erreur ou forme inattendue = rien.
+  function outilHome() {
+    const ext = _prise("outilHome");
+    if (!ext || typeof ext.outilHome !== "function") return null;
+    try {
+      const o = ext.outilHome();
+      if (!o || typeof o.libelle !== "string" || !o.libelle.trim()) return null;
+      return { libelle: o.libelle.trim().slice(0, 40) };
+    } catch (e) { console.warn("[Extensions] outilHome :", e); return null; }
+  }
+  function _fermerOutilHome() {
+    const ov = document.getElementById("kta-ext-outil-modal");
+    if (!ov) return;
+    if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
+    ov.remove();
+  }
+  function ouvrirOutilHome() {
+    const o = outilHome();
+    if (!o) return false;
+    _fermerOutilHome();
+    // Une action du bloc ouvre souvent sa propre fenêtre (clés, 2FA, kit) : on referme celle-ci d'abord.
+    const ov = document.createElement("div");
+    ov.id = "kta-ext-outil-modal";
+    ov.className = "kta-readme-modal-overlay";
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite kta-ext-outil-boite";
+    const tete = document.createElement("div");
+    tete.className = "kta-readme-modal-header";
+    const titre = document.createElement("div");
+    titre.className = "kta-readme-modal-titre";
+    titre.textContent = o.libelle;
+    const croix = document.createElement("button");
+    croix.type = "button";
+    croix.className = "kta-panneau-close";
+    croix.textContent = "✕";
+    croix.addEventListener("click", _fermerOutilHome);
+    tete.appendChild(titre); tete.appendChild(croix);
+    const corps = document.createElement("div");
+    corps.className = "kta-readme-modal-corps";
+    const bloc = blocActionsCompte("outils", "");
+    if (bloc) {
+      bloc.addEventListener("click", function (e) { if (e.target.closest("button")) _fermerOutilHome(); }, true);
+      corps.appendChild(bloc);
+    }
+    boite.appendChild(tete); boite.appendChild(corps); ov.appendChild(boite);
+    ov.addEventListener("click", function (e) { if (e.target === ov) _fermerOutilHome(); });
+    ov.__esc = function (e) { if (e.key === "Escape") { e.stopPropagation(); _fermerOutilHome(); } };
+    document.addEventListener("keydown", ov.__esc, true);
+    document.documentElement.appendChild(ov);
+    return true;
+  }
+  // Pose (ou retire) la tuile dans 🧰 Outils de l'accueil, à la déclaration d'une extension et au chargement.
+  function _poserOutilHome() {
+    if (typeof document === "undefined" || !document.querySelector) return;
+    const zone = document.querySelector(".loader-secondary-actions");
+    const vieux = document.getElementById("loaderExtOutilBtn");
+    const o = outilHome();
+    if (!o) { if (vieux) vieux.remove(); return; }
+    if (!zone) return;
+    const b = vieux || document.createElement("button");
+    b.type = "button";
+    b.id = "loaderExtOutilBtn";
+    b.className = "loader-btn-secondary";
+    b.textContent = o.libelle;
+    if (!vieux) { b.addEventListener("click", ouvrirOutilHome); zone.insertBefore(b, zone.firstChild); }
+  }
+  // Bloc prêt à insérer ; null s'il n'y a rien à montrer. Lieux : « profil » (Mon profil), « config » (⚙️),
+  // « outils » (fenêtre de la tuile d'extension de 🧰 Outils, 11/10/2026). Profil et outils : carte du compte
+  // (pseudo, rôle en pastille, précision), puis les rubriques, puis l'action « fin ». Dans « Mon profil », quand
+  // l'extension a une tuile d'outils, la carte porte un lien vers sa fenêtre (les actions y vivent).
   function blocActionsCompte(lieu, titre) {
     const actions = actionsCompte(lieu);
     const c = compte();
-    if (!actions.length && !(lieu === "profil" && c)) return null;
-    const bloc = document.createElement("div");
-    bloc.className = "kta-aide-section kta-ext-compte";
-    const h = document.createElement("div");
-    h.className = "kta-ext-compte-titre";
-    h.textContent = String(titre || "") + (c ? " — " + c.pseudo + (c.libelle ? " · " + c.libelle : "") : "");
-    bloc.appendChild(h);
+    const carteVisible = (lieu === "profil" || lieu === "outils") && c;
+    if (!actions.length && !carteVisible) return null;
+    const el = function (tag, cls, texte) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (texte) n.textContent = texte;
+      return n;
+    };
+    const bloc = el("div", "kta-aide-section kta-ext-compte");
+    if (titre) bloc.appendChild(el("div", "kta-ext-compte-titre", String(titre)));
+    if (carteVisible) {
+      const carte = el("div", "kta-ext-compte-carte");
+      const ligne = el("div", "kta-ext-compte-qui");
+      ligne.appendChild(el("span", "kta-ext-compte-pseudo", "👤 " + c.pseudo));
+      if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
+      carte.appendChild(ligne);
+      if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
+      const outil = lieu === "profil" ? outilHome() : null;
+      if (outil) {
+        const lien = el("button", "kta-ext-compte-gerer", outil.libelle + "  ›");
+        lien.type = "button";
+        lien.addEventListener("click", ouvrirOutilHome);
+        carte.appendChild(lien);
+      }
+      bloc.appendChild(carte);
+    }
+    let groupe = null;
+    const fin = [];
     actions.forEach(function (a) {
-      const b = document.createElement("button");
+      if (a.type === "fin") { fin.push(a); return; }
+      if (a.groupe && a.groupe !== groupe) bloc.appendChild(el("div", "kta-ext-compte-groupe", a.groupe));
+      groupe = a.groupe || groupe;
+      if (a.type === "etat") {
+        const l = el("div", "kta-ext-compte-etat");
+        l.appendChild(el("span", "", a.libelle));
+        if (a.lien) {
+          const b = el("button", "kta-ext-compte-lien", a.lien);
+          b.type = "button";
+          b.addEventListener("click", function () { _lancerAction(a); });
+          l.appendChild(b);
+        }
+        bloc.appendChild(l);
+        return;
+      }
+      const b = el("button", "loader-btn-secondary kta-ext-compte-btn", a.libelle);
       b.type = "button";
-      b.className = "loader-btn-secondary kta-ext-compte-btn";
-      b.textContent = a.libelle;
-      b.addEventListener("click", function () {
-        try { a.action(); } catch (e) { console.warn("[Extensions] action du compte :", e); }
-      });
+      b.addEventListener("click", function () { _lancerAction(a); });
+      bloc.appendChild(b);
+    });
+    fin.forEach(function (a) {
+      const b = el("button", "kta-ext-compte-fin", a.libelle);
+      b.type = "button";
+      b.addEventListener("click", function () { _lancerAction(a); });
       bloc.appendChild(b);
     });
     return bloc;
+  }
+
+  // ── Photos des points (prise d'INFORMATION `photos`, 10/10/2026) ──
+  // L'extension déclare photos: { completerPoint(planId, pointId) → Promise<number>,
+  //                               completerPlan(planId) → Promise<{ ajoutees, total }> }.
+  // Elle dépose les photos qui manquent sur l'appareil par MyKTAMapPhotos.restorePhoto ;
+  // l'app réaffiche si quelque chose est arrivé. Attente bornée à 8 s, puis abandon
+  // silencieux ; erreur = ignorée (journalisée [Photos]) : l'app montre ce qui est local.
+  // Sans extension : aucune attente, rien n'est appelé.
+  const PHOTOS_DELAI_MS = 8000;
+  function _photosBorne(appel, defaut, nom) {
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(appel).catch(function (e) { console.warn("[Photos] extension « " + nom + " » :", e); return defaut; }),
+      new Promise(function (r) {
+        delai = setTimeout(function () { console.warn("[Photos] extension « " + nom + " » : délai dépassé"); r(defaut); }, PHOTOS_DELAI_MS);
+      })
+    ]).finally(function () { clearTimeout(delai); });
+  }
+  function photosCompleterPoint(planId, pointId) {
+    const ext = _prise("photos");
+    if (!ext || typeof ext.photos.completerPoint !== "function" || !planId || !pointId) return Promise.resolve(0);
+    return _photosBorne(function () { return ext.photos.completerPoint(String(planId), String(pointId)); }, 0, "completerPoint")
+      .then(function (n) { return (Number.isInteger(n) && n > 0) ? n : 0; });
+  }
+  function photosCompleterPlan(planId) {
+    const ext = _prise("photos");
+    const rien = { ajoutees: 0, total: 0 };
+    if (!ext || typeof ext.photos.completerPlan !== "function" || !planId) return Promise.resolve(rien);
+    return _photosBorne(function () { return ext.photos.completerPlan(String(planId)); }, rien, "completerPlan")
+      .then(function (r) {
+        const n = function (v) { return (Number.isInteger(v) && v > 0) ? v : 0; };
+        return (r && typeof r === "object") ? { ajoutees: n(r.ajoutees), total: n(r.total) } : rien;
+      });
   }
 
   // ── Changements reçus (synchro entrante) ──
@@ -692,7 +982,7 @@
       return p.then(function () {
         const e = PR.findById(id);
         if (!e || e.type !== "ext") { refuses++; return; }
-        try { localStorage.removeItem("myktamap_session_v1_" + id); } catch (er) {}
+        try { window.KtaSessionStore.retirer(id); } catch (er) {}
         // Photos, sauvegardes de session et calage du plan (purge du registre), puis
         // l'entrée et son archive locale (remove).
         return Promise.resolve(typeof PR.purgeAssociatedData === "function" ? PR.purgeAssociatedData(id) : null)
@@ -727,7 +1017,9 @@
       if (!c || typeof c.pseudo !== "string" || !c.pseudo.trim()) return null;
       return {
         pseudo: c.pseudo.trim().slice(0, 40),
-        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : ""
+        libelle: typeof c.libelle === "string" ? c.libelle.trim().slice(0, 24) : "",
+        // Ligne de précision sous le pseudo, dans « Mon profil » seulement (ex. l'organisation) ; facultative.
+        details: typeof c.details === "string" ? c.details.trim().slice(0, 80) : ""
       };
     } catch (e) { console.warn("[Extensions] compte :", e); return null; }
   }
@@ -1120,10 +1412,20 @@
     _observateurFiches.observe(document.body, { childList: true, subtree: true });
   }
 
+  // La tuile suit le compte (connexion, déconnexion) et l'accueil (posée une fois le DOM prêt).
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("mktm:compte-changed", _poserOutilHome);
+    if (typeof document !== "undefined" && document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", _poserOutilHome);
+    }
+  }
+
   window.KtaExtensions = {
     API_VERSION: API_VERSION,
     register: register,
     aPrise: aPrise,
+    outilsDev: outilsDev,
+    aide: aide,
     signaler: signaler,
     chargerModules: chargerModules,
     modulesEtat: modulesEtat,
@@ -1170,6 +1472,8 @@
     garderPlanExtension: garderPlanExtension,
     actionsObjet: actionsObjet,
     infoObjet: infoObjet,
+    photosCompleterPoint: photosCompleterPoint,
+    photosCompleterPlan: photosCompleterPlan,
     badgePlan: badgePlan,
     panneauExtension: panneauExtension,
     ouvrirPanneau: ouvrirPanneau,
@@ -1177,6 +1481,8 @@
     fermerPanneau: fermerPanneau,
     quitterPlan: quitterPlan,
     blocActionsCompte: blocActionsCompte,
+    outilHome: outilHome,
+    ouvrirOutilHome: ouvrirOutilHome,
     valider: valider,
     etatDe: etatDe,
     appliquerConfig: appliquerConfig,
@@ -1240,7 +1546,7 @@
     const id = window._currentLoadedPlanId;
     if (!id || !lectureSeule(id)) return false;
     if (!silencieux && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule" });
+      window.OOMGuard.showToast(_t("ext.lectureSeule"), "warn", { groupe: "ext-lecture-seule", important: true });
     }
     return true;
   };

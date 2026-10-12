@@ -319,6 +319,17 @@ function afficherFormulaire(x, y, existingPoint) {
   const photoInputCam   = document.getElementById("kta-poi-photos-input-camera");
   const photoInputGal   = document.getElementById("kta-poi-photos-input-galerie");
 
+  // 📸 Fiche du point portée par chaque photo (retrouver le point s'il est
+  // supprimé, cf js/photos.js) : ce que dit le formulaire à l'instant de l'ajout.
+  // Remise à jour à l'enregistrement du point (majFichesPoints ci-dessous).
+  function _ficheCourante() {
+    const tagForm = (selectType.value && selectType.value !== "__new__") ? selectType.value : (tagInitial || null);
+    let niveau = null;
+    if (isEdit) niveau = Number.isInteger(existingPoint.level) ? existingPoint.level : null;
+    else if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) niveau = window.APP_CONFIG.activeLevel || 0;
+    return { nom: inputNom.value.trim() || nomInitial, x: x, y: y, niveau: niveau, type: tagForm, maj: Date.now() };
+  }
+
   function setErr(msg) {
     erreurEl.textContent  = msg || "";
     erreurEl.style.display = msg ? "block" : "none";
@@ -503,11 +514,40 @@ function afficherFormulaire(x, y, existingPoint) {
       });
       _renderPhotoGrid();
       _refreshCounterAndButtons();
+      _completerParExtension();
     }).catch(function(e) {
       console.warn("[Editor] _loadExistingPhotos erreur :", e);
       _renderPhotoGrid();
       _refreshCounterAndButtons();
     });
+  }
+
+  // 📸 Installation reliée : l'extension dépose les photos de ce point qui
+  // manquent sur l'appareil (prise `photos`, 8 s max). Si elle en a déposé, la
+  // grille est relue — en gardant les ajouts et retraits en cours. Une fois
+  // par ouverture de la fiche. Sans extension : rien.
+  let _completeFait = false;
+  function _completerParExtension() {
+    const K = window.KtaExtensions;
+    if (_completeFait || !isEdit || !K || typeof K.aPrise !== "function" || !K.aPrise("photos")) return;
+    _completeFait = true;
+    K.photosCompleterPoint(planId, _photoPointId).then(function(n) {
+      if (!n || !modal.isConnected) return;
+      const lecture = (window.MyKTAMapPhotos.getPhotosForPointRef && existingPoint.uid)
+        ? window.MyKTAMapPhotos.getPhotosForPointRef(planId, { uid: existingPoint.uid, id: existingPoint.id })
+        : window.MyKTAMapPhotos.getPhotosForPoint(planId, _photoPointId);
+      return lecture.then(function(arr) {
+        const connus = new Set(_photosCacheMeta.map(function(p) { return p.id; }));
+        arr.forEach(function(rec) {
+          if (connus.has(rec.id)) return;
+          const url = URL.createObjectURL(rec.blob);
+          _photoObjectUrls.add(url);
+          _photosCacheMeta.push({ id: rec.id, mime: rec.mime, size: rec.size, createdAt: rec.createdAt, _objectUrl: url });
+        });
+        _renderPhotoGrid();
+        _refreshCounterAndButtons();
+      });
+    }).catch(function(e) { console.warn("[Editor] photos de l'extension :", e); });
   }
 
   // Upload d'1 Blob photo : crée un placeholder grille immédiat (UX
@@ -528,7 +568,7 @@ function afficherFormulaire(x, y, existingPoint) {
     _renderPhotoGrid();
     _refreshCounterAndButtons();
 
-    window.MyKTAMapPhotos.addPhoto(planId, _photoPointId, blob).then(function(photoId) {
+    window.MyKTAMapPhotos.addPhoto(planId, _photoPointId, blob, { fiche: _ficheCourante() }).then(function(photoId) {
       // Récupère le blob compressé pour générer l'objectURL d'affichage
       return window.MyKTAMapPhotos.getPhoto(photoId).then(function(rec) {
         if (!rec) throw new Error("photo introuvable après addPhoto");
@@ -603,7 +643,7 @@ function afficherFormulaire(x, y, existingPoint) {
         const ok = (typeof window.ktaConfirm === "function")
           ? await window.ktaConfirm(window.I18n.t(courant ? "editor.conflit.modifie" : "editor.conflit.supprime"),
               { okLabel: window.I18n.t("editor.conflit.garder"), cancelLabel: window.I18n.t("editor.conflit.abandonner") })
-          : true;
+          : (console.warn("[Editor] ktaConfirm indisponible : conflit de synchro, modification abandonnée"), false);
         if (!ok) { fermer(); return; }
         if (courant) existingPoint = courant;
         else { listePoints.push(existingPoint); if (window.KtaUid) window.KtaUid.touch(existingPoint); }
@@ -696,6 +736,10 @@ function afficherFormulaire(x, y, existingPoint) {
         // Re-render tout pour propager le changement d'icône / nom / popup.
         if (window.renderEditorPoints) window.renderEditorPoints();
         console.log("[Editor] Point modifié :", nom, "à", x, y);
+        // 📸 fiche des photos du point remise à jour (nom, type…)
+        if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints) {
+          window.MyKTAMapPhotos.majFichesPoints(planId, [existingPoint]);
+        }
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("editor.undo.editPoint", { nom: nom }), _historyBefore, "editorPoints");
         }
@@ -726,6 +770,10 @@ function afficherFormulaire(x, y, existingPoint) {
 
         listePoints.push(point);
         _ajouterMarker(point);
+        // 📸 les photos prises avant d'avoir saisi le nom reçoivent la fiche définitive
+        if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && _photosAddedThisSession.size) {
+          window.MyKTAMapPhotos.majFichesPoints(planId, [point]);
+        }
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("editor.undo.addPoint", { nom: nom }), _historyBefore, "editorPoints");
         }
@@ -1135,6 +1183,12 @@ window.supprimerPointEditor = function(id, x, y) {
   // un téléphone n'a pas de Ctrl).
   const _avantSuppr = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
   const _nomSuppr   = String(listePoints[idx].nom || id || "");
+  // 📸 Ses photos NE sont PAS supprimées : elles deviennent « sans point » (🧰 Outils >
+  // 📸 Mes photos), où on les rattache ou recrée le point. Leur fiche est figée ici,
+  // à l'état exact du point — même une photo d'avant la fiche pourra recréer le point.
+  if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+    window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, [listePoints[idx]]);
+  }
 
   // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)
   listePoints.splice(idx, 1);

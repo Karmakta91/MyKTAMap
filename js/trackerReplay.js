@@ -273,7 +273,7 @@
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("replay.empty.toast"), "warn");
       } else {
-        alert(window.I18n.t("replay.empty.alert"));
+        window.ktaAlerte(window.I18n.t("replay.empty.alert"));
       }
       return;
     }

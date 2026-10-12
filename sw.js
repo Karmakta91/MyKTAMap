@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v2.11.0";
+const CACHE_NAME = "myktamap-cache-v2.15.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -128,14 +128,17 @@ const ASSETS_TO_CACHE = [
   //     utilisateurs voient. Cachée car servie en mode "document" → si on
   //     servait du .md brut, le SW fallback `caches.match(index.html)`
   //     pourrait servir le splash à la place en cas d'échec/non-cache.
-  //   - .md : version source markdown, gardée pour audit de code (GitHub
-  //     web view, lecture par IA, etc.). Pas exposée directement à l'UI mais
-  //     cachée par cohérence.
+  //   - .md : la SOURCE (le .html en est généré par scripts/audit-html.js),
+  //     gardée pour audit de code (GitHub web view, lecture par IA, etc.).
+  //     Pas exposée directement à l'UI mais cachée par cohérence.
+  //   - audit.css + audit-pied.js : feuille et pied (licence community/pro)
+  //     des deux pages — sans eux, la page hors ligne s'affiche nue.
   "./docs/applications/NETWORK_AUDIT.html",
   "./docs/applications/NETWORK_AUDIT.md",
   "./docs/applications/NETWORK_AUDIT_HISTORIQUE.html",
   "./docs/applications/NETWORK_AUDIT_HISTORIQUE.md",
   "./docs/applications/audit-pied.js",
+  "./docs/applications/audit.css",
 
   // CSS
   "./css/style.css",
@@ -162,6 +165,7 @@ const ASSETS_TO_CACHE = [
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
   "./js/incognitoMode.js",
+  "./js/sessionStore.js",
   // 🆕 v1.28.2 : détecteur de licence pro via présence de /Licence-pro.json.
   // 100% transparent côté community (fichier absent → 404 silencieux → mode
   // community par défaut). Module sans effet visible si pas de Licence-pro.json.
@@ -324,6 +328,7 @@ const ASSETS_TO_CACHE = [
   "./js/firstRunFlow.js",
   "./js/interPlanLinks.js",
   "./js/crossPlanSearch.js",
+  "./js/photosGalerie.js",
   "./js/interPlanRoute.js",
   "./js/planNetwork.js",
   // 💾 28/09/2026 — ABSENT jusqu'ici alors qu'index.html le charge : le module
@@ -488,6 +493,7 @@ const CRITICAL_APP_SHELL = [
   "./docs/applications/NETWORK_AUDIT.html",
   "./docs/applications/NETWORK_AUDIT_HISTORIQUE.html",
   "./docs/applications/audit-pied.js",
+  "./docs/applications/audit.css",
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
   "./docs/applications/README_USER.es.md",

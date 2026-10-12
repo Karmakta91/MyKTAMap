@@ -23,6 +23,12 @@ fi
 # Lance les checkers
 node scripts/check-no-pro-leak.js || exit $?
 
+# 🗺️ 12/10/2026 — Dépôt public : aucun nom réel lié aux relevés de terrain
+# (département des relevés, ses variantes). Comparaison par EMPREINTE sha256 :
+# le nom n'est pas écrit dans le contrôle. Fichiers indexés ; en CI (`CI`
+# posé), tous les fichiers suivis. BLOQUANT, sans dérogation.
+node scripts/check-noms-reels.js || exit $?
+
 # 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
 node scripts/check-modal-lifecycle.js
 
@@ -88,6 +94,20 @@ node scripts/check-devmode-docs.js || exit $?
 # part (Dockerfile, ZIP de release.yml, .dockerignore), jamais le README.md
 # racine. BLOQUANT.
 node scripts/check-livrables-docs.js || exit $?
+
+# 📚 09/10/2026 — Librairies de lib/ : version de l'en-tête du fichier embarqué = lib/package.json (manifeste
+# lu par Dependabot) = lib/VERSIONS.md. Une PR Dependabot (manifeste seul) échoue ici tant que le fichier
+# n'est pas réellement remplacé et testé. BLOQUANT.
+node scripts/check-libs.js || exit $?
+
+# 🖨️ 09/10/2026 — Textes des PDF : la police standard affiche les accents (on les retirait à tort) ;
+# libellés PDF des dicos sans caractère hors police (→ ✓ ⚠ emoji), aucun normalize("NFD") dans les
+# modules PDF, texte libre filtré par window.ktaTextePdf. BLOQUANT.
+node scripts/check-pdf-texte.js || exit $?
+
+# 💬 09/10/2026 — Popups natives (alert/confirm/prompt) : migration par lots vers ktaAlerte / ktaConfirm /
+# toast. CLIQUET : le compte ne peut que baisser (abaisser PLAFOND dans le script). BLOQUANT.
+node scripts/check-popups-natives.js || exit $?
 
 # 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
@@ -156,7 +176,7 @@ node scripts/check-geotiff.js || exit $?
 node scripts/check-plan-tags.js || exit $?
 
 # 📁 Dossiers de « Mes plans » (v1.95.0) : le registre est EXÉCUTÉ (bac à sable),
-# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux Gironde,
+# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux « Secteur »,
 # jamais un plan perdu, règles par étiquette, glisser réservé au pointeur fin,
 # sélecteur dans la ligne de titre (0 px). BLOQUANT.
 node scripts/check-plan-folders.js || exit $?
@@ -211,7 +231,7 @@ node scripts/check-plan-config-borne.js || exit $?
 
 # 🏷️ Ajout de plans PAR ETIQUETTE dans la pile multi-plans de la Vue OSM du
 # HOME. Deux regles y regressent en silence : le regroupement INSENSIBLE A LA
-# CASSE (« Gironde » et « GIRONDE » doivent faire UNE etiquette — sinon deux
+# CASSE (« Secteur » et « SECTEUR » doivent faire UNE etiquette — sinon deux
 # chips montrent chacun la moitie de leurs plans, et le bug ne se voit que si
 # on a justement tape les deux orthographes), et l ASYMETRIE du clic (ajouter
 # seulement les manquants, retirer seulement quand ils y sont tous). BLOQUANT.
@@ -573,3 +593,20 @@ node scripts/check-doc-langues.js || exit $?
 node scripts/check-entete-licence.js || exit $?
 # CSP stricte (07/10/2026) : aucun script inline (onclick=, javascript:, <script> sans src) — killsw.html excepté.
 node scripts/check-csp-inline.js || exit $?
+
+# 💾 10/10/2026 — Sessions en IndexedDB (js/sessionStore.js) : aucun module ne relit
+# ni n'écrit localStorage["myktamap_session_v1_<planId>"] en direct (il lirait une
+# ancienne copie gardée 30 jours, ou écraserait la session à jour au démarrage
+# suivant) + câblage (chargement, précache, init attendue). BLOQUANT.
+node scripts/check-session-store.js || exit $?
+
+# 🔒 10/10/2026 — Pages d'audit réseau GÉNÉRÉES : NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html
+# sont le rendu de leurs .md (scripts/audit-html.js). Refuse un .md modifié sans régénérer, ou un .html
+# retouché à la main (lu dans l'index) ; vérifie que audit.css / audit-pied.js sont précachés. BLOQUANT.
+node scripts/check-audit-html.js || exit $?
+
+# 📸 12/10/2026 — Photos : le réimport d'une session ZIP effaçait TOUTES les photos
+# du plan (photos « sans point » comprises, sans confirmation) ; le rattachement de
+# la galerie ignorait la limite de 5 par point. Le VRAI photos.js tourne sur une
+# fausse IndexedDB (fusion siAbsente, places du point) + câblage import/galerie. BLOQUANT.
+node scripts/check-photos.js || exit $?

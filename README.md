@@ -1,10 +1,13 @@
 # 📘 MyKTAMap
 
+**📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr)** — guides utilisateur, installation, sécurité, comment chaque version est vérifiée. · Licence [CC BY-NC-SA 4.0](LICENSE) (usage commercial sur accord).
+
 > Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains / industriels). **100 % hors-ligne**, sans GPS requis, sans framework.
 
 **🌍 Environnements :**
 - 🟢 Production : [myktamap.fr](https://myktamap.fr)
 - 🔧 Développement : [dev.myktamap.fr](https://dev.myktamap.fr)
+- 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr) (guides, installation, sécurité, comment on livre)
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
@@ -18,7 +21,23 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.11.0` (09/10/2026)
+## 📦 Version courante — `v2.15.0` (12/10/2026)
+
+> ✨ **v2.15.0 — Interface allégée** : ~60 % des paragraphes d'explication retirés des fenêtres (168 clés en moins par dico, détail dans le Guide) ; rubriques repliables dans ⚙️ Configuration de l'accueil ; « Précharger le ZIP » → « 💾 Mémoriser les plans dans l'app » ; espagnol harmonisé sur « mapa » ; photos (réimport qui fusionne, fiche du point dans le ZIP, limite de 5 au rattachement), analyse d'un plan sans charger son archive, export image d'un plan tuilé depuis ses tuiles ; noms réels neutralisés dans le dépôt public ; smoke et checkups réparés (CSP, repli Edge).
+>
+> 🧰 **v2.14.1** : sur une installation reliée, les actions du compte passent dans une tuile de 🧰 Outils (prise `outilHome`), 👤 Mon profil redevient celui du community ; Aide IA : le code source est public (CC BY-NC-SA 4.0).
+>
+> 📸 **v2.14.0 — Release de prod depuis v2.11.0 (regroupe v2.12.0 → v2.13.2)** : sessions en IndexedDB (fini le plafond ~5 Mo du localStorage, migration vérifiée) ; 🧰 Outils › 📸 Mes photos (galerie, photos d'un point supprimé rattachées ou recréées) ; export / import de profil sans les plans d'une organisation, import limité aux préférences connues ; guides reliés à doc.myktamap.fr ; écran de licence invalide avec lien vers la licence pro ; prises d'extension neutres (rubriques du compte, rubrique d'aide, outils du Mode Développeur) ; splash avant la gate déléguée ; pages d'audit réseau générées ; sonde d'intégrité des sites.
+
+> 💾 **v2.13.2 — Sessions protégées (retour testeur en prod)** : jauge « 💾 Mémoire des sessions » + alerte avant saturation du localStorage ; session d'un plan renommé plus jamais effacée en silence (question + copie en Backups) ; 📦 Backups d'une autre version du plan restaurables dans le plan ouvert ; fenêtre de mise à jour sans « reset complet » et qui ne boucle plus stockage plein ; badge de version ⏳ quand la mise à jour attend un redémarrage.
+
+> 🧭 **v2.13.1 — Dénivelé des jonctions, glissé plus fluide, modale réseau en mode relié** : une jonction en N segments répartit son dénivelé au prorata ; marges de glissé élargies pour tous (case « 👁️ éléments visibles » retirée, incluse dans ULTRA) ; 🚑 seul emoji du Mode Secours ; sur une installation reliée, la modale « Que fait l'app sur le réseau ? » prévient qu'elle ne décrit que l'app de base et mène à la page de transparence de l'installation.
+
+> 🔆 **v2.13.0 — Affichage XL, CSP stricte, travaux parallèles du 10/10** : « Mode urgence » XL renommé 🔆 Affichage XL, 🎤 masqué hors français ; CSP `script-src 'self'` en vigueur ; lecture seule étanche (import, Ctrl+Z) ; sortie d'urgence coupée signalée ; jonctions inter-plans aux bonnes profondeurs ; presse-papier unique ; correctifs de l'audit des popups (Échap empilé, double-clic, export de calque) ; 20 popups natives cachées migrées ; smoke lançable sur GitHub et tableau des garde-fous.
+
+> 🆘 **v2.12.1 — Une issue depuis l'écran de connexion** : `window.ktaOuvrirDepannage` (point d'extension neutre) — la gate d'une installation reliée propose 📖 Documentation et 🆘 Dépannage, et l'état réel de la base (module pro 0.10.7) ; même contenu que v2.12.0 pour l'app community.
+
+> 💬 **v2.12.0 — Plus aucune popup du navigateur, PDF accentués, librairies à jour** : les 193 `alert()` / `confirm()` / `prompt()` natifs passent par les fenêtres de l'app (`ktaAlerte`, `ktaConfirm`, toasts selon le réglage de notifications), cliquet à 0 ; les PDF gardent leurs accents ; jsPDF 4.2.1 (avis de sécurité) et JSZip 3.10.2, veillés par Dependabot ; outils de dessin grisés en lecture seule ; FR en dur restant migré ; relevés réels exclus des images Docker locales.
 
 > 🔏 **v2.11.0 — Licence : installation fermée si refusée, plus d'import par l'utilisateur** : une installation pro dont la licence est absente, expirée ou refusée par le serveur reste fermée (« Licence de l'installation invalide »), jamais rouverte en community sur les données de l'appareil ; écran d'accueil réduit à « Continuer » ; splash neutre sur une installation reliée ; la doc interne n'est plus servie (sites, image Docker, ZIP) ; tri des listes selon la langue ; chaîne CI/CD complétée (Sonar, état des sites, marque verte, déploiement automatique).
 
@@ -565,6 +584,99 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.15.0 (12/10/2026) — Interface allégée (branche `Karma_dev`)
+
+Bump demandé par KARMA pour livrer la refonte des textes de l'interface (règle « réglages Android » : un titre clair, au plus une ligne d'avertissement).
+
+- **Allègement en deux passes** (`f69570f`…`f38953f`) : Configuration de l'accueil, Réglages du plan, Niveaux/Jonction, accueil, exports/imports, itinéraire, légende, heatmap, Mode Secours, Générateur, éditeur de données, inspecteurs, boussole, Aide IA, multi-plans, galerie, carnet, 6 fiches de l'Aide intégrée. ~60 % des textes retirés, 168 clés en moins par dico (FR/EN/ES alignés). Gardés : perte de données, irréversible, vie privée, plantage. Le Guide couvrait déjà l'information retirée (section « Nouveau plan » complétée).
+- **Rubriques repliables** dans ⚙️ Configuration de l'accueil (`8348a14`) : même balisage que les Réglages du plan, `window.ktaGroupesRepliables`, mémoire séparée (`myktamap_home_cfg_groupes_v1`).
+- **Libellés** : « 💾 Mémoriser les plans dans l'app » (ex-« Précharger le ZIP ») ; zone de dépôt réduite à une ligne d'extensions ; emoji en double retiré des cartes de l'éditeur de données ; espagnol : « mapa » partout (344 valeurs + Guide ES).
+- **Photos** (`aaee28c`, `886da21`, `80448b0`) : réimport d'une session ZIP = fusion ; fiche du point dans le ZIP ; limite de 5 au rattachement ; analyse depuis l'accueil par lecture partielle de l'archive. **Export image** d'un plan tuilé composé depuis les tuiles déjà sur l'appareil (`6a829cd`).
+- **Multi-plans** (`700e20a`) : un datalayer au chemin complet n'est plus précédé d'un 404.
+- **Dépôt public** : nom du département, noms de plans réels, région et dimensions d'un vrai plan neutralisés ; `check-noms-reels.js` (empreintes). `guard-git.js` applique l'union des règles git à tous les dépôts.
+- **Harnais** : `scripts/smoke/attendre.js` remplace `page.waitForFunction`, refusé par la CSP (faux rouge du smoke à l'étape 4) ; `scripts/smoke/navigateur.js` donne aux checkups le repli Edge du smoke.
+
+#### v2.14.1 (11/10/2026) — Tuile d'outils d'une installation reliée (branche `Karma_dev`)
+
+Petit bump avant le merge (KARMA), pour que les appareils déjà en v2.14.0 (dev, pro.myktamap.fr) reçoivent les
+changements suivants (le cache ne se renouvelle qu'au changement de `CACHE_NAME`) : prise neutre `outilHome` —
+une extension pose UNE tuile dans 🧰 Outils de l'accueil, qui ouvre une fenêtre avec la carte du compte et les actions
+du lieu « outils » ; 👤 Mon profil garde la carte et un lien « Gérer » (`js/ktaExtensions.js`, `check-extensions` :
+187 OK). Aide IA : le code source est public sur GitHub (contradiction levée). Rien ne change sans extension.
+
+#### v2.14.0 (11/10/2026) — Release de prod : sessions sans plafond de 5 Mo, galerie des photos (branche `Karma_dev`)
+
+Un seul bump pour tout ce qui part en prod depuis v2.11.0 : les entrées v2.12.0 → v2.13.2 ci-dessous, plus les commits
+sans bump listés ici. Les notes de `version.json` décrivent l'écart avec la prod, pas avec v2.13.2.
+
+- 💾 **Sessions en IndexedDB** (`0d1d003`, `8d6b585`) : `js/sessionStore.js` (`window.KtaSessionStore`, base
+  `myktamap_sessions`) — lecture synchrone en mémoire, écriture en arrière-plan, tampon localStorage à la fermeture,
+  migration copiée / relue / comparée (ancienne copie gardée 30 jours), repli localStorage en navigation privée ou
+  incognito. Jauge sur le quota du site. Garde-fou `check-session-store.js`.
+- 📸 **🧰 Outils › 📸 Mes photos** (`5476375`, `8c26ad5`) : galerie de toutes les photos, groupe « ⚠️ Sans point »,
+  rattacher, recréer le point (même uid), enregistrer en ZIP, supprimer avec confirmation ; fiche du point gardée
+  avec la photo ; prise neutre `photos` et événement `mktm:photos-changees`.
+- 👤 **Profil** : export / import par les modales sans les plans d'une organisation (☁️) ni ce qui les touche
+  (`2f1d375`) ; l'import n'écrit plus que les préférences de `PREF_KEYS` (`5beb70b`).
+- 🧩 **Points d'extension neutres** (no-op sans extension) : prise `outilsDev` (`cd043d1`), prise `aide` — une
+  rubrique dans l'Aide intégrée (`9f5d53a`), `actionsCompte` en rubriques / état / fin et carte de compte (`371d1eb`) ;
+  le splash se termine avant la gate déléguée (`4bb1127`) ; lien « 💼 Découvrir ou renouveler la licence pro » sur
+  l'écran de licence invalide (`3e12b67`).
+- 📖 **Docs** : lien vers doc.myktamap.fr (`df0086a`), guides, Aide IA et docs publiques relus (`47d1a3f`, `dbdadc1`,
+  `64d16e8`) ; pages d'audit réseau générées depuis leurs `.md` (`c0c3f3b`) ; CSP stricte servie sur dev et prod
+  (`4aeff05`) ; alerte « documentation remise à neuf » retirée (`7109487`). Release : Aide intégrée (photos sans
+  point, profil sans plans d'organisation) et guides ×3 (import de profil, lien licence) complétés.
+- 🚦 **Outillage** : correctifs Sonar du nouveau code (`77cd586`) ; sonde d'intégrité horaire du code servi
+  (`ef5f6d2`, `6a3e0a9`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; « Stockage local » liste `myktamap_sessions`.
+
+#### v2.13.2 (10/10/2026) — Sessions protégées : mémoire visible, plus de perte silencieuse (branche `Karma_dev`)
+
+Retour d'un testeur en prod (v2.11.0) : points disparus « depuis la mise à jour » et invite de mise à jour à chaque ouverture. Cause probable commune : localStorage (~5 Mo par site, sessions dedans) plein.
+
+- 💾 **Mémoire des sessions** (`984e55a`) : `window.ktaStockageLocal` (mesure, écriture protégée → `mktm:stockage-plein`) ; jauge dans 📊 Détails de la session, ⚠️ sur la tuile 💾 du profil ; alerte à ≥ 80 % au chargement d'un plan et dès qu'une écriture échoue.
+- 🩸 **Invite de mise à jour en boucle** (`984e55a`) : `updateChecker.js` écrivait « version vue » et « Plus tard » sans protection — stockage plein → `QuotaExceededError`, invite à chaque ouverture. Reproduit puis corrigé.
+- 🩸 **Session effacée en silence** (`163d9f3`) : nom de plan différent (comparaison stricte) → session écartée puis supprimée par l'autosauvegarde (carte vide). Comparaison tolérante, question « Session d'une autre version du plan » avec copie en 📦 Backups, et l'autosauvegarde ne supprime plus un slot qu'elle n'a pas chargé.
+- 📦 **Backups d'une autre version du plan** (`47417af`) : copies sous un ancien identifiant (même nom) listées et restaurées dans le plan ouvert (`SessionBackups.restore(id, { versPlanId })`).
+- 🔔 **Fenêtre de mise à jour** (`47417af`) : « 💥 Forcer un reset complet » retiré (renvoi vers 🆘 Dépannage) ; **badge ⏳** sans clignoter quand la mise à jour est acceptée mais l'ancien code encore chargé, clic = relancer la mise à jour douce.
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.13.1 (10/10/2026) — Dénivelé des jonctions, glissé, modale réseau en mode relié (branche `Karma_dev`)
+
+- 🧭 **Pathfinder** (`b20de9c`) : une jonction découpée en N segments répartit son dénivelé au prorata de la longueur (garde-fou `check-guidage.js`).
+- ⚡ **Rendu** (`632c334`) : marges de glissé élargies pour tous ; la case « 👁️ éléments visibles » disparaît (comportement inclus dans ULTRA) — docs utilisateur ×3 et Aide IA (`f0c2ab8`) suivies.
+- 🚑 **Secours** (`f494d80`) : un seul emoji 🚑 pour le Mode Secours, raccourci « 🔆 Affichage XL ».
+- 🔌 **Modale réseau en mode relié** (`aa2d343`) : connectée ou injoignable, le bloc d'état avertit que la suite ne décrit que l'app de base et propose la page de transparence déclarée (`serverConnection.transparence`, même règle que la pastille) ; état OFF inchangé. Testé : scénario pro « transparence » 8 OK, app seule (OFF) avertissement caché.
+- 📄 **Frontière** (`782045a`) : `community-server-line.md` — plusieurs organisations à une même adresse = une active par appareil, fragment d'URL préservé au démarrage (`swRegister.js`).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau.
+
+#### v2.13.0 (10/10/2026) — Travaux parallèles : Affichage XL, CSP stricte, lecture seule, Secours, audit des popups (branche `Karma_dev`)
+
+- 🔒 **CSP stricte en vigueur** (`f311fff`) : `script-src 'self'` (image Docker, modèle nginx), plus de Report-Only ; smoke et `check-csp-inline` refusent un retour de `'unsafe-inline'`. Reste le nginx du VPS (KARMA).
+- 🔆 **Affichage XL** (`d1d5e36`, décision KARMA) : « Mode urgence » XL renommé, icône 🔆 ; 🚨 = Sortie d'urgence seule. **🎤 masqué hors français**.
+- 🚨 **Sortie d'urgence classique coupée** (`ae86c83`) : même alerte qu'en brancard au-delà de 10 m d'écart. **Secours** (`66ffede`) : libellés lisibles en sombre, étiquette OSM du briefing qui suit le thème, texte libre des PDF filtré (`ktaTextePdf`), replis refusés sans confirmation.
+- 🧭 **Jonctions inter-plans** (`5967024`) : une étape calculée sur un autre plan prend les profondeurs et l'échelle de ce plan ; `getPlanProfondeurs` ne répond plus pour un autre plan avec le plan ouvert.
+- 💬 **Audit des popups** (`f177ddd`, `48913d6`) : lecture seule étanche (import de session, Ctrl+Z/Y), export de calque raté → pas de restitution, Échap avec fenêtres empilées et double-clic corrigés, Échap qui cessait de marcher après une feuille de l'accueil, `ktaTextePdf` garde la lettre de base (« Łódź » → « Lódz »), garde-fou des popups étendu (formes déguisées, faux commentaire `image/*` qui cachait **20 popups natives**, migrées), contrôle XSS des appels `ktaConfirm`.
+- 📋 **Presse-papier unique** (`c0cc1b3`, `66ffede`) ; « rien à exporter » en toast important (`30d1be5`) ; **code mort** retiré et glisser-déposer du thème clair réparé (`e35e6fd`).
+- 🧩 `signaler("on")` lève l'indicateur « réseau coupé » quand le navigateur est en ligne (`7e6b534`).
+- 🚦 **CI** (`35117ee`) : smoke Playwright lançable à la main sur GitHub, tableau de bord des garde-fous (non bloquant).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; la règle CSP en vigueur devient stricte.
+
+#### v2.12.1 (10/10/2026) — Dépannage depuis la gate d'une installation reliée (branche `Karma_dev`)
+
+- 🆘 **`window.ktaOuvrirDepannage()`** (`50c3bf4`, `homeConfig.js`) : point d'extension neutre, no-op sans extension — la fenêtre 🆘 Dépannage de l'accueil (mise à jour forcée, page de secours, tout réinitialiser) devient ouvrable depuis une gate déléguée. Côté pro (module `connexion.js` 0.10.7, pro 0.7.1) : 📖 et 🆘 en haut de la carte de connexion, état réel de la base sous la carte, vraie raison d'un refus du serveur, connexion qui n'est plus bloquée après un redémarrage du serveur. Retour KARMA : un compte bloqué à la connexion n'avait ni diagnostic ni issue.
+- 🔒 **Audit réseau** : aucune requête nouvelle côté community.
+
+#### v2.12.0 (09/10/2026) — Plus aucune popup native, PDF accentués, librairies à jour (branche `Karma_dev`)
+
+- 💬 **Popups natives → fenêtres de l'app** (`abb7af2`, `dc01f6a`, `d408139`) : `window.ktaAlerte` (texte échappé, repli natif si l'interface ne peut pas s'afficher), `ktaConfirm` gagne `zIndex` et `texte` (fin de sortie du Carnet), Échap n'agit plus que sur la confirmation. Les 39 `confirm()` attendent la réponse ; les 153 `alert()` suivent la règle KARMA avec le réglage de notifications (à lire pour agir → fenêtre ; résultat invisible → toast warn ; confirmation → toast info ; doute → fenêtre). Corrigés en route : confirmation ouverte **derrière** l'éditeur de légende, Échap qui fermait aussi l'import de profil. `check-popups-natives.js` : cliquet, plafond 0.
+- 🖨️ **PDF accentués** (`5614c9d`) : la police standard affiche tous les accents FR/ES (mesuré) ; libellés PDF réécrits avec accents (75 FR, 23 ES, briefing pompiers compris), texte libre filtré par `window.ktaTextePdf` (flèches → `->`, emojis retirés), espace après « : » rétabli dans le rapport de sortie ; `check-pdf-texte.js`.
+- 🔒 **Librairies** (`4b3c51b`) : jsPDF 2.5.1 → 4.2.1 (dizaine d'avis, trois critiques), JSZip 3.10.2 — fichiers des paquets npm officiels, 5 PDF identiques avant/après ; veille Dependabot de `lib/` par manifeste déclaratif + `check-libs.js`.
+- 🔒 **Lecture seule** (`70e2b0e`) : outils de dessin grisés sur un plan en droit « lire », un clic rappelle « Lecture seule ».
+- 🐛 **Corrections** : Carnet — la fiche se rouvre après « Terminer la sortie » ; promesses dont l'échec n'était jamais vu ; accessibilité de l'accueil (`845faf2`) ; FR en dur restant migré (calibrage d'échelle, logs, chargement, favoris) et « Aucun fichier » reconnu en anglais au Générateur (`7d9cd1c`, `0327581`) ; écran de licence « absente, expirée ou invalide » (`03d106a`).
+- 🐳 **Docker** (`ff527b8`) : une image construite sur le poste n'embarque plus les relevés réels (`.dockerignore` en liste blanche, index fictif suivi).
+- 🔒 **Audit réseau** : aucune requête ni domaine nouveau ; page de transparence sans numéros de version, section « comment le code est contrôlé » (`1a3ab86`).
 
 #### v2.11.0 (09/10/2026) — Licence refusée = installation fermée, plus d'import de licence, CD (branche `Karma_dev`)
 
@@ -1289,7 +1401,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - 🐛 **Retour KARMA (16/09) — « ça marche uniquement pour le dernier plan chargé dans la liste (import en masse) »** : modale « Données du plan introuvables » sur tous les plans importés sauf le dernier rouvert. 🩸 *Cause racine, mesurée en Chromium* : IndexedDB range un `File` issu d'un sélecteur ou d'un dépôt **par référence au fichier sur le disque**, pas par copie. `getBlob` rend un objet de la bonne taille, mais sa lecture échoue dès que le ZIP d'origine a été modifié (`NotReadableError`), déplacé ou supprimé (`NotFoundError`). Reproduit : 3 ZIP importés → 3 blobs lisibles ; plan1.zip modifié, plan2.zip supprimé → illisible et introuvable, plan3 intact → lisible. Le « dernier plan » marchait parce qu'il venait d'être rouvert, donc ré-enregistré depuis la mémoire. Le chemin unitaire (`main > startImportedPlan > saveBlob(meta.zipFile)`) portait le **même défaut depuis toujours** — invisible tant qu'on garde ses ZIP à leur place. 🩹 **Un seul point** : `PlanRegistry.saveBlob` matérialise `new Blob([await file.arrayBuffer()])` quand `blob instanceof File` (un Blob déjà en mémoire n'est pas recopié) — couvre l'import unitaire, l'import multiple et la re-sélection. À l'ouverture, `homeLoader` **sonde 4 octets** du blob avant d'y croire : un ancien blob-référence mort déclenche la modale « Données introuvables » (nouvelle cause listée ×3) → re-sélection → vraie copie, l'entrée guérit. 🛡️ `check-import-masse.js` +2 contrôles ; **nouveau** `scripts/smoke/checkup-import-masse.js` (Playwright) : import de 3 ZIP par l'écran, modification et suppression des originaux, relecture des 3 blobs après rechargement, ouverture du plan dont le fichier a disparu. Doc : `gotchas.md` (nouveau piège en tête), `plans-loader.md`.
 - 🐛 **Retour KARMA (16/09) — « après Importer, on a le choix entre Fermer et Voir mes plans qui font la même chose »** : deux sorties pour un seul geste. Une fois l'import fini, le bouton principal EST la sortie (« 📚 Voir mes plans », ou « Fermer » si rien n'a été ajouté) : le « Fermer » secondaire du pied disparaît, le ✕ d'en-tête reste comme partout (`importMasse.js > _lancer`, contrôle ajouté à `check-import-masse.js`).
 - 🏷️ **Étiquettes à la génération (KARMA, 16/09 : « affecter des tags directement à la génération, rétro-compat comme d'hab » — décisions 1:a 2:a 3:a, saisie alignée sur ConfAdmin)** : champ **🏷️ Étiquettes** dans 📋 Informations du plan du Générateur (`#pl_tags`, virgules, prérempli en mode Modifier) et dans les modales KMZ / GPX / SIG (`kta-*-imp-tags`), lu par `_lireTagsChamp` → **`PlanRegistry.normaliserTags`** (extraite de `setTags`, désormais la seule normalisation de l'app : trim, dédoublonnage insensible à la casse, 12 × 24). Écrit `plan.tags` dans plan-config.json **seulement si saisi** (JSON identique sinon), par les quatre écrivains (`createConf`, `sigImport`, `kmzImport`, `gpxImport`). 🩸 **Le fichier propose, l'utilisateur dispose** : nouvelle origine `"config"` dans `setTags` ; à l'ouverture (`main > startImportedPlan`) comme à l'import multiple (`importMasse > importer`, qui lit désormais `plan.tags`), les tags du ZIP ne passent jamais par-dessus des tags `user` ni `index` (le déployeur avant le fichier), et un ZIP réimporté sans tags retire seulement ceux qu'un ZIP précédent avait proposés — la doctrine v1.90.1 de l'index, étendue au fichier. 🛡️ **`check-plan-tags.js`** (pré-commit, nouveau) : normalisation EXÉCUTÉE, règle d'application EXÉCUTÉE sur 7 scénarios dans les deux chemins (repères `début/fin-tags-config`), quatre écrivains, champ après l'auteur, JSON inchangé si vide, textes ×3, format documenté. 🧪 Smoke `checkup-import-masse.js` : les 3 ZIP portent des étiquettes → présentes dans la liste après l'import multiple, conservées à l'ouverture. Doc : README_USER ×3, aide bibliothèque ×3, AI_CONTEXT, `data-formats.md`.
-- 📁 **v1.95.0 — Mode Dossiers de « Mes plans » (KARMA, 16/09 : « +50 plans, le filtre par tag atteint ses limites » ; étude, QCM de 11 décisions, puis marches 1 et 2 dans la même release)** : 🩸 *le bandeau de chips grandit avec le nombre d'étiquettes distinctes, au-dessus d'une colonne à hauteur fixe ; une étiquette qualifie, elle ne range pas.* **Registre** (`planRegistry.js`) : `folders` (id, nom, couleur, ordre, replié, `src` user/index, `rule` par étiquette), `plansView`, par plan `folderId` / `folderSrc` / `folderExclude` — rien n'existe tant qu'aucun dossier n'est créé. Trois règles exécutées par **`check-plan-folders.js`** (le registre tourne dans un bac à sable) : manuel > règle > rien (sortir à la main pose une exclusion) ; l'index propose, l'utilisateur dispose (dossier de l'index verrouillé tant que déclaré, libéré sinon, `applyIndexFolders` traduit les ids, un plan déplacé à la main n'est jamais repris) ; jamais deux « Gironde », jamais un plan perdu (`fusionnerDossiers` pure, utilisée par l'import de liste et le profil ; `deleteFolder` renvoie en Non classés). **Écran** (`homeLoader.js`, `index.html`) : sélecteur `#loaderPlansViewSwitch` dans `.loader-section-head` (**0 px ajouté**, toujours visible — KARMA : « sinon on ne pourra jamais créer le premier dossier »), ➕/☑ visibles en mode Dossiers seulement, en-têtes ≤ 40 px repliés par défaut, chips masquées en Dossiers, feuille « Déplacer vers… » (tactile), sélection multiple avec barre en pied, ⋮/➕ = feuille nom/couleur/règle/ordre/suppression (`ktaConfirm`), pastille de couleur devant le nom (les deux modes, outline si par règle), « 📁 Créer un dossier depuis ces étiquettes » sur les chips cochées, glisser souris (`pointer: fine`, armé après 6 px, jamais de re-rendu au survol) **et tactile par appui long** (retour KARMA le soir même : « sur mobile le glisser ne fonctionne pas » — 450 ms immobile → la ligne se soulève, fantôme sous le doigt, `touchmove` bloqué seulement pendant le geste, un doigt qui bouge avant fait défiler ; simulé par le smoke avec des `TouchEvent`), repli mobile par dossier déplié. 🐛 Même soir : la pastille de couleur était rognée (ombre extérieure « par règle » dans un titre `overflow:hidden` → contour `inset`) et le bouton « Tous mes plans (N) » du mode Tout survivait au passage en Dossiers (retiré par le repli par dossier). **Serveur** : `index.json > folders` + `plans[].folder` + `config.plansViewDefault` (seulement si jamais choisi), ConfAdmin (tableau « 1 bis. Dossiers », colonne, case). **Profil** : `_collectRegistry` exporte `folders`/`plansView`, `applyProfile` fusionne par nom et traduit les `folderId`. **Import multiple** : « Ranger dans : » pour le lot. 🧪 **`checkup-plan-folders.js`** (Chromium) : mode Tout inchangé, en-tête 38 px, **« Mes plans » 528 px en Tout = 528 px en Dossiers tout déplié (8 dossiers, 60 plans)**, ➕/📁/☑ par l'écran, index intercepté (verrou, plan déplacé qui reste, dossier libéré), mobile 400 px (5 lignes, 0 ligne draggable). ⚠️ *Le glisser HTML5 n'est pas simulable par l'automate : contrôle manuel dans le QCM.* Doc : README_USER ×3, aide ×3, AI_CONTEXT, `plans-loader.md` § Dossiers, `community-server-line.md`, RELEASE_GATE, NETWORK_AUDIT md/html (100 % local).
+- 📁 **v1.95.0 — Mode Dossiers de « Mes plans » (KARMA, 16/09 : « +50 plans, le filtre par tag atteint ses limites » ; étude, QCM de 11 décisions, puis marches 1 et 2 dans la même release)** : 🩸 *le bandeau de chips grandit avec le nombre d'étiquettes distinctes, au-dessus d'une colonne à hauteur fixe ; une étiquette qualifie, elle ne range pas.* **Registre** (`planRegistry.js`) : `folders` (id, nom, couleur, ordre, replié, `src` user/index, `rule` par étiquette), `plansView`, par plan `folderId` / `folderSrc` / `folderExclude` — rien n'existe tant qu'aucun dossier n'est créé. Trois règles exécutées par **`check-plan-folders.js`** (le registre tourne dans un bac à sable) : manuel > règle > rien (sortir à la main pose une exclusion) ; l'index propose, l'utilisateur dispose (dossier de l'index verrouillé tant que déclaré, libéré sinon, `applyIndexFolders` traduit les ids, un plan déplacé à la main n'est jamais repris) ; jamais deux « Secteur », jamais un plan perdu (`fusionnerDossiers` pure, utilisée par l'import de liste et le profil ; `deleteFolder` renvoie en Non classés). **Écran** (`homeLoader.js`, `index.html`) : sélecteur `#loaderPlansViewSwitch` dans `.loader-section-head` (**0 px ajouté**, toujours visible — KARMA : « sinon on ne pourra jamais créer le premier dossier »), ➕/☑ visibles en mode Dossiers seulement, en-têtes ≤ 40 px repliés par défaut, chips masquées en Dossiers, feuille « Déplacer vers… » (tactile), sélection multiple avec barre en pied, ⋮/➕ = feuille nom/couleur/règle/ordre/suppression (`ktaConfirm`), pastille de couleur devant le nom (les deux modes, outline si par règle), « 📁 Créer un dossier depuis ces étiquettes » sur les chips cochées, glisser souris (`pointer: fine`, armé après 6 px, jamais de re-rendu au survol) **et tactile par appui long** (retour KARMA le soir même : « sur mobile le glisser ne fonctionne pas » — 450 ms immobile → la ligne se soulève, fantôme sous le doigt, `touchmove` bloqué seulement pendant le geste, un doigt qui bouge avant fait défiler ; simulé par le smoke avec des `TouchEvent`), repli mobile par dossier déplié. 🐛 Même soir : la pastille de couleur était rognée (ombre extérieure « par règle » dans un titre `overflow:hidden` → contour `inset`) et le bouton « Tous mes plans (N) » du mode Tout survivait au passage en Dossiers (retiré par le repli par dossier). **Serveur** : `index.json > folders` + `plans[].folder` + `config.plansViewDefault` (seulement si jamais choisi), ConfAdmin (tableau « 1 bis. Dossiers », colonne, case). **Profil** : `_collectRegistry` exporte `folders`/`plansView`, `applyProfile` fusionne par nom et traduit les `folderId`. **Import multiple** : « Ranger dans : » pour le lot. 🧪 **`checkup-plan-folders.js`** (Chromium) : mode Tout inchangé, en-tête 38 px, **« Mes plans » 528 px en Tout = 528 px en Dossiers tout déplié (8 dossiers, 60 plans)**, ➕/📁/☑ par l'écran, index intercepté (verrou, plan déplacé qui reste, dossier libéré), mobile 400 px (5 lignes, 0 ligne draggable). ⚠️ *Le glisser HTML5 n'est pas simulable par l'automate : contrôle manuel dans le QCM.* Doc : README_USER ×3, aide ×3, AI_CONTEXT, `plans-loader.md` § Dossiers, `community-server-line.md`, RELEASE_GATE, NETWORK_AUDIT md/html (100 % local).
 - 🧹 **Après la v1.95.0 (KARMA) — « enlève le bouton Déplacer vers sur chaque plan, le glisser-déposer ou le bouton de sélection en haut suffisent »** : le bouton 📁 par ligne du mode Dossiers est retiré (`planRowHTML`, écouteur, textes du dossier vide ×3, aide ×3, README_USER ×3, AI_CONTEXT, QCM B3/D3, note de version). Un seul plan se range par glisser, ou par ☑ → « Déplacer vers… » ; le smoke joue ce chemin à la place de l'ancien bouton.
 - 👣 **v1.96.0 — Podomètre global (KARMA, 17/09 : « taille d'un pas, cooldown, sensibilité n'ont rien à faire dans le Générateur, c'est propre à chaque utilisateur » — recos 1-6 retenues)** : 🩸 *l'état réel était pire que le constat : depuis v1.82.0 ces trois réglages étaient une pref PAR PLAN (`myktamap_plan_prefs_<id>`), donc à refaire sur chaque plan, et le Générateur + KMZ/GPX/SIG les figeaient dans chaque ZIP — une usine améliorée demain n'aurait touché aucun plan existant.* 🩹 **config.js** : `buildAppConfigFromPlan` pose l'usine (`TRACKING_USINE`) et n'ouvre plus `tracking.stepLength/stepThreshold/stepCooldown` (la réparation v1.82.0 des valeurs impossibles, `_reglagePodometre`, disparaît : ce qui n'est pas lu ne nuit plus) ; `_appliquerPodometreGlobal` rejoue `app_user_prefs` au boot ET à chaque reconstruction (les deux endroits, cf. le piège snapDraw v1.75.0) ; `setGlobalPodometre(patch)` (bornes de l'écran, refus sec, `null` = retour usine) ; `setPlanTracking` refuse désormais ces clés (startX/Y restent par plan) ; `_migrerPodometreParPlan` promeut UNE fois la pref par plan du premier plan rouvert (en pratique le dernier utilisé) puis la retire des prefs du plan. **interfaceConfig.js** : `_cfgAppliquerPodometre` → global, « Réinitialiser » → usine + pref effacée, portée dite sous le titre « 👣 Détection des pas » (`config.steps.portee` ×3). **createConf.js** : les trois champs et leurs clés disparaissent du Générateur ; **sigImport / kmzImport / gpxImport** : plus de `...KTA_TRACKING_USINE` (l'usine gelée reste la source pour `check-tracking-defaults`). 🛡️ **`check-podometre-global.js`** (nouveau, pré-commit) : `config.js` chargé en bac à sable — plan-config piégé (0,3 / 1,2 / 280) → usine, réglage global prime sur toutes les reconstructions, bornes, `null`, `setPlanTracking` refuse, migration promue puis retirée, second plan n'écrase pas ; Générateur/convertisseurs sans les clés (hors commentaires), écran en global, textes ×3. `check-prefs-survival.js` retargeté sur `setGlobalPodometre`. Doc : README_USER ×3 (Réglages du tracker), AI_CONTEXT, `tracking.md`, `data-formats.md`, NETWORK_AUDIT md/html.
 - 🐛 **Glisser PC cassé (KARMA, 17/09 : « depuis le glisser mobile, il ne l'est plus sur PC »)** : 🩸 *ce n'était pas le tactile : j'armais le glisser souris après MON seuil de 6 px mesuré sur `pointermove`, et j'annulais `dragstart` s'il arrivait avant — or Chrome déclenche le glisser natif après ~4 px, donc AVANT le mien dès que la souris est posée. Un mouvement vif passait, un mouvement lent était refusé, d'où « ça marchait avant ».* 🩹 Seuil maison retiré : un clic ne déclenche jamais `dragstart`, le seuil natif suffit. 🧪 Le smoke `checkup-plan-folders.js` joue désormais un glisser souris LENT (2 px, puis 5 px, puis 20 pas) : vert — c'était le geste que l'automate n'arrivait pas à reproduire, pour cette raison exacte. 🧹 Même passe : bouton 📁 par ligne retiré (KARMA : « le glisser ou la sélection en haut suffisent »).
@@ -1300,7 +1412,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 - 🎯 **Le besoin** : un plan scanné puis calé dans QGIS ressort en GeoTIFF, image et calage dans le même fichier. Le Générateur ne lisait ni l'un ni l'autre — il fallait re-saisir deux points GPS déjà posés.
 - 🗺️ **`js/tiffGeoref.js`** (nouveau, KARMA) : lecture de l'IFD0, calage par `ModelPixelScale` (33550) + `ModelTiepoint` (33922) ou `ModelTransformation` (34264), EPSG par `GeoKeyDirectory` (34735) ; décodage LZW (avec prédicteur horizontal), Deflate et non compressé ; ré-encodage PNG par le canvas. API `window.TiffGeoref = { estTiff, lire, EXT_ACCEPTEES, _interne }`.
-- 🧠 **Pourquoi pas `geotiff.js` vendoré (~300 Ko)** : mesuré sur 39 plans réels de carrières franciliennes calés sous QGIS — compression LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), prédicteur 1 ×39, Scale+Tiepoint ×39. Le sous-ensemble suffit ; **tout le reste est refusé en le nommant** (33 raisons, chacune disant quoi réexporter).
+- 🧠 **Pourquoi pas `geotiff.js` vendoré (~300 Ko)** : mesuré sur 39 plans réels de carrières calés sous QGIS — compression LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), prédicteur 1 ×39, Scale+Tiepoint ×39. Le sous-ensemble suffit ; **tout le reste est refusé en le nommant** (33 raisons, chacune disant quoi réexporter).
 - 📐 **Le calage se déduit exactement** : `Scale + Tiepoint` décrit une image nord en haut sans rotation, donc deux coins opposés la décrivent entièrement — précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Aucun `pointC` affine nécessaire, aucune approximation introduite.
 - 🌍 **Web Mercator (EPSG:3857)** ajouté à `sigImport.js` à côté de Lambert 93 : 7 plans du corpus sortent dans ce CRS. Mercator **sphérique** sur un rayon de 6 378 137 m — c'est la définition d'EPSG:3857, pas une approximation de confort. Aucune copie locale des maths : une implémentation par projection, verrouillée par son garde-fou.
 - 🔌 **Intégration** : `.tif/.tiff` explicites dans les `accept` du Générateur et de l'accueil (le type `image/*` seul ne les propose pas de façon fiable selon l'OS) ; le PNG converti est ré-injecté dans le même input, donc dimensions, tuilage V2 et ZIP reprennent sans rien savoir du TIFF.
@@ -1489,7 +1601,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 - 🏷️ **La demande** : *« rajoute un graph de ce genre via les tags des plans (possibilité de filtrer et exclure) »*. Deux lectures possibles — un graphe isolé, ou un filtre qui pilote tout le bloc. Topo envoyé, KARMA a tranché pour le second, et pour un camembert qui compte les **plans**.
 - 🎯 **Trois états par étiquette** (neutre → inclure → exclure → neutre) et **tous les camemberts suivent**. C'est ce qui rend « exclure » utile : sortir l'atlas départemental pour voir ce qu'on a vraiment relevé ailleurs. Un 5ᵉ camembert « Plans par étiquette » sert aussi de lecture du filtre, avec une part « Sans étiquette » qui dit ce qu'il reste à taguer.
-- 🩸 **L'exclusion l'emporte sur l'inclusion.** Un plan tagué « gironde » ET « brouillon », avec gironde inclus et brouillon exclu, est **écarté**. L'inverse ferait rentrer par une porte ce qu'on vient de fermer par l'autre — et c'est exactement le cas d'usage. *Un `||` au lieu d'un `&&`, ou les deux tests dans le mauvais ordre, et le filtre ment sans rien casser d'apparent* : la règle est **exécutée** sur ses cas limites, casse et plans sans étiquette compris.
+- 🩸 **L'exclusion l'emporte sur l'inclusion.** Un plan tagué « secteur » ET « brouillon », avec secteur inclus et brouillon exclu, est **écarté**. L'inverse ferait rentrer par une porte ce qu'on vient de fermer par l'autre — et c'est exactement le cas d'usage. *Un `||` au lieu d'un `&&`, ou les deux tests dans le mauvais ordre, et le filtre ment sans rien casser d'apparent* : la règle est **exécutée** sur ses cas limites, casse et plans sans étiquette compris.
 - ⚡ **Refiltrer est une opération de RAM.** Le détail par plan est conservé au premier calcul. Sans ça, chaque clic relirait le localStorage de tous les plans — et la boucle d'agrégation a un `await` par plan précisément parce qu'elle est trop lourde pour le thread UI.
 - 🩸 **L'impasse évitée de justesse** : un filtre qui exclut tout vide les cinq camemberts, et le bloc se retirait entièrement — **avec les chips**, donc le seul moyen de revenir en arrière. L'utilisateur se serait retrouvé devant un bloc disparu, persuadé d'avoir cassé quelque chose. 🍖 *Le même piège que le flag kiosque qui cachait son propre remède, trois versions plus tôt.*
 - 🔒 **Le filtre n'est mémorisé nulle part.** Un filtre de consultation qui survivrait à la fermeture de la fenêtre ferait croire, au retour, que des plans ont disparu.
@@ -1744,7 +1856,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - 🔄 **Ouvrir un calque à la modification, en un clic.** Corriger un front de taille en galerie sur un relevé SIG imposait : Éditeur de données → exporter le calque → convertir en session → masquer le calque à la main → réimporter → corriger → reconvertir → réinjecter. **Huit étapes.** 🍖 *La cause n'est pas un bouton manquant : `utils.js` l'écrit depuis toujours — « un data layer est rendu UNE seule fois à l'import, on ne peut pas re-render comme renderRoads/Structures ». Les objets de session ont leurs `render*()` qui reconstruisent depuis l'état ; le calque, non. Le détour existait pour amener la donnée là où un re-render existe — `convertirObjet.js` l'assumait dans son en-tête : « SESSION UNIQUEMENT ».* 🔍 Filtres → **🔄 Modifier** copie le contenu du calque dans la session, le marque `_srcCalque`, masque l'original et verrouille sa case. **↩️ Restaurer** inverse tout, sans toucher aux objets créés à la main entre-temps.
 - ⚖️ **Le calque entier, pas objet par objet — et c'est KARMA qui a tranché.** Le rapatriement par objet serait 5× plus léger en session, mais il **reporte la douleur sur la reconstruction du ZIP** : il faudrait retirer les originaux un à un. Or *roads* et *zones* **n'ont pas d'`id`** (`data-formats.md` : snapshot brut `{type, points, label?, level?}`), donc il faudrait une clé dérivée de la **géométrie** — que `tabledit.dedup` casserait en silence en retirant les sommets consécutifs identiques. Le calque entier donne **une seule source de vérité** : pas d'ids, pas de dédoublonnage, pas de doublon possible **par construction**.
 - 💾 **L'export qui ferme la boucle.** `exporterCalque` produit **UN** fichier de la même forme que l'original. *Le convertisseur « session → data layer » existant ne pouvait pas servir : il éclate la sortie en `points.json` + `roads.json` + `zones.json` + `structure.json`, voire un fichier par type — quatre fichiers ne remplacent pas une ligne.* 🎯 **Le protocole de remplacement prévu s'est révélé inutile** : le Générateur le fait déjà, chaque calque y étant **une ligne portant son id et son propre sélecteur de fichier**. Choisir le fichier corrigé sur cette ligne remplace son contenu — la ligne **est** le calque. 🩸 Les tableaux vides sont **écrits, pas omis** : c'est un remplacement, et `zones: []` est la seule façon de dire « j'ai tout supprimé ». La marque interne `_srcCalque` est retirée au passage.
-- 💰 **Le coût est annoncé avant, pas subi après.** Mesuré sur les extraits Gironde : **225 octets par objet**, donc ~1,1 Mo pour un relevé de 5 000 objets — quand `localStorage` plafonne vers **5 Mo pour tout le domaine** et que `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde. La confirmation donne le poids du calque **et** l'occupation réelle du stockage : aucune supposition sur le nombre de plans convertis en parallèle, l'app le lit.
+- 💰 **Le coût est annoncé avant, pas subi après.** Mesuré sur des extraits de relevés réels : **225 octets par objet**, donc ~1,1 Mo pour un relevé de 5 000 objets — quand `localStorage` plafonne vers **5 Mo pour tout le domaine** et que `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde. La confirmation donne le poids du calque **et** l'occupation réelle du stockage : aucune supposition sur le nombre de plans convertis en parallèle, l'app le lit.
 - 🩸 **Deux pièges payés d'avance.** ① « Effacer la session » **restitue** les calques : le verrou vit dans la session, et s'il survivait à l'effacement de la copie, l'utilisateur verrait son relevé disparaître en croyant le plan cassé — les deux tombent ensemble, jamais l'un sans l'autre. ② Au chargement, le verrou ne s'applique **que si la copie est là** : une sauvegarde sautée sur quota (1,1 Mo, c'est exactement le seuil) donnerait sinon un plan vide et muet ; `appliquerVerrous` vérifie, et **libère en le disant**.
 - 🏷️ **Les types de structures n'annoncent plus une couleur qu'ils ignorent** : « Pilier 1ère masse (jaune) », « Mur (bleu foncé) »… La couleur n'est plus une propriété du type **depuis la v1.76.1** — l'utilisateur la choisit dans ≡ Légende, et la pastille du panneau la montre déjà. Le libellé devenait un mensonge au premier override. `ui.zone.*` ne l'a jamais fait : c'était Structures l'exception.
 - 🧪 **2 garde-fous (23 au total)** : `check-calque-session.js` (**63 assertions**, le vrai module chargé dans un `vm` — marquage, copie défensive, retour chirurgical, les deux pièges, 10 contrôles de câblage) et `check-osm-etiquettes.js` livré en v1.84.0. *Deux défauts de ce harnais corrigés en route, tous deux du genre qui fait passer un test à côté de son sujet : un `\b` de regex devenu un vrai caractère backspace, et un stub `Blob` laissé à `undefined` — le téléchargement échouait alors dans son propre `try/catch` et le test ne voyait rien à signaler.*
@@ -1756,7 +1868,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 - 🗑️ **Supprimer un tracé, une zone ou une structure depuis sa propre bulle.** La bulle d'un objet de session portait « 💾 Sauver la note » et « 🔄 Convertir » ; supprimer imposait de repasser par la barre latérale et son sélecteur. Un bouton **🗑️ Supprimer** rejoint la bulle, **dans sa propre ligne rouge** — une action destructrice collée au « Sauver » se cliquerait par accident. 🩸 *L'identité est prise **par référence**, jamais par contenu : `roads` et `zones` **n'ont pas d'id** (`data-formats.md`), et deux tracés peuvent porter exactement le même type et la même géométrie — chercher par égalité de contenu supprimerait le sosie, et l'utilisateur ne verrait qu'un objet en moins, au bon endroit. La bulle porte l'objet lui-même, c'est la seule clé fiable.* ⚖️ **Pas de confirmation**, par cohérence avec la suppression d'un point qui s'appuie déjà sur `Ctrl+Z` — mais le toast **rappelle l'annulation**, sinon le filet existe sans que personne le sache. 🧹 Au passage, les accesseurs des trois familles sont **hissés hors de `convertir()`** : la suppression en avait besoin des mêmes, une 4ᵉ copie aurait été la dette qu'on venait de solder ailleurs. **14 assertions** ajoutées, dont le cas des deux jumeaux ; 4 sabotages rougissent.
 
-- 🎯 **Convertir N objets d'un coup.** Reclasser un relevé importé se faisait objet par objet : ouvrir la bulle, convertir, recommencer. La modale de conversion gagne **« Sélectionner plusieurs objets à convertir »** — la carte passe en mode désignation, chaque clic ajoute (re-cliquer retire), et **➕ Tous les « \<type\> » du niveau affiché** étend la sélection d'un coup. *Sans ce ➕, la feature n'aurait rien réglé : sur l'atlas Gironde où 87 % des structures étaient mal typées, cliquer 200 objets un par un coûte autant qu'avant — on divise le nombre de conversions, pas le nombre de clics.* 🩸 **La règle de compatibilité porte sur l'OUVERTURE, pas sur la famille** : un tracé et un front de taille sont tous deux des **lignes**, les mélanger est légitime et c'est même LE cas utile. Ce qu'on refuse, c'est de mêler une ligne et une surface fermée — aucune cible commune, on ne referme pas un trait. **Le refus est expliqué**, jamais silencieux : un clic sans effet et sans mot se lit comme un bug de la carte. 🩸 **Le lot est UN geste** : un instantané, **une** entrée d'historique, une écriture par famille *touchée*. Appeler la conversion N fois donnerait N re-rendus complets — coûteux à 20 000 objets — et N `Ctrl+Z` pour annuler. Une cible déjà atteinte est **sautée**, pas comptée en échec. 🧭 Au passage, `_pointInPolygon` vivait en **quatre copies locales** : le nouveau module devient le foyer canonique (`window.ktaPointInPolygon`), sans rouvrir les quatre — elles servent trois chemins de suppression qui marchent, et la version n'est pas déployée. **1 garde-fou** (27 au total), **8 sabotages** rougissent.
+- 🎯 **Convertir N objets d'un coup.** Reclasser un relevé importé se faisait objet par objet : ouvrir la bulle, convertir, recommencer. La modale de conversion gagne **« Sélectionner plusieurs objets à convertir »** — la carte passe en mode désignation, chaque clic ajoute (re-cliquer retire), et **➕ Tous les « \<type\> » du niveau affiché** étend la sélection d'un coup. *Sans ce ➕, la feature n'aurait rien réglé : sur un atlas réel où 87 % des structures étaient mal typées, cliquer 200 objets un par un coûte autant qu'avant — on divise le nombre de conversions, pas le nombre de clics.* 🩸 **La règle de compatibilité porte sur l'OUVERTURE, pas sur la famille** : un tracé et un front de taille sont tous deux des **lignes**, les mélanger est légitime et c'est même LE cas utile. Ce qu'on refuse, c'est de mêler une ligne et une surface fermée — aucune cible commune, on ne referme pas un trait. **Le refus est expliqué**, jamais silencieux : un clic sans effet et sans mot se lit comme un bug de la carte. 🩸 **Le lot est UN geste** : un instantané, **une** entrée d'historique, une écriture par famille *touchée*. Appeler la conversion N fois donnerait N re-rendus complets — coûteux à 20 000 objets — et N `Ctrl+Z` pour annuler. Une cible déjà atteinte est **sautée**, pas comptée en échec. 🧭 Au passage, `_pointInPolygon` vivait en **quatre copies locales** : le nouveau module devient le foyer canonique (`window.ktaPointInPolygon`), sans rouvrir les quatre — elles servent trois chemins de suppression qui marchent, et la version n'est pas déployée. **1 garde-fou** (27 au total), **8 sabotages** rougissent.
 
 - 📱 **Les bandeaux flottants sortaient du cadre sur mobile.** Signalé par KARMA sur le relèvé de coordonnées OSM. 🩸 *La cause n'est pas dans ce bandeau-là : `max-width` plafonne la **boîte**, jamais son **contenu**. Avec un message en `white-space: nowrap` et des boutons en `flex-shrink: 0`, la ligne ne peut ni se couper ni se comprimer — elle déborde de la boîte, qui déborde de l'écran. Invisible sur grand écran où tout tient, systématique sur téléphone. Et la règle fautive est `.kta-iti-floater`, **partagée par les six pickers** : géoréf, départ tracker, itinéraire, évitement, KMZ, sélection multiple.* Corrigé à la source : `flex-wrap` sur les bandeaux, `min-width: 0` sur les messages — **la moitié qu'on oublie**, sans elle un enfant flex refuse de descendre sous sa largeur de contenu et `flex-wrap` ne sert à rien. Côté JS, les deux bandeaux OSM se bornent désormais à la **carte** et non à la fenêtre (en mode plan elle n'occupe pas toute la largeur), et leur centrage est **borné à ses bords**. **6 sabotages** rougissent.
 
@@ -1769,7 +1881,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 #### v1.84.0 (04/09/2026) — L'atlas se regarde d'un bloc, et la légende d'un import SIG arrive entière
 
 - 🏷️ **La Vue OSM du HOME affiche tous les plans d'une étiquette.** Découper un atlas départemental produit des dizaines de plans du même secteur ; la pile multi-plans (v1.71.0) ne savait en ajouter qu'**un à la fois, par son nom**, dans un `<select>`. `plan.tags` existait depuis la v1.78.0 et se saisit depuis la bibliothèque — mais `_listGeorefPlans` ne le rapatriait même pas du registre : **les deux moitiés étaient là et ne se parlaient pas**. Section « 🏷️ Afficher par étiquette de plan » dans 🔍 Filtres, un chip par étiquette portée par **au moins deux** plans géoréférencés, compteur `3/12`. ⚠️ **Ne pas confondre avec « 🏷️ Filtrer par tag » juste au-dessus** : celle-là filtre les POI *à l'intérieur* des plans affichés, celle-ci choisit **quels plans** sont affichés — deux notions homonymes dans la même modale.
-- 🔠 **Le regroupement ignore la casse.** `PlanRegistry.setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans : « Gironde » sur l'un et « GIRONDE » sur l'autre auraient donné deux chips montrant **chacun la moitié** de leurs plans. *Le défaut ne se voit que si on a justement tapé les deux orthographes — donc jamais chez celui qui code.* Le libellé affiché est la première orthographe rencontrée.
+- 🔠 **Le regroupement ignore la casse.** `PlanRegistry.setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans : « Secteur » sur l'un et « SECTEUR » sur l'autre auraient donné deux chips montrant **chacun la moitié** de leurs plans. *Le défaut ne se voit que si on a justement tapé les deux orthographes — donc jamais chez celui qui code.* Le libellé affiché est la première orthographe rencontrée.
 - 🔁 **Le clic est asymétrique, et c'est voulu.** Tant qu'il manque un plan, il ajoute **seulement les manquants** (ré-ajouter un plan monté le dupliquerait dans la pile) ; quand ils y sont tous, il les **retire**. Sans le retrait groupé, afficher vingt plans se défait en **vingt clics** sur des ✕ — ce n'est pas du confort, c'est ce qui rend la fonction utilisable deux fois de suite. Le plan **principal** est protégé : il n'a pas de ✕, et `_renderMultiPanel` le remettrait dans la pile au rendu suivant (ceinture v1.72.2).
 - ⚡ **Deux garde-fous de charge, faute de mesure.** La pile n'a **pas** été éprouvée à 5/10/20 plans réels : c'est la faiblesse assumée de ce lot, et elle est à lever sur le terrain. En attendant, ① **confirmation avant** l'ajout avec le compte et la taille résultante — seuil = celui de l'**avertissement existant** (3 plans, arbitrage KARMA 2:b), pas un nombre inventé, car `_avertirMultiSiBesoin` prévient *après* coup, ce qui sur un lot veut dire une fois les vingt plans montés ; ② `_ajouterPlanOsm` **coupé en deux** — `_monterPlanOsm` (synchrone, bon marché) et `_chargerDataPlanOsm` (asynchrone, cher : extraction ZIP) —, un lot monte tout, rend **une** fois, puis enchaîne les extractions **en série**. Vingt extractions lancées ensemble figeraient l'onglet. Même découpage au retrait (`_demonterPlanOsm`).
 - 🏷️ **La légende éditée à l'import SIG partait à moitié.** L'écran « Convertir depuis SIG » ouvre le **même** éditeur que le Générateur, mais `genererZipMyktamap` assemblait `plan.customLegend` avec `labels: {}` et `hidden: {}` **écrits en dur**, sans `colors` ni `borders` : renommer un type built-in, en masquer un, en recolorer un — **rien** n'atteignait le plan généré. Seules survivaient les entrées `cust-sig-…` par niveau. Deuxième moitié du trou : une entrée ajoutée **à la main** (➕) n'était jamais réémise, `ingest` ne recopiant que les ids qu'il fabrique. Désormais l'état **entier** voyage (`assemblerLegendePlan`) — le runtime le lisait déjà, `getColor`/`getBorderColor`/`getLabel` interrogent `_planState` depuis la v1.76.1. ⚠️ **Contre-piège** : les entrées `cust-sig-…` que la génération courante n'a **pas** produites sont au contraire **écartées** (routage périmé = types qu'aucun objet ne porte).
@@ -1909,7 +2021,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 #### v1.79.1 (10/08/2026) — Plans homonymes : popup systématique + renommage d'affichage
 
 - 📚 **La popup doublon se déclenche dès que le NOM matche** (bug KARMA « même nom → pas de popup, et le plan ne s'ajoute jamais à la liste ») : le détecteur v1.73.1 exigeait même auteur ET version différente — un ZIP régénéré (même nom + même version) **écrasait silencieusement** l'entrée existante via l'id commun `genLocalId(nom, version)`, y compris l'entrée d'un plan homonyme d'un **autre auteur** (fusion de deux plans distincts : archives, tags, sessions mélangés). Désormais : import frais + nom local identique = la popup tranche (Mettre à jour / Garder les deux / annuler) ; les rechargements ciblés (clic de row, re-sélection) restent exemptés. **« Garder les deux » apprend la collision d'id** : nom+version identiques → suffixe `_2`, `_3`… (sans ça, le choix mentait — les deux plans fusionnaient quand même).
-- ✏️ **Renommage d'AFFICHAGE d'un plan** (demande KARMA « deux Catacombes d'auteurs différents ») : ℹ️ Infos → « Renommer l'affichage » — `displayName` local (40 car., vide = retour à l'origine), le **vrai `name` jamais touché** (nameMatch de re-sélection, double-check session, détection doublon, nom de fichier 💾 s'y réfèrent). `PlanRegistry.displayName()` = helper unique, **13 surfaces migrées** (liste, Reprendre, modale Infos live, popup doublon, recherche HOME, dropdown + recherche OSM, switcher carte, graphe liaisons) ; filtre 🔎 sur les deux noms, tri sur l'affiché ; suit l'export de profil et le `.config` gratuitement. 4 clés i18n ×3.
+- ✏️ **Renommage d'AFFICHAGE d'un plan** (demande KARMA « deux plans du même réseau d'auteurs différents ») : ℹ️ Infos → « Renommer l'affichage » — `displayName` local (40 car., vide = retour à l'origine), le **vrai `name` jamais touché** (nameMatch de re-sélection, double-check session, détection doublon, nom de fichier 💾 s'y réfèrent). `PlanRegistry.displayName()` = helper unique, **13 surfaces migrées** (liste, Reprendre, modale Infos live, popup doublon, recherche HOME, dropdown + recherche OSM, switcher carte, graphe liaisons) ; filtre 🔎 sur les deux noms, tri sur l'affiché ; suit l'export de profil et le `.config` gratuitement. 4 clés i18n ×3.
 
 #### v1.79.0 (09/08/2026) — Le profil emporte les archives de plans, HOME PC structurel
 
@@ -2020,7 +2132,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **📐 Géoréférencement : POINT C OPTIONNEL (topo KARMA « erreurs de projection sur un assemblage » → reco 1:a 2:a 3-4:ok)** : 3e point de calibrage → `KmzExport.buildTransform` passe en **affine 6 DOF** (échelles X/Y indépendantes + cisaillement, exacte sur les 3 points — validée par harness Node : régression 2 points nulle, exactitude 0.000000 m sur A/B/C, roundtrip parfait, cas test = 253 m d'erreur absorbés). Sans C : similitude historique **bit-à-bit**. Garde anti-colinéarité (repli 2 points moteur + refus franc à la saisie). **Nouveau `buildTransformCalib(calib)`** : 12 appelants migrés (la découverte en route : la math était DÉJÀ centralisée dans KmzExport — l'estimation « 2-3 sessions » tombait à 1). UIs : Point C dans ⚙️ Réglages → Géoref (avec 🔍/📍 pickers, tout-ou-rien) + Générateur (page georef du wizard, prefill Modifier) ; la modale KMZ **préserve** le pointC stocké (sinon chaque save l'écrasait). `_propagerGeorefVersKmzExport` copie l'objet entier → pointC embarqué dans un ZIP propagé tel quel. 9 clés i18n ×3. ⚠️ Limite assumée et documentée : corrige une déformation GLOBALE — un assemblage aux erreurs locales par morceau s'améliore sans être parfait partout. Doc : `vue-osm.md §2.2` + README_USER fr/en.
 - **🏗️ MODE SERVEUR KIOSQUE — FEATURE TERMINÉE (ordre KARMA « on finit le mode serveur »)** : ① **Ligne community/pro enfin RÉDIGÉE** → `docs/architecture/community-server-line.md` (promesse « pas de backend », règle des 2 flags MAX, périmètre exclu — un seul champ subtitle, jamais de branding complet — invariants confadmin/index.json) + ligne dans la table CLAUDE.md ② **Fraîcheur** : `data/index.json` servi **network-first par le SW** (timeout 3 s, fallback cache ignoreSearch — pattern dicos) → les modifs d'un admin kiosque se propagent au boot suivant sans réinstallation ③ **Fetch découplé de la pref** : `_chargerIndexServeur()` appelée TOUJOURS au boot (la pref skip-server ne skippe plus que l'inscription des plans) → sous-titre/flags vivants partout ④ **Lecteurs flags** : `_appliquerConfigKiosque()` — `serverPlansOnly` masque #panelZip + son head + `.loader-plans-filters` + la section pref skip (Outils et données user intacts) ; `disableGenerator` masque #loaderPlannerBtn ⑤ **Lecteur liaisons** : fusion par id via `InterPlanLinks.importLinks` (idempotente, rejouée à chaque boot) ⑥ **Tagline PDF kiosquisée** (pdfExport suit `config.subtitle`) ⑦ **`docs/applications/SELFHOST.md`** créé (guide déployeur pas-à-pas) ⑧ Audit md+html : entrée v1.73.0 + sémantique pref skip corrigée (le fetch same-origin a toujours lieu — surface inchangée).
 - **📚 Passe documentation user (demande KARMA « tour des docs + limiter les mentions de versions »)** — nouvelle règle éditoriale : les tags `(v1.x)` / `(depuis v1.x)` dans README_USER fr/en, l'Aide intégrée et l'onboarding sont réservés aux **2-3 derniers trains** (seuil appliqué : ≥ v1.70) ; au-delà, le tag saute (le texte reste). ~60 mentions purgées par fichier FR/EN + Aide + tutoriel (les commentaires dev des .js gardent leurs versions ; exception : tag Docker `v1.36.0` = nom d'image). ⚠️ Incident de passe : la regex a d'abord cassé des gras Markdown (`**X (v1.x)** :` → `**X* :`) — réparés et re-vérifiés à zéro. **Fraîcheurs corrigées au passage** : README_USER fr/en affirmaient encore que « les cases du bandeau OSM restent des interrupteurs globaux » (supprimées en v1.71, remplacées par la section Affichage de la modale ≡) ; **l'Aide intégrée n'avait RIEN sur v1.70→1.72** → ajoutés (FR+EN, parité conservée) : résultats live de la barre HOME, assistant pas-à-pas du Générateur, bloc « 🌍 Mode OSM » (recherche locale, superposition, modale ≡). Onboarding : carte recherche mise à jour (résultats live). AI_CONTEXT vérifié à jour (hors périmètre purge).
-- **🛠️ Mode serveur « kiosque » — lot outillage (topo décisions : flags DANS `data/index.json`, page admin demandée par KARMA)** : nouvelle page **`confadmin.html`** (racine, hors precache, style killsw/ping) = générateur d'`index.json` kiosque. ① dépôt de ZIPs générés par l'app → métadonnées extraites du `plan-config.json` interne (id/nom/version/auteur + badges V2 & Multi-LVL, détection `plan.tiledV2 || tiling` comme config.js), lignes éditables ▲▼✕ + entrée manuelle ② liaisons inter-plan piochées dans le **profil du navigateur** (localStorage même-origine) ou un **export de profil** (`sections.preferences`), avec **table de correspondance plan d'origine → plan du pack** (auto-match par nom) et **remappage des planId** locaux → `"server_<id>"` (sans ça, les liaisons embarquées pointeraient vers des ids qui n'existent que sur l'appareil de l'admin) ③ flags kiosque `serverPlansOnly` / `disableGenerator` + **sous-titre personnalisé `config.subtitle`** (demande KARMA « Gironde ») — celui-ci est lu DÈS MAINTENANT par le moteur (`_appliquerSousTitreKiosque` dans decouvrirPlansServeur : remplace « Cartographie souterraine » splash + header loader, `textContent` + retrait `data-i18n` pour survivre aux changements de langue ; absent/vide → dicos i18n inchangés) ④ aperçu live + télécharger/copier + checklist de déploiement. **Format étendu figé** dans `plans-loader.md`. ⚠️ Le moteur ne lit encore QUE `plans` — lecteurs `config`/`liaisons` = prochain lot ; le fichier généré est déjà valide partout (champs inconnus ignorés).
+- **🛠️ Mode serveur « kiosque » — lot outillage (topo décisions : flags DANS `data/index.json`, page admin demandée par KARMA)** : nouvelle page **`confadmin.html`** (racine, hors precache, style killsw/ping) = générateur d'`index.json` kiosque. ① dépôt de ZIPs générés par l'app → métadonnées extraites du `plan-config.json` interne (id/nom/version/auteur + badges V2 & Multi-LVL, détection `plan.tiledV2 || tiling` comme config.js), lignes éditables ▲▼✕ + entrée manuelle ② liaisons inter-plan piochées dans le **profil du navigateur** (localStorage même-origine) ou un **export de profil** (`sections.preferences`), avec **table de correspondance plan d'origine → plan du pack** (auto-match par nom) et **remappage des planId** locaux → `"server_<id>"` (sans ça, les liaisons embarquées pointeraient vers des ids qui n'existent que sur l'appareil de l'admin) ③ flags kiosque `serverPlansOnly` / `disableGenerator` + **sous-titre personnalisé `config.subtitle`** (demande KARMA : un sous-titre de déployeur) — celui-ci est lu DÈS MAINTENANT par le moteur (`_appliquerSousTitreKiosque` dans decouvrirPlansServeur : remplace « Cartographie souterraine » splash + header loader, `textContent` + retrait `data-i18n` pour survivre aux changements de langue ; absent/vide → dicos i18n inchangés) ④ aperçu live + télécharger/copier + checklist de déploiement. **Format étendu figé** dans `plans-loader.md`. ⚠️ Le moteur ne lit encore QUE `plans` — lecteurs `config`/`liaisons` = prochain lot ; le fichier généré est déjà valide partout (champs inconnus ignorés).
 - **↩️ Bouton Retour : [✕] vide désormais la PILE de retours** (demande KARMA « quand je prends un portail, supprime les retours possibles — éviter un empilement inutile ») — avant, ✕ était un dismiss ponctuel (pile intacte en RAM, le bouton réapparaissait au saut suivant avec les retours accumulés). Nouvelle sémantique : fermer = renoncer à la chaîne de retours (`_navStack.length = 0`). Le [–] (mini-pastille mémorisée) est inchangé. Tooltips ✕ réécrits ×3 dicos (ils promettaient l'inverse : « le retour restera possible au prochain saut ») + docs user/IA synchronisées.
 
 **🔧 v1.72.2 (30/07/2026)** — finitions post-v1.72.1 :
@@ -2041,7 +2153,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - 17 clés i18n `gen.wiz.*` fr/en/es. **Sources** v1.72.1. Aucune nouvelle surface réseau.
 
 
-**🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA Paris 13e + 14e + galeries techniques)** :
+**🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA : plusieurs relevés voisins + galeries techniques)** :
 - **Refactor pivot** : les 2 rendus du widget deviennent **paramétrés** — `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` (les wrappers historiques délèguent) et `_renderDataLayersOnMiniMap(data, georef, cible?)` (33 références internes aliasées `dataL/poiL/…` ; sans `cible` = groupes module du plan principal, avec = groupes d'un plan ajouté). Zéro duplication des ~460 lignes de rendu data.
 - **Pile multi-plans** : `_stackOrder` (index 0 = au-dessus, contient AUSSI le principal) + `_extraLayers` (6 groupes Leaflet par plan ajouté) + `_extraOpacity`. zIndex = 200 + rang×5 posé sur chaque `imageOverlay.rotated` (`setZIndex` au réordonnancement, sans re-render). RAM-only (composition = geste de session). Blob URLs jamais révoquées (cache `_planDataCache`) → retrait/re-ajout gratuit.
 - **Panneau 🗂️** (fullscreen uniquement, comme la recherche) : lignes dans l'ordre de la pile — ▲▼ (ordre), slider **opacité par plan** (la ligne du principal pilote AUSSI le slider du bandeau, synchro bidirectionnelle), ✕ retirer (pas sur le principal, marqué ◉), sélecteur ➕ des plans georef restants.
@@ -2229,7 +2341,7 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 - **Cause racine** : des **points consécutifs dupliqués** `[A,A,B,B,…]` dans `_pointsDistance` — héritage de l'ancien bug de handlers de clic empilés (corrigé côté saisie depuis), mais **les sessions sauvées à cette époque re-restaurent les doublons** via SessionPersist. Chaque sommet portait un segment interne de 0 px → label « 0.0 m » posé sur le point + **tous les angles skippés** (`len < 1e-6`).
 - **Fix 3 couches** (`js/measure.js`, helper `_dedupPointsConsecutifs`, seuil 0.01 px) : ① **saisie** — clic coïncident avec le dernier point ignoré ; ② **restore** — `setMeasurePoints`/`setMeasurePointsSurface` dédupliquent → les **sessions polluées se réparent au chargement** (re-sauvées propres) ; ③ **rendu** — labels segments + angles calculés sur la géométrie dédupliquée (robuste quelle que soit la source). Les vrais points (≥ 0.01 px) ne sont jamais fusionnés. Aucun impact `calculDistance`/`calculSurface` (segments 0 = 0 m ; shoelace insensible aux doublons).
 - **Testé** : harness Leaflet factice — scénario `[A,A,B,B,C,C]` → segments « 10.0 m »/« 8.0 m » + angle **90°** affiché, résultat strictement identique à une saisie propre ; helper unitaire (fusion < 0.01 px, conservation 0.5 px, tableaux vides).
-- **Inclut le bump du commit `c829c30`** (docs légaux, passé sans bump) : CGU **sans** le volet Val-d'Oise (retiré) + **intrusion en lieu privé approfondie** — art. 226-4 (verbatim) & 544, et **responsabilité en cas de dommages ou de secours** : art. 1240-1241 Code civil (verbatim), secours en principe gratuits (CGCT L.2321-2) mais **facturables** pour une activité de loisir (CGCT L.2331-4) + réparation du dommage causé par faute/imprudence. Puce « responsabilité » de la gate enrichie (fr/en).
+- **Inclut le bump du commit `c829c30`** (docs légaux, passé sans bump) : CGU **sans** le volet départemental (retiré) + **intrusion en lieu privé approfondie** — art. 226-4 (verbatim) & 544, et **responsabilité en cas de dommages ou de secours** : art. 1240-1241 Code civil (verbatim), secours en principe gratuits (CGCT L.2321-2) mais **facturables** pour une activité de loisir (CGCT L.2331-4) + réparation du dommage causé par faute/imprudence. Puce « responsabilité » de la gate enrichie (fr/en).
 - **Sources** v1.56.2. Aucune nouvelle surface réseau.
 
 **⚖️ v1.56.0 (15/07/2026)** — **Conditions d'utilisation (avertissement légal) + séquenceur de premier lancement** :
@@ -3791,7 +3903,7 @@ KARMA après v1.40.x : *« fait tout d'un coup et on testera »* après confirma
 ├────────────────────────────────────────────────────────────┤
 │ INFOS                                                       │
 │ Scenario : Recherche Marc — 15/06/2026                     │
-│ Plan     : Four à Chaux Oise                               │
+│ Plan     : Secteur Nord                                    │
 │ Genere le 07/06/2026 à 14:32                               │
 ├────────────────────────────────────────────────────────────┤
 │ LOCALISATION SUR LA CARTE                                  │
@@ -3811,7 +3923,7 @@ KARMA après v1.40.x : *« fait tout d'un coup et on testera »* après confirma
 ├────────────────────────────────────────────────────────────┤
 │ POI CRITIQUES (acces / sorties)                            │
 │ Point d'entree (urgence pompiers) (1) :                    │
-│   - Cavage principal Oise (niveau 0)                       │
+│   - Galerie principale (niveau 0)                          │
 │ Cavage ouvert (3) :                                         │
 │   - Cavage Nord                                             │
 │   - Cavage Est                                              │
@@ -4761,7 +4873,7 @@ const color = _resolveEquipeColor(g.couleurIdx);   // ✅ vrai hex string
 
 **📦 v1.40.35** (07/06/2026) — **Hotfix Mode Sortie d'urgence : conversion pixels → mètres oubliée (distance affichée × scale)** :
 
-KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de distance totalement différente de ce que on affiche en path finder (qui est bon). Cavage : Oise 4.63 km au lieu de 944,5m dans mon cas »*.
+KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de distance totalement différente de ce que on affiche en path finder (qui est bon). Secteur : 4.63 km au lieu de 944,5m dans mon cas »*.
 
 🎯 **Cause racine** (classique d'oubli d'unité)
 
@@ -4774,7 +4886,7 @@ KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de
 
 Le pathfinder retourne un path en **pixels plan**, et `_calculerDistPathfinder` cumule les distances euclidiennes en pixels (`distPx: d`). Sans la division par `APP_CONFIG.scale` (px par mètre), `formatDistance` interprète le nombre comme mètres → affichage gonflé du ratio scale.
 
-Sur le plan **Cavage Oise** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m réels × 4.9 ≈ 4628 m → affiché "4.63 km".
+Sur le plan **relevé réel** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m réels × 4.9 ≈ 4628 m → affiché "4.63 km".
 
 🔧 **Fix v1.40.35** dans `js/sortieUrgence.js` ligne 106
 
@@ -4803,7 +4915,7 @@ Sur le plan **Cavage Oise** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m ré
 
 Cohérent avec le pattern de `lostMode.js` et `measure.js`. Le fallback `scale = 1` (= si `APP_CONFIG.scale` indispo) revient au comportement précédent (affichage "px") pour ne pas masquer un bug de configuration.
 
-📊 **Avant / Après** (exemple Cavage Oise, KARMA)
+📊 **Avant / Après** (exemple relevé réel, KARMA)
 
 | | Avant v1.40.35 | Après v1.40.35 |
 |---|---|---|
@@ -4816,7 +4928,7 @@ Cohérent avec le pattern de `lostMode.js` et `measure.js`. Le fallback `scale =
 🔍 **Audit global** (vérifié par grep) : tous les autres usages de `distPx` dans `sortieUrgence.js` (lignes 245 + 285) passent par `_formatDist` → fix global avec **une seule modif**. Le tri ligne 187 utilise `distPx - distPx` (cohérence préservée, l'unité n'importe pas tant qu'elle est cohérente).
 
 🧪 **Tests à faire**
-- Plan Cavage Oise + position tracker à 944 m d'une sortie → mode `🚨 Sortie urgence` affiche **"944 m"** (et plus "4.63 km")
+- Relevé réel + position tracker à 944 m d'une sortie → mode `🚨 Sortie urgence` affiche **"944 m"** (et plus "4.63 km")
 - Vérifier que la même distance s'affiche identique côté pathfinder normal (`🗺️ Itinéraire`)
 - Cas court (< 1 km) : affichage `XXX m`
 - Cas long (> 1 km) : affichage `X.XX km`
@@ -5625,7 +5737,7 @@ Cascade essayée :
 
 **🧪 Tests à faire** :
 
-Ouvre la console F12 sur la HOME avec Catacombes sélectionné. Tu devrais voir :
+Ouvre la console F12 sur la HOME avec un plan réel sélectionné. Tu devrais voir :
 
 ```
 [OsmHomePreview] Icons extraits : N tag(s) | tags : salle, pa, pc, ...
@@ -5709,7 +5821,7 @@ Priorité : `road.color` natif (rare pour embedded) > mapping par type > fallbac
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes → POI avec **vraies icônes** (maison, PA, danger, chatière, …) au lieu de cercles jaunes
+- [ ] Plan réel → POI avec **vraies icônes** (maison, PA, danger, chatière, …) au lieu de cercles jaunes
 - [ ] Log console : `Icons extraits : N tag(s)` (probablement ~20)
 - [ ] Roads colorées : principal en vert, secondaire en violet, etc. (cohérent map principale)
 - [ ] Roads un peu plus épaisses (weight 3)
@@ -5791,7 +5903,7 @@ Régression :
 
 **📦 v1.40.11** : Vue OSM HOME — amélioration résolution gros plans (z=-2 sur 16K) :
 
-KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment augmenter la reso car bcp trop dégradé »*. v1.40.10 utilisait `MAX_TILES_HOME = 40`, suffisant pour Catacombes 4K (z=0 natif) mais insuffisant pour les très gros plans (16K fallback à minNativeZoom = z=-3 trop dégradé).
+KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment augmenter la reso car bcp trop dégradé »*. v1.40.10 utilisait `MAX_TILES_HOME = 40`, suffisant pour plan 4K (z=0 natif) mais insuffisant pour les très gros plans (16K fallback à minNativeZoom = z=-3 trop dégradé).
 
 **Fix** : `MAX_TILES_HOME = 40` → **80**.
 
@@ -5799,7 +5911,7 @@ KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment au
 
 | Taille plan | v1.40.10 (MAX=40) | v1.40.11 (MAX=80) | Gain résolution |
 |---|---|---|---|
-| 4K (Catacombes 4000×2251) | z=0 natif (40 tuiles) | z=0 natif (40 tuiles) | inchangé ✅ |
+| 4K (4000 px de large) | z=0 natif (40 tuiles) | z=0 natif (40 tuiles) | inchangé ✅ |
 | 8K (8000×4500) | z=-2 (4 tuiles) | z=-1 (40 tuiles) | ×2 |
 | 12K (12000×8000) | z=-3 (3 tuiles) | z=-2 (24 tuiles) | ×2 |
 | 16K (16000×16000) | z=-3 (16 tuiles) | z=-2 (64 tuiles) | **×2 ← FIX KARMA** |
@@ -5827,7 +5939,7 @@ Nouvelle description :
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes 4K → toujours z=0 natif (inchangé v1.40.10)
+- [ ] Plan plan 4K → toujours z=0 natif (inchangé v1.40.10)
 - [ ] Plan 16K → log console : `Tiles V2 : 64 tuile(s) rendues à z=-2 (scale x4)` (au lieu de z=-3 x8)
 - [ ] Plan 16K visuel : nettement plus net (×2 résolution)
 - [ ] Plan 8K → monte aussi à z=-1 (×2 résolution)
@@ -5836,7 +5948,7 @@ Nouvelle description :
 
 **📦 v1.40.10** : Vue OSM HOME — niveau natif z=0 (résolution ×2) :
 
-KARMA : *« toujours trop flou en OSM HOME augmente legerement stp / fait comme on fait en mode map tuile adapté »*. v1.40.7 avait bumpé `MAX_TILES_HOME = 12` → z=-1 sur Catacombes (scale ×2), pas encore assez net.
+KARMA : *« toujours trop flou en OSM HOME augmente legerement stp / fait comme on fait en mode map tuile adapté »*. v1.40.7 avait bumpé `MAX_TILES_HOME = 12` → z=-1 sur un plan 4K (scale ×2), pas encore assez net.
 
 **Analyse "fait comme en mode map tuile adapté"** :
 
@@ -5844,7 +5956,7 @@ La modale OsmView full-screen utilise `MAX_TILES_BASELINE = 20` au boot, MAIS sw
 
 Le widget HOME a une carte fixe (pas de zoom user) → pour avoir le même rendu net que la modale "après zoom", il faut monter direct à z=0 natif.
 
-**Fix** : `MAX_TILES_HOME = 12` → **40**. Pour Catacombes 4000×2251 :
+**Fix** : `MAX_TILES_HOME = 12` → **40**. Pour un plan 4K :
 
 | Version | MAX_TILES | Niveau choisi | Scale | Tuiles | RAM décodée | Résolution |
 |---|---|---|---|---|---|---|
@@ -5867,7 +5979,7 @@ Le widget HOME a une carte fixe (pas de zoom user) → pour avoir le même rendu
 
 **🧪 Tests** :
 
-- [ ] Plan Catacombes → log console : `Tiles V2 : 40 tuile(s) rendues à z=0 (scale x1)`
+- [ ] Plan réel → log console : `Tiles V2 : 40 tuile(s) rendues à z=0 (scale x1)`
 - [ ] Image plan sur mini-carte → résolution native, lignes/labels parfaitement nets
 - [ ] Slider opacité → continue de fonctionner
 - [ ] Plein écran ⛶ → image plan toujours nette
@@ -5979,11 +6091,11 @@ Résultat visuel : fond uniforme `#e5dcc5` sur TOUTE la page d'accueil, depuis l
 
 **📦 v1.40.7** : Vue OSM HOME — niveau de tuiles adaptatif (fix flou) :
 
-KARMA : *« pas mal, mais le rendu est trop flou »*. v1.40.6 utilisait `minNativeZoom` fixe (z=-3 pour Catacombes = scale ×8) pour garantir la safety RAM mobile. Résultat : 1 tuile de ~500×282 px étirée sur la mini-carte → flou.
+KARMA : *« pas mal, mais le rendu est trop flou »*. v1.40.6 utilisait `minNativeZoom` fixe (z=-3 pour un plan 4K = scale ×8) pour garantir la safety RAM mobile. Résultat : 1 tuile de ~500×282 px étirée sur la mini-carte → flou.
 
 **Fix** : réplique l'heuristique `_choisirNiveauBaseline` de `osmView.js` v1.39.11 — choisit le niveau **le plus zoomé** tel que `cols × rows ≤ MAX_TILES_HOME` (12 tuiles, budget RAM mini-carte ~12 MB décodé).
 
-**Exemple plan 4000×2251 (Catacombes)** :
+**Exemple plan 4K (4000 px de large)** :
 
 | Niveau | Scale | Tuiles totales | RAM (1 MB/tuile RGBA décodée) | Choisi v1.40.7 ? |
 |---|---|---|---|---|
@@ -6020,7 +6132,7 @@ Utilisé dans `_extractV2TilesOverview` à la place du `const z = config.tiling.
 
 **Tests à faire** :
 
-- [ ] Plan Catacombes → log console : `Tiles V2 : N tuile(s) rendues à z=-1 (scale x2)` (au lieu de z=-3 x8)
+- [ ] Plan réel → log console : `Tiles V2 : N tuile(s) rendues à z=-1 (scale x2)` (au lieu de z=-3 x8)
 - [ ] Mini-carte → image plan **nette** (lignes/symboles cataphiles lisibles)
 - [ ] Slider opacité → continue de fonctionner
 - [ ] Plein écran ⛶ → image plan nette aussi
@@ -6087,7 +6199,7 @@ _loadPlanDataForPreview(planId)
 
 **🧪 Tests à faire** :
 
-- [ ] Plan Catacombes V2 → mini-carte montre l'image du plan + POI + Roads + Zones par-dessus OSM
+- [ ] Plan réel V2 → mini-carte montre l'image du plan + POI + Roads + Zones par-dessus OSM
 - [ ] Log console : `[OsmHomePreview] Tiles V2 : N tuile(s) rendues à z=-3 (scale x8)`
 - [ ] Slider 🎚️ → l'image plan devient plus/moins transparente en live
 - [ ] Plan V1 → log "(plan V1, pas de tuiles)" + widget normal sans image plan
@@ -6117,7 +6229,7 @@ const poiArray = Array.isArray(json.data)         ? json.data
 
 Pourquoi 2 formats ? `json.data` = format embedded standard (`createConf.js > _genererZip` génère `{ data: [...] }`). `json.editorPoints` = format `.mkmsession` export utilisateur (`sessionExporter.js`).
 
-Test : `[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct` (sur plan Catacombes typique).
+Test : `[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct` (sur plan réel typique).
 
 **🐛 Bug 2 — Override CSS thème clair pas appliqué** :
 
@@ -6140,7 +6252,7 @@ Fix v1.40.5 : **déplacement du bloc d'overrides v1.40.3 en TOUTE FIN de fichier
 
 **🧪 Tests à faire** :
 
-- [ ] Plan Catacombes → POI/Roads/Zones/Structures visibles avec compteurs > 0 dans la console
+- [ ] Plan réel → POI/Roads/Zones/Structures visibles avec compteurs > 0 dans la console
 - [ ] Bascule thème clair → toutes les sections (Mes plans + Reprendre + Vue OSM + Ajouter) en `#e5dcc5` uniforme matchant le footer
 - [ ] Thème sombre → aucun changement
 - [ ] Re-sélection plan → instantané (cache RAM préservé v1.40.4)
@@ -6151,7 +6263,7 @@ Fix v1.40.5 : **déplacement du bloc d'overrides v1.40.3 en TOUTE FIN de fichier
 
 **📦 v1.40.4** : Vue OSM HOME — data layers embedded (POI + Roads + Zones + Structures) :
 
-KARMA : *« je n'ai aucune data de catacombe layer POI, zone, afficher sur mon OSM j'ai que les deux point de calage »*. v1.40.0-3 affichaient uniquement les markers georef `pointA`/`pointB` (= mode léger documenté). KARMA veut voir les data embedded.
+KARMA : *« je n'ai aucune data de layer POI, zone, afficher sur mon OSM j'ai que les deux point de calage »*. v1.40.0-3 affichaient uniquement les markers georef `pointA`/`pointB` (= mode léger documenté). KARMA veut voir les data embedded.
 
 **Refonte : extraction ZIP partielle à la sélection** :
 
@@ -6216,7 +6328,7 @@ _loadPlanDataForPreview(planId)
 
 **Tests à faire** :
 
-- ✅ Plan Catacombes (v2 tuilé, dataLayers nombreux) → POI/Roads/Zones/Structures visibles après ~500ms
+- ✅ Plan réel (v2 tuilé, dataLayers nombreux) → POI/Roads/Zones/Structures visibles après ~500ms
 - ✅ Plan v1 simple → idem (pipeline indépendant du tiling)
 - ✅ Plan serveur sans cache local → fallback markers georef seuls (pas de crash)
 - ✅ Plan avec blob purgé → idem
@@ -6316,7 +6428,7 @@ html.kta-theme-light #resumeBox,
 - Autres sections du loader pas concernées (kta-loader-profile-bar, kta-loader-copyright, …)
 - Pas d'impact sur le mode map (changements isolés au loader/HOME)
 
-**📝 Note futur** : si KARMA remonte que le bandeau `Bienvenue/Mon profil` ou `Reprendre Catacombes` ne matche pas non plus, on étendra le selector en v1.40.4.
+**📝 Note futur** : si KARMA remonte que le bandeau `Bienvenue/Mon profil` ou `Reprendre <plan>` ne matche pas non plus, on étendra le selector en v1.40.4.
 
 **📦 v1.40.2** : Vue OSM HOME — ⛶ refonte plein écran inline :
 
@@ -6382,7 +6494,7 @@ Avantages :
 - ~30 lignes de gestion sessionStorage / hooks `kta:planConfigReady` / simulation clic plan row supprimées
 - Le module passe de ~430 → ~400 lignes, plus simple à maintenir
 
-**📝 Note KARMA pour bug 2 ("pas de data affichées en HOME catacombes")** : v1.40.0 documentait que le mode léger n'affiche QUE les markers pointA/pointB georef (= pas de data layers POI). Si tu veux les POI/Roads/Zones embedded sur la mini-carte HOME, ça nécessite une extraction ZIP partielle (helper `_loadPlanForPreview` mentionné dans v1.40.0 mais reporté pour garder le boot HOME léger). Si tu veux qu'on attaque ça → futur v1.40.3 ou v1.41.0.
+**📝 Note KARMA pour bug 2 ("pas de data affichées en HOME du plan réel")** : v1.40.0 documentait que le mode léger n'affiche QUE les markers pointA/pointB georef (= pas de data layers POI). Si tu veux les POI/Roads/Zones embedded sur la mini-carte HOME, ça nécessite une extraction ZIP partielle (helper `_loadPlanForPreview` mentionné dans v1.40.0 mais reporté pour garder le boot HOME léger). Si tu veux qu'on attaque ça → futur v1.40.3 ou v1.41.0.
 
 **📦 v1.40.1** : Vue OSM HOME — masquage offline-first + thème clair :
 
@@ -6870,19 +6982,19 @@ Roadmap KARMA Step 1/4 sur la Vue OSM : *« on va augmenter le truc en plusieurs
 
 **📦 v1.39.11** : Vue OSM — niveau adaptatif + viewport culling :
 
-KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop basse on voit rien »*. Diagnostic confirmé — v1.39.10 utilisait `z = minNativeZoom` (scale ×8, 1×1 tuile pour un plan 4000×2251) pour rester safe sur mobile mais la résolution était insuffisante pour identifier les détails.
+KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop basse on voit rien »*. Diagnostic confirmé — v1.39.10 utilisait `z = minNativeZoom` (scale ×8, 1×1 tuile pour un plan 4000×2250) pour rester safe sur mobile mais la résolution était insuffisante pour identifier les détails.
 
 **Topo & reco** : reproduction du pattern Leaflet TileLayer natif (qu'on imite déjà dans `tiling.js > _renderNiveau` pour la map principale) — niveau adaptatif au zoom + viewport culling pour charger uniquement les tuiles visibles. Plus le user zoom dans OSM, plus on monte en résolution. Plus il dézoome, plus on redescend pour économiser RAM.
 
 **Fix v1.39.11** :
-- **Heuristique baseline au boot** : `_choisirNiveauBaseline(tiling, planW, planH)` choisit le niveau le plus zoomé tel que `cols × rows ≤ MAX_TILES_BASELINE` (20 tuiles, budget RAM mobile ~20 MB décodé). Pour un plan 4000×2251 → z=-1 (scale ×2, 4×3=12 tuiles). Pour un plan 16K×16K → z=-3 (4×4=16 tuiles, reste prudent).
+- **Heuristique baseline au boot** : `_choisirNiveauBaseline(tiling, planW, planH)` choisit le niveau le plus zoomé tel que `cols × rows ≤ MAX_TILES_BASELINE` (20 tuiles, budget RAM mobile ~20 MB décodé). Pour un plan 4000×2250 → z=-1 (scale ×2, 4×3=12 tuiles). Pour un plan 16K×16K → z=-3 (4×4=16 tuiles, reste prudent).
 - **Mapping zoom OSM ↔ niveau plan** : `_targetLevelForZoom(osmZoom, tiling)` mappe `delta = osmZoom - baselineOsmZoom` vers `targetZ = baseLevel + delta`, clamp dans `[minNativeZoom, maxNativeZoom]`. Invariant valide car OSM ET tiling V2 doublent la résolution par cran de zoom — relation 1:1.
 - **Calcul `_baselineOsmZoom`** : `_computePlanBbox(proj, planW, planH)` projette les 4 coins du plan en latlng via la georef, puis `_osmMap.getBoundsZoom(_planBbox)` donne le zoom OSM où le plan tient au fit. Stocké 1 fois au boot, sert de référence pour le delta.
 - **Viewport culling AABB** : `_tileIntersectsBounds(tl, tr, bl, mapBounds)` reconstruit le 4e coin par parallélogramme (`br = tr + bl - tl`) et teste `mapBounds.intersects(tileBbox)`. Padding 10% sur mapBounds pour pré-charger les bordures (anti-flash au pan rapide). Pattern aligné sur §81 P5 (markers POI viewport culling) et `tiling.js`.
 - **Tracker `_tilesByPath`** : map `path → {overlay, tl, tr, bl}` pour add/remove idempotent. Au render d'un niveau : skip les paths déjà présents (éviter les doublons), puis cull ceux qui ne sont plus visibles. Coût mémoire négligeable (1 entrée par tuile visible).
 - **Handler `zoomend moveend`** : `_onMoveEnd` re-évalue le niveau cible, appelle `_renderLevel(targetZ)` qui gère le switch interne (cleanup intégral si nouveau niveau, juste add+cull si même niveau). Unbind dans `close()` pour éviter les listeners orphelins.
 
-**Avant / Après** (plan 4000×2251 typique)
+**Avant / Après** (plan 4000×2250 typique)
 
 | | v1.39.10 | v1.39.11 |
 |---|---|---|
@@ -6895,7 +7007,7 @@ KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop b
 | RAM décodée | ~1 MB | ~6-12 MB (visible viewport, scale ×2) |
 
 **Tests à faire** :
-- ✅ Plan 4000×2251 V2 → ouverture Vue OSM, tuiles z=-1 nettes
+- ✅ Plan 4000×2250 V2 → ouverture Vue OSM, tuiles z=-1 nettes
 - ✅ Zoom OSM proche → swap auto vers z=0 (rés max native du plan)
 - ✅ Zoom OSM dézoomé → swap auto vers z=-2 puis z=-3 (overview, économe)
 - ✅ Pan rapide → tuiles cullées et re-ajoutées au pad 10%, pas de flash blanc grossier
@@ -6913,7 +7025,7 @@ KARMA retour terrain v1.39.0-9 : *« ca crash sur mobile, surment psk on charge 
 
 **Fix v1.39.10** :
 - **Gate V2 strict** : nouvelle `_isV2Plan()` check `tiledV2 === true && tiling.minNativeZoom finite && tiling.tileSize finite`. Si non-V2 → `alert()` pédagogique au clic du bouton 🌍 avec instruction "Ouvre Générateur → Modifier → coche 🧱 Convertir en V2 tuile" + abort (pas de modale, pas de ping, pas d'OSM tiles téléchargées). Préserve la philosophie 100% offline si pas opt-in.
-- **Rendu via tuiles minNativeZoom** : `_renderTilesV2OnOsm(proj, tiling)` itère sur les tuiles du niveau le plus dézoomé (`z = minNativeZoom`, typiquement `-3` → scale ×8). Exemple plan 4000×2251 : `8×5 = 40` tuiles z=0 (~12 MB) → `1×1 = 1` tuile z=-3 (~200 KB). 99% économie RAM/GPU.
+- **Rendu via tuiles minNativeZoom** : `_renderTilesV2OnOsm(proj, tiling)` itère sur les tuiles du niveau le plus dézoomé (`z = minNativeZoom`, typiquement `-3` → scale ×8). Exemple plan 4000×2250 : `8×5 = 40` tuiles z=0 (~12 MB) → `1×1 = 1` tuile z=-3 (~200 KB). 99% économie RAM/GPU.
 - **Convention CRS.Simple respectée** : flip Y pixel (`pxTop = planH - k * tileSize * scale`, `pxBottom = planH - (k-1) * tileSize * scale`) avant projection via `proj.planToLatLng(x, y)`. 1 `L.imageOverlay.rotated(url, tl, tr, bl)` par tuile = N parallélogrammes alignés sur la georef.
 - **Lazy fetch reproduit** : reprise fidèle du pattern `tiling.js > _renderNiveau` — pre-extract via `_extractLazyAsset(path)` Promise.all si Phase 2 Pack RAM actif (`asset.file === null && asset._zipPath`). Puis `_resolveTileUrl(path)` réplique `_resoudreUrlTuile` (création blob URL si nécessaire, asset.url réutilisé sinon).
 - **Cohérence cross-module** : `asset.url` est **partagé** avec `tiling.js` via `window.RUNTIME_ASSETS[path]`. NE PAS `URL.revokeObjectURL` au `close()` de la modale OSM → casserait l'affichage de la map principale. La création est idempotente (réutilise une URL existante si déjà créée par tiling.js).
@@ -7096,7 +7208,7 @@ Bug remonté KARMA terrain : *« le control Z casse toujours la suite d'un trac�
 
 **E. 📦 Bump** : sw.js v1.36.2 → v1.37.0 + `__MKM__.build` v1.37.0 + `version.json > version` + notes user-friendly. Nouveau module `js/northPicker.js` ajouté à `ASSETS_TO_CACHE` + chargé dans `index.html` AVANT `interfaceConfig.js` (dépendance `window.openNorthCalibrationPicker`).
 
-**📦 v1.36.2** : Fix ronds intersections de tracés + déplacement option per-plan dans ⚙️ Réglages. (1) **Bug fix** — sur les plans denses (Catacombes 2024+, > 200 tracés) les cercles colorés aux intersections de tracés disparaissaient silencieusement. Cause racine identifiée : seuil interne `ROAD_INTERSECTION_MAX_ROADS = 200` dans `js/road.js > _calculerIntersectionsRoads()` qui faisait un short-circuit muet du calcul sans message d'erreur. Seuil remonté à **500** (couvre les plans actuels les plus denses + marge confort, perf O(N²) reste acceptable sur cette taille — mesurée < 80 ms sur Catacombes 2024). (2) **Déplacement UX** — le toggle « ⚪ Afficher les ronds aux intersections de tracés » a été **retiré de Configuration home** (où il était global à TOUS les plans, peu intuitif) et **déplacé per-plan dans ⚙️ Réglages mode carte**. Nouveaux helpers dans `js/config.js` : `window.getPlanShowsIntersections(planId)` + `window.setPlanShowsIntersections(planId, value)` avec cascade lecture **per-plan → global → default true**. Persistance via nouvelle clé `localStorage > myktamap_plan_prefs_<planId>` (objet `{showRoadIntersections: bool, …}`) — réservé pour d'autres préférences per-plan futures. `js/road.js` ligne 571 : `APP_CONFIG.showRoadIntersections !== false` → appel au helper. `index.html` : suppression checkbox `#loaderShowIntersectionsCb` + handler. `js/interfaceConfig.js` : nouveau toggle `#cfg_show_intersections` dans section Réglages map mode (à côté de scaledMarkers / Wake Lock). Bump cache v1.36.1 → v1.36.2 + bump `__MKM__.build` + `version.json > version` + notes user-friendly.
+**📦 v1.36.2** : Fix ronds intersections de tracés + déplacement option per-plan dans ⚙️ Réglages. (1) **Bug fix** — sur les plans denses (relevé dense récent, > 200 tracés) les cercles colorés aux intersections de tracés disparaissaient silencieusement. Cause racine identifiée : seuil interne `ROAD_INTERSECTION_MAX_ROADS = 200` dans `js/road.js > _calculerIntersectionsRoads()` qui faisait un short-circuit muet du calcul sans message d'erreur. Seuil remonté à **500** (couvre les plans actuels les plus denses + marge confort, perf O(N²) reste acceptable sur cette taille — mesurée < 80 ms sur un relevé dense récent). (2) **Déplacement UX** — le toggle « ⚪ Afficher les ronds aux intersections de tracés » a été **retiré de Configuration home** (où il était global à TOUS les plans, peu intuitif) et **déplacé per-plan dans ⚙️ Réglages mode carte**. Nouveaux helpers dans `js/config.js` : `window.getPlanShowsIntersections(planId)` + `window.setPlanShowsIntersections(planId, value)` avec cascade lecture **per-plan → global → default true**. Persistance via nouvelle clé `localStorage > myktamap_plan_prefs_<planId>` (objet `{showRoadIntersections: bool, …}`) — réservé pour d'autres préférences per-plan futures. `js/road.js` ligne 571 : `APP_CONFIG.showRoadIntersections !== false` → appel au helper. `index.html` : suppression checkbox `#loaderShowIntersectionsCb` + handler. `js/interfaceConfig.js` : nouveau toggle `#cfg_show_intersections` dans section Réglages map mode (à côté de scaledMarkers / Wake Lock). Bump cache v1.36.1 → v1.36.2 + bump `__MKM__.build` + `version.json > version` + notes user-friendly.
 
 **📦 v1.35.1** : Hotfix Mode Sortie d'urgence — codes courts. : v1.35.0 cherchait les libellés humains ("puits à échelon ouvert", "escalier de service ouvert", "cavage ouvert") dans les tags des POIs alors que les tags réels sont des **codes courts** : `cao` (Cavage Ouvert), `peo` (Puits à Échelon Ouvert), `eso` (Escalier de Service Ouvert) — feedback KARMA. Versions fermées (`caf`/`pef`/`esf`) restent volontairement exclues (impassables). Modifs uniquement `js/sortieUrgence.js > TYPES_SORTIE` array + message d'erreur quand aucune sortie trouvée. Bump cache v1.35.0 → v1.35.1.
 
@@ -7152,7 +7264,7 @@ Tous les calls sont gardés par `if (window.kta_vibrate)` (no-op si module pas c
 - **Fuite #4 — `js/lostMode.js _renderOnMap`** : `const svgRenderer = L.svg(...)` était déclaré dans le scope de la fonction. À chaque appel (= chaque recalcul de zone Lost), un NOUVEAU `L.svg()` était créé et `addTo(window.map)`, mais l'ancien restait attaché dans `map._layers` (jamais retiré par `_clearLayers` qui ne le connaissait pas). Sur user qui ajuste les critères de recherche plusieurs fois, accumulation linéaire de SVG renderers dans le DOM Leaflet → fuite mémoire + ralentissement du re-render. Fix : promouvoir au scope module (`let _svgRenderer = null`), ajouter `removeLayer(_svgRenderer)` dans `_clearLayers`, garder l'alias `const svgRenderer = _svgRenderer` pour rétro-compat des lignes suivantes (404, 421, 436, 495).
 - **Gain RAM total estimé** : ~5-20 Mo économisés sur usage typique long, plus si l'user est intense (tracker + Live + Lost). Combiné avec Phase 2 light, on attaque le crash iPhone PWA sur plusieurs vecteurs.
 **📦 v1.34.14** : Fix `registerEmbeddedRoad` batch + retrait debug "Refonte UI v1".
-**📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot. : KARMA stack trace v1.34.13 montre `renderRoads → window.registerEmbeddedRoad → utils.js:1703 forEach → ajouterPointsDepuisJSON`. Le bug : `ajouterPointsDepuisJSON` itère sur tous les `json.roads[]` d'un dataLayer, et pour CHAQUE road appelle `registerEmbeddedRoad` qui à son tour appelle `renderRoads()` complet. Sur le plan KARMA (catacombes_2024 avec 150+ roads dans un dataLayer), ça générait 150+ appels successifs de `renderRoads` au boot — chacun rendant tout depuis zéro. Fix : (1) `js/road.js registerEmbeddedRoad(road, layer, skipRender)` — ajout d'un 3e paramètre optionnel `skipRender` (défaut `false` pour backward compat) qui skip le re-render auto. (2) `js/utils.js ajouterPointsDepuisJSON` — passe `skipRender=true` dans la boucle `roadsToRender.forEach`, track via `_ktaEmbeddedRoadRegistered` si au moins une road a été register, puis trigger UN SEUL `renderRoads()` à la fin du forEach (= **1 render au lieu de 150+**). Gain perf important au boot des plans avec dataLayer roads denses. Bug latent probablement depuis l'introduction de `registerEmbeddedRoad` (v1.21.1+), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false`. Bonus : (a) retrait demande KARMA du banner `console.info("[Refonte UI v1] Nouvelle interface active...")` dans `js/refonteInterface.js` (la refonte est défaut depuis v1.8.1, plus besoin de le rappeler), (b) retrait de l'instrumentation diagnostic v1.34.13 (`_rrCallCount`/`_rrWindowStart`/`_rrStacksLogged` + Error().stack au burst) dans `js/road.js renderRoads`, restauration de la forme compacte d'origine.
+**📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot. : KARMA stack trace v1.34.13 montre `renderRoads → window.registerEmbeddedRoad → utils.js:1703 forEach → ajouterPointsDepuisJSON`. Le bug : `ajouterPointsDepuisJSON` itère sur tous les `json.roads[]` d'un dataLayer, et pour CHAQUE road appelle `registerEmbeddedRoad` qui à son tour appelle `renderRoads()` complet. Sur le plan KARMA (un relevé réel avec 150+ roads dans un dataLayer), ça générait 150+ appels successifs de `renderRoads` au boot — chacun rendant tout depuis zéro. Fix : (1) `js/road.js registerEmbeddedRoad(road, layer, skipRender)` — ajout d'un 3e paramètre optionnel `skipRender` (défaut `false` pour backward compat) qui skip le re-render auto. (2) `js/utils.js ajouterPointsDepuisJSON` — passe `skipRender=true` dans la boucle `roadsToRender.forEach`, track via `_ktaEmbeddedRoadRegistered` si au moins une road a été register, puis trigger UN SEUL `renderRoads()` à la fin du forEach (= **1 render au lieu de 150+**). Gain perf important au boot des plans avec dataLayer roads denses. Bug latent probablement depuis l'introduction de `registerEmbeddedRoad` (v1.21.1+), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false`. Bonus : (a) retrait demande KARMA du banner `console.info("[Refonte UI v1] Nouvelle interface active...")` dans `js/refonteInterface.js` (la refonte est défaut depuis v1.8.1, plus besoin de le rappeler), (b) retrait de l'instrumentation diagnostic v1.34.13 (`_rrCallCount`/`_rrWindowStart`/`_rrStacksLogged` + Error().stack au burst) dans `js/road.js renderRoads`, restauration de la forme compacte d'origine.
 **📦 v1.34.13** : Debug instrumentation `renderRoads` boucle au boot.
 **📦 v1.34.12** : Hotfix v1.34.11 — `_lazyZipRef` wipé prématurément.
 **📦 v1.34.11** : Pack RAM Phase 2 light — Lazy tile + LRU file release. : KARMA logs v1.34.12 (mode debug ON) montrent `[Road] renderRoads — roadsData : 0 tracés` répété 150+ fois successivement après `[Main] Application lancée`. `appliquerFiltreNiveau` (`js/interfaceConfig.js l1361`) appelle `renderRoads` directement SANS throttle, contrairement à `_renderRoadsThrottled` (250ms throttle) utilisé pour les events Leaflet. Hypothèse : un orchestrateur (sessionPersist restore ? interfaceConfig setup ? autre init multi-niveau ?) déclenche `appliquerFiltreNiveau` en boucle au boot. Bug latent probablement depuis v1.21.5 (refonte filtres), masqué par `js/debug.js` qui silence `console.log` quand `debugMode = false` (= 99% des users). Instrumentation : compteur rolling window 1s dans `renderRoads`. Si ≥5 appels dans la fenêtre, log `console.warn` avec `Error().stack` (limité à 3 stacks pour éviter le spam). KARMA reproduit, partage la stack F12 → identification de la source → fix propre en v1.34.14. Aucun changement fonctionnel.
@@ -8877,7 +8989,7 @@ MyKTAMap — Rapport État Mémoire
 
 🧠 RUNTIME
 ─────────────────────────────────────────
-Plan chargé : Carrière du Val V3 (4000×2251)
+Plan chargé : Relevé réel V3 (4000×2250)
   Auteur : KARMA
   M-LVL : ON | V2 tuilé : OFF
   Calques image : 1 | Calques data : 4

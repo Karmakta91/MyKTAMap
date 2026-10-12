@@ -226,11 +226,12 @@ window._applyLevelFilterToBasePlan = function() {
 // niveau) et par mapBearing (pendant la rotation).
 // Règles :
 //   • zone = écran réel (`MapBearing.zoneVisible`, qui dé-tourne les coins
-//     sous rotation) élargi de 15 % contre le pop-in ;
+//     sous rotation) élargi de 60 % contre le pop-in ;
 //   • on ne remet QUE les tuiles que nous avons retirées ou jamais posées
 //     (`_ktaCulled`) : une tuile absente pour une autre raison le reste ;
 //   • plan de base masqué par le filtre multi-niveau → on ne pose RIEN.
-const MARGE_TUILES_V2 = 0.15;
+// 0,6 (10/10/2026, mesuré) : trous du fond au grand glissé 36 % → 0-1 % ; 0,30 ne gagnait rien (tuiles de 512 px).
+const MARGE_TUILES_V2 = 0.6;
 window.ktaCullerTuilesV2 = function() {
   const map = window.map;
   const st = window._tilingV2State;
@@ -480,30 +481,79 @@ function ktaTuilesV2Urls(pc, racineDejaResolue) {
 // retombe sur l'image de base). Une tuile introuvable laisse un trou blanc, comptée.
 // Même grille que le générateur et `ktaTuilesV2Urls` : rangée k = 1 EN BAS ; la rangée du
 // haut, partielle, est collée en bas de sa tuile (le haut est du remplissage hors plan).
-async function ktaDessinerRegionTuiles(ctx, pc, region, echelle) {
-  if (!ctx || !pc || !pc.plan || !pc.plan.tiledV2 || !pc.tiling || !region) return { ok: false };
+// opts (facultatif, 12/10/2026 — export du plan ENTIER depuis les tuiles) :
+//   plafond : nombre de tuiles au-delà duquel on descend d'un niveau (600 par défaut ;
+//             Infinity = jamais : la qualité demandée prime, la mémoire est celle du canvas) ;
+//   aligner : bords de chaque tuile calés sur le pixel (début arrondi en bas, fin en haut) —
+//             à une échelle fractionnaire, deux tuiles voisines ne laissent plus de filet.
+// Grille d'une région : niveau z, pas (unités plan par tuile), colonnes c0..c1, rangées k0..k1.
+// Partagée par le dessin et par ktaTuilesSurAppareil : les deux lisent les MÊMES tuiles.
+function _grilleRegionTuiles(pc, region, echelle, plafond) {
+  if (!pc || !pc.plan || !pc.plan.tiledV2 || !pc.tiling || !region) return null;
   const tm = pc.tiling;
   const T = tm.tileSize || 512;
-  const ext = _extTuile(tm);
   const zMin = Number.isInteger(tm.minNativeZoom) ? tm.minNativeZoom : -3;
   const zMax = Number.isInteger(tm.maxNativeZoom) ? tm.maxNativeZoom : 0;
   const W = Number(pc.plan.imageWidth) || 0, H = Number(pc.plan.imageHeight) || 0;
-  if (!W || !H || !(echelle > 0)) return { ok: false };
+  if (!W || !H || !(echelle > 0)) return null;
+  const max = (typeof plafond === "number" && plafond > 0) ? plafond : 600;
   // Niveau le moins détaillé qui couvre l'échelle voulue (2^z pixels de tuile par unité plan).
-  let z = Math.min(zMax, Math.max(zMin, Math.ceil(Math.log2(echelle) - 1e-9)));
-  let pas, c0, c1, k0, k1;
-  const grille = function() {
-    pas = T * Math.pow(2, -z);   // unités plan couvertes par une tuile
-    const cols = Math.ceil(Math.ceil(W / Math.pow(2, -z)) / T);
-    const rows = Math.ceil(Math.ceil(H / Math.pow(2, -z)) / T);
-    c0 = Math.max(0, Math.floor(region.x / pas));
-    c1 = Math.min(cols - 1, Math.floor((region.x + region.w) / pas));
-    k0 = Math.max(1, Math.ceil((H - (region.y + region.h)) / pas));   // rangée du bas
-    k1 = Math.min(rows, Math.ceil((H - region.y) / pas));             // rangée du haut
+  const g = { T: T, ext: _extTuile(tm), W: W, H: H,
+              z: Math.min(zMax, Math.max(zMin, Math.ceil(Math.log2(echelle) - 1e-9))) };
+  const calculer = function() {
+    g.pas = T * Math.pow(2, -g.z);   // unités plan couvertes par une tuile
+    const cols = Math.ceil(Math.ceil(W / Math.pow(2, -g.z)) / T);
+    const rows = Math.ceil(Math.ceil(H / Math.pow(2, -g.z)) / T);
+    g.c0 = Math.max(0, Math.floor(region.x / g.pas));
+    g.c1 = Math.min(cols - 1, Math.floor((region.x + region.w) / g.pas));
+    g.k0 = Math.max(1, Math.ceil((H - (region.y + region.h)) / g.pas));   // rangée du bas
+    g.k1 = Math.min(rows, Math.ceil((H - region.y) / g.pas));             // rangée du haut
   };
-  grille();
+  calculer();
   // Garde-fou : une région immense à pleine résolution → niveau moins détaillé.
-  while ((c1 - c0 + 1) * (k1 - k0 + 1) > 600 && z > zMin) { z--; grille(); }
+  while ((g.c1 - g.c0 + 1) * (g.k1 - g.k0 + 1) > max && g.z > zMin) { g.z--; calculer(); }
+  return g;
+}
+
+// 🖼️ Les tuiles de cette région sont-elles TOUTES déjà sur l'appareil ? (12/10/2026)
+// Plan importé (ZIP) : dans RUNTIME_ASSETS. Plan serveur : dans le Cache Storage (cache du
+// service worker, ou cache hors-ligne du plan `myktamap-plan-<id>`) ; rien n'est téléchargé
+// (au plus la sonde de racine partagée, une tuile). Sert à l'export image du plan entier :
+// si oui, le fond est composé depuis les tuiles au lieu de retélécharger l'image de base
+// (42 Mo mesurés sur un relevé lourd).
+// Une seule tuile absente → false (l'appelant garde l'image de base : ni trou, ni demi-mesure).
+async function ktaTuilesSurAppareil(pc, region, echelle, opts) {
+  const g = _grilleRegionTuiles(pc, region, echelle, opts && opts.plafond);
+  if (!g) return false;
+  const assets = window.RUNTIME_ASSETS || {};
+  const absentes = [];
+  for (let k = g.k0; k <= g.k1; k++) {
+    for (let col = g.c0; col <= g.c1; col++) {
+      if (!assets[_cheminTuileZipExt(g.z, col, k, g.ext)]) absentes.push([col, k]);
+    }
+  }
+  if (!absentes.length) return true;
+  if (typeof caches === "undefined" || typeof caches.match !== "function") return false;
+  const racine = await ktaResoudreRacineTuiles(pc);
+  if (!racine) return false;
+  for (let i = 0; i < absentes.length; i += 48) {
+    const lot = absentes.slice(i, i + 48).map(function(ck) {
+      return caches.match(racine + "/z" + g.z + "/x" + ck[0] + "_y" + (-ck[1]) + "." + g.ext)
+        .then(function(r) { return !!(r && r.ok); }, function() { return false; });
+    });
+    const res = await Promise.all(lot);
+    if (res.indexOf(false) >= 0) return false;
+  }
+  return true;
+}
+
+async function ktaDessinerRegionTuiles(ctx, pc, region, echelle, opts) {
+  if (!ctx) return { ok: false };
+  const g = _grilleRegionTuiles(pc, region, echelle, opts && opts.plafond);
+  if (!g) return { ok: false };
+  const T = g.T, ext = g.ext, H = g.H, W = g.W, z = g.z, pas = g.pas;
+  const c0 = g.c0, c1 = g.c1, k0 = g.k0, k1 = g.k1;
+  const aligner = !!(opts && opts.aligner);
   const racine = await ktaResoudreRacineTuiles(pc);   // null pour un plan importé (ZIP)
   const aLiberer = [];
   async function urlDe(col, k) {
@@ -545,9 +595,13 @@ async function ktaDessinerRegionTuiles(ctx, pc, region, echelle) {
       const nw = img.naturalWidth, nh = img.naturalHeight;
       const sy = Math.round(nh * rem.haut), sw = Math.round(nw * (1 - rem.droite)), sh = nh - sy;
       if (sw <= 0 || sh <= 0) continue;
-      ctx.drawImage(img, 0, sy, sw, sh,
-                    (xPlan - region.x) * echelle, (yPlan + sy * ech - region.y) * echelle,
-                    sw * ech * echelle, sh * ech * echelle);
+      let dx = (xPlan - region.x) * echelle, dy = (yPlan + sy * ech - region.y) * echelle;
+      let dw = sw * ech * echelle, dh = sh * ech * echelle;
+      if (aligner) {   // filet entre tuiles à une échelle fractionnaire : bords calés sur le pixel
+        const x2 = Math.ceil(dx + dw - 1e-6), y2 = Math.ceil(dy + dh - 1e-6);
+        dx = Math.floor(dx + 1e-6); dy = Math.floor(dy + 1e-6); dw = x2 - dx; dh = y2 - dy;
+      }
+      ctx.drawImage(img, 0, sy, sw, sh, dx, dy, dw, dh);
     }
   }
   try {
@@ -1229,6 +1283,7 @@ window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;
 window.ktaDessinerRegionTuiles  = ktaDessinerRegionTuiles;
+window.ktaTuilesSurAppareil     = ktaTuilesSurAppareil;   // 🖼️ export image : fond depuis les tuiles (12/10/2026)
 window.ktaRemplissageTuile      = ktaRemplissageTuile;
 window.ktaRognerTuile           = ktaRognerTuile;
 window.ktaCandidatsRacineTuiles = ktaCandidatsRacineTuiles;

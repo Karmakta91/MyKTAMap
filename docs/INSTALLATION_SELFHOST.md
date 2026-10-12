@@ -9,8 +9,12 @@
 > Cas couverts : **réseau isolé** (certif auto-signé local) et **internet**
 > (Let's Encrypt).
 >
-> **Ce qui n'est PAS encore couvert** : packaging Docker + automatisation.
-> C'est le **step 2** prévu dans la roadmap d'auto-hébergement (cf. §10).
+> **Les autres guides** :
+> - **Avec Docker** (une commande, HTTPS auto-signé compris, aussi sur Raspberry Pi ou NAS) :
+>   [Installer avec Docker](applications/DOCKER_INSTALL.md).
+> - **Proposer vos plans** à vos utilisateurs (liste des plans, sous-titre, mot de passe d'accès, mode
+>   consultation) : [Héberger une instance avec ses plans](applications/SELFHOST.md) — valable quelle que soit
+>   l'installation.
 
 ---
 
@@ -59,7 +63,7 @@
 │   ├── data/                  ← VOS PLANS (config + images + JSON)       │
 │   │   ├── index.json         ← liste des plans dispo                    │
 │   │   └── <plan>/...                                                    │
-│   └── docs/                  ← doc embarquée (audit, README, ...)       │
+│   └── docs/applications/     ← docs lues par l'app (guide, audit)       │
 │                                                                          │
 │   ⚠️ AUCUN backend, AUCUNE base de données, AUCUN runtime serveur.      │
 │      C'est juste un dossier de fichiers statiques.                      │
@@ -84,8 +88,8 @@
 ## 0. Avant de commencer — soyons honnêtes
 
 MyKTAMap **édition communautaire** est une **PWA statique** (HTML + CSS + JS,
-100 % offline-first). Concrètement, l'auto-héberger revient à servir une
-quarantaine de fichiers statiques derrière un serveur HTTPS. **Pas de
+100 % offline-first). Concrètement, l'auto-héberger revient à servir un
+dossier de fichiers statiques derrière un serveur HTTPS. **Pas de
 backend, pas de base de données, pas de runtime Node/PHP/Python.** C'est
 volontaire : ça reste auditable, ça tient en main, ça résiste au temps.
 
@@ -331,16 +335,18 @@ poste qui va utiliser l'instance.
 ### 4.1 Depuis le dépôt GitHub officiel
 
 ```bash
-# Téléchargement de la dernière release stable
+# Téléchargement de la dernière version publiée (branche main)
 cd /tmp
-git clone --depth 1 https://github.com/Karmakta91/MyKTAMap.git
+git clone --depth 1 --branch main https://github.com/Karmakta91/MyKTAMap.git
 cd MyKTAMap
 ```
 
-> 💡 **Choisir une version stable plutôt que la branche `Karma_dev`** —
-> sauf si vous voulez tester en avance. La branche `main` correspond aux
-> versions validées (= `version.json > version`). `Karma_dev` peut
-> contenir des évolutions en cours.
+> 💡 **Restez sur `main`** : elle porte les versions publiées (celles de
+> myktamap.fr, numéro dans `version.json`). Les autres branches contiennent
+> des évolutions en cours de test. Autre source possible : le ZIP joint à
+> chaque version sur la page **Releases** du dépôt, déjà débarrassé des
+> fichiers de développement (dans ce cas, décompressez son contenu dans
+> `/var/www/myktamap` et passez directement aux permissions du § 4.2).
 
 ### 4.2 Préparation du contenu à servir
 
@@ -356,7 +362,7 @@ sudo mkdir -p /var/www/myktamap
 sudo rsync -av --include='/docs/' --include='/docs/applications/***' \
   --exclude='/docs/*' --exclude='/README.md' \
   --exclude='.git' --exclude='.github' --exclude='.githooks' --exclude='.claude' \
-  --exclude='CLAUDE.md' --exclude='scripts/' \
+  --exclude='CLAUDE.md' --exclude='scripts/' --exclude='Dockerfile' --exclude='docker/' \
   /tmp/MyKTAMap/ /var/www/myktamap/
 
 # Permissions (utilisateur Nginx — adapter selon votre OS)
@@ -368,8 +374,15 @@ sudo find /var/www/myktamap -type f -exec chmod 644 {} \;
 
 ### 4.3 Vos propres plans
 
-L'instance servie hors ligne ne sait charger que des plans **pré-déposés**
-dans `data/`. Pour ajouter vos plans à l'instance :
+L'instance propose à ses utilisateurs les plans **déposés** dans `data/`
+et listés dans `data/index.json` (chacun peut aussi importer ses propres
+ZIP dans l'app, sans rien envoyer au serveur). La copie du dépôt contient
+un plan d'exemple fictif (`data/test/`), à remplacer par les vôtres.
+
+> 📖 **Référence complète** — format de `index.json`, sous-titre, mot de
+> passe d'accès, mode consultation, liaisons entre plans, et la page
+> `confadmin.html` qui fabrique le fichier pour vous :
+> [Héberger une instance avec ses plans](applications/SELFHOST.md). L'essentiel :
 
 ```
 /var/www/myktamap/data/
@@ -390,26 +403,27 @@ Le fichier `index.json` doit ressembler à :
 ```json
 {
   "plans": [
-    { "id": "mon-plan-1", "path": "data/mon-plan-1", "name": "Catacombes Nord" },
-    { "id": "mon-plan-2", "path": "data/mon-plan-2", "name": "GRS V2 secteur Est" }
+    { "id": "mon-plan-1", "path": "data/mon-plan-1", "name": "Plan Nord" },
+    { "id": "mon-plan-2", "path": "data/mon-plan-2", "name": "Plan Est" }
   ]
 }
 ```
 
 > 📦 **Plus simple : servir le ZIP tel quel.** Au lieu de décompresser, déposez l'archive (ex.
 > `data/mon-plan-3.zip`) et déclarez-la avec `"zip"` au lieu de `"path"` :
-> `{ "id": "mon-plan-3", "zip": "data/mon-plan-3.zip", "name": "Galerie Sud" }`. L'app la télécharge à
+> `{ "id": "mon-plan-3", "zip": "data/mon-plan-3.zip", "name": "Plan Sud" }`. L'app la télécharge à
 > l'ouverture (avec progression) et la garde sur l'appareil pour le hors-ligne ; elle ne la retélécharge que si
 > le fichier a changé sur le serveur (ETag / Last-Modified, servis d'office par Nginx). `confadmin.html`
 > produit ce format par défaut.
 
-> ✅ **Depuis la v1.86.1, le ZIP se dézippe tel quel** — aucun chemin à réécrire. Avant, il fallait aplatir le dossier `data/` **et** réécrire chaque chemin du `plan-config.json` : sans ça, tout renvoyait 404 sauf le `plan-config.json` lui-même, sans message clair. Un déploiement déjà réécrit à la main continue de fonctionner à l'identique.
+> ✅ **Un ZIP décompressé se dépose tel quel** — aucun chemin à réécrire dans le `plan-config.json`.
 >
-> ✅ **Icônes personnalisées** : prises en charge *(v1.87.2)*. À l'ouverture d'un plan serveur, chaque icône déclarée est **demandée au serveur** dans le dossier du plan : si elle s'y trouve, elle est utilisée ; sinon on garde celle de l'app, à la racine. Rien à faire. Détail : `docs/TILING.md` §5.
+> ✅ **Icônes personnalisées** : à l'ouverture d'un plan serveur, chaque icône déclarée est cherchée dans le
+> dossier du plan ; à défaut, l'app garde la sienne. Rien à faire. Détail : [Le tuilage](TILING.md) § 5.
 >
-> 💡 **Pour créer vos plans facilement**, utilisez le **📦 Générateur**
-> intégré à l'app (icône loader → « 🏗️ Générer un plan ») qui produit
-> un ZIP prêt à uploader dans `/var/www/myktamap/data/`.
+> 💡 **Pour créer vos plans facilement**, utilisez le **Générateur**
+> intégré à l'app (écran d'accueil → « 🏗️ Générer un plan ») qui produit
+> un ZIP prêt à déposer dans `/var/www/myktamap/data/`.
 
 ---
 
@@ -417,13 +431,20 @@ Le fichier `index.json` doit ressembler à :
 
 ### 5.1 Template prêt à l'emploi (recommandé)
 
-Le repo contient déjà **`docs/nginx-myktamap.conf`** — un template
+Le dépôt contient **`docs/nginx-myktamap.conf`** — un template
 complet et commenté que vous pouvez copier tel quel, puis adapter via
-les `MKTM_TODO` à l'intérieur :
+les `MKTM_TODO` à l'intérieur. Il inclut **`docs/nginx-csp-config.conf`**
+(politique de sécurité CSP et en-têtes associés), à poser **hors du
+dossier web** — le dossier `docs/` n'est pas copié dans `/var/www/myktamap`
+(§ 4.2). Les deux fichiers se prennent dans la copie du dépôt :
 
 ```bash
+# En-têtes de sécurité (inclus par le template)
+sudo mkdir -p /etc/nginx/snippets
+sudo cp /tmp/MyKTAMap/docs/nginx-csp-config.conf /etc/nginx/snippets/myktamap-csp.conf
+
 # Copie du template
-sudo cp /var/www/myktamap/docs/nginx-myktamap.conf \
+sudo cp /tmp/MyKTAMap/docs/nginx-myktamap.conf \
         /etc/nginx/sites-available/myktamap.conf
 
 # Édition — cherchez "MKTM_TODO" pour lister tous les points à remplacer
@@ -437,7 +458,7 @@ IP éventuelles. Le template choisit par défaut l'**option B (auto-signé
 local)** — pour l'option A Let's Encrypt, décommentez le bloc concerné
 et commentez le bloc B.
 
-Puis sautez directement à §5.2.
+Puis sautez directement au § 5.3.
 
 ### 5.2 OU configuration manuelle (sans le template)
 
@@ -447,7 +468,15 @@ Si vous préférez tout écrire vous-même :
 sudo nano /etc/nginx/sites-available/myktamap.conf
 ```
 
-#### 5.1.1 Si Let's Encrypt (Option A)
+Posez d'abord les en-têtes de sécurité hors du dossier web (même commande
+qu'au § 5.1) :
+
+```bash
+sudo mkdir -p /etc/nginx/snippets
+sudo cp /tmp/MyKTAMap/docs/nginx-csp-config.conf /etc/nginx/snippets/myktamap-csp.conf
+```
+
+#### 5.2.1 Si Let's Encrypt (Option A)
 
 ```nginx
 # Redirection HTTP → HTTPS (certbot a peut-être déjà ajouté ce bloc)
@@ -474,8 +503,8 @@ server {
     index index.html;
 
     # --- Headers de sécurité (CSP + bonus) ---
-    # Voir docs/nginx-csp-config.conf pour la version complète et commentée
-    include /var/www/myktamap/docs/nginx-csp-config.conf;
+    # Copie de docs/nginx-csp-config.conf (version complète et commentée)
+    include /etc/nginx/snippets/myktamap-csp.conf;
 
     # --- Service Worker : NE PAS cacher (sinon l'app ne se met jamais à jour) ---
     location = /sw.js {
@@ -502,7 +531,7 @@ server {
 }
 ```
 
-#### 5.1.2 Si certificat auto-signé (Option B)
+#### 5.2.2 Si certificat auto-signé (Option B)
 
 Même contenu que ci-dessus, en remplaçant le bloc certificat par :
 
@@ -517,7 +546,7 @@ Même contenu que ci-dessus, en remplaçant le bloc certificat par :
 
 Et le `server_name` par celui de votre intranet (`myktamap.local` etc.).
 
-### 5.2 Activation du site
+### 5.3 Activation du site
 
 ```bash
 # Debian / Ubuntu (système sites-available / sites-enabled)
@@ -566,9 +595,10 @@ les chemins relatifs cassés (rare si vous avez copié le repo tel quel).
 
 ### 6.3 Page d'audit réseau
 
-Ouvrez `https://myktamap.votre-domaine.fr/docs/NETWORK_AUDIT.html`. La
-page doit s'afficher avec le banner « v1.28.x ». C'est aussi un bon test
-pour valider que tout le dossier `docs/` est servi.
+Ouvrez `https://myktamap.votre-domaine.fr/docs/applications/NETWORK_AUDIT.html`.
+La page doit s'afficher, avec en tête la version qu'elle décrit. C'est
+aussi un bon test pour valider que le dossier `docs/applications/` (lu
+par l'app : guide, audit) est servi.
 
 ### 6.4 Test installation PWA (Chrome / Edge mobile)
 
@@ -582,7 +612,8 @@ pour valider que tout le dossier `docs/` est servi.
 
 ### 7.1 Activer HSTS (force HTTPS pendant N mois)
 
-Dans `docs/nginx-csp-config.conf`, dé-commentez la ligne :
+Dans `/etc/nginx/snippets/myktamap-csp.conf` (copie de
+`docs/nginx-csp-config.conf`), dé-commentez la ligne :
 
 ```nginx
 add_header Strict-Transport-Security "max-age=15768000; includeSubDomains" always;
@@ -624,21 +655,30 @@ Quand une nouvelle version est publiée (cf. https://github.com/Karmakta91/MyKTA
 cd /tmp/MyKTAMap
 git pull
 
-# Rsync ré-applique la nouvelle version
-sudo rsync -av --delete --exclude='.git' --exclude='.github' \
-  --exclude='.claude' --exclude='data' \
+# Rsync ré-applique la nouvelle version (mêmes exclusions qu'au § 4.2, plus data/)
+sudo rsync -av --delete --include='/docs/' --include='/docs/applications/***' \
+  --exclude='/docs/*' --exclude='/README.md' --exclude='/data/' \
+  --exclude='.git' --exclude='.github' --exclude='.githooks' --exclude='.claude' \
+  --exclude='CLAUDE.md' --exclude='scripts/' --exclude='Dockerfile' --exclude='docker/' \
   /tmp/MyKTAMap/ /var/www/myktamap/
 
 sudo chown -R www-data:www-data /var/www/myktamap
+
+# Si la politique de sécurité a changé dans la nouvelle version :
+sudo cp /tmp/MyKTAMap/docs/nginx-csp-config.conf /etc/nginx/snippets/myktamap-csp.conf
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-⚠️ **Noter le `--exclude='data'`** : sans ça, vous écraseriez vos plans
-locaux par les plans de démo du repo. **Toujours sauvegarder `data/`
-avant**.
+⚠️ **Noter le `--exclude='/data/'`** : sans lui, `--delete` effacerait vos
+plans et la copie les remplacerait par le plan d'exemple du dépôt.
+**Toujours sauvegarder `data/` avant**. (Si vous aviez modifié la
+politique de sécurité, par exemple pour HSTS, reportez vos modifications
+dans la nouvelle copie.)
 
 Côté utilisateur final, l'app détecte automatiquement la nouvelle version
-(via `version.json`) et propose une **mise à jour douce** au prochain
-chargement (badge clignotant en bas de la home).
+(via `version.json`) : une fenêtre « 🔔 Mise à jour disponible » et le
+numéro de version de l'écran d'accueil le signalent, et la mise à jour
+s'applique sans perdre les plans, sessions ni photos.
 
 ---
 
@@ -668,7 +708,7 @@ chargement (badge clignotant en bas de la home).
 | Step | Statut | Description |
 |---|---|---|
 | **1. Procédure manuelle** | ✅ **Ce document** | Nginx + TLS + dépôt fichiers à la main |
-| **2. Package Docker** | 🔜 Prévu | Image officielle `myktamap/community:vX.Y.Z` + docker-compose template (Nginx + Caddy en option, volumes pour `data/` et `letsencrypt/`) |
+| **2. Image Docker** | ✅ Disponible | Nginx + HTTPS auto-signé, amd64 et arm64 : [Installer avec Docker](applications/DOCKER_INSTALL.md) |
 | **3. Helm chart Kubernetes** | 📋 Si demande terrain | Cas usage : grosses structures avec PaC interne |
 | **4. Backup intégré CLI** | 📋 Si demande terrain | Script `myktamap-backup` qui empaquette `data/` + conf en `.tar.gz` chiffré |
 
@@ -684,8 +724,9 @@ chargement (badge clignotant en bas de la home).
 |---|---|---|
 | « Connexion non sécurisée » | CA locale pas installée sur le poste | §3.2.3 |
 | PWA pas installable, pas d'option « Ajouter à l'écran d'accueil » | HTTPS pas en place ou cassé | Tester en F12 → Lighthouse → catégorie PWA |
-| Service Worker en erreur (F12) | CSP trop stricte ou chemin SW mauvais | Vérifier `connect-src` et que `/sw.js` est servi sans cache (§5.1) |
-| L'app ne détecte pas les nouvelles versions | `version.json` est caché par un proxy ou par le SW lui-même | Vérifier la directive `location ~ ^/(version|alert|Licence-pro)\.json$` de §5.1 |
+| Service Worker en erreur (F12) | CSP trop stricte ou chemin SW mauvais | Vérifier `connect-src` et que `/sw.js` est servi sans cache (§ 5) |
+| L'app ne détecte pas les nouvelles versions | `version.json` est caché par un proxy ou par le SW lui-même | Vérifier la directive `location ~ ^/(version|alert|Licence-pro)\.json$` (§ 5) |
+| `nginx -t` : `open() "…myktamap-csp.conf" failed` | Les en-têtes de sécurité n'ont pas été posés hors du dossier web | Commande `cp` du § 5.1 |
 | Erreur 404 sur `/sw.js` | Le SW est à la **racine** du site (volontaire), vérifier que `/var/www/myktamap/sw.js` existe | `ls -l /var/www/myktamap/sw.js` |
 | Tuiles de plan ne s'affichent pas | Blob URLs bloquées par la CSP | `img-src 'self' data: blob:` et `worker-src 'self' blob:` (déjà dans la conf fournie) |
 
@@ -694,14 +735,16 @@ chargement (badge clignotant en bas de la home).
 ## 12. Liens utiles
 
 - **Repo GitHub** : https://github.com/Karmakta91/MyKTAMap
-- **Page de transparence réseau** : `docs/NETWORK_AUDIT.html` (servie par votre instance)
-- **Template Nginx prêt à l'emploi** : `docs/nginx-myktamap.conf` (cf. §5.1)
-- **Conf Nginx CSP commentée** (incluse par le template) : `docs/nginx-csp-config.conf`
-- **Doc utilisateur** : `docs/README_USER.md` (accessible aussi depuis l'app via 📖)
+- **Page de transparence réseau** : [Audit réseau](applications/NETWORK_AUDIT.html) (servie aussi par votre
+  instance, `docs/applications/NETWORK_AUDIT.html`)
+- **Template Nginx prêt à l'emploi** : `docs/nginx-myktamap.conf` du dépôt (cf. § 5.1)
+- **Conf Nginx CSP commentée** (incluse par le template) : `docs/nginx-csp-config.conf` du dépôt
+- **Installer avec Docker** : [Installer avec Docker](applications/DOCKER_INSTALL.md)
+- **Proposer vos plans** : [Héberger une instance avec ses plans](applications/SELFHOST.md)
+- **Doc utilisateur** : [Guide utilisateur](applications/README_USER.md) (accessible aussi depuis l'app via 📖)
 - **Contact pro** : `contact@myktamap.fr` — pour usage commercial, demande de licence, intégration spécifique, ou ouverture de prestation d'installation
 
 ---
 
-*Document maintenu pour la version v1.28.x de MyKTAMap édition
-communautaire. Pour la version pro (multi-tenant, SSO, hébergement
+*Document de MyKTAMap édition communautaire. Pour la version pro (multi-tenant, SSO, hébergement
 managé), voir [pro.myktamap.fr/presentation](https://pro.myktamap.fr/presentation/).*

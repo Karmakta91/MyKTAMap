@@ -128,15 +128,6 @@
             '<div class="kta-compass-full-cardinal kta-compass-cardinal-display">N</div>' +
             '<div class="kta-compass-full-angle    kta-compass-angle-display">0°</div>' +
           '</div>' +
-          '<p class="kta-compass-full-hint">' +
-            t("compass.modal.hint") +
-          '</p>' +
-          '<ul class="kta-compass-full-list">' +
-            '<li>' + t("compass.modal.dirN") + '</li>' +
-            '<li>' + t("compass.modal.dirE") + '</li>' +
-            '<li>' + t("compass.modal.dirS") + '</li>' +
-            '<li>' + t("compass.modal.dirW") + '</li>' +
-          '</ul>' +
           '<p class="kta-compass-full-note">' +
             t("compass.modal.warning") +
           '</p>' +

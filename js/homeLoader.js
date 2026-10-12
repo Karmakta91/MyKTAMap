@@ -415,7 +415,7 @@
       // Configuration de l'accueil → « Mémoriser le plan dans l'app au premier
       // chargement », ACTIVÉ par défaut. Cette fonction est la source de
       // vérité unique : lue ici, par l'import multiple (défaut de la case
-      // « Précharger ») et par homeConfig (la case du réglage).
+      // « Mémoriser les plans dans l'app ») et par homeConfig (la case du réglage).
       window.ktaMemoriserPlanActif = function () {
         try { return localStorage.getItem("myktamap_memoriser_plan") !== "0"; } catch (e) { return true; }
       };
@@ -1511,7 +1511,6 @@ function planRowHTML(plan) {
               '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
                 '<span id="kta-plan-tiling-status" style="font-size:12px; color:#8892a4;"></span>' +
               '</div>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tilingHint")) + '</div>' +
             '</div>';
         }
 
@@ -1567,8 +1566,6 @@ function planRowHTML(plan) {
               '<div id="kta-plan-offline-zone" style="min-height:28px;">' +
                 '<span style="font-size:12px; color:#8892a4;">⏳</span>' +
               '</div>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
-                escapeHtml(_t("home.plans.offline.hint")) + '</div>' +
             '</div>';
         }
 
@@ -1635,8 +1632,6 @@ function planRowHTML(plan) {
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                 '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
                   escapeHtml(_t("home.plans.removeBtnTitle")) + '</button>' +
-                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
-                  escapeHtml(_t("home.plans.info.removeHint")) + '</div>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -1750,9 +1745,7 @@ function planRowHTML(plan) {
             if (bMaj) bMaj.addEventListener("click", lancer);
             if (bDel) bDel.addEventListener("click", function () {
               const msg = _t("home.plans.offline.confirmRetirer");
-              const confirmer = (typeof window.ktaConfirm === "function")
-                ? window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") })
-                : Promise.resolve(confirm(msg));
+              const confirmer = window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") });
               confirmer.then(function (okc) {
                 if (!okc) return;
                 window.PlanOffline.supprimer(plan.id).then(rendreOffline);
@@ -1811,9 +1804,8 @@ function planRowHTML(plan) {
               const mo = (octets / 1048576).toLocaleString(undefined, { maximumFractionDigits: 1 });
               caseDocs = { coche: false, label: _t("home.plans.removeDocs", { n: docs.length, mo: mo }) };
             }
-            const confirmer = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(msg, { okLabel: _t("home.plans.removeBtnTitle"), caseACocher: caseDocs })
-              : Promise.resolve(confirm(msg));
+            const confirmer = window.ktaConfirm(msg,
+              { okLabel: _t("home.plans.removeBtnTitle"), caseACocher: caseDocs });
             confirmer.then(async function(ok) {
               if (!ok) return;
               try { await window.PlanRegistry.purgeAssociatedData(plan.id); } catch(e) {
@@ -2061,8 +2053,14 @@ function planRowHTML(plan) {
         // Configuration restait décochée et la rangée de l'accueil visible mais sans effet (audit 05/10/2026).
         const cbSkip = document.getElementById("loaderSkipServerPlansCb");
         if (cbSkip) cbSkip.checked = skipServer;
+        // 11/10/2026 (retour KARMA) : aucun plan dans data/ → ni la case de l'accueil, ni la section de Configuration.
+        // Exception : « Ne pas charger les plans du site » ACTIVE — la liste du site n'est alors pas lue, on ne sait
+        // pas si elle a des plans, et l'option doit rester visible pour pouvoir être désactivée.
+        const aDesPlansSite = all.some(function(p) { return p.type === "server"; });
         const rangeeFiltres = document.querySelector(".loader-plans-filters");
-        if (rangeeFiltres) rangeeFiltres.style.display = skipServer ? "none" : "";
+        if (rangeeFiltres) rangeeFiltres.style.display = (skipServer || !aDesPlansSite) ? "none" : "";
+        const sectionSite = document.getElementById("loaderSitePlansSection");
+        if (sectionSite) sectionSite.style.display = (!skipServer && !aDesPlansSite) ? "none" : "";
 
         // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
         // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).
@@ -2134,7 +2132,7 @@ function planRowHTML(plan) {
         // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
         const visibles = filtered.filter(function(p) {
           // ✏️ v1.79.1 — le filtre matche le nom AFFICHÉ **et** le nom réel
-          // (retrouver « Cata KARMA » ou « Catacombes » doit marcher pareil).
+          // (retrouver « Releve KARMA » ou « Relevé » doit marcher pareil).
           if (_plansNameFilter &&
               String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
               String(p.displayName || "").toLowerCase().indexOf(_plansNameFilter) === -1) return false;
@@ -2604,7 +2602,7 @@ function planRowHTML(plan) {
                          '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' + titre + '</span>' +
                          '<button class="kta-panneau-close" type="button" data-close>✕</button></div>' +
                          '<div class="kta-readme-modal-corps kta-plans-sheet-corps">' + corpsHtml + '</div></div>';
-        const fermer = function() { document.removeEventListener("keydown", surTouche); ov.remove(); };
+        const fermer = function() { document.removeEventListener("keydown", surTouche, true); ov.remove(); };
         const surTouche = function(e) { if (e.key === "Escape") { e.stopPropagation(); fermer(); } };
         ov.addEventListener("click", function(e) { if (e.target === ov || e.target.hasAttribute("data-close")) fermer(); });
         document.addEventListener("keydown", surTouche, true);
@@ -3274,9 +3272,8 @@ function planRowHTML(plan) {
         if (skipCb) skipCb.checked = window._loaderSkipServerPlans();
         // Masque/montre le toggle home selon la pref
         const homeFilterRow = document.querySelector(".loader-plans-filters");
-        if (homeFilterRow) {
-          homeFilterRow.style.display = window._loaderSkipServerPlans() ? "none" : "";
-        }
+        if (homeFilterRow && window._loaderSkipServerPlans()) homeFilterRow.style.display = "none";
+        // (l'affichage inverse est décidé par refreshPlansList : il sait s'il existe des plans du site)
       }
       const skipServerCb = document.getElementById("loaderSkipServerPlansCb");
       if (skipServerCb) {

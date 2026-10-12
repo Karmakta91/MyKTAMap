@@ -107,12 +107,12 @@
 
   // Format distance pour UI (réutilise window.formatDistance si dispo,
   // sinon fallback simple en pixels).
-  // 🐛 v1.40.35 — KARMA bug "Cavage Oise : 4.63 km au lieu de 944,5 m" :
+  // 🐛 v1.40.35 — KARMA bug "relevé réel : 4.63 km au lieu de 944,5 m" :
   // `distPx` est une somme de distances euclidiennes en **pixels plan**
   // (cf _calculerDistPathfinder ligne ~135) mais `window.formatDistance`
   // attend des **mètres** (cf utils.js ligne 131). On oubliait la conversion
   // `/ APP_CONFIG.scale` (pixels par mètre) — du coup la distance affichée
-  // était multipliée par le ratio scale (~4.9 sur le plan Oise).
+  // était multipliée par le ratio scale (~4.9 sur un relevé réel).
   // Cohérent avec lostMode.js et measure.js qui font cette conversion.
   function _formatDist(distPx) {
     const scale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number"
@@ -164,13 +164,16 @@
       // Une zone (inaccessible, ou évitée en brancard) qui coupe la galerie d'une sortie ne
       // la rend pas injoignable : le moteur cale la sortie sur la galerie restante la plus
       // proche et le chemin s'arrête court — la sortie passait devant à tort. Les écarts de
-      // calage (départ et arrivée) comptent dans la distance (06/10/2026) ; en brancard,
-      // au-delà de 10 m, la sortie n'est atteinte qu'en traversant ce qu'on voulait éviter.
+      // calage (départ et arrivée) comptent dans la distance (06/10/2026). Au-delà de 10 m
+      // d'écart, le chemin est « coupé » : en brancard, la sortie n'est atteinte qu'en
+      // traversant ce qu'on voulait éviter ; en mode classique (10/10/2026, décision KARMA),
+      // une zone inaccessible ou une galerie non tracée sépare le chemin de la sortie. Même
+      // seuil, même rang (après les chemins entiers), alerte dans la fenêtre.
       const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
       const ecart = _distEucl(origine, res.path[0]) + _distEucl(res.path[res.path.length - 1], cible);
       d += ecart;
-      const contourne = !!(c && (res.usedFallback || ecart > 10 * pxParM));
-      return { distPx: d, path: res.path, contourne: contourne };
+      const contourne = !!(res.usedFallback || ecart > 10 * pxParM);
+      return { distPx: d, path: res.path, contourne: contourne, ecartM: ecart / pxParM };
     }).catch(function(err) {
       console.warn("[SortieUrgence] computeRoute échec pour", cible.nom, ":", err);
       return null;
@@ -204,7 +207,8 @@
     return Promise.all(presort.map(function(item) {
       return _calculerDistPathfinder(origine, item.point, contraintes).then(function(pf) {
         if (pf) {
-          return { point: item.point, distPx: pf.distPx, path: pf.path, fallback: false, contourne: pf.contourne };
+          return { point: item.point, distPx: pf.distPx, path: pf.path, fallback: false,
+                   contourne: pf.contourne, ecartM: pf.ecartM };
         }
         // Fallback : distance euclidienne (sortie inaccessible par pathfinder,
         // on l'inclut quand même mais marquée fallback dans l'UI).
@@ -214,7 +218,8 @@
       return resultats.sort(function(a, b) {
         // Les non-fallback d'abord (= vraiment atteignables), puis par dist.
         if (a.fallback !== b.fallback) return a.fallback ? 1 : -1;
-        // Brancard : un chemin qui respecte les zones à éviter passe avant un chemin qui les traverse.
+        // Un chemin entier passe avant un chemin coupé (brancard : qui traverse une zone à
+        // éviter ; classique : qui s'arrête à plus de 10 m de la sortie ou de la position).
         if (!!a.contourne !== !!b.contourne) return a.contourne ? 1 : -1;
         return a.distPx - b.distPx;
       });
@@ -280,9 +285,15 @@
 
   // Options brancard (Mode Secours) : rappel de ce que le calcul évite, et alerte si la
   // meilleure sortie n'est atteignable qu'en traversant une zone demandée « à éviter ».
+  // Sans options (sortie classique) : même alerte si le meilleur chemin est coupé (> 10 m).
   function _htmlContraintes(meta, meilleure) {
     const c = meta && meta.contraintes;
-    if (!c) return "";
+    if (!c) {
+      if (!meilleure || !meilleure.contourne) return "";
+      const ecart = window.formatDistance(meilleure.ecartM || 0, 0);
+      return '<div class="kta-sortie-fallback-txt">⚠️ ' +
+             window.I18n.t("sortie.coupee.alerte", { ecart: ecart }) + '</div>';
+    }
     const lab = function(type) {
       const L = window.LegendCustomization;
       const l = L && typeof L.getLabel === "function" ? L.getLabel("zones", type) : null;
@@ -433,7 +444,7 @@
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
         { origine: _lastResultats.origine, urgence: true, evacuation: evac });
     } else {
-      alert(window.I18n.t("sortie.erreur.itineraireIndispo"));
+      window.ktaAlerte(window.I18n.t("sortie.erreur.itineraireIndispo"), { type: "erreur" });
     }
   };
 
@@ -513,7 +524,7 @@
   SU._modePickerCarte = function() {
     _fermerModale();
     if (!window.map) {
-      alert(window.I18n.t("sortie.erreur.carteIndispo"));
+      window.ktaAlerte(window.I18n.t("sortie.erreur.carteIndispo"), { type: "erreur" });
       return;
     }
     // Picker partagé (utils.js) : floater « Où es-tu ? » avec Annuler, clic

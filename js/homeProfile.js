@@ -362,7 +362,7 @@
             } catch(e) {}
             // 🆕 v1.54.0 : scan session pour les spéciaux (tracker + niveaux annotés)
             try {
-              const sraw = localStorage.getItem("myktamap_session_v1_" + p.id);
+              const sraw = window.KtaSessionStore.lire(p.id);
               if (sraw) {
                 const s = JSON.parse(sraw);
                 const tl = Array.isArray(s.trackerTimeline) ? s.trackerTimeline : [];
@@ -648,6 +648,8 @@
         { db: "myktamap_handles", store: "handles", blobFields: [] },
         { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
+        // Sessions auto-sauvegardées (js/sessionStore.js, IndexedDB depuis le 10/10/2026).
+        { db: "myktamap_sessions", store: "sessions", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
         { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
@@ -815,7 +817,16 @@
           } else if (key === "storage") {
             try {
               const bytes = await _getStorageMyktamapCached();
-              valEl.textContent = _formatBytesShort(bytes);
+              // 10/10/2026 : la mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le
+              // total reste modeste — on le signale ici (⚠️ + infobulle), le détail est dans 📊 Détails de la session.
+              const S = window.ktaStockageLocal;
+              const mem = S ? S.mesurer() : null;
+              const alerte = mem && mem.ratio >= S.SEUIL_ALERTE;
+              valEl.textContent = _formatBytesShort(bytes) + (alerte ? " ⚠️" : "");
+              if (alerte) {
+                slot.title = window.I18n.t("home.profile.stats.memoireAlerte",
+                  { pct: Math.min(100, Math.round(mem.ratio * 100)), occupe: S.mo(mem.car), limite: S.mo(mem.limite) });
+              }
             } catch(e) {
               valEl.textContent = "—";
             }
@@ -860,7 +871,7 @@
         if (ex) ex.parentNode.removeChild(ex);
 
         if (!window.UserProfile) {
-          alert(_t("home.profile.moduleUnavailable"));
+          window.ktaAlerte(_t("home.profile.moduleUnavailable"), { type: "erreur" });
           return;
         }
         const snap = window.UserProfile.get();
@@ -893,7 +904,6 @@
                     'value="' + (snap.surnom || "").replace(/"/g, "&quot;") + '">' +
                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">' + _t("home.profile.saveName") + '</button>' +
                 '</div>' +
-                '<p class="kta-profile-details-hint">' + _t("home.profile.nicknameHint") + '</p>' +
               '</div>' +
 
               // 🆕 v1.52.0 — Rang / badge (gamification, hydraté par _hydrateProfileRank)
@@ -971,7 +981,6 @@
                     '<input type="range" id="kta-wall-posy" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + '">' +
                     '<span class="kta-wall-voile-val" id="kta-wall-posy-val">' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + ' %</span>' +
                   '</div>' +
-                  '<p class="kta-profile-details-hint">' + _t("home.profile.wallCadrageHint") + '</p>' +
                 '</div>' +
                 '<p class="kta-profile-details-hint">' + _t("home.profile.wallHint") + '</p>' +
               '</div>' +
@@ -1018,8 +1027,9 @@
           // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
           // final. Deux rendus frais, coût négligeable (une fois par
           // fermeture), et ça rend le symptôme impossible par construction.
-          try { _refreshLoaderProfileBar(); } catch(e) {}
-          try { _appliquerFondEcran(); }     catch(e) {}
+          // Fonctions async : un try ne voit pas leur rejet, le .catch si.
+          _refreshLoaderProfileBar().catch(function() {});
+          _appliquerFondEcran().catch(function() {});
         };
         const escFn = function(e) { if (e.key === "Escape" || e.key === "Esc") closeFn(); };
         document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);
@@ -1104,7 +1114,7 @@
               saveBtn.textContent = _t("home.profile.saveName");
             }, 700);
           } catch(e) {
-            alert(_t("home.profile.errGeneric") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" });
             saveBtn.disabled = false;
             saveBtn.textContent = _t("home.profile.saveName");
           }
@@ -1131,21 +1141,21 @@
             removeBtn.style.display = "";
             photoBtn.textContent = _t("home.profile.photoChange");
           } catch(e) {
-            alert(_t("home.profile.errPhotoUpload") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errPhotoUpload") + (e.message || e), { type: "erreur" });
             photoBtn.textContent = _t("home.profile.photoBtn");
           }
           photoBtn.disabled = false;
           photoInput.value = "";
         });
         removeBtn.addEventListener("click", async function() {
-          if (!confirm(_t("home.profile.confirmRemovePhoto"))) return;
+          if (!(await window.ktaConfirm(_t("home.profile.confirmRemovePhoto")))) return;
           try {
             await window.UserProfile.removePhoto();
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
-          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
 
         // Boutons export / import (réutilise ProfileExportImport + le file picker
@@ -1154,7 +1164,7 @@
           if (window.ProfileExportImport && window.ProfileExportImport.ouvrirExportModale) {
             window.ProfileExportImport.ouvrirExportModale();
           } else {
-            alert(_t("home.profile.errExportModule"));
+            window.ktaAlerte(_t("home.profile.errExportModule"), { type: "erreur" });
           }
         });
         // 🩸 Le bouton n'existe pas en kiosque : sans ce test, `addEventListener`
@@ -1265,7 +1275,7 @@
             await window.UserProfile.setWallpaper(f);
             await _rafraichirApercuFond();
           } catch(e) {
-            alert(_t("home.profile.errGeneric") + (e.message || e));
+            window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" });
           } finally {
             wallBtn.disabled = false;
             wallBtn.textContent = label;
@@ -1274,7 +1284,7 @@
         });
         wallRemove.addEventListener("click", async function() {
           try { await window.UserProfile.removeWallpaper(); await _rafraichirApercuFond(); }
-          catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
         // `input` = aperçu live pendant le glissement ; `change` = persistance
         // au relâchement seulement (sinon une écriture IDB par pixel parcouru).
@@ -1325,7 +1335,7 @@
             // 🖼️ v1.74.0 : `clear()` efface l'entrée entière, fond compris —
             // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
             await _rafraichirApercuFond();
-          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+          } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
       }
 
@@ -1363,9 +1373,6 @@
                 '<div style="background:rgba(110,226,135,0.06); border:1px solid rgba(110,226,135,0.22); border-radius:6px; padding:10px 12px; margin-bottom:8px;">' +
                   _t("home.profile.resetKept") +
                 '</div>' +
-                '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
-                  _t("home.profile.resetAfterHint") +
-                '</p>' +
               '</div>' +
               '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
                 '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">' + _t("home.profile.cancel") + '</button>' +
@@ -1537,12 +1544,7 @@
             }
           }
         } catch(e) {}
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (k && k.startsWith("myktamap_session_v1_")) nbSessions++;
-          }
-        } catch(e) {}
+        try { nbSessions = window.KtaSessionStore.ids().length; } catch(e) {}
         if (window.SessionBackups && window.SessionBackups.listAll) {
           try { const arr = await window.SessionBackups.listAll(); nbBackups = arr.length; } catch(e) {}
         }
@@ -1608,9 +1610,6 @@
                 '<tfoot id="kta-profile-plansstats-tfoot"></tfoot>' +
               '</table>' +
             '</div>' +
-            '<p class="kta-profile-plansstats-note">' +
-              _t("home.profile.stats.plansNote") +
-            '</p>' +
           '</div>';
 
         // Lancement async du calcul agrégé séquentiel (anti-crash)
@@ -1780,8 +1779,8 @@
       };
 
       // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
-      // Itère le PlanRegistry, pour chaque plan lit son slot localStorage
-      // `myktamap_session_v1_<planId>` (lecture instantanée), compte
+      // Itère le PlanRegistry, pour chaque plan lit sa session (KtaSessionStore,
+      // lecture instantanée depuis la mémoire), compte
       // editorPoints + roads et somme la longueur cumulée des tracés en
       // pixels. `await new Promise(r => setTimeout(r, 0))` entre 2 plans
       // pour laisser respirer le thread UI (vital sur mobile avec 10+ plans).
@@ -1929,7 +1928,7 @@
           let pointsByTag = {}, roadsByType = {};
           let zonesByType = {}, structsByType = {};
           try {
-            const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+            const raw = window.KtaSessionStore.lire(plan.id);
             if (raw) {
               const data = JSON.parse(raw);
               const eps = Array.isArray(data.editorPoints) ? data.editorPoints : [];
@@ -2006,11 +2005,11 @@
               });
             }
             // 🏷️ v1.90.5 — La SESSION du plan porte aussi ses renommages, et
-            // elle est déjà en localStorage : c'est gratuit, on la lit toujours.
+            // elle est déjà en mémoire (KtaSessionStore) : c'est gratuit, on la lit toujours.
             // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
             // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
             try {
-              const brut = localStorage.getItem("myktamap_session_v1_" + plan.id);
+              const brut = window.KtaSessionStore.lire(plan.id);
               if (brut) {
                 const noms = _nomsDepuisLegende((JSON.parse(brut) || {}).customLegend);
                 Object.keys(noms).forEach(function(k) {
@@ -2105,7 +2104,7 @@
       //   inclure → on ne garde QUE les plans qui la portent
       //   exclure → on retire les plans qui la portent, quoi qu'il arrive
       // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué
-      // « gironde » ET « brouillon », avec gironde inclus et brouillon exclu,
+      // « secteur » ET « brouillon », avec secteur inclus et brouillon exclu,
       // est ÉCARTÉ. L'inverse ferait rentrer par une porte ce qu'on a fermé par
       // l'autre — et c'est exactement le cas d'usage (« sors-moi l'atlas »).
       //

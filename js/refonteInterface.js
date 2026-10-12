@@ -753,9 +753,9 @@
     const mesureIconEl = mesureEl ? mesureEl.querySelector(".kta-refonte-stat-icon") : null;
     if (valD && valS) {
       if (mesureIconEl) mesureIconEl.textContent = "📐";
-      _setStat("kta-refonte-stat-mesure", valD + " · ⬛ " + valS);
+      _setStat("kta-refonte-stat-mesure", valD + " · ♦️ " + valS);
     } else if (valS) {
-      if (mesureIconEl) mesureIconEl.textContent = "⬛";
+      if (mesureIconEl) mesureIconEl.textContent = "♦️";
       _setStat("kta-refonte-stat-mesure", valS);
     } else if (valD) {
       if (mesureIconEl) mesureIconEl.textContent = "📐";
@@ -1315,7 +1315,7 @@
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">⬛ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
+      h += '<span class="kta-refonte-stats-label">♦️ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
       h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.surface.points }) + ')</span>';
       h += '</div>';
     }
@@ -1414,7 +1414,7 @@
       const surfTxt = (typeof window.formatSurface === "function")
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
-      lines.push("## ⬛ " + window.I18n.t("ui.refonte.export_mesure_surface_titre"));
+      lines.push("## ♦️ " + window.I18n.t("ui.refonte.export_mesure_surface_titre"));
       lines.push(window.I18n.t("ui.refonte.export_mesure_surface", { surf: surfTxt, n: stats.mesure.surface.points }));
       lines.push("");
     }
@@ -1431,6 +1431,64 @@
     lines.push(window.I18n.t("ui.refonte.export_footer"));
     return lines.join("\n");
   }
+
+  // Le quota IndexedDB se lit en asynchrone : la section s'affiche avec la dernière mesure connue, puis se
+  // redessine en place avec une mesure fraîche.
+  function _htmlMemoireSessions() {
+    const st = window.KtaSessionStore;
+    if (st && st.mode() === "idb" && typeof st.actualiserEstimation === "function") {
+      st.actualiserEstimation().then(function () {
+        const el = document.getElementById("kta-refonte-session-memoire");
+        if (el) el.outerHTML = _htmlMemoireSessionsMesure();
+      }).catch(function () { /* garde l'affichage */ });
+    }
+    return _htmlMemoireSessionsMesure();
+  }
+
+  function _htmlMemoireSessionsMesure() {
+    const S = window.ktaStockageLocal;
+    if (!S) return "";
+    const m = S.mesurer();
+    const pct = Math.min(100, Math.round(m.ratio * 100));
+    const niveau = m.ratio >= 0.95 ? "plein" : (m.ratio >= S.SEUIL_ALERTE ? "presque" : "ok");
+    const esc = window.ktaEsc || function (x) { return String(x); };
+    const plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? window.PlanRegistry.getAll() : [];
+    const nomDe = function (id) {
+      const p = plans.find(function (x) { return x && x.id === id; });
+      return p && p.name ? p.name : window.I18n.t("ui.refonte.memoire_plan_inconnu");
+    };
+    let h = '<div class="kta-refonte-session-section" id="kta-refonte-session-memoire">';
+    h += '<div class="kta-refonte-session-section-titre">💾 ' + window.I18n.t("ui.refonte.section_memoire") +
+         ' <span class="kta-refonte-session-badge kta-memoire-' + niveau + '">' + pct + ' %</span></div>';
+    h += '<div class="kta-memoire-jauge"><div class="kta-memoire-barre kta-memoire-' + niveau +
+         '" style="width:' + pct + '%"></div></div>';
+    // IndexedDB (normal) : quota du site, part de l'espace libre de l'appareil. Repli localStorage : ~5 Mo.
+    const idb = m.mode === "idb";
+    const cleOccupe = idb ? (m.limite ? "ui.refonte.memoire_occupe_idb" : "ui.refonte.memoire_occupe_idb_sans") : "ui.refonte.memoire_occupe";
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t(cleOccupe,
+         { occupe: S.mo(m.car), limite: m.limite ? S.mo(m.limite) : "", sessions: S.mo(m.carSessions || 0) })) + '</div>';
+    if (niveau !== "ok") {
+      h += '<div class="kta-memoire-conseil kta-tx-' + (niveau === "plein" ? "err" : "warn") + '">' +
+           esc(window.I18n.t(idb ? "ui.refonte.memoire_conseil_idb" : "ui.refonte.memoire_conseil")) + '</div>';
+    }
+    const lourds = m.sessions.slice(0, 5);
+    if (lourds.length) {
+      h += '<ul class="kta-memoire-plans">';
+      lourds.forEach(function (x) {
+        const courant = x.planId === window._currentLoadedPlanId;
+        h += '<li><span>' + (courant ? "📍 " : "") + esc(nomDe(x.planId)) + '</span><b>' + esc(S.mo(x.car)) + '</b></li>';
+      });
+      h += '</ul>';
+    }
+    h += '<div class="kta-memoire-legende">' + esc(window.I18n.t(idb ? "ui.refonte.memoire_autres_idb" : "ui.refonte.memoire_autres",
+         { autres: S.mo(m.autres) })) + '</div>';
+    return h + '</div>';
+  }
+
+  // Ouverture depuis l'alerte « mémoire des sessions » (sessionPersist.js) : ouvre, ne referme jamais.
+  window.ktaOuvrirDetailsSession = function () {
+    if (!document.getElementById("kta-refonte-session-modal")) _afficherModaleSessionDetail();
+  };
 
   function _afficherModaleSessionDetail() {
     // Cleanup éventuel d'une instance précédente
@@ -1488,9 +1546,6 @@
               '<button type="button" class="kta-btn kta-btn-primary" id="kta-refonte-session-open-stats-glob">' +
                 '📊 ' + window.I18n.t("ui.refonte.modal_cta_stats_glob") +
               '</button>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:4px; text-align:center; font-style:italic;">' +
-                window.I18n.t("ui.refonte.modal_cta_stats_glob_hint") +
-              '</div>' +
             '</div>';
 
     // 🚨 Q46 (audit 13/09/2026) : « Enregistré il y a N s » en tête — rien ne
@@ -1672,7 +1727,7 @@
           ? window.formatSurface(surfM2, 1)
           : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
         html += '<li>' +
-          '<strong>⬛ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
+          '<strong>♦️ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
           '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + window.I18n.t("ui.refonte.label_n_vertices", { n: mesureSurfDetail.length }) + ')</span>' +
         '</li>';
       }
@@ -1801,9 +1856,6 @@
     // courant + total cross-plan.
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-favoris-section">';
     html += '<div class="kta-refonte-session-section-titre">⭐ ' + window.I18n.t("ui.refonte.section_favoris") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
-    html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-              window.I18n.t("ui.refonte.favoris_desc") +
-            '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-current">' +
                 '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_current") +
@@ -1818,6 +1870,12 @@
             '</div>';
     html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:#8892a4; min-height:14px; font-style:italic;"></div>';
     html += '</div>';
+
+    // ─── 💾 Mémoire des sessions (10/10/2026) ───
+    // Les sessions vivent en IndexedDB (quota du navigateur pour le site) — en repli, dans le localStorage
+    // (~5 Mo par site). Plein, plus rien ne se sauvegarde. Jauge + plans les plus lourds, pour faire le ménage
+    // AVANT la panne.
+    html += _htmlMemoireSessions();
 
     // ─── 🆕 v1.16.0 step 4 : 📦 Backups récents (10 FIFO IDB) ───
     //
@@ -1942,11 +2000,8 @@
         };
         window.Journal.affinerEnCours().then(function(bilan) {
           if (bilan && bilan.skipped === "trop-gros") {
-            const demander = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
-                                  { titre: window.I18n.t("jrn.affiner.confirmTitre") })
-              : Promise.resolve(window.confirm(window.I18n.t("jrn.affiner.confirmGros",
-                                                             { n: bilan.nbPts || "?" })));
+            const demander = window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
+                                               { titre: window.I18n.t("jrn.affiner.confirmTitre") });
             return demander.then(function(ok) {
               if (!ok) return null;
               return window.Journal.affinerEnCours({ force: true });
@@ -2014,15 +2069,12 @@
       _btnCopier.addEventListener("click", function() {
         const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
         const txt = _genererStatsAggregeesTXT(_stats, planName, multiLevel);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt).then(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_ok"), "info");
-          }).catch(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_fail"), "warn");
-          });
-        } else {
-          if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_clipboard_unavailable"), "warn");
-        }
+        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        window.ktaCopierTexte(txt).then(function(ok) {
+          if (!window.OOMGuard || !window.OOMGuard.showToast) return;
+          if (ok) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_ok"), "info");
+          else window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_fail"), "warn");
+        });
       });
     }
     if (_btnExport) {
@@ -2063,7 +2115,17 @@
         // en IDB (utiles pour le retour à un autre plan) mais ne sont pas
         // affichés dans la liste de CE plan.
         const currentPlanId = window._currentLoadedPlanId || null;
+        // 10/10/2026 (retour testeur en prod) : un plan réimporté (« Garder les deux ») ou renommé change
+        // d'identifiant — ses copies, rangées sous l'ANCIEN, n'apparaissaient plus. Même nom (comparaison
+        // tolérante, cf. SessionPersist.normNomPlan) = « autre version de ce plan », restaurable ici.
+        const nomPlan = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
+        const norm = (window.SessionPersist && window.SessionPersist.normNomPlan) || function (x) { return String(x || ""); };
+        const autreVersion = function (b) {
+          return !!(currentPlanId && b.planId && b.planId !== currentPlanId && nomPlan && b.planName &&
+            norm(b.planName) === norm(nomPlan));
+        };
         const arr = arrAll.filter(function(b) {
+          if (autreVersion(b)) return true;
           // Si le snapshot n'a pas de planId (cas legacy ou session vide),
           // on l'affiche quand même — il pourrait correspondre. Sinon on
           // exige une correspondance stricte.
@@ -2131,9 +2193,11 @@
                    ' <span class="kta-refonte-session-meta">' +
                      _countContent(b.payload) +
                      ' · <em style="opacity:0.7;">' + _esc(b.reason || window.I18n.t("ui.refonte.label_backup_auto")) + '</em>' +
+                     (autreVersion(b) ? ' · <span class="kta-tx-warn">📂 ' + _esc(window.I18n.t("ui.refonte.backup_autre_version")) + '</span>' : "") +
                    '</span>' +
                  '</span>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                   (autreVersion(b) ? 'data-backup-autre="1" ' : "") +
                    'data-backup-restore="' + b.id + '" title="' + window.I18n.t("ui.refonte.btn_restore_title") + '">' +
                    '↻ ' + window.I18n.t("ui.refonte.btn_restore") +
                  '</button>' +
@@ -2149,9 +2213,10 @@
         listEl.querySelectorAll("[data-backup-restore]").forEach(function(btn) {
           btn.addEventListener("click", function() {
             const id = Number(btn.getAttribute("data-backup-restore"));
-            window.ktaConfirm(window.I18n.t("ui.refonte.confirm_restore")).then(function(ok) {
+            const autre = btn.getAttribute("data-backup-autre") === "1";
+            window.ktaConfirm(window.I18n.t(autre ? "ui.refonte.confirm_restore_autre" : "ui.refonte.confirm_restore")).then(function(ok) {
             if (!ok) return;
-            window.SessionBackups.restore(id).then(function() {
+            window.SessionBackups.restore(id, autre ? { versPlanId: currentPlanId, versPlanName: nomPlan } : null).then(function() {
               if (window.OOMGuard && window.OOMGuard.showToast) {
                 window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_restore_ok"), "info");
               }

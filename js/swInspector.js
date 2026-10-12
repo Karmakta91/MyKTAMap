@@ -330,7 +330,6 @@
     html +=
       '<details class="kta-mem-section">' +
         '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("present.titre", { count: diff.present.length }) + '</summary>' +
-        '<div class="kta-mem-line kta-mem-dim" style="margin-top:8px;">' + _t("present.hint") + '</div>' +
         '<div class="kta-sw-inspector-scrollbox" style="font-size:11.5px;">' +
           diff.present.map(function(a) { return _escapeHtml(a); }).join('<br>') +
         '</div>' +

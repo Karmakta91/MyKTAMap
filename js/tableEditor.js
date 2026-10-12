@@ -53,6 +53,9 @@
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
   function _toucher(obj) { if (window.KtaUid && obj) window.KtaUid.touch(obj); }
+  // Titre d'une carte source : la carte a déjà son icône, on retire l'emoji de tête de la clé (gardé
+  // ailleurs, ex. titre de la fenêtre de fusion).
+  function _sansIcone(s) { return String(s).replace(/^[^\p{L}\p{N}]+/u, ""); }
 
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
@@ -345,7 +348,6 @@
           <button class="kta-panneau-close" id="kta-tbl-close-accueil">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">${window.I18n.t("tabledit.accueil.aide")}</p>
           <div id="kta-tbl-accueil-err" class="kta-conv-erreur" style="display:${errMsg ? "block" : "none"}; margin-bottom:12px;">${errMsg ? _escapeHtml(errMsg) : ""}</div>
           <div class="kta-tbl-sources">
             ${planDispo ? `<button class="kta-tbl-source-card" id="kta-tbl-src-plan">
@@ -376,7 +378,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-fusion">
               <span class="kta-tbl-source-ico">🔗</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.fusion")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.fusion"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
               </span>
             </button>
@@ -387,7 +389,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
               <span class="kta-tbl-source-ico">🔁</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.resol")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.resol"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
@@ -396,7 +398,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-dedup">
               <span class="kta-tbl-source-ico">🧹</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.dedup")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.dedup"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.dedupHint")}</span>
               </span>
             </button>
@@ -579,10 +581,6 @@
           <button class="kta-panneau-close" id="kta-tbl-close-import">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
-          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-            ${window.I18n.t("tabledit.import.aide")}
-          </p>
-
           <div class="kta-tbl-drop" id="kta-tbl-drop">
             <div style="font-size:32px; opacity:0.6;">📂</div>
             <div style="margin-top:8px;">${window.I18n.t("tabledit.import.drop.titre")}</div>
@@ -1203,10 +1201,10 @@
     if (wrap) wrap.scrollTop = wrap.scrollHeight;
   }
 
-  function _supprimerSelection() {
+  async function _supprimerSelection() {
     if (_selection.size === 0) return;
     const n = _selection.size;
-    if (!confirm(window.I18n.t("tabledit.confirm.supprimer", { n: n }))) return;
+    if (!(await window.ktaConfirm(window.I18n.t("tabledit.confirm.supprimer", { n: n })))) return;
     const indices = [..._selection].sort(function(a, b) { return b - a; });
     indices.forEach(function(i) { _data.splice(i, 1); });
     _selection.clear();
@@ -1237,11 +1235,11 @@
   // ========== APERÇU SUR LA CARTE ==========
   function _apercuCarte() {
     if (_selection.size === 0) {
-      alert(window.I18n.t("tabledit.preview.err.aucuneLigne"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.aucuneLigne"));
       return;
     }
     if (!window.map || !APP_CONFIG) {
-      alert(window.I18n.t("tabledit.preview.err.carteIndispo"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.carteIndispo"), { type: "erreur" });
       return;
     }
 
@@ -1249,7 +1247,7 @@
     const points = [..._selection].map(function(i) { return _data[i]; })
       .filter(function(p) { return typeof p.x === "number" && typeof p.y === "number"; });
     if (points.length === 0) {
-      alert(window.I18n.t("tabledit.preview.err.coordsInvalides"));
+      window.ktaAlerte(window.I18n.t("tabledit.preview.err.coordsInvalides"));
       return;
     }
 
@@ -1491,10 +1489,23 @@
   // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule : la session ne se remplace pas
-    if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
+    if (!window.setEditorPoints) {
+      window.ktaAlerte(window.I18n.t("tabledit.save.err.sessionIndispo"), { type: "erreur" });
+      return;
+    }
+    // 📸 Fiche des photos des points (retrouver le point s'il disparaît) : les points
+    // d'AVANT d'abord, puis ceux d'après qui l'emportent — un point retiré par le
+    // tableau garde ainsi la fiche de son dernier état, ses photos restent « sans point ».
+    const _avantTableau = (window.getEditorPoints && window.getEditorPoints()) || [];
+    if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && window._currentLoadedPlanId) {
+      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, _avantTableau.concat(_data));
+    }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
-    alert(window.I18n.t("tabledit.save.sessionOk", { n: _data.length }));
+    // Carte masquée par l'éditeur : le résultat ne se voit pas → toast warn (visible en « Essentielles »).
+    const msgOk = window.I18n.t("tabledit.save.sessionOk", { n: _data.length });
+    if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msgOk, "warn", { important: true });
+    else window.ktaAlerte(msgOk);
   }
 
   // =========================
@@ -1658,7 +1669,6 @@
           <button class="kta-panneau-close" id="kta-tbl-dedup-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${t("tabledit.dedup.intro")}</p>
           <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${t("tabledit.dedup.fichiers")}</div>
           <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${t("tabledit.dedup.choisirFichiers")}
@@ -1720,8 +1730,7 @@
           if (restants === 0) {
             let msg = t("tabledit.dedup.okMulti", { ok: ok, detail: bilans.join("\n") || "—" });
             if (echecs.length) msg += "\n\n⚠️ " + t("tabledit.dedup.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
-            alert(msg);
-            if (ok) fermer();
+            window.ktaAlerte(msg).then(function() { if (ok) fermer(); });   // bilan lu avant la fermeture
           }
         });
       });
@@ -1746,7 +1755,7 @@
         <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
           <input type="file" id="${id}_img" accept="image/*" style="display:none;">
         </label>
-        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
     };
     // Paire de correspondance : xA,yA (plan source) → xB,yB (plan destination)
     const champPaire = function(id, titre, hint) {
@@ -1757,7 +1766,7 @@
           <input class="kta-cfg-input" id="${id}_xb" type="number" step="any" placeholder="xB">
           <input class="kta-cfg-input" id="${id}_yb" type="number" step="any" placeholder="yB">
         </div>
-        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+        ${hint ? `<span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>` : ""}`;
     };
     sub.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:500px; height:auto; max-height:90vh;">
@@ -1769,13 +1778,13 @@
           <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
           <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
-          ${champRes("kta-tbl-resol-src", "", "", window.I18n.t("tabledit.resol.sourceHint"))}
+          ${champRes("kta-tbl-resol-src", "", "", "")}
           <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
-          ${champRes("kta-tbl-resol-dst", w0, h0, window.I18n.t("tabledit.resol.destHint"))}
+          ${champRes("kta-tbl-resol-dst", w0, h0, "")}
 
           <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">🎯 ${window.I18n.t("tabledit.resol.recalTitre")}</div>
           <p style="color:#8892a4; margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
-          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), window.I18n.t("tabledit.resol.paireHint"))}
+          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), "")}
           <div class="kta-planner-grille" style="margin:8px 0 2px;">
             <label class="kta-cfg-label" for="kta-tbl-resol-theta">${window.I18n.t("tabledit.resol.rotation")}</label>
             <input class="kta-cfg-input" id="kta-tbl-resol-theta" type="number" step="any" value="0">
@@ -1815,7 +1824,7 @@
             $("kta-tbl-resol-" + cote + "_h").value = dm.height;
             recap();
           } else {
-            alert(window.I18n.t("tabledit.resol.errImage", { nom: f.name }));
+            window.ktaAlerte(window.I18n.t("tabledit.resol.errImage", { nom: f.name }), { type: "erreur" });
           }
         });
       });
@@ -1893,7 +1902,7 @@
       } else if (res.mode === "1p") {
         html = window.I18n.t("tabledit.resol.mode1p") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong> · θ = <strong>" + res.theta + "°</strong>";
       } else {
-        html = window.I18n.t("tabledit.resol.mode2p") + "<br>échelle = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
+        html = window.I18n.t("tabledit.resol.mode2p") + "<br>" + window.I18n.t("tabledit.resol.echelle") + " = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
       }
       if (fichiers.length) html += "<br>" + window.I18n.t("tabledit.resol.nbFichiers", { n: fichiers.length });
       recapEl.innerHTML = html;
@@ -1935,8 +1944,7 @@
           if (restants === 0) {
             let msg = window.I18n.t("tabledit.resol.okMulti", { ok: bilans.length, detail: bilans.join("\n") || "—" });
             if (echecs.length) msg += "\n\n⚠️ " + window.I18n.t("tabledit.resol.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
-            alert(msg);
-            if (bilans.length) fermer();
+            window.ktaAlerte(msg).then(function() { if (bilans.length) fermer(); });   // bilan lu avant la fermeture
           }
         });
       });

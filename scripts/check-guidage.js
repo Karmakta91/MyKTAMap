@@ -17,7 +17,9 @@
  *     tous les trois mètres ;
  *   • le raccord à vol d'oiseau est rendu, compté (×2 pour une étape) et
  *     alerté au-delà de 50 m ;
- *   • le passage d'une jonction de niveau se dit.
+ *   • le passage d'une jonction de niveau se dit ;
+ *   • l'étape inter-plans pèse ses jonctions avec les profondeurs et l'échelle
+ *     de SON plan, jamais celles du plan ouvert.
  *
  * Usage : node scripts/check-guidage.js   (exit 1 si un contrôle échoue)
  */
@@ -228,9 +230,10 @@ async function evacuationBrancard() {
   w.itineraireYAller = (x, y, nom, o) => { trace = { x: x, y: y, o: o }; };
   vm.runInContext("var window = this;" + fs.readFileSync(path.join(ROOT, "js/sortieUrgence.js"), "utf8"), vm.createContext(w));
   const supp = [{ x: 500, y: 500, nom: "A" }, { x: 900, y: 500, nom: "B" }];
-  async function evacuer(contraintes) {
+  async function evacuer(contraintes, de) {
     corps.innerHTML = ""; trace = null;
-    w.SortieUrgence.declencherDepuis(100, 500, 0, { sortiesSupp: supp, origine: "victime", contraintes: contraintes });
+    const o = de || [100, 500];
+    w.SortieUrgence.declencherDepuis(o[0], o[1], 0, { sortiesSupp: supp, origine: "victime", contraintes: contraintes });
     for (let i = 0; i < 100 && !/kta-sortie-principal/.test(corps.innerHTML); i++) await new Promise(r => setTimeout(r, 5));
     w.SortieUrgence._tracerMeilleure();
     return { html: corps.innerHTML, trace: trace };
@@ -255,6 +258,18 @@ async function evacuationBrancard() {
   r = await evacuer({ avoidZones: [], respecterInaccessibles: false });
   t("inaccessibles levés (dernier recours) : A redevient la plus proche, et c'est écrit",
     r.trace && r.trace.x === 500 && /sortie.brancard.inaccLeve/.test(r.html));
+  // Sortie CLASSIQUE (sans options) coupée par une zone inaccessible (10/10/2026) : même seuil
+  // de 10 m et même rang qu'en brancard — A, calée court, ne passe plus devant B ; alerte si coupé.
+  r = await evacuer(null);
+  t("classique : A coupée par une zone inaccessible ne passe plus devant B (chemin entier)",
+    r.trace && r.trace.x === 900 && !/sortie.coupee.alerte/.test(r.html) && !/sortie.brancard/.test(r.html));
+  zones = [];
+  r = await evacuer(null, [100, 600]);
+  t("classique : départ à 25 m de toute galerie → la fenêtre alerte (écart > 10 m)",
+    r.trace && /sortie.coupee.alerte/.test(r.html) && !/sortie.brancard/.test(r.html));
+  r = await evacuer(null, [100, 536]);
+  t("classique : écart de 9 m → pas d'alerte (seuil 10 m)", r.trace && !/sortie.coupee.alerte/.test(r.html));
+  zones = [{ type: "inaccessible", level: 0, points: [{ x: 250, y: 450 }, { x: 350, y: 450 }, { x: 350, y: 550 }, { x: 250, y: 550 }] }];
   // Recalcul en route : relancerDepuis relit road.evacuation.
   w.getRoads = () => [{ type: "itinerary", evacuation: { contraintes: { avoidZones: [], respecterInaccessibles: true }, supp: supp } }];
   corps.innerHTML = ""; trace = null;
@@ -308,7 +323,7 @@ async function evacuationBrancard() {
     t("dessin tremblé : aucune consigne avant l'arrivée", sansArrivee(it.guide).length === 0);
   }
 
-  // 4) Coude SANS croisement → tu, même franc (retour KARMA, catacombes :
+  // 4) Coude SANS croisement → tu, même franc (retour KARMA, relevé réel :
   //    tant qu'il n'y a qu'un chemin, suivre la galerie suffit)
   {
     const w = bac([R("principal", [[0, 500], [300, 500], [300, 100]])]);
@@ -537,6 +552,68 @@ async function evacuationBrancard() {
       ip.includes("raccords: leg.raccords || [], carrefours: leg.carrefours || []"));
     t("câblage inter-plans : distances avec les raccords (décision K)",
       ip.includes("_raccordsM(r, ctx.scale)") && ip.includes("_raccordsM(legB, scaleB)"));
+
+    // Poids d'une jonction de niveau sur l'étape distante : profondeurs ET
+    // échelle du plan CIBLE. Plan ouvert : 5 m entre ses niveaux 0 et 1, 40 px/m ;
+    // plan cible : 40 m, 4 px/m. Puits dessiné sur 10 px (un segment), deux tronçons de 180 px.
+    const wJ = bac([], { scale: 40, multiLevel: true });
+    const profOuvert = { "0": -25, "1": -20 };
+    wJ.getProfondeurNiveau = n => (profOuvert[String(n)] === undefined ? null : profOuvert[String(n)]);
+    const reseauJ = [
+      R("principal", [[0, 500], [200, 500]], { level: 0 }),
+      R("jonction", [[200, 500], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      R("principal", [[210, 500], [400, 500]], { level: 1 })
+    ];
+    const wpsJ = [{ x: 20, y: 500, label: "A" }, { x: 390, y: 500, label: "B" }];
+    const plat = 180 + 180;
+    const proche = (d, attendu) => Math.abs(d - attendu) < 0.5;
+    const cible = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ,
+      { echelle: 4, profondeurs: { "0": -25, "1": -65 } });
+    const attenduCible = plat + Math.hypot(10, 40 * 4);
+    t("inter-plans : jonction pesée avec les profondeurs ET l'échelle du plan cible (" +
+      Math.round(cible.totalDistance) + " px, attendu " + Math.round(attenduCible) + ")",
+      proche(cible.totalDistance, attenduCible));
+    const repli = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ, {});
+    const attenduRepli = plat + Math.hypot(10, 5 * 40);
+    t("plan ouvert (sans table) : repli sur ses profondeurs et son échelle (" +
+      Math.round(repli.totalDistance) + " px)", proche(repli.totalDistance, attenduRepli));
+    const vide = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ, { echelle: 4, profondeurs: {} });
+    t("inter-plans : plan cible sans profondeurs → jonction en 2D, jamais celles du plan ouvert",
+      proche(vide.totalDistance, plat + 10));
+
+    // 🐛 10/10/2026 — jonction dessinée en PLUSIEURS segments : chaque segment
+    // comptait le dénivelé complet (2 segments → 680 px au lieu de 520). Le
+    // dénivelé est réparti au prorata de la longueur 2D de chaque segment :
+    // même puits en 1 ou 3 segments → même poids, dans les deux sens.
+    const ctxCible = { echelle: 4, profondeurs: { "0": -25, "1": -65 } };
+    const reseauJ3 = [
+      reseauJ[0],
+      R("jonction", [[200, 500], [203, 500], [207, 500], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      reseauJ[2]
+    ];
+    const cible3 = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJ3, ctxCible);
+    t("jonction en 3 segments : même poids qu'en 1 segment (" + Math.round(cible3.totalDistance) +
+      " px, attendu " + Math.round(attenduCible) + ")", proche(cible3.totalDistance, attenduCible));
+    const wpsInv = [wpsJ[1], wpsJ[0]];
+    const inv1 = wJ.Pathfinder.computeRouteOnRoads(wpsInv, reseauJ, ctxCible);
+    const inv3 = wJ.Pathfinder.computeRouteOnRoads(wpsInv, reseauJ3, ctxCible);
+    t("jonction : sens inverse identique, en 1 comme en 3 segments (" + Math.round(inv1.totalDistance) +
+      " / " + Math.round(inv3.totalDistance) + " px)",
+      proche(inv1.totalDistance, attenduCible) && proche(inv3.totalDistance, attenduCible));
+    // Tracé coudé : le prorata suit la longueur 2D réelle (pas le nombre de points).
+    const reseauJc = [
+      reseauJ[0],
+      R("jonction", [[200, 500], [205, 512], [210, 500]], { fromLevel: 0, toLevel: 1 }),
+      reseauJ[2]
+    ];
+    const cibleC = wJ.Pathfinder.computeRouteOnRoads(wpsJ, reseauJc, ctxCible);
+    const attenduC = plat + Math.hypot(2 * Math.hypot(5, 12), 40 * 4);
+    t("jonction coudée : hypot(longueur 2D totale, dénivelé) (" + Math.round(cibleC.totalDistance) +
+      " px, attendu " + Math.round(attenduC) + ")", proche(cibleC.totalDistance, attenduC));
+    const ilJ = fs.readFileSync(path.join(ROOT, "js/interPlanLinks.js"), "utf8");
+    t("câblage inter-plans : l'étape distante passe les profondeurs de son plan",
+      ip.includes("profondeurs: ctx.profondeurs") && ip.includes("profondeurs: routingB.profondeurs || {}") &&
+      ilJ.includes("return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };"));
 
     // Feuille de route : elle s'arrête au portail, puis UNE ligne par plan
     // suivant (`road.suite`, posée par interPlanRoute > _tracerItinerary).

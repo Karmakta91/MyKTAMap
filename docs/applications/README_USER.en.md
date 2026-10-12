@@ -27,7 +27,7 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 - ❌ **Not an underground GPS** — native geolocation doesn't work under rock. The app's "tracker" is a **pedometer + heading** that drifts quickly; you need to recalibrate regularly.
 - ❌ **Not a safety guarantee** — the map gives the path, not the oxygen. You remain the sole judge of the risks (collapses, water, gas, fatigue).
 - ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
-- ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
+- ❌ **Not a social network** — no account to create, no public profile, no one-click sharing. You choose who you send your `.zip` to, and how.
 
 ---
 
@@ -75,7 +75,7 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ---
 
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, opt-in OSM View) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
 
 ---
 
@@ -128,7 +128,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab). The full audit page describes the current state; what changed in each version is on its "version history" page.
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁 Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁 Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h. On a map your access only lets you view, the drawing tools are greyed out: tapping one reminds you the map is read-only. On the sign-in screen of such an installation, the badge below the card tells you whether the database responds (tap it to check again), and the 📖 and 🆘 icons open the documentation and troubleshooting.
 
 ---
 
@@ -185,7 +185,7 @@ When a new version exists and you have a connection, the app offers to update.
 | Your situation | The tool | Where to find it |
 |---|---|---|
 | I want to **get out as fast as possible** | 🚨 Emergency exit | 🚨 button in the top bar |
-| I know where I am, but I am panicking: I need **my position and heading in very large print** | 🚨 Emergency mode — XL display | 🧭 Tracker menu, red button |
+| I know where I am, but I am panicking: I need **my position and heading in very large print** | 🔆 XL display | 🧭 Tracker menu, red button |
 | **I no longer know where I am** | ⛑️ I'm lost | 🧭 Tracker menu, orange button |
 | **Someone else is lost**, I am coordinating teams | 🚑 Rescue Mode | 🔭 Going further › 🚑 Rescue Mode |
 
@@ -198,7 +198,7 @@ When a new version exists and you have a connection, the app offers to update.
 
 ### 🚨 Emergency exit — find the nearest exit
 
-To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (on the right, next to 📖 Story Mode), or say "**sortie**" to the 🎤 voice command (it only understands French).
+To get out **right now**, without thinking: injury, low battery, lamp failure. Tap **🚨** in the top bar (on the right, next to 📖 Story Mode), or say "**sortie**" to the 🎤 voice command (available in French only; the button only appears when the app is in French).
 
 **What the app looks for**: points marked as an open exit — **Open quarry access** (`cao`), **Open rung shaft** (`peo`), **Open service stairs** (`eso`) — as well as those tagged `entrée` and the built-in "🚪 Map entry point" tag. **Closed** variants (`caf`, `pef`, `esf`) are ignored: a point marked closed will never be suggested to you. If the map has no recognised exit, a message reminds you of these tags.
 
@@ -211,9 +211,9 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 A vibration confirms the exit found or alerts you if there is none, even when **📳 Haptic vibration** is off. Everything is computed on your device, without network.
 
-### 🚨 Emergency mode — XL display
+### 🔆 XL display
 
-You know where you are, but you are panicking and need the essentials **in very large print**: re-orient yourself, spot a nearby shaft, check your heading, read your position out to someone. In the **🧭 Tracker** menu, the red **🚨 Emergency mode — XL display (position + heading)** button opens a full-screen view that fits without scrolling:
+You know where you are, but you are panicking and need the essentials **in very large print**: re-orient yourself, spot a nearby shaft, check your heading, read your position out to someone. In the **🧭 Tracker** menu, the red **🔆 XL display (position + heading)** button opens a full-screen view that fits without scrolling:
 
 - 🗺️ **A mini-map** filling almost the whole screen, tightly zoomed and centred on you, in **your legend's colours**, with your route, **the map's points and your own** (on the level shown), and the same orientation as the map in "oriented map" mode.
 - 🖐️ **You can drag and pinch it** to look further. As soon as you move it, it stops following you and turns back **North up**; the **🎯 Recenter** button brings it back to you and resumes following and orientation.
@@ -223,7 +223,7 @@ You know where you are, but you are panicking and need the essentials **in very 
 - 🔋 **A status line** at the top right: your battery (if **🔋 Battery level** is enabled in ⚙️ Configuration), the tracker and compass state. The map name sits under the title.
 - 📋 **Your GPS coordinates, if your map is georeferenced**: the 📋 icon at the end of the status line opens a bubble that shows them **in very large print**, readable from a metre away — the ones you read out to rescuers —, with a line saying whether it is your tracked position, your last known position, or the **map's starting position, never confirmed**. Its **📋 Copy my position** button copies the coordinates alone (`48.856600, 2.352200`), ready to paste into a text message or a maps app. ⚠️ If your position was never confirmed, the bubble says so but the message does not: tell whoever you write to as well. Map not georeferenced: no icon, no coordinates are shown.
 
-The screen follows the app's theme, does not go to sleep while open and also fits in landscape. To leave: the big **↩️ EXIT EMERGENCY MODE** button, always at the bottom, or **Esc** on a computer (if a bubble is open, Esc closes the bubble first).
+The screen follows the app's theme, does not go to sleep while open and also fits in landscape. To leave: the big **↩️ EXIT XL DISPLAY** button, always at the bottom, or **Esc** on a computer (if a bubble is open, Esc closes the bubble first).
 
 ### ⛑️ I'm lost
 
@@ -329,7 +329,8 @@ A click on the top counters opens the map's **dashboard**:
 - the other measurements: 📐 measurement, 🗺️ route and its stops, 🧭 tracking;
 - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. If no outing is running, the **📔 Start an outing** button opens one on this map — even when “Keep a logbook of my outings” is unticked in ⚙️ Configuration (it is then the only way to record one). One outing at a time;
 - **⭐ Favorites**: export this map's or all of them, import;
-- **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation;
+- **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation. Copies from **another version of this map** (re-imported or renamed) also show up, marked 📂, and are restored into the open map;
+- **💾 Session memory**: your sessions live in the space the browser grants the app on your device — a share of its free space, shared with your maps, photos and backups (no more 5 MB cap since 10/10/2026; your existing sessions were moved there automatically). The gauge shows how full it is and which maps have the heaviest sessions; at 80 % the app warns you when you open a map. To free some room: export your session (📤 Export), then clear the session or photos of an old map, or remove a map you no longer need. If the browser refuses this storage (some private browsing modes), your sessions stay in the old storage capped at ~5 MB, and the gauge shows it;
 - the **📊 Global stats** button (copyable report, CSV, PDF).
 
 ### 🗺️ Reading the map
@@ -366,7 +367,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 
 *Example: to see only two kinds of shafts, 🏷️ Point tags → 🚫 None, then tick the two tags you want again.*
 
-> 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take (the browser allows about 5 MB, across all maps). **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file). Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode.
+> 🔄 **Correcting a data layer** — a layer shipped with the map can be hidden but not edited. The **🔄 Edit** button on its row copies it into your session, where all your tools apply (for instance 🔄 Convert this object); the original hides itself (“being edited — show anyway” lets you compare). Before acting, the app tells you how much space the copy will take and how much your sessions already use. **↩️ Restore** drops your changes; **💾 Export** produces the corrected file of **that layer only**, to hand back to the map via 🏗️ Generator → “Edit a plan”, “Choose” button on the layer's row: it replaces the old content. What you drew yourself is not part of it (the app tells you how many objects are left out of the file). Clearing the session restores the layers opened for editing; re-importing your session on this map puts them back in edit mode.
 
 ### 🗺️ Legend
 
@@ -437,7 +438,7 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
 | **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
-| **Emergency** (red background) | ⛑️ I'm lost · 🚨 Emergency mode XL · 🚨 Rescue mode — see 🆘 In an emergency underground |
+| **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
 
@@ -579,6 +580,8 @@ A link joins **a point on one map to a point on another map** — a “portal”
 
 From the Route window (**Destination on another plan**) or a multi-map search result (🧭 button): the app picks the shortest portal, shows the route in steps and draws it on your map. Your waypoints are visited first, in order; the avoidances of each map are respected. If it is impossible, a message says why.
 
+By default, the route crosses only one border (your map and the destination map). To go through intermediate maps (A → B → C), tick **🌀 Route across multiple plans (connected plans)** in the multi-map search, with a map open; this choice is remembered.
+
 **Let's go** does not teleport you: you walk (stop validation and recalculation as usual), then cross at the portal with the floating **🌀 Next portal** button or the portal point's ➜. The rest is drawn on the other side. If you open the next map another way, or replace the route, the rest is dropped. The 🪧 Route sheet summarizes the following maps (“Then 🌀 portal → map: 350 m, 4 crossings”).
 
 **Good to know**: renaming or moving a linked point updates its links; deleting a point deletes its links; links travel with the session export; those shipped with a map can be used but not edited.
@@ -590,7 +593,7 @@ From the Route window (**Destination on another plan**) or a multi-map search re
 The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
 - **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar (georeferenced maps).
+- **On a map**, the **🌍** button in the top bar (georeferenced maps). From a map, the OSM View only opens if the map has been **converted to tiled V2** (see “🧱 Convert to V2 tiles”); otherwise, a message explains how to convert it.
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
@@ -661,9 +664,11 @@ Up to **5 photos per point**, kept on your device only. In the add or edit windo
 
 **Viewing them**: the point's popup shows the thumbnails — a tap opens full screen (pinch or mouse wheel to zoom, swipe to go to the next one, `← →` and `Esc` on PC). The **📸** counter in the top bar opens the session details.
 
-**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; a re-imported file restores its photos. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code; a photo that cannot be cleaned is left out.
+**Taking them with you**: tick the 📸 photos box in ⬆️ → **🚀 Full**, **🎨 Advanced** or **🔄 Conversion**; each photo carries its point's card (name, position, level, type: enough to ♻️ recreate a vanished point). A re-imported file **adds** its photos to those on the device — a photo already there is not duplicated, and none is deleted. With **🛡️ Anonymize for public sharing**, each photo is renamed and linked to its point's anonymous code, without its card; a photo that cannot be cleaned is left out.
 
 **📌 Photo "to assign"**: before v2.3.0, a photo was filed under its point's **name**. If several points share the same name, the app doesn't guess which one it belongs to: in the bubble of each of these points, the photo shows with a **dashed orange frame** and a **📌 Photo N: it's this point** button. Tap it in the right point's bubble. Nothing is ever deleted. Photos whose name belongs to a single point are assigned automatically, and the ones you take now follow their point even if you rename it.
+
+**📸 My photos — and photos of a deleted point**: in the home screen's **🧰 Tools**, **📸 My photos** shows every photo on the device, map by map, grouped by point (tap = full screen). **Deleting a point does not delete its photos**: they move to the **⚠️ Without a point** group and are kept until you decide — **🔗 Attach** (to a point from the list, or **🗺️ Pick on the map** when the map is open; refused, with the number of free slots, if the point would go over 5 photos — nothing is changed then), **♻️ Recreate the point** (at its position, level, type and name; the map opens if needed), **💾 Save** (a ZIP on the device) or **🗑️ Delete** (after confirmation). **⏪ Undoing** a point deletion gives it its photos back. When a map's points cannot be read from the home screen (map missing or unreachable), its photos are **🔎 to check when the plan is opened** — never wrongly reported as without a point. When you open a map that has photos without a point, a discreet **📸 N photo(s) without a point** message offers to **View** them.
 
 > ⚠️ Photos take up the browser's storage (from a few dozen to a few hundred MB depending on the device); a warning appears near the limit. On iPhone, the system may empty this storage when it runs out of space: export regularly. **💥 Reset everything** also deletes the photos, and deleting a photo cannot be undone.
 
@@ -811,16 +816,16 @@ The history is **forgotten** when you reload the page or change map, and a new a
 
 ---
 
-## 📐 Distance and ⬛ area measurement
+## 📐 Distance and ♦️ area measurement
 
 In the **📐 Measurement** group:
 
 - **📐 Distance** — tap points; the total appears at the bottom left, with the length of each segment and the angles.
-- **⬛ Surface** — tap at least 3 points; the area appears in m², then in hectares beyond 10,000 m².
+- **♦️ Surface** — tap at least 3 points; the area appears in m², then in hectares beyond 10,000 m².
 
 The two measurements coexist: switching from one to the other does not erase them, and your next tap goes to the one that is lit. Their accuracy depends on the map's scale (calibrated in ⚙️ Settings). They are kept with your session.
 
-**❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ⬛** or **Erase everything (📐 + ⬛)**.
+**❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
 
 ---
 
@@ -851,7 +856,7 @@ It appears in dotted magenta, with a dot at each end. **Without a junction, no r
 
 ### 🛠️ On the map creator's side
 
-Multi-level mode, the level of each image layer and that of the elements in data layers are set by the map's creator in the Generator → 🔭 Going further › 🏗️ Create or modify a map. On a map that has not enabled it, none of this appears; if enabled later, existing elements are on level 0.
+Multi-level mode, the level of each image layer and that of the elements in data layers are set by the map's creator in the Generator (see 🔭 Going further › 🏗️ Create or modify a map). On a map that has not enabled it, none of this appears; if enabled later, existing elements are on level 0.
 
 ---
 
@@ -957,8 +962,9 @@ In the Profile window, **📤 Export my profile** produces a file that carries e
 
 - **History Mode PDFs**: unticked by default, because one map can carry up to 100 MB of them. Ticked, they are put back in place on import, with no duplicates if you import again.
 - **Map archives**: tick the stored maps to take along (nothing is ticked by default); the export becomes a “full profile” `.zip` and the import attaches each archive to its map. Beyond about 50 MB on iPhone/iPad (500 MB elsewhere), the app asks for confirmation. If the browser deleted an archive, the export tells you which ones are missing. Maps in “re-select” mode are not listed: their ZIP is on your disk, not in the app.
+- **An organisation's maps (☁️)**: neither they nor their sessions, photos, favourites or backups go into the file, and an imported profile restores none of them (the import summary says how many were ignored): you get them back by signing in to the organisation.
 
-**📥 Import a profile** lets you choose the sections and the mode: **🔄 Merge** adds without overwriting (recommended), **♻️ Replace** first empties the ticked sections. In Merge, a map that already has its archive on the device keeps its own. A reload of the app is offered at the end. On an installation that only offers its server's maps, profile import is refused (it could hide those maps); export remains possible.
+**📥 Import a profile** lets you choose the sections and the mode: **🔄 Merge** adds without overwriting (recommended), **♻️ Replace** first empties the ticked sections. In Merge, a map that already has its archive on the device keeps its own. Only the preferences an export produces are taken back: a file edited by hand cannot set any other setting. A reload of the app is offered at the end. On an installation that only offers its server's maps, profile import is refused (it could hide those maps); export remains possible.
 
 ---
 
@@ -1023,7 +1029,7 @@ So you can export only the shafts, or only the inaccessible zones. **Download** 
 
 **⬇️ Load / Import → 📥 Import a file** opens the file picker; the app recognises its type.
 
-- **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
+- **MyKTAMap session** (`.json`, or `.zip` with photos): it **replaces** your current session (points, tracks, zones, measurement); its photos, however, are **added** to yours, without deleting any. A preview shows what it holds; a backup of your current session is taken just before. **Import** to confirm, **Cancel** to change nothing.
 - **GPX file** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…): its points and paths **are added** to your session. The map must be georeferenced. A preview comes before the addition, and **Ctrl+Z** undoes it.
 
 To change map, tap the **compass rose 🧭** (back to the home screen) or the **map title** in the top bar; your session is saved before the switch.
@@ -1082,7 +1088,7 @@ When the record opens, the app checks whether the server has changed: **⚠️ U
 
 ### ⚙️ Configuration (home screen) — the whole app
 
-The **⚙️** button at the top of the home screen opens **⚙️ Configuration**: the settings that apply to **all your maps**.
+The **⚙️** button at the top of the home screen opens **⚙️ Configuration**: the settings that apply to **all your maps**. Each section folds with a tap on its title (on a phone, only the first one starts open); your choice is kept.
 
 - **🌍 Application** — the **language**: Français, English, Español. It applies at once, guide and tutorial included; the flag in the 📖 Documentation window changes the language of the guide only. It can also be chosen on the unlock screen, and is kept in incognito mode.
 - **🎨 Display**:
@@ -1103,7 +1109,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
-  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** and **💥 Reset everything** — see “🆘 Troubleshooting”.
+  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🆘 Troubleshooting”.
 
 ### ⚙️ Settings (in map mode) — this map
 
@@ -1122,9 +1128,9 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
   - **🧭 Smart navigation** *(this map)*: see “🔭 Going further”.
-- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands. An option your browser does not support stays visible, greyed out, with the reason.
+- **🎨 Display** — **🎨 Background under the map** *(this map)*: black, white or neutral grey under the transparent parts of the map (default: the one the map suggests, otherwise per theme); the image export uses it; **⚪ Show circles at intersections** *(this map)*; **🎤 Voice commands (BETA)** *(all maps)*: a 🎤 button to drive the app by voice, say “help” for the list of commands; available in French only: the button only appears when the app is in French. An option your browser does not support stays visible, greyed out, with the reason.
 - **🚀 Performance** *(this map)* — **🚀 ULTRA mode** for large maps that crash the phone (see “🔭 Going further”); on a multi-level map, **🏗️ Show every level at launch**.
-- **🧩 Optional features** and **🔒 Privacy & security** — the same boxes as in ⚙️ Configuration (options, incognito mode).
+- **🧩 Optional features** — the same boxes as in ⚙️ Configuration (options, incognito mode). Privacy is set in ⚙️ Configuration on the home screen.
 - **🛠️ System & maintenance** — the map's **performance mode**, read-only.
 
 At the bottom, **↺ Default values** (after confirmation) puts this map back to its original values (scale, start, smart navigation, circles, North), step detection back to the app's values, and moves tracking back to the start. The home screen settings do not change.
@@ -1150,7 +1156,7 @@ The welcome tutorial can be replayed at any time: **📖 Documentation** → **�
 
 ### 🔎 Searching the documentation
 
-At the top of the 📖 window, the **🔎 Search** field searches the whole text: results are highlighted, **Enter** or ↓ goes to the next one, the counter shows “i / n” and the table of contents fades the parts without a match. Accents do not matter: “reglages” finds “Réglages”. The search in the ❓ Help group looks through the titles and content of the help pages.
+At the top of the 📖 window, the **🔎 Search** field searches the whole text: results are highlighted, **Enter** or ↓ goes to the next one, the counter shows “i / n” and the table of contents fades the parts without a match. Accents do not matter: “reglages” finds “Réglages”. The search in the **❓ Help** window (📚 group) looks through the titles and content of the help pages.
 
 ### 🤖 AI Help
 
@@ -1266,7 +1272,7 @@ The **🔥 Heatmap** tile in the **🧭 Tracker** menu colours the map by how of
 
 The heatmap is **purely visual**: it changes neither the map, nor your annotations, nor the exports. Close the window to hide it.
 
-> 🚨 The **Rescue Mode** keeps its own activity heatmap, whether this option is ticked or not.
+> 🚑 The **Rescue Mode** keeps its own activity heatmap, whether this option is ticked or not.
 
 #### 🔋 Battery level
 
@@ -1341,7 +1347,7 @@ Lock the app at every startup with a 4 to 6 digit code, or **Face ID / Touch ID 
 >
 > **Prepare it in advance**: set up one or two scenarios on your usual maps before any incident. On the day, the app has to be ready in 30 seconds.
 
-To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚨 Rescue mode — Search plans (teams + zones)**.
+To open it: **🧭 Tracker** menu → at the bottom, on a red background, **🚑 Rescue mode — Search plans (teams + zones)**.
 
 #### 🧭 How it's organized
 
@@ -1360,7 +1366,7 @@ The cycle: **prepare** the scenario → **hand it over** to the teams before goi
 ##### 📝 Creating a scenario
 
 - **➕ New scenario**: a name, the time of the incident and context notes (optional).
-- **From ⛑️ I'm lost**: the **🚨 Start a rescue plan (teams + zones)** button creates a ready-made scenario — last known position, uncertainty zone (circle on the map), incident time and inferred notes. You must first have set a last known position there.
+- **From ⛑️ I'm lost**: the **🚑 Start a rescue plan (teams + zones)** button creates a ready-made scenario — last known position, uncertainty zone (circle on the map), incident time and inferred notes. You must first have set a last known position there.
 - **🗐 Duplicate** clones a scenario so you can test another hypothesis ("went east" / "went south") without touching the original.
 - **10 scenarios per map** at most: beyond that, the oldest one is deleted. Never a scenario in progress, the one you have open, the most recent one, or a finished operation whose report has not yet left the phone.
 
@@ -1380,7 +1386,7 @@ On a multi-level map, **🏗️ Auto: 1 team per level** creates one team for ea
 
 ##### 🗺️ Route, zone and itinerary
 
-- **🗺️ Route**: tap **Entry**, **➕ Add an intermediate step**, then **Exit**. For each point: your map's **⭐ favorites** in one tap, the search, or **📍 Click on the map** (the point snaps to the nearest POI). Tapping a POI takes it as the point, without opening its card. Same entry and same exit = loop. From the app's search, the 📌 button assigns a point to a team in two taps.
+- **🗺️ Route**: tap **Entry**, **➕ Add an intermediate step**, then **Exit**. For each point: your map's **⭐ favorites** in one tap, the search, or **📍 Click on the map** (the point snaps to the nearest POI — point of interest of the map). Tapping a POI takes it as the point, without opening its card. Same entry and same exit = loop. From the app's search, the 📌 button assigns a point to a team in two taps.
 - **⬛ Define zone**: either a **polygon** (one tap per vertex, double-tap to close), or a **selection of paths** (tap each gallery, tap again to remove it). The other teams' zones are shown dotted so you can align the boundaries. A gallery from the map is found identically on every phone that has this map; a path added by hand on a single device exists only on that device. On a multi-level map, the zone applies **to the level where you drew it** — tick "Zone on all levels" to extend it.
 - **✨ Zone POIs** adds every point in the zone as steps, from nearest to farthest from the entry.
 - **🗺️ Calc. route** computes the path through the galleries, from entry to exit via the steps, with distance and duration. It **avoids the other teams' steps and zones**; if it can't, it says so. It also lists **the steps more than 25 m from a gallery**: fix them before going down. Finally, it warns you when galleries on another level run under the zone without any route going down to them.
@@ -1399,11 +1405,11 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 #### 📤 2. Handing over before going down
 
-- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚨 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
+- **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚑 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
 - **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
-- **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (🌍 KMZ tab of the session export).
+- **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (📡 External export tab of the session export).
 
 #### 🔦 3. In the field
 
@@ -1413,7 +1419,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 In the team role, you are **placed at your team's entry** — automatically if your position had not been confirmed yet, otherwise the app offers it ("Place me at the entry" / "Keep my position"). A single message sums up the launch.
 
-Closing the window removes nothing: your zone and your route stay on the map (a team sees its own, the operator sees all of them), even after a reload. At the bottom of the screen, the **🚨 Rescue · Alpha · 3/8 ›** badge reminds you that the operation is running; tapping it takes you back to the steps to validate. **⏸️ Pause** freezes the timer, **▶️ Resume** restarts it: paused time is not counted.
+Closing the window removes nothing: your zone and your route stay on the map (a team sees its own, the operator sees all of them), even after a reload. At the bottom of the screen, the **🚑 Rescue · Alpha · 3/8 ›** badge reminds you that the operation is running; tapping it takes you back to the steps to validate. **⏸️ Pause** freezes the timer, **▶️ Resume** restarts it: paused time is not counted.
 
 ##### 🚨 Team side
 
@@ -1433,8 +1439,8 @@ The view shows your route step by step (Entry, 1…N, Exit — the same number e
 
 - **📸 Photo**: up to 5 per step, camera or gallery; tap a thumbnail to enlarge it.
 - **Validating a step resets your position onto it** (with All clear, Suspicious, Clue, Help requested or Casualty found): without asking under 30 m, with a question beyond that. Never with Blocked or Forced turnaround: you didn't get there.
-- **🧭 Follow my route (step-by-step guidance)** turns the route into a guided itinerary: the "In 40 m, turn left" banner, the route sheet and the XL screen lead you from step to step, and 🧭 tracking starts. Validated steps are ticked off; if you stray, **Recalculate** sets off again towards the next unfinished step, still avoiding the other teams' zones. When you reach a step, a message and a vibration alert you, and the 🚨 badge opens that step. The team's route must have been computed.
-- Three shortcuts if something goes wrong: **🚪 Emergency exit**, **🆘 XL screen**, **⛑️ I'm lost**.
+- **🧭 Follow my route (step-by-step guidance)** turns the route into a guided itinerary: the "In 40 m, turn left" banner, the route sheet and the 🔆 XL display lead you from step to step, and 🧭 tracking starts. Validated steps are ticked off; if you stray, **Recalculate** sets off again towards the next unfinished step, still avoiding the other teams' zones. When you reach a step, a message and a vibration alert you, and the 🚑 badge opens that step. The team's route must have been computed.
+- Three shortcuts if something goes wrong: **🚪 Emergency exit**, **🔆 XL display**, **⛑️ I'm lost**.
 - **▶️ Departure** records your departure time (otherwise, the launch time); **✅ Back** stops the clock when you come up.
 
 ##### 👤 Operator side
@@ -1444,7 +1450,7 @@ The view shows your route step by step (Entry, 1…N, Exit — the same number e
 - **Late teams**: each team has an expected return time (departure + estimated duration, or its mandatory return). Past that time, its card turns **orange**; after the margin, **red**. Late teams move to the top, the badge at the bottom changes colour, and a message and a vibration alert you.
 - **✅ Back**: the app asks **how many came back up** (nothing is prefilled: count them). Below the headcount, the red alert **"N PERSON(S) MISSING"** stays on screen, badge included, until the count is corrected (**Correct the count**).
 - **📢 General recall** (or **📢 Recall** for one team) marks the teams still underground as recalled, with the time. ⚠️ **The app does not alert anyone** — there is no network underground: pass the order on yourself, by radio or by voice.
-- **🚨 Take over**: a team radios in? You switch to its view, on its first unfinished step, to enter things on its behalf; **👤 Back to Operator** brings you back. In that case, Follow my route, Emergency exit, XL screen and I'm lost are missing: they would act on your own phone.
+- **🚨 Take over**: a team radios in? You switch to its view, on its first unfinished step, to enter things on its behalf; **👤 Back to Operator** brings you back. In that case, Follow my route, Emergency exit, XL display and I'm lost are missing: they would act on your own phone.
 - **📜 Log**: everything is recorded there with the time — launch, statuses, casualty, departures, returns, recalls, imports, phases — plus your own notes (radio call, decision). It is printed as an appendix to the report.
 - **Editing during the operation**: a team added as reinforcement, or whose entry, exit or steps you change, gets its steps immediately. What has been entered stays on the same step. Removing a step that already has entries asks for confirmation, and is refused if it reports Help requested or Casualty found: change its status first. Put back within the same phase, the step gets its entries back.
 
@@ -1496,13 +1502,13 @@ The operator's PDF opens with the casualties, then covers each phase (planned ro
 
 ### 🏗️ Create or edit a map
 
-The **🏗️** button in the sidebar opens the **Generator** (**📦 Create / Edit a map**), which produces a map's ZIP archive.
+The **🏗️ Generate a map** button on the home screen opens the **Generator** (**📦 Create / Edit a map**), which produces a map's ZIP archive.
 
 #### 🧙 The Generator
 
 - **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
-- **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2, multi-level) and loads the default icons; Advanced mode gives access to every option.
-- **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ**, a **GPX**, a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
+- **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
+- **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ** or a **GPX** exported by MyKTAMap (the GPX gives a blank background georeferenced automatically), a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 
 When you're ready, **📦 Generate ZIP** downloads the archive.
 
@@ -1513,8 +1519,11 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Collision map** (optional).
 - **Tracker start position**: centred on the map automatically; **🎯 Recenter the start position** puts it back in the centre.
 - **Image layers** (legends, annotations) and **data layers**: up to 10 of each. The **Additions** layer is always included.
-- **Tracking parameters**: start position, scale, sensitivity.
+- **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
+- **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.
+- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export.
+- **📖 History PDF** (optional): one or more PDFs, at the top of the list in History Mode. When editing, the map's existing ones are kept.
 
 #### 📂 Edit an existing map
 
@@ -1570,7 +1579,7 @@ Good to know: holes in polygons are ignored; beyond 20,000 objects a warning is 
 
 For a heavy map (image over 50 MB or over 8,000 px), the **🧱 Convert to V2 tiles (performance)** box cuts the image into **tiles**: the app then only loads the pieces on screen, which greatly reduces memory use.
 
-1. Choose a main image, or load the ZIP of the map to convert: the box appears.
+1. Choose a main image, or load the ZIP of the map to convert.
 2. Tick it and read the warning: the conversion is heavy.
 3. **📦 Generate ZIP**: a progress bar follows the cutting (1 to 5 min). The downloaded ZIP has a `_v2` suffix.
 4. Import that ZIP: the map opens in V2 (purple `V2` badge).
@@ -1592,7 +1601,7 @@ In the **🧰 Tools** section of the home screen, **📦 Import several maps** a
 
 - **Map already in your list**: one choice for the whole batch, leave it as it is (default), replace it or keep both.
 - **📁 File into:** choose the "My maps" folder that receives the batch ("Unfiled" by default).
-- **💾 Preload the ZIP** (ticked by default, like "Store the map in the app on first load"): the app keeps the files, and each map then opens **without selecting its ZIP again**. Unticked, nothing is copied and the ZIP will be asked for the first time you open each map.
+- **💾 Store the maps in the app** (ticked by default, like the "Store the map in the app on first load" setting): the app keeps the files, and each map then opens **without selecting its ZIP again**. Unticked, nothing is copied and the ZIP will be asked for the first time you open each map.
 - **Space is checked beforehand**: if the batch does not fit, the import does not start and the app tells you how much is missing. If space runs out along the way, the import stops at once and keeps the maps already added.
 
 ### 🚀 Optimize your map
@@ -1639,10 +1648,9 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 | 🎯 **Disable intersection circles** | No circles at junctions beyond 50 paths (instead of 500) | Junctions less visible |
 | 🚫 **Disable popups on data layers** | No popup when clicking data-layer points | Use 🔍 Search instead |
 | 🐢 **Slow auto-save (30s)** | Saves every 30 s | Up to 30 s lost if the app crashes |
-| 👁️ **Render only visible elements** | Skips off-screen paths and points | Slight pop-in when moving the map |
 | 🛡️ **Limit zoom-out on mobile** | Caps zoom-out on phones. **Ticked by default** | No full overview on mobile; reload required |
 
-- ULTRA ticks everything; unticking it unticks everything. You can also enable only some options, for example **🐢** and **👁️** for a good gain with no visible loss.
+- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map). You can also enable only some options, for example **🐢** for a good gain with no visible loss.
 - **Your session points are always shown**, whatever the options.
 - When optimizations are active, a message reminds you when the map opens: a lightened display is not a bug.
 - On a multi-level map, **🏗️ Show every level at launch** (same group, outside ULTRA, ticked by default) can be unticked to open only levels -1, 0 and +1.
@@ -1727,11 +1735,13 @@ The short form `{ "plans": ["test1", "test2"] }` also works; the detailed form s
 
 Even simpler: drop the map's ZIP as is (without unzipping it) and declare it with `"zip"` instead of `"path"`, for example `{ "id": "test3", "zip": "data/test3.zip", "name": "Test map 3" }`. The app downloads it when opened, keeps it on the device for offline use (according to **Store the map in the app**), and only downloads it again if it has changed. On the map's row, 💾 keeps it without opening it, ✅ shows it is kept and up to date.
 
+> 📖 Instance subtitle, map tags, an access password of your own, read-only mode (import and Generator hidden), links between maps: your instance’s `confadmin.html` page builds this file for you — how-to in the guide **[Hosting an instance with your maps](SELFHOST.md)** (in French).
+
 ### 💼 Pro edition
 
 The pro edition is installed by **the person who manages your installation**: they put the licence on the server, there is nothing to do on your side. Your profile then shows ✓ Pro edition active, and the startup screen "Professional edition". The app no longer offers to import a licence yourself: a licence imported on a device did not turn on any pro feature.
 
-A licence is **signed by the author** and issued for one address and a set period. If it expires, or if the server refuses it, the app **stays closed** on the "Installation licence invalid" screen — never reopened in community mode: tell the person who manages the installation. What is kept on the device is not erased.
+A licence is **signed by the author** and issued for one address and a set period. If it expires, or if the server refuses it, the app **stays closed** on the "Installation licence invalid" screen — never reopened in community mode: tell the person who manages the installation (the **💼 Discover or renew the pro licence** link on this screen presents the licence). What is kept on the device is not erased.
 
 > ⚖️ The license is **personal**: sharing it with an unauthorised third party breaches the contract made with the author.
 ### 🛡️ Revoked maps
@@ -1748,6 +1758,10 @@ There is nothing else to do.
 ### 🐛 Detailed logs
 
 In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
+
+### 📖 All the documentation online
+
+This guide, and everything around it, can also be read on **[doc.myktamap.fr](https://doc.myktamap.fr/)** (mostly in French): installing your own copy (with or without Docker), understanding what the app sends over the network, security and keys in the pro edition, and how each version is checked before it reaches you.
 
 ---
 

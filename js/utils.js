@@ -508,33 +508,13 @@ function renderBannerCoherenceEchelle(planId, opts) {
             '</td>' +
           '</tr>' +
         '</table>' +
-        '<p class="kta-scale-coherence-hint">' +
-          '<strong>' + t("utils.scaleCoherence.hintNoFix") + '</strong> ' +
-          t("utils.scaleCoherence.hintCheck") + ' ' +
-          t("utils.scaleCoherence.hintTrust") +
-        '</p>' +
-        // 💡 v1.76.2 (demande KARMA après sa première prise réelle de la
-        // bannière) : quelle valeur croire — le géoref bien fait gagne.
-        '<p class="kta-scale-coherence-hint" style="border-left:3px solid #f4c542; padding-left:8px; margin-top:6px;">' +
-          '💡 ' + t("utils.scaleCoherence.hintPreferGeoref") +
-        '</p>' +
+        // 💡 v1.76.2 (KARMA) : quelle valeur croire — le géoréf bien fait gagne ; dit en une ligne.
+        '<p class="kta-scale-coherence-hint">' + t("utils.scaleCoherence.hintCheck") + '</p>' +
       '</div>' +
     '</div>';
 }
 window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
 
-// =========================
-// 🪟 v1.76.2 — CONFIRM CHARTÉ (remplaçant du confirm() natif)
-// =========================
-// Retour KARMA : « la popup n'est pas au style habituel / charte graphique ».
-// Le confirm() natif est utilisé dans 10+ fichiers — ce helper est le point
-// de migration progressive (nouveaux usages ICI, les anciens migreront au
-// fil de l'eau, dette notée au BACKLOG).
-// Promesse : ktaConfirm(message, opts) → Promise<boolean>.
-//   opts = { titre, okLabel, cancelLabel } (défauts i18n ui.confirm.*)
-// Charte : mêmes classes que les modales existantes (readme-modal), boutons
-// kta-btn, overlay clic = annuler, Échap = annuler. z-index 100002
-// (au-dessus des sous-modales 100001).
 // 🛰️ v1.85.2 — CAPTEURS REFUSES : le meme rendu pour les DEUX modales de
 // reglages (plan et accueil). Ecrit ici plutot que copie de chaque cote : une
 // des deux aurait fini par diverger, et c est la dette qu on solde a repetition
@@ -582,6 +562,36 @@ window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
   });
 };
 
+// =========================
+// 🪟 window.ktaConfirm(message, opts) → Promise — fenêtre chartée (remplace confirm()/prompt() natifs)
+// =========================
+// ⚠️ CONTRAT HTML : `message`, `opts.titre`, `opts.okLabel` et `opts.cancelLabel` sont insérés TELS QUELS
+// en HTML (innerHTML). Des appelants y passent du balisage voulu (<b>, <br>, classes .kta-tx-*). Toute
+// donnée d'utilisateur ou de fichier (nom de plan, de dossier, de fichier, libellé de point…) DOIT être
+// échappée par l'appelant (window.ktaEsc) avant d'entrer dans le message. Pour un texte brut à lire,
+// préférer window.ktaAlerte (elle échappe). Les champs optionnels ci-dessous, eux, sont posés par le DOM
+// (textContent / value) : on peut y mettre une donnée brute.
+//   opts.titre / okLabel / cancelLabel : HTML (défauts i18n ui.confirm.*).
+//   opts.sansAnnuler : un seul bouton (ktaAlerte) ; le clic sur le fond ne ferme PAS (message à lire).
+//   opts.zIndex : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050).
+//   opts.caseACocher = {label, coche} · opts.nombre = {label, valeur, min, max} ·
+//   opts.texte = {label, valeur, placeholder, maxLength} : la Promise rend un booléen, la saisie est relue
+//   dans l'objet passé (coche / valeur) après coup.
+//   opts.autre = {label, valeur} : 3e bouton (danger) ; la Promise rend alors `opts.autre.valeur`.
+// Fermeture : OK → true · Annuler / Échap / clic sur le fond → false. Fenêtres EMPILÉES : seule celle du
+// SOMMET réagit à Échap (pile du module, écouteur unique en capture sur window, qui passe avant les
+// écouteurs « Échap » des modales posés sur document). Clic sur le fond ignoré pendant 300 ms après
+// l'ouverture : le 2e clic d'un double-clic sur le bouton qui ouvre la fenêtre l'annulait aussitôt.
+// z-index 100002 (au-dessus des sous-modales 100001). Doc : docs/architecture/ui.md §Fenêtres de message.
+const _ktaConfirmPile = [];   // fonctions « annuler » des fenêtres ouvertes, la dernière = le sommet
+const _KTA_CONFIRM_GARDE_CLIC_MS = 300;
+window.addEventListener("keydown", function(e) {
+  if (e.key !== "Escape" || !_ktaConfirmPile.length) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();   // la fenêtre (ou la modale) du dessous ne reçoit pas cet Échap
+  _ktaConfirmPile[_ktaConfirmPile.length - 1]();
+}, true);
+
 window.ktaConfirm = function(message, opts) {
   opts = opts || {};
   return new Promise(function(resolve) {
@@ -590,7 +600,9 @@ window.ktaConfirm = function(message, opts) {
     };
     const ov = document.createElement("div");
     ov.className = "kta-readme-modal-overlay";
-    ov.style.zIndex = "100002";
+    // `opts.zIndex` : appelant ouvert AU-DESSUS de 100002 (éditeur de légende, 100050) — sinon la
+    // fenêtre s'ouvrirait derrière lui, invisible et inatteignable.
+    ov.style.zIndex = String(opts.zIndex || 100002);
     ov.innerHTML = '' +
       '<div class="kta-readme-modal-boite" style="max-width:430px; height:auto; max-height:80vh;">' +
         '<div class="kta-readme-modal-header">' +   // checkup thème (C1) : « -entete » n'existait dans aucun CSS
@@ -613,6 +625,14 @@ window.ktaConfirm = function(message, opts) {
                 (Number.isFinite(opts.nombre.max) ? ' max="' + opts.nombre.max + '"' : '') +
                 ' value="' + (Number.isFinite(opts.nombre.valeur) ? opts.nombre.valeur : '') + '"></label>'
             : '') +
+          // 🔤 09/10/2026 — champ texte optionnel (`opts.texte = {label, valeur, placeholder, maxLength}`),
+          // même contrat que `opts.nombre` : booléen rendu, saisie relue dans `opts.texte.valeur` (remplace
+          // window.prompt). Label, valeur et placeholder posés par le DOM (jamais concaténés au HTML).
+          (opts.texte
+            ? '<label style="display:flex; flex-direction:column; gap:6px; margin:0 0 14px; color:#e8eaf0;">' +
+                '<span></span><input type="text" id="kta-confirm-texte" style="width:100%; box-sizing:border-box;">' +
+              '</label>'
+            : '') +
           '<div class="kta-conv-actions">' +
             // 🗑️ 01/10/2026 — 3e choix optionnel (`opts.autre = {label, valeur}`) : la
             // Promise rend alors `opts.autre.valeur` (jamais un booléen, pour que
@@ -620,7 +640,9 @@ window.ktaConfirm = function(message, opts) {
             (opts.autre
               ? '<button class="kta-btn kta-btn-danger" id="kta-confirm-autre"></button>'
               : '') +
-            '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
+            // `opts.sansAnnuler` : un seul bouton (window.ktaAlerte, message à lire).
+            (opts.sansAnnuler ? '' :
+              '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>') +
             '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
           '</div>' +
         '</div>' +
@@ -634,6 +656,13 @@ window.ktaConfirm = function(message, opts) {
     if (caseEl) caseEl.nextElementSibling.textContent = opts.caseACocher.label || "";
     const nombreEl = ov.querySelector("#kta-confirm-nombre");
     if (nombreEl) nombreEl.previousElementSibling.textContent = opts.nombre.label || "";
+    const texteEl = ov.querySelector("#kta-confirm-texte");
+    if (texteEl) {
+      texteEl.previousElementSibling.textContent = opts.texte.label || "";
+      texteEl.value = opts.texte.valeur == null ? "" : String(opts.texte.valeur);
+      if (opts.texte.placeholder) texteEl.placeholder = String(opts.texte.placeholder);
+      if (Number.isFinite(opts.texte.maxLength)) texteEl.maxLength = opts.texte.maxLength;
+    }
     let resolu = false;
     const finir = function(val) {
       if (resolu) return;
@@ -643,24 +672,68 @@ window.ktaConfirm = function(message, opts) {
         const n = parseInt(nombreEl.value, 10);
         opts.nombre.valeur = Number.isFinite(n) ? n : null;
       }
-      document.removeEventListener("keydown", surTouche);
+      if (texteEl && val) opts.texte.valeur = texteEl.value;
+      const i = _ktaConfirmPile.indexOf(annuler);
+      if (i >= 0) _ktaConfirmPile.splice(i, 1);
       ov.remove();
       resolve(val);
     };
-    const surTouche = function(e) { if (e.key === "Escape") finir(false); };
-    document.addEventListener("keydown", surTouche);
+    // Échap n'agit QUE sur la fenêtre du sommet (écouteur unique du module, cf en-tête) — sinon la
+    // fenêtre ouverte dessous (import de profil…) se fermait aussi, ce que le confirm() natif ne faisait pas.
+    const annuler = function() { finir(false); };
+    _ktaConfirmPile.push(annuler);
+    const ouvertA = Date.now();
     ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
-    ov.querySelector("#kta-confirm-non").addEventListener("click", function() { finir(false); });
+    const nonEl = ov.querySelector("#kta-confirm-non");
+    if (nonEl) nonEl.addEventListener("click", function() { finir(false); });
     const autreEl = ov.querySelector("#kta-confirm-autre");
     if (autreEl) {
       autreEl.textContent = opts.autre.label || "";
       autreEl.addEventListener("click", function() { finir(opts.autre.valeur); });
     }
-    ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
-    // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre s'il y en a un)
+    // Clic sur le fond = annuler — sauf fenêtre à un seul bouton (message à lire : on ne le perd pas d'un
+    // clic à côté) et pendant les 300 premières ms (2e clic d'un double-clic sur le bouton d'ouverture).
+    ov.addEventListener("click", function(e) {
+      if (e.target !== ov || opts.sansAnnuler) return;
+      if (Date.now() - ouvertA < _KTA_CONFIRM_GARDE_CLIC_MS) return;
+      finir(false);
+    });
+    // focus sur OK : Entrée valide, comme le confirm natif (sur le champ nombre / texte s'il y en a un)
     if (nombreEl) nombreEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
-    setTimeout(function() { try { (nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {} }, 30);
+    if (texteEl) texteEl.addEventListener("keydown", function(e) { if (e.key === "Enter") finir(true); });
+    setTimeout(function() {
+      try { (texteEl || nombreEl || ov.querySelector("#kta-confirm-oui")).focus(); } catch(e) {}
+    }, 30);
   });
+};
+
+// 💬 09/10/2026 — window.ktaAlerte(message, opts) → Promise (résolue à la fermeture).
+// Remplace alert() natif (hors charte, ignore le thème, « dev.myktamap.fr indique… », bloquable par iOS
+// en PWA, fige l'app). Fenêtre de ktaConfirm à un seul bouton. Règle (KARMA) : message à LIRE POUR
+// AGIR (erreur qui bloque, consigne) → ktaAlerte ; message qui CONFIRME ce qui vient de se passer →
+// toast (OOMGuard.showToast). Le message est du TEXTE (échappé, retours à la ligne gardés) : un
+// alert() portait souvent un nom de fichier ou de plan. opts.html = true pour un message déjà sûr.
+// Interface indisponible (DOM cassé, crash mémoire) : repli sur l'alert() natif — un message
+// critique n'est jamais perdu. scripts/check-popups-natives.js compte les popups natives restantes.
+window.ktaAlerte = function(message, opts) {
+  opts = opts || {};
+  const texte = message == null ? "" : String(message);
+  try {
+    if (!document.documentElement || typeof window.ktaConfirm !== "function") throw new Error("interface indisponible");
+    const esc = typeof window.ktaEsc === "function" ? window.ktaEsc
+      : function(s) { return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); };
+    const t = function(k, repli) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli; };
+    return window.ktaConfirm(opts.html ? texte : esc(texte), {
+      sansAnnuler: true,
+      zIndex: opts.zIndex,   // appelant ouvert au-dessus de 100002 (cf ktaConfirm)
+      titre: opts.titre ? esc(String(opts.titre)) : t(opts.type === "erreur" ? "ui.alerte.titreErreur" : "ui.alerte.titre",
+        opts.type === "erreur" ? "Erreur" : "Information"),
+      okLabel: opts.okLabel || t("ui.confirm.ok", "OK")
+    }).then(function() { return undefined; });
+  } catch (e) {
+    window.alert(texte);   // popup-native-ok : repli quand l'interface ne peut pas s'afficher
+    return Promise.resolve();
+  }
 };
 
 // Helper : attache les listeners click sur les boutons "📋 Copier" rendus
@@ -949,7 +1022,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       // vérifie en amont, mais robustesse pour les cas limites).
       const corps = current
         ? '<div class="kta-note-popup-readonly-text">' + _esc(current) + '</div>'
-        : '<div class="kta-note-popup-readonly-empty"><em>(aucune note)</em></div>';
+        : '<div class="kta-note-popup-readonly-empty"><em>' + _esc(window.I18n.t("utils.note.empty")) + '</em></div>';
       const _uidLu = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;   // « créé par », historique
       return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
@@ -1657,7 +1730,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     _objectUrls.clear();
   }
 
-  marker.on("popupopen", function(ev) {
+  marker.on("popupopen", function _hydraterPhotos(ev) {
     if (!window.MyKTAMapPhotos) return;
     // Récupère l'élément du slot dans le DOM du popup ouvert
     const popupEl = ev.popup && ev.popup.getElement ? ev.popup.getElement() : null;
@@ -1798,6 +1871,16 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     }).catch(function(e) {
       console.warn("[Popup photos] getPhotosForPoint erreur :", e);
     });
+
+    // 📸 Installation reliée (prise `photos`) : l'extension dépose les photos de ce
+    // point qui manquent sur l'appareil (8 s max) ; si elle en a déposé et que la
+    // fiche est toujours ouverte, on la réhydrate UNE fois. Sans extension : rien.
+    const K = window.KtaExtensions;
+    if (!ev._ktaRelance && K && typeof K.aPrise === "function" && K.aPrise("photos")) {
+      K.photosCompleterPoint(planId, pointUid || pid).then(function(n) {
+        if (n > 0 && marker.isPopupOpen && marker.isPopupOpen()) _hydraterPhotos({ popup: ev.popup, _ktaRelance: true });
+      });
+    }
   });
 
   marker.on("popupclose", function() {
@@ -2923,7 +3006,7 @@ async function telechargerPlan() {
   try {
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert(window.I18n.t("utils.export.noPlanConfig"));
+      window.ktaAlerte(window.I18n.t("utils.export.noPlanConfig"), { type: "erreur" });
       return;
     }
 
@@ -3539,6 +3622,43 @@ window.telechargerPlan = telechargerPlan;
 })();
 
 // =====================================================================
+// 🖨️ window.ktaTextePdf(s) → texte affichable par la police standard des PDF
+// =====================================================================
+// jsPDF (Helvetica, encodage WinAnsi) affiche TOUS les accents français et
+// espagnols, « » ’ — … € ° (mesuré le 09/10/2026, PDF d'échantillon) : on ne
+// retire plus les accents. Hors police : flèches, coches, symboles, emojis —
+// ils sortent en charabia et désorganisent toute la ligne. Ce filtre convertit
+// les plus courants en équivalent lisible ; une LETTRE hors police (polonais,
+// tchèque, roumain…) garde sa lettre de base (« Łódź » → « Lódz », pas « ód ») :
+// décomposition NFKD, on garde ce que la police sait afficher, accents retirés
+// seulement pour ces lettres-là. Le reste (emojis, symboles) est retiré. À
+// passer sur tout texte libre (nom d'équipe, note, libellé) envoyé à pdf.text().
+// Les libellés PDF des dicos n'en ont pas besoin : scripts/check-pdf-texte.js
+// y refuse tout caractère hors police (et rejoue des cas de ce filtre).
+(function () {
+  const EXTRA = "ŒœŠšŽžŸƒˆ˜–—‘’‚“”„†‡•…‰‹›€™";
+  const EQUIV = { "→": "->", "⇒": "=>", "←": "<-", "⇐": "<=", "↔": "<->", "✓": "OK", "✔": "OK",
+                  "✗": "X", "✘": "X", "≥": ">=", "≤": "<=", "≠": "!=", "⚠": "!" };
+  // Lettres SANS décomposition Unicode (barre, pas accent) : leur base à la main.
+  const BASE = { "Ł": "L", "ł": "l", "Đ": "D", "đ": "d", "Ħ": "H", "ħ": "h", "ı": "i", "Ŧ": "T", "ŧ": "t" };
+  const dansPolice = function (c) {
+    const n = c.codePointAt(0);
+    return (n >= 0x20 && n <= 0x7E) || n === 0x0A || n === 0x09 || (n >= 0xA0 && n <= 0xFF) || EXTRA.indexOf(c) >= 0;
+  };
+  window.ktaTextePdf = function (s) {
+    let r = "";
+    for (const c of String(s == null ? "" : s).normalize("NFC")) {
+      if (dansPolice(c)) { r += c; continue; }
+      if (EQUIV[c]) { r += EQUIV[c]; continue; }
+      if (BASE[c]) { r += BASE[c]; continue; }
+      // Repli : décomposer (ź → z + accent) et garder ce que la police affiche ; rien → caractère retiré.
+      for (const d of c.normalize("NFKD")) if (dansPolice(d)) r += d;
+    }
+    return r;
+  };
+})();
+
+// =====================================================================
 // 📋 window.ktaCopierTexte(txt) → Promise<boolean>
 // =====================================================================
 // 26/09/2026 — le presse-papier était recopié à la main dans SEPT modules
@@ -3553,8 +3673,8 @@ window.telechargerPlan = telechargerPlan;
 // qui marche partout : on ne prive pas quelqu'un de ses coordonnées parce que
 // le navigateur fait la fine bouche.
 //
-// 📌 Les 7 sites existants ne sont PAS migrés ici (ce n'était pas la
-// demande) — consigné au BACKLOG.
+// ✅ 10/10/2026 : tous les modules de l'app passent par ce helper (secoursMode compris) ;
+// seul confadmin.js garde sa copie (page à part, sans utils.js).
 window.ktaCopierTexte = function (txt) {
   const s = String(txt == null ? "" : txt);
   if (!s) return Promise.resolve(false);
@@ -3574,12 +3694,97 @@ window.ktaCopierTexte = function (txt) {
       return !!ok;
     } catch (e) { return false; }
   };
-  try {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(s)
-        .then(function () { return true; })
-        .catch(function () { return repli(); });
-    }
-  } catch (e) { /* accès à navigator.clipboard lui-même peut jeter en iframe */ }
+  // Le try ne garde que l'ACCÈS à navigator.clipboard (peut jeter en iframe) ; l'écriture, elle, est une
+  // promesse : son échec passe par le .catch (repli), et une erreur synchrone de writeText aussi.
+  // ⚠️ writeText est appelé TOUT DE SUITE (exécuteur de Promise = synchrone) : iOS exige l'appel pendant
+  // le geste de l'utilisateur, un .then() le décalerait d'une microtâche.
+  let presse = null;
+  try { presse = navigator.clipboard; } catch (e) { presse = null; }
+  if (presse && typeof presse.writeText === "function") {
+    return new Promise(function (resoudre) { resoudre(presse.writeText(s)); })
+      .then(function () { return true; })
+      .catch(function () { return repli(); });
+  }
   return Promise.resolve(repli());
 };
+
+// =====================================================================
+// 💾 window.ktaStockageLocal — mémoire des sessions
+// =====================================================================
+// 10/10/2026 (retour d'un testeur en prod : points disparus + invite de mise à
+// jour à chaque ouverture) : les sessions vivaient dans le localStorage, plafonné
+// à ~5 Mo PAR SITE quel que soit l'espace du téléphone. Plein, toute écriture y
+// échouait (QuotaExceededError) et rien ne le montrait AVANT la panne.
+// Depuis, les sessions vivent en IndexedDB (js/sessionStore.js) : la mémoire qui
+// compte est alors le QUOTA du navigateur pour le site (navigator.storage.estimate,
+// une part de l'espace libre de l'appareil — plans, photos et caches compris).
+// En repli (IndexedDB indisponible), c'est encore le localStorage : on MESURE
+// l'occupation (clés + valeurs, en caractères) face à une limite prudente.
+//   mesurer() → { mode, car, limite, ratio, sessions: [{ planId, car }], autres, carSessions }
+//     mode « idb » : car = usage du site, limite = quota (null si le navigateur ne le
+//     donne pas : ratio 0), carSessions = total des sessions.
+//     mode « ls »  : car = occupation du localStorage, limite = 5 000 000.
+//   ecrire(cle, valeur) → bool : écriture localStorage protégée ; plein → événement
+//     `mktm:stockage-plein` (une fois par page), jamais d'exception.
+(function () {
+  const LIMITE = 5000000;   // ~5 Mo : Chrome/Edge 5 Mi car., Firefox 5 Mio, Safari ~5 Mo — prudent
+  const PREFIXE_SESSION = "myktamap_session_v1_";
+  let _signale = false;
+
+  function _mesurerIdb(st) {
+    const sessions = st.ids().map(function (id) { return { planId: id, car: st.taille(id) }; });
+    sessions.sort(function (a, b) { return b.car - a.car; });
+    const carSessions = sessions.reduce(function (n, x) { return n + x.car; }, 0);
+    const e = st.estimation();
+    if (!e || !(e.quota > 0)) {
+      return { mode: "idb", car: carSessions, limite: null, ratio: 0, sessions: sessions, autres: 0, carSessions: carSessions };
+    }
+    return { mode: "idb", car: e.usage, limite: e.quota, ratio: e.usage / e.quota, sessions: sessions,
+      autres: Math.max(0, e.usage - carSessions), carSessions: carSessions };
+  }
+
+  function mesurer() {
+    const st = window.KtaSessionStore;
+    if (st && st.mode() === "idb") return _mesurerIdb(st);
+    let car = 0, autres = 0, carSessions = 0;
+    const sessions = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        const v = localStorage.getItem(k) || "";
+        const n = k.length + v.length;
+        car += n;
+        if (k.indexOf(PREFIXE_SESSION) === 0) { sessions.push({ planId: k.slice(PREFIXE_SESSION.length), car: n }); carSessions += n; }
+        else autres += n;
+      }
+    } catch (e) { /* stockage inaccessible (navigation privée stricte) : mesure nulle */ }
+    sessions.sort(function (a, b) { return b.car - a.car; });
+    return { mode: "ls", car: car, limite: LIMITE, ratio: car / LIMITE, sessions: sessions, autres: autres, carSessions: carSessions };
+  }
+
+  function _plein(e) {
+    return !!e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      e.code === 22 || e.code === 1014 || /quota/i.test(e.message || ""));
+  }
+
+  function ecrire(cle, valeur) {
+    try { localStorage.setItem(cle, valeur); return true; }
+    catch (e) {
+      if (_plein(e) && !_signale) {
+        _signale = true;
+        console.warn("[Stockage] localStorage plein : écriture de « " + cle + " » refusée");
+        try { window.dispatchEvent(new CustomEvent("mktm:stockage-plein", { detail: { cle: cle } })); } catch (e2) { /* rien */ }
+      }
+      return false;
+    }
+  }
+
+  // « 3,8 Mo » / « 1,2 Go » : 1 caractère ≈ 1 octet pour ces données (JSON en ASCII surtout).
+  function mo(car) {
+    const loc = window.ktaLocale ? window.ktaLocale() : "fr-FR";
+    const go = car >= 1e9;
+    return (car / (go ? 1e9 : 1e6)).toLocaleString(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (go ? " Go" : " Mo");
+  }
+
+  window.ktaStockageLocal = { mesurer: mesurer, ecrire: ecrire, mo: mo, LIMITE: LIMITE, SEUIL_ALERTE: 0.8 };
+})();

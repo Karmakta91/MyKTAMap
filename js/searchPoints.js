@@ -1382,7 +1382,7 @@
   function _allerVersPoint(item) {
     const p = item.item || item.point;  // compat ancien format (point) + nouveau (item)
     if (typeof p.x !== "number" || typeof p.y !== "number") {
-      alert(window.I18n.t("search.go.pointNoCoords"));
+      window.ktaAlerte(window.I18n.t("search.go.pointNoCoords"));
       return;
     }
     const latlng = convertCoord(p.x, p.y);
@@ -1399,7 +1399,7 @@
   function _allerVersAnnotation(item) {
     const ann = item.item;
     if (!ann || !Array.isArray(ann.points) || ann.points.length === 0) {
-      alert(window.I18n.t("search.go.annotationNoPoints"));
+      window.ktaAlerte(window.I18n.t("search.go.annotationNoPoints"));
       return;
     }
 

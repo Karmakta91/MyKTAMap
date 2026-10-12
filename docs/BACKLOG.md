@@ -2,9 +2,68 @@
 
 > Fichier de travail KARMA ↔ Claude. **Ce n'est pas un journal** (ça, c'est `README.md`) : ici on ne garde que ce qui est **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits.
 >
-> **Dernier ménage : 07/10/2026** (précédent : 06/10/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
+> **Dernier ménage : 10/10/2026** (précédent : 07/10/2026). Tout ce qui était soldé est sorti (y compris les « corrections d'inventaire ») ;
 > ce qui a été abandonné volontairement est dans **🚫 Enterré**. Les versions antérieures de ce fichier restent
 > lisibles dans l'historique Git (`git log -p docs/BACKLOG.md`).
+
+## 🩸 Retour testeur en prod (10/10/2026) — sessions perdues, invite de mise à jour à chaque ouverture
+
+Analyse : `localStorage` (~5 Mo par site, sessions dedans) plein = la cause probable des deux symptômes. **Fait** :
+jauge « 💾 Mémoire des sessions » (📊 Détails de la session, ⚠️ sur la tuile 💾 du profil), alerte à ≥ 80 % au
+chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`, `utils.js`), écritures de
+`updateChecker.js` protégées (avant : « Plus tard » jetait `QuotaExceededError`, invite à chaque ouverture). Reste :
+
+- Question « Session d'une autre version du plan » : si l'utilisateur choisit « Ignorer », elle revient à la prochaine
+  ouverture (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
+- ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
+
+## 🧰 Barre d'outils de droite — boutons en double (retour KARMA du 11/10/2026, v2.14.0, iPhone)
+
+- 🟡 **Reste un doublon 📐** quand la mesure est ouverte : le groupe 📐 Mesure et sa sous-action 📐 Distance. Fait le
+  12/10/2026 : la SURFACE mesurée prend ♦️ partout (plus de confusion avec ⬛ Zones), le groupe ne reflète plus
+  l'icône du mode actif. Ce n'était pas une injection en double mais l'accordéon (groupe + sous-actions). Piste :
+  une icône propre à la Distance (📏 est pris par la distance totale des tracés en barre d'état).
+
+## 👥 Plusieurs personnes sur la même carte (retour KARMA du 11/10/2026, capture sur téléphone)
+
+- 🟠 **On ne distingue pas qui est qui** : sur la capture, deux marqueurs identiques (triangles bleus), sans pastille ni
+  étiquette lisible. **À vérifier d'abord** : ces triangles sont-ils les présences (`js/ktaPresences.js` dessine une
+  pastille à l'initiale + une étiquette « pseudo · il y a N min ») ou un autre marqueur (tracker, itinéraire) ? Puis :
+  une couleur par personne, stable (dérivée de l'identifiant, palette lisible en clair et en sombre — aujourd'hui seule
+  une équipe Secours a sa couleur, trace toujours `#8cb4ff`), et l'étiquette lisible à tous les zooms.
+- 🟡 **Masquer une personne** depuis le menu équipe : on masque déjà sa **trace** et son **itinéraire**
+  (`masquerTrace`, `masquerItineraire`), pas son **marqueur**. Ajouter « Masquer <pseudo> » (marqueur + trace),
+  réversible, oublié au changement de plan comme les autres masquages.
+
+## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
+
+| Sujet | Décision | Qui |
+|---|---|---|
+| ✅ 🚨 sert à trois outils | **Renommer** : « Mode urgence » XL devient « Affichage XL » (autre icône) ; 🚨 reste à la Sortie d'urgence ; Mode Secours inchangé — **fait** : 🔆 Affichage XL / XL display / Vista XL | Claude |
+| ✅ Harmonisation Secours | **Un seul emoji 🚑 pour le Mode Secours** (tuile Tracker, titre, pastille, guides, Aide, AI_CONTEXT) ; le raccourci « 🆘 Écran XL » de la vue équipe devient **🔆 Affichage XL** — **fait**. 🚨 reste aux équipes, aux victimes et à la Sortie d'urgence | Claude |
+| ✅ Commande vocale FR seulement | **Masquer le bouton vocal hors français** — **fait** (réévalué au changement de langue) | Claude |
+| ✅ Case « 👁️ Ne rendre que les éléments visibles » | **Mesurer** (marge canvas + tuiles élargie, relevé lourd) **puis proposer** garder / fusionner ULTRA / retirer — **fait** : mesuré, marges élargies pour tous (canvas 0,5, tuiles 0,6), case retirée, le levier reste dans ULTRA (`docs/architecture/perf-memory.md` §21) | Claude, puis KARMA |
+| « Rien à exporter » | **Toast warn marqué important** (visible même en Silence) au lieu d'une fenêtre | Claude |
+| Branche de test `karma-dev` (dépôt client) | **Synchronisée à chaque release** par `export-backend.ps1` | Claude (pro) |
+| Sonar en CI (runner sur le poste) | **Non** — la marche 1ter suffit | — |
+| Scripts de déploiement | **Dépôt privé dédié** (ex. MyKTAMap-deploy), sans secret | KARMA crée le dépôt, Claude y range les scripts |
+| Stratégie doc « une source, trois rendus » | **Pas maintenant** | — |
+| Import VisualTopo | **Pas maintenant** | — |
+| Protection de branche GitHub (payante) | **Non tant que KARMA est seul** à écrire | — |
+
+## 🔐 Audit du 10/10/2026 (pro, connexion) — à corriger (Claude, pro)
+
+(Corrigés côté pro depuis : secret 2FA indépendant de `JWT_SECRET` + `2fa_secret_illisible`, `X-Forwarded-Host` jamais
+cru, délai limite des formulaires de connexion.)
+
+- 🟠 Licence refusée pendant la reprise → retombe en « down » (`_reprise`, `_sonde`, barre de la gate) au lieu de fermer.
+- 🟠 Barre d'état de la gate sur les écrans post-connexion : `signaler("on")` en mode local sans session.
+- 🟡 « down » venu de l'événement `offline` : `_debloquerSiDown` ne suffit pas (`_reseauCoupe`).
+- 🟡 Mot de passe oublié ouvert sans licence ; 🆘 inactif avant `load`.
+- 🔬 **Non audité** : la migration des ~190 popups côté community (ordre, z-index, toasts, échappement des appelants de
+  `ktaConfirm`, qui insère son message en HTML). Second passage à faire.
+
+---
 
 ## ⚠️ Règle de vérification (à lire avant d'utiliser ce fichier)
 
@@ -33,33 +92,14 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 - **Mode Secours v1.98.24 sur iPhone** : « Suivre mon parcours » démarre le suivi (permission des capteurs iOS
   demandée dans le geste) ; valider une étape recale la position (question au-delà de 30 m) ; écran XL avec un long
   itinéraire ; champ « Retour impératif » (sélecteur d'heure natif).
+- **Photos et export (12/10/2026)**, vérifiés au harnais seulement : réimport d'une session ZIP (photos ajoutées,
+  aucune effacée, toast de bilan) ; refus au-delà de 5 photos au rattachement ; analyse d'un gros plan depuis
+  l'accueil (lecture partielle de l'archive — `DecompressionStream("deflate-raw")` : Safari ≥ 16.4) ; export
+  image d'un plan tuilé hors-ligne (fond depuis les tuiles : aucun filet entre tuiles, même netteté).
 - ⚠️ **Toujours tester APRÈS un bump** : le service worker ne change de cache qu'au bump de `CACHE_NAME`. Entre deux
   commits, un téléphone qui a déjà chargé l'app garde l'ancien JS — c'est ce qui a fait voir à KARMA un « tourner à
   gauche » déjà corrigé (27/09/2026).
 - La validation **iOS/Safari** d'un changement de rendu vit dans `docs/RELEASE_GATE.md`, pas ici.
-
-## 🔎 Performance sur relevé lourd — mesuré le 26/09/2026, gardé
-
-Mesures sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés).
-
-- 🟡 **Export image : le fond est retéléchargé** (image de 42 Mo) alors que 30 Mo de tuiles sont déjà sur l’appareil.
-- 🟡 **Pendant un déplacement, des éléments n'apparaissent qu'au relâcher — case « 👁️ Ne rendre que les éléments
-  visibles » décochée** (constaté le 05/10/2026, pas une régression : comportement présent avant v2.9.0). Deux causes
-  indépendantes de la case : (1) les tracés et zones sont en **canvas** (`map.js` `preferCanvas: true`) — Leaflet ne les
-  dessine que sur l'écran + 10 % et redessine à la fin du geste ; (2) **tuiles** de l'image posées seulement près de
-  l'écran (`tiling.js`, v1.98.23). La case n'ajoute donc presque rien de visible, d'où la question de sa **pertinence**.
-  Pistes : marge du renderer élargie (`L.canvas({ padding: 0.5 })`) et des tuiles, à mesurer sur relevé lourd
-  (mémoire, fluidité) ; puis garder, fusionner dans ULTRA, ou retirer la case. **À trancher par KARMA.**
-
-## 🪧 Guidage de l'itinéraire — ce qui reste (29/09/2026)
-
-Décisions : `docs/ETUDE_GUIDAGE.md` ; archi : `docs/architecture/tracking.md` §Guidage.
-
-- 🟡 **Poids des jonctions de niveau sur un plan distant** (vu le 01/10/2026 en branchant le guidage
-  inter-plans) : `pathfinder.js > _poidsSegment` lit l'échelle ET les profondeurs de niveau du plan OUVERT
-  (`APP_CONFIG.scale`, `getProfondeurNiveau`). L'étape d'un itinéraire inter-plans calculée sur un autre plan
-  multi-niveau pèse donc ses jonctions avec les profondeurs du mauvais plan → choix de chemin légèrement
-  faussé. Les carrefours, eux, reçoivent déjà l'échelle du plan cible (`opts.echelle`). ✅ vérifié (code lu).
 
 ## 🚑 Mode Secours — la refonte qui reste (audit du 29/09/2026)
 
@@ -67,11 +107,6 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
 case, un bump par vague. **Toucher `secoursMode.js` = migrer ses `alert()`/`confirm()` au passage** (cf. 📋 Popups
 natives).
 
-- 🟡 **Sortie d'urgence 🚨 classique : sortie coupée par une zone inaccessible** (vu le 06/10/2026 en livrant les options
-  brancard) : le moteur cale la sortie sur la galerie restante la plus proche, le chemin s'arrête court. L'écart compte
-  désormais dans la distance, mais sans alerte : une sortie à 75 m d'écart peut encore passer devant. En brancard, l'écart
-  > 10 m est signalé. À trancher : même alerte en mode classique (un POI de sortie peut aussi être loin d'une galerie
-  sur un plan peu tracé). ✅ vérifié (bac `check-guidage` §12). **S**
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 (option 6:b écartée pour l'instant) **L**.
 - **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage (après B3) **L** · C2 gabarit brancard
   (modèle des tracés + Générateur) **L** · C3 rôle par personne en **liste fermée**, jamais créable — seulement si des
@@ -85,28 +120,20 @@ remplace.
 
 ## 🎨 Thème et langues — reliquats des audits du 29/09/2026
 
-- **À trancher (KARMA)** — gris charte `#8892a4` des libellés des cartes Secours en **sombre** : contraste 3,8–4,1
-  (< 4,5). Garder, ou passer ces libellés en `#a8b3c8`. Couleur de la charte → pas de changement sans accord.
-- **FR en dur hors des modules audités** : l'ancien détecteur `find-hardcoded-fr.js` (retiré le 07/10/2026, dans l'historique Git) sortait ~960 candidats (plancher
-  connu de faux positifs ~560) ; seuls Secours, guidage, accueil et Documentation ont été triés. Même politique que
-  les popups : **au fil de l'eau**, quand on touche un module.
-- 🟡 Étiquette de la carte OSM du briefing Secours toujours sombre (`secoursMode.js`, inline) — lisible dans les deux
-  thèmes, cosmétique.
+- **FR en dur hors des modules audités** — tri complet de `js/` fait le 09/10/2026 (détecteur de l'historique Git +
+  passe sur les gabarits multi-lignes, qu'il ne voyait pas) : le reste visible est migré (calibrage d'échelle, logs de
+  débogage, messages de chargement, import des favoris). Reste, assumé : la page d'admin `confadmin.html` (100 % FR,
+  ne charge pas les dicos), les motifs de config invalide de `ktaExtensions.js` (lus par l'admin d'instance), les
+  `Error` techniques et les fallbacks FR derrière une clé. **Au fil de l'eau** pour ce qui serait encore passé.
 
-## 📋 Popups natives et presse-papier — au fil de l'eau (recompté le 29/09/2026)
+## 📋 Presse-papier — au fil de l'eau
 
-Politique arrêtée : **pas de sweep massif**, on migre quand on touche le module. Nouveaux usages : les helpers
-obligatoires.
+> Les popups natives (`alert` / `confirm` / `prompt`) sont **toutes migrées** (09/10/2026) vers `ktaAlerte` /
+> `ktaConfirm` / toast ; `scripts/check-popups-natives.js` (plafond 0) interdit leur retour.
 
-- **`alert()` / `confirm()` natifs** : ~175 `alert()` et ~37 `confirm()` dans `js/` (grep brut, commentaires
-  compris), hors charte et hors du réglage de notifications. `window.ktaConfirm` (utils.js, Promise + charte) est
-  déjà utilisé par 13 fichiers. `secoursMode.js` reste le premier contributeur : le plus d'effet, le plus de risque.
-  ⚠️ `ktaConfirm` est **asynchrone** : le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`.
-- **Copies locales du presse-papier** : `window.ktaCopierTexte(txt)` (utils.js, v1.97.10) existe ; une dizaine de
-  fichiers gardent leur propre `navigator.clipboard` (`debug`, `homeConfig`, `interfaceDocs`, `lostMode`,
-  `memInspector`, `osmCoords`, `refonteInterface`, `secoursMode`, `sessionReport`, `statsGlobales`). Chaque site a
-  son propre retour visuel (toast, texte in situ, `alert`) : **un par un**, en vérifiant le retour. ⚠️ `memInspector`
-  et `debug` servent au diagnostic : les casser rendrait un rapport de crash incopiable.
+- **Copies locales du presse-papier** : soldé le 10/10/2026 — tous les modules d'`index.html` passent par
+  `window.ktaCopierTexte(txt)` (utils.js), `secoursMode` compris. Reste hors périmètre : `confadmin.js` garde sa copie,
+  car `confadmin.html` est une page à part qui ne charge pas `utils.js`.
 
 ## 🎨 Harmoniser les icônes par défaut — gardé de côté, non prioritaire
 
@@ -129,16 +156,13 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 ## 🔒 Affichage de données d'autres comptes — XSS et CSP (04/10/2026)
 
 Contexte : sur une **installation reliée** (synchro), l'app affiche des noms et des notes écrits par d'autres comptes ;
-avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie accepte `script-src 'unsafe-inline'`.
+avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie est stricte (`script-src 'self'`) depuis
+le 10/10/2026, sur dev et prod (`security-legal.md` §40.7.1).
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
 - ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
   corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
-- 🟠 **`script-src` sans `'unsafe-inline'` — reste la BASCULE** : l'app n'a plus de script inline (07/10/2026, gardé par
-  `check-csp-inline`), la politique stricte est servie en Report-Only et EN VIGUEUR dans le smoke. Reste, avec une
-  release : changer la directive dans `docker/nginx-docker.conf`, les modèles `docs/nginx-*.conf` et **la config nginx
-  de dev/prod sur le VPS (KARMA)**, retirer la ligne Report-Only. `security-legal.md` §40.7.1. **S.**
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
@@ -150,9 +174,7 @@ synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais 
 
 Rapport : [`docs/audits/2026-10-03_audit-guide-utilisateur-v1.md`](audits/2026-10-03_audit-guide-utilisateur-v1.md) (lots L0-L5 appliqués).
 
-- 🟠 **Commande vocale : français seulement** — `voiceCommand.js` force `fr-FR` et ses motifs sont en français ; les guides EN/ES le disent désormais. À trancher : la traduire ou l'annoncer comme telle dans l'interface. ✅ vérifié (code lu).
-- 🟠 **🚨 sert à trois outils** (Sortie d'urgence, Mode urgence — Affichage XL, Mode Secours) et deux libellés disent « Mode urgence » : premier facteur de confusion sous stress, la doc seule ne le lève pas (décision d'UI).
-- 🟡 **Nom de département dans le code et les docs internes** : l'aide et les docs utilisateur sont neutralisées (audit de l'aide, 03/10/2026), mais le nom du département des relevés réels reste dans des commentaires `js/`, des contrôles `scripts/`, le journal `README.md`, `docs/architecture/` et le placeholder de `confadmin.html`. À trancher : neutraliser partout (mécanique, mais les contrôles et le journal sont concernés) ou l'accepter hors documentation utilisateur.
+- 🟡 **Autres noms réels dans le code et les docs internes** : le nom du département des relevés est neutralisé partout (12/10/2026, garde-fou `check-noms-reels.js`) ; d'autres noms de lieu ou de plan réels restent dans le journal `README.md`, quelques commentaires `js/` et `docs/architecture/`. Liste remise à KARMA hors dépôt (jamais ici). À trancher nom par nom : neutraliser, puis ajouter au garde-fou (empreinte ou liste locale `~/.myktamap/noms-interdits.txt`).
 - ⚪ **Mot de passe d'installation oublié** : seul l'effacement des données du site lève le verrou (le démarrage attend le mot de passe, `main.js`). Ne concerne plus que les installations qui publient un mot de passe (le code communautaire en dur est supprimé depuis le 04/10/2026). Pas de voie de secours dans l'app — décision de produit, à confirmer.
 - ⚪ Non vérifiés, repris tels quels : chiffres de stockage par appareil (~50 Mo Safari, ~1 Go installée), chemin d'installation Chrome Android.
 
@@ -168,9 +190,7 @@ déjà les trois langues du guide ; il ne relie pas le guide à l'Aide intégré
 |---|---|---|
 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n'a aucun format topo lisible | gardé — à lancer |
 | **Puits inter-étage** (KARMA, 30/09) | un puits qui relie deux niveaux n'existe que comme **tracé** « jonction » 🪜 (`{type:"jonction", fromLevel, toLevel}`, `multilevel-pathfinding.md` §26.5) — invisible en tant que point. POI spéciale, **icône dédiée**, visible sur ses **deux** niveaux, qui porte (ou crée) la jonction pour l'itinéraire — même logique qu'un **portail** (lié à deux plans). Ajout du tag : skill `.claude/skills/add-icon-tag` | gardé — à cadrer |
-| **➕ Créer un tag depuis l'éditeur de point, sur le modèle de « ➕ Nouveau type… »** (reliquat du 30/09) | Tracés / Zones / Structures ont leur « ➕ Nouveau type… » (flyout → `LegendCustomization.ouvrirAddDialog`, catégorie verrouillée). L'éditeur de point garde son propre « ➕ Créer un nouveau tag… » (`editor.js` `__new__`) : slug brut dans `PLAN_CONFIG.icons`, icône par défaut, **ni libellé ni icône choisie, aucune entrée de légende** — deux modèles pour un même geste. Le brancher sur la même boîte (catégorie `icones`). ✅ vérifié 30/09 | gardé — choix 4:b de KARMA, second temps |
 | **ConfAdmin : adresse de contact de l'installation** (KARMA, 04/10) | `contact@myktamap.fr` est écrit en dur dans l'app (`index.html` ×2, `lang/{fr,en,es}.json` ×3 chacun) et dans le guide ×3. Une installation indépendante doit pouvoir afficher **son** adresse : champ dans ConfAdmin → `index.json > config`, lu au rendu, repli sur `contact@myktamap.fr`. À trancher : quelles mentions suivent (contact de l'installation) et lesquelles restent (crédit de l'auteur, licence, `NETWORK_AUDIT` qui décrit myktamap.fr) | à cadrer |
-| **Outils de dessin grisés ou masqués en lecture seule** (KARMA, 08/10) | Sur un plan relié en droit « lire », les outils POI / Zone / Tracé / Structure restent affichés : depuis le 08/10 ils ne s'allument plus et une fenêtre « Plan en lecture seule » s'ouvre à l'ouverture (`ktaAnnoncerLectureSeule`), mais on peut encore cliquer pour rien. Piste : les **griser** (cliquables pour rappeler le message) ou les **retirer** de la barre tant que `KtaExtensions.lectureSeule(planId)` — à trancher : griser garde la découverte de l'outil, retirer allège la barre. Point d'entrée : `interface.js` (groupes d'outils), relu à l'ouverture du plan | à trancher — sans code |
 | **Export de profil en flux** | `showSaveFilePicker` + `generateInternalStream` (Chrome/Edge desktop) pour réduire le pic RAM de `generateAsync` sur les très gros exports | gardé — si un cas réel le demande |
 
 **VisualTopo** — l'app ne lit **aucun** format de topographie (ni VisualTopo, ni Therion, ni Compass, ni Survex ;
@@ -195,10 +215,16 @@ malgré son commentaire », donc branché — à tort : il révoquait les URLs d
 d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN avant de brancher un cleanup.**
 
 ### 🟡 À vérifier avant de toucher
-- Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action`, `.plan-card` ×4, `.kta-modal-btn-*`, `.kta-mesure-distance`, `.drag-over`, `.kta-rd-total-pill`, `style-secours.css` — contrôle runtime (`querySelectorAll(...).length === 0`)
-- `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
-- `planBlob` (`createConf.js`) : écrit, jamais lu — vérifier qu'aucune révocation d'URL n'a été oubliée avant de le retirer
-- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
+- Fragments de sélecteurs morts dans **`style-secours.css`** — pas encore inventoriés (ceux de `style.css` sont
+  retirés le 10/10/2026) ; contrôle runtime (`querySelectorAll(...).length === 0`) + grep des concaténations
+- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?) et exports `window.*` sans
+  consommateur hors de leur fichier (re-grep du 10/10/2026) : `getPlanScale`, `getPlanSmartNav`, `getBaseName`,
+  `ktaNettoyerIconesConfig` (config.js) · `chargerImageTuillee`, `tuilingNecessaire` (tiling.js, dette documentée
+  dans `TILING.md`) · `PROF_*_DEFAUT` non revérifiés. API = contrat : gain faible, risque non nul — à arbitrer par
+  KARMA, pas à supprimer d'office
+
+> ✅ **Vérifié vivant, ne plus signaler** : `kta-toast-error` / `kta-toast-info` (`oomGuard.js` les construit par
+> `"kta-toast-" + type` ; `showToast(…, "error")` ×6, `"info"` ×48, `"warn"` ×34 au 10/10/2026).
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
@@ -216,11 +242,11 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
   et c'est un service de plus à tenir à jour. Si oui : job `sonar` **séparé et non bloquant** dans `ci.yml`
   (`runs-on: self-hosted`), secret `SONAR_TOKEN` côté GitHub — repris par la session CI. Si non : la marche 1ter
   suffit (une analyse par release).
-- 🟡 **Bugs déjà présents, relevés par le premier scan** (✅ vérifié 09/10, Sonar) — n'entrent pas dans la porte
-  (ancien code), à prendre au fil de l'eau : 5 `try` autour d'une promesse sans `await` (`utils.js`,
-  `homeProfile.js` ×2, `osmView.js`, `sessionBackups.js`), 5 champs sans libellé dans `index.html`
-  (accessibilité), 2 `height` en double dans `css/style.css`, une ternaire aux deux branches identiques
-  (`map.js`, `_minZoom`). Liste à jour : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
+- ⚪ **Faux positifs « Bug » à marquer « Accepté » dans Sonar (KARMA, interface web)** — corrigés le 09/10 :
+  les 14 autres. Restent, voulus : `mdParser.js:107` ×2 (caractères de contrôle = balises internes des blocs de
+  code), `css/style.css` ×2 (`height: 44px` = repli avant `calc(… env(safe-area-inset-top))`), `index.html`
+  barre de profil (clavier géré en JS, `homeProfile.js` — la CSP interdit l'attribut inline que Sonar réclame).
+  Liste : `http://localhost:9000/project/issues?id=MyKTAMap&types=BUG`.
 - ⚪ **Jetons Sonar** : expiration vers le **06/01/2027** (90 jours) — au-delà, `sonar-scan.ps1` sort en code 1
   et `merge-main.ps1` demande `DEROGE`. Régénérer un *Project Analysis Token* et le ranger dans `SONAR_TOKEN`.
 
@@ -230,21 +256,12 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 > (`merge-main.ps1`), image Docker conditionnée à la CI, Dependabot, `lib/VERSIONS.md`. Détail :
 > `docs/architecture/infra-versioning.md` §29bis. Pistes non prioritaires :
 
-- 🟡 **jsPDF 2.5.1** (`lib/VERSIONS.md`) : premier candidat à une mise à jour — avis de sécurité publiés sur la
-  branche 2.x [Supposition — à vérifier sur le lien « Avis »] ; tester **tous** les exports PDF après coup.
-- ⚪ **Smoke Playwright en CI**, lancé à la main (`workflow_dispatch`) : la marche 2 de la porte reste manuelle.
-- ⚪ **Tableau de bord des garde-fous** : nombre, durée du pre-commit, tendance d'une version à l'autre.
+- ⚪ **Tendance des garde-fous d'une version à l'autre** : le tableau (`ci.yml` › `tableau-garde-fous`) donne nombre,
+  durée et statut à chaque push, sans historique — comparer deux versions = ouvrir deux runs.
 - ⚪ **Scripts de déploiement versionnés** dans un dépôt privé dédié (aujourd'hui un seul poste les détient) —
   à trancher par KARMA.
 - ⚪ **Protection de branche réelle** (GitHub Pro, ~4 $/mois) si d'autres comptes obtiennent un accès en écriture :
   le contrôle de `merge-main.ps1` ne protège que ce qui passe par le script.
-- 🟠 **Une image Docker construite depuis le poste embarque le `data/` local** (✅ vérifié 09/10, audit CD) : le
-  `Dockerfile` copie tout le dossier, et ni lui ni `.dockerignore` n'excluent `data/`. Depuis GitHub (`docker.yml`),
-  seul le `data/` suivi par Git part (index et relevé fictifs) ; depuis le poste, ce sont les **relevés réels** et
-  le `data/index.json` local qui entrent dans les couches de l'image — cas de la pile de test du pro, construite
-  depuis le dossier community (masqué à l'exécution par le volume `instance/data`, mais présent dans l'image).
-  Sans conséquence tant qu'une image locale n'est jamais poussée ni copiée. À trancher : exclure `data/` du
-  contexte sauf le fictif (`.dockerignore`), au prix d'un `data/index.json` local ignoré lui aussi.
 
 ## 🔴 Dettes ouvertes
 
@@ -257,7 +274,6 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
 | **D-guidage-instable** | `check-guidage.js` a sorti « ⚠️ 1 echec(s) » une fois au pre-commit (09/10, juste après les tests d'itinéraire Secours brancard / accès barrés), puis vert sur 2 relances sans changement | 🔬 non reproduit — possible concurrence avec une autre session | personne — s'il revient, garder la sortie complète du hook |
-| **D-confirm** | `confirm()` natifs hors charte | 📋 au fil de l'eau — cf. **📋 Popups natives** | personne |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
 
@@ -302,9 +318,10 @@ fix de la v1.77.0.*
 | **Import Shapefile** | Enterré le 29/09 : QGIS exporte en GeoJSON, que l'app lit |
 | **Journal des notifications (cloche)** | Enterré le 29/09 |
 | **Dossier « 🌐 Serveur » automatique** (Mes plans) | Enterré le 29/09 |
-| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne Gironde sont dans l'historique Git de ce fichier |
+| **Atlas : tri de `--lister`, seuil de pertinence, mesure Vue OSM à 20 plans** | Enterré le 29/09. l'outil `decouper-atlas.js` a servi puis été retiré (07/10/2026, historique Git) ; les mesures de la campagne sur relevés réels sont dans l'historique Git de ce fichier |
 | **Test de l'import SIG sur de vrais exports QGIS** | Enterré le 29/09 (le harnais couvre parsers, CRS, Lambert 93) |
 | **Transparence des plans issus d'un scan** | Enterré le 29/09 : un JPEG n'a pas d'alpha ; l'opacité compense, c'est accepté |
 | **Plan orienté : indicateur de Nord, contre-rotation des tooltips, inertie du pan** | « Bien comme ça pour le moment » (KARMA, 29/09) |
 | **Guidage : voix / vibration, validation terrain chiffrée des seuils** | Enterré le 29/09 |
 | **Briefing pompiers : pas de capture OSM sans accord OSM** | Laissé en l'état le 30/09 (accord OSM activé par défaut, rarement coupé). Sans accord, la capture charge quand même les tuiles `tile.openstreetmap.org` |
+| **Créer un tag depuis l'éditeur de point « comme ➕ Nouveau type… »** | Laissé le 09/10/2026 (KARMA) : on crée déjà un tag depuis l'éditeur de point (« ➕ Créer un nouveau tag… »), ça suffit — l'alignement sur la boîte « ➕ Nouveau type… » (libellé, icône, entrée de légende) n'est pas repris |

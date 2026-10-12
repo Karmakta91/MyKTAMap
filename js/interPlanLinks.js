@@ -568,7 +568,7 @@
   // ---------------------------------------------------------------
   // LECTURE DES POINTS D'UN PLAN NON CHARGÉ
   // ---------------------------------------------------------------
-  // Session : localStorage myktamap_session_v1_<planId> → editorPoints[].
+  // Session : KtaSessionStore.lire(planId) (js/sessionStore.js) → editorPoints[].
   // Datalayers : serveur → fetch path/plan-config.json + fichiers ;
   //              local  → ZIP IndexedDB (PlanRegistry.getBlob) via JSZip.
   // Retourne Promise<[{id, nom, x, y, tags, source, level}]>.
@@ -587,8 +587,13 @@
   // l'itinéraire inter-plan voyait « 0 tracés » sur ces plans serveur.
   // (Les plans ZIP locaux avaient déjà leur fallback `|| zip.file(file)`.)
   async function _fetchLayerJson(basePath, file) {
-    const essais = [basePath + "/" + file];
-    if (String(file).indexOf("/") >= 0) essais.push(file);
+    // Chemin déjà complet (il commence par le dossier du plan) : on le prend tel quel, sans passer par
+    // l'URL doublée qui finit en 404 (bruit dans la console à chaque recherche multi-plans).
+    let base = String(basePath);
+    while (base.endsWith("/")) base = base.slice(0, -1);   // boucle, pas /\/+$/ (retour arrière, Sonar S8786)
+    const f = String(file);
+    const essais = f.indexOf(base + "/") === 0 ? [f] : [base + "/" + f];
+    if (f.indexOf("/") >= 0 && essais.indexOf(f) < 0) essais.push(f);
     for (let i = 0; i < essais.length; i++) {
       try {
         const resp = await fetch(essais[i], { cache: "no-cache" });
@@ -602,7 +607,7 @@
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
     try {
-      const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+      const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
         const sess = JSON.parse(raw);
         (sess.editorPoints || []).forEach(function(p) {
@@ -694,6 +699,7 @@
     let scale = null;   // px/mètre du plan distant (cfg.tracking.scale) — nécessaire
                         // pour sommer les distances des legs en MÈTRES (⚠️ les px
                         // de 2 plans n'ont pas la même échelle)
+    let profondeursCfg = null;   // cfg.plan.niveauxProfondeur du plan distant
     function _absorber(objRoads, objZones) {
       (objRoads || []).forEach(function(r) {
         if (r && Array.isArray(r.points) && r.points.length >= 2 && r.type !== "itinerary") roads.push(r);
@@ -704,7 +710,7 @@
     }
     // 1) Session du plan
     try {
-      const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+      const raw = window.KtaSessionStore.lire(plan.id);
       if (raw) {
         const sess = JSON.parse(raw);
         _absorber(sess.roads, sess.zones);
@@ -715,6 +721,7 @@
       if (plan.type === "server" && plan.path && !plan.zip) {
         const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
         if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+        if (cfg && cfg.plan) profondeursCfg = cfg.plan.niveauxProfondeur;
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
@@ -736,6 +743,7 @@
             const baseDir = cfgFile.name.replace(/plan-config\.json$/, "");
             const cfg = JSON.parse(await cfgFile.async("string"));
             if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+            if (cfg && cfg.plan) profondeursCfg = cfg.plan.niveauxProfondeur;
             const layers = (cfg && cfg.dataLayers) || [];
             for (let i = 0; i < layers.length; i++) {
               const f = zip.file(baseDir + layers[i].file) || zip.file(layers[i].file);
@@ -752,7 +760,25 @@
       console.warn("[InterPlanLinks] routing datalayers " + plan.id + " illisibles :", e);
       if (stats) stats.dataError = true;
     }
-    return { roads: roads, zones: zones, scale: scale };
+    // 3) Échelle et profondeurs de niveau du plan DISTANT, même cascade que le
+    //    plan ouvert (config.js : préférence per-plan > plan-config). Les
+    //    profondeurs pèsent les jonctions de niveau de son réseau — celles du
+    //    plan ouvert y seraient fausses. Lecture directe de la préférence :
+    //    getPlanProfondeurs(id) retombe sur le plan-config du plan OUVERT.
+    let prefs = {};
+    try {
+      const rawPrefs = localStorage.getItem("myktamap_plan_prefs_" + plan.id);
+      const o = rawPrefs ? JSON.parse(rawPrefs) : null;
+      if (o && typeof o === "object") prefs = o;
+    } catch(e) { /* préférence illisible → plan-config seul */ }
+    if (typeof prefs.scale === "number" && Number.isFinite(prefs.scale) && prefs.scale > 0) scale = prefs.scale;
+    let profondeurs = {};
+    if (prefs.niveauxProfondeur && typeof prefs.niveauxProfondeur === "object") {
+      profondeurs = prefs.niveauxProfondeur;
+    } else if (profondeursCfg && typeof profondeursCfg === "object") {
+      profondeurs = profondeursCfg;
+    }
+    return { roads: roads, zones: zones, scale: scale, profondeurs: profondeurs };
   }
 
   // ---------------------------------------------------------------
@@ -768,7 +794,7 @@
   function ouvrirCreation(pointId, x, y, nom, source, level, tag, pointUid) {
     const planId = _currentPlanId();
     if (!planId) {
-      alert(_t("ipl.err.noPlan"));
+      window.ktaAlerte(_t("ipl.err.noPlan"));
       return;
     }
     _fermerModale();
@@ -929,7 +955,7 @@
     opts = opts || {};
     const plan = window.PlanRegistry ? window.PlanRegistry.findById(planId) : null;
     if (!plan) {
-      alert(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }));
+      window.ktaAlerte(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }), { type: "erreur" });
       return;
     }
 
@@ -979,13 +1005,13 @@
         } else if (typeof window.chargerPlanDuRegistre === "function") {
           await window.chargerPlanDuRegistre(plan.id);
         } else {
-          alert(_t("ipl.err.loadFailed"));
+          window.ktaAlerte(_t("ipl.err.loadFailed"), { type: "erreur" });
           _pendingTarget = null;
           return;
         }
       } catch(e) {
         console.warn("[InterPlanLinks] switch plan échoué :", e);
-        alert(_t("ipl.err.loadFailed"));
+        window.ktaAlerte(_t("ipl.err.loadFailed"), { type: "erreur" });
         _pendingTarget = null;
         return;
       }
@@ -1024,7 +1050,7 @@
   function naviguerVers(linkId, mySide) {
     const link = _load().links.find(function(l) { return l.id === linkId; })
       || _bakedLinkCache[linkId] || null;
-    if (!link) { alert(_t("ipl.err.linkGone")); return; }
+    if (!link) { window.ktaAlerte(_t("ipl.err.linkGone"), { type: "erreur" }); return; }
     const other = (mySide === "a") ? link.b : link.a;
     if (!other) return;
     goTo(other.planId, {

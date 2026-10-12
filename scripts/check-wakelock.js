@@ -213,7 +213,7 @@ function geste(ctx) {
     t("🩸 optionnels : c'est un GROUPE de 1er niveau, pas une sous-section d'Affichage",
       /config\.group\.optionnels/.test(UIC) &&
       UIC.indexOf("config.group.optionnels") > UIC.indexOf("config.group.perf") &&
-      UIC.indexOf("config.group.optionnels") < UIC.indexOf("config.group.privacy"));
+      UIC.indexOf("config.group.optionnels") < UIC.indexOf("config.group.system"));   // privacy retiré le 12/10/2026
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
       t("i18n " + l + " : config.group.optionnels", typeof D["config.group.optionnels"] === "string");
@@ -273,22 +273,13 @@ function geste(ctx) {
       t("accueil : les deux cases existent",
         /id="loaderBatterieCb"/.test(IDX2) && /id="loaderVibrationCb"/.test(IDX2));
       t("accueil : elles sont câblées", /loaderBatterieCb/.test(HC) && /loaderVibrationCb/.test(HC));
-      // 🐛 Ces libellés CONTIENNENT du HTML (`<strong>`). `data-i18n` pose du
-      // textContent : les balises s'affichaient en toutes lettres à l'écran.
-      // `data-i18n-html` est la variante prévue pour ça — le projet a les deux.
-      t("🐛 accueil : les libellés à balises utilisent `data-i18n-html`",
-        /id="loaderVibrationHint" data-i18n-html=/.test(IDX2) &&
-        /id="loaderBatterieHint" data-i18n-html=/.test(IDX2));
-      // 🩸 Et le TEXTE lui-même ne doit plus décrire l'ancien comportement :
-      // il annonçait « sur iPhone ce toggle reste masqué », alors qu'on vient
-      // précisément d'arrêter de le masquer. Une aide qui ment sur l'écran
-      // qu'elle décrit est pire qu'une aide absente.
-      ["fr", "en", "es"].forEach(function (l) {
-        const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
-        const h = D["config.display.vibration.hint"] || "";
-        t("🩸 " + l + " : l'aide ne dit plus que l'option est masquée sur iPhone",
-          !/reste masqué|remains hidden|queda oculto/i.test(h));
-      });
+      // 🛰️ 12/10/2026 — plus de paragraphe d'explication sous ces cases (le
+      // détail vit dans le Guide) : chacune garde un emplacement VIDE, que
+      // `ktaCapteurRefuse` remplit avec la raison quand le système refuse le
+      // capteur. Sans cet emplacement, la case grisée resterait muette.
+      t("🛰️ accueil : chaque case garde l'emplacement de la raison d'un refus",
+        /id="loaderVibrationHint" class="kta-cfg-raison"><\/span>/.test(IDX2) &&
+        /id="loaderBatterieHint" class="kta-cfg-raison"><\/span>/.test(IDX2));
       // 🩸 Le rendu « capteur refusé » est PARTAGÉ, pas recopié : deux copies
       // auraient fini par diverger — la dette qu'on solde à répétition ici.
       t("🩸 le rendu « capteur refusé » est partagé (utils.js), pas dupliqué",
@@ -319,8 +310,8 @@ function geste(ctx) {
     t("🩸 batterie : défaut OFF donc test en `=== true`",
       /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled === true/.test(CFG) &&
       !/batterieEnabled\s*!==\s*false/.test(CFG + UIC));
-    ["config.optionnels.titre", "config.optionnels.intro", "config.capteurs.refuse",
-     "config.capteurs.refuseIos", "config.batterie.label", "config.batterie.hint",
+    ["config.optionnels.titre", "config.capteurs.refuse",
+     "config.capteurs.refuseIos", "config.batterie.label",
      "config.batterie.toastOn", "config.batterie.toastOff"].forEach(function (k) {
       ["fr", "en", "es"].forEach(function (l) {
         const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));

@@ -35,6 +35,8 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 const fs = require("fs");
 const path = require("path");
 const server = require("./server.js");
@@ -65,11 +67,7 @@ function inf(m) { console.log("  •  " + m); }
 
 (async function main() {
   let nav;
-  try { nav = await chromium.launch(); }
-  catch (e) {
-    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
-    nav = await chromium.launch({ channel: "chromium" });
-  }
+  nav = await lancerNavigateur(chromium);
   // 📋 `clipboard-read` : sans cette permission, on ne pourrait PAS vérifier ce
   // qui a été copié — seulement que le bouton dit l'avoir fait.
   const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,
@@ -86,9 +84,9 @@ function inf(m) { console.log("  •  " + m); }
     await page.waitForTimeout(2500);
     await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    await page.waitForFunction(function () {
+    await attendre(page, function () {
       return !!window.PLAN_CONFIG && !!window.map;
-    }, null, { timeout: 60000 });
+    }, 60000);
     await page.waitForTimeout(5000);
     ok("plan chargé (« " + PLAN.nom + " »)");
     if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");

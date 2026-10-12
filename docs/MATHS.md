@@ -15,7 +15,7 @@ Image (pixels)              Leaflet (CRS.Simple)
   ▼ y                       └────► lng = x
 ```
 
-C'est LA règle n°1 du projet (`CLAUDE.md`) : ne jamais faire `[y, x]` à la main, toujours `convertCoord`. La moitié des maths ci-dessous commencent par ce même geste : `dy = −(yB − yA)` pour remettre le monde à l'endroit.
+C'est LA règle n°1 du code du projet : ne jamais faire `[y, x]` à la main, toujours `convertCoord`. La moitié des maths ci-dessous commencent par ce même geste : `dy = −(yB − yA)` pour remettre le monde à l'endroit.
 
 ---
 

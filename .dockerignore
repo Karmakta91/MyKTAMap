@@ -38,6 +38,15 @@ docs/*
 !docs/applications
 README.md
 
+# 🔒 Relevés RÉELS : construite sur le poste, l'image embarquait tout data/ (relevés de terrain, index
+# local) dans ses couches — même masqué ensuite par un volume (pile pro). Liste blanche : seuls le relevé
+# fictif et le ZIP d'exemple (suivis par Git) entrent. data/index.json n'entre JAMAIS : sur le poste il est
+# en skip-worktree et contient l'index réel ; l'image prend docker/index-fictif.json (copie suivie de
+# l'index fictif, tenue identique par scripts/check-livrables-docs.js). Audit CD du 09/10/2026.
+data/*
+!data/test
+!data/myktamap.zip
+
 # Builds locaux
 dist/
 build/

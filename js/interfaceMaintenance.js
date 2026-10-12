@@ -59,40 +59,42 @@ function ouvrirCalibrageEchelle() {
   const champScale = document.getElementById("cfg_scale");
   const scaleActuel = champScale ? parseFloat(champScale.value) : APP_CONFIG.scale;
 
+  // 🌍 i18n au rendu (la modale s'ouvre toujours après I18n.init).
+  const _t = function(k) { return window.I18n.t(k); };
+
   const modal = document.createElement("div");
   modal.id = "kta-calib-modal";
   modal.className = "kta-readme-modal-overlay";
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:420px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">🎯 Calibrer l'échelle</span>
+        <span class="kta-readme-modal-titre">${_t("maint.calib.title")}</span>
         <button class="kta-panneau-close" id="kta-calib-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
 
         <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-          Mesure une distance connue avec <strong>📐</strong>, puis renseigne ici la distance
-          <strong>réelle</strong> (mesurée au sol). L'échelle sera recalculée automatiquement.
+          ${_t("maint.calib.intro")}
         </p>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📐 Valeurs</div>
+          <div class="kta-aide-section-titre">${_t("maint.calib.sectionValues")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Échelle actuelle (px/m)</label>
+            <label class="kta-cfg-label">${_t("maint.calib.current")}</label>
             <input class="kta-cfg-input" id="calib_actuel" type="number" step="0.01" value="${scaleActuel}" readonly style="opacity:0.6;">
 
-            <label class="kta-cfg-label">Distance affichée (m)</label>
-            <input class="kta-cfg-input" id="calib_affichee" type="number" step="0.1" placeholder="ex: 100">
+            <label class="kta-cfg-label">${_t("maint.calib.displayed")}</label>
+            <input class="kta-cfg-input" id="calib_affichee" type="number" step="0.1" placeholder="${_t("maint.calib.phDisplayed")}">
 
-            <label class="kta-cfg-label">Distance réelle (m)</label>
-            <input class="kta-cfg-input" id="calib_reelle" type="number" step="0.1" placeholder="ex: 150">
+            <label class="kta-cfg-label">${_t("maint.calib.real")}</label>
+            <input class="kta-cfg-input" id="calib_reelle" type="number" step="0.1" placeholder="${_t("maint.calib.phReal")}">
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧮 Résultat</div>
+          <div class="kta-aide-section-titre">${_t("maint.calib.sectionResult")}</div>
           <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
-            <div style="color:#8892a4;">Nouvelle échelle :</div>
+            <div style="color:#8892a4;">${_t("maint.calib.newScale")}</div>
             <div id="calib_resultat" style="font-size:22px; color:#8cb4ff; font-weight:600; margin-top:4px;">—</div>
             <div id="calib_formule" style="font-size:11px; color:#6a7488; margin-top:6px;"></div>
           </div>
@@ -101,8 +103,8 @@ function ouvrirCalibrageEchelle() {
         <div id="calib_erreur" class="kta-conv-erreur" style="display:none;"></div>
 
         <div class="kta-conv-actions" style="margin-top:14px;">
-          <button class="kta-btn kta-btn-ghost"   id="calib_annuler">Annuler</button>
-          <button class="kta-btn kta-btn-primary"  id="calib_appliquer" disabled>Appliquer</button>
+          <button class="kta-btn kta-btn-ghost"   id="calib_annuler">${_t("maint.btn_cancel")}</button>
+          <button class="kta-btn kta-btn-primary"  id="calib_appliquer" disabled>${_t("maint.calib.apply")}</button>
         </div>
 
       </div>
@@ -152,7 +154,7 @@ function ouvrirCalibrageEchelle() {
 
   btnAppliquer.addEventListener("click", function() {
     if (nouveauScale === null || nouveauScale <= 0) {
-      erreurEl.textContent = "Valeur invalide";
+      erreurEl.textContent = _t("maint.calib.invalid");
       erreurEl.style.display = "block";
       return;
     }
@@ -440,7 +442,7 @@ async function mettreAJourCodeSeul() {
   } catch(err) {
     overlay.remove();
     console.error("[Soft update] erreur :", err);
-    alert(window.I18n.t("maint.error_soft_update", { detail: (err.message || err) }));
+    window.ktaAlerte(window.I18n.t("maint.error_soft_update", { detail: (err.message || err) }), { type: "erreur" });
   }
 }
 
@@ -746,7 +748,7 @@ function _resetFlowConfirmation() {
             // effacer » laissait donc en place photos, backups, profil, crashes (et
             // maintenant le carnet). Liste alignée sur memInspector.KNOWN_IDB_DBS.
             const knownDbs = [
-              "myktamap_handles", "myktamap_backups", "myktamap_photos",
+              "myktamap_handles", "myktamap_backups", "myktamap_sessions", "myktamap_photos",
               "myktamap_profile", "myktamap_crashes", "myktamap_journal",
               "myktamap_histoire_pdfs", "myktamap_secours_photos", "myktamap_osm_tiles"
             ];

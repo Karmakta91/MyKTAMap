@@ -856,9 +856,6 @@ window.LegendCustomization = (function() {
           '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
-          '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
-            window.I18n.t("legend.editor.intro") +
-          '</p>' +
           // 🎨 v1.76.0 (F6) — lève l'ambiguïté historique de la case à cocher.
           // Elle n'a JAMAIS masqué quoi que ce soit de la carte : elle ne
           // retire l'entrée que de la BOÎTE de légende. Le masquage carte
@@ -1085,7 +1082,7 @@ window.LegendCustomization = (function() {
       body.addEventListener("input", function(e) {
         if (e.target.matches(".kta-legend-label")) _applyFromUI(e.target);
       });
-      body.addEventListener("click", function(e) {
+      body.addEventListener("click", async function(e) {
         if (e.target.matches(".kta-legend-rm")) {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
@@ -1095,11 +1092,11 @@ window.LegendCustomization = (function() {
             if (u.total > 0) {
               const ent = findCustomEntry(id);
               const msg = window.I18n.t("legend.editor.rmUsedConfirm", {
-                nom:      (ent && ent.label) || id,
+                nom:      window.ktaEsc((ent && ent.label) || id),
                 total:    u.total,
                 calques:  u.calques
               });
-              if (!window.confirm(msg)) return;
+              if (!(await window.ktaConfirm(msg, { zIndex: 100100 }))) return;   // au-dessus de l'éditeur (100050)
             }
             removeCustomEntry(id);
             _render();
@@ -1125,8 +1122,8 @@ window.LegendCustomization = (function() {
       });
     });
 
-    document.getElementById("kta-legend-editor-reset").addEventListener("click", function() {
-      const ok = window.confirm(window.I18n.t("legend.editor.resetConfirm"));
+    document.getElementById("kta-legend-editor-reset").addEventListener("click", async function() {
+      const ok = await window.ktaConfirm(window.I18n.t("legend.editor.resetConfirm"), { zIndex: 100100 });
       if (!ok) return;
       resetSession();
       _render();
@@ -1335,7 +1332,7 @@ window.LegendCustomization = (function() {
     document.getElementById("kta-lc-add-ok").addEventListener("click", function() {
       const cat   = catSel.value;
       const label = (document.getElementById("kta-lc-add-label").value || "").trim();
-      if (!label) { alert(window.I18n.t("legend.add.errNoLabel")); return; }
+      if (!label) { window.ktaAlerte(window.I18n.t("legend.add.errNoLabel"), { zIndex: 100150 }); return; }
       const entry = { category: cat, label: label };
       // Mode « lier un type existant » : l'id EST le type des objets déjà
       // dessinés — c'est toute la liaison (addCustomEntry accepte entry.id).
@@ -1355,7 +1352,7 @@ window.LegendCustomization = (function() {
 
       if (cat === "icones") {
         const url = (document.getElementById("kta-lc-add-icon").value || "").trim();
-        if (!url) { alert(window.I18n.t("legend.add.errIconUrl")); return; }
+        if (!url) { window.ktaAlerte(window.I18n.t("legend.add.errIconUrl"), { zIndex: 100150 }); return; }
         entry.iconUrl = url;
       } else {
         const lineOn = document.getElementById("kta-lc-add-line-on").checked;
@@ -1376,15 +1373,15 @@ window.LegendCustomization = (function() {
         // Pour les structures polyline (front), lineColor est obligatoire.
         // Pour les polygones, fillColor est obligatoire.
         if (entry.geometry === "polyline" && !entry.lineColor) {
-          alert(window.I18n.t("legend.add.errPolyline"));
+          window.ktaAlerte(window.I18n.t("legend.add.errPolyline"), { zIndex: 100150 });
           return;
         }
         if (entry.geometry === "polygon" && !entry.fillColor) {
-          alert(window.I18n.t("legend.add.errPolygon"));
+          window.ktaAlerte(window.I18n.t("legend.add.errPolygon"), { zIndex: 100150 });
           return;
         }
         if (!entry.lineColor && !entry.fillColor) {
-          alert(window.I18n.t("legend.add.errNoColor"));
+          window.ktaAlerte(window.I18n.t("legend.add.errNoColor"), { zIndex: 100150 });
           return;
         }
       }

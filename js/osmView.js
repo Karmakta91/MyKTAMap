@@ -22,7 +22,7 @@
 // 🐛 CRASH MOBILE (fix v1.39.10)
 //   Avant v1.39.10, on chargeait l'image complète du plan via
 //   `L.imageOverlay.rotated(baseImage, ...)` → sur mobile (iPhone PWA budget
-//   ~500 MB), un plan 4000×2251 saturait le GPU (OOM crash silencieux).
+//   ~500 MB), un plan 4000×2250 saturait le GPU (OOM crash silencieux).
 //   Depuis v1.39.10, on ne supporte QUE les plans V2 tuilés.
 //
 // 🏗️ MULTI-LVL OSM (v1.39.16)
@@ -187,7 +187,7 @@
   // Secours actif au moment du open() de la modale Vue OSM. Toggle dans
   // bandeau pour basculer ON/OFF à la volée.
   let _secoursLayer   = null;   // L.layerGroup zones + iti + markers entree/sortie
-  let _secoursVisible = true;   // toggle "🚨 Secours"
+  let _secoursVisible = true;   // toggle "🚑 Secours"
   // Style alignés sur l'overlay map principale (cf secoursMode.js renderOverlay)
   const SECOURS_ITI_WEIGHT       = 4;
   const SECOURS_ITI_DASHARRAY    = "8 4";   // dashed pour distinguer iti équipe vs iti pathfinder global
@@ -379,9 +379,8 @@
     // en ~1 tick après chargement du plan. Sans ça, la flag reste à false
     // car le setTimeout boot (1500ms) peut tirer avant que PLAN_CONFIG
     // ne soit prêt (bbox null → flag false définitive).
-    try {
-      if (window.OsmTilesCache) _recheckCachedForCurrentPlan();
-    } catch(e) {}
+    // async : un try ne voit pas son rejet, le .catch si.
+    if (window.OsmTilesCache) _recheckCachedForCurrentPlan().catch(function() {});
     return _hasGeoref() && isOptedIn() && !_isIncognitoOn() && _isOnlineOrCached();
   }
 
@@ -751,11 +750,11 @@
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm.gps.incognito.toast"), "warn");
-      } else { alert(window.I18n.t("osm.gps.incognito.alert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm.gps.incognito.alert")); }
       return;
     }
     if (!navigator.geolocation) {
-      alert(window.I18n.t("osm.gps.unavailable"));
+      window.ktaAlerte(window.I18n.t("osm.gps.unavailable"), { type: "erreur" });
       return;
     }
     const btn = document.getElementById("kta-osm-mygps");
@@ -786,7 +785,7 @@
             const msg = window.I18n.t("osm.gps.outOfBounds", { dist: distKm.toFixed(1) });
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(msg, "warn");
-            } else { alert(msg); }
+            } else { window.ktaAlerte(msg); }
             console.log("[OsmView] GPS rejeté : hors bbox plan (",
                         lat.toFixed(5), ",", lng.toFixed(5),
                         "→ distance centre", distKm.toFixed(2), "km)");
@@ -832,7 +831,7 @@
         if (err.code === 1) msg = window.I18n.t("osm.gps.err.permission");
         else if (err.code === 2) msg = window.I18n.t("osm.gps.err.unavailable");
         else if (err.code === 3) msg = window.I18n.t("osm.gps.err.timeout");
-        alert(msg);
+        window.ktaAlerte(msg, { type: "erreur" });
         if (btn && originalHtml != null) { btn.disabled = false; btn.innerHTML = originalHtml; }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
@@ -1711,7 +1710,7 @@
         // 🐛 v1.40.39 (KARMA "les filtres sortent de la fenêtre on les voit
         // apparaître un peu en horizontal") : ajout `flex-wrap: wrap` +
         // `row-gap` pour que le bandeau toggles wrap proprement quand il y
-        // a beaucoup d'éléments (opacité + ~10 toggles + 🚨 Secours conditionnel).
+        // a beaucoup d'éléments (opacité + ~10 toggles + 🚑 Secours conditionnel).
         // Sans wrap, débordement horizontal masqué hors viewport modale.
         '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:#c8d0e0;">' +
           '<span>' + window.I18n.t("osm.opacity.label") + '</span>' +
@@ -2456,24 +2455,24 @@
   // =========================
   async function open() {
     if (typeof L === "undefined" || !L.imageOverlay || !L.imageOverlay.rotated) {
-      alert(window.I18n.t("osm.open.leafletMissing"));
+      window.ktaAlerte(window.I18n.t("osm.open.leafletMissing"), { type: "erreur" });
       return;
     }
     if (!_hasGeoref()) {
-      alert(window.I18n.t("osm.open.noGeoref"));
+      window.ktaAlerte(window.I18n.t("osm.open.noGeoref"));
       return;
     }
     // 🆕 v1.39.10 — Gate V2 : Vue OSM réservée aux plans tuilés pour éviter
     // le crash mobile (cf. header doc § CRASH MOBILE). Alert pédagogique
     // pour expliquer comment activer.
     if (!_isV2Plan()) {
-      alert(window.I18n.t("osm.open.notV2"));
+      window.ktaAlerte(window.I18n.t("osm.open.notV2"));
       return;
     }
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm.open.incognito.toast"), "warn");
-      } else { alert(window.I18n.t("osm.open.incognito.alert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm.open.incognito.alert")); }
       return;
     }
     // 🆕 v1.43.0 — Si offline mais cache OSM présent pour le plan, on
@@ -2488,12 +2487,12 @@
       if (!_planHasCachedTiles) {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("osm.open.offlineNoCache.toast"), "warn");
-        } else { alert(window.I18n.t("osm.open.offlineNoCache.alert")); }
+        } else { window.ktaAlerte(window.I18n.t("osm.open.offlineNoCache.alert")); }
         return;
       }
     }
     if (!isOptedIn()) {
-      const yes = confirm(window.I18n.t("osm.open.optInConfirm"));
+      const yes = await window.ktaConfirm(window.I18n.t("osm.open.optInConfirm"));
       if (!yes) return;
       setOptedIn(true);
     }
@@ -2546,7 +2545,7 @@
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t("osm.ping.noInternet"), "warn");
         } else {
-          alert(window.I18n.t("osm.ping.noInternet"));
+          window.ktaAlerte(window.I18n.t("osm.ping.noInternet"));
         }
         return;
       }

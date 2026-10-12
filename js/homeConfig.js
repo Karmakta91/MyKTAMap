@@ -26,6 +26,12 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
+        // Rubriques repliables, comme les Réglages du plan (même balisage, mémoire à part).
+        // Une seule liaison : la fenêtre n'est jamais reconstruite.
+        if (configModal && !configModal.dataset.groupesLies && typeof window.ktaGroupesRepliables === "function") {
+          configModal.dataset.groupesLies = "1";
+          window.ktaGroupesRepliables(configModal, "myktamap_home_cfg_groupes_v1");
+        }
         // 🧩 Bloc « Installation » en tête (ex. gérer les comptes, pour un admin) :
         // actions fournies par l'extension de l'installation, recalculées à chaque ouverture.
         if (configModal && window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
@@ -117,30 +123,21 @@
             icon.textContent  = "🕵️";
             label.textContent = _t("home.privacy.incognitoRelieLabel", "Mode incognito indisponible ici");
             hint.textContent  = _t("home.privacy.incognitoRelieHint",
-              "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur. " +
-              "Le mode incognito n'aurait donc pas de sens ici.");
+              "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur.");
             return;
           }
           if (actif) {
             btn.classList.add("kta-cfg-incognito-btn-quit");
             icon.textContent  = "✕";
             label.textContent = _t("home.privacy.incognitoQuitLabel", "Quitter le mode incognito");
-            hint.innerHTML    = _t("home.privacy.incognitoQuitHint",
-              "Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong> " +
-              "(points, tracker, notes) <strong>seront perdues</strong>. Ta session principale " +
-              "reste intacte dans son onglet.<br>" +
-              "<span style=\"color:#a78bfa;\">Si le navigateur bloque la fermeture, " +
-              "l'onglet recharge automatiquement en mode normal.</span>");
+            hint.textContent  = _t("home.privacy.incognitoQuitHint",
+              "Les points, le tracker et les notes de cette fenêtre seront perdus.");
           } else {
             btn.classList.remove("kta-cfg-incognito-btn-quit");
             icon.textContent  = "🕵️";
             label.textContent = _t("home.privacy.incognitoStartLabel", "Démarrer en mode incognito");
-            hint.innerHTML    = _t("home.privacy.incognitoStartHint",
-              "Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> " +
-              "(ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo " +
-              "publique, prêter ta session à un tiers ou tester sans polluer ton historique " +
-              "local. Bordure violette + badge dans le titre rappellent le contexte.<br>" +
-              "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>");
+            // 12/10/2026 — le libellé suffit (le mode incognito est décrit dans le Guide).
+            hint.textContent  = "";
           }
         }
         // Rendu immédiat UNIQUEMENT si le dico est déjà là (cas FR, et tout cas
@@ -180,13 +177,13 @@
         }
         btn.addEventListener("click", function() {
           if (!window.IncognitoMode) {
-            alert(_t("home.incognito.indispo", "Module IncognitoMode indisponible. Recharge la page."));
+            window.ktaAlerte(_t("home.incognito.indispo", "Module IncognitoMode indisponible. Recharge la page."));
             return;
           }
           if (window.IncognitoMode.active) {
-            if (confirm(_t("config.incognito.confirmQuit", "Quitter le mode incognito ?"))) {
-              window.IncognitoMode.quit();
-            }
+            window.ktaConfirm(_t("config.incognito.confirmQuit", "Quitter le mode incognito ?")).then(function(ok) {
+              if (ok) window.IncognitoMode.quit();
+            });
           } else {
             // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
             // modale charte de garde-fou (description + risques + buttons).
@@ -307,7 +304,8 @@
         let _titreVer = { cle: "home.version.titre", v: installed };
         const _TITRE_FR = {
           "home.version.titre":    "Version installée : {v} — clique pour voir les notes ou vérifier les mises à jour",
-          "home.version.titreMaj": "Nouvelle version disponible : {v} — clique pour mettre à jour"
+          "home.version.titreMaj": "Nouvelle version disponible : {v} — clique pour mettre à jour",
+          "home.version.titreAttente": "Mise à jour {v} acceptée, en cours d'installation — ferme complètement l'app puis rouvre-la"
         };
         function _tVer(k, p) {
           _titreVer = { cle: k, v: p.v };
@@ -321,11 +319,26 @@
         el.title = _tVer("home.version.titre", { v: installed });
 
         function _evaluerEtAfficher(remoteVersion) {
-          if (!remoteVersion || remoteVersion === installed) {
-            // Pas d'update dispo → état normal (mais toujours cliquable)
+          const UC = window.UpdateChecker;
+          const cmp = function (a, b) { return UC && typeof UC.compareSemver === "function" ? UC.compareSemver(a, b) : (a === b ? 0 : 1); };
+          el.classList.remove("kta-loader-copyright-version-attente");
+          if (!remoteVersion || cmp(remoteVersion, installed) <= 0) {
+            // Pas d'update dispo (ou serveur plus ancien que le code chargé) → état normal (toujours cliquable)
             el.classList.remove("kta-loader-copyright-version-update");
             el.textContent = installed;
             el.title = _tVer("home.version.titre", { v: installed });
+            return;
+          }
+          // 🩸 10/10/2026 (retour testeur en prod) : mise à jour DÉJÀ acceptée (version connue = serveur) mais ancien
+          // code encore chargé (iOS en app installée, SW pas encore relayé). Avant : badge bleu clignotant à chaque
+          // ouverture, pris pour « la mise à jour m'est demandée à chaque fois », alors qu'un clic répondait
+          // « déjà à jour ». Désormais : ⏳ sans clignoter, l'infobulle dit quoi faire, le clic propose de relancer.
+          const acceptee = UC && typeof UC.getCurrentVersion === "function" ? UC.getCurrentVersion() : null;
+          if (acceptee && cmp(acceptee, remoteVersion) >= 0) {
+            el.classList.remove("kta-loader-copyright-version-update");
+            el.classList.add("kta-loader-copyright-version-attente");
+            el.textContent = installed + " ⏳";
+            el.title = _tVer("home.version.titreAttente", { v: remoteVersion });
             return;
           }
           // Update disponible → badge bleu clignotant
@@ -683,6 +696,10 @@
 
       const depannageBtn = document.getElementById("loaderDepannageBtn");
       if (depannageBtn) depannageBtn.addEventListener("click", _ouvrirDepannage);
+      // 🧩 10/10/2026 — point d'extension neutre : un écran qui précède l'accueil (gate d'une extension
+      // de connexion) peut proposer le même 🆘 Dépannage (mise à jour forcée, page de secours, tout
+      // réinitialiser). La fenêtre est ajoutée à <html> (id kta-depannage-modal), z-index 99999.
+      window.ktaOuvrirDepannage = _ouvrirDepannage;
 
       // ═══════════════════════════════════════════════════════════════
       // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
@@ -828,7 +845,7 @@
         if (!pin1) return;
         // Validation basique côté UI (le backend re-valide)
         if (!/^\d{4,6}$/.test(pin1)) {
-          alert(_t("pin.setup.errLength"));
+          await window.ktaAlerte(_t("pin.setup.errLength"), { type: "erreur" });
           return;
         }
         const pin2 = await _demanderPin(
@@ -838,7 +855,7 @@
         );
         if (!pin2) return;
         if (pin1 !== pin2) {
-          alert(_t("pin.setup.errMismatchRetry"));
+          await window.ktaAlerte(_t("pin.setup.errMismatchRetry"), { type: "erreur" });
           return;
         }
 
@@ -862,14 +879,14 @@
         // Activation
         try {
           await window.MyKTAMapPinLock.enable(pin1, useBio);
-          alert(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
+          await window.ktaAlerte(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
         } catch(e) {
           if (e && e.pinActivatedWithoutBiometric) {
             // Cas partiel : PIN OK mais biométrie a échoué
-            alert(_t("pin.setup.okEnabledBioFailed") + e.message);
+            await window.ktaAlerte(_t("pin.setup.okEnabledBioFailed") + e.message);
           } else {
             console.error("[PinSetup] enable :", e);
-            alert(_t("pin.setup.errEnable") + (e.message || e));
+            await window.ktaAlerte(_t("pin.setup.errEnable") + (e.message || e), { type: "erreur" });
             return;
           }
         }
@@ -898,12 +915,12 @@
           try {
             unlocked = await window.MyKTAMapPinLock.unlock(oldPin);
           } catch(e) {
-            alert("❌ " + (e.message || e));
+            await window.ktaAlerte("❌ " + (e.message || e), { type: "erreur" });
             return;
           }
           if (!unlocked) {
             const remaining = window.MyKTAMapPinLock.getRemainingAttempts();
-            alert(_t("pin.setup.errWrongCode", { n: remaining }));
+            await window.ktaAlerte(_t("pin.setup.errWrongCode", { n: remaining }), { type: "erreur" });
             return;
           }
         }
@@ -916,7 +933,7 @@
         );
         if (!newPin1) return;
         if (!/^\d{4,6}$/.test(newPin1)) {
-          alert(_t("pin.setup.errLength"));
+          await window.ktaAlerte(_t("pin.setup.errLength"), { type: "erreur" });
           return;
         }
         const newPin2 = await _demanderPin(
@@ -926,16 +943,16 @@
         );
         if (!newPin2) return;
         if (newPin1 !== newPin2) {
-          alert(_t("pin.setup.errMismatch"));
+          await window.ktaAlerte(_t("pin.setup.errMismatch"), { type: "erreur" });
           return;
         }
 
         try {
           await window.MyKTAMapPinLock.changePin(newPin1);
-          alert(_t("pin.setup.okChanged"));
+          await window.ktaAlerte(_t("pin.setup.okChanged"));
         } catch(e) {
           console.error("[PinSetup] changePin :", e);
-          alert(_t("pin.setup.errGeneric") + (e.message || e));
+          await window.ktaAlerte(_t("pin.setup.errGeneric") + (e.message || e), { type: "erreur" });
           return;
         }
         _majPinStatusUI();
@@ -969,12 +986,12 @@
           if (!pin) return;
           try {
             await window.MyKTAMapPinLock.disable(pin);
-            alert(_t("pin.setup.okDisabled"));
+            await window.ktaAlerte(_t("pin.setup.okDisabled"));
             _majPinStatusUI();
             return;
           } catch(e) {
             console.error("[PinSetup] disable :", e);
-            alert("❌ " + (e.message || e));
+            await window.ktaAlerte("❌ " + (e.message || e), { type: "erreur" });
             return;
           }
         }
@@ -984,7 +1001,7 @@
         // appelant reset() après check biométrie OK).
         // ⚠️ Sécurité OK car la biométrie EST la preuve d'identité.
         window.MyKTAMapPinLock.reset();
-        alert(_t("pin.setup.okDisabledBio"));
+        await window.ktaAlerte(_t("pin.setup.okDisabledBio"));
         _majPinStatusUI();
       }
 
@@ -1446,16 +1463,17 @@
           var _tNL = function(key, fr) {
             return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
           };
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(txt).then(function() {
-              netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
-              setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
-            }).catch(function() {
-              alert(_tNL("home.netlog.copyFail", "Copie échouée — sélectionne manuellement."));
-            });
-          } else {
-            alert(_tNL("home.netlog.copyUnavailable", "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
-          }
+          // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+          // Les deux en échec = on oriente vers 📥 Exporter, qui marche partout.
+          window.ktaCopierTexte(txt).then(function(ok) {
+            if (!ok) {
+              window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
+                "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
+              return;
+            }
+            netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
+            setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
+          });
         });
       }
       const netLogExport = document.getElementById("loaderNetLogExport");

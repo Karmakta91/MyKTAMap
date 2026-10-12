@@ -1,8 +1,8 @@
 {
-  "version": "v2.11.0",
-  "released": "2026-10-09",
+  "version": "v2.15.0",
+  "released": "2026-10-12",
   "notes": [
-    "👋 L'écran de bienvenue est plus simple : un bouton « Continuer », c'est tout. Il ne propose plus d'importer une licence, ce qui n'activait rien sur myktamap.fr. Les listes (auteurs, étiquettes, légende) sont désormais rangées dans l'ordre alphabétique, accents compris.",
-    "💼 Édition pro : si la licence d'une installation expire ou est refusée, l'application reste fermée et le dit clairement, au lieu d'afficher « base injoignable » ou de s'ouvrir sur les données du dernier utilisateur de l'appareil."
+    "✨ Interface allégée : beaucoup moins de texte dans les fenêtres, et les réglages se rangent en rubriques qui se replient. Le détail de chaque option est dans 📖 Documentation.",
+    "💾 Sessions sans limite de 5 Mo, 📸 Mes photos retrouve toutes tes photos (même d'un point supprimé), messages dans les fenêtres de l'app, PDF avec leurs accents, 🔆 Affichage XL et carte plus fluide."
   ]
 }

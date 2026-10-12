@@ -85,7 +85,7 @@
     _fermer();
     const plans = (window.PlanRegistry ? window.PlanRegistry.getAll() : []);
     if (plans.length === 0) {
-      alert(_t("xps.err.noPlan"));
+      window.ktaAlerte(_t("xps.err.noPlan"));
       return;
     }
 
@@ -150,7 +150,7 @@
     function _renderResults() {
       const f = String(input.value || "").toLowerCase().trim();
       if (!f) {
-        resEl.innerHTML = '<p class="kta-ipl-empty">' + _esc(_t("xps.hintType")) + '</p>';
+        resEl.innerHTML = "";
         return;
       }
       const matches = _index.filter(function(e) {

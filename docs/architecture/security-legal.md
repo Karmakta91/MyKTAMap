@@ -241,7 +241,7 @@ Directives clés :
 ```
 connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
                                               ← LA garantie anti-exfiltration (OSM = tuiles en lecture, Vue OSM)
-script-src 'self' 'unsafe-inline'             ← en vigueur ; cible : 'self' seul (40.7.1)
+script-src 'self'                             ← en vigueur depuis la bascule du 10/10/2026 (40.7.1)
 style-src 'self' 'unsafe-inline'              ← assumé (style="…" partout ; un style injecté n'exécute rien)
 img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org
 worker-src 'self' blob:                       ← Service Worker
@@ -255,7 +255,7 @@ un serveur) : les violations ne se voient que dans la console.
 ⚠️ La config nginx de l'hôte doit inclure une **copie hors du dossier web** du fichier de CSP : myktamap.fr se déploie
 sans `docs/` depuis le 07/10/2026 (`infra-versioning.md` §85), un include du fichier du site resterait figé.
 
-#### 40.7.1 `script-src` sans `'unsafe-inline'` — état au 07/10/2026
+#### 40.7.1 `script-src` sans `'unsafe-inline'` — en vigueur (bascule du 10/10/2026)
 
 - **Plus aucun script inline dans l'app** : les 11 gestionnaires (`onclick`, `onerror`) sont des écouteurs (délégation +
   `data-*` ; images manquantes : `data-kta-echec`, écouteur `error` en capture dans `utils.js`) ; les liens
@@ -266,11 +266,17 @@ sans `docs/` depuis le 07/10/2026 (`infra-versioning.md` §85), un include du fi
   garde `'unsafe-inline'` (dans un `location` avec `add_header`, tous les en-têtes sont redits : nginx n'hérite pas).
 - **Garde-fou** `scripts/check-csp-inline.js` (pre-commit, bloquant, auto-testé) : aucun `on…=`, `javascript:` ni
   `<script>` sans `src` dans `js/`, les pages de la racine et `lang/`.
-- **Phase d'observation** (en cours) : la politique stricte est aussi servie en `Content-Security-Policy-Report-Only` —
-  rien n'est bloqué, la console liste ce qui le serait. Le **smoke** (`scripts/smoke/server.js`) sert, lui, la politique
-  stricte **en vigueur** : tout script inline oublié y devient une erreur console, donc un smoke rouge.
-- **Bascule** (avec une release) : remplacer `script-src 'self' 'unsafe-inline'` par `script-src 'self'` dans les sources
-  ci-dessus, retirer la ligne Report-Only, `nginx -t && reload` sur le VPS.
+- **Bascule faite le 10/10/2026** : `script-src 'self'` est la politique EN VIGUEUR dans `docker/nginx-docker.conf`
+  et le modèle `docs/nginx-csp-config.conf` ; la ligne `Content-Security-Policy-Report-Only` est retirée. Le **smoke**
+  (`scripts/smoke/server.js`) sert cette politique et refuse de démarrer si elle rouvre `'unsafe-inline'` aux scripts ;
+  `check-csp-inline.js` (règle 4) refuse la même chose dans les configs nginx du dépôt, hors bloc `killsw.html`.
+- **Servie sur dev et prod depuis le 10/10/2026** (config nginx du VPS, hors dépôt) : `script-src 'self'` sur l'app,
+  `'unsafe-inline'` sur `/killsw.html` seulement, avec son bloc `location` qui redit tous les en-têtes. Vérifié par
+  les en-têtes servis : `curl -sI https://<site>/killsw.html | grep -io "script-src[^;]*"`. Sans ce bloc, la page de
+  secours s'affiche mais son script est bloqué (constaté le 10/10/2026 avant l'ajout).
+- Vérifié le 10/10/2026 sous la vraie config nginx de l'image Docker : en-têtes servis (stricte sur l'app, exception
+  sur `killsw.html`), parcours accueil → Dépannage → Documentation → relevé fictif → fenêtre de l'app → export PDF
+  sans aucune violation CSP ; smoke vert.
 - Vérifié le 07/10/2026 sous politique stricte EN VIGUEUR : smoke vert ; banc bouton par bouton (pied de page, image
   manquante, configuration, barre, sortie d'urgence, étape au clic, confadmin, Service Worker) ; un `onerror` injecté est
   bloqué — la protection visée : un affichage non échappé qui passerait entre les mailles n'exécute plus rien.

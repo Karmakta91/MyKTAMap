@@ -236,6 +236,16 @@ function _ktaInstanceIndisponible(motif) {
     b.textContent = t("ext.indispo.reessayer");
     b.addEventListener("click", function() { location.reload(); });
     boite.appendChild(h); boite.appendChild(p); boite.appendChild(b);
+    // Licence absente / refusée : lien vers la présentation de la licence pro (même adresse que le « 💼 Licence
+    // pro » du pied de page de l'accueil, index.html) — demande KARMA du 10/10/2026.
+    if (lic) {
+      const lien = document.createElement("a");
+      lien.className = "kta-instance-indispo-lien";
+      lien.href = "https://pro.myktamap.fr/presentation/";
+      lien.target = "_blank"; lien.rel = "noopener noreferrer";
+      lien.textContent = t("ext.licence.lienPro");
+      boite.appendChild(lien);
+    }
     ov.appendChild(boite);
     document.body.appendChild(ov);
     // Promesse jamais résolue : le démarrage s'arrête là, comme un lockout de gate.
@@ -249,6 +259,12 @@ function _ktaInstanceIndisponible(motif) {
 // Id du registre d'un plan d'extension (☁️) — seule fabrique, aussi lue par l'accueil.
 window.ktaIdRegistreExtension = function(extId) {
   return "ext_" + String(extId).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+};
+// Réciproque : cet id du registre (plan, ou dossier fourni par l'extension — même
+// préfixe) sort-il de cette fabrique ? Sert quand la ligne du registre manque
+// (profil importé : session ou photo d'un plan ☁️ arrivée sans son entrée).
+window.ktaEstIdRegistreExtension = function(id) {
+  return typeof id === "string" && id.indexOf("ext_") === 0;
 };
 async function _decouvrirPlansExtension() {
   if (!window.KtaExtensions || !window.PlanRegistry || !window.KtaExtensions.aPrise("plans")) return;
@@ -673,7 +689,7 @@ async function lancerApplication() {
 
   // 🌀 v152 : message overlay au moment du render carte (lourd sur V2)
   if (typeof window._majOverlayChargement === "function") {
-    window._majOverlayChargement("Initialisation de la carte et des calques…");
+    window._majOverlayChargement(window.I18n.t("main.loading.mapInit"));
   }
 
   await new Promise(function(resolve) { requestAnimationFrame(resolve); });
@@ -695,6 +711,8 @@ async function lancerApplication() {
   }
   initMeasure();
   initInterface();
+  // 🔒 Plan relié en droit « lire » : outils de dessin grisés dès l'ouverture (sans extension : rien).
+  if (typeof window.ktaMajOutilsLectureSeule === "function") window.ktaMajOutilsLectureSeule();
   initTracking();
 
   // 🆕 v1.16.0 step 4 : init SessionBackups + snapshot AVANT restore.
@@ -909,7 +927,12 @@ async function lancerApplication() {
   }
   // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : dit d'emblée, une fois par ouverture.
   if (typeof window.ktaAnnoncerLectureSeule === "function") {
-    setTimeout(function() { try { window.ktaAnnoncerLectureSeule(); } catch(e) { /* affichage seulement */ } }, 600);
+    setTimeout(function() {
+      try {
+        if (typeof window.ktaMajOutilsLectureSeule === "function") window.ktaMajOutilsLectureSeule();
+        window.ktaAnnoncerLectureSeule();
+      } catch(e) { /* affichage seulement */ }
+    }, 600);
   }
   } finally {
     _appEnCours = false;
@@ -1019,7 +1042,12 @@ window._ktaPlanifierMigrationPhotos = function() {
       (window.getEditorPoints ? window.getEditorPoints() || [] : []).map(function(p) { return Object.assign({ layerId: "editor" }, p); }),
       (typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : [])
     ).filter(Boolean).map(function(p) { return { uid: p.uid, id: p.id, x: p.x, y: p.y, layerId: p.layerId }; });
-    window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    const _migr = window.MyKTAMapPhotos.migrerPhotosPlan(planId, pts);
+    // 📸 Photos « sans point » de ce plan : signal discret (toast), APRÈS la migration
+    // (une photo encore rangée sous un nom n'est pas « sans point »). Une fois par ouverture.
+    if (window.KtaPhotosGalerie && typeof window.KtaPhotosGalerie.apresOuverturePlan === "function") {
+      Promise.resolve(_migr).then(function() { window.KtaPhotosGalerie.apresOuverturePlan(planId); });
+    }
     try { if (window.Favoris && window.Favoris.migrerVersUid) window.Favoris.migrerVersUid(pts); } catch(e) { console.warn("[Main] migration favoris :", e); }
     try { if (window.InterPlanLinks && window.InterPlanLinks.migrerVersUid) window.InterPlanLinks.migrerVersUid(planId, pts); } catch(e) { console.warn("[Main] migration liaisons :", e); }
   }, 2000);
@@ -1521,7 +1549,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
       return typeof fp === "string" && /^data\/tiles\/z-?\d+\//.test(fp);
     }).length;
     if (typeof window._majOverlayChargement === "function") {
-      window._majOverlayChargement("Plan V2 tuilé — Indexation de " + totalTuiles + " tuiles…");
+      window._majOverlayChargement(window.I18n.t("main.loading.tilesIndex", { n: totalTuiles }));
     }
     let nbTuiles = 0;
     for (const f of files) {
@@ -1531,13 +1559,13 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         nbTuiles++;
         // Update progress every 50 tiles (gros plans = 1000+ tuiles)
         if (nbTuiles % 50 === 0 && typeof window._majOverlayChargement === "function") {
-          window._majOverlayChargement("Plan V2 tuilé — Indexation " + nbTuiles + " / " + totalTuiles + " tuiles…");
+          window._majOverlayChargement(window.I18n.t("main.loading.tilesProgress", { done: nbTuiles, total: totalTuiles }));
         }
       }
     }
     console.log("[Loader] Tiling V2 — " + nbTuiles + " tuiles enregistrées (lazy)");
     if (typeof window._majOverlayChargement === "function") {
-      window._majOverlayChargement("Plan V2 prêt — Initialisation de la carte…");
+      window._majOverlayChargement(window.I18n.t("main.loading.tilesReady"));
     }
   }
 
@@ -1699,7 +1727,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         const photoIds = Object.keys(idxObj.photos);
         if (photoIds.length > 0) {
           if (typeof window._majOverlayChargement === "function") {
-            window._majOverlayChargement("Restauration de " + photoIds.length + " photo(s)…");
+            window._majOverlayChargement(window.I18n.t("main.loading.photosRestore", { n: photoIds.length }));
           }
           // 🩸 v2.5.0 (lot C3, décision KARMA) — PLUS D'EFFACEMENT GLOBAL.
           // Avant : `deletePhotosForPlan(planId)` à CHAQUE ouverture d'un plan ZIP
@@ -1748,7 +1776,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 mime:    info.mime || "image/jpeg",
                 size:    info.size || blob.size,
                 meta:    { origine: "plan" }   // 🆔 v2.5.0 : seules celles-ci peuvent être retirées
-              });
+              }, { source: "import" });   // 📣 restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;
             } catch(e) {
               console.warn("[Loader] restorePhoto échoué pour", pid, ":", e);
@@ -1762,7 +1790,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (restoredCount > 0 && window.OOMGuard
               && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(
-              "📸 " + restoredCount + " photo" + (restoredCount > 1 ? "s" : "") + " restaurée" + (restoredCount > 1 ? "s" : "") + " depuis le plan",
+              window.I18n.t(restoredCount > 1 ? "main.toast.photosRestored.many" : "main.toast.photosRestored.one",
+                            { n: restoredCount }),
               "info", { groupe: "chargement" }   // 🔕 regroupé avec les autres restaurations
             );
           }
@@ -1956,6 +1985,7 @@ async function _splashEnd() {
 //   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
 //   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
 //   • data-i18n-placeholder → pose placeholder = I18n.t(clé)  [v1.69.0]
+//   • data-i18n-aria-label  → pose aria-label = I18n.t(clé), sans title
 // Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
 // VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
 // changement de langue. Générique : poser les attributs suffit, aucun code à
@@ -1979,6 +2009,11 @@ function _applyI18nDom(root) {
   // de re-traduction au changement de langue.
   root.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
     el.setAttribute("placeholder", window.I18n.t(el.getAttribute("data-i18n-placeholder")));
+  });
+  // Nom accessible d'un champ sans libellé visible (recherche, fichier) : aria-label seul, sans l'infobulle
+  // que poserait data-i18n-title. Le HTML garde un aria-label FR de repli (lu aussi par Sonar).
+  root.querySelectorAll("[data-i18n-aria-label]").forEach(function(el) {
+    el.setAttribute("aria-label", window.I18n.t(el.getAttribute("data-i18n-aria-label")));
   });
 }
 
@@ -2098,6 +2133,14 @@ window.proposerRedemarrageLangue = function() {
     catch (e) { console.warn("[Main] I18n.init a échoué (fallback FR) :", e); }
   }
 
+  // 💾 Sessions : chargées depuis IndexedDB (et migrées du localStorage au 1er
+  // lancement) AVANT tout rendu qui les lit — accueil, stats, restauration.
+  // Jamais de rejet : IndexedDB indisponible = repli localStorage (js/sessionStore.js).
+  if (window.KtaSessionStore && typeof window.KtaSessionStore.init === "function") {
+    try { await window.KtaSessionStore.init(); }
+    catch (e) { console.warn("[Main] KtaSessionStore.init a échoué :", e); }
+  }
+
   // 🌍 v1.45.0 — Traduit le HOME (statique, déjà dans le DOM) depuis le dico +
   // initialise son sélecteur de langue. Fait AVANT le splash → le HOME est déjà
   // dans la bonne langue quand il devient visible.
@@ -2183,6 +2226,10 @@ window.proposerRedemarrageLangue = function() {
   let _gateDelegueeOk = false;
   if (window.KtaExtensions && typeof window.KtaExtensions.chargerModules === "function") {
     const _mods = await window.KtaExtensions.chargerModules();
+    // Splash terminé AVANT d'ouvrir la gate déléguée : gate.ouvrir() dessine son écran tout de suite
+    // (pro : connexion), qui apparaissait par-dessus le splash encore affiché (constat KARMA du 10/10/2026,
+    // mesuré : écran de connexion à 1,2 s, splash présent et sans fondu).
+    if (_mods && _mods.demandes > 0) await _splashEnd();
     const _gate = window.KtaExtensions.gateDeleguee();
     if (_gate) {
       await _splashEnd();

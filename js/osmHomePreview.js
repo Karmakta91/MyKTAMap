@@ -132,7 +132,7 @@
   let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
 
   // ═══ 🗂️ v1.71.0 — MULTI-PLANS (lot 2, topo KARMA : « croisement de données
-  // OSM », cas Paris 13e + 14e + galeries techniques ensemble) ═══
+  // OSM », cas de plusieurs relevés voisins + galeries techniques ensemble) ═══
   // Le plan SÉLECTIONNÉ (dropdown) reste le « principal » (fitBounds, slider
   // d'opacité du bandeau). Les autres plans géoréférencés peuvent être AJOUTÉS
   // par-dessus/dessous via le panneau 🗂️ du mode OSM.
@@ -221,7 +221,7 @@
   // (boot froid — le cas NORMAL : on est au HOME avant de charger un plan),
   // soit celui du DERNIER plan chargé (faux pour les autres plans de la
   // pile). La source correcte PAR PLAN : son slot SessionPersist
-  // (localStorage myktamap_session_v1_<id> → payload.customLegend, auto-savé
+  // (KtaSessionStore.lire(id) → payload.customLegend, auto-savé
   // ~1,5 s en mode plan) puis le customLegend du plan-config (ZIP, niveau
   // auteur). Cache RAM par planId, invalidé au mount() (retour HOME =
   // re-mount → les modifs faites en mode plan sont reprises).
@@ -1912,11 +1912,11 @@
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(window.I18n.t("osm_home.gps.incognitoToast"), "warn");
-      } else { alert(window.I18n.t("osm_home.gps.incognitoAlert")); }
+      } else { window.ktaAlerte(window.I18n.t("osm_home.gps.incognitoAlert")); }
       return;
     }
     if (!navigator.geolocation) {
-      alert(window.I18n.t("osm_home.gps.unavailable"));
+      window.ktaAlerte(window.I18n.t("osm_home.gps.unavailable"), { type: "erreur" });
       return;
     }
     const btn = document.getElementById("ktaOsmHomeMyGpsBtn");
@@ -1938,7 +1938,7 @@
             const msg = window.I18n.t("osm_home.gps.outOfBounds", { km: distKm.toFixed(1) });
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(msg, "warn");
-            } else { alert(msg); }
+            } else { window.ktaAlerte(msg); }
             console.log("[OsmHomePreview] GPS rejeté : hors bbox plan (",
                         lat.toFixed(5), ",", lng.toFixed(5),
                         "→ distance centre", distKm.toFixed(2), "km)");
@@ -1983,7 +1983,7 @@
         if (err.code === 1) msg = window.I18n.t("osm_home.gps.errPermission");
         else if (err.code === 2) msg = window.I18n.t("osm_home.gps.errUnavailable");
         else if (err.code === 3) msg = window.I18n.t("osm_home.gps.errTimeout");
-        alert(msg);
+        window.ktaAlerte(msg, { type: "erreur" });
         if (btn && originalHtml != null) { btn.disabled = false; btn.innerHTML = originalHtml; }
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
@@ -2409,7 +2409,7 @@
   // ═══════════════════════════════════════════════════════════
   // 🗂️ v1.71.0 — PILE MULTI-PLANS (lot 2 : croisement de données OSM)
   // ═══════════════════════════════════════════════════════════
-  // Cas d'usage KARMA : Paris 13e + 14e + galeries techniques de tout Paris
+  // Cas d'usage KARMA : plusieurs relevés voisins + galeries techniques d'une ville
   // sur la même carte, avec ordre d'affichage et opacité PAR PLAN.
   // Le plan sélectionné (dropdown) reste le « principal » ; les autres sont
   // ajoutés via le panneau 🗂️ (fullscreen uniquement, comme la recherche).
@@ -2592,7 +2592,7 @@
   // ═══════════════════════════════════════════════════════════
   // LE BESOIN (KARMA, 04/09) : un atlas départemental découpé produit des
   // DIZAINES de plans du même secteur — « je veux voir d'un coup tous les
-  // plans étiquetés GIRONDE ». Les deux moitiés existaient depuis longtemps
+  // plans étiquetés SECTEUR ». Les deux moitiés existaient depuis longtemps
   // sans se parler : `plan.tags` (registre, v1.78.0, saisi depuis la
   // bibliothèque) et la pile multi-plans (v1.71.0), dont le seul chemin
   // d'ajout était un `<select>` UN PLAN À LA FOIS.
@@ -2603,7 +2603,7 @@
   // d'où un intitulé qui dit explicitement « étiquette de plan ».
   //
   // 🔠 Regroupement INSENSIBLE À LA CASSE : `PlanRegistry.setTags` dédoublonne
-  // par plan, pas entre plans. « Gironde » sur l'un et « GIRONDE » sur l'autre
+  // par plan, pas entre plans. « Secteur » sur l'un et « SECTEUR » sur l'autre
   // afficherait deux chips pour ce que l'utilisateur tient pour une seule
   // étiquette — et chacune ne montrerait que la moitié de ses plans.
   function _etiquettesDesPlans() {
@@ -2665,7 +2665,7 @@
     else _retirerPlansOsm(e.ids);
   }
 
-  function _ajouterPlansOsm(ids, libelle) {
+  async function _ajouterPlansOsm(ids, libelle) {
     // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
     // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
     // sur un lot, « après coup » veut dire une fois les vingt plans montés,
@@ -2673,8 +2673,8 @@
     // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
     const total = _stackOrder.length + ids.length;
     if (ids.length >= 2 && total > 3) {
-      const ok = window.confirm(window.I18n.t("osm_mode.multi.tagConfirm",
-        { n: ids.length, tag: libelle || "", total: total }));
+      const ok = await window.ktaConfirm(window.I18n.t("osm_mode.multi.tagConfirm",
+        { n: ids.length, tag: window.ktaEsc(libelle || ""), total: total }));
       if (!ok) return;
     }
     const montes = [];
@@ -2689,12 +2689,13 @@
     // EN SÉRIE, jamais en parallèle : chaque chargement extrait un ZIP.
     // Vingt extractions lancées ensemble figent l'onglet ; enchaînées, la
     // carte se remplit plan par plan et reste manipulable.
-    montes.reduce(function (chaine, m) {
-      return chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
-                   .catch(function (e) {
-                     console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
-                   });
-    }, Promise.resolve());
+    let chaine = Promise.resolve();
+    montes.forEach(function (m) {
+      chaine = chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
+                     .catch(function (e) {
+                       console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
+                     });
+    });
   }
 
   function _retirerPlansOsm(ids) {

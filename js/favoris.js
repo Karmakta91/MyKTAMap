@@ -333,18 +333,18 @@ window.Favoris = (function() {
     let payload;
     if (typeof input === "string") {
       try { payload = JSON.parse(input); }
-      catch(e) { return { ok: false, error: "JSON invalide : " + e.message }; }
+      catch(e) { return { ok: false, error: window.I18n.t("fav.err.jsonInvalid", { msg: e.message }) }; }
     } else {
       payload = input;
     }
     if (!payload || typeof payload !== "object") {
-      return { ok: false, error: "Payload vide ou invalide" };
+      return { ok: false, error: window.I18n.t("fav.err.empty") };
     }
     if (payload.type !== "myktamap-favoris-export") {
-      return { ok: false, error: "Type de fichier inattendu (attendu : myktamap-favoris-export)" };
+      return { ok: false, error: window.I18n.t("fav.err.wrongType") };
     }
     if (!payload.byPlan || typeof payload.byPlan !== "object") {
-      return { ok: false, error: "Champ `byPlan` manquant" };
+      return { ok: false, error: window.I18n.t("fav.err.noByPlan") };
     }
 
     let added = 0, skipped = 0, replaced = 0;
@@ -414,7 +414,7 @@ window.Favoris = (function() {
    * @returns {Promise<Object>} le résultat de importFromJson
    */
   function importFromFile(file, opts) {
-    if (!file) return Promise.resolve({ ok: false, error: "Aucun fichier fourni" });
+    if (!file) return Promise.resolve({ ok: false, error: window.I18n.t("fav.err.noFile") });
     return file.text().then(function(txt) {
       return importFromJson(txt, opts);
     }).catch(function(e) {

@@ -20,6 +20,7 @@
 const path = require("path");
 const fs = require("fs");
 const { chromium } = require("playwright");
+const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
 
 const PORT = 8123;
 const BASE = "http://127.0.0.1:" + PORT;
@@ -208,7 +209,9 @@ const sondesIcones = [];
     // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
     console.log("— 4. Chargement du plan " + PLAN.nom + " —");
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    await page.waitForFunction(function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, null, { timeout: 15000 })
+    // 🩸 12/10/2026 — attendre() et non page.waitForFunction, refusé par la CSP de l'app (cf attendre.js) :
+    // l'erreur tombait dans le catch → faux « pas chargé ».
+    await attendre(page, function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, 15000)
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
     await page.waitForTimeout(2500);   // rendu calques + restore session

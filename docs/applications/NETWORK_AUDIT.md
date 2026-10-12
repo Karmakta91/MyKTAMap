@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.11.0** (9 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.15.0** (12 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -10,6 +10,7 @@
 
 ## 🎯 La promesse en une ligne
 
+<!-- kta:classe kta-promesse -->
 **MyKTAMap est une application 100 % client-side. Aucune de tes annotations,
 sessions, plans ou données personnelles n'est jamais envoyée à un serveur,
 ni à un service tiers. Point final.**
@@ -21,6 +22,7 @@ suite du document t'explique comment.
 
 ## 🛡️ Périmètre de cette garantie : `myktamap.fr`
 
+<!-- kta:classe kta-alerte -->
 > **⚠️ Cette garantie de sécurité et de non-télémétrie s'applique
 > UNIQUEMENT au domaine officiel `myktamap.fr`** (et à l'environnement
 > de développement `dev.myktamap.fr`, géré par le même auteur).
@@ -87,11 +89,11 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA ; fichiers manquants retéléchargés par la réparation automatique (~5 s après l'accueil) ou d'un appui sur la pastille hors-ligne rouge | Charger l'app | **Aucune** |
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
-| `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur (v1.42.0+) | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
+| `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
-| `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
-| `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (v1.45.0+, espagnol v1.46.1+) | **Aucune** (fichiers statiques same-origin, **network-first depuis v1.46.5** + **cache-buster `?v=<build>` depuis v1.46.6** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
+| `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
+| `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
 | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
@@ -105,20 +107,19 @@ développement : `localhost` ou IP locale.
 **Sur `myktamap.fr`, aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`,
 `WebSocket`, `EventSource` ou n'importe quelle autre méthode d'envoi de
 données vers un serveur n'est jamais émise par l'app — et ce domaine n'aura
-jamais de serveur applicatif.** Depuis la v2.0.0, une installation
+jamais de serveur applicatif.** Une installation
 indépendante (hors de ce domaine) peut déclarer une **connexion serveur**
 dans sa configuration ; l'app affiche alors son état dans le pied de page de
 l'accueil (pastille 🔌), et rien n'est activé sans une licence posée par
-cette installation. Sur `myktamap.fr`, la pastille affiche « Serveur :
-désactivé ». Si un jour ce qui précède change, ce fichier sera mis à jour en
+cette installation. Sur `myktamap.fr`, la pastille affiche « Base de
+données : désactivée ». Si un jour ce qui précède change, ce fichier sera mis à jour en
 conséquence et la version sera bumpée.
 
-### À propos du ping `<origin>/ping.html` (depuis v1.9.3)
+### À propos du ping `<origin>/ping.html`
 
-**Avant v1.9.3** : l'app utilisait `https://www.gstatic.com/generate_204`
-(endpoint Google) pour détecter Internet. **Depuis v1.9.3**, l'app utilise
-**uniquement** un fichier `/ping.html` servi sur **le même domaine que
-l'app** (same-origin) :
+Pour savoir si Internet répond, l'app n'interroge **aucun service tiers**
+(ni Google, ni autre) : elle utilise **uniquement** un fichier `/ping.html`
+servi sur **le même domaine que l'app** (same-origin) :
 
 - Prod : `https://myktamap.fr/ping.html`
 - Dev : `https://dev.myktamap.fr/ping.html`
@@ -136,7 +137,7 @@ Le body attendu est exactement `"OK"`.
 > aussi pourquoi la garantie ci-dessus ne vaut que pour le domaine officiel : elle porte
 > sur le **code servi**, que seule la barre d'adresse permet de vérifier.
 
-**Pourquoi ce changement ?** Plus aucun appel externe vers un service
+**Pourquoi ce choix ?** Aucun appel externe vers un service
 tiers, même bénin comme Google. Le ping same-origin permet en outre de
 vérifier **en un seul appel** :
 
@@ -155,11 +156,10 @@ Ce ping vise **le serveur de l'app lui-même** (même origine) : il ne
 contacte aucun tiers et n'envoie rien. Il n'a lieu que sur ton action
 (reset, Force update, ouverture de la Vue OSM).
 
-### À propos des tuiles OSM `tile.openstreetmap.org` (depuis v1.39.0)
+### À propos des tuiles OSM `tile.openstreetmap.org`
 
-**Avant v1.39.0** : l'app n'avait **aucun** appel sortant vers un domaine tiers,
-strictement same-origin + ping `/ping.html`. Depuis v1.39.0, l'app peut
-contacter `tile.openstreetmap.org` pour afficher la carte OSM **uniquement
+En dehors de son propre serveur, l'app ne contacte qu'un seul domaine :
+`tile.openstreetmap.org`, pour afficher la carte OSM, **uniquement
 sous 3 conditions strictes simultanément réunies** :
 
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
@@ -170,7 +170,7 @@ sous 3 conditions strictes simultanément réunies** :
    persisté en `localStorage` sous la clé `myktamap_osm_view_opt_in` :
    un refus (« 0 ») est mémorisé et n'est jamais réécrasé.
 3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
-   possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
+   possibles :
    - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️
      dans la status bar quand un plan est chargé. Couvre les tuiles plan
      V2 projetées + POI + Tracker + Roads + Iti + Zones + Structures.
@@ -192,18 +192,17 @@ sous 3 conditions strictes simultanément réunies** :
   donnée utilisateur n'est envoyée** : juste les coordonnées géographiques
   `{z}/{x}/{y}` de la tuile, c'est-à-dire un quadrillage Web Mercator
   standard partagé par tous les utilisateurs OSM.
-- **Cache PWA (jusqu'à v1.42.x)** : les tuiles OSM n'étaient **PAS** mises en
-  cache par le Service Worker — elles ne survivaient pas au plan switch ni au
-  refresh. **Comportement modifié depuis v1.43.0** : un cache offline OSM
-  **opt-in user** (bouton « 💾 Cacher pour offline ») a été ajouté. Détails
-  complets dans la sous-section dédiée plus bas (« Cache offline OSM (depuis
-  v1.43.0) »).
-- **Widget HOME (depuis v1.40.0)** : extraction du ZIP du plan
+- **Cache PWA** : de base, les tuiles OSM ne sont **PAS** mises en cache par
+  le Service Worker — elles ne survivent pas au plan switch ni au refresh.
+  Seule exception : le cache offline OSM **opt-in user** (bouton « 💾 Cacher
+  pour offline »). Détails complets dans la sous-section dédiée plus bas
+  (« Cache offline OSM / « Save Offline » »).
+- **Widget HOME** : extraction du ZIP du plan
   sélectionné se fait **localement** dans le browser via JSZip (lecture
   IDB blob ou FS handle). Aucune donnée plan n'est envoyée à OSM ou à
   un tiers — uniquement les tuiles `{z}/{x}/{y}` sont demandées au CDN
   OSM, identiques à celles affichées par tout client OSM standard.
-- **Bouton « 📍 Ma position » (depuis v1.40.18)** : disponible dans la
+- **Bouton « 📍 Ma position »** : disponible dans la
   modale Vue OSM ET dans le widget HOME Vue OSM. **Fix GPS ponctuel à la
   demande user** via `navigator.geolocation.getCurrentPosition()` — pas de
   watch continu (`watchPosition`), pas d'usage batterie en continu. La
@@ -214,21 +213,20 @@ sous 3 conditions strictes simultanément réunies** :
   réseau (aucun fetch, aucun beacon). Au close de la modale / refresh
   du widget, le marker est supprimé. Re-clic = nouveau fix, l'ancien est
   remplacé.
-- **Garde-fou « GPS hors champ du plan » (depuis v1.40.21)** : après un fix GPS
+- **Garde-fou « GPS hors champ du plan »** : après un fix GPS
   reçu, si la position est **très loin** de la bbox du plan georef sélectionné
   (>50% au-delà des bords), le marker n'est **pas affiché** + toast warn avec
   la distance approximative au centre du plan. Garantit qu'un user à Paris ne
   voit pas son fix s'afficher sur un plan situé à Lyon par erreur.
   Marge ×1.5 (= `bounds.pad(0.5)`) choisie permissive pour ne pas rejeter les
   fix légitimes en bordure de plan. Si la bbox plan n'est pas calculable (dims
-  manquantes, georef absente), fallback safe : on autorise (comportement
-  v1.40.18-20 préservé).
-- **Header serveur requis (depuis v1.40.20)** : pour que le bouton 📍 fonctionne,
+  manquantes, georef absente), fallback safe : on autorise l'affichage du fix.
+- **Header serveur requis** : pour que le bouton 📍 fonctionne,
   le header `Permissions-Policy` côté Nginx doit autoriser `geolocation=(self)`.
-  Si le header est resté à `geolocation=()` (default v1.0-v1.40.19), l'API rejette
+  Si le header est réglé à `geolocation=()`, l'API rejette
   l'appel **avant même le prompt OS** avec une violation policy (`crbug.com/414348233`).
   La config Nginx versionnée (`docs/nginx-csp-config.conf` et `docker/nginx-docker.conf`)
-  a été mise à jour. Restriction `(self)` choisie volontairement : seule notre origine
+  autorise `geolocation=(self)`. Restriction `(self)` choisie volontairement : seule notre origine
   peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).
 - **Mode incognito** : la Vue OSM (modale ET widget HOME) est coupée —
   modale `osmView.js` bloquée à l'ouverture (toast warn), widget HOME
@@ -244,20 +242,20 @@ sous 3 conditions strictes simultanément réunies** :
 
 ### Cache offline OSM / « Save Offline »
 
-Depuis la v1.43.0, tu peux **mémoriser les tuiles
+Tu peux **mémoriser les tuiles
 OSM affichées** pour les consulter hors-ligne plus tard. C'est une feature
 **100% locale, opt-in user explicite**, qui ne change **aucune** garantie
 réseau ni privacy de l'app.
 
-Le journal des 36 correctifs de cette fonction (v1.43.0 → v1.44.7, aucun n'a ajouté de surface réseau) est
+Le journal des correctifs de cette fonction (aucun n'a ajouté de surface réseau) est
 dans l'[historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 
 **Mécanisme** :
 
-- Nouveau module client `js/osmTilesCache.js` qui expose l'API
+- Module client `js/osmTilesCache.js` qui expose l'API
   `window.OsmTilesCache` (`init` / `cacheVisibleTiles` / `getCachedTile` /
   `getStats` / `hasCacheForBbox` / `clear`).
-- Nouveau store **IndexedDB** `myktamap_osm_tiles` (object store `tiles`,
+- Store **IndexedDB** `myktamap_osm_tiles` (object store `tiles`,
   schéma `{key: "z/x/y", blob, addedAt}`). Stocke les PNG de tuiles OSM en
   blob, indexés par leur coordonnée Web Mercator standard `{z}/{x}/{y}`
   (clé identique à l'URL CDN OSM, donc aucune donnée perso ne transite par
@@ -266,14 +264,14 @@ dans l'[historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
   le pattern `tile.openstreetmap.org/{z}/{x}/{y}.png` : si la tuile est
   présente en IDB, il retourne le blob directement (avec un header de
   debug local `X-OSM-Cache: hit`) **sans toucher au réseau**. Sinon, il
-  laisse passer le `fetch` réseau normal (= comportement v1.42.x
-  conservé). **Aucune nouvelle URL n'est contactée par cette feature** —
+  laisse passer le `fetch` réseau normal (comportement habituel de la
+  Vue OSM). **Aucune nouvelle URL n'est contactée par cette feature** —
   c'est strictement un mécanisme de short-circuit local d'un fetch
   existant déjà documenté dans la whitelist (`tile.openstreetmap.org`).
 
 **Déclenchement utilisateur** : le bouton « 💾 Cacher pour offline »
-apparaît dans **3 contextes** (tous opt-in user, tous post-v1.39.0 OSM
-opt-in) :
+apparaît dans **3 contextes** (tous opt-in user, tous soumis à la case
+🗺️ Vue OSM) :
 
 1. **Modale Vue OSM** (`osmView.js`) — clic sur le bouton dans la modale
    full-screen.
@@ -298,10 +296,9 @@ carte et relancer l'opération (paliers de 200).
 **Mode dégradé hors-ligne** : si l'utilisateur lance la Vue OSM **alors
 qu'il n'a pas Internet** mais qu'**un cache est déjà présent pour la bbox
 du plan**, la modale s'ouvre quand même (mode dégradé visuel avec tuiles
-cachées). La détection est faite par `_isOnlineOrCached()` (relaxation de
-l'ancien `_isOnline()` du v1.42.x). **Aucun appel réseau n'est tenté dans
-ce cas** — c'est lecture IDB pure. Si aucune tuile n'est cachée pour la
-bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
+cachées). La détection est faite par `_isOnlineOrCached()`. **Aucun appel
+réseau n'est tenté dans ce cas** — c'est lecture IDB pure. Si aucune tuile
+n'est cachée pour la bbox, la modale reste bloquée (toast warn).
 
 **Privacy — garanties** :
 
@@ -327,14 +324,13 @@ bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
   actif, la carte ne s'ouvre pas, donc aucun préchargement n'est possible
   (gates `osmView.js` / `osmHomePreview.js`).
 
-**Verdict réseau** : ✅ aucune nouvelle URL ajoutée à la liste
-blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
-contacté. Le périmètre réseau v1.42.x est **strictement conservé** sur
-toute la série v1.43.0 → v1.44.7. La whitelist endpoints reste inchangée
-(`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` +
-assets app). Le seul changement est l'introduction d'un store IDB local
-de plus (cf. section « Stockage local »). La feature « Save Offline »
-n'ajoute **aucune** surface réseau sortante.
+**Verdict réseau** : ✅ cette fonction n'ajoute aucune URL à la liste
+blanche, n'envoie aucune catégorie de donnée et ne contacte aucun autre
+service tiers. Elle ne passe que par `tile.openstreetmap.org`, déjà listé
+plus haut ; la whitelist endpoints reste la même (`tile.openstreetmap.org`,
+`denylist.json`, `ping.html`, `version.json` + assets app). Ce qu'elle
+ajoute, c'est un store IDB local (cf. section « Stockage local »). La
+feature « Save Offline » n'ajoute **aucune** surface réseau sortante.
 
 **Politique de privacy OSM** : OpenStreetMap est une fondation
 non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées
@@ -352,7 +348,7 @@ défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper le
 
 ### Méthode 1 — Le journal réseau intégré (le plus simple)
 
-L'app loggue **en temps réel** toutes ses requêtes réseau dans un
+L'app logue **en temps réel** toutes ses requêtes réseau dans un
 journal interne. Tu peux le consulter à tout moment :
 
 1. **Page d'accueil → ⚙️ Configuration** (header)
@@ -476,17 +472,16 @@ La directive clé est `connect-src 'self' blob: https://tile.openstreetmap.org h
 navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la
 Vue OSM, rien ne lui est envoyé).
 
-**Deuxième directive : quel code a le droit de tourner (`script-src`).** Depuis le 7 octobre 2026, l'application ne
-contient plus aucun code écrit directement dans ses pages (`onclick="…"`, blocs `<script>`, liens `javascript:`) :
+**Deuxième directive : quel code a le droit de tourner (`script-src`).** L'application ne
+contient aucun code écrit directement dans ses pages (`onclick="…"`, blocs `<script>`, liens `javascript:`) :
 tout son code vient de ses propres fichiers `.js`, et un contrôle automatique empêche d'en réintroduire. Le serveur
 peut donc demander au navigateur de **n'exécuter que les fichiers du site** (`script-src 'self'`) : un texte piégé
 qui passerait un jour entre les mailles de l'affichage (un nom de point, une note venue d'un autre compte) ne
 pourrait plus rien exécuter.
 
-- **En ce moment** : la règle en vigueur garde encore `script-src 'self' 'unsafe-inline'` (code inline toléré) ; la
-  règle stricte est envoyée **en observation**, dans un second en-tête `Content-Security-Policy-Report-Only` — rien
-  n'est bloqué, la console (F12) signale ce qui le serait. Selon l'installation, cet en-tête peut être absent.
-- **Prochaine étape** : la règle stricte devient la règle en vigueur.
+- **La règle en vigueur est stricte** : `script-src 'self'`, sans `'unsafe-inline'`. Le navigateur refuse tout code
+  écrit dans une page ; seuls les fichiers du site s'exécutent. Une installation indépendante dont le serveur garde
+  une ancienne configuration peut encore envoyer l'ancienne règle : F12 → Network → Headers pour le vérifier.
 - **Une exception, voulue** : la page de secours `killsw.html` (réinitialiser le Service Worker quand l'app ne démarre
   plus) garde son code dans la page — elle doit fonctionner même quand les fichiers de l'app sont inaccessibles. Elle
   n'affiche aucune donnée.
@@ -507,16 +502,16 @@ navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
 |---|---|---|---|
-| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue OSM et le widget HOME Vue OSM *(v1.40.18)* si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx depuis v1.40.20 ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
+| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue OSM et le widget HOME Vue OSM si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
 | **DeviceMotion / DeviceOrientation** | Tracker (PDR + boussole) | Oui sur iOS (prompt explicite via user gesture) | **Aucune** (lecture pure capteurs locaux) |
-| **Wake Lock API** *(NOUVEAU v1.21.1)* | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
-| **Clipboard API** *(usage étendu v1.21.2)* | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
+| **Wake Lock API** | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
+| **Clipboard API** | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
 | **WebAuthn (`navigator.credentials`)** | Activation Face ID / Touch ID / Windows Hello pour le PIN | Oui (prompt natif device) | **Aucune** (challenge généré côté client, validation locale) |
 | **Battery Status API** | Indicateur batterie sidebar + mode urgence | Politique navigateur (header `Permissions-Policy: battery=(self)` côté Nginx) | **Aucune** (lecture pure) |
 | **Screen Orientation API** | Correction heading boussole en landscape | Aucune | **Aucune** |
 | **Storage API (`navigator.storage.estimate`, `persist`)** | Inspecteur mémoire + auto-persist mobile | Oui (`persist` prompt navigateur sur certains browsers) | **Aucune** |
 
-### À propos du Wake Lock API (v1.21.1+)
+### À propos du Wake Lock API
 
 - **Hidden si non supporté** : `WakeLock.isSupported()` vérifie l'existence
   de `navigator.wakeLock.request` avant tout affichage. Sur Firefox
@@ -532,7 +527,7 @@ navigateur. Tableau exhaustif :
 - **Pas de pingback serveur** : 0 fetch réseau dans `wakeLock.js`
   (vérifiable via le journal réseau intégré → Méthode 1).
 
-### À propos de la Clipboard API (extension v1.21.2)
+### À propos de la Clipboard API
 
 - Usage en **écriture seule** (`navigator.clipboard.writeText`),
   jamais en lecture (`readText`).
@@ -551,18 +546,19 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 
 | Espace | Contenu | Comment l'inspecter |
 |---|---|---|
-| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, `myktamap_wake_lock_v1` boolean depuis v1.21.1, `myktamap_session_v1_<planId>` per-plan **enrichi depuis v1.21.2 avec trackerTimeline + trackerStartTs** — impact taille : ~1800 entries × ~80 bytes ≈ ~140 KB pour une session de 30 min de tracking continu, soit ~2 % du quota 5 MB localStorage typique navigateur, etc.) | F12 → Application → Local Storage |
-| **localStorage → `myktamap_plan_stats_v1_<planId>`** (v1.21.4+) | **NOUVEAU v1.21.4** — Cache de stats agrégées par plan : `{pois, roads, distPx, breakdowns: {pointsByTag, roadsByType, zonesByType, structsByType}, ts, source}`. Counts uniquement (jamais de Blob/photo data). JSON-serialisé strictement local. Alimenté par `_computePlanStatsLive` + `_persisterStatsPlanCourant` (agrégation session + embedded via getters publics). | F12 → Application → Local Storage |
-| **localStorage → `myktamap_loader_bar_stats_v1`** (v1.21.4+) | **NOUVEAU v1.21.4** — Configuration de la bandeau profil du loader : array de keys (`["time", "storage", "plans"]`). Default `["time", "storage"]`. Persistance pure locale, aucune transmission. | F12 → Application → Local Storage |
-| **localStorage → `myktamap_skip_server_plans_v1`** (v1.21.4+) | Boolean `"true"` / `"false"`. Si actif, les plans serveur ne sont pas inscrits au boot. ⚠️ **Sémantique v1.73.0** : le `fetch("data/index.json")` (same-origin, déjà whitelisté) a désormais TOUJOURS lieu au boot — il porte la config d'instance kiosque (sous-titre, flags, liaisons) qui doit s'appliquer même pref active ; la pref ne skippe QUE l'enregistrement des plans. Le SW sert ce fichier en **network-first** (timeout 3 s, fallback cache — même pattern que les dicos i18n) : aucune nouvelle URL, aucune donnée sortante, 1 requête same-origin par boot. | F12 → Application → Local Storage |
+| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, `myktamap_wake_lock_v1` boolean, `myktamap_session_tampon_v1_<planId>` = copie de secours d'une session écrite à la fermeture de l'app, retirée dès que la base des sessions a confirmé, etc.) | F12 → Application → Local Storage |
+| **localStorage → `myktamap_plan_stats_v1_<planId>`** | Cache de stats agrégées par plan : `{pois, roads, distPx, breakdowns: {pointsByTag, roadsByType, zonesByType, structsByType}, ts, source}`. Counts uniquement (jamais de Blob/photo data). JSON-serialisé strictement local. Alimenté par `_computePlanStatsLive` + `_persisterStatsPlanCourant` (agrégation session + embedded via getters publics). | F12 → Application → Local Storage |
+| **localStorage → `myktamap_loader_bar_stats_v1`** | Configuration de la bandeau profil du loader : array de keys (`["time", "storage", "plans"]`). Default `["time", "storage"]`. Persistance pure locale, aucune transmission. | F12 → Application → Local Storage |
+| **localStorage → `myktamap_skip_server_plans_v1`** | Boolean `"true"` / `"false"`. Si actif, les plans serveur ne sont pas inscrits au boot. ⚠️ le `fetch("data/index.json")` (same-origin, déjà whitelisté) a TOUJOURS lieu au boot — il porte la config d'instance kiosque (sous-titre, flags, liaisons) qui doit s'appliquer même pref active ; la pref ne skippe QUE l'enregistrement des plans. Le SW sert ce fichier en **network-first** (timeout 3 s, fallback cache — même pattern que les dicos i18n) : aucune nouvelle URL, aucune donnée sortante, 1 requête same-origin par boot. | F12 → Application → Local Storage |
 | **IndexedDB → `myktamap_handles`** | Handles FS Access API (Chrome desktop) + blobs ZIP des plans mémorisés (mobile/Safari/Firefox) | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_backups`** (v1.16.0+) | 10 snapshots FIFO de session, **embed depuis v1.21.2 la trackerTimeline** (impact taille IDB proportionnel) | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_photos`** (v1.10.0+) | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_crashes`** (v1.20.0+) | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_profile`** (v1.21.0+) | **NOUVEAU v1.21.0** — Surnom + photo profil utilisateur (1 seule entry `id="me"`, schema v1). Photo en Blob IDB, compressée canvas (max 512px JPEG q88). Jamais transmise. | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_osm_tiles`** (v1.43.0+) | **NOUVEAU v1.43.0** — Cache offline OSM opt-in user. Object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`. Stocke des PNG de tuiles `tile.openstreetmap.org` pour consultation hors-ligne (modale Vue OSM, widget HOME, Mode Secours via Vue OSM). Cap `MAX_TILES_PER_CACHE = 200/opération` conforme à la politique d'usage OSM. Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Local pur, jamais transmis**. Effaçable via "💥 Tout réinitialiser" ou `OsmTilesCache.clear()` console. | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_journal`** (v1.69.0+) | **NOUVEAU v1.69.0** — Le Carnet : archive de tes sorties (object store `sorties`, schema v1). Une entrée = `{id, type: "terrain"|"bureau", planId, planName, startedAt, endedAt, activeMs, distM, ajouts, levels, photoIds, track, note}` — **métadonnées + tracé décimé + REFS de photos**, jamais d'image copiée. ~2 à 8 Ko par sortie, purge FIFO au-delà de 500 sorties. **Local pur, jamais transmis** (aucun code réseau dans `js/journal.js`). Effaçable sortie par sortie (fiche → 🗑️) ou via « 💥 Tout réinitialiser ». | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_histoire_pdfs`** (v1.34.20+, **multi-documents v1.69.0**) | Documents PDF du Mode Histoire que **tu** importes (récit, plan scanné, article…). Depuis v1.69.0 : **jusqu'à 10 documents par plan** (store `pdfs` v2, keyPath `id` + index `by_plan` — migration auto depuis le schéma 1 PDF/plan, aucun PDF perdu), avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. **Local pur, jamais transmis.** Désormais comptée dans « Stockage » (elle y était invisible depuis v1.34.20). | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_sessions`** | Tes sessions, une par plan (points, tracés, zones, **trackerTimeline** incluse). Elles vivaient dans le localStorage, plafonné à ~5 Mo par site ; elles y sont copiées au premier lancement, relues et comparées, l'ancienne copie étant gardée 30 jours. En navigation privée (IndexedDB refusé) ou en incognito de l'app, elles restent en localStorage (`myktamap_session_v1_<planId>`). **Local pur, jamais transmis.** | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_backups`** | 10 snapshots FIFO de session, **trackerTimeline incluse** (impact taille IDB proportionnel) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_photos`** | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_crashes`** | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_profile`** | Surnom + photo profil utilisateur (1 seule entry `id="me"`, schema v1). Photo en Blob IDB, compressée canvas (max 512px JPEG q88). Jamais transmise. | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_osm_tiles`** | Cache offline OSM opt-in user. Object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`. Stocke des PNG de tuiles `tile.openstreetmap.org` pour consultation hors-ligne (modale Vue OSM, widget HOME, Mode Secours via Vue OSM). Cap `MAX_TILES_PER_CACHE = 200/opération` conforme à la politique d'usage OSM. Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Local pur, jamais transmis**. Effaçable via "💥 Tout réinitialiser" ou `OsmTilesCache.clear()` console. | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_journal`** | Le Carnet : archive de tes sorties (object store `sorties`, schema v1). Une entrée = `{id, type: "terrain"|"bureau", planId, planName, startedAt, endedAt, activeMs, distM, ajouts, levels, photoIds, track, note}` — **métadonnées + tracé décimé + REFS de photos**, jamais d'image copiée. ~2 à 8 Ko par sortie, purge FIFO au-delà de 500 sorties. **Local pur, jamais transmis** (aucun code réseau dans `js/journal.js`). Effaçable sortie par sortie (fiche → 🗑️) ou via « 💥 Tout réinitialiser ». | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_histoire_pdfs`** (**multi-documents**) | Documents PDF du Mode Histoire que **tu** importes (récit, plan scanné, article…). **Jusqu'à 10 documents par plan** (store `pdfs` v2, keyPath `id` + index `by_plan` — migration auto des plans qui n'avaient qu'un PDF, aucun PDF perdu), avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. **Local pur, jamais transmis.** Comptée dans « Stockage ». | F12 → Application → IndexedDB |
 | **Cache Storage** | Assets PWA pour le mode hors-ligne | F12 → Application → Cache Storage |
 | **Service Worker** | Code du SW qui gère le cache | F12 → Application → Service Workers |
 
@@ -587,6 +583,76 @@ retrouver sans cache hors-ligne).
 
 ---
 
+## 🧪 Comment le code est contrôlé avant d'arriver chez toi
+
+Les promesses de cette page ne valent que si le code qui arrive dans ton
+navigateur est bien celui qu'elle décrit. Voici les contrôles par lesquels
+passe chaque modification avant d'arriver sur `myktamap.fr`.
+
+### 1. Des vérifications automatiques à chaque modification
+
+Avant même d'être enregistrée, chaque modification du code passe une
+soixantaine de vérifications automatiques (68 aujourd'hui). Quelques
+exemples de ce qu'elles vérifient :
+
+- aucune trace du code de l'édition professionnelle dans l'app libre ;
+- aucun relevé de terrain envoyé sur le dépôt de code ;
+- aucun script « en ligne » dans les pages — c'est ce qui permet la CSP
+  stricte décrite plus haut ;
+- des traductions cohérentes d'une langue à l'autre ;
+- la documentation interne n'est jamais livrée sur le site.
+
+### 2. Les mêmes vérifications, rejouées par GitHub
+
+À chaque envoi du code sur GitHub, ces mêmes vérifications sont rejouées
+automatiquement (intégration continue). Un contrôle sauté sur un poste ne
+passe donc pas en silence.
+
+### 3. Pas de mise en ligne sans feu vert
+
+La mise en ligne est automatique, et elle n'a lieu — sur le site de test
+comme sur le site principal — que si ces vérifications sont au vert. Le site
+principal ne reçoit que du code passé par la porte décrite ci-dessous.
+
+### 4. Une analyse de qualité et de sécurité avant chaque mise en production
+
+Avant chaque mise en production, le code passe une analyse de qualité et
+de sécurité (SonarQube). Pour passer :
+
+- le nouveau code doit obtenir la meilleure note en fiabilité et en sécurité ;
+- tous les points sensibles de sécurité doivent avoir été relus ;
+- la duplication de code doit rester sous 3 %.
+
+Sinon, la mise en production est bloquée.
+
+### 5. Les librairies embarquées
+
+L'app ne télécharge aucune librairie pendant que tu l'utilises. Les
+quelques librairies qu'elle embarque (Leaflet, JSZip, jsPDF, html2canvas)
+sont copiées dans le dépôt, avec leur version et un lien vers leurs avis de
+sécurité. Ces librairies, comme les outils de test et d'intégration
+continue, sont surveillées automatiquement (Dependabot) : une faille connue
+ou une nouvelle version est signalée, et chaque proposition de mise à jour
+est testée par l'intégration continue. Une librairie n'est remplacée que
+par le fichier officiel publié par son auteur, et ce qu'elle fait (exports
+PDF, ouverture des plans…) est retesté avant de la livrer.
+
+### 6. Un essai à la main avant chaque mise en production
+
+Avant chaque mise en production, l'app est essayée à la main sur le site
+de test, en 12 points (la « porte de release »).
+
+### Ce que ces contrôles ne remplacent pas
+
+Ces contrôles sont tenus par l'auteur lui-même, et l'analyse SonarQube
+tourne sur son poste : ses résultats ne sont pas publics. L'auteur peut, en
+connaissance de cause, passer outre une étape (une urgence, un contrôle en
+panne) : la dérogation est alors écrite et conservée avec la version. Ils réduisent le
+risque d'erreur, mais rien ne remplace les vérifications que tu peux faire
+toi-même (cf. « 🔍 Comment vérifier toi-même »).
+
+---
+
 ## 🤝 La position de l'auteur
 
 > *Je suis cataphile depuis 2016. Je connais la culture, et je sais que la
@@ -598,18 +664,18 @@ retrouver sans cache hors-ligne).
 > pourraient atterrir, parce qu'il n'y a aucun code applicatif côté
 > serveur. Tout est conçu pour être vérifiable. Si tu trouves quoi que
 > ce soit qui contredit ce document, contacte-moi directement —
-> Instagram **@karma_kta** ou **contact@myktamap.fr** — je corrigerai
+> Instagram **[@karma_kta](https://instagram.com/karma_kta)** ou **[contact@myktamap.fr](mailto:contact@myktamap.fr)** — je corrigerai
 > immédiatement.*
 >
+> <!-- kta:classe kta-auteur -->
 > — **KARMA**, auteur de MyKTAMap
 
 ---
 
 ## 📋 Historique des versions
 
-Ce que chaque version a changé côté réseau — une note par version, de la v1.8.0 à aujourd'hui — est dans une
-page à part : **[Historique des versions de l'audit](NETWORK_AUDIT_HISTORIQUE.md)**. Cette page-ci décrit l'état
-actuel.
+Ce que chaque version a changé côté réseau — une note par version — est dans une page à part :
+**[Historique des versions de l'audit](NETWORK_AUDIT_HISTORIQUE.md)**. Cette page-ci décrit l'état actuel.
 
 ---
 

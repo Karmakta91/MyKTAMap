@@ -264,15 +264,18 @@
       // module refuse une fin antérieure au départ.
       const finBtn = document.getElementById("kta-jrn-fin");
       if (finBtn) {
-        finBtn.addEventListener("click", function () {
+        finBtn.addEventListener("click", async function () {
           const finMs = Date.parse(rec.endedAt || rec.updatedAt || 0) || Date.now();
           // `datetime-local` veut du temps LOCAL sans fuseau : `toISOString()`
           // rendrait de l'UTC et décalerait le champ de l'écart horaire.
           const d = new Date(finMs - new Date(finMs).getTimezoneOffset() * 60000);
           const val = d.toISOString().slice(0, 16);
-          const saisi = window.prompt(
-            _t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) }), val);
-          if (saisi === null) return;
+          // Annuler = abandon (le null du prompt) ; OK = la saisie, même vide (Date.parse("") → refus format).
+          const champ = { valeur: val, maxLength: 32 };
+          const ok = await window.ktaConfirm(
+            _esc(_t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) })), { texte: champ });
+          if (!ok) return;
+          const saisi = champ.valeur;
           const ms = Date.parse(saisi);
           if (!Number.isFinite(ms)) { _toast(_t("jrn.fin.koFormat"), "warn"); return; }
           window.Journal.setFin(rec.id, ms).then(function (maj) {
@@ -302,8 +305,8 @@
         });
       });
 
-      document.getElementById("kta-jrn-del").addEventListener("click", function() {
-        if (!window.confirm(_t("jrn.confirm.supprimer"))) return;
+      document.getElementById("kta-jrn-del").addEventListener("click", async function() {
+        if (!(await window.ktaConfirm(_t("jrn.confirm.supprimer")))) return;
         window.Journal.remove(rec.id).then(function() {
           _fermerFiche();
           _toast(_t("jrn.toast.supprimee"), "info");
@@ -358,9 +361,11 @@
     if (m) m.remove();
   }
 
+  // Rend la promesse : « Terminer la sortie » enchaîne `.then(ouvrirFiche)` dessus (sans retour, TypeError
+  // et fiche jamais rouverte — relevé par Sonar le 09/10/2026).
   function _rafraichirListe() {
-    if (!document.getElementById(MODAL_ID)) return;
-    window.Journal.list().then(function(all) {
+    if (!document.getElementById(MODAL_ID)) return Promise.resolve();
+    return window.Journal.list().then(function(all) {
       _sorties = all;
       _renderListe();
       _renderTotaux();
@@ -525,9 +530,7 @@
         // 🩸 La fusion SUPPRIME des enregistrements : on confirme. C'est le
         // seul geste destructif du carnet, dont la raison d'être est d'être
         // une archive append-only.
-        const demander = (typeof window.ktaConfirm === "function")
-          ? window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }))
-          : Promise.resolve(window.confirm(_t("jrn.fusion.confirm", { n: ids.length })));
+        const demander = window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }));
         demander.then(function (ok) {
           if (!ok) return;
           return window.Journal.fusionner(ids).then(function (rec) {
@@ -949,11 +952,11 @@
     });
 
     box.querySelectorAll(".kta-jrn-doc-del").forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const i = parseInt(btn.getAttribute("data-del"), 10);
         const d = r.docs[i];
         if (!d) return;
-        if (!window.confirm(_t("jrn.recits.confirmSupprPdf", { nom: d.name }))) return;
+        if (!(await window.ktaConfirm(_t("jrn.recits.confirmSupprPdf", { nom: window.ktaEsc(d.name) })))) return;
         _histSupprimer(d.id).then(function(ok) {
           if (!ok) { _toast(_t("jrn.recits.errSuppr"), "warn"); return; }
           r.docs.splice(i, 1);

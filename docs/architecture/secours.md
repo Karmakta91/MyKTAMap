@@ -847,7 +847,7 @@ async genererRapportData(scenarioId, scope, opts)   // → objet structuré
 genererRapportTexte(reportData)                      // sync → texte markdown-like
 genererRapportPDF(reportData)                        // sync → PDF jsPDF
 exporterRapportJSON(reportData)                      // sync → téléchargement JSON
-async copierRapportTexte(reportData)                 // → presse-papier
+async copierRapportTexte(reportData)                 // → presse-papier (window.ktaCopierTexte, utils.js)
 ```
 
 ##### 67.11.2 Format `.mkmsec.report.json` (REPORT_FORMAT_VERSION = 1)
@@ -914,7 +914,7 @@ Permet de re-générer rapport à tout moment après l'arrêt, tant que le scén
 
 ##### 67.11.7 Confidentialité
 
-Aucune nouvelle surface réseau. Génération 100% client-side (jsPDF déjà chargé, Blob URLs locales, FileReader pour base64, `navigator.clipboard.writeText` avec fallback `execCommand("copy")`). Photos lues depuis store IDB local existant `myktamap_secours_photos`. Aucun fetch ajouté.
+Aucune nouvelle surface réseau. Génération 100% client-side (jsPDF déjà chargé, Blob URLs locales, FileReader pour base64, presse-papier par `window.ktaCopierTexte` — `navigator.clipboard`, repli `execCommand("copy")`). Photos lues depuis store IDB local existant `myktamap_secours_photos`. Aucun fetch ajouté.
 
 #### 67.12 Pour ajouter une nouvelle release Mode Secours (futur)
 
@@ -1541,7 +1541,9 @@ Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async �
 - Bandeau Mode Secours (vue Edit, plan actif + plan terminé)
 - Footers des 3 vues Live (Équipier, Opérateur, Secouriste) via `_bindLiveCommonHandlers` (v1.41.1)
 
-Pas de capture canvas Leaflet (`html2canvas` non dispo dans `lib/`) — choix MVP : liens cliquables OSM/Google Maps suffisent pour briefing pompiers (ils cliquent depuis leur PC).
+Carte OSM en tête de page : capture `html2canvas` (`_captureOsmCanvasForBriefing` — Vue OSM ouverte, sinon carte hors
+écran : tuiles, cadre du plan, équipes GPS) ; liens cliquables OSM / Google Maps en plus. L'étiquette « 📍 site » de
+la carte hors écran porte la classe `kta-secours-osm-etiquette` (`style-secours.css`) : sombre par défaut, claire en thème clair.
 
 ### 79.6 Hotfixes v1.41.1 → v1.41.4
 
@@ -1598,7 +1600,11 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 
 - **Main courante** : `s.execution.mainCourante[] = { at, cle, p, source? }` — clé i18n `secours.mc.*` + paramètres, traduits À L'AFFICHAGE (`_texteMc`) ; jamais de texte figé. Écriture : `_journaliser(s, cle, p, extra)` (sans commit, l'appelant commite). Plafond 2000 entrées. Fusion des rapports : clé `at|cle|p` pour dédoublonner ; notes du secouriste : `p.noteId`.
 - **B9** : `g.chef` (doit être un des membres, sinon `_chef` rend le premier), `g.effectif` (sinon le plus grand de « membres nommés » et « comptes reliés » — prise `secoursNbComptesEquipe`, 0 sans extension ; `_effectifDetail` rend aussi la source, affichée sous le champ, avec alerte `kta-tx-warn` si la saisie est plus basse). `suivi[phase][gid].remontes` ; `_manquants` → état `manquant`, rang `-1` (pire que `rouge`). La rentrée par l'UI passe TOUJOURS par `_demanderRemontes` (compte obligatoire si l'effectif est connu) ; `marquerSuivi(…, "rentreeAt")` (API) ne demande rien.
-- **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`.
+- **`ktaConfirm(msg, { nombre: { label, valeur, min, max } })`** (utils.js) : valeur relue dans `opts.nombre.valeur` après validation — à utiliser plutôt que `prompt()`. **Sans `ktaConfirm`, une action destructive est refusée**, jamais exécutée sans question (relance d'une intervention, retrait d'étapes, import, remontés).
+- **Texte libre vers un PDF** : tout texte saisi (noms de scénario, de plan, d'équipe, membres, chef, étapes, notes,
+  observations) passe par `window.ktaTextePdf` (utils.js) — `_pdfLibre(txt, défaut)` pour une ligne : filtre
+  **d'abord**, défaut ensuite si rien ne reste (un nom 100 % emoji), et majuscules **avant** le filtre. Les libellés
+  des dicos n'en ont pas besoin (`check-pdf-texte.js`).
 - **Secouriste** : `_parsePayloadReport` rend `{ ok, payload, secouriste: true }` → `_importerNotesSecouriste` (pas d'aperçu, pas de fusion d'étapes).
 
 ## 🗂️ Vague 7b (v1.98.20, 30/09/2026) — parcours par phase, couverture, hors-ligne
@@ -1618,6 +1624,12 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 ## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
 
 - **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés. **Options brancard** d'abord (`_demanderOptionsBrancard`) : types de zones du plan (eau et remblais cochés d'office), case « lever les inaccessibles » décochée → `contraintes: { avoidZones, respecterInaccessibles }`, portées jusqu'au tracé et à ses recalculs (`road.evacuation`) — détail : `multilevel-pathfinding.md` (encadré inaccessibles).
+- **Chemin coupé** (`sortieUrgence.js > _calculerDistPathfinder`, brancard **et** Sortie d'urgence classique) : une zone
+  qui coupe la galerie d'une sortie fait caler le moteur sur la galerie restante, le chemin s'arrête court. Les écarts
+  de calage (départ + arrivée) comptent dans la distance ; au-delà de **10 m** (ou passe de repli du pathfinder), le
+  résultat est `contourne: true` : classé après les chemins entiers, et la fenêtre l'écrit sous la meilleure sortie —
+  `sortie.brancard.contourne` avec options brancard, `sortie.coupee.alerte` (écart chiffré) sans options. Bac :
+  `scripts/check-guidage.js` §12.
 - **Accès** : `_accesSurface(s)` dédoublonne entrées/sorties (`_memeAcces`) et rattache `a.poi` = POI d'accès (`_poisAcces`, `CRIT_TAGS`) à < 15 m, même niveau ; `CRIT_FERMES` = caf/pef/esf → « à ouvrir par la surface ».
 - **Engagés** : `_bilanEngages(s)` (équipes de la phase courante) → `{ engages, sousTerre, manquants, inconnus[] }`. `_demanderRemontes` : valeur jamais préremplie. `_chef(g)` : chef libre si pas de membres.
 - **Durées** : `reglagesDuree.vitesseApprocheKmh` (défaut 3). `_dureeEquipeMin(s, distM, nbWp, { g, path, raccords })` : part du trajet hors polygone à la vitesse d'approche, le reste + raccords (étape × 2) à la vitesse de fouille. `g.heureRetour` « HH:MM » → `_heureRetourMs` (prochaine occurrence après le départ) prime dans `_etatRetour` (`imperatif: true`).

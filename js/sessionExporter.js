@@ -28,6 +28,16 @@
       : key;
   }
 
+  // « Rien à exporter » (sélection vide) : toast warn marqué important, visible même en
+  // mode Silence (décision KARMA 10/10/2026). Repli sur la modale si OOMGuard est absent.
+  function _avertirRienAExporter(msg) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(msg, "warn", { important: true });
+    } else {
+      window.ktaAlerte(msg);
+    }
+  }
+
   let _modal = null;
   // 🔎 Filtre d'export (onglets Complet et Avancé) : ne garder que les annotations d'une période et/ou
   // d'un auteur (« ce qu'a relevé B cette semaine »). Remis à zéro à chaque ouverture de la fenêtre.
@@ -568,7 +578,7 @@
           (_filtreActif() ? '<button type="button" class="kta-ses-btn" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
-          ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : t("export.filtre.aide")) + '</div>' +
+          ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
       '</div>';
   }
   function _brancherFiltre(modal) {
@@ -921,10 +931,6 @@
     // async après render via _kta_majCompteurPhotosFull (cf. _afficherModale).
     // En attendant, on affiche "Chargement…" pour ne pas bloquer le render.
     return _htmlFiltre() + `
-      <div class="kta-ses-intro">
-        ${t("export.full.intro")}
-        <br><span style="color:#8892a4;">${t("export.full.introDetail")}</span>
-      </div>
       <div class="kta-ses-summary">
         <div>✏️ ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
         <div>🛣️ ${t("export.full.roads", { n: d.roads.length, s: d.roads.length > 1 ? "s" : "" })}</div>
@@ -1011,10 +1017,6 @@
     }
 
     return _htmlFiltre() + `
-      <div class="kta-ses-intro">
-        ${t("export.adv.intro")}
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.adv.contentTitle")}</div>
 
@@ -1226,11 +1228,6 @@
       rowTypeSub("conv_structures_front-2",  t("export.conv.structFront2"),  structureCountByType["front-2"].length,  true);
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.conv.s2dIntro")}
-        <br><span style="color:#8892a4;">${t("export.conv.s2dIntroDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.conv.s2dContentTitle")}</div>
         ${row("conv_points", t("export.conv.points"),  d.points.length, true)}
@@ -1307,11 +1304,6 @@
     }
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.conv.d2sIntro")}
-        <br><span style="color:#8892a4;">${t("export.conv.d2sIntroDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.conv.d2sSourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-conv-d2e-drop">
@@ -1565,7 +1557,8 @@
                 pointId: info.pointId,
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
-                blob:    blob
+                blob:    blob,
+                fiche:   info.fiche || null
               };
             });
           });
@@ -1632,7 +1625,8 @@
           blob:    rec.blob,
           mime:    rec.mime || "image/jpeg",
           pointId: rec.pointId,
-          size:    rec.size || (rec.blob && rec.blob.size) || 0
+          size:    rec.size || (rec.blob && rec.blob.size) || 0,
+          fiche:   rec.fiche || null   // 📸 12/10/2026 — cf _entreeIndexPhoto
         };
       });
       return { photos: photos, totalSize: totalSize };
@@ -1660,6 +1654,19 @@
   // Expose pour les autres modules / l'UI (counter de la modale)
   if (typeof window !== "undefined") window._kta_formatBytes = _formatBytes;
 
+  // Entrée de photos/_index.json — UN SEUL format pour Full, Avancé et Conversion.
+  // 📸 12/10/2026 : la FICHE du point (nom, position, niveau, type) voyage aussi,
+  // comme dans l'export de profil et « Enregistrer » de la galerie : une photo
+  // dont le point a disparu reste récupérable (♻️ Recréer le point) après un
+  // réimport. Champ facultatif : les ZIP sans fiche se relisent comme avant.
+  // 🔒 Jamais en export anonymisé : _stripperExifPhotos ne la recopie pas et
+  // _anonymiserSession la retire (check-export-anonyme.js).
+  function _entreeIndexPhoto(p, name) {
+    const e = { pointId: p.pointId, mime: p.mime, size: p.size, file: name };
+    if (p.fiche && typeof p.fiche === "object") e.fiche = p.fiche;
+    return e;
+  }
+
   // Packe un payload session + des photos dans un ZIP. Retourne Promise<Blob>.
   // Structure du ZIP :
   //   /session.json                  ← payload session (format devmap-session)
@@ -1675,7 +1682,7 @@
   // sécurité si un appelant tiers n'a pas suivi.
   function _packerZipSession(payload, photos, filename, historePdfs) {
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return Promise.reject(new Error("JSZip indisponible"));
     }
     const zip = new JSZip();
@@ -1688,12 +1695,7 @@
         const ext = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,
@@ -1838,6 +1840,7 @@
         n++;
         p.id      = "photo-anon-" + n;
         p.pointId = idMap[String(p.pointId)] || "";
+        delete p.fiche;   // 📸 nom réel + position du point : jamais dans un export anonymisé
         p.mime    = p.mime || "image/jpeg";
       });
       session.editorPoints = _enrichirPointsAvecPhotos(session.editorPoints, photos);
@@ -2042,7 +2045,7 @@
       // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
       // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
       // verrait "session vide". OK pour MVP (cas marginal).
-      alert(t("export.err.fullVide"));
+      _avertirRienAExporter(t("export.err.fullVide"));
       return;
     }
 
@@ -2211,7 +2214,7 @@
           .then(function() { _fermer(); })
           .catch(function(err) {
             console.error("[SessionExport] _packerZipSession :", err);
-            alert(t("export.err.zipCreation", { err: err.message || err }));
+            window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
           });
       } else {
         // Pas de photos ni PDF → JSON pur (rétro-compat absolue).
@@ -2305,7 +2308,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length + mesurePts.length + mesureSurfPts.length + (tracker ? 1 : 0);
     if (total === 0) {
-      alert(t("export.err.advVide"));
+      _avertirRienAExporter(t("export.err.advVide"));
       return;
     }
 
@@ -2370,7 +2373,7 @@
             .then(function() { _fermer(); })
             .catch(function(err) {
               console.error("[SessionExport] _packerZipSession Avancé :", err);
-              alert(t("export.err.zipCreation", { err: err.message || err }));
+              window.ktaAlerte(t("export.err.zipCreation", { err: err.message || err }), { type: "erreur" });
             });
         } else {
           // Pas de photos → JSON pur (rétrocompat absolue)
@@ -2387,7 +2390,7 @@
 
   function _genererZipAdvanced(points, roads, zones, structures, mesurePts, mesureSurfPts, tracker, photos) {
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return;
     }
     const zip = new JSZip();
@@ -2440,12 +2443,7 @@
         const ext  = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,
@@ -2458,7 +2456,7 @@
       _fermer();
     }).catch(function(e) {
       console.error("[SessionExport] ZIP :", e);
-      alert(t("export.err.zipCreationGeneric"));
+      window.ktaAlerte(t("export.err.zipCreationGeneric"));
     });
   }
 
@@ -2537,7 +2535,7 @@
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
                 + filteredStructures.length;
     if (total === 0) {
-      alert(t("export.err.convVide"));
+      _avertirRienAExporter(t("export.err.convVide"));
       return;
     }
 
@@ -2633,7 +2631,7 @@
   // Sens 2 : fichier data layer uploadé → fichier session JSON (ou ZIP si photos)
   function _exportConvData2Session() {
     if (!_convUploadedJson) {
-      alert(t("export.err.convNoSource"));
+      window.ktaAlerte(t("export.err.convNoSource"));
       return;
     }
     const j = _convUploadedJson;
@@ -2649,7 +2647,7 @@
 
     if (points.length === 0 && roads.length === 0 && zones.length === 0
         && structures.length === 0) {
-      alert(t("export.err.convSourceVide"));
+      _avertirRienAExporter(t("export.err.convSourceVide"));
       return;
     }
 
@@ -2679,7 +2677,8 @@
           blob:    p.blob,
           mime:    p.mime,
           pointId: p.pointId,
-          size:    p.size
+          size:    p.size,
+          fiche:   p.fiche || null
         };
       });
       // Ajoute photosCount/TotalKB pour cohérence avec l'export Full
@@ -2692,7 +2691,7 @@
         .then(function() { _fermer(); })
         .catch(function(err) {
           console.error("[SessionExport] Conv ZIP session sortie :", err);
-          alert(t("export.err.zipSessionCreation", { err: err.message || err }));
+          window.ktaAlerte(t("export.err.zipSessionCreation", { err: err.message || err }), { type: "erreur" });
         });
     } else {
       // Pas de photos → JSON pur (rétrocompat absolue)
@@ -2823,7 +2822,7 @@
 
   function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
-      alert(t("export.err.convRien"));
+      _avertirRienAExporter(t("export.err.convRien"));
       return;
     }
     const now = new Date().toISOString();
@@ -2855,7 +2854,7 @@
 
     // Sinon (>1 fichier OU avec photos) → ZIP
     if (typeof JSZip === "undefined") {
-      alert(t("export.err.compressionIndispo"));
+      window.ktaAlerte(t("export.err.compressionIndispo"), { type: "erreur" });
       return;
     }
     const zip = new JSZip();
@@ -2872,12 +2871,7 @@
         const ext  = _extDepuisMime(p.mime);
         const name = p.id + "." + ext;
         photosFolder.file(name, p.blob);
-        idx[p.id] = {
-          pointId: p.pointId,
-          mime:    p.mime,
-          size:    p.size,
-          file:    name
-        };
+        idx[p.id] = _entreeIndexPhoto(p, name);
       });
       photosFolder.file("_index.json", JSON.stringify({
         version: 1,
@@ -2890,7 +2884,7 @@
       _fermer();
     }).catch(function(e) {
       console.error("[SessionExport] Conversion ZIP :", e);
-      alert(t("export.err.zipCreationGeneric"));
+      window.ktaAlerte(t("export.err.zipCreationGeneric"));
     });
   }
 
@@ -3065,11 +3059,6 @@
     }
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.fusion.intro")}
-        <br><span style="color:#8892a4;">${t("export.fusion.introDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.fusion.sourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-fusion-drop">
@@ -3118,7 +3107,7 @@
   function _exportFusion() {
     const m = _fusionMerged;
     if (!m || (!m.data.length && !m.roads.length && !m.zones.length && !m.structures.length)) {
-      alert(t("export.fusion.errVide"));
+      _avertirRienAExporter(t("export.fusion.errVide"));
       return;
     }
     const files = [];
@@ -3386,9 +3375,6 @@
     const niveauxBloc = mlOn
       ? '<div class="kta-kmz-section">' +
           '<div class="kta-kmz-section-titre">' + t("export.kmz.niveauxTitre") + '</div>' +
-          '<p style="font-size:11.5px; color:#8892a4; margin:4px 0;">' +
-            t("export.kmz.niveauxHint") +
-          '</p>' +
           '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
         '</div>'
       : '';
@@ -3405,10 +3391,6 @@
       : t("export.extern.descGpx");
 
     return '' +
-      '<div class="kta-ses-intro">' +
-        t("export.extern.intro") +
-      '</div>' +
-
       // 🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréf GPS (si applicable)
       ((typeof window.renderBannerCoherenceEchelle === "function")
         ? window.renderBannerCoherenceEchelle(_kmzCurrentPlanId(), { context: "export" })
@@ -3793,7 +3775,7 @@
             if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
               window.OOMGuard.showToast(msg, "warn");
             } else {
-              alert(msg);
+              window.ktaAlerte(msg);
             }
           }
         });
@@ -4058,13 +4040,13 @@
 
   async function _exportKmzInterne() {
     if (!window.KmzExport) {
-      alert(t("export.err.kmzModuleKo"));
+      window.ktaAlerte(t("export.err.kmzModuleKo"), { type: "erreur" });
       return;
     }
     const c = _kmzLireCalib();
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      alert(t("export.err.calib8Champs"));
+      window.ktaAlerte(t("export.err.calib8Champs"));
       return;
     }
     // Build transform (avec validations bloquantes)
@@ -4072,7 +4054,7 @@
     try {
       transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
-      alert(t("export.err.calibInvalide", { msg: e.message }));
+      window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
     // Persistance
@@ -4160,11 +4142,10 @@
             } else if (!tilesOverlay) {
               // Irréductible (image géante non-V2) : choix explicite, jamais
               // d'erreur silencieuse (règle KARMA).
-              const continuer = (typeof window.ktaConfirm === "function")
-                ? await window.ktaConfirm(window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }),
-                    { titre: "🌍 Google Earth", okLabel: window.I18n.t("kmz.geOverlay.okQuandMeme"),
-                      cancelLabel: window.I18n.t("kmz.geOverlay.annuler") })
-                : confirm(window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }));
+              const continuer = await window.ktaConfirm(
+                window.I18n.t("kmz.geOverlay.tronque", { w: _dims.width, h: _dims.height }),
+                { titre: "🌍 Google Earth", okLabel: window.I18n.t("kmz.geOverlay.okQuandMeme"),
+                  cancelLabel: window.I18n.t("kmz.geOverlay.annuler") });
               if (!continuer) {
                 if (window.OOMGuard && window.OOMGuard.showToast) {
                   window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.exportAnnule"), "warn");
@@ -4408,7 +4389,7 @@
       _fermer();
     } catch(e) {
       console.error("[KMZ] Erreur génération :", e);
-      alert(t("export.err.kmzGeneration", { err: e.message || e }));
+      window.ktaAlerte(t("export.err.kmzGeneration", { err: e.message || e }), { type: "erreur" });
     } finally {
       if (btnDl) { btnDl.disabled = false; btnDl.textContent = t("export.btn.download"); }
     }
@@ -4473,24 +4454,24 @@
   // Le calibrage est ainsi partagé entre les deux formats.
   function _exportGpxViaExtern() {
     if (!window.KmzExport) {
-      alert(t("export.err.kmzModuleKo"));
+      window.ktaAlerte(t("export.err.kmzModuleKo"), { type: "erreur" });
       return;
     }
     if (!window.GpxIO) {
-      alert(t("export.err.gpxModuleKo"));
+      window.ktaAlerte(t("export.err.gpxModuleKo"), { type: "erreur" });
       return;
     }
     // 1) Valider + persister calibrage (même validation que _exportKmz)
     const c = _kmzLireCalib();
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      alert(t("export.err.calib8Champs"));
+      window.ktaAlerte(t("export.err.calib8Champs"));
       return;
     }
     try {
       window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
-      alert(t("export.err.calibInvalide", { msg: e.message }));
+      window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
     window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
@@ -4522,7 +4503,7 @@
         })()
       });
       if (!r.ok) {
-        alert(t("export.err.gpxImpossible", { msg: r.msg }));
+        window.ktaAlerte(t("export.err.gpxImpossible", { msg: r.msg }), { type: "erreur" });
       } else {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(
@@ -4534,7 +4515,7 @@
       }
     } catch(e) {
       console.error("[GPX] Erreur export :", e);
-      alert(t("export.err.gpxGeneration", { err: e.message || e }));
+      window.ktaAlerte(t("export.err.gpxGeneration", { err: e.message || e }), { type: "erreur" });
     } finally {
       if (btnDl) { btnDl.disabled = false; btnDl.textContent = t("export.btn.download"); }
     }

@@ -384,7 +384,10 @@
   function _ajouterDoc(file) {
     if (!file) return Promise.reject(new Error("Pas de fichier"));
     return _docsImportes().then(function(docs) {
-      const err = _verifierQuota(docs, file, function(msg) { alert(msg); });
+      const err = _verifierQuota(docs, file, function(msg) {   // l'ajout continue : avertissement → toast warn
+        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "warn", { important: true });
+        else window.ktaAlerte(msg);
+      });
       if (err) { const e = new Error(err); e.code = "QUOTA"; throw e; }
       return _idbAjouter(_currentPlanId(), file, file.name);
     });
@@ -565,7 +568,7 @@
         // Garde-fou : MIME / extension
         const isPdf = (f.type === "application/pdf") || /\.pdf$/i.test(f.name || "");
         if (!isPdf) {
-          alert(window.I18n.t("histoire.pdf.err.onlyPdf"));
+          window.ktaAlerte(window.I18n.t("histoire.pdf.err.onlyPdf"));
           fileInput.value = "";
           return;
         }
@@ -575,9 +578,9 @@
           _renderPdf({ force: true });
         }).catch(function(e) {
           fileInput.value = "";
-          if (e && e.code === "QUOTA") { alert(e.message); return; }
+          if (e && e.code === "QUOTA") { window.ktaAlerte(e.message, { type: "erreur" }); return; }
           console.error("[ModeHistoire] ajout document échec :", e);
-          alert(window.I18n.t("histoire.pdf.err.saveFail", { ko: (e.message || e) }));
+          window.ktaAlerte(window.I18n.t("histoire.pdf.err.saveFail", { ko: (e.message || e) }), { type: "erreur" });
         });
       });
     }
@@ -585,9 +588,9 @@
     // Supprime le document AFFICHÉ (jamais l'embarqué : le bouton est masqué
     // quand la sélection vient du ZIP).
     if (btnRemove) {
-      btnRemove.addEventListener("click", function() {
+      btnRemove.addEventListener("click", async function() {
         if (!_docSelectionne || String(_docSelectionne).indexOf(EMBED_ID) === 0) return;
-        if (!confirm(window.I18n.t("histoire.pdf.removeConfirm"))) return;
+        if (!(await window.ktaConfirm(window.I18n.t("histoire.pdf.removeConfirm")))) return;
         _supprimerDoc(_docSelectionne).then(function() {
           _docSelectionne = null;
           _renderPdf({ force: true });

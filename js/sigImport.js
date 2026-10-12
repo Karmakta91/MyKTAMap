@@ -87,7 +87,7 @@
   // Le seuil unique venait d'une crainte raisonnable — « un fichier SIG de
   // cette taille ferait fondre le navigateur au rendu Leaflet » — mais il n'a
   // jamais été confronté à un relevé réel. Il l'a été le 03/09, sur une
-  // carrière de Gironde dont le relevé structuré ET le topo historique font
+  // carrière réelle dont le relevé structuré ET le topo historique font
   // ensemble 20 664 objets : refusés pour 3 % de dépassement, alors que
   // l'import les encaisse sans peine (mesuré : parse 217 ms, génération du ZIP
   // 1,6 s, 137 Mo de heap).

@@ -7,9 +7,35 @@
 
 ### 9. Auto-save de session (`sessionPersist.js`, depuis 08/05/2026)
 
-Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]` jusqu'à v1.16.0, puis **per-plan `myktamap_session_v1_<planId>` depuis v1.16.1** (cf §57).
+Sauvegarde silencieuse de la session active (editor + roads + zones + measure…), **une par plan** (`planId`, cf §57), stockée par **`window.KtaSessionStore`** (`js/sessionStore.js`) : **IndexedDB** (base `myktamap_sessions`) depuis le 10/10/2026, localStorage (`myktamap_session_v1_<planId>`) en repli seulement.
 
-**Stratégie** : ~~slot unique~~ **slot PAR PLAN (v1.16.1+)**, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+#### 9.0 Où vivent les sessions — `js/sessionStore.js`
+
+Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appareil : un relevé dense le remplissait et plus rien ne se sauvegardait (retour testeur en prod, v2.13.2). Les sessions sont donc en IndexedDB, dont le quota est une part de l'espace libre de l'appareil.
+
+| | |
+|---|---|
+| Base | `myktamap_sessions` v1 — store `sessions` `{ planId, brut, savedAt, ecritLe }` (le JSON **texte**, identique à l'ancienne valeur localStorage) · store `migration` `{ planId, le }` |
+| Lecture | **synchrone** : `init()` charge toutes les sessions en mémoire ; `lire(planId)` / `ids()` / `taille()` lisent la mémoire. Les lecteurs (accueil, liaisons, stats, export de profil, inspecteur) n'ont pas changé de forme |
+| Écriture | `ecrire(planId, brut, { force })` met la mémoire à jour tout de suite et part en IDB en arrière-plan : **une transaction à la fois par plan**, la plus récente gagne (file `_aEcrire` / `_enVol`). Résultat asynchrone via `surResultat(fn)` → `SessionPersist` ne pose « enregistré » qu'à la confirmation ; un échec oublie l'empreinte (le tick suivant réessaie), un refus faute de place alerte (« Mémoire des sessions pleine » + bandeau) |
+| Fermeture | une écriture lancée dans `beforeunload` peut ne pas aboutir. Toute écriture **forcée** (fermeture, arrière-plan, changement de plan) et toute écriture encore en vol au `pagehide` / passage en arrière-plan est doublée d'un **tampon synchrone** `localStorage["myktamap_session_tampon_v1_<planId>"]`, retiré dès que IDB confirme. Au démarrage, un tampon plus récent (`savedAt`) que la copie IDB la remplace (copie relue et vérifiée). ⚠️ Un tampon ne tient que si la session tient dans le localStorage |
+| Écriture attendue | `ecrireDurable(planId, brut)` → Promise : restauration d'un 📦 Backup (rechargement juste après), import de profil, transfert de plan local → ☁️ (`PlanRegistry.transferAssociatedData` : copie **confirmée** avant d'effacer l'ancienne) |
+| Effacement | `retirer(planId)` efface aussi l'ancienne copie localStorage et l'entrée `migration` (sinon la migration la ressusciterait) |
+| Démarrage | `main.js > initApp` **attend** `KtaSessionStore.init()` juste après `I18n.init`, avant tout rendu qui lit une session. Avant la fin de l'init (`mode() === "attente"`), `lire()` lit le localStorage |
+| Plusieurs onglets | `BroadcastChannel("myktamap-sessions")` : après une écriture confirmée, les autres onglets relisent ce plan (sauf s'ils ont eux-mêmes une écriture en cours pour lui) |
+| Repli `ls` | IndexedDB indisponible ou muet 8 s (navigation privée stricte), ou une copie de migration qui ne se relit pas à l'identique → **tout reste en localStorage**, comportement d'avant. Le mode incognito de l'app (`?incognito=1`) est aussi en `ls` : son leurre de localStorage ne lit rien du disque, alors qu'IDB serait lu |
+
+**Migration (1er lancement, décision KARMA 10/10/2026)** — idempotente, reprise si interrompue :
+1. chaque `myktamap_session_v1_<planId>` du localStorage absent d'IDB est **copié, relu dans une autre transaction et comparé caractère pour caractère** ; le registre `migration` note la copie vérifiée ;
+2. une copie localStorage **plus récente** (`savedAt`) que celle d'IDB (démarrage passé en repli, onglet d'une ancienne version) est recopiée, **après** une copie de la version IDB dans 📦 Backups (raison `avant-reprise-ls`) ;
+3. une copie localStorage déjà migrée mais dont la session IDB a été effacée (plan retiré) est supprimée, jamais ressuscitée ;
+4. l'ancienne copie localStorage est **gardée 30 jours** puis retirée (`purgerAnciennesCopies`, à chaque démarrage) — **sauf localStorage ≥ 90 %** : retirée dès la copie vérifiée, **après** un Backup (`SessionBackups.snapshotPayload`, raison `migration-idb`). Jamais si la copie IDB n'est pas au moins aussi récente. Un localStorage plein (`mktm:stockage-plein`) déclenche la même purge d'urgence.
+
+**Jauge « 💾 Mémoire des sessions »** (`ktaStockageLocal.mesurer()`, `js/utils.js`) : en mode `idb`, `car`/`limite` = `navigator.storage.estimate()` (usage et quota **du site**, plans, photos et caches compris — c'est ce quota qui refuse une écriture IDB), `carSessions` = total des sessions ; alerte à 80 % au chargement d'un plan, et « pleine » sur une écriture IDB refusée (`QuotaExceededError`). En mode `ls`, mesure du localStorage face à 5 000 000 comme avant. Clés i18n `…Idb` / `…_idb` pour les textes du mode IndexedDB.
+
+**Règle** : aucun module ne lit ni n'écrit `myktamap_session_v1_<planId>` directement — toujours `window.KtaSessionStore` (ou `SessionPersist.getSaved(planId)`).
+
+**Stratégie** : **une session PAR PLAN**, polling 1.5s, comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
 
 - **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
 - **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
@@ -96,69 +122,106 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 ---
 
-### 42. Système photos POI complet (depuis v1.10.0)
+### 42. Photos des points
 
-Backend IDB-first + UI complète (capture / viewer / exports / générateur). 4 sous-phases livrées ensemble :
+**Stockage** — `js/photos.js` → `window.MyKTAMapPhotos`. IndexedDB `myktamap_photos` v1, store `photos` (clé `id`),
+index `by_plan` et `by_plan_point` ([planId, pointId]). Enregistrement : `{ id, planId, pointId, blob, mime, size,
+createdAt, meta, fiche? }`. Compression à l'ajout (canvas → JPEG, 1920 px max côté long, q 0.85 ; 0.92 sans resize
+pour une petite photo) : toute photo est ré-encodée, l'EXIF (GPS compris) ne survit pas. **5 photos max par point**
+(`MAX_PHOTOS_PER_POINT`) à l'ajout et au **rattachement** depuis la galerie (`placesPourPoint(planId, { uid, id },
+photoIds)`, lecture double uid/nom, une photo déjà sur le point ne compte pas deux fois) : au-delà, refus expliqué
+(`ktaAlerte`, nombre de photos et places libres), rien n'est rattaché. Seul l'**ajout** est refusé : un point déjà
+au-delà (photos d'avant la limite) garde tout. Une restauration (session, plan ZIP, profil) ne vérifie pas la limite.
 
-**B1.a — Backend** : `js/photos.js` (~540 lignes IIFE) → `window.MyKTAMapPhotos`. DB IDB `myktamap_photos` v1, store `photos`, indexes `by_plan` et `by_plan_point`. Compression auto (canvas → JPEG q85, max 1920px côté long). Max **5 photos par point** (`MAX_PHOTOS_PER_POINT`). API complète : `addPhoto, getPhoto, getBlob, getObjectUrl, getPhotosForPoint, getAllPhotosForPlan, countPhotosForPoint, countPhotosForPlan, deletePhoto, deletePhotosForPoint, deletePhotosForPlan, renamePointId, restorePhoto, clearAll, getStorageInfo`.
+**Clé du point** (`pointId`) = l'**uid** du point (`js/ktaUid.js`), son nom pour les photos d'avant la v2.3.0.
+Lecture double `getPhotosForPointRef(planId, { uid, id })` ; migration douce nom → uid à l'ouverture d'un plan
+(`migrerPhotosPlan`, seulement si un seul point porte ce nom) ; nom ambigu = « 📌 à rattacher » dans la bulle.
+Renommer un point ne touche plus ses photos ; un point sans uid garde l'ancien comportement (`renamePointId`).
 
-**B1.b — UI éditeur** : refactor `editor.js > afficherFormulaire(x, y, existingPoint)` avec 3ème argument optionnel pour le mode édition (avant : ajout uniquement). Section "📸 Photos (N/5)" avec grille 3 cols PC / 2 mobile, miniatures 80×80, spinner ⏳ pulse pendant compression+IDB write, ✕ pour pending delete (vignette grisée + hachures), ↺ pour annuler. 2 boutons d'ajout : `📷 Prendre photo` (`capture="environment"`) + `🖼️ Depuis la galerie` (multiple).
+**Fiche du point** (`fiche: { nom, x, y, niveau, type, maj }`, coordonnées image comme dans la session) : de quoi
+retrouver le point s'il disparaît. Posée à l'ajout (état du formulaire), au rattachement et à la restauration si
+fournie ; remise à jour par `majFichesPoints(planId, points)` quand le point est enregistré (éditeur, tableau
+« Remplacer la session ») ou **supprimé** depuis sa bulle (une photo d'avant la fiche en reçoit une à ce moment).
+Seules les fiches qui changent sont écrites. Jamais exigée : les anciennes photos n'en ont pas.
 
-**Stratégie 5a** : photos écrites en IDB DÈS l'ajout (sous pointId temporaire `_temp_<timestamp>_<rand>` en mode ajout), migration via `renamePointId` au save vers le vrai id (= nom). Cleanup à l'annulation : delete les photos uploadées cette session. En mode édition : `_photosPendingDelete` Set commit uniquement au save (= annuler ne perd pas de photos).
+**Saisie** — `editor.js > afficherFormulaire(x, y, existingPoint?)`, section 📸 : écriture IndexedDB dès l'ajout
+(sous l'uid du futur point en mode ajout), retraits marqués et appliqués à l'enregistrement, annulation = les photos
+ajoutées pendant la fenêtre sont supprimées. **Affichage** — bulle du point (`utils.js > attachPopupPhotos`,
+miniatures `<img role="button">` — pas de `<button><img>`, fond bleu sur Chromium iOS), visionneuse plein écran
+`js/photoViewer.js` (`MyKTAMapPhotoViewer.open(photos, i)`, z-index 100000 : pinch, pan, swipe, clavier).
+ObjectURL suivies (`window._ktaAllPhotoUrls`) et révoquées à la fermeture / au changement de plan.
 
-Popup marker — `utils.js > buildPointPopupHtml + attachPopupPhotos(marker, pointId)` : bouton "✏️ Modifier" bleu pour points session + slot `.kta-popup-photos` hydraté en async via `popupopen` event Leaflet. Miniatures 44×44 (`<img class="kta-popup-photo-mini" role="button" tabindex="0">` directes cliquables, **PAS** `<button>` car les styles user-agent variables créaient un "fond bleu" visible). Tap → viewer plein écran. ObjectURLs révoquées au `popupclose` (anti memory leak).
+**Supprimer un point ne supprime PAS ses photos** (décision KARMA 10/10/2026 : récupération, pas nettoyage ;
+gardées indéfiniment, jamais effacées sans confirmation). ⏪ Annuler la suppression rend le point avec son uid :
+ses photos le retrouvent sans rien réécrire. Restent effacées : la suppression d'une photo dans la fiche du point,
+la suppression d'un plan (`PlanRegistry` purge ses photos), **💥 Tout réinitialiser** et l'import de profil en mode
+remplacement (sauf celles des plans ☁️ d'une organisation, cf ci-dessous). Le **réimport d'une session ZIP** est une
+**fusion** (12/10/2026) : les photos du fichier s'ajoutent (`restorePhoto(…, { source: "import", siAbsente: true })`),
+une photo déjà en base (même id) est gardée telle quelle (son rattachement ou sa fiche peuvent être plus récents),
+rien n'est supprimé ; un toast fait le bilan (ajoutées, déjà présentes, illisibles). Une photo dont le point n'est plus
+dans la session importée passe « sans point », comme après la suppression d'un point. L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
+disparues de la nouvelle version (v2.5.0) — jamais une photo prise par l'utilisateur.
 
-⚠️ **À ne PAS revenir au pattern `<button><img></button>`** pour les miniatures popup — testé, ça créait un fond bleu visible sur certains browsers (Chromium iOS notamment). L'`<img>` cliquable directe est le pattern propre.
+**🧰 Outils > 📸 Mes photos** — `js/photosGalerie.js` → `window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId),
+apresOuverturePlan(planId) }`. Liste des plans qui ont des photos (nombre, taille ; en installation reliée, aussi
+les plans ☁️ sans photo locale), puis par plan : vignettes groupées par point, groupe **⚠️ Sans point** en tête.
+- **« Sans point »** : clé qui ne correspond à AUCUN point connu du plan — session (`KtaSessionStore` ; les objets
+  reçus d'une installation reliée y sont fusionnés), points des calques (fichiers du plan serveur, ou archive ZIP
+  gardée — `PlanRegistry.getBlob`). L'archive est lue **partiellement** (`_lecteurZipPartiel`, 12/10/2026) : fin du
+  fichier (répertoire central) puis les seuls `plan-config.json` et calques, par `Blob.slice` + `DecompressionStream
+  ("deflate-raw")` — jamais les images. Avant, `JSZip.loadAsync` chargeait toute l'archive en mémoire (un plan de
+  75 Mo = 75 Mo de RAM pour quelques Ko de points) ; mesuré au garde-fou : 87 Ko lus sur 7,4 Mo d'archive. Repli JSZip
+  (comportement d'avant) si le navigateur n'a pas `deflate-raw`, sur un ZIP64 ou une entrée chiffrée. Plan ouvert : points vivants (`getEditorPoints` + `getAllEmbeddedPoints`), et
+  les fichiers du plan en complément si une photo n'y est pas retrouvée (les calques arrivent par lots).
+  🩸 Points non lisibles d'ici (archive absente, serveur injoignable, plan ☁️ pas encore ouvert, plan absent) →
+  **🔎 à vérifier à l'ouverture du plan**, jamais « sans point » par défaut.
+- Actions d'un point disparu : **🔗 Rattacher** (`rattacher(photoIds, planId, pointId, fiche)` ; liste filtrable
+  des points, ou **🗺️ Choisir sur la carte** si le plan est ouvert : on ouvre la bulle du point voulu ; refusé au-delà
+  de 5 photos sur le point visé, cf limite ci-dessus) ;
+  **♻️ Recréer le point** (seulement avec une fiche : position, niveau, type, nom ; **même uid** si la clé en est un,
+  donc photos et serveur le retrouvent sans changer de clé ; entrée d'historique ⏪ ; plan fermé → proposé à
+  l'ouverture, la recréation se fait quand le plan a fini de charger) ; **💾 Enregistrer** (ZIP
+  `photos/_index.json` + fichiers, même format que les exports de session, fiche incluse) ; **🗑️ Supprimer**
+  (`ktaConfirm` avec nombre et taille, `supprimerPhotos`). Photo rattachée : voir, 📍 Voir sur le plan, enregistrer.
+- **Signal discret** : à l'ouverture d'un plan, après la migration nom → uid (`main.js > _ktaPlanifierMigrationPhotos`
+  appelle `apresOuverturePlan`), un toast maison `#kta-phg-signal` (en bas : il porte un bouton ; il demande
+  `OOMGuard.toastAutorise("warn")`) « 📸 N photo(s) sans point » ouvre la galerie sur ce plan. Une fois par
+  ouverture (oublié à `mktm:plan-ferme`).
 
-**B1.c — Viewer plein écran** : `js/photoViewer.js` (~310 lignes IIFE) → `window.MyKTAMapPhotoViewer = { open(photos, startIndex), close, isOpen }`. Modale fullscreen z-index 100000. Maison (pas de dep) :
-- Pinch-zoom 1× à 4× (2 doigts, scale center-based, clamp transform)
-- Pan (drag PC quand zoomé / 1 doigt mobile zoomé)
-- Swipe horizontal pour navigation (1 doigt mobile, zoom=1, threshold 50px)
-- Flèches `◂` `▸` + raccourcis clavier `← → + - 0 Échap`
-- Auto-reset transform à chaque changement de photo
-- `touch-action: none` sur viewport + `passive: false` sur touchmove/wheel → on contrôle tout le touch
-- Compteur "N / M" pastille jaune + ✕ rouge au hover
+**Événement `mktm:photos-changees`** et prise d'extension `photos` (installation reliée) : contrat dans
+`community-server-line.md` §3. Toute écriture voulue émet (`ajout`, `suppression`, `rattachement`, `fiche`) ;
+les purges locales (`deletePhotosForPlan`, `clearAll`) n'émettent rien ; `restorePhoto(record, { source })` :
+`"extension"` par défaut, `"import"` pour les restaurations de l'app ; `siAbsente: true` n'écrit pas une photo
+déjà en base (→ `null`, aucun événement).
 
-**B1.d — Exports** complets (rétrocompat absolue : sans photos cochées ou 0 photo → format v1.9.2 strict) :
-
-| Voie | Output sans photos | Output avec photos |
-|---|---|---|
-| Session Full | `.json` pur | `.zip` (session.json + photos/) |
-| Session Avancé Single | `.json` pur | `.zip` (session.json + photos/) |
-| Session Avancé ZIP multi | `.zip` (N JSON) | `.zip` (N JSON + photos/) |
-| Conversion ed2data (basic 1 cat.) | `.json` direct | `.zip` (1 JSON + photos/) |
-| Conversion ed2data (basic N cat.) | `.zip` multi | `.zip` (N JSON + photos/) |
-| Conversion ed2data (fine) | `.zip` multi | `.zip` (N JSON + photos/) |
-| Conversion data2ed (ZIP input) | `.json` session | `.zip` session (réimportable) |
-| Re-import session ZIP | (rétrocompat .json) | wipe + restorePhoto IDB |
-| Re-import KMZ | (pas concerné) | (pas concerné, B1.d.β à venir) |
-
-Format ZIP unifié pour les 3 voies (Full / Avancé Single / Conversion) :
+**Exports** (rétrocompat : sans photo cochée → format sans photos) : Session Full / Avancé / Conversion → ZIP
+`session.json` + `photos/` ; réimport = fusion des photos (ci-dessus). Format commun :
 ```
-session.json (ou data layer)
 photos/
-├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file}}}
+├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file, fiche?}}}
 └── <photoId>.<ext>
 ```
+**Fiche du point dans l'index** (12/10/2026) : `fiche` (cf ci-dessus) écrite par `_entreeIndexPhoto` — seul écrivain
+des trois index (Full, Avancé, Conversion) — et relue au réimport (passée à `restorePhoto`, ignorée si la photo est
+déjà en base). Facultative : un ZIP d'avant se relit comme avant. **Jamais en export anonymisé** (`_stripperExifPhotos`
+ne la recopie pas, `_anonymiserSession` la retire — `check-export-anonyme.js`). Gardé par `check-photos.js`.
+Helpers `sessionExporter.js` : `_collecterPhotosPlan(pointIdsSet)` (les photos suivent le filtre des points, fiche comprise),
+`_extDepuisMime`, `_formatBytes` (`window._kta_formatBytes`), `_packerZipSession`, `_enrichirPointsAvecPhotos`
+(`point.photos = [ids]` sur une copie). L'export de profil emporte les photos de tous les plans (fiche comprise),
+**sauf ceux d'une organisation**.
 
-Helpers communs dans sessionExporter.js : `_collecterPhotosPlan(pointIdsSet)`, `_extDepuisMime(mime)`, `_formatBytes(n)` (exposé `window._kta_formatBytes`), `_packerZipSession(payload, photos, filename)`, `_enrichirPointsAvecPhotos(points, photos)` (ajoute `point.photos = [photoIds]` sur clone). Filtre par `pointIdsSet` : les photos suivent le filtre des points (= si l'user filtre par tag, photos correspondantes seulement).
-
-**Re-import session** (interface.js > `_parseSessionZip(file)`) : détection ZIP vs JSON par extension + MIME. Extraction `session.json` + `photos/_index.json` + blobs. `_pendingPhotosToRestore` en variable de fermeture. Validateur async : `_restorerPhotos()` → `deletePhotosForPlan(planId)` (wipe) puis `restorePhoto` × N. Format multi-files (Avancé ZIP) **non pris en charge** en re-import (par design — format archive).
-
-**B1.d.γ — Générateur** (createConf.js) :
-- Mode Modifier : case "📸 Inclure les photos attachées (N · X Mo)" (compteur async) embed les photos IDB du plan courant dans `data/photos/`
-- Encadré dédié "📦 Importer un datalayer ZIP en un clic" (mode Nouveau ET Modifier) qui parse un ZIP datalayer exporté → crée les data layers correspondants + stocke photos dans `_plannerPhotosFromZip`
-- En mode Modifier : suffixe `_imported_<N>` sur l'id du calque si collision avec un calque existant (= n'écrase pas le plan source)
-- Au `_genererZip` : MERGE des 2 sources photos en mode Modifier (IDB + ZIP importé) avec déduplication par photoId. Sans la dédup-merge, importer 1 ZIP avec 2 photos écrasait les 10 photos IDB du plan → bug "ça casse tout" remonté KARMA.
-
-**Symétrie côté import** — `main.js > startImportedPlan` :
-- Détection `data/photos/_index.json` dans le ZIP plan
-- Wipe `deletePhotosForPlan(planId)` puis `restorePhoto` × N
-- Toast discret `OOMGuard.showToast("📸 N photos restaurées depuis le plan", "info")`
-
-**Header refonte** : 5e compteur 📸 (lecture async `countPhotosForPlan`) à côté de 📍/🛣/⬛/🏛️. Section dédiée dans la modale "📊 Détails de la session" : breakdown par point + total Mo.
-
-⚠️ **`data/editor.json` reste écrasé** par `PLANNER_EDITOR_JSON` vide au `_genererZip` (comportement v1.9.2 inchangé). Les points importés via datalayer ZIP apparaissent comme data layers `points` séparés (lecture seule), pas dans le calque "Mes annotations" éditable. Cohérent avec le modèle "session = éphémère, data = figé dans le plan".
+**☁️ Profil et plans d'une organisation** (11/10/2026) : un plan fourni par une extension (registre `type: "ext"`,
+ou id sorti de la fabrique `ktaIdRegistreExtension` — `ktaEstIdRegistreExtension`, `main.js`) appartient à
+l'organisation. Les **modales** d'export et d'import du profil passent `exclureExtensions: true`
+(`profileExportImport.js > _sansPlansExtension`, fonction pure) : ni son entrée de registre (`lastPlanId` et dossiers
+`ext_…` compris), ni sa session, ses clés par plan, favoris, liaisons inter-plans, sorties du carnet, sauvegardes,
+photos, PDF d'histoire, crashs ou archive ne partent dans le fichier, et un profil importé n'en restaure aucun ; en
+mode remplacement, ce que l'appareil en a déjà est **conservé**. Le bilan d'import dit combien de plans ont été
+ignorés (`result.ignores`). **Sans l'option** (appel programmatique de `buildProfile` / `applyProfile`), le
+comportement historique est inchangé : c'est le chemin d'une extension qui sauvegarde les données du compte.
+Générateur (`createConf.js`) : case « 📸 Inclure les photos » en mode Modifier (→ `data/photos/` du plan, fusion
+dédoublonnée avec un datalayer ZIP importé). Compteur 📸 de l'en-tête (`countPhotosForPlan`) et détail par point
+dans « 📊 Détails de la session ».
 
 ---
 
@@ -727,24 +790,9 @@ Hotfix PATCH au-dessus de v1.16.0. Une seule modif structurelle, fort impact UX 
 
 Avant v1.16.1, `SessionPersist` écrivait dans un **slot unique** `localStorage["myktamap_session_v1"]`. Quand l'utilisateur switchait de plan, le helper `onPlanLoaded` détectait le mismatch `planId` et faisait `clear()` systématiquement → la session du plan précédent était écrasée par celle du plan courant. Pour récupérer la session d'un plan déjà visité, il fallait obligatoirement passer par un snapshot (Backup IDB) — alors qu'on aurait juste voulu retomber sur l'état d'avant en revenant naturellement sur le plan.
 
-#### 57.2 Structure localStorage par plan
+#### 57.2 Une session par plan
 
-Helpers dans `js/sessionPersist.js` :
-
-```js
-const STORAGE_PREFIX = "myktamap_session_v1_";
-function _storageKeyFor(planId) {
-  if (!planId) return null;
-  return STORAGE_PREFIX + planId;
-}
-const STORAGE_KEY_LEGACY = "myktamap_session_v1";   // pour migration uniquement
-```
-
-Toutes les opérations `save / getSaved / clear / lecture initiale` ciblent désormais `_storageKeyFor(_currentPlanId)`. Le wipe automatique sur mismatch dans `onPlanLoaded` est **supprimé** — chaque plan garde sa session en parallèle dans son slot dédié.
-
-| Avant v1.16.1 | Depuis v1.16.1 |
-|---|---|
-| `myktamap_session_v1` (un seul, écrasé au switch) | `myktamap_session_v1_<planId>` (N slots indépendants) |
+Toutes les opérations `save / getSaved / clear / lecture initiale` de `js/sessionPersist.js` passent par `window.KtaSessionStore` avec `_currentPlanId` (stockage : cf §9.0 — IndexedDB, repli localStorage `myktamap_session_v1_<planId>`). Le wipe automatique sur mismatch dans `onPlanLoaded` est **supprimé** — chaque plan garde sa session en parallèle. Sans `js/sessionStore.js` (page partielle), `SessionPersist` retombe sur le localStorage direct (`_STORE_LS`).
 
 #### 57.3 Migration transparente
 
@@ -764,7 +812,8 @@ L'utilisateur qui upgrade depuis v1.16.0 ou antérieur ne perd **rien** : sa ses
 Dans `js/sessionBackups.js` :
 
 - `_readCurrentSessionPayload()` lit en priorité le slot per-plan du planId courant (`window._currentLoadedPlanId` ou `PlanRegistry.getLastPlanId()`), fallback sur l'ancien slot unique si pas encore migré (cas du tout premier snapshot pre-migration au boot)
-- `restore(id)` écrit le payload dans la clé `myktamap_session_v1_ + targetPlanId` (extrait de `entry.payload.planId` ou `entry.planId`), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` AVANT le `location.reload()` → l'app recharge automatiquement le bon plan au reload, et SessionPersist restaure naturellement le bon slot
+- `restore(id)` écrit le payload dans la session de `targetPlanId` par `KtaSessionStore.ecrireDurable` (écriture IDB **attendue**), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` AVANT le `location.reload()` → l'app recharge automatiquement le bon plan au reload, et SessionPersist restaure naturellement la bonne session
+- `snapshotPayload(payload, raison)` copie une session **quelconque** (pas forcément celle du plan ouvert) : utilisée par la migration IndexedDB avant de retirer une ancienne copie. Identifiants strictement croissants dans la page (deux copies dans la même milliseconde ne s'écrasent pas)
 
 #### 57.5 Sources de vérité v1.16.1
 
@@ -779,7 +828,7 @@ Dans `js/sessionBackups.js` :
 
 #### 57.7 À NE PAS faire
 
-- ❌ Lire/écrire directement `localStorage["myktamap_session_v1"]` (legacy) dans un nouveau module — toujours utiliser `_storageKeyFor(planId)` via SessionPersist
+- ❌ Lire/écrire directement `localStorage["myktamap_session_v1"]` (legacy) ou `myktamap_session_v1_<planId>` dans un module — toujours `window.KtaSessionStore` (cf §9.0)
 - ❌ Remettre un `clear()` systématique au mismatch planId dans `onPlanLoaded` — détruirait la session du plan précédent (régression vers le comportement v1.16.0)
 - ❌ Supprimer la migration `_migrerAncienSlotUniqueSiBesoin` avant d'être certain que tous les utilisateurs ont au moins booté une fois en v1.16.1+ (laisser quelques cycles de safety net)
 - ❌ Faire un restore SessionBackups sans appeler `PlanRegistry.setLastPlanId(targetPlanId)` avant le reload — sinon l'app recharge le dernier plan ouvert, qui peut être différent du plan source du snapshot
@@ -1438,7 +1487,7 @@ objet absent, ne pas fermer la bulle.
 
 ## 🔄 Rapatrier un calque de données dans la session (v1.85.0)
 
-**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé de Bordeaux importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
+**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé réel importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
 
 ### 🩸 La cause est structurelle, pas ergonomique
 
@@ -1460,11 +1509,11 @@ Le calque entier donne **une seule source de vérité** : la reconstruction devi
 
 | | |
 |---|---|
-| Poids en session | **225 o/objet** (mesuré sur les extraits Gironde) → ~**1,1 Mo** pour 5 000 objets |
-| Plafond `localStorage` | ~**5 Mo pour tout le domaine**, tous plans confondus |
+| Poids en session | **225 o/objet** (mesuré sur des extraits de relevés réels) → ~**1,1 Mo** pour 5 000 objets |
+| Plafond | sessions en IndexedDB : **quota du site** (part de l'espace libre de l'appareil) ; en repli localStorage : ~**5 Mo pour tout le domaine**, tous plans confondus |
 | Aggravant | `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde |
 
-`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points) et `occupationLocalStorage()` somme les clés réelles. La confirmation donne les deux. **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
+`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé réel, pas pour un calque de douze points). La confirmation donne aussi l'occupation : en IndexedDB, le total des sessions face au quota du site (`filter.calque.confirmIdb`) ; en repli localStorage, `occupationLocalStorage()` (somme des clés réelles, plafond ~5 Mo). **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
 
 ### 🔒 Le verrou d'affichage
 

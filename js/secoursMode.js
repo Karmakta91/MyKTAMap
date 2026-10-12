@@ -138,7 +138,6 @@
       ? t("secours.statut." + info.id)
       : info.label;
   }
-  // Version ASCII (pour PDF jsPDF latin1) — retire les accents du label i18n.
   // Contre-audit GRIMP (30/09) : une même étape portait deux numéros à l'écran
   // (« Étape 6/41 » en tête, « ÉTAPE 5 » dans le bloc). Numéro unique, celui de la
   // carte et des PDF : entrée « E », étapes 1…N (intermédiaires), sortie « S ».
@@ -150,9 +149,10 @@
          : (et && et.type === "sortie") ? t("secours.num.sortie")
          : t("secours.num.etape", { n: idx });
   }
-  function _statutLabelAscii(statutId) {
-    return _statutLabel(statutId)
-      .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // Libellé de statut pour un PDF : accents gardés (la police les affiche), seuls les
+  // caractères hors police sont retirés (window.ktaTextePdf, utils.js).
+  function _statutLabelPdf(statutId) {
+    return window.ktaTextePdf(_statutLabel(statutId));
   }
 
   // ============================================================
@@ -1684,10 +1684,16 @@
     }
     return parts.join(" · ");
   }
+  // Texte libre vers un PDF : window.ktaTextePdf (utils.js). Accents gardés, flèches et coches
+  // converties (-> et OK), emojis et symboles hors police retirés ; espaces resserrés.
   function _stripPourPdf(txt) {
-    return String(txt || "")
-      .replace(/[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F]|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")
-      .replace(/\s{2,}/g, " ").trim();
+    return window.ktaTextePdf(txt).replace(/\s{2,}/g, " ").trim();
+  }
+  // Texte saisi par l'utilisateur (nom, note, observation) vers un PDF : filtré D'ABORD, puis
+  // repli sur `defaut` s'il ne reste rien (un nom 100 % emoji donnait un titre vide).
+  function _pdfLibre(txt, defaut) {
+    const s = _stripPourPdf(txt);
+    return s || (defaut == null ? "" : String(defaut));
   }
   function _heureCourte(iso) {
     return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
@@ -1881,9 +1887,9 @@
     const noms = (s.groupes || []).filter(function(g) { return gids.indexOf(g.id) >= 0; })
                                   .map(function(g) { return _escHtml(g.nom); }).join(", ");
     const msg = t("secours.rappel.confirm", { n: gids.length, equipes: noms, h: _heureCourte(_nowIso()) });
-    const ok = (typeof window.ktaConfirm === "function")
-      ? await window.ktaConfirm(msg, { titre: t("secours.rappel.confirmTitre"), okLabel: t("secours.rappel.confirmOk") })
-      : window.confirm(msg);
+    const ok = await window.ktaConfirm(msg, {
+      titre: t("secours.rappel.confirmTitre"), okLabel: t("secours.rappel.confirmOk")
+    });
     if (!ok) return false;
     const s2 = get(sid);
     if (!s2 || !_estExecutionActive(s2)) return false;
@@ -2461,7 +2467,7 @@
     });
     pastille.classList.toggle("kta-secours-footer-pastille--orange", pire === "orange");
     pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge" || pire === "manquant");
-    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚨</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
+    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚑</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
                          '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
 
@@ -2761,9 +2767,6 @@
               levelsHtml +
             '</select>' +
           '</div>' +
-          '<div class="kta-secours-form-hint">' +
-            t("secours.newequipe.hint") +
-          '</div>' +
           '<div class="kta-secours-form-actions">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm">' + t("secours.btn.creerEquipe") + '</button>' +
@@ -2910,9 +2913,6 @@
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ' + t("secours.role.intermediaire") + '</label>' +
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + t("secours.role.sortie") + '</label>' +
             '</div>' +
-          '</div>' +
-          '<div class="kta-secours-form-hint">' +
-            t("secours.assign.hint") +
           '</div>' +
           '<div class="kta-secours-form-actions">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
@@ -3425,9 +3425,7 @@
         planSource: _escHtml(importedPlanName),
         planCourant: _escHtml(currentPlanName)
       });
-      const ok = (typeof window.ktaConfirm === "function")
-        ? await window.ktaConfirm(confirmMsg)
-        : window.confirm(confirmMsg);
+      const ok = await window.ktaConfirm(confirmMsg);
       if (!ok) {
         return { ok: false, error: t("secours.import.errAnnuleUser") };
       }
@@ -3587,7 +3585,6 @@
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
-                    '<p style="margin:0 0 14px 0;">' + t("secours.import.previewIntro") + '</p>' +
 
                     '<div class="kta-secours-import-preview-card">' +
                       '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || t("secours.import.sansNom")) + '</div>' +
@@ -4749,6 +4746,9 @@
             _scheduleAutoRecalc(scenarioId, groupeId);
             if (_modal) _switchView("edit");
           });
+        } else {
+          // Sans fenêtre de confirmation : le retrait est REFUSÉ (jamais d'étape perdue sans question).
+          console.warn("[SecoursMode] retrait d'étapes refusé : confirmation indisponible");
         }
         return null;
       }
@@ -5559,39 +5559,12 @@
     }
   }
 
-  // Copie le rapport texte au presse-papier. Async (navigator.clipboard).
-  // Fallback execCommand pour browsers non-HTTPS / vieux contexte.
-  // Retourne Promise<boolean>.
+  // Copie le rapport texte au presse-papier via le helper commun (utils.js : navigator.clipboard,
+  // repli execCommand en HTTP local). Retourne Promise<boolean> ; le toast reste chez l'appelant.
   function copierRapportTexte(reportData) {
     const text = genererRapportTexte(reportData);
     if (!text) return Promise.resolve(false);
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      return navigator.clipboard.writeText(text)
-        .then(function() { return true; })
-        .catch(function(e) {
-          console.warn("[SecoursMode] clipboard.writeText échec, fallback execCommand :", e);
-          return _copyFallback(text);
-        });
-    }
-    return Promise.resolve(_copyFallback(text));
-  }
-  // Fallback : textarea hors écran + execCommand("copy")
-  function _copyFallback(text) {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.top = "-9999px";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      return !!ok;
-    } catch(e) {
-      console.warn("[SecoursMode] _copyFallback échec :", e);
-      return false;
-    }
+    return window.ktaCopierTexte(text);
   }
 
   // 🆕 v1.40.33 (Synergie A v1) ─────────────────────────────────
@@ -5783,9 +5756,6 @@
                (hotfix18) au format .mkmsec.observations.json. */
           '</div>' +
 
-          '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
-            t("secours.rapport.footerHint") +
-          '</p>' +
 
           '<div style="margin-top:14px; display:flex; justify-content:flex-end;">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport">' + t("secours.btn.fermer") + '</button>' +
@@ -5902,8 +5872,9 @@
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.contexte"), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-      pdf.text(t("secours.pdf.scenario", { nom: (r.scenario.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-      pdf.text(t("secours.pdf.plan", { plan: (r.plan ? r.plan.name : "(?)") }), margin, y); y += 4;
+      pdf.text(t("secours.pdf.scenario", { nom: _pdfLibre(r.scenario.nom, t("secours.pdf.sansNom")) }),
+               margin, y); y += 4;
+      pdf.text(t("secours.pdf.plan", { plan: _pdfLibre(r.plan && r.plan.name, "(?)") }), margin, y); y += 4;
       pdf.text(t("secours.pdf.role", { role: _formatRoleLabelAscii(r.scope) }), margin, y); y += 4;
       if (r.execution.startedAt) {
         pdf.text(t("secours.pdf.lance", { date: new Date(r.execution.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
@@ -5920,7 +5891,7 @@
         y += 2;
         pdf.setFont(undefined, "bold"); pdf.text(t("secours.pdf.notesTitre"), margin, y); y += 5;
         pdf.setFont(undefined, "normal");
-        y = _pdfWrapText(pdf, r.scenario.context.notes, margin, y, pageW - 2 * margin, 4);
+        y = _pdfWrapText(pdf, window.ktaTextePdf(r.scenario.context.notes), margin, y, pageW - 2 * margin, 4);
       }
       const victimesPdf = _victimesDuRapport(r);   // A3
       if (victimesPdf.length) {
@@ -6286,11 +6257,8 @@
       L.marker(center, {
         icon: L.divIcon({
           className: "",
-          html: '<div style="background:#1a1f2e;color:#f4c542;padding:6px 14px;' +
-                'border-radius:6px;font-size:14px;font-weight:700;' +
-                'border:2px solid #f4c542;white-space:nowrap;' +
-                'box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍 ' +
-                _escHtml(planName) + '</div>',
+          // Couleurs portées par la classe : suit le thème clair (style-secours.css).
+          html: '<div class="kta-secours-osm-etiquette">📍 ' + _escHtml(planName) + '</div>',
           iconSize: [10, 10],
           iconAnchor: [60, 5]
         }),
@@ -6442,8 +6410,10 @@
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.infos"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-    pdf.text(t("secours.surf.scenario", { nom: ((scenario && scenario.nom) || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-    pdf.text(t("secours.surf.plan", { plan: ((plan && plan.name) || t("secours.surf.planNonRenseigne")) }), margin, y); y += 4;
+    pdf.text(t("secours.surf.scenario", { nom: _pdfLibre(scenario && scenario.nom, t("secours.pdf.sansNom")) }),
+             margin, y); y += 4;
+    pdf.text(t("secours.surf.plan", { plan: _pdfLibre(plan && plan.name, t("secours.surf.planNonRenseigne")) }),
+             margin, y); y += 4;
     pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 6;
 
     // Bloc LOCALISATION (lien OSM + Google Maps)
@@ -6504,12 +6474,12 @@
       groupes.forEach(function(g) {
         if (y > pageH - 25) { pdf.addPage(); y = margin + 8; }
         pdf.setFont(undefined, "bold");
-        pdf.text("- " + (g.nom || t("secours.surf.equipeDefaut")), margin, y); y += 4;
+        pdf.text("- " + _pdfLibre(g.nom, t("secours.surf.equipeDefaut")), margin, y); y += 4;
         pdf.setFont(undefined, "normal");
-        const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
-                           ? g.membres.join(", ") : t("secours.surf.membresNonRenseignes");
+        const membresStr = _pdfLibre((Array.isArray(g.membres) && g.membres.length > 0) ? g.membres.join(", ") : "",
+                                     t("secours.surf.membresNonRenseignes"));
         pdf.text(t("secours.surf.membresLigne", { membres: membresStr }), margin + 2, y); y += 4;
-        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _pdfLibre(_chef(g), t("secours.pdf.nonRenseigne")),
                                                  effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin + 2, y); y += 4;
         if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
             && typeof g.surfaceGps.lng === "number") {
@@ -6565,7 +6535,7 @@
       arr.forEach(function(p) {
         if (y > pageH - 15) { pdf.addPage(); y = margin + 8; }
         const lvl = (typeof p.level === "number") ? t("secours.pdf.niveauParen", { level: p.level }) : "";
-        pdf.text("  - " + (p.nom || p.id || t("secours.pdf.sansNom")) + lvl, margin, y); y += 4;
+        pdf.text("  - " + _pdfLibre(p.nom || p.id, t("secours.pdf.sansNom")) + lvl, margin, y); y += 4;
       });
       y += 1;
     });
@@ -6643,7 +6613,6 @@
         '<div style="font-size:32px;">🚒</div>' +
         '<div>' +
           '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">' + t("secours.briefing.titre") + '</div>' +
-          '<div style="font-size:12px;color:' + pal.textMuted + ';margin-top:2px;">' + t("secours.briefing.sousTitre") + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="background:' + pal.sectionBg + ';border-radius:8px;padding:14px 16px;margin-bottom:14px;">' +
@@ -6658,9 +6627,6 @@
           _renderToggleOpt("opt-struct",  t("secours.briefing.optStruct"),  true) +
           _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) +
         '</div>' +
-      '</div>' +
-      '<div style="font-size:11px;color:' + pal.textMuted + ';margin-bottom:14px;line-height:1.5;">' +
-        t("secours.briefing.sectionsTexteHint") +
       '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
         '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">' + t("secours.btn.annulerSimple") + '</button>' +
@@ -6961,7 +6927,7 @@
   function _drawRapportPDFFooter(pdf, r, pageW, pageH, margin) {
     pdf.setFontSize(7); pdf.setTextColor(120);
     const txt = "MyKTAMap " + (r.appVersion || "") +
-                " - " + (r.scenario.nom || "") +
+                " - " + _pdfLibre(r.scenario.nom) +
                 " - " + new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
     pdf.text(txt, margin, pageH - 6);
     pdf.setTextColor(0);
@@ -6987,10 +6953,11 @@
         pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
       }
       pdf.setFont(undefined, "bold");
-      pdf.text("  - " + (_lblEtape(e.label) || "(?)") + " : " + _statutLabelAscii(e.statut), margin, y); y += 4;
+      pdf.text("  - " + _pdfLibre(_lblEtape(e.label), "(?)") + " : " + _statutLabelPdf(e.statut), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (e.observations && String(e.observations).trim()) {
-        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(e.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+        const obsE = window.ktaTextePdf(String(e.observations).trim());
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsE }), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(e.photoIds) && e.photoIds.length > 0) {
         pdf.text("     " + t("secours.pdf.photosAttachees", { n: e.photoIds.length }), margin, y); y += 4;
@@ -7009,7 +6976,8 @@
       }
       y += 3;
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-      pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: h.nom, n: h.etapes.length }), margin, y); y += 6;
+      pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: _pdfLibre(h.nom), n: h.etapes.length }),
+               margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       if (h.parcours && Array.isArray(h.parcours.etapes) && h.parcours.etapes.length) {   // vague 7b
         const dist = (typeof h.parcours.distanceM === "number" && typeof window.formatDistance === "function")
@@ -7025,9 +6993,11 @@
           _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
           pdf.addPage(); _drawRapportPDFHeader(pdf, r, pageW, margin); y = margin + 22;
         }
-        pdf.text("  " + (i + 1) + ". " + (_lblEtape(et.label) || "(?)") + " : " + _statutLabelAscii(et.statut), margin, y); y += 4;
+        pdf.text("  " + (i + 1) + ". " + _pdfLibre(_lblEtape(et.label), "(?)") + " : " + _statutLabelPdf(et.statut),
+                 margin, y); y += 4;
         if (et.observations && String(et.observations).trim()) {
-          y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: String(et.observations).trim() }), margin, y, pageW - 2 * margin, 4);
+          const obsH = window.ktaTextePdf(String(et.observations).trim());
+          y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsH }), margin, y, pageW - 2 * margin, 4);
         }
       });
     });
@@ -7042,7 +7012,8 @@
 
     // Titre équipe
     pdf.setFontSize(14); pdf.setFont(undefined, "bold");
-    pdf.text(t("secours.pdf.equipeTitre", { nom: g.nom }), margin, y); y += 4;
+    pdf.text(t("secours.pdf.equipeTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+             margin, y); y += 4;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal"); pdf.setTextColor(100);
     pdf.text(t("secours.pdf.couleurOtan", { couleur: couleur.nom }) +
              (typeof g.level === "number" ? t("secours.pdf.niveauSuffix", { niveau: _formatLevelShort(g.level) }) : "") + ")",
@@ -7060,7 +7031,7 @@
       pdf.setFontSize(10); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.membresTitre"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
-      y = _pdfWrapText(pdf, g.membres.join(", "), margin, y, pageW - 2 * margin, 4);
+      y = _pdfWrapText(pdf, _pdfLibre(g.membres.join(", ")), margin, y, pageW - 2 * margin, 4);
       y += 3;
     }
     if (_ligneSuiviRapport(ed)) {   // A4
@@ -7091,7 +7062,8 @@
         _drawRapportPDFHeader(pdf, r, pageW, margin);
         y = margin + 22;
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text(t("secours.pdf.equipeTitreSuite", { nom: g.nom }), margin, y); y += 6;
+        pdf.text(t("secours.pdf.equipeTitreSuite", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+                 margin, y); y += 6;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
       const info = _getStatutInfo(et.statut);
@@ -7110,11 +7082,12 @@
       pdf.setDrawColor(0);
 
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (_lblEtape(et.label) || "(?)"), margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + _pdfLibre(_lblEtape(et.label), "(?)"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
-      pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelAscii(et.statut), ts: ts }), margin, y); y += 4;
+      pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelPdf(et.statut), ts: ts }), margin, y); y += 4;
       if (et.observations && et.observations.trim()) {
-        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: et.observations.trim() }), margin, y, pageW - 2 * margin, 4);
+        const obsT = window.ktaTextePdf(et.observations.trim());
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: obsT }), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
@@ -7425,13 +7398,12 @@
     pdf.setTextColor(40);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
-    // ASCII-normalize le nom : retire accents (NFD + diacritics) + non-Latin-1
-    // (jsPDF Helvetica latin1 = mojibake sur emojis/Unicode)
-    const nomAscii = String(eq.nom || t("secours.pdf.equipeDefautAscii"))
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")    // diacritics
-      .replace(/[^\x20-\x7E]/g, "");       // non-Latin1 (emojis, etc.)
-    pdf.text(t("secours.pdf.carteTitre", { nom: nomAscii.toUpperCase() }), m + 12, 14);
+    // Nom de l'équipe : accents gardés, emojis et symboles hors police retirés (ktaTextePdf).
+    // Majuscules D'ABORD (une capitale peut sortir de la police), filtre ENSUITE, défaut si
+    // rien ne reste : un nom 100 % emoji donnait un titre vide (le repli était testé avant).
+    const nomPdf = _pdfLibre(String(eq.nom || "").toUpperCase(),
+                             window.ktaTextePdf(t("secours.pdf.equipeDefautAscii").toUpperCase()));
+    pdf.text(t("secours.pdf.carteTitre", { nom: nomPdf }), m + 12, 14);
 
     // Image canvas — couvre la zone disponible
     const availW = pageW - 2 * m;
@@ -7466,7 +7438,9 @@
     let y = margin + 22;
 
     pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-    pdf.text(t("secours.pdf.photosTitre", { nom: g.nom, n: ed.photos.length }), margin, y); y += 8;
+    pdf.text(t("secours.pdf.photosTitre",
+               { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")), n: ed.photos.length }),
+             margin, y); y += 8;
     pdf.setFontSize(8); pdf.setFont(undefined, "normal");
 
     // Grille 2 colonnes, hauteur fixe par cellule
@@ -7537,10 +7511,10 @@
       }
       const ts = new Date(note.ts).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + _statutLabelAscii(note.statut) + "  |  " + ts, margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + _statutLabelPdf(note.statut) + "  |  " + ts, margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (note.texte) {
-        y = _pdfWrapText(pdf, "     " + note.texte, margin, y, pageW - 2 * margin, 4);
+        y = _pdfWrapText(pdf, "     " + window.ktaTextePdf(note.texte), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
@@ -7607,7 +7581,8 @@
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
         // En-tête
         pdf.setFontSize(18); pdf.setFont(undefined, "bold");
-        pdf.text(t("secours.pdf.planSecoursTitre", { nom: g.nom }), margin, margin + 4);
+        pdf.text(t("secours.pdf.planSecoursTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
+                 margin, margin + 4);
         // Bandeau couleur équipe
         const rgb = _hexToRgb(couleur.hex);
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -7649,23 +7624,27 @@
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.contexteIncident"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text(t("secours.pdf.scenarioLigne", { nom: (s.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
-        pdf.text(t("secours.pdf.planLigne", { plan: planName }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.scenarioLigne", { nom: _pdfLibre(s.nom, t("secours.pdf.sansNom")) }),
+                 margin, y); y += 4;
+        pdf.text(t("secours.pdf.planLigne", { plan: _pdfLibre(planName, t("secours.pdf.planDefault")) }),
+                 margin, y); y += 4;
         if (s.context && s.context.incidentAt) {
           const dt = new Date(s.context.incidentAt);
           pdf.text(t("secours.pdf.heureIncident", { date: dt.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 4;
         }
         if (s.context && s.context.notes) {
-          y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: s.context.notes }), margin, y, pageW - 2 * margin, 4);
+          y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: window.ktaTextePdf(s.context.notes) }),
+                           margin, y, pageW - 2 * margin, 4);
         }
         y += 4;
         // Section Membres
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : t("secours.pdf.nonRenseignes"), margin, y);
+        pdf.text(_pdfLibre((g.membres && g.membres.length) ? g.membres.join(", ") : "", t("secours.pdf.nonRenseignes")),
+                 margin, y);
         y += 4;
-        pdf.text(t("secours.pdf.chefEffectif", { chef: _chef(g) || t("secours.pdf.nonRenseigne"),
+        pdf.text(t("secours.pdf.chefEffectif", { chef: _pdfLibre(_chef(g), t("secours.pdf.nonRenseigne")),
                                                  effectif: _effectif(g) || t("secours.pdf.nonRenseigne") }), margin, y);
         if (g.heureRetour) {
           y += 4; pdf.setFont(undefined, "bold");
@@ -7682,7 +7661,8 @@
           if (!w || typeof w.x !== "number") return _fmtPoint(w);
           const gps = _gpsTxt(w.x, w.y);
           const ou = gps ? "GPS " + gps + (typeof w.level === "number" ? " niv=" + w.level : "") : _fmtPoint(w);
-          return w.label ? w.label + " (" + ou + ")" : ou;
+          const nom = _pdfLibre(w.label);
+          return nom ? nom + " (" + ou + ")" : ou;
         };
         pdf.text(t("secours.pdf.entreeLigne", { point: nomPt(g.entree) }), margin, y); y += 4;
         pdf.text(t("secours.pdf.sortieLigne", { point: nomPt(g.sortie) }), margin, y); y += 4;
@@ -7707,7 +7687,7 @@
         // calculé (2e relecture, D-b : le papier ne doit pas dépendre du calcul).
         const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
           .filter(function(w) { return w && typeof w.x === "number"; })
-          .map(function(w) { return w.label || _lblEtape(_fmtPoint(w)); });
+          .map(function(w) { return _pdfLibre(w.label) || _lblEtape(_fmtPoint(w)); });
         if (etapesNoms.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
           const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
@@ -8480,9 +8460,6 @@
   // ============================================================
   function _renderListView() {
     let html = '<div class="kta-secours-list-header">' +
-                 '<p class="kta-secours-hint">' +
-                   t("secours.list.intro") +
-                 '</p>' +
                  '<div class="kta-secours-list-header-actions">' +
                    '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
                      t("secours.list.btnNouveau") +
@@ -8497,7 +8474,7 @@
                '</div>';
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
-                '<div class="kta-secours-empty-icon">🚨</div>' +
+                '<div class="kta-secours-empty-icon">🚑</div>' +
                 '<p>' + t("secours.list.emptyTitre") + '</p>' +
                 '<p class="kta-secours-empty-hint">' + t("secours.list.emptyHint") + '</p>' +
               '</div>';
@@ -8559,9 +8536,6 @@
                '<label for="kta-sec-create-incident">' + t("secours.create.incidentLabel") + '</label>' +
                '<input type="datetime-local" id="kta-sec-create-incident">' +
              '</div>' +
-             '<div class="kta-secours-form-hint">' +
-               t("secours.create.hint") +
-             '</div>' +
              '<div class="kta-secours-form-actions">' +
                '<button class="kta-btn kta-btn-ghost" data-action="cancel-create">' + t("secours.btn.annuler") + '</button>' +
                '<button class="kta-btn kta-btn-primary" data-action="confirm-create">' + t("secours.btn.creerContinuer") + '</button>' +
@@ -8587,10 +8561,7 @@
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
       // 1 phase → juste un hint + bouton
-      html += '<p class="kta-secours-hint">' +
-                t("secours.phases.hint1") +
-              '</p>' +
-              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
+      html += '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
                 t("secours.phases.btnAjouter") +
               '</button>';
     } else {
@@ -8822,9 +8793,6 @@
                      '<button class="kta-panneau-close" data-action="close-debrief-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
-                     '<p class="kta-secours-hint" style="margin-top:0;">' +
-                       t("secours.debrief.intro") +
-                     '</p>' +
                      '<div class="kta-secours-form-row">' +
                        '<label for="kta-sec-debrief-text"><strong>' + t("secours.debrief.notesLabel") + '</strong>' +
                          ' <span class="kta-secours-hint" style="font-weight:normal;">' + t("secours.debrief.notesHint") + '</span>' +
@@ -8899,13 +8867,16 @@
           _afficherModaleLancerPhaseSuivante(scenarioId);
         } else {
           // 2b. Pas de phase suivante → propose d'arrêter complètement
-          if (window.confirm(t("secours.debrief.confirmArret", { phase: phase.nom }))) {
-            arreterExecution(scenarioId);
-            _toast(t("secours.toast.planTermine"), "info");
-          } else {
-            _toast(t("secours.toast.phaseTermineeManuel", { phase: phase.nom }), "info");
-          }
-          if (_activeView) _switchView(_activeView);
+          window.ktaConfirm(t("secours.debrief.confirmArret", { phase: window.ktaEsc(phase.nom) }))
+            .then(function(ok) {
+              if (ok) {
+                arreterExecution(scenarioId);
+                _toast(t("secours.toast.planTermine"), "info");
+              } else {
+                _toast(t("secours.toast.phaseTermineeManuel", { phase: phase.nom }), "info");
+              }
+              if (_activeView) _switchView(_activeView);
+            });
         }
       }
     });
@@ -8956,10 +8927,7 @@
                            _escHtml(g.nom) +
                          '</span>';
                 }).join("") +
-              '</div>' +
-              '<p class="kta-secours-hint" style="margin-top:10px;">' +
-                t("secours.launchNext.hint") +
-              '</p>';
+              '</div>';
     }
     html += '</div>' +
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
@@ -9102,7 +9070,6 @@
     html += '<details class="kta-secours-section">' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
-                '<p class="kta-secours-hint">' + t("secours.edit.exportHint") + '</p>' +
                 '<div class="kta-secours-export-actions">' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + t("secours.edit.exportKmz") + '</button>' +
@@ -9381,9 +9348,6 @@
     return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-cta">' +
              '<div class="kta-secours-lancer-bandeau-info">' +
                '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.ctaTitre") + '</div>' +
-               '<div class="kta-secours-lancer-bandeau-sub">' +
-                 t("secours.bandeau.ctaSub") +
-               '</div>' +
              '</div>' +
              '<button class="kta-btn kta-btn-primary kta-btn-lg" data-action="ouvrir-lancer-modale">' +
                t("secours.bandeau.ctaBtn") +
@@ -9426,7 +9390,12 @@
       };
       // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
       // photos (reçues des équipes comprises) — on le dit avant.
-      if (get(sid) && get(sid).execution && typeof window.ktaConfirm === "function") {
+      // Sans fenêtre de confirmation (ktaConfirm absent), on REFUSE : jamais d'effacement sans question.
+      if (get(sid) && get(sid).execution) {
+        if (typeof window.ktaConfirm !== "function") {
+          console.warn("[SecoursMode] relance refusée : confirmation indisponible");
+          return;
+        }
         window.ktaConfirm(t("secours.lancer.relanceConfirme")).then(function(ok) { if (ok) lancer(); });
       } else {
         lancer();
@@ -9496,9 +9465,6 @@
               '</div>' +
             '</label>' +
           '</div>' +
-          '<p style="margin-top:14px; color:#8892a4; font-size:13px; font-style:italic;">' +
-            t("secours.lancer.hint") +
-          '</p>' +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">' + t("secours.btn.annulerCroix") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">' + t("secours.btn.demarrerMaintenant") + '</button>' +
@@ -10188,9 +10154,6 @@
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
              '<div class="kta-secours-tool-block-titre">' + t("secours.heatmap.titre") + '</div>' +
-             '<div class="kta-secours-tool-block-desc">' +
-               t("secours.heatmap.desc") +
-             '</div>' +
              '<div class="kta-secours-tool-block-actions">' +
                '<button class="kta-btn kta-btn-' + (isActive ? "primary" : "secondary") +
                  ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
@@ -10520,11 +10483,11 @@
       });
       // Supprimer
       corps.querySelectorAll('[data-action="del-scenario"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           const id = btn.getAttribute("data-id");
           const s = get(id);
           if (!s) return;
-          if (window.confirm(t("secours.confirm.supprimerScenario", { nom: s.nom }))) {
+          if (await window.ktaConfirm(t("secours.confirm.supprimerScenario", { nom: window.ktaEsc(s.nom) }))) {
             deleteScenario(id);
             _switchView("list");
           }
@@ -10580,8 +10543,8 @@
         btn.addEventListener("click", function() { _switchView("live"); });
       });
       corps.querySelectorAll('[data-action="arreter-plan"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (!window.confirm(t("secours.confirm.arreterPlan"))) return;
+        btn.addEventListener("click", async function() {
+          if (!(await window.ktaConfirm(t("secours.confirm.arreterPlan")))) return;
           arreterExecution(s.id);
           _toast(t("secours.toast.planArrete"), "info");
           _switchView("edit");
@@ -10670,8 +10633,8 @@
       });
       // 🆕 v1.23.0 Feature C — Retirer les données Lost Mode importées
       corps.querySelectorAll('[data-action="clear-lostpos"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (!window.confirm(t("secours.confirm.retirerLostpos"))) return;
+        btn.addEventListener("click", async function() {
+          if (!(await window.ktaConfirm(t("secours.confirm.retirerLostpos")))) return;
           updateScenario(s.id, {
             context: { lastKnownPoint: null, zoneIncertitude: null }
           });
@@ -10795,7 +10758,7 @@
       });
       // 🆕 v1.23.0 Phase 2 / Feature E — Auto-création 1 équipe par niveau M-LVL
       corps.querySelectorAll('[data-action="auto-equipes-mlvl"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) {
             _toast(t("secours.toast.mlvlNonActif"), "warn");
             return;
@@ -10807,7 +10770,8 @@
           }
           // Confirme si des équipes existent déjà (anti-doublon massif)
           if (s.groupes.length > 0) {
-            if (!window.confirm(t("secours.confirm.autoEquipes", { existant: s.groupes.length, nouveau: levels.length }))) return;
+            if (!(await window.ktaConfirm(t("secours.confirm.autoEquipes",
+              { existant: s.groupes.length, nouveau: levels.length })))) return;
           }
           // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
           // 🆕 v1.23.3 : passe le level explicitement à addGroupe → g.level
@@ -10843,15 +10807,15 @@
         });
       });
       corps.querySelectorAll('[data-action="delete-phase"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           if (btn.hasAttribute("disabled")) return;
           const idxAttr = btn.getAttribute("data-phase-idx");
           const idx = parseInt(idxAttr, 10);
           if (!Number.isInteger(idx)) return;
           const phase = s.phases[idx];
           if (!phase) return;
-          const confirmMsg = t("secours.confirm.supprimerPhase", { nom: phase.nom });
-          if (!window.confirm(confirmMsg)) return;
+          const confirmMsg = t("secours.confirm.supprimerPhase", { nom: window.ktaEsc(phase.nom) });
+          if (!(await window.ktaConfirm(confirmMsg))) return;
           const ok = supprimerPhase(s.id, idx);
           if (ok) {
             _toast(t("secours.toast.phaseSupprimee"), "info");
@@ -10965,11 +10929,11 @@
       /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler share-qr retiré. */
       // Delete groupe
       corps.querySelectorAll('[data-action="del-groupe"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           const gid = btn.getAttribute("data-gid");
           const g = s.groupes.find(function(x) { return x.id === gid; });
           if (!g) return;
-          if (window.confirm(t("secours.confirm.supprimerEquipe", { nom: g.nom }))) {
+          if (await window.ktaConfirm(t("secours.confirm.supprimerEquipe", { nom: window.ktaEsc(g.nom) }))) {
             removeGroupe(s.id, gid);
             _switchView("edit");
           }
@@ -11206,8 +11170,8 @@
     });
     // Arrêter le plan depuis la vue Live
     corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        if (!window.confirm(t("secours.confirm.terminerPlanLive"))) return;
+      btn.addEventListener("click", async function() {
+        if (!(await window.ktaConfirm(t("secours.confirm.terminerPlanLive")))) return;
         arreterExecution(s.id);
         _toast(t("secours.toast.planTermineSauv"), "info");
         _switchView("edit");
@@ -11336,10 +11300,10 @@
       });
     });
     corps.querySelectorAll('[data-action="live-photo-del"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const pid = btn.getAttribute("data-photo-id");
         if (!pid) return;
-        if (!window.confirm(t("secours.confirm.supprimerPhoto"))) return;
+        if (!(await window.ktaConfirm(t("secours.confirm.supprimerPhoto")))) return;
         _supprimerPhotoEtape(s.id, equipeId, idx, pid);
       });
     });
@@ -11693,10 +11657,10 @@
     });
     // Suppression d'une note
     corps.querySelectorAll('[data-action="sec-del-note"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const noteId = btn.getAttribute("data-note-id");
         if (!noteId) return;
-        if (!window.confirm(t("secours.confirm.supprimerNote"))) return;
+        if (!(await window.ktaConfirm(t("secours.confirm.supprimerNote")))) return;
         supprimerNoteLibre(s.id, noteId);
         _toast(t("secours.toast.noteSupprimee"), "info");
         _switchView("live");
@@ -12404,7 +12368,7 @@
     const nbGroupes = (s.groupes || []).length;
     fl.innerHTML =
       '<div class="kta-secours-overlay-floater-info">' +
-        '🚨 <strong>' + _escHtml(s.nom) + '</strong>' +
+        '🚑 <strong>' + _escHtml(s.nom) + '</strong>' +
         ' · ' + t("secours.liveOp.equipesCompteur", { n: nbGroupes }) +
       '</div>' +
       '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="reopen-modal">' +

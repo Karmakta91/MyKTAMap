@@ -186,7 +186,7 @@ async function section6() {
     b.j.saveBlob === 1 && b.j.saveHandle === 0 && b.j.entrees.local_a.storedBlob === true && !b.j.entrees.local_a.fsHandleId);
 
   const c = await jouer({ fs: true, opts: { precharger: false } });
-  t("🩸 « Précharger » DÉCOCHÉ : pas de copie, l'entrée seule, aucun drapeau",
+  t("🩸 « Mémoriser les plans » DÉCOCHÉ : pas de copie, l'entrée seule, aucun drapeau",
     c.j.saveBlob === 0 && c.j.persist === 0 && c.j.entrees.local_a &&
     !c.j.entrees.local_a.storedBlob && c.rapport.ajoutes.length === 1);
 
@@ -194,7 +194,7 @@ async function section6() {
   t("🩸 copie ratée : l'entrée est RETIRÉE, aucun drapeau ne survit, l'import s'arrête",
     d.j.remove === 1 && !d.j.entrees.local_a && d.rapport.arrete && d.rapport.ajoutes.length === 0);
 
-  t("🩸 la case « Précharger le ZIP » suit le réglage de l'accueil, VRAI par défaut",
+  t("🩸 la case « Mémoriser les plans dans l'app » suit le réglage de l'accueil, VRAI par défaut",
     /id="kta-impm-precharger"' \+ \(_precharger \? ' checked' : ''\)/.test(M) &&
     /function _memoriserParDefaut\(\)[\s\S]{0,200}ktaMemoriserPlanActif[\s\S]{0,80}: true;/.test(M) &&
     /_precharger = _memoriserParDefaut\(\)/.test(M));

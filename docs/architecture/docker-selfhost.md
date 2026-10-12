@@ -1,7 +1,9 @@
 # 🐳 Architecture — Package Docker self-host (v1.36.0+)
 
-> Référence technique pour le module d'image OCI publié sur ghcr.io.
-> Pour la doc utilisateur de base, voir `docs/applications/README_USER.md` § Self-host Docker.
+> Référence technique (mainteneurs) de l'image OCI publiée sur ghcr.io : construction, CI, choix.
+> **Tout ce que fait l'utilisateur** (installer Docker, lancer, ports, certificat, `MKM_HOSTNAME`, monter son
+> `data/`, dépannage) vit dans **`docs/applications/DOCKER_INSTALL.md`** (FR/EN, public) — ne pas le
+> recopier ici. Sans Docker : `docs/INSTALLATION_SELFHOST.md`. Plans d'une instance : `docs/applications/SELFHOST.md`.
 
 ## Pourquoi cette feature
 
@@ -52,7 +54,8 @@ qu'un ZIP et une image divergent :
 | `scripts/` | check-no-pro-leak.js et autres scripts dev |
 | `Licence-pro.json` | garde-fou (jamais en community mais au cas où) |
 | `Dockerfile`, `docker/` | utilisés au build, pas servis par Nginx |
-| `docs/architecture/` | doc interne, pas user-facing |
+| `docs/` sauf `docs/applications/`, `README.md` racine | doc interne et journal : seul ce que l'app lit est livré (`scripts/check-livrables-docs.js`) |
+| `data/` sauf le relevé fictif et le ZIP d'exemple | filtré dès `.dockerignore` ; l'index vient de `docker/index-fictif.json` |
 | `node_modules/` | pas utilisé mais défensif |
 
 ### Entrypoint : génération cert TLS auto-signé
@@ -168,43 +171,14 @@ Public`. Sinon les users non-loggés ne peuvent pas `docker pull`.
 
 ## Gotchas connus
 
-### Cert auto-signé + Service Worker
+Les pièges vus par l’utilisateur (certificat auto-signé et Service Worker, port 8443 occupé, Raspberry Pi
+32 bits → `exec format error`, `MKM_HOSTNAME`) et leurs parades sont documentés dans
+`docs/applications/DOCKER_INSTALL.md` § Troubleshooting et § Options avancées. Côté image :
 
-Chromium/Safari refusent d'installer un Service Worker si le cert n'est pas
-de confiance. Workaround utilisateur :
-1. Visite `https://localhost:8443/` → page "Votre connexion n'est pas privée"
-2. Cliquer "Paramètres avancés" → "Continuer vers localhost (dangereux)"
-3. Une fois sur la page, l'origine est marquée temporairement comme trusted
-4. Le SW s'enregistre normalement
-
-Sur Firefox : ajouter une exception permanente dans
-`about:preferences#privacy` → "Voir les certificats" → "Serveurs" →
-"Ajouter une exception".
-
-### Conflit port 8443 sur l'hôte
-
-Si l'utilisateur a déjà un autre service sur 8443, il peut remapper :
-```bash
-docker run -d -p 9443:8443 ...
-# Ouvre https://localhost:9443/
-```
-
-### Image arm64 sur ARM x32
-
-Une instance Pi 2/3 (32-bit OS) ne peut pas tirer l'image arm64. Solution :
-- Upgrader le Pi en Raspberry Pi OS 64-bit (recommandé)
-- OU servir le ZIP selfhost à la main sur un Nginx local du Pi
-
-### Variable d'env `MKM_HOSTNAME`
-
-Si l'utilisateur veut accéder à l'app depuis un hostname custom (ex.
-`myktamap.local` via mDNS), il faut :
-```bash
-docker run -d -p 8443:8443 -e MKM_HOSTNAME=myktamap.local ...
-```
-
-Le cert auto-signé inclura alors `myktamap.local` dans les SAN et le
-navigateur acceptera mieux le warning sur ce hostname.
+- **Pas d’image `arm/v7`** : le build est `linux/amd64` + `linux/arm64` seulement.
+- **Volume `data/`** : un montage remplace tout le `data/` de l’image (relevé fictif compris) ; sans
+  `index.json` dans le dossier monté, aucun plan n’apparaît (l’app ne découvre les plans que par
+  `data/index.json`, `js/main.js`).
 
 ## Coût stockage ghcr.io
 
@@ -223,7 +197,6 @@ GHCR free tier : illimité pour les repos publics. Pas de souci de coût.
 | Helm chart pour Kubernetes | 4h | Plus pro, niche |
 | `docker-compose.yml` exemple multi-instance (myktamap + reverse proxy + Let's Encrypt) | 2h | Bon pour onboarding intermédiaire |
 | Image alpine "lite" avec assets minifiés en build | 3h | Gain ~20-30% taille image, peu critique |
-| Bind mount auto-detect `data/plans` | 1h | UX meilleure pour le custom |
 
 ## Maintenance
 

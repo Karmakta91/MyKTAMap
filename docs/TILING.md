@@ -1,7 +1,7 @@
 # 🖼️ Le tuilage dans MyKTAMap
 
-> Audit du 07/09/2026, demandé par KARMA. Écrit **après lecture du code**, pas des libellés — plusieurs affirmations de l'interface se sont révélées fausses.
-> Références : `js/tiling.js` (runtime), `js/createConf.js > _genererTuilesV2` (génération), `docs/architecture/perf-memory.md` §8 et §27.
+> Né d'un audit du 07/09/2026, écrit **après lecture du code**, pas des libellés — plusieurs affirmations de l'interface se sont révélées fausses. Document technique : il s'adresse à qui déploie des plans sur un serveur (§ 5, § 7, § 8) ou veut comprendre le moteur ; pour **utiliser** l'app, le guide utilisateur suffit.
+> Code de référence : `js/tiling.js` (affichage), `js/createConf.js > _genererTuilesV2` (génération).
 
 ---
 
@@ -47,8 +47,8 @@ s'avère V2. Le défaut « Auto » ne casse rien entre-temps.
 🩸 **Historique du placement — trois emplacements en six versions.** ⚙️ Configuration jusqu'en v1.85.4 (il y
 passait pour une préférence durable alors qu'il n'était pas mémorisé) → carte de chargement en v1.85.4, replié
 en v1.88.1 (posé déplié il ajoutait **~207 px** à une colonne dont le min-content mesurait ~510 px sous un
-plancher de grid de 520 px : à 125 % de zoom elle débordait sur le footer — filet dans
-`docs/architecture/ui.md`) → **retiré** en v1.90.2, décision KARMA : *« on est en auto tout le temps, la
+plancher de grid de 520 px : à 125 % de zoom elle débordait sur le footer) → **retiré** en v1.90.2, décision de
+l'auteur : *« on est en auto tout le temps, la
 majorité des plans sont en V2 et c'est le process conseillé, ne concernant que peu de cas je veux pas ce
 réglage ici »*. Le bon endroit pour un réglage qui ne concerne presque personne est la fiche du plan
 concerné, pas le chemin de tout le monde.
@@ -63,7 +63,7 @@ plan** — le comportement voulu.
 | 🔄 **Auto** *(défaut)* | tuile si `W × H > 4096²` **ou** fichier > 60 Mo | — (le plan utilise ses tuiles) |
 | 💤 **Désactivé** | jamais de tuilage : image entière, qualité native, ⚠️ risque de plantage mobile | **ignoré** — un plan V2 tuile toujours |
 
-> ⚖️ **Règle KARMA (v1.86.0)** : *« un plan V2 doit obligatoirement profiter du mode tuile ; le fichier complet reste pour le dézip manuel mais en principe n'est pas utilisé »*.
+> ⚖️ **Règle de l'auteur (v1.86.0)** : *« un plan V2 doit obligatoirement profiter du mode tuile ; le fichier complet reste pour le dézip manuel mais en principe n'est pas utilisé »*.
 
 ---
 
@@ -95,8 +95,7 @@ Pire, sur un **plan serveur** : `map.js` cherche la taille du fichier dans `RUNT
 
 📦 **Ou ne pas dézipper du tout** : `"zip": "data/x.zip"` dans `index.json` (au lieu de `path`). L'archive est
 téléchargée entière à l'ouverture et ouverte comme un import local — les tuiles V2 viennent alors du ZIP, pas de
-requêtes HTTP une à une ; son hors-ligne est la copie gardée en IndexedDB (§7 ne s'applique pas). Détail :
-`docs/architecture/plans-loader.md`.
+requêtes HTTP une à une ; son hors-ligne est la copie gardée en IndexedDB (§7 ne s'applique pas).
 
 🩸 **Un plan issu d'un IMPORT (SIG / GPX / KMZ) n'est pas produit par le Générateur — et jusqu'en v1.88.4 il déclarait ses fichiers SANS le préfixe `data/`** alors qu'il les écrivait bien dedans. En import **local** l'incohérence était invisible (`findMatchingFile` retrouve l'asset par son **nom de base**) ; en **serveur**, la résolution est stricte → **404 sur l'image et les calques**. Symptôme vécu : sur 18 plans servis, ceux du Générateur passaient, ceux issus d'un import SIG (`*_from_v2`) échouaient tous — avec des ZIP « tous produits par l'app ».
 
@@ -118,7 +117,7 @@ data/
 >
 > Désormais un chemin `data/…` est **préfixé par le dossier du plan**, sauf s'il le contient déjà — ce qui préserve à l'identique les déploiements réécrits à la main. Vérifié en **exécutant** la fonction (`scripts/check-tiling.js` §9 charge `config.js` dans un `vm`), pas en cherchant une chaîne.
 
-**Les tuiles sont SONDÉES, plus devinées** *(v1.88.3)*. 🩸 *Jusque-là leur racine était dérivée du dossier du `baseImage` — ce qui suppose que l'image et les tuiles ont bougé ensemble. Faux : le générateur écrit **toujours** les tuiles dans `zip.folder("data").folder("tiles")`, alors que l'emplacement de l'image dépend de la **recette de déploiement**. Avant la v1.86.1 il fallait réécrire les chemins à la main, ce qui remontait souvent l'image d'un cran sans toucher aux tuiles. D'où le symptôme de KARMA : « sur certains plans ça fonctionne bien » — le ZIP est le même, le déploiement non.*
+**Les tuiles sont SONDÉES, plus devinées** *(v1.88.3)*. 🩸 *Jusque-là leur racine était dérivée du dossier du `baseImage` — ce qui suppose que l'image et les tuiles ont bougé ensemble. Faux : le générateur écrit **toujours** les tuiles dans `zip.folder("data").folder("tiles")`, alors que l'emplacement de l'image dépend de la **recette de déploiement**. Avant la v1.86.1 il fallait réécrire les chemins à la main, ce qui remontait souvent l'image d'un cran sans toucher aux tuiles. D'où le symptôme constaté : « sur certains plans ça fonctionne bien » — le ZIP est le même, le déploiement non.*
 
 À l'ouverture d'un plan V2 servi, l'app essaie donc les candidats **dans l'ordre**, en demandant une **tuile témoin** (`z<max>/x0_y-1`) à chacun :
 
@@ -133,7 +132,7 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 
 ✅ **Icônes personnalisées — on SONDE, on ne devine plus** *(v1.87.2)*. Le préfixe `icon/` désigne deux familles : les icônes **livrées avec l'app** (à la racine du site, absentes du ZIP) et celles **ajoutées dans le générateur** (présentes dans le ZIP, donc dans `<plan>/icon/`). Au chargement d'un plan serveur, chaque `icon/…` déclaré est **réellement demandé au serveur** dans le dossier du plan : il n'est réécrit que s'il répond **200**. 🛟 *Fail-safe : toute erreur (404, réseau, CORS) laisse le chemin à la racine.*
 
-🩸 **Deux tentatives ratées avant celle-là, et la 2ᵉ était ma correction de la 1re.** En **v1.86.1**, les icônes perso n'étaient pas résolues du tout. En **v1.86.2**, j'ai voulu trancher sur le catalogue `TAGS_BUILTIN` — hors catalogue = icône du ZIP. **Faux** : `TAGS_BUILTIN` liste des **tags de POI**, pas les icônes de l'app. `icon/iconetrack.png` (le marqueur du tracker) existe à la racine et n'y figure pas → sur un plan serveur, l'icône du tracker partait en `data/<plan>/icon/iconetrack.png` → **404**. C'était une **régression d'affichage**, révélée par hasard par le téléchargement hors-ligne (« 9 fichiers sur 10 », constat KARMA). ⚠️ **Aucun catalogue ne liste toutes les icônes de l'app** : tout critère fondé sur une liste rejouera ce bug. C'est ce que `check-tiling.js` §10-11 empêche, en **exécutant** le sondeur.
+🩸 **Deux tentatives ratées avant celle-là, et la 2ᵉ corrigeait la 1re.** En **v1.86.1**, les icônes perso n'étaient pas résolues du tout. En **v1.86.2**, la correction a voulu trancher sur le catalogue `TAGS_BUILTIN` — hors catalogue = icône du ZIP. **Faux** : `TAGS_BUILTIN` liste des **tags de POI**, pas les icônes de l'app. `icon/iconetrack.png` (le marqueur du tracker) existe à la racine et n'y figure pas → sur un plan serveur, l'icône du tracker partait en `data/<plan>/icon/iconetrack.png` → **404**. C'était une **régression d'affichage**, révélée par hasard par le téléchargement hors-ligne (« 9 fichiers sur 10 »). ⚠️ **Aucun catalogue ne liste toutes les icônes de l'app** : tout critère fondé sur une liste rejouera ce bug. C'est ce que `check-tiling.js` §10-11 empêche, en **exécutant** le sondeur.
 
 
 > 🛟 **Repli d'erreur — une récupération, pas un mode.** Si les tuiles restent inatteignables (déploiement bancal), l'app affiche l'image entière plutôt qu'une carte blanche muette. Deux déclencheurs : aucune tuile résolue, **ou** toutes les tuiles du premier rendu en **erreur de chargement** — indispensable ici, car une URL HTTP « résout » toujours, même en 404. Une seule fois par chargement.
@@ -148,7 +147,7 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 - ❌ **Re-traiter un chemin `data/…` du plan-config comme relatif à la racine du site.** Il est relatif **au ZIP**. C'est ce qui rendait tout déploiement serveur muet et 404 avant la v1.86.1.
 - ❌ **Coder le chemin des tuiles en dur.** Un seul point de vérité : `_cheminTuileZip()`.
 - ⚠️ `tuilingNecessaire()` est exporté mais **appelé nulle part** — dette connue, laissée en place.
-- ❌ **Poser tout le niveau sur la carte.** Jusqu’au 29/09/2026, `_renderNiveau` posait les 864 tuiles du niveau 0 d’un relevé de 16332×13820 pour **6** visibles (880 requêtes, ~30 Mo) — une image d’overlay est demandée dès qu’il est posé. Désormais seules les tuiles qui croisent l’écran élargi de 15 % (`MapBearing.zoneVisible`, rotation comprise) sont posées ; les autres restent dans `activeOverlays` marquées `_ktaCulled` et `window.ktaCullerTuilesV2` les pose/retire à chaque `moveend`/`zoomend` (une seule implémentation : `mapBearing` la redemande pendant la rotation). Mesuré : **12 posées et 12 requêtes sur 864**, aucun trou à l’écran. Le filtre multi-niveau (plan de base masqué) ne pose rien, et au ré-affichage ne remet que les proches. `attendusPremier` (repli d’erreur) compte les tuiles réellement demandées. Tenu par `scripts/smoke/checkup-tuiles-hors-ecran.js` (falsifié : 864/864 sur l’ancien code).
+- ❌ **Poser tout le niveau sur la carte.** Jusqu’au 29/09/2026, `_renderNiveau` posait les 864 tuiles du niveau 0 d’un grand relevé (plus de 200 Mpx) pour **6** visibles (880 requêtes, ~30 Mo) — une image d’overlay est demandée dès qu’il est posé. Désormais seules les tuiles qui croisent l’écran élargi de 60 % (`MARGE_TUILES_V2`, 0,15 jusqu’au 10/10/2026 : 36 % de fond troué au grand glissé, 0-1 % à 0,6 ; `MapBearing.zoneVisible`, rotation comprise) sont posées ; les autres restent dans `activeOverlays` marquées `_ktaCulled` et `window.ktaCullerTuilesV2` les pose/retire à chaque `moveend`/`zoomend` (une seule implémentation : `mapBearing` la redemande pendant la rotation). Mesuré à 0,15 : **12 posées et 12 requêtes sur 864**, aucun trou à l’écran à l’arrêt (la marge 0,6 double environ les requêtes par passe). Le filtre multi-niveau (plan de base masqué) ne pose rien, et au ré-affichage ne remet que les proches. `attendusPremier` (repli d’erreur) compte les tuiles réellement demandées. Tenu par `scripts/smoke/checkup-tuiles-hors-ecran.js` (falsifié : 864/864 sur l’ancien code).
 - ❌ **Un plafond LRU égal au nombre de niveaux générés.** `MAX_CACHED_LEVELS` valait 4 sur desktop, et le générateur produit exactement 4 niveaux (-3…0) : l’éviction ne pouvait jamais se déclencher, les fichiers extraits du ZIP restaient en mémoire pour tous les niveaux visités. Depuis le 29/09/2026 : **3** sur desktop, 2 sur mobile (inchangé). Un plan **serveur** n’a rien à libérer ici par construction (URL HTTP, cache du navigateur) — ce n’est pas un défaut. Tenu par `scripts/check-tiling.js` §17 (vrai module en vm, faux ZIP paresseux, 4 niveaux visités ; falsifié en remettant 4).
 
 🛡️ Tout ce qui précède est vérifié par **`scripts/check-tiling.js`** (pré-commit, bloquant, 16 sabotages falsifiés).
@@ -157,7 +156,7 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 
 ## 7. Disponibilité hors-ligne d'un plan serveur *(v1.87.0)*
 
-**Question KARMA : « une fois un plan serveur chargé une fois, il est en cache, offline ok ? » — non, et pour trois raisons cumulées.**
+**Question posée : « une fois un plan serveur chargé une fois, il est en cache, offline ok ? » — non, et pour trois raisons cumulées.**
 
 | Obstacle | Détail |
 |---|---|
@@ -174,13 +173,13 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 ⚠️ **Rien n'est mémorisé** — ni `localStorage`, ni IndexedDB. Le statut est **recalculé en lisant le cache** : un manifeste (`__kta_offline.json`, stocké *dans* le cache et jamais servi) liste les URLs attendues, et on les compare aux entrées réellement présentes.
 
 - **absent** → bouton « ⬇️ Rendre disponible hors-ligne »
-- **complet** → « ↻ Mettre à jour » + « 🗑️ Retirer » — 🩸 **le bouton de téléchargement DISPARAÎT** (exigence KARMA : pas de bouton fantôme)
+- **complet** → « ↻ Mettre à jour » + « 🗑️ Retirer » — 🩸 **le bouton de téléchargement DISPARAÎT** (exigence : pas de bouton fantôme)
 - **partiel** *(v1.87.1)* → « ↻ Réessayer » — tout ce que le serveur **a** est là, mais il n'a pas fourni N fichiers, et l'app **les nomme**
 - **incomplet** → « ⬇️ Compléter » — le bouton **revient** tout seul si le navigateur a fait du ménage
 
 *C'est gratuit précisément parce qu'aucun drapeau n'est stocké : un drapeau survivrait à la purge et annoncerait « disponible » sur du vide.*
 
-🩸 **Pourquoi « partiel » existe (v1.87.1).** Le manifeste v1 listait tout ce qu'on avait **tenté**, échecs compris. Un plan dont le `plan-config.json` déclare un fichier non déployé restait donc **« incomplet — 9 sur 10 » à vie** : le bouton invitait à retélécharger sans fin un fichier qui n'existe pas, et ne disait **jamais lequel**. Constaté par KARMA dès la première utilisation. Le manifeste v2 retient la liste des **manquants** ; l'état distingue désormais « interrompu » (à compléter) de « le serveur ne les a pas » (utilisable, et on affiche les chemins).
+🩸 **Pourquoi « partiel » existe (v1.87.1).** Le manifeste v1 listait tout ce qu'on avait **tenté**, échecs compris. Un plan dont le `plan-config.json` déclare un fichier non déployé restait donc **« incomplet — 9 sur 10 » à vie** : le bouton invitait à retélécharger sans fin un fichier qui n'existe pas, et ne disait **jamais lequel**. Constaté dès la première utilisation. Le manifeste v2 retient la liste des **manquants** ; l'état distingue désormais « interrompu » (à compléter) de « le serveur ne les a pas » (utilisable, et on affiche les chemins).
 
 🩸 **Le manifeste n'est écrit qu'à la FIN du téléchargement.** Une interruption laisse donc un cache sans manifeste → état « incomplet ». Et seul un **HTTP 200** est mis en cache : cacher un 404 rendrait le plan « complet » avec des fichiers morts, invisibles jusqu'au terrain.
 
@@ -234,5 +233,16 @@ détaillé est pris. Rend `{ ok, tuiles, manquantes, z }` ; `ok: false` sur un p
 
 Sert à l'option `region` de l'export (`exporter.js`) : les **cartes PDF du Mode Secours** ne rendent plus le plan
 entier sous 16 Mpx (limite des canvas de Safari iOS) — leur mémoire est bornée par la carte, plus par le plan.
-Gardé par `check-tiling.js` § 18 (placement des tuiles, niveau choisi, révocation, câblage). Le chemin d'une tuile
+Gardé par `check-tiling.js` § 18 (placement des tuiles, niveau choisi, révocation, câblage).
+
+**Plan entier (export image et son aperçu, 12/10/2026).** Sans `region`, l'export d'un plan V2 demande d'abord
+`window.ktaTuilesSurAppareil(pc, region, echelle, opts)` : toutes les tuiles du niveau utile sont-elles sur
+l'appareil — dans `RUNTIME_ASSETS` (plan importé) ou dans le **Cache Storage** (`caches.match` : cache du service
+worker ou cache hors-ligne `myktamap-plan-<id>`) ? Si oui, le fond est peint par `ktaDessinerRegionTuiles(…, { plafond:
+Infinity, aligner: true })` : aucun plafond de tuiles (le niveau reste celui que demande l'échelle — z = 0 dès 0,5,
+même détail que l'image de base), bords de tuile calés sur le pixel (pas de filet à une échelle fractionnaire).
+Une seule tuile absente, ou une tuile illisible au dessin → l'image de base, comme avant (jamais de trou, rien
+n'est téléchargé pour composer le fond). Gain mesuré sur un relevé lourd : l'image de base (42 Mo) n'est plus
+retéléchargée quand ses ~30 Mo de tuiles sont déjà là. La grille (niveau, colonnes, rangées) est calculée à un
+seul endroit, `_grilleRegionTuiles`, pour le test de présence et le dessin. Gardé par `check-tiling.js` § 19. Le chemin d'une tuile
 dans le ZIP n'est écrit qu'à un endroit : `_cheminTuileZipExt` (§ 6 du même contrôle).

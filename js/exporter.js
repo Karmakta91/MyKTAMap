@@ -151,7 +151,7 @@
     const T = window.I18n.t;
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert(T("imgexport.alert.noConfig"));
+      window.ktaAlerte(T("imgexport.alert.noConfig"), { type: "erreur" });
       return;
     }
 
@@ -255,9 +255,6 @@
                  - transparent : pas de fillRect (canvas alpha) -->
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">${T("imgexport.fond.titre")}</div>
-              <p style="font-size:11.5px; color:#8892a4; margin:4px 0 8px 0; line-height:1.5;">
-                ${T("imgexport.fond.intro")}
-              </p>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="image" checked>
@@ -302,9 +299,6 @@
             <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
             <div class="kta-aide-section" id="kta-export-levels-section" style="display:none;">
               <div class="kta-aide-section-titre">${T("imgexport.niveaux.titre")}</div>
-              <p style="font-size:11.5px; color:#8892a4; margin:0 0 8px 0; line-height:1.5;">
-                ${T("imgexport.niveaux.intro")}
-              </p>
               <div id="kta-export-levels" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
 
@@ -1282,11 +1276,9 @@
 
     const btnLegReset = document.getElementById("kta-legend-custom-reset");
     if (btnLegReset) {
-      btnLegReset.addEventListener("click", function() {
+      btnLegReset.addEventListener("click", async function() {
         if (!window.LegendCustomization) return;
-        // Confirmation simple via window.confirm — pas de modale custom pour
-        // garder le code léger (action peu fréquente).
-        const ok = window.confirm(window.I18n.t("imgexport.legende.custom.resetConfirm"));
+        const ok = await window.ktaConfirm(window.I18n.t("imgexport.legende.custom.resetConfirm"));
         if (!ok) return;
         window.LegendCustomization.resetSession();
         _peuplerLegendCustom();
@@ -1937,6 +1929,24 @@
       if (region && typeof window.ktaDessinerRegionTuiles === "function") {
         try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
+      }
+      // 🖼️ 12/10/2026 — Plan ENTIER (export et aperçu) d'un plan tuilé V2 : si TOUTES les tuiles
+      // du niveau utile sont déjà sur l'appareil (archive du plan, ou Cache Storage d'un plan
+      // serveur), le fond est composé depuis elles — l'image de base (42 Mo mesurés sur un relevé
+      // lourd) n'est plus retéléchargée. Même niveau de détail (z = 0 dès l'échelle 0,5 ; aucun
+      // plafond de tuiles), bords calés sur le pixel. Une tuile absente ou illisible → image de
+      // base, peinte par-dessus, comme avant.
+      const _plein = { x: 0, y: 0, w: baseW, h: baseH };
+      if (!region && config.plan && config.plan.tiledV2 && typeof window.ktaTuilesSurAppareil === "function"
+          && typeof window.ktaDessinerRegionTuiles === "function") {
+        try {
+          const _o = { plafond: Infinity, aligner: true };
+          if (await window.ktaTuilesSurAppareil(config, _plein, scale, _o)) {
+            const r = await window.ktaDessinerRegionTuiles(ctx, config, _plein, scale, _o);
+            fondFait = !!(r && r.ok && !r.manquantes);
+            console.log("[Export] fond depuis les tuiles de l'appareil :", fondFait ? "oui" : "non", r);
+          }
+        } catch(e) { console.warn("[Export] fond depuis les tuiles :", e); }
       }
       if (!fondFait) {
         try {

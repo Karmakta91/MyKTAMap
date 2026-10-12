@@ -206,18 +206,41 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 - **`ci.yml`** (push `Karma_dev` / `main`, PR) : `node --check`, **`scripts/ci-commits.sh`** (anti-fuite pro et
   `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
-  `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI`), puis **`.githooks/pre-commit`** (tous
-  les garde-fous). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
+  `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI` ; `check-noms-reels --message` relit
+  le message de chaque commit), puis **`.githooks/pre-commit`** (tous les garde-fous ; `check-noms-reels` y relit
+  **tous** les fichiers suivis, `CI` étant posé). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.
 - **`ci.yml` › `marquer-vert`** (push seulement, après les garde-fous) : pose `refs/ci/verte/<branche>` sur le
   commit — référence hors branches et hors tags, réécrite à chaque CI verte, lue par le déploiement automatique (§85).
+- **`ci.yml` › `tableau-garde-fous`** (chaque run, en parallèle, **indicatif**) : `scripts/garde-fous-tableau.js`
+  lance un par un les scripts listés dans `.githooks/pre-commit` (liste lue dans le hook, rien à tenir à jour) et
+  écrit nom · type (bloquant / consultatif) · durée · statut · 1re ligne d'erreur dans le résumé du run
+  (`$GITHUB_STEP_SUMMARY`) ; `--json` en local. Sort toujours en 0, `continue-on-error`, hors des `needs` de
+  `marquer-vert` : il ne rougit rien et ne retient aucun déploiement — le verdict reste celui du pre-commit. Placé
+  dans `ci.yml` et non `smoke.yml` pour tourner à chaque push (voir un garde-fou ralentir). Pas d'historique.
+- **`smoke.yml`** (manuel seulement : Actions › Smoke › Run workflow, sur n'importe quelle branche) : `npm ci` de
+  `scripts/smoke` (le `postinstall` télécharge Chromium) + `playwright install-deps`, puis `smoke.js` — il démarre
+  son serveur (port 8123, CSP stricte de `docker/nginx-docker.conf`). Le checkout n'a dans `data/` que ce que Git
+  suit (`data/index.json` + le relevé fictif `data/test`) : une étape vérifie que l'index pointe bien un relevé
+  fictif avant d'installer quoi que ce soit. Journal dans le résumé du run ; en échec, `smoke-resultats/` (journal
+  complet) en artefact 14 jours — `smoke.js` ne produit pas de capture. Aucun secret. C'est la marche 1bis de la porte
+  (`docs/RELEASE_GATE.md`) lançable sans poste, depuis un téléphone ; la marche 2 (12 points sur dev, à la main)
+  reste manuelle.
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
+- **`sonde-integrite.yml`** (toutes les heures, et à la main) : le code SERVI par myktamap.fr et dev.myktamap.fr est-il
+  celui du dépôt ? `scripts/release/sonde-integrite.js` lit `/deploiement.json` (commit déployé : connu du dépôt et
+  descendant de sa branche), puis compare l'empreinte de chaque fichier de code suivi (html, js, css, json) servi au
+  contenu Git. Un écart = run en échec = e-mail. Raison : après un piratage du serveur, le chiffrement protège ce qui
+  est stocké, pas une page modifiée en place — il faut le SAVOIR. Tourne hors du serveur ; limite : on ne voit que ce
+  qui nous est servi. À la main : `node scripts/release/sonde-integrite.js https://myktamap.fr`.
 - **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte — il lit
   la même marque `refs/ci/verte/<branche>` que le VPS (`git ls-remote`, sans jeton ni coffre d'identifiants Windows,
   donc utilisable dans une session SSH ouverte depuis le téléphone) ; marque illisible = `DEROGE`. Tient lieu de
   protection de branche. Le poste parle à GitHub en SSH (clé `~/.ssh/github_poste`, remotes `git@github.com:…`) :
   en HTTPS, l'identifiant rangé dans le coffre Windows est inaccessible depuis SSH.
-- **Dependabot** (`.github/dependabot.yml`) : actions GitHub + `scripts/smoke`, PR vers `Karma_dev`. Les librairies de
-  `lib/` sont suivies à la main dans **`lib/VERSIONS.md`**.
+- **Dependabot** (`.github/dependabot.yml`) : actions GitHub, `scripts/smoke` et les librairies de `lib/` (manifeste
+  déclaratif `lib/package.json`, hebdomadaire), PR vers `Karma_dev`. Une PR sur `lib/` ne change que le manifeste :
+  `check-libs.js` (bloquant) la retient tant que le fichier embarqué et **`lib/VERSIONS.md`** n'ont pas suivi — la mise
+  à jour réelle reste un geste testé (marche à suivre dans `lib/VERSIONS.md`).
 - **Pas de Sonar en CI** : SonarQube tourne en local (Docker), injoignable depuis un runner GitHub — marche 1ter
   de `docs/RELEASE_GATE.md`.
 
@@ -464,7 +487,7 @@ la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la sect
 « 🗓️ Version actuelle » (digest des nouveautés) à jour à chaque release marquante, et
 NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
 gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
-| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `.html` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` + `.html` (note de la version, page à part depuis le 07/10/2026) | À chaque release (verdict réseau attendu par les users qui auditent) |
+| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` (état actuel, en-tête de version) · `NETWORK_AUDIT_HISTORIQUE.md` (note `### vX.Y.Z (titre)` en tête de « Notes par version », page à part depuis le 07/10/2026). Les deux `.html` servis sont **générés** : `node scripts/audit-html.js` (voir « Pages d'audit générées » ci-dessous) | À chaque release (verdict réseau attendu par les users qui auditent) |
 | 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
 
@@ -475,13 +498,32 @@ ou SKIPé sur chacun des 4. Format type :
 ```
 Sync 4 axes docs (4)
   📱 In-app   : SKIP justifié (perf interne, aucun changement UX)
-  🔒 Audit    : NETWORK_AUDIT.md + .html (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md + .html — entrée v1.X.Y
+  🔒 Audit    : NETWORK_AUDIT.md (en-tête) ; NETWORK_AUDIT_HISTORIQUE.md — ### vX.Y.Z ; .html régénérés
   📖 Dev      : README.md — MAJ "Version courante"
   🤖 Archi IA : perf-memory.md §X (pattern + gain + À NE PAS faire)
 ```
 
 Le **SKIP** est OK et même utile (explicite que la non-modif est intentionnelle), mais
 ne JAMAIS oublier UN des 4 axes silencieusement.
+
+**Pages d'audit générées** (10/10/2026). `NETWORK_AUDIT.html` et `NETWORK_AUDIT_HISTORIQUE.html` (ouvertes depuis
+⚙️ → 🔒 Confidentialité, précachées pour le hors-ligne) sont le **rendu** de leurs `.md`, seule source :
+- `node scripts/audit-html.js` les réécrit ; `--check` n'écrit rien et sort en 1 si une page diffère. Reproductible
+  (aucune date ni hasard, fins de ligne LF : deux passages = mêmes octets).
+- Moteur Markdown autonome `scripts/md-mini.js` (copie du moteur du site de documentation, même auteur — le dépôt
+  community ne dépend d'aucun autre dépôt). Tout HTML brut du `.md` est échappé ; liens `javascript:`/`data:` refusés ;
+  un lien vers l'autre `.md` d'audit vise sa page `.html`.
+- Gabarit dans `audit-html.js` (retour, pied community/pro) ; mise en page `docs/applications/audit.css` ; pied
+  `docs/applications/audit-pied.js` (pose `.kta-instance-pro` d'après `Licence-pro.json`). Aucun style ni script
+  écrit dans la page (CSP `script-src 'self'`). Les tableaux défilent dans leur cadre : pas de débordement à 390 px.
+- Conventions du `.md` : la citation sous le `# titre` devient le chapeau (`.meta`, « À jour pour la version ») ; un
+  `---` juste avant un `##` disparaît (le titre porte déjà son filet) ; une ligne `<!-- kta:classe nom -->` pose la
+  classe `nom` sur le bloc suivant (`kta-promesse`, `kta-alerte`, `kta-auteur`), invisible sur GitHub.
+- 🛡️ `scripts/check-audit-html.js` (pré-commit, donc CI — bloquant) : chaque `.html` **de l'index** doit être
+  exactement le rendu de son `.md` de l'index (ni `.md` modifié sans régénérer, ni `.html` retouché à la main), et
+  `audit.css` / `audit-pied.js` / les deux pages doivent être dans `sw.js > ASSETS_TO_CACHE`. Il ne lit pas
+  `git diff --cached` : contrôle complet à chaque passage, valable tel quel en CI (pas de `KTA_FICHIERS_CI`).
+  `check-release-docs.js` (commit-msg, au bump) exige en plus `### vX.Y.Z` dans l'historique `.md`.
 
 #### 81.2 Règle B — `version.json > notes` USER-FRIENDLY
 
@@ -621,6 +663,7 @@ documentées ici pour la doctrine.
 | Script | Garde quoi | Bug fondateur |
 |---|---|---|
 | `check-no-pro-leak.js` | frontière community ↔ pro : aucun fichier pro (`*.php`, `pro/`, `backend/`, modules pro nommés) | — (préventif) |
+| `check-noms-reels.js` | dépôt public : aucun nom réel lié aux relevés (département des relevés et variantes) dans un fichier suivi, un chemin ou un message de commit (`--message`, branché aussi au `commit-msg` et à `ci-commits.sh`). Comparaison par **empreinte sha256** du mot normalisé (accents, casse, camelCase, `_`) : le nom n'est pas écrit dans le contrôle — limite : une empreinte de mot courant se retrouve par essai d'une liste de candidats. Liste hors dépôt facultative `~/.myktamap/noms-interdits.txt` (mots en clair, poste seul). Fichiers indexés ; en CI ou `--tout`, tous les fichiers suivis. Hors portée : `data/`, `lib/`, binaires. Sans dérogation | nom du département des relevés réels resté en exemple d'étiquette, de dossier, de sous-titre et de mesure dans `js/`, `scripts/`, le journal et `docs/architecture/` au passage public du dépôt (11/10/2026) |
 | `check-connexion-serveur.js` | connexion serveur (v2.0.0) : validation de l'app ET de ConfAdmin exécutées sur la même table de cas, états, index injoignable ≠ connexion coupée, licence importée insuffisante, aucune requête dans `ktaExtensions.js` | — (préventif, né avec la fonction) |
 | `check-export-anonyme.js` | export anonymisé : exécute `_anonymiserSession` sur une session piégée et cherche le marqueur dans TOUT le JSON produit | liaisons inter-plan (vrais noms de plan et de point) livrées par l'export anonymisé de v1.57.0 à v2.0.0 |
 | `check-uid.js` | identifiants stables (v2.1.0) + traces de suppression et fusion (v2.2.0, `historyManager` exécuté sur de faux tableaux) : exécute `js/ktaUid.js` (doublons régénérés, jamais d'écrasement, copie = uid neuf) + câblage des sites (setters, migration, touch, calques, Générateurs, rien vers KMZ/GPX) | — (préventif, né avec la fonction ; vise la perte silencieuse d'un objet à la future fusion) |
@@ -636,7 +679,8 @@ documentées ici pour la doctrine.
 | `check-image-header-dims.js` | parseur binaire des dimensions d'image du Générateur | « Image non décodable » sur les JPG 32K×32K (limite Chrome/Skia) |
 | `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
 | `check-devmode-docs.js` | le Mode Dev ne relit **aucune** doc technique (ni manifest, ni `docs/` hors `docs/applications/`, ni `README.md`) ; hash SHA-256 ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | la bibliothèque obligeait à publier toute la doc interne sur dev (audit CD du 09/10/2026, F1) |
-| `check-livrables-docs.js` | le `Dockerfile`, le ZIP de `release.yml` et `.dockerignore` ne livrent de `docs/` que `docs/applications/`, jamais le `README.md` racine (règles rsync présentes et **dans l'ordre**) | BACKLOG, audits et `README.md` dans l'image Docker — donc servis par pro.myktamap.fr — et dans le ZIP (audit CD, F1) |
+| `check-livrables-docs.js` | le `Dockerfile`, le ZIP de `release.yml` et `.dockerignore` ne livrent de `docs/` que `docs/applications/`, jamais le `README.md` racine (règles rsync présentes et **dans l'ordre**) ; `.dockerignore` ne laisse entrer de `data/` que `data/test` et `data/myktamap.zip`, l'index de l'image venant de `docker/index-fictif.json` (identique au `data/index.json` **suivi**) | BACKLOG, audits et `README.md` dans l'image Docker — donc servis par pro.myktamap.fr — et dans le ZIP (audit CD, F1) ; **relevés réels** et index local du poste dans les couches d'une image construite sur le poste (pile de test pro) |
+| `check-libs.js` | chaque librairie de `lib/` : version de l'en-tête du fichier embarqué = `lib/package.json` (manifeste lu par Dependabot, versions exactes) = `lib/VERSIONS.md` | une veille qui ment : PR Dependabot fusionnée sans remplacer le fichier, ou librairie remplacée sans mettre la table à jour |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
 | `check-aide-sections.js` | structure de l'Aide intégrée : même nombre de sections FR/EN, **1 seul titre par section**, `AIDE_CATEGORIES` couvre tout (ni orpheline, ni doublon, ni hors-bornes) | **3 bugs d'un coup le 01/09** : conteneur oublié fusionnant 2 sections FR (« Mode profil » inatteignable) · section absente en EN alors que les index sont **communs aux 2 langues** · index annoncé à 29 pour une section en 30 (« Mon carnet » tombée dans le filet « Autres ») |
 
@@ -662,7 +706,7 @@ documentées ici pour la doctrine.
 | | Contrôle | Dérogeable |
 |---|---|---|
 | 🔒 **Noyau** | `sw.js > CACHE_NAME` et `js/copyright.js > build` portent la version de `version.json` | ❌ jamais — un échec ici = l'app ne se met pas à jour chez l'user |
-| 📄 **Doc** | `README.md` (bloc « Version courante » + entrée en tête du journal) · `NETWORK_AUDIT.md`/`.html` (en-tête « À jour pour la version » + entrée d'historique) · `AI_CONTEXT.md` a bougé dans le commit | ⚠️ oui |
+| 📄 **Doc** | `README.md` (bloc « Version courante » + entrée en tête du journal) · `NETWORK_AUDIT.md`/`.html` (en-tête « À jour pour la version ») + historique (`### vX.Y.Z` dans le `.md`, `<h3>` dans le `.html` généré) · `AI_CONTEXT.md` a bougé dans le commit | ⚠️ oui |
 
 **Déroger** : une ligne `Docs-deroge: <motif · risque accepté · rattrapage>` dans le message (≥ 5 caractères, lignes commentées `#` ignorées — sinon la trace disparaîtrait du commit final). Cas légitime canonique : le hotfix « bump de cache seul » type v1.75.1.
 
@@ -679,15 +723,16 @@ documentées ici pour la doctrine.
 
 ### 85. Déploiement des sites — Git sur le VPS, sans FTP (07/10/2026)
 
-- Scripts **hors dépôt** (sur le VPS et le poste de KARMA, jamais commités) : `deploy-dev.sh` →
+- Scripts dans un dépôt **privé** séparé (`MyKTAMap-hebergement`, depuis le 12/10/2026 ; jamais dans ce dépôt
+  public), posés sur le VPS : `deploy-dev.sh` →
   `/data/www/dev.myktamap.fr` sur `Karma_dev` ; `deploy-prod.sh` → `/data/www/myktamap.fr` sur `main` (confirmation
-  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt client, `PRO`) ;
+  `PROD`) ; `deploy-pro.sh` → pro.myktamap.fr (pile Docker : `main` du community + `main` du dépôt pro, `PRO`) ;
   `kta-serveur.sh` = « menu 0 » qui les appelle.
 - **Mise à jour automatique** (décision KARMA du 09/10/2026) : `auto-deploy.sh`, lancé par cron toutes les 5 min,
   compare chaque site à sa branche sur GitHub et ne déploie que si la **CI du commit est verte** : le job
   `marquer-vert` de `ci.yml` pose `refs/ci/verte/<branche>` sur chaque commit poussé qui passe, lue par le VPS avec
-  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, le commit backend doit en plus porter un tag `vX` (le dépôt client n'a pas
-  de CI). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
+  sa clé de déploiement (`git ls-remote`) — **aucun jeton GitHub sur le serveur** ; pour le pro, `main` doit être vert des deux
+  côtés (community et pro). Le VPS regarde lui-même : rien d'ouvert sur le serveur, aucun accès au VPS confié à GitHub. Pause par site
   (`/data/scripts/PAUSE-<domaine>`, menu 0 → 8). Conséquence : `main` mergé = prod en ligne dans les 5 minutes.
 - **Retour arrière** : menu 0 → 4 / 5 (pose la pause, sinon la branche reviendrait) — procédure complète, pro
   compris : `docs/RELEASE_GATE.md` § Retour arrière.

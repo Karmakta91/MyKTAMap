@@ -98,7 +98,7 @@ const DOCS = lire("js/interfaceDocs.js");
 {
   const H = { fr: ["### 📍 La bulle d'un point", "### 🔎 Chercher dans la documentation", "**📦 Backups récents** de ce plan"],
               en: ["### 📍 A point's popup", "### 🔎 Searching the documentation", "**📦 Recent backups** of this map"],
-              es: ["### 📍 La ventana de un punto", "### 🔎 Buscar en la documentación", "**📦 Backups recientes** de este plano"] };
+              es: ["### 📍 La ventana de un punto", "### 🔎 Buscar en la documentación", "**📦 Backups recientes** de este mapa"] };
   const F = { fr: "README_USER.md", en: "README_USER.en.md", es: "README_USER.es.md" };
   const AIDE = { fr: ["📍 Je suis ici", "📦 Backups récents", "🔎 Chercher."], en: ["📍 I am here", "📦 Recent backups", "🔎 Search."], es: ["📍 Estoy aquí", "📦 Backups recientes", "🔎 Buscar."] };
   for (const l of ["fr", "en", "es"]) {

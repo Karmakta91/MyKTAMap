@@ -569,21 +569,13 @@
   // 📑 PDF GÉNÉRATION (jsPDF)
   // ====================================================================
 
-  // Strip emojis + caractères hors-latin1 pour jsPDF Helvetica par défaut.
-  // jsPDF supporte Unicode uniquement avec polices custom embeddées —
-  // overkill pour MVP. Cf. secoursMode.js _stripPourPdf pattern identique.
+  // Texte envoyé au PDF : window.ktaTextePdf (utils.js) garde les accents et retire tout ce
+  // que la police standard n'affiche pas (emojis, mais aussi flèches et symboles, que l'ancienne
+  // liste de plages laissait passer). Seul le DÉBUT est nettoyé : un .trim() complet mangeait
+  // l'espace après « : » des libellés (« Période :08/10 », « POI ajoutés :0 » — vu le 09/10/2026).
   function _stripPourPdf(s) {
     if (!s) return "";
-    return String(s)
-      .replace(/[\u{1F600}-\u{1F64F}]/gu, "")
-      .replace(/[\u{1F300}-\u{1F5FF}]/gu, "")
-      .replace(/[\u{1F680}-\u{1F6FF}]/gu, "")
-      .replace(/[\u{1F900}-\u{1F9FF}]/gu, "")
-      .replace(/[\u{2600}-\u{26FF}]/gu, "")
-      .replace(/[\u{2700}-\u{27BF}]/gu, "")
-      .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, "")
-      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, "")
-      .trim();
+    return window.ktaTextePdf(s).replace(/^\s+/, "");
   }
 
   function _genererPDF(data, opts, mapDataUrl) {
@@ -913,15 +905,10 @@
         const txt = _genererTexte(filtered, opts);
         const fn = _filename(filtered.plan.name, "txt");
         _telechargerTexte(txt, fn);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt).then(function() {
-            _setStatus("✅ " + window.I18n.t("report.status_text_ok_copied"));
-          }).catch(function() {
-            _setStatus("✅ " + window.I18n.t("report.status_text_ok_noclip"));
-          });
-        } else {
-          _setStatus("✅ " + window.I18n.t("report.status_text_ok"));
-        }
+        // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+        window.ktaCopierTexte(txt).then(function(ok) {
+          _setStatus("✅ " + window.I18n.t(ok ? "report.status_text_ok_copied" : "report.status_text_ok_noclip"));
+        });
       });
     });
 

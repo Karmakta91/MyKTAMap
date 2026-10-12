@@ -33,16 +33,22 @@ const MIME = {
   ".woff2": "font/woff2"
 };
 
-// CSP STRICTE (07/10/2026) : la politique « Report-Only » de docker/nginx-docker.conf (scripts sans
-// 'unsafe-inline'), servie ici EN VIGUEUR. Un script inline oublié devient une erreur console — et le smoke
-// échoue déjà sur toute erreur console. Sans upgrade-insecure-requests (le serveur local est en HTTP).
-// killsw.html garde sa politique propre (script dans la page, voulu) : pas d'en-tête ici.
-// SMOKE_CSP=0 : servir SANS CSP (diagnostic : un échec vient-il de la CSP ou d'ailleurs ?).
+// CSP STRICTE : la politique EN VIGUEUR de docker/nginx-docker.conf (scripts sans 'unsafe-inline' depuis la
+// bascule du 10/10/2026 ; 1re ligne add_header CSP = celle du serveur, le bloc killsw.html vient après).
+// Un script inline oublié devient une erreur console — et le smoke échoue déjà sur toute erreur console. Sans
+// upgrade-insecure-requests (le serveur local est en HTTP). killsw.html garde sa politique propre (script dans
+// la page, voulu) : pas d'en-tête ici. SMOKE_CSP=0 : servir SANS CSP (diagnostic : la CSP ou autre chose ?).
 const CSP = process.env.SMOKE_CSP === "0" ? null : (function () {
   try {
     const conf = fs.readFileSync(path.join(RACINE, "docker", "nginx-docker.conf"), "utf8");
-    const m = conf.match(/add_header Content-Security-Policy-Report-Only "([^"]+)"/);
-    return m ? m[1].replace(/\s*upgrade-insecure-requests;?/, "").trim() : null;
+    const m = conf.match(/add_header Content-Security-Policy "([^"]+)"/);
+    if (!m) return null;
+    // Une politique qui autoriserait de nouveau les scripts inline ne doit pas passer pour « stricte ».
+    if (/script-src[^;]*'unsafe-inline'/.test(m[1])) {
+      console.log("[smoke-server] ⛔ la CSP de docker/nginx-docker.conf autorise les scripts inline");
+      process.exit(1);
+    }
+    return m[1].replace(/\s*upgrade-insecure-requests;?/, "").trim();
   } catch (e) { return null; }
 })();
 if (!CSP && process.env.SMOKE_CSP !== "0") console.log("[smoke-server] ⚠️ politique CSP stricte introuvable dans docker/nginx-docker.conf : servie sans CSP");

@@ -141,6 +141,22 @@ function _readmePathForLang(lang) {
 // Normalisation 1:1 (même longueur en unités UTF-16) : minuscules, accents
 // retirés — « Réglages » se trouve avec « reglages », et les positions restent
 // celles du texte d'origine (indispensable pour surligner sans décaler).
+// Texte d'un fragment HTML (balises remplacées par une espace), en un passage — pas /<[^>]+>/g, dont le retour
+// arrière est quadratique sur un « < » sans « > » (Sonar S8786).
+function _aideSansBalises(h) {
+  const s = String(h || "");
+  let out = "", i = 0;
+  while (i < s.length) {
+    const lt = s.indexOf("<", i);
+    if (lt < 0) { out += s.slice(i); break; }
+    const gt = s.indexOf(">", lt + 1);
+    if (gt < 0) { out += s.slice(i); break; }
+    out += s.slice(i, lt) + " ";
+    i = gt + 1;
+  }
+  return out;
+}
+
 window.ktaDocNormaliser = function(s) {
   let out = "";
   for (const ch of String(s || "")) {
@@ -784,6 +800,15 @@ function ktaAideContextuelleActive() {
 // le slug est inconnu — l'appelant saura que le lien est mort au lieu d'ouvrir
 // une fenêtre vide.
 function ktaOuvrirAideSection(slug) {
+  // Section d'une rubrique d'extension (prise « aide », slug « ext-… ») : lue à l'ouverture.
+  if (typeof slug === "string" && slug.indexOf("ext-") === 0) {
+    const ext = (window.KtaExtensions && typeof window.KtaExtensions.aide === "function")
+      ? window.KtaExtensions.aide() : null;
+    const s = ext && ext.sections.find(function(x) { return x.slug === slug; });
+    if (!s) { console.warn("[Aide] section d'extension inconnue :", slug); return false; }
+    _aideOuvrirSousModal(s);
+    return true;
+  }
   if (!slug || AIDE_SECTIONS.indexOf(slug) < 0) {
     console.warn("[Aide] section inconnue :", slug);
     return false;
@@ -1057,9 +1082,28 @@ function _aideRendreHub(corps) {
   cheatRow.dataset.aideTitre = window.ktaDocNormaliser(libCheat);
   hub.appendChild(cheatRow);
 
+  // Rubrique fournie par une extension (prise « aide », ex. sécurité du pro) : posée avant « Pour aller plus
+  // loin ». Sans extension, KtaExtensions.aide() rend null et rien n'apparaît.
+  function ajouterRubriqueExtension() {
+    const ext = (window.KtaExtensions && typeof window.KtaExtensions.aide === "function")
+      ? window.KtaExtensions.aide() : null;
+    if (!ext) return;
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = ext.titre;
+    hub.appendChild(ct);
+    ext.sections.forEach(function(s) {
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
+      r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
+      hub.appendChild(r);
+    });
+  }
+
   // Catégories + lignes
   const used = {};
   AIDE_CATEGORIES.forEach(function(cat) {
+    if (cat.cle === "plus-loin") ajouterRubriqueExtension();
     const rows = [];
     cat.slugs.forEach(function(slug) {
       if (AIDE_SECTIONS.indexOf(slug) < 0) return;   // slug inconnu : ignoré
@@ -1078,7 +1122,7 @@ function _aideRendreHub(corps) {
       // sont dans le corps des sections. Titre + contenu (balises retirées),
       // accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
-      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   });
@@ -1100,7 +1144,7 @@ function _aideRendreHub(corps) {
       // sont dans le corps des sections. Titre + contenu (balises retirées),
       // accents tolérés.
       r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
-      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
+      r.dataset.aideTexte = window.ktaDocNormaliser(_aideSansBalises(s.html));
       hub.appendChild(r);
     });
   }
@@ -1272,12 +1316,10 @@ async function _genererEtatInstallation() {
   } catch(e) {}
   // Sessions persistées (tailles uniquement)
   try {
-    let n = 0, tot = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.indexOf("myktamap_session_v1_") === 0) { n++; tot += (localStorage.getItem(k) || "").length; }
-    }
-    L.push("- Sessions sauvegardées : " + n + " (" + Math.round(tot / 1024) + " Ko au total)");
+    const st = window.KtaSessionStore;
+    const ids = st.ids();
+    const tot = ids.reduce(function(n, id) { return n + st.taille(id); }, 0);
+    L.push("- Sessions sauvegardées : " + ids.length + " (" + Math.round(tot / 1024) + " Ko au total, stockage " + st.mode() + ")");
   } catch(e) {}
   // Dernières erreurs/avertissements du buffer de logs (debug.js)
   try {
@@ -1361,23 +1403,6 @@ window.afficherModaleAideIA = function() {
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.concept.titre") + '</div>' +
-          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
-            window.I18n.t("aiia.concept.body") +
-          '</p>' +
-        '</div>' +
-
-        '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.how.titre") + '</div>' +
-          '<ol style="color:#c8d0e0; line-height:1.7; font-size:13px; padding-left:22px; margin:0;">' +
-            '<li>' + window.I18n.t("aiia.how.step1") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step2") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step3") + '</li>' +
-            '<li>' + window.I18n.t("aiia.how.step4") + '</li>' +
-          '</ol>' +
-        '</div>' +
-
-        '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
           '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#c8d0e0;">' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +
@@ -1440,15 +1465,8 @@ window.afficherModaleAideIA = function() {
     const ta = document.getElementById("kta-aide-ia-prompt");
     const originalText = btn.textContent;
     try {
-      // navigator.clipboard requiert HTTPS ou localhost — fallback execCommand sinon
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(ta.value);
-      } else {
-        ta.select();
-        document.execCommand("copy");
-        ta.setSelectionRange(0, 0);
-        ta.blur();
-      }
+      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+      if (!(await window.ktaCopierTexte(ta.value))) throw new Error("clipboard + execCommand KO");
       btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");
       setTimeout(function() {
@@ -1524,22 +1542,9 @@ window.afficherModaleAideIA = function() {
     btn.textContent = window.I18n.t("aiia.dl.generating");
     try {
       const res = await _genererContexte(statusEl);
-      // Copie : API clipboard d'abord, repli execCommand si elle échoue
+      // Helper commun (utils.js) : clipboard d'abord, repli execCommand s'il échoue
       // (writeText peut throw même en contexte sécurisé, ex. document non focus).
-      let copie = false;
-      if (navigator.clipboard && window.isSecureContext) {
-        try { await navigator.clipboard.writeText(res.contenu); copie = true; } catch(e) {}
-      }
-      if (!copie) {
-        const ta = document.createElement("textarea");
-        ta.value = res.contenu;
-        ta.style.position = "fixed"; ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        copie = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (!copie) throw new Error("clipboard + execCommand KO");
-      }
+      if (!(await window.ktaCopierTexte(res.contenu))) throw new Error("clipboard + execCommand KO");
       statusEl.textContent = window.I18n.t("aiia.copyCtx.ok", { ko: Math.round(res.contenu.length / 1024) });
       btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");

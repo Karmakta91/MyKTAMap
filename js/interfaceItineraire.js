@@ -255,15 +255,15 @@ window.itineraireYAller = function(x, y, nom, opts) {
     ? window.getTrackingPosition()
     : null);
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-    alert(window.I18n.t("iti.err.trackerPos"));
+    window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
     return;
   }
   if (!window.Pathfinder) {
-    alert(window.I18n.t("iti.err.pathfinder"));
+    window.ktaAlerte(window.I18n.t("iti.err.pathfinder"), { type: "erreur" });
     return;
   }
   if (_itiAucunTrace()) {
-    alert(window.I18n.t("guid.aucunTrace"));
+    window.ktaAlerte(window.I18n.t("guid.aucunTrace"));
     return;
   }
 
@@ -328,7 +328,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
       if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
 
     } catch(err) {
-      alert(window.I18n.t("iti.err.compute", { err: (err.message || err) }));
+      window.ktaAlerte(window.I18n.t("iti.err.compute", { err: (err.message || err) }), { type: "erreur" });
     }
   }
 
@@ -1070,16 +1070,14 @@ window._onTrackerRecale = function(x, y, source, opts) {
       : 0;
     if (restantes > 0) {
       // Confirm CHARTÉ (ktaConfirm, utils.js) — retour KARMA : le confirm()
-      // natif jurait avec la charte graphique. Repli natif si utils absent.
-      const demander = (typeof window.ktaConfirm === "function")
-        ? window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
-            titre: window.I18n.t("iti.replan.confirmTitre"),
-            okLabel: window.I18n.t("iti.replan.confirmOk"),
-            cancelLabel: window.I18n.t("iti.replan.confirmNon"),
-            // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
-            autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
-          })
-        : Promise.resolve(confirm(window.I18n.t("iti.replan.confirm")));
+      // natif jurait avec la charte graphique.
+      const demander = window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
+        titre: window.I18n.t("iti.replan.confirmTitre"),
+        okLabel: window.I18n.t("iti.replan.confirmOk"),
+        cancelLabel: window.I18n.t("iti.replan.confirmNon"),
+        // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
+        autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
+      });
       demander.then(function(ok) {
         if (ok === "supprimer") {
           _effacerItineraireActif();
@@ -1403,9 +1401,6 @@ function _htmlSectionAvoidItineraire(prefs) {
     '<div class="kta-iti-section">' +
       '<details class="kta-iti-avoid-details">' +
         '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.I18n.t("iti.avoid.title") + '</summary>' +
-        '<p class="kta-iti-help">' +
-          window.I18n.t("iti.avoid.help") +
-        '</p>' +
 
         // === Points à éviter ===
         '<div class="kta-iti-avoid-group">' +
@@ -1429,9 +1424,6 @@ function _htmlSectionAvoidItineraire(prefs) {
         // === Tags à éviter ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
-          '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
-            window.I18n.t("iti.avoid.tagsHelp") +
-          '</p>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
         '</div>' +
 
@@ -1445,9 +1437,6 @@ function _htmlSectionAvoidItineraire(prefs) {
               (prefs.respecterInaccessibles === false ? '' : ' checked') + '>' +
             '<span>' + window.I18n.t("iti.inacc.label") + '</span>' +
           '</label>' +
-          '<p class="kta-iti-help" style="margin:2px 0 0; font-size:11.5px;">' +
-            window.I18n.t("iti.inacc.help") +
-          '</p>' +
         '</div>' +
 
         // === Zones à éviter (🆕 v1.48.0) ===
@@ -1633,7 +1622,7 @@ function _bindAvoidSectionHandlers() {
       if (!id) return;
       const resolved = window.Pathfinder.resolvePointById(id);
       if (!resolved) {
-        alert(window.I18n.t("iti.err.idNotFound", { id: id }));
+        window.ktaAlerte(window.I18n.t("iti.err.idNotFound", { id: id }));
         return;
       }
       const prefs2 = _getItiAvoidPrefs();
@@ -1693,8 +1682,8 @@ function _bindAvoidSectionHandlers() {
 
   const resetBtn = document.getElementById("kta-iti-avoid-reset");
   if (resetBtn) {
-    resetBtn.addEventListener("click", function() {
-      if (!confirm(window.I18n.t("iti.avoid.resetConfirm"))) return;
+    resetBtn.addEventListener("click", async function() {
+      if (!(await window.ktaConfirm(window.I18n.t("iti.avoid.resetConfirm")))) return;
       // Le reset rend le comportement SÛR, pas le dernier choix : la case
       // revient cochée comme le reste revient à vide.
       _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
@@ -1888,7 +1877,6 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-speed-segmented" id="kta-iti-speed-segmented">' +
         speedButtonsHtml +
       '</div>' +
-      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.speed.hint") + '</p>' +
     '</div>';
 
   // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable entre chaque
@@ -1910,7 +1898,6 @@ window.ouvrirItinerairModal = function() {
         '<input type="number" id="kta-iti-pause-min" min="0" max="120" step="1" ' +
                'value="' + pauseMin + '" style="width:70px;"> ' + window.I18n.t("iti.pause.minUnit") +
       '</div>' +
-      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.pause.hint") + '</p>' +
     '</div>';
 
   const sectionAction =
@@ -2084,8 +2071,8 @@ window.ouvrirItinerairModal = function() {
       modal.remove();
       window.map.fitBounds(bounds, { padding: [40, 40], animate: false });
     });
-    document.getElementById("kta-iti-erase").addEventListener("click", function() {
-      if (!confirm(window.I18n.t("iti.erase.confirm"))) return;
+    document.getElementById("kta-iti-erase").addEventListener("click", async function() {
+      if (!(await window.ktaConfirm(window.I18n.t("iti.erase.confirm")))) return;
       modal.remove();
       _effacerItineraireActif();
     });
@@ -2204,7 +2191,7 @@ window.ouvrirItinerairModal = function() {
       if (typeof window.getTrackingPosition !== "function") return;
       const pos = window.getTrackingPosition();
       if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-        alert(window.I18n.t("iti.err.trackerPos"));
+        window.ktaAlerte(window.I18n.t("iti.err.trackerPos"));
         return;
       }
       _itineraryWaypoints.push({

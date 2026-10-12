@@ -208,6 +208,7 @@
       planName: plan.name || planId,
       roads: routing.roads, zones: routing.zones || [],
       scale: (routing.scale && routing.scale > 0) ? routing.scale : 1,
+      profondeurs: routing.profondeurs || {},   // jonctions pesées avec les profondeurs de CE plan
       avoidPts: avoidPts, avoidZones: avoidZones, radius: prefs.radius
     };
   }
@@ -240,7 +241,8 @@
       r = window.Pathfinder.computeRouteOnRoads(wps, ctx.roads, {
         zones: ctx.zones, avoidPoints: ctx.avoidPts,
         avoidZonesResolved: ctx.avoidZones, avoidRadius: ctx.radius,
-        echelle: ctx.scale   // 🪧 carrefours mesurés à l'échelle de CE plan
+        echelle: ctx.scale,   // 🪧 carrefours et jonctions mesurés à l'échelle de CE plan
+        profondeurs: ctx.profondeurs
       });
     }
     return {
@@ -561,7 +563,8 @@
           routingB.roads,
           { zones: routingB.zones, avoidPoints: avoidPtsB,
             avoidZonesResolved: avoidZonesB, avoidRadius: prefsB.radius,
-            echelle: scaleB });   // 🪧 carrefours mesurés à l'échelle du plan B
+            echelle: scaleB,   // 🪧 carrefours et jonctions mesurés à l'échelle du plan B
+            profondeurs: routingB.profondeurs || {} });
       } catch(eB) {
         echecs.push({ portail: nomPortail, cote: "B", msg: eB.message || String(eB) });
         continue;

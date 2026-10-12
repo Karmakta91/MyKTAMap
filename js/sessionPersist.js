@@ -8,7 +8,10 @@
 // SESSION PERSIST — auto-sauvegarde de la session active
 // =========================
 // Stratégie :
-//  - 🆕 v1.16.1 — Slot PAR PLAN dans localStorage : `myktamap_session_v1_<planId>`.
+//  - Slot PAR PLAN : `myktamap_session_v1_<planId>` — stocké en IndexedDB depuis
+//    le 10/10/2026 via window.KtaSessionStore (js/sessionStore.js : lecture
+//    synchrone depuis la mémoire, écriture en arrière-plan + tampon de fermeture,
+//    repli localStorage si IndexedDB est indisponible).
 //    Plus de wipe au plan switch. L'user peut quitter le plan A, charger le
 //    plan B, faire des modifs, puis revenir sur A → ses modifs sur A sont
 //    restaurées automatiquement (avant : la session A était écrasée par
@@ -38,6 +41,15 @@
     if (!planId) return null;
     return STORAGE_PREFIX + planId;
   }
+  // Stockage des sessions (js/sessionStore.js). Repli localStorage direct si le module manque
+  // (page de test, chargement partiel) : même API, comportement d'avant.
+  const _STORE_LS = {
+    mode: function() { return "ls"; },
+    lire: function(id) { try { return localStorage.getItem(STORAGE_PREFIX + id); } catch(e) { return null; } },
+    ecrire: function(id, brut) { localStorage.setItem(STORAGE_PREFIX + id, brut); return true; },
+    retirer: function(id) { try { localStorage.removeItem(STORAGE_PREFIX + id); } catch(e) {} }
+  };
+  function _store() { return window.KtaSessionStore || _STORE_LS; }
   // Ancien slot unique conservé en lecture seule pour la migration au boot.
   const STORAGE_KEY_LEGACY = "myktamap_session_v1";
   const POLL_INTERVAL_MS      = 1500;   // défaut (~real-time)
@@ -57,6 +69,12 @@
   let _currentPlanId = null;
   // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
   let _quotaWarned   = false;
+  // 🩸 10/10/2026 (retour testeur en prod) : la sauvegarde automatique ne supprime le slot d'un plan QUE si la
+  // session de cette page l'a chargé (restaurée) ou écrit. Avant : une session écartée (nom de plan différent)
+  // était effacée au 1er tick — carte vide = « état vide » = removeItem, sans un mot.
+  let _slotAssume    = false;
+  // Question « restaurer la session d'un autre nom ? » en cours : aucune écriture tant qu'elle n'est pas tranchée.
+  let _decisionEnAttente = false;
   // 🆕 v1.8.1 : ID du setTimeout de la phase 2 de restore (itinéraire différé).
   // Permet d'annuler la phase 2 si l'user clique "Effacer la session" avant
   // que les 1500ms ne soient écoulés — sinon l'itinéraire réapparaissait
@@ -108,14 +126,14 @@
     // Si le nouveau slot existe déjà et est plus récent, ne pas écraser
     let existing;
     try {
-      const existingRaw = localStorage.getItem(newKey);
+      const existingRaw = _store().lire(payload.planId);
       existing = existingRaw ? JSON.parse(existingRaw) : null;
     } catch(e) { existing = null; }
     const legacyTs   = Date.parse(payload.savedAt  || 0) || 0;
     const existingTs = Date.parse(existing && existing.savedAt || 0) || 0;
     if (!existing || legacyTs > existingTs) {
       try {
-        localStorage.setItem(newKey, raw);
+        _store().ecrire(payload.planId, raw, { force: true });
         console.log("[SessionPersist] Migration legacy → per-plan : slot copié pour", payload.planId);
       } catch(e) {
         console.warn("[SessionPersist] Migration échouée (quota ?) :", e);
@@ -306,6 +324,7 @@
 
   function save(opts) {
     if (!_currentPlanId) return false;
+    if (_decisionEnAttente) return false;
 
     // Throttle : sauf si force=true (beforeunload, visibilitychange) on
     // skip si le main thread est sous pression
@@ -328,9 +347,8 @@
       // courant (utile après "Effacer la session"). 🆕 v1.16.1 : on touche
       // UNIQUEMENT au slot du plan courant — les autres plans gardent
       // leur session.
-      const _k = _storageKeyFor(_currentPlanId);
-      if (_k) {
-        try { localStorage.removeItem(_k); } catch(e) {}
+      if (_currentPlanId && _slotAssume) {
+        try { _store().retirer(_currentPlanId); } catch(e) {}
       }
       _lastHash = hash;
       return false;
@@ -381,41 +399,67 @@
     const _writeKey = _storageKeyFor(_currentPlanId);
     if (!_writeKey) return false;
     try {
-      localStorage.setItem(_writeKey, JSON.stringify(payload));
+      const S = _store();
+      S.ecrire(_currentPlanId, JSON.stringify(payload), { force: !!force });
+      _slotAssume = true;
       _lastHash = hash;
-      _quotaWarned = false;  // reset si le save remarche après libération de place
-      _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
-      _lastSaveTs = Date.now();    // 🚨 Q46 : « enregistré il y a N s » dans 📊 Détails
-      _lastSaveKo = false;
+      // En IndexedDB, l'écriture se confirme plus tard (écouteur surResultat plus bas) : l'état « enregistré »
+      // n'est posé qu'à la confirmation. En localStorage, setItem a déjà réussi.
+      if (S.mode() !== "idb" && S.mode() !== "attente") _ecritureReussie();
       return true;
     } catch(e) {
-      console.warn("[SessionPersist] save échoué :", e);
-      // Détection quota dépassé : sur mobile c'est très souvent un signe que
-      // le navigateur va commencer à purger / killer l'onglet. On alerte
-      // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
-      // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
-      // suivants tant que le problème dure.
-      const isQuota =
-        e && (e.name === "QuotaExceededError" ||
-              e.code === 22 ||                       // historique Chrome/Safari
-              e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
-              /quota|storage/i.test(e.message || ""));
-      if (isQuota && !_quotaWarned && window.OOMGuard) {
-        _quotaWarned = true;
-        window.OOMGuard.showToast(
-          (window.I18n && window.I18n.t) ? window.I18n.t("session.toast.storageFull")
-            : "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
-          "error"
-        );
-      }
-      // 🚨 B5 (audit ergonomie 13/09/2026) : le toast ne passait qu'UNE fois
-      // (10 s, remplaçable par n'importe quel autre) puis l'app échouait en
-      // silence pendant des heures. Bandeau PERSISTANT tant que le save échoue,
-      // avec le bouton d'export ; il tombe au premier save réussi.
-      if (isQuota) _afficherBandeauStockage();
-      _lastSaveKo = true;   // Q46 : l'écran de détails le dira en rouge
+      _ecritureEchouee(e);
       return false;
     }
+  }
+
+  function _ecritureReussie() {
+    _quotaWarned = false;  // reset si le save remarche après libération de place
+    _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
+    _lastSaveTs = Date.now();    // 🚨 Q46 : « enregistré il y a N s » dans 📊 Détails
+    _lastSaveKo = false;
+  }
+
+  function _ecritureEchouee(e) {
+    console.warn("[SessionPersist] save échoué :", e);
+    // Détection quota dépassé : sur mobile c'est très souvent un signe que
+    // le navigateur va commencer à purger / killer l'onglet. On alerte
+    // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
+    // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
+    // suivants tant que le problème dure.
+    const isQuota =
+      e && (e.name === "QuotaExceededError" ||
+            e.code === 22 ||                       // historique Chrome/Safari
+            e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
+            /quota|storage/i.test(e.message || ""));
+    if (isQuota && !_quotaWarned && window.OOMGuard) {
+      _quotaWarned = true;
+      window.OOMGuard.showToast(
+        (window.I18n && window.I18n.t) ? window.I18n.t("session.toast.storageFull")
+          : "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
+        "error"
+      );
+    }
+    // 🚨 B5 (audit ergonomie 13/09/2026) : le toast ne passait qu'UNE fois
+    // (10 s, remplaçable par n'importe quel autre) puis l'app échouait en
+    // silence pendant des heures. Bandeau PERSISTANT tant que le save échoue,
+    // avec le bouton d'export ; il tombe au premier save réussi.
+    if (isQuota) _afficherBandeauStockage();
+    // En IndexedDB, un refus faute de place = la mémoire des sessions est pleine : on le dit
+    // (en localStorage, c'est l'événement mktm:stockage-plein qui s'en charge).
+    if (isQuota && _store().mode() === "idb") _verifierMemoire(true);
+    _lastSaveKo = true;   // Q46 : l'écran de détails le dira en rouge
+  }
+
+  // Résultat (asynchrone) d'une écriture IndexedDB. Échec → l'empreinte est oubliée :
+  // le prochain tick de sauvegarde réessaie avec l'état courant.
+  if (window.KtaSessionStore && typeof window.KtaSessionStore.surResultat === "function") {
+    window.KtaSessionStore.surResultat(function(r) {
+      if (!r || r.planId !== _currentPlanId) return;
+      if (r.ok) { _ecritureReussie(); return; }
+      _lastHash = null;
+      _ecritureEchouee(r.erreur || new Error("IndexedDB"));
+    });
   }
 
   // 🆕 v1.16.1 — getSaved accepte un planId optionnel. Sans argument →
@@ -426,7 +470,7 @@
     const lookupId = planId || _currentPlanId;
     if (!lookupId) return null;
     try {
-      const raw = localStorage.getItem(_storageKeyFor(lookupId));
+      const raw = _store().lire(lookupId);
       if (!raw) return null;
       const payload = JSON.parse(raw);
       if (!payload || payload.version !== VERSION) return null;
@@ -470,10 +514,10 @@
     }
     // 🆕 v1.16.1 : on efface UNIQUEMENT le slot du plan courant — les
     // autres plans gardent leur session intacte.
-    const _k = _storageKeyFor(_currentPlanId);
-    if (_k) {
-      try { localStorage.removeItem(_k); } catch(e) {}
+    if (_currentPlanId) {
+      try { _store().retirer(_currentPlanId); } catch(e) {}
     }
+    _slotAssume = false;
     // 🔄 v1.85.0 — 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
     // Effacer la session detruit les objets rapatries ; laisser le verrou
     // masquerait alors le calque d origine, et l utilisateur verrait son
@@ -908,7 +952,8 @@
           cancelLabel: _t("session.btn.keep")
         }).then(function(ok) { if (ok) go(); });
       } else {
-        go();
+        // Sans fenêtre de confirmation, on N'efface PAS : un repli destructeur par défaut est le pire choix.
+        console.warn("[SessionPersist] ktaConfirm indisponible : effacement de la session refusé");
       }
     });
     // Click sur le backdrop = "Continuer" (pattern modal soft)
@@ -983,8 +1028,16 @@
   //    dans son slot et sera restaurée naturellement quand l'user
   //    reviendra sur ce plan.
   //  - Démarre le polling pour la session courante.
+  // Nom de plan comparé comme l'accueil le fait (homeLoader.js > _normId) : casse, accents, ponctuation ignorés.
+  function _normNomPlan(s) {
+    return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "");
+  }
+
   function onPlanLoaded(planId) {
     _stopPolling();
+    _slotAssume = false;
+    _decisionEnAttente = false;
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
     // l'user a chargé une session avec itinéraire (phase 2 setTimeout
     // de 1500ms en cours) puis a fait un plan switch (🗂️) avant que
@@ -1040,20 +1093,88 @@
       const currentName = _currentPlanName();
       const nameMatch   = (!saved.planName || !currentName)
                             ? true
-                            : (saved.planName === currentName);
+                            : (_normNomPlan(saved.planName) === _normNomPlan(currentName));
 
       if (nameMatch) {
         restored = _applyRestore(saved);
-        if (restored) _afficherModaleSession(restored);
-      } else if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-        console.log("[SessionPersist] Session écartée (nameMatch ko) — saved=",
-                    saved.planId, "/", saved.planName,
-                    " current=", _currentPlanId, "/", currentName);
+        if (restored) { _slotAssume = true; _afficherModaleSession(restored); }
+      } else {
+        // 🩸 10/10/2026 (retour testeur en prod) : nom vraiment différent (plan renommé par sa nouvelle version, ou
+        // collision d'identifiant). Avant : écartée en silence PUIS effacée par l'autosauvegarde. Désormais : copie
+        // dans 📦 Backups, écriture suspendue, et l'utilisateur tranche.
+        console.warn("[SessionPersist] session d'un autre nom de plan :", saved.planName, "≠", currentName);
+        _proposerSessionAutreNom(saved, currentName, planId);
       }
     }
     _startPolling();
+    _verifierMemoire(false);
     return restored;
   }
+
+  function _proposerSessionAutreNom(saved, nomActuel, planId) {
+    _decisionEnAttente = true;
+    const esc = window.ktaEsc || function (x) { return String(x); };
+    const copie = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
+      ? Promise.resolve(window.SessionBackups.snapshot("session-autre-nom")).catch(function () { return null; })
+      : Promise.resolve(null);
+    copie.then(function () {
+      if (_currentPlanId !== planId) { _decisionEnAttente = false; return null; }   // plan changé entre-temps
+      if (typeof window.ktaConfirm !== "function") return true;
+      return window.ktaConfirm(_trModule("session.autreNom.msg", { ancien: esc(saved.planName), actuel: esc(nomActuel) }), {
+        titre: _trModule("session.autreNom.titre"),
+        okLabel: _trModule("session.autreNom.restaurer"), cancelLabel: _trModule("session.autreNom.ignorer")
+      });
+    }).then(function (ok) {
+      if (_currentPlanId !== planId) return;
+      _decisionEnAttente = false;
+      if (ok) {
+        const r = _applyRestore(saved);
+        if (r) {
+          _slotAssume = true;
+          // Réécrite tout de suite sous le nom ACTUEL : sinon rien ne change, rien n'est réécrit, et la même
+          // question reviendrait à chaque ouverture du plan.
+          _lastHash = null;
+          save({ force: true });
+          _afficherModaleSession(r);
+        }
+      } else if (ok === false && window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(_trModule("session.autreNom.ignoree"), "warn", { important: true });
+      }
+    });
+  }
+
+  // ========== MÉMOIRE DES SESSIONS ==========
+  // 10/10/2026 (testeur en prod : points disparus, invite de mise à jour à chaque ouverture) : une mémoire pleine
+  // ne se voyait qu'APRÈS la panne (bandeau d'échec de sauvegarde). On prévient AVANT, au chargement d'un plan
+  // (≥ 80 %), et dès qu'une écriture échoue faute de place. Une fois par page et par niveau : jamais une fenêtre à
+  // chaque plan ouvert. Deux mémoires possibles (ktaStockageLocal.mesurer().mode) :
+  //   - « idb » (normal) : quota du navigateur pour le site (navigator.storage.estimate) — une part de l'espace
+  //     libre de l'appareil ; plein = une écriture IndexedDB refusée (QuotaExceededError).
+  //   - « ls » (repli : IndexedDB indisponible) : localStorage ~5 Mo, plein = événement mktm:stockage-plein.
+  const _memoireAlertee = { presque: false, plein: false };
+  function _verifierMemoire(plein) {
+    const S = window.ktaStockageLocal;
+    if (!S || typeof window.ktaConfirm !== "function") return;
+    const m = S.mesurer();
+    const niveau = plein ? "plein" : (m.ratio >= S.SEUIL_ALERTE ? "presque" : null);
+    if (!niveau || _memoireAlertee[niveau] || (niveau === "presque" && _memoireAlertee.plein)) return;
+    _memoireAlertee[niveau] = true;
+    const pct = Math.min(100, Math.round(m.ratio * 100));
+    const idb = m.mode === "idb" ? "Idb" : "";
+    window.ktaConfirm(_trModule((niveau === "plein" ? "session.memoire.pleinMsg" : "session.memoire.presqueMsg") + idb,
+      { pct: pct, occupe: S.mo(m.car), limite: m.limite ? S.mo(m.limite) : "?" }), {
+      titre: _trModule(niveau === "plein" ? "session.memoire.pleinTitre" : "session.memoire.presqueTitre"),
+      okLabel: _trModule("session.memoire.voir"), cancelLabel: _trModule("session.memoire.plusTard")
+    }).then(function (ok) {
+      if (ok && typeof window.ktaOuvrirDetailsSession === "function") window.ktaOuvrirDetailsSession();
+    });
+  }
+  // localStorage plein : ne concerne les sessions qu'en repli localStorage. En IndexedDB, le module de stockage
+  // retire les anciennes copies d'avant la migration (déjà vérifiées) pour refaire de la place.
+  window.addEventListener("mktm:stockage-plein", function () {
+    if (_store().mode() === "idb") return;
+    _verifierMemoire(true);
+  });
 
   // ========== SAFETY NETS ==========
 
@@ -1076,6 +1197,7 @@
     save:         save,
     clear:        clear,
     getSaved:     getSaved,
-    getLastSaveInfo: getLastSaveInfo   // 🚨 Q46
+    getLastSaveInfo: getLastSaveInfo,  // 🚨 Q46
+    normNomPlan:  _normNomPlan         // même plan sous un autre nom (📦 Backups d'une autre version)
   };
 })();

@@ -817,9 +817,6 @@
                          '</label>';
                 }).join("") +
               '</div>' +
-              '<p style="font-size:11px; color:#8892a4; font-style:italic; margin:6px 0 0; line-height:1.4;">' +
-                window.I18n.t("heatmap.levels.note") +
-              '</p>' +
             '</div>'
             : '') +
 

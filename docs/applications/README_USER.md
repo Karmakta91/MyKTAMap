@@ -27,7 +27,7 @@ L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les 
 - ❌ **Pas un GPS sous terre** — la géolocalisation native ne marche pas sous roche. Le « tracker » de l'app est un **podomètre + direction** qui dérive vite ; il faut recaler régulièrement.
 - ❌ **Pas une garantie de sécurité** — la carte donne le chemin, pas l'oxygène. Tu restes seul·e juge des risques (effondrements, eau, gaz, fatigue).
 - ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
-- ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
+- ❌ **Pas un réseau social** — pas de compte à créer, pas de profil public, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
 
 ---
 
@@ -75,7 +75,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 ---
 
@@ -128,7 +128,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau). La page d'audit complète décrit l'état actuel ; ce qui a changé à chaque version est dans sa page « Historique des versions ».
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁 Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁 Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h. Sur un plan que ton accès permet seulement de consulter, les outils de dessin sont grisés : les toucher rappelle que le plan est en lecture seule. Sur l'écran de connexion d'une telle installation, la pastille sous la carte dit si la base de données répond (touche-la pour revérifier), et les icônes 📖 et 🆘 ouvrent la documentation et le dépannage.
 
 ---
 
@@ -185,7 +185,7 @@ Quand une nouvelle version existe et que tu as du réseau, l'app te propose de l
 | Ta situation | L'outil | Où le trouver |
 |---|---|---|
 | Je veux **sortir au plus vite** | 🚨 Sortie d'urgence | bouton 🚨 de la barre du haut |
-| Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🚨 Mode urgence — Affichage XL | menu 🧭 Tracker, bouton rouge |
+| Je sais où je suis, mais je panique : il me faut **ma position et mon cap en très gros** | 🔆 Affichage XL | menu 🧭 Tracker, bouton rouge |
 | **Je ne sais plus où je suis** | ⛑️ Je suis perdu | menu 🧭 Tracker, bouton orange |
 | **Quelqu'un d'autre est perdu**, je coordonne des équipes | 🚑 Mode Secours | 🔭 Pour aller plus loin › 🚑 Mode Secours |
 
@@ -211,9 +211,9 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 Une vibration confirme la sortie trouvée ou t'alerte s'il n'y en a aucune, même si **📳 Vibration haptique** est désactivée. Tout se calcule sur ton appareil, sans réseau.
 
-### 🚨 Mode urgence — Affichage XL
+### 🔆 Affichage XL
 
-Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, dicter ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🚨 Mode urgence — Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
+Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** : te ré-orienter, repérer un puits tout proche, vérifier ton cap, dicter ta position à quelqu'un. Dans le menu **🧭 Tracker**, le bouton rouge **🔆 Affichage XL (position + cap)** ouvre un écran plein écran qui tient sans défiler :
 
 - 🗺️ **Une mini-carte** qui occupe presque tout l'écran, très zoomée et centrée sur toi, aux **couleurs de ta légende**, avec ton itinéraire, **les points du plan et les tiens** (du niveau affiché), et la même orientation que la carte en mode « plan orienté ».
 - 🖐️ **Tu peux la déplacer et zoomer au doigt** pour regarder plus loin. Dès que tu la bouges, elle cesse de te suivre et se remet **Nord en haut** ; le bouton **🎯 Recentrer** la ramène sur toi, reprend le suivi et l'orientation.
@@ -223,7 +223,7 @@ Tu sais où tu es, mais tu paniques et il te faut l'essentiel **en très gros** 
 - 🔋 **Une ligne d'état** en haut à droite : ta batterie (si **🔋 Niveau de batterie** est activé dans ⚙️ Configuration), l'état du tracker et de la boussole. Le nom du plan est sous le titre.
 - 📋 **Tes coordonnées GPS, si ton plan est géoréférencé** : l'icône 📋 au bout de la ligne d'état ouvre une bulle qui les affiche **en très gros**, lisibles à un mètre — celles qu'on dicte aux secours —, avec une ligne qui précise s'il s'agit de ta position suivie, de ta dernière position connue, ou de la **position de départ du plan, jamais confirmée**. Son bouton **📋 Copier ma position** copie les coordonnées seules (`48.856600, 2.352200`), prêtes à coller dans un SMS ou une app de cartes. ⚠️ Si ta position n'a jamais été confirmée, la bulle le dit mais pas le message : dis-le aussi à qui tu écris. Plan non géoréférencé : pas d'icône, aucune coordonnée n'est affichée.
 
-L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et tient aussi en paysage. Pour en sortir : le gros bouton **↩️ SORTIR DU MODE URGENCE**, toujours en bas, ou **Échap** sur ordinateur (si une bulle est ouverte, Échap ferme d'abord la bulle).
+L'écran suit le thème de l'app, ne se met pas en veille tant qu'il est ouvert et tient aussi en paysage. Pour en sortir : le gros bouton **↩️ QUITTER L'AFFICHAGE XL**, toujours en bas, ou **Échap** sur ordinateur (si une bulle est ouverte, Échap ferme d'abord la bulle).
 
 ### ⛑️ Je suis perdu
 
@@ -329,7 +329,8 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 - les autres mesures : 📐 mesure, 🗺️ itinéraire et ses étapes, 🧭 suivi ;
 - **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet. Si aucune sortie n'est en cours, le bouton **📔 Démarrer une sortie** en ouvre une sur ce plan — y compris quand « Tenir un carnet de mes sorties » est décoché dans ⚙️ Configuration (c'est alors le seul moyen d'en enregistrer une). Une seule sortie à la fois ;
 - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer ;
-- **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation ;
+- **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation. Les copies d'une **autre version de ce plan** (réimportée ou renommée) apparaissent aussi, marquées 📂, et se restaurent dans le plan ouvert ;
+- **💾 Mémoire des sessions** : tes sessions vivent dans l'espace que le navigateur accorde à l'app sur ton appareil — une part de son espace libre, partagée avec tes plans, tes photos et tes sauvegardes (plus de plafond de 5 Mo depuis le 10/10/2026 ; tes sessions existantes y ont été déplacées automatiquement). La jauge montre son remplissage et les plans dont la session pèse le plus ; à 80 %, l'app te prévient à l'ouverture d'un plan. Pour faire de la place : exporte ta session (💾 Enregistrer session), puis efface la session ou les photos d'un vieux plan, ou retire un plan inutile. Si le navigateur refuse ce stockage (certaines navigations privées), tes sessions restent dans l'ancien stockage limité à ~5 Mo, et la jauge le montre ;
 - le bouton **📊 Stats globales** (rapport copiable, CSV, PDF).
 
 ### 🗺️ Lire le plan
@@ -366,7 +367,7 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 
 *Exemple : pour ne voir que deux sortes de puits, 🏷️ Tags → 🚫 Aucun, puis recoche les deux tags voulus.*
 
-> 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie (le navigateur tolère environ 5 Mo, tous plans confondus). **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier). Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification.
+> 🔄 **Corriger un calque de données** — un calque livré avec le plan se masque mais ne s'édite pas. Le bouton **🔄 Modifier** de sa ligne le copie dans ta session, où tous tes outils s'appliquent (par exemple 🔄 Convertir cet objet) ; l'original se masque (« en cours de modification — afficher quand même » permet de comparer). Avant d'agir, l'app t'annonce la place que prendra la copie et celle qu'occupent déjà tes sessions. **↩️ Restaurer** abandonne tes modifications ; **💾 Exporter** produit le fichier corrigé de **ce calque seul**, à redonner au plan via 🏗️ Générateur → « Modifier un plan », bouton « Choisir » sur la ligne du calque : il remplace l'ancien contenu. Ce que tu as dessiné toi-même n'en fait pas partie (l'app te dit combien d'objets restent hors du fichier). Effacer la session restaure les calques ouverts à la modification ; réimporter ta session sur ce plan les remet en modification.
 
 ### 🗺️ Légende
 
@@ -437,7 +438,7 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
 | **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
-| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🚨 Mode urgence XL · 🚨 Mode Secours — voir 🆘 En cas d'urgence sous terre |
+| **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚑 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
 
@@ -579,6 +580,8 @@ Une liaison relie **un point d'un plan à un point d'un autre plan** — un « p
 
 Depuis la fenêtre Itinéraire (**Destination sur un autre plan**) ou un résultat de la recherche multi-plans (bouton 🧭) : l'app choisit le portail le plus court, affiche le trajet en étapes et le trace sur ton plan. Tes points de passage sont parcourus d'abord, dans l'ordre ; les évitements de chaque plan sont respectés. Si c'est impossible, un message dit pourquoi.
 
+Par défaut, le trajet ne franchit qu'une frontière (ton plan et le plan d'arrivée). Pour passer par des plans intermédiaires (A → B → C), coche **🌀 Itinéraire via plusieurs plans (plans connectés)** dans la recherche multi-plans, plan ouvert ; ce choix est mémorisé.
+
 **C'est parti** ne te téléporte pas : tu marches (validation des étapes et recalcul comme d'habitude), puis tu traverses au portail avec le bouton flottant **🌀 Portail suivant** ou le ➜ du point-portail. La suite se trace de l'autre côté. Si tu ouvres le plan suivant autrement, ou si tu remplaces l'itinéraire, la suite est abandonnée. La 🪧 Feuille de route résume les plans suivants (« Puis 🌀 portail → plan : 350 m, 4 croisements »).
 
 **Bon à savoir** : renommer ou déplacer un point lié met ses liaisons à jour ; supprimer un point supprime ses liaisons ; les liaisons voyagent avec l'export de session ; celles livrées avec un plan s'utilisent mais ne se modifient pas.
@@ -590,7 +593,7 @@ Depuis la fenêtre Itinéraire (**Destination sur un autre plan**) ou un résult
 La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec leurs points, tracés, zones et structures, dans tes couleurs de légende. Elle est **active par défaut** : le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu regardes ; aucune donnée de tes plans ne sort. Pour la couper : ⚙️ Configuration.
 
 - **Sur l'accueil**, le widget **🌍 Vue OSM** ; son bouton **⛶** ouvre le mode OSM en plein écran.
-- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés).
+- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés). Depuis un plan, la Vue OSM ne s'ouvre que si le plan a été **converti en V2 tuilé** (voir « 🧱 Convertir en V2 tuilé ») ; sinon, un message explique comment le convertir.
 - Un plan n'y apparaît qu'une fois **ouvert au moins une fois** : c'est à l'ouverture que l'app lit son géoréférencement.
 - **Hors connexion** : **💾 Sauvegarder hors-ligne** télécharge à l'avance les tuiles de la zone visible.
 - Zoomer sur un plan affiche des images plus détaillées, lues dans le fichier du plan déjà sur ton appareil. Les calques livrés masqués s'y affichent et se filtrent comme les autres.
@@ -661,9 +664,11 @@ Jusqu'à **5 photos par point**, gardées sur ton appareil uniquement. Dans la f
 
 **Les voir** : la bulle du point montre les miniatures — un tap ouvre le plein écran (pince ou molette pour zoomer, glisser pour passer à la suivante, `← →` et `Échap` sur PC). Le compteur **📸** de la barre du haut ouvre le détail de la session.
 
-**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; un fichier réimporté restaure ses photos. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point ; une photo qui ne peut pas être nettoyée est exclue.
+**Les emporter** : coche la case 📸 des photos dans ⬆️ → **🚀 Full**, **🎨 Avancé** ou **🔄 Conversion** ; chaque photo emporte la fiche de son point (nom, position, niveau, type : de quoi ♻️ recréer un point disparu). Un fichier réimporté **ajoute** ses photos à celles de l'appareil — une photo déjà présente n'est pas doublée, et aucune n'est effacée. Avec **🛡️ Anonymiser pour partage public**, chaque photo est renommée et rattachée au code anonyme de son point, sans sa fiche ; une photo qui ne peut pas être nettoyée est exclue.
 
 **📌 Photo « à rattacher »** : avant la v2.3.0, une photo était rangée sous le **nom** de son point. Si plusieurs points portent le même nom, l'app ne devine pas à qui elle appartient : dans la bulle de chacun de ces points, la photo apparaît avec un **cadre orange pointillé** et un bouton **📌 Photo N : c'est ce point**. Touche-le dans la bulle du bon point. Rien n'est jamais supprimé. Les photos d'un nom porté par un seul point sont rattachées toutes seules, et celles que tu prends maintenant suivent leur point même si tu le renommes.
+
+**📸 Mes photos — et les photos d'un point supprimé** : dans **🧰 Outils** de l'accueil, **📸 Mes photos** montre toutes les photos de l'appareil, plan par plan, rangées par point (un tap = plein écran). **Supprimer un point ne supprime pas ses photos** : elles passent dans le groupe **⚠️ Sans point**, gardées jusqu'à ce que tu décides — **🔗 Rattacher** (à un point de la liste, ou **🗺️ Choisir sur la carte** si le plan est ouvert ; refusé, avec le nombre de places libres, si le point dépasserait 5 photos — rien n'est alors modifié), **♻️ Recréer le point** (à sa position, son niveau, son type et son nom ; le plan s'ouvre au besoin), **💾 Enregistrer** (un ZIP sur l'appareil) ou **🗑️ Supprimer** (après confirmation). **⏪ Annuler** la suppression d'un point lui rend ses photos. Si les points d'un plan ne sont pas lisibles depuis l'accueil (plan absent ou injoignable), ses photos sont **🔎 à vérifier à l'ouverture du plan** — jamais déclarées sans point à tort. À l'ouverture d'un plan qui a des photos sans point, un message discret **📸 N photo(s) sans point** propose de les **Voir**.
 
 > ⚠️ Les photos occupent le stockage du navigateur (de quelques dizaines à quelques centaines de Mo selon l'appareil) ; un avertissement s'affiche près de la limite. Sur iPhone, le système peut vider ce stockage s'il manque de place : exporte régulièrement. **💥 Tout réinitialiser** efface aussi les photos, et leur suppression ne s'annule pas.
 
@@ -811,16 +816,16 @@ L'historique est **oublié** quand tu recharges la page ou changes de plan, et u
 
 ---
 
-## 📐 Mesure de distance et ⬛ de surface
+## 📐 Mesure de distance et ♦️ de surface
 
 Dans le groupe **📐 Mesure** :
 
 - **📐 Distance** — tape des points ; le total s'affiche en bas à gauche, avec la longueur de chaque segment et les angles.
-- **⬛ Surface** — tape au moins 3 points ; l'aire s'affiche en m², puis en hectares au-delà de 10 000 m².
+- **♦️ Surface** — tape au moins 3 points ; l'aire s'affiche en m², puis en hectares au-delà de 10 000 m².
 
 Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et le prochain tap va à celle qui est allumée. Leur précision dépend de l'échelle du plan (calibrée dans ⚙️ Réglages). Elles sont gardées avec ta session.
 
-**❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ⬛** ou **Tout effacer (📐 + ⬛)**.
+**❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ♦️** ou **Tout effacer (📐 + ♦️)**.
 
 ---
 
@@ -851,7 +856,7 @@ Elle apparaît en magenta pointillé, un rond à chaque bout. **Sans jonction, a
 
 ### 🛠️ Côté créateur du plan
 
-Le mode multi-niveau, le niveau de chaque calque image et celui des éléments des calques de données sont réglés par le créateur du plan dans le Générateur → 🔭 Pour aller plus loin › 🏗️ Créer ou modifier un plan. Sur un plan qui ne l'a pas activé, rien de tout cela n'apparaît ; activé plus tard, les éléments existants sont au niveau 0.
+Le mode multi-niveau, le niveau de chaque calque image et celui des éléments des calques de données sont réglés par le créateur du plan dans le Générateur (voir 🔭 Pour aller plus loin › 🏗️ Créer ou modifier un plan). Sur un plan qui ne l'a pas activé, rien de tout cela n'apparaît ; activé plus tard, les éléments existants sont au niveau 0.
 
 ---
 
@@ -957,8 +962,9 @@ Dans la fenêtre Profil, **📤 Exporter mon profil** produit un fichier qui tra
 
 - **PDF du Mode Histoire** : décochés au départ, car un plan peut en porter jusqu'à 100 Mo. Cochés, ils sont remis en place à l'import, sans doublon si tu réimportes.
 - **Archives de plans** : coche les plans mémorisés à emporter (rien n'est coché au départ) ; l'export devient un `.zip` « profil complet » et l'import rattache chaque archive à son plan. Au-delà d'environ 50 Mo sur iPhone/iPad (500 Mo ailleurs), l'app demande confirmation. Si le navigateur a supprimé une archive, l'export te dit lesquelles manquent. Les plans en « re-sélection » n'y figurent pas : leur ZIP est sur ton disque, pas dans l'app.
+- **Plans d'une organisation (☁️)** : ni eux, ni leurs sessions, photos, favoris ou sauvegardes ne partent dans le fichier, et un profil importé n'en restaure aucun (le bilan d'import dit combien ont été ignorés) : ils se récupèrent en se connectant à l'organisation.
 
-**📥 Importer un profil** te laisse choisir les sections et le mode : **🔄 Merge** ajoute sans écraser (recommandé), **♻️ Replace** vide d'abord les sections cochées. En Merge, un plan qui a déjà son archive sur l'appareil garde la sienne. Un rechargement de l'app est proposé à la fin. Sur une installation qui ne propose que les plans de son serveur, l'import de profil est refusé (il pourrait masquer ces plans) ; l'export reste possible.
+**📥 Importer un profil** te laisse choisir les sections et le mode : **🔄 Merge** ajoute sans écraser (recommandé), **♻️ Replace** vide d'abord les sections cochées. En Merge, un plan qui a déjà son archive sur l'appareil garde la sienne. Seules les préférences qu'un export produit sont reprises : un fichier modifié à la main ne peut pas poser d'autre réglage. Un rechargement de l'app est proposé à la fin. Sur une installation qui ne propose que les plans de son serveur, l'import de profil est refusé (il pourrait masquer ces plans) ; l'export reste possible.
 
 ---
 
@@ -1023,7 +1029,7 @@ Tu peux ainsi n'exporter que les puits, ou que les zones inaccessibles. **Télé
 
 **⬇️ Charger / Import → 📥 Importer un fichier** ouvre le choix du fichier ; l'app reconnaît son type.
 
-- **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
+- **Session MyKTAMap** (`.json`, ou `.zip` avec photos) : elle **remplace** ta session en cours (points, tracés, zones, mesure) ; ses photos, elles, **s'ajoutent** aux tiennes, sans en effacer aucune. Un aperçu montre ce qu'elle contient ; une sauvegarde de ta session actuelle est prise juste avant. **Importer** pour valider, **Annuler** pour ne rien changer.
 - **Fichier GPX** (TopoDroid, OsmAnd, Avenza, Strava, Garmin…) : ses points et tracés **s'ajoutent** à ta session. Le plan doit être géoréférencé. Un aperçu précède l'ajout, et **Ctrl+Z** l'annule.
 
 Pour changer de plan, touche la **rose des vents 🧭** (retour à l'accueil) ou le **titre du plan** dans la barre du haut ; ta session est enregistrée avant le changement.
@@ -1082,7 +1088,7 @@ Un plan **mémorisé** fonctionne déjà hors connexion. Un plan **serveur**, no
 
 ### ⚙️ Configuration (accueil) — toute l'app
 
-Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les réglages qui valent pour **tous tes plans**.
+Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les réglages qui valent pour **tous tes plans**. Chaque rubrique se replie d'un appui sur son titre (sur téléphone, seule la première est ouverte au départ) ; ton choix est gardé.
 
 - **🌍 Application** — la **langue** : Français, English, Español. Elle s'applique tout de suite, guide et tutoriel compris ; le drapeau de la fenêtre 📖 Documentation change la langue du seul guide. Elle se choisit aussi sur l'écran de déverrouillage, et reste gardée en mode incognito.
 - **🎨 Affichage** :
@@ -1103,7 +1109,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
-  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
+  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
 
 ### ⚙️ Réglages (en mode carte) — ce plan
 
@@ -1122,9 +1128,9 @@ Pas de bouton Appliquer : chaque champ s'enregistre aussitôt (un éclair vert l
   - **🧭 Position initiale du tracker** *(ce plan)* : X/Y, **🔍 Choisir via un point** ou **📍 Cliquer sur la carte**. Changer le départ fait repartir le suivi de là (le parcours en cours est effacé) ;
   - **👣 Détection des pas** *(tous les plans)* : longueur du pas (0 à 1,5 m), seuil (10 à 30), délai (300 à 3 000 ms) ;
   - **🧭 Navigation intelligente** *(ce plan)* : voir « 🔭 Pour aller plus loin ».
-- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
+- **🎨 Affichage** — **🎨 Fond sous le plan** *(ce plan)* : noir, blanc ou gris neutre sous les parties transparentes du plan (par défaut : celui que conseille le plan, sinon selon le thème) ; l'export image le reprend ; **⚪ Afficher les ronds aux intersections** *(ce plan)* ; **🎤 Commandes vocales (BETA)** *(tous les plans)* : un bouton 🎤 pour piloter l'app à la voix, dis « aide » pour la liste des commandes ; disponible en français uniquement : le bouton n'apparaît que si l'app est en français. Une option que ton navigateur ne gère pas reste visible, grisée, avec la raison.
 - **🚀 Performance** *(ce plan)* — le **🚀 Mode ULTRA** pour les gros plans qui font planter le téléphone (voir « 🔭 Pour aller plus loin ») ; sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement**.
-- **🧩 Fonctionnalités optionnelles** et **🔒 Confidentialité & sécurité** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito).
+- **🧩 Fonctionnalités optionnelles** — les mêmes cases que dans ⚙️ Configuration (options, mode incognito). La confidentialité se règle dans ⚙️ Configuration de l'accueil.
 - **🛠️ Système & maintenance** — le **mode performance** du plan, en lecture seule.
 
 En bas, **↺ Valeurs par défaut** (après confirmation) remet ce plan à ses valeurs d'origine (échelle, départ, navigation intelligente, ronds, Nord), la détection des pas aux valeurs de l'app, et replace le suivi au départ. Les réglages de l'accueil ne bougent pas.
@@ -1150,7 +1156,7 @@ Le tutoriel d'accueil se rejoue à tout moment : **📖 Documentation** → bout
 
 ### 🔎 Chercher dans la documentation
 
-En haut de la fenêtre 📖, le champ **🔎 Chercher** cherche dans tout le texte : les résultats sont surlignés, **Entrée** ou ↓ passe au suivant, le compteur indique « i / n » et le sommaire estompe les parties sans résultat. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche du groupe ❓ Aide cherche dans les titres et le contenu des pages d'aide.
+En haut de la fenêtre 📖, le champ **🔎 Chercher** cherche dans tout le texte : les résultats sont surlignés, **Entrée** ou ↓ passe au suivant, le compteur indique « i / n » et le sommaire estompe les parties sans résultat. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche de la fenêtre **❓ Aide** (groupe 📚) cherche dans les titres et le contenu des pages d'aide.
 
 ### 🤖 Aide IA
 
@@ -1266,7 +1272,7 @@ La tuile **🔥 Heatmap** du menu **🧭 Tracker** colore le plan selon la fréq
 
 La heatmap est **purement visuelle** : elle ne modifie ni le plan, ni tes annotations, ni les exports. Ferme la fenêtre pour la masquer.
 
-> 🚨 Le **Mode Secours** garde sa propre heatmap d'activité, que cette option soit cochée ou non.
+> 🚑 Le **Mode Secours** garde sa propre heatmap d'activité, que cette option soit cochée ou non.
 
 #### 🔋 Niveau de batterie
 
@@ -1341,7 +1347,7 @@ Verrouille l'app à chaque démarrage avec un code de 4 à 6 chiffres, ou **Face
 >
 > **Prépare-le à froid** : monte un ou deux scénarios sur tes plans habituels avant tout incident. Le jour J, l'app doit être prête en 30 secondes.
 
-Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚨 Mode Secours — Plans de recherche (équipes + zones)**.
+Ouverture : menu **🧭 Tracker** → en bas, sur fond rouge, **🚑 Mode Secours — Plans de recherche (équipes + zones)**.
 
 #### 🧭 Comment ça s'organise
 
@@ -1360,7 +1366,7 @@ Le cycle : **préparer** le scénario → le **transmettre** aux équipes avant 
 ##### 📝 Créer un scénario
 
 - **➕ Nouveau scénario** : un nom, l'heure de l'incident et des notes de contexte (facultatives).
-- **Depuis ⛑️ Je suis perdu** : le bouton **🚨 Lancer un plan de secours (équipes + zones)** crée le scénario tout prêt — dernière position connue, zone d'incertitude (cercle sur la carte), heure de l'incident et notes déduites. Il faut d'abord y avoir défini une dernière position connue.
+- **Depuis ⛑️ Je suis perdu** : le bouton **🚑 Lancer un plan de secours (équipes + zones)** crée le scénario tout prêt — dernière position connue, zone d'incertitude (cercle sur la carte), heure de l'incident et notes déduites. Il faut d'abord y avoir défini une dernière position connue.
 - **🗐 Dupliquer** clone un scénario pour tester une autre hypothèse (« parti par l'est » / « parti par le sud ») sans toucher l'original.
 - **10 scénarios par plan** au plus : au-delà, le plus ancien est effacé. Jamais un scénario en cours, celui que tu as ouvert, le plus récent, ni une intervention terminée dont aucun rapport n'est encore sorti du téléphone.
 
@@ -1380,7 +1386,7 @@ Sur un plan multiniveau, **🏗️ Auto : 1 équipe par niveau** crée une équi
 
 ##### 🗺️ Parcours, zone et itinéraire
 
-- **🗺️ Parcours** : touche **Entrée**, **➕ Ajouter une étape intermédiaire**, puis **Sortie**. Pour chaque point : tes **⭐ favoris** du plan en un toucher, la recherche, ou **📍 Cliquer sur la carte** (le point s'aimante au POI le plus proche). Toucher un POI le prend comme point, sans ouvrir sa fiche. Même entrée et même sortie = boucle. Depuis la recherche de l'app, le bouton 📌 assigne un point à une équipe en deux touchers.
+- **🗺️ Parcours** : touche **Entrée**, **➕ Ajouter une étape intermédiaire**, puis **Sortie**. Pour chaque point : tes **⭐ favoris** du plan en un toucher, la recherche, ou **📍 Cliquer sur la carte** (le point s'aimante au POI — point d'intérêt du plan — le plus proche). Toucher un POI le prend comme point, sans ouvrir sa fiche. Même entrée et même sortie = boucle. Depuis la recherche de l'app, le bouton 📌 assigne un point à une équipe en deux touchers.
 - **⬛ Définir zone** : soit un **polygone** (un toucher par sommet, double-toucher pour fermer), soit une **sélection de tracés** (touche chaque galerie, re-touche pour la retirer). Les zones des autres équipes s'affichent en pointillé pour caler les limites. Une galerie du plan se retrouve à l'identique sur tous les téléphones qui ont ce plan ; un tracé ajouté à la main sur un seul appareil n'existe que sur lui. Sur un plan multiniveau, la zone vaut **au niveau où tu l'as dessinée** — coche « Zone sur tous les niveaux » pour l'étendre.
 - **✨ POI de la zone** ajoute tous les points de la zone comme étapes, de proche en proche depuis l'entrée.
 - **🗺️ Calc. itinéraire** calcule le chemin par les galeries, de l'entrée à la sortie en passant par les étapes, avec distance et durée. Il **contourne les étapes et les zones des autres équipes** ; s'il ne peut pas, il le signale. Il liste aussi **les étapes à plus de 25 m d'une galerie** : corrige-les avant de descendre. Il prévient enfin quand des galeries d'un autre niveau passent sous la zone sans qu'aucun parcours n'y descende.
@@ -1399,11 +1405,11 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 #### 📤 2. Transmettre avant de descendre
 
-- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚨 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
+- **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚑 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
 - **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone (à pleine résolution du plan : les noms de galeries restent lisibles même sur un grand plan), étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
-- **🌍 Export KMZ géolocalisé** : le scénario pour Google Earth, OsmAnd ou Avenza — un dossier par équipe (points, zone, itinéraire) sur le plan en fond. Les itinéraires manquants sont calculés avant l'export, et MyKTAMap relit ce KMZ avec le scénario. Il faut un plan calibré avec deux points GPS (onglet 🌍 KMZ de l'export de session).
+- **🌍 Export KMZ géolocalisé** : le scénario pour Google Earth, OsmAnd ou Avenza — un dossier par équipe (points, zone, itinéraire) sur le plan en fond. Les itinéraires manquants sont calculés avant l'export, et MyKTAMap relit ce KMZ avec le scénario. Il faut un plan calibré avec deux points GPS (onglet 📡 Export externe de l'export de session).
 
 #### 🔦 3. Sur le terrain
 
@@ -1413,7 +1419,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 En rôle équipe, tu es **placé à l'entrée de ton équipe** — d'office si ta position n'était pas encore confirmée, sinon l'app te le propose (« Me placer à l'entrée » / « Garder ma position »). Un message unique résume le lancement.
 
-Fermer la fenêtre ne retire rien : ta zone et ton parcours restent sur la carte (l'équipe voit la sienne, l'opérateur toutes), même après un rechargement. En bas de l'écran, la pastille **🚨 Secours · Alpha · 3/8 ›** rappelle que l'intervention tourne ; la toucher te ramène aux étapes à valider. **⏸️ Pause** fige le chronomètre, **▶️ Reprendre** le relance : le temps de pause n'est pas compté.
+Fermer la fenêtre ne retire rien : ta zone et ton parcours restent sur la carte (l'équipe voit la sienne, l'opérateur toutes), même après un rechargement. En bas de l'écran, la pastille **🚑 Secours · Alpha · 3/8 ›** rappelle que l'intervention tourne ; la toucher te ramène aux étapes à valider. **⏸️ Pause** fige le chronomètre, **▶️ Reprendre** le relance : le temps de pause n'est pas compté.
 
 ##### 🚨 Côté équipe
 
@@ -1433,8 +1439,8 @@ La vue montre ton parcours étape par étape (Entrée, 1…N, Sortie — le mêm
 
 - **📸 Photo** : jusqu'à 5 par étape, appareil photo ou galerie ; touche une miniature pour l'agrandir.
 - **Valider une étape te recale dessus** (avec RAS, Suspect, Indice, Aide demandée ou Victime trouvée) : sans rien demander à moins de 30 m, avec une question au-delà. Jamais avec Bloqué ou Demi-tour forcé : tu n'y es pas arrivé.
-- **🧭 Suivre mon parcours (guidage pas à pas)** transforme le parcours en itinéraire guidé : bandeau « Dans 40 m, tourner à gauche », feuille de route et écran XL te mènent d'étape en étape, et le suivi 🧭 démarre. Les étapes validées sont cochées ; si tu t'écartes, **Recalculer** repart vers la prochaine étape non faite, toujours en contournant les zones des autres équipes. À l'arrivée sur une étape, un message et une vibration te préviennent, et la pastille 🚨 ouvre cette étape. Il faut que l'itinéraire de l'équipe ait été calculé.
-- Trois raccourcis en cas de pépin : **🚪 Sortie d'urgence**, **🆘 Écran XL**, **⛑️ Je suis perdu**.
+- **🧭 Suivre mon parcours (guidage pas à pas)** transforme le parcours en itinéraire guidé : bandeau « Dans 40 m, tourner à gauche », feuille de route et 🔆 Affichage XL te mènent d'étape en étape, et le suivi 🧭 démarre. Les étapes validées sont cochées ; si tu t'écartes, **Recalculer** repart vers la prochaine étape non faite, toujours en contournant les zones des autres équipes. À l'arrivée sur une étape, un message et une vibration te préviennent, et la pastille 🚑 ouvre cette étape. Il faut que l'itinéraire de l'équipe ait été calculé.
+- Trois raccourcis en cas de pépin : **🚪 Sortie d'urgence**, **🔆 Affichage XL**, **⛑️ Je suis perdu**.
 - **▶️ Départ** note ton heure de départ (sinon, celle du lancement) ; **✅ Rentrée** arrête le chrono à la remontée.
 
 ##### 👤 Côté opérateur
@@ -1444,7 +1450,7 @@ La vue montre ton parcours étape par étape (Entrée, 1…N, Sortie — le mêm
 - **Retards** : chaque équipe a une heure de retour prévue (départ + durée estimée, ou son retour impératif). Passé cette heure, sa carte passe en **orange** ; après la marge, en **rouge**. Les équipes en retard remontent en tête, la pastille du bas change de couleur, un message et une vibration préviennent.
 - **✅ Rentrée** : l'app demande **combien sont remontés** (rien n'est prérempli : compte). En dessous de l'effectif, l'alerte rouge **« N PERSONNE(S) MANQUANTE(S) »** reste affichée, pastille comprise, tant que le compte n'est pas corrigé (**Corriger le compte**).
 - **📢 Rappel général** (ou **📢 Rappeler** pour une équipe) marque les équipes encore sous terre comme rappelées, avec l'heure. ⚠️ **L'app ne prévient personne** — pas de réseau sous terre : transmets l'ordre toi-même, par radio ou à la voix.
-- **🚨 Prendre la main** : un appel radio d'une équipe ? Tu passes dans sa vue, sur sa première étape non terminée, pour saisir à sa place ; **👤 Retour Opérateur** te ramène. Dans ce cas, Suivre mon parcours, Sortie d'urgence, Écran XL et Je suis perdu sont absents : ils agiraient sur ton propre téléphone.
+- **🚨 Prendre la main** : un appel radio d'une équipe ? Tu passes dans sa vue, sur sa première étape non terminée, pour saisir à sa place ; **👤 Retour Opérateur** te ramène. Dans ce cas, Suivre mon parcours, Sortie d'urgence, Affichage XL et Je suis perdu sont absents : ils agiraient sur ton propre téléphone.
 - **📜 Main courante** : tout y est noté à l'heure — lancement, statuts, victime, départs, rentrées, rappels, imports, phases — plus tes notes (appel radio, décision). Elle s'imprime en annexe du rapport.
 - **Modifier pendant l'intervention** : une équipe ajoutée en renfort, ou dont tu changes l'entrée, la sortie ou les étapes, reçoit tout de suite ses étapes. Ce qui a été saisi reste sur la même étape. Retirer une étape déjà renseignée demande une confirmation, et c'est refusé si elle signale Aide demandée ou Victime trouvée : change d'abord son statut. Remise dans la même phase, l'étape retrouve ses saisies.
 
@@ -1496,13 +1502,13 @@ Le PDF de l'opérateur ouvre sur les victimes, puis reprend chaque phase (parcou
 
 ### 🏗️ Créer ou modifier un plan
 
-Le bouton **🏗️** de la barre latérale ouvre le **Générateur** (**📦 Créer / Modifier un plan**), qui produit l'archive ZIP d'un plan.
+Le bouton **🏗️ Générer un plan** de l'accueil ouvre le **Générateur** (**📦 Créer / Modifier un plan**), qui produit l'archive ZIP d'un plan.
 
 #### 🧙 Le Générateur
 
 - **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
-- **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
-- **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ**, un **GPX**, un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
+- **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2 — l'image découpée en tuiles, voir « 🧱 Convertir en V2 tuilé » —, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
+- **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ** ou un **GPX** exporté par MyKTAMap (le GPX donne un fond vierge calé automatiquement), un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
 
 Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 
@@ -1513,8 +1519,11 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 - **Carte de collision** (optionnelle).
 - **Position de départ du tracker** : centrée automatiquement sur le plan ; **🎯 Recentrer la position de départ** la remet au centre.
 - **Calques image** (légendes, annotations) et **calques de données** : jusqu'à 10 de chaque. Le calque **Ajouts** est toujours inclus.
-- **Paramètres de tracking** : position de départ, échelle, sensibilité.
+- **Paramètres de tracking** : échelle et orientation du **Nord** (0 si le haut du plan est le Nord ; chacun peut la corriger dans ses Réglages).
 - **Icônes & tags** : **↺ Charger défauts** pré-remplit les icônes standard, **+ Ajouter un tag** crée un type à toi. Les tags `default` et `track` sont obligatoires.
+- **🏷️ Légende du plan** : renommages, masquages et entrées ajoutées valent pour tous ceux qui ouvrent le plan ; chacun peut ensuite la modifier pour lui.
+- **🌐 Géoréférencement GPS** (facultatif) : deux points A et B, plus un point C pour un plan déformé. Sans lui, ni Vue OSM ni export KMZ / GPX.
+- **📖 PDF Histoire** (facultatif) : un ou plusieurs PDF, en tête de liste dans le Mode Histoire. En modification, ceux du plan sont conservés.
 
 #### 📂 Modifier un plan existant
 
@@ -1570,7 +1579,7 @@ Dépose ton export **sur la zone « 📦 Ajouter un plan » de l'accueil** ou da
 
 Pour un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), la case **🧱 Convertir en V2 tuile (performance)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés, ce qui réduit fortement la mémoire utilisée.
 
-1. Choisis une image principale, ou charge le ZIP du plan à convertir : la case apparaît.
+1. Choisis une image principale, ou charge le ZIP du plan à convertir.
 2. Coche-la et lis l'avertissement : la conversion est lourde.
 3. **📦 Générer le ZIP** : une barre de progression suit le découpage (de 1 à 5 min). Le ZIP téléchargé porte le suffixe `_v2`.
 4. Importe ce ZIP : le plan s'ouvre en V2 (badge violet `V2`).
@@ -1592,7 +1601,7 @@ Dans la section **🧰 Outils** de l'accueil, **📦 Importer plusieurs plans** 
 
 - **Plan déjà dans ta liste** : un seul choix pour tout le lot, le laisser tel quel (par défaut), le remplacer ou garder les deux.
 - **📁 Ranger dans :** choisis le dossier de « Mes plans » qui reçoit le lot (par défaut « Non classés »).
-- **💾 Précharger le ZIP** (cochée par défaut, comme « Mémoriser le plan dans l'app au premier chargement ») : l'app garde les fichiers, et chaque plan s'ouvre ensuite **sans resélectionner son ZIP**. Décochée, rien n'est copié et le ZIP te sera demandé à la première ouverture.
+- **💾 Mémoriser les plans dans l'app** (cochée par défaut, comme le réglage « Mémoriser le plan dans l'app au premier chargement ») : l'app garde les fichiers, et chaque plan s'ouvre ensuite **sans resélectionner son ZIP**. Décochée, rien n'est copié et le ZIP te sera demandé à la première ouverture.
 - **La place est vérifiée avant** : si le lot ne rentre pas, l'import ne commence pas et l'app te dit combien il manque. Si la place s'épuise en route, l'import s'arrête net et garde les plans déjà ajoutés.
 
 ### 🚀 Optimiser ton plan
@@ -1639,10 +1648,9 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 | 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 tracés (au lieu de 500) | Carrefours moins visibles |
 | 🚫 **Désactiver popups sur calques données** | Plus de bulle au clic sur les points des calques de données | Passe par 🔍 Recherche |
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30 s | Jusqu'à 30 s perdues en cas de plantage |
-| 👁️ **Ne rendre que les éléments visibles** | Ignore tracés et points hors écran | Léger temps d'apparition en déplaçant la carte |
 | 🛡️ **Limiter le dézoom sur mobile** | Plafonne le dézoom sur téléphone. **Cochée par défaut** | Pas de vue d'ensemble complète sur mobile ; rechargement requis |
 
-- ULTRA coche tout ; le décocher décoche tout. Tu peux aussi n'activer que certaines options, par exemple **🐢** et **👁️** pour un bon gain sans perte visible.
+- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte). Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
 - **Tes points de session restent toujours affichés**, quelles que soient les options.
 - Quand des optimisations sont actives, un message te le rappelle à l'ouverture du plan : un affichage allégé n'est pas un bug.
 - Sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement** (même groupe, hors ULTRA, coché par défaut) peut être décoché pour n'ouvrir que les niveaux -1, 0 et +1.
@@ -1727,11 +1735,13 @@ La forme courte `{ "plans": ["test1", "test2"] }` fonctionne aussi ; la forme d�
 
 Plus simple encore : dépose le ZIP du plan tel quel (sans le décompresser) et déclare-le avec `"zip"` à la place de `"path"`, par exemple `{ "id": "test3", "zip": "data/test3.zip", "name": "Plan Test 3" }`. L'app le télécharge à l'ouverture, le garde sur l'appareil pour le hors-ligne (selon **Mémoriser le plan dans l'app**), et ne le retélécharge que s'il a changé. Sur la ligne du plan, 💾 le garde sans l'ouvrir, ✅ indique qu'il est gardé et à jour.
 
+> 📖 Sous-titre de ton instance, étiquettes de plans, mot de passe d’accès propre, mode « consultation » (import et Générateur masqués), liaisons entre plans : la page `confadmin.html` de ton instance fabrique ce fichier pour toi — mode d’emploi dans le guide **[Héberger une instance avec ses plans](SELFHOST.md)**.
+
 ### 💼 Édition pro
 
 L'édition pro est installée par **la personne qui gère ton installation** : elle pose la licence sur le serveur, il n'y a rien à faire de ton côté. Ton profil affiche alors ✓ Édition pro active, et l'écran de démarrage « Édition professionnelle ». L'application ne propose plus d'importer une licence toi-même : une licence importée sur un appareil n'activait aucune fonction pro.
 
-Une licence est **signée par l'auteur** et émise pour une adresse et une durée. Si elle expire, ou si le serveur la refuse, l'application **reste fermée** sur l'écran « Licence de l'installation invalide » — jamais rouverte en mode communautaire : préviens la personne qui gère l'installation. Ce qui est gardé sur l'appareil n'est pas effacé.
+Une licence est **signée par l'auteur** et émise pour une adresse et une durée. Si elle expire, ou si le serveur la refuse, l'application **reste fermée** sur l'écran « Licence de l'installation invalide » — jamais rouverte en mode communautaire : préviens la personne qui gère l'installation (le lien **💼 Découvrir ou renouveler la licence pro** de cet écran présente la licence). Ce qui est gardé sur l'appareil n'est pas effacé.
 
 > ⚖️ La licence est **nominative** : la partager avec un tiers non autorisé enfreint le contrat passé avec l'auteur.
 ### 🛡️ Plans révoqués
@@ -1748,6 +1758,10 @@ Il n'y a rien d'autre à faire.
 ### 🐛 Logs détaillés
 
 Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
+
+### 📖 Toute la documentation en ligne
+
+Ce guide, et tout ce qui l'entoure, se lit aussi sur **[doc.myktamap.fr](https://doc.myktamap.fr/)** : installer sa propre copie (avec ou sans Docker), comprendre ce que l'application envoie sur le réseau, la sécurité et les clés de l'édition pro, et comment chaque version est vérifiée avant d'arriver jusqu'à toi.
 
 ---
 

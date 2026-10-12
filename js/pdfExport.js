@@ -131,7 +131,7 @@
     if (existing) { existing.remove(); return; }
 
     if (!_checkJsPDF()) {
-      alert(window.I18n.t("pdfexport.alert.indispo"));
+      window.ktaAlerte(window.I18n.t("pdfexport.alert.indispo"), { type: "erreur" });
       return;
     }
 
@@ -166,10 +166,6 @@
           '<button class="kta-panneau-close" id="kta-pdf-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-
-          '<p class="kta-ses-intro">' +
-            T("pdfexport.intro") +
-          '</p>' +
 
           // 📐 Format de page — 2 lignes : taille + orientation
           '<div class="kta-ses-section">' +
@@ -625,9 +621,10 @@
   function _dessinerHeader(pdf, pageW, margin, headerH) {
     const T = window.I18n.t;
     const pc = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
-    const planName = pc.name    || T("pdfexport.header.planSansNom");
-    const planVer  = pc.version || "";
-    const planAuth = pc.author  || "";
+    // Nom, version, auteur = saisie libre : ktaTextePdf (utils.js) retire ce que la police ne sait pas écrire.
+    const planName = window.ktaTextePdf(pc.name || "") || T("pdfexport.header.planSansNom");
+    const planVer  = window.ktaTextePdf(pc.version || "");
+    const planAuth = window.ktaTextePdf(pc.author  || "");
     const scale    = (window.APP_CONFIG && window.APP_CONFIG.scale) || null;
     const date     = _dateLisible();
 
@@ -663,7 +660,7 @@
     pdf.setFontSize(7.5);
     pdf.setTextColor(120, 120, 120);
     // 🛠️ v1.73.0 : sous-titre kiosque (index.json > config.subtitle) prioritaire
-    // sur le tagline i18n — un kiosque « Gironde » exporte des PDF « Gironde ».
+    // sur le tagline i18n — un kiosque « Secteur Nord » exporte des PDF « Secteur Nord ».
     const _kioskSt = (window.KIOSK_CONFIG && typeof window.KIOSK_CONFIG.subtitle === "string")
       ? window.KIOSK_CONFIG.subtitle.trim().slice(0, 80) : "";
     pdf.text(_kioskSt || T("pdfexport.header.tagline"), pageW - margin, margin + 10, { align: "right" });

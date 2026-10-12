@@ -137,7 +137,7 @@
         '<td style="width:80px;"><input type="text" data-f="version" data-i="' + i + '" value="' + _esc(p.version) + '"></td>' +
         '<td style="width:110px;"><input type="text" data-f="author" data-i="' + i + '" value="' + _esc(p.author) + '"></td>' +
         '<td style="width:150px;">' + _selectDossier(i, p.folder) + '</td>' +
-        '<td style="width:170px;"><input type="text" data-f="tags" data-i="' + i + '" placeholder="gironde, carrière" title="Séparés par des virgules — 12 max, 24 caractères chacun" value="' + _esc(p.tags || "") + '"></td>' +
+        '<td style="width:170px;"><input type="text" data-f="tags" data-i="' + i + '" placeholder="calcaire, carrière" title="Séparés par des virgules — 12 max, 24 caractères chacun" value="' + _esc(p.tags || "") + '"></td>' +
         "<td>" + (p.tiledV2 ? '<span class="kta-ca-badge">V2</span>' : "") +
                  (p.multiLevel ? '<span class="kta-ca-badge">Multi-LVL</span>' : "") + "</td>" +
         '<td><button class="kta-ca-x" data-x="' + i + '" title="Retirer">✕</button></td>';

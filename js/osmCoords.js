@@ -127,29 +127,9 @@
       info.textContent = ok ? _t("osm.coords.copie") : _t("osm.coords.copieKo");
       setTimeout(function () { if (info) info.textContent = avant; }, 1400);
     };
-    // `navigator.clipboard` exige un contexte securise ET une permission : en
-    // http local ou dans un iframe, il jette. Le repli `execCommand` est
-    // deprecie mais reste le seul qui marche partout — on ne laisse pas
-    // l'utilisateur sans son texte parce que le navigateur fait la fine bouche.
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(function () { dire(true); })
-        .catch(function () { dire(_copierRepli(txt)); });
-    } else {
-      dire(_copierRepli(txt));
-    }
-  }
-
-  function _copierRepli(txt) {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = txt;
-      ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return !!ok;
-    } catch (e) { return false; }
+    // Helper commun (utils.js) : `navigator.clipboard` puis repli `execCommand`
+    // (http local, iframe, permission refusee).
+    window.ktaCopierTexte(txt).then(dire);
   }
 
   function activer(map) {

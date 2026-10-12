@@ -926,7 +926,7 @@
   // ============================================================
   // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION
   // ============================================================
-  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur les relevés Gironde :
+  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur des relevés réels :
   // 225 octets par objet, donc ~1,1 Mo pour un relevé SIG de 5 000 objets —
   // quand `localStorage` plafonne vers 5 Mo POUR TOUT LE DOMAINE et que
   // `SessionPersist` re-sérialise la session entière à chaque sauvegarde.
@@ -941,19 +941,24 @@
   function _rapatrierCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return;
-    CS.peser(id).then(function(p) {
-      if (!p) { alert(window.I18n.t("filter.calque.errPesee")); return; }
-      const occ = CS.occupationLocalStorage();
-      const msg = window.I18n.t("filter.calque.confirm", {
-        label:  p.label,
+    CS.peser(id).then(async function(p) {
+      if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return; }
+      // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site.
+      // Repli localStorage : l'occupation du localStorage, plafond ~5 Mo (message d'origine).
+      const mem = window.ktaStockageLocal ? window.ktaStockageLocal.mesurer() : null;
+      const idb = !!mem && mem.mode === "idb";
+      const occ = idb ? mem.carSessions : CS.occupationLocalStorage();
+      const msg = window.I18n.t(idb ? "filter.calque.confirmIdb" : "filter.calque.confirm", {
+        label:  window.ktaEsc(p.label),
         n:      p.objets,
         poids:  _fmtOctets(p.octets),
-        occup:  (occ === null) ? "?" : _fmtOctets(occ)
+        occup:  (occ === null) ? "?" : _fmtOctets(occ),
+        limite: (idb && mem.limite) ? _fmtOctets(mem.limite) : "?"
       });
-      if (!window.confirm(msg)) return;
+      if (!(await window.ktaConfirm(msg))) return;
       CS.rapatrier(id).then(function(r) {
         if (!r || !r.ok) {
-          alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }));
+          window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
           return;
         }
         refreshDataLayers();
@@ -989,7 +994,11 @@
       okLabel:     window.I18n.t("filter.calque.exportAvantOui"),
       cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
     }).then(function (exporter) {
-      if (exporter) { _exporterCalque(id); _restituerVraiment(id); return; }
+      if (exporter) {   // la consigne d'export se lit AVANT la restitution (ordre de l'alert() bloquant)
+        // Restitution SEULEMENT si l'export a réussi : sinon le travail partirait sans copie.
+        _exporterCalque(id).then(function (exporte) { if (exporte === true) _restituerVraiment(id); });
+        return;
+      }
       // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
       window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
         titre:       window.I18n.t("filter.calque.exportAvantTitre"),
@@ -1002,7 +1011,10 @@
   function _restituerVraiment(id) {
     const CS = window.CalqueSession;
     const r = CS.restituer(id);
-    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    if (!r || !r.ok) {
+      window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+      return;
+    }
     refreshDataLayers();
     _scheduleRoadsRecalc();
     _updateStatus();
@@ -1014,17 +1026,24 @@
   // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
   // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
   // téléchargements et aucune idée de la ligne où le déposer.
+  // Rend une Promise<boolean> résolue à la fermeture du message : true = fichier produit. L'appelant
+  // ne restitue QUE sur true — un export en échec suivi d'une restitution perdait les objets.
   function _exporterCalque(id) {
     const CS = window.CalqueSession;
-    if (!CS || !id) return;
-    const r = CS.exporterCalque(id);
-    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    if (!CS || !id) return Promise.resolve(false);
+    let r = null;
+    try { r = CS.exporterCalque(id); } catch (e) { console.warn("[FilterPanel] export du calque :", e); }
+    if (!r || !r.ok) {
+      return window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" })
+        .then(function () { return false; });
+    }
     // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
     // n'appartiennent pas à ce calque, et les verser d'office serait décider
     // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
-    alert(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
-                                         : "filter.calque.exporte",
-                        { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
+    return window.ktaAlerte(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
+                                                          : "filter.calque.exporte",
+                                         { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }))
+      .then(function () { return true; });
   }
 
   // ============================================================

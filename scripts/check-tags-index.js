@@ -75,9 +75,9 @@ if (PR) {
 
   // — l'index pose ses tags, et son origine —
   neuf();
-  PR.setTags(ID, ["gironde", "carriere"], "index");
+  PR.setTags(ID, ["secteur", "carriere"], "index");
   let p = PR.findById(ID);
-  t("🏷️ l'index pose les tags", !!(p.tags && p.tags.join("|") === "gironde|carriere"));
+  t("🏷️ l'index pose les tags", !!(p.tags && p.tags.join("|") === "secteur|carriere"));
   t("🏷️ …et laisse sa signature (tagsSrc=index)", p.tagsSrc === "index");
 
   // — l'utilisateur reprend la main —
@@ -185,7 +185,7 @@ if (PR) {
       "  a  , A , , b",
       new Array(60).join("x"),
       Array.from({ length: 30 }, (_, i) => "t" + i).join(","),
-      "gironde, carriere, Gironde"
+      "secteur, carriere, Secteur"
     ];
     let identiques = true, detail = "";
     CAS.forEach(function (c) {
@@ -218,7 +218,7 @@ t("🔎 l'utilisateur peut toujours les éditer dans ℹ️ Infos",
 // (possibilité de filtrer et exclure) ».
 //
 // 🩸 LA RÈGLE QUI SE TROMPE FACILEMENT : l'EXCLUSION L'EMPORTE sur
-// l'inclusion. Un plan tagué « gironde » ET « brouillon », avec gironde inclus
+// l'inclusion. Un plan tagué « secteur » ET « brouillon », avec secteur inclus
 // et brouillon exclu, doit être ÉCARTÉ. L'inverse ferait rentrer par une porte
 // ce qu'on vient de fermer par l'autre — et c'est précisément le cas d'usage
 // (« sors-moi l'atlas de mes stats »). Un `||` au lieu d'un `&&`, ou les deux
@@ -247,21 +247,21 @@ t("🔎 l'utilisateur peut toujours les éditer dans ℹ️ Infos",
       return sb.resultat;
     };
 
-    t("sans filtre, tout est retenu", jouer(["gironde"], {}) === true);
+    t("sans filtre, tout est retenu", jouer(["secteur"], {}) === true);
     t("inclure : seuls les plans qui portent l'étiquette",
-      jouer(["gironde"], { gironde: "in" }) === true &&
-      jouer(["paris"],   { gironde: "in" }) === false);
+      jouer(["secteur"], { secteur: "in" }) === true &&
+      jouer(["paris"],   { secteur: "in" }) === false);
     t("exclure : les plans qui la portent sortent",
-      jouer(["gironde"], { gironde: "out" }) === false &&
-      jouer(["paris"],   { gironde: "out" }) === true);
+      jouer(["secteur"], { secteur: "out" }) === false &&
+      jouer(["paris"],   { secteur: "out" }) === true);
     t("🩸 L'EXCLUSION L'EMPORTE sur l'inclusion (sinon « sors-moi l'atlas » ne marche pas)",
-      jouer(["gironde", "brouillon"], { gironde: "in", brouillon: "out" }) === false);
-    t("la casse est ignorée (« Gironde » et « gironde » sont la même étiquette)",
-      jouer(["Gironde"], { gironde: "in" }) === true);
+      jouer(["secteur", "brouillon"], { secteur: "in", brouillon: "out" }) === false);
+    t("la casse est ignorée (« Secteur » et « secteur » sont la même étiquette)",
+      jouer(["Secteur"], { secteur: "in" }) === true);
     t("un plan SANS étiquette a sa propre sentinelle, filtrable comme les autres",
       jouer([], {}) === true &&
       jouer([], { "\u0000sans-etiquette": "out" }) === false &&
-      jouer([], { gironde: "in" }) === false);
+      jouer([], { secteur: "in" }) === false);
 
     // 🩸 L'IMPASSE : si le filtre exclut tout, les chips doivent SURVIVRE.
     // Sans elles, l'utilisateur n'a plus aucun moyen de revenir en arrière —

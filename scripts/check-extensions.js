@@ -400,6 +400,10 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const bloc = iEd >= 0 ? IF.slice(iEd, IF.indexOf("});", iEd)) : "";
     t("🩸 bouton ✏️ (le VRAI, interface.js) : la lecture seule l'empêche de s'armer",
       /ktaEditionRefusee\(\)\)\s*return;\s*window\.modeEdition = true;/.test(bloc));
+    t("outils de dessin grisés en lecture seule : 4 groupes, clic coupé, relu à l'ouverture du plan",
+      /_KTA_GROUPES_DESSIN = \["edition", "traces", "zones", "structures"\]/.test(IF) &&
+      /kta-outil-lecture-seule"\)\) return;[\s\S]{0,200}stopImmediatePropagation\(\)/.test(IF) &&
+      /initInterface\(\);\s*\n[^\n]*\n\s*if \(typeof window\.ktaMajOutilsLectureSeule/.test(lire("js/main.js")));
     t("🩸 clic carte de l'éditeur : refusé en lecture seule", /_editorClickHandler = function\(e\) \{[\s\S]{0,120}ktaEditionRefusee/.test(lire("js/editor.js")));
     t("🩸 fiche d'un tracé / zone / structure : lecture seule = mode lecture (ni note, ni Convertir, ni 🗑️)",
       /_modeDemande === "edit" && typeof window\.ktaEditionRefusee === "function" && window\.ktaEditionRefusee\(true\)/.test(lire("js/utils.js")));
@@ -582,6 +586,104 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: K3 } = nouveauContexte(null);
     K3.register({ nom: "e", apiVersion: 1, plans: { lister: () => [], charger: () => null, dossiers: () => { throw new Error("x"); } } });
     t("🩸 erreur de l'extension → null (les dossiers existants ne sont pas libérés)", (await K3.dossiersExtension()) === null);
+  }
+
+  // ═════════ 6 sexies. PHOTOS DES POINTS (prise « photos », 10/10/2026) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : completerPoint → 0, completerPlan → { 0, 0 } (rien n'est appelé)",
+      (await K.photosCompleterPoint("p", "pt_x")) === 0 &&
+      JSON.stringify(await K.photosCompleterPlan("p")) === JSON.stringify({ ajoutees: 0, total: 0 }));
+    const appels = [];
+    K.register({ nom: "ph", apiVersion: 1, photos: {
+      completerPoint: (p, pt) => { appels.push([p, pt]); return Promise.resolve(2); },
+      completerPlan: () => Promise.resolve({ ajoutees: 3, total: 7, autre: "x" }) } });
+    t("prise photos : arguments transmis, nombre rendu", (await K.photosCompleterPoint("p", "pt_x")) === 2 &&
+      appels.length === 1 && appels[0][0] === "p" && appels[0][1] === "pt_x");
+    t("prise photos : completerPlan nettoyé ({ ajoutees, total })",
+      JSON.stringify(await K.photosCompleterPlan("p")) === JSON.stringify({ ajoutees: 3, total: 7 }));
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ph2", apiVersion: 1, photos: { completerPoint: () => { throw new Error("x"); },
+      completerPlan: () => Promise.reject(new Error("y")) } });
+    t("🩸 extension en erreur → 0 / { 0, 0 }, aucune exception",
+      (await K2.photosCompleterPoint("p", "a")) === 0 && (await K2.photosCompleterPlan("p")).ajoutees === 0);
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "ph3", apiVersion: 1, photos: { completerPoint: () => "beaucoup", completerPlan: () => null } });
+    t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
+    const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
+    t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"]/.test(EXT));
+
+    // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
+    const { K: A0 } = nouveauContexte(null);
+    t("aide : sans extension → null (l'aide reste celle du community)", A0.aide() === null);
+    const { K: A1 } = nouveauContexte(null);
+    A1.register({ nom: "a1", apiVersion: 1, aide: () => ({ titre: " 🔐 Sécurité ", sections: [
+      { titre: "Clés", html: "<p onclick=\"x()\">a</p><script>alert(1)</script><a href=\"javascript:x()\">l</a>" },
+      { titre: "", html: "<p>vide</p>" }, null, { titre: "Sans corps" }] }) });
+    const a1 = A1.aide();
+    t("aide : rubrique lue, entrées invalides écartées", a1 && a1.titre === "🔐 Sécurité" && a1.sections.length === 1 &&
+      a1.sections[0].slug === "ext-0");
+    t("🩸 aide : ni script, ni gestionnaire on*, ni lien javascript:", a1 && !/script|onclick|javascript:/i.test(a1.sections[0].html) &&
+      /<p>a<\/p>/.test(a1.sections[0].html));
+    const { K: A2 } = nouveauContexte(null);
+    A2.register({ nom: "a2", apiVersion: 1, aide: () => { throw new Error("x"); } });
+    const { K: A3 } = nouveauContexte(null);
+    A3.register({ nom: "a3", apiVersion: 1, aide: () => ({ titre: "T", sections: "pas une liste" }) });
+    t("aide : extension en erreur ou forme inattendue → null", A2.aide() === null && A3.aide() === null);
+    const { K: A4 } = nouveauContexte(null);
+    A4.register({ nom: "a4", apiVersion: 1, aide: () => ({ titre: "T", sections: [{ id: "cle-coffre", titre: "a", html: "" },
+      { id: "Pas Bon!", titre: "b", html: "" }] }) });
+    t("aide : id stable « ext-<id> » si valide, sinon le rang", A4.aide().sections.map((s) => s.slug).join() === "ext-cle-coffre,ext-1");
+    t("aide : une section d'extension s'ouvre par ktaOuvrirAideSection(« ext-… »)",
+      /slug\.indexOf\("ext-"\) === 0/.test(lire("js/interfaceDocs.js")));
+
+    // ── Actions du compte en rubriques (11/10/2026) : groupe, ligne d'état, action « fin » ──
+    const { K: C1 } = nouveauContexte(null);
+    const f = () => {};
+    C1.register({ nom: "c1", apiVersion: 1, actionsCompte: () => [
+      { libelle: "Clés", action: f, groupe: "Mon compte" },
+      { libelle: "Sauvegardé", type: "etat", groupe: "Données", lien: "Sauvegarder", action: f },
+      { libelle: "Hors ligne", type: "etat" },
+      { libelle: "Lien sans action", type: "etat", lien: "x" },
+      { libelle: "Sans action" },
+      { libelle: "Partir", action: f, type: "fin" }] });
+    const ac = C1.actionsCompte("profil");
+    t("actions du compte : groupe, état (lien seulement avec une action), fin ; entrée sans action écartée",
+      ac.length === 5 && ac[0].groupe === "Mon compte" && ac[1].type === "etat" && ac[1].lien === "Sauvegarder" &&
+      ac[2].action === null && !ac[3].lien && ac[3].action === null && ac[4].type === "fin");
+    t("actions du compte : forme d'avant (libellé + action) inchangée",
+      (() => { const { K } = nouveauContexte(null); K.register({ nom: "c2", apiVersion: 1,
+        actionsCompte: () => [{ libelle: "A", action: f }] }); const a = K.actionsCompte("profil");
+        return a.length === 1 && a[0].groupe === "" && a[0].type === "" && a[0].action === f; })());
+    // ── Tuile d'extension dans 🧰 Outils (11/10/2026) ──
+    const { K: O0 } = nouveauContexte(null);
+    t("outilHome : sans extension → null (aucune tuile)", O0.outilHome() === null && O0.ouvrirOutilHome() === false);
+    const { K: O1 } = nouveauContexte(null);
+    O1.register({ nom: "o1", apiVersion: 1, outilHome: () => ({ libelle: "  🏢 Mon organisation  " }) });
+    t("outilHome : libellé lu et nettoyé", O1.outilHome() && O1.outilHome().libelle === "🏢 Mon organisation");
+    const { K: O2 } = nouveauContexte(null);
+    O2.register({ nom: "o2", apiVersion: 1, outilHome: () => { throw new Error("x"); } });
+    const { K: O3 } = nouveauContexte(null);
+    O3.register({ nom: "o3", apiVersion: 1, outilHome: () => null });
+    t("outilHome : erreur ou null (non connecté) → aucune tuile", O2.outilHome() === null && O3.outilHome() === null);
+    t("outilHome : la tuile suit le compte (mktm:compte-changed) et la fenêtre montre le lieu « outils »",
+      EXT.includes('addEventListener("mktm:compte-changed", _poserOutilHome)') &&
+      EXT.includes('blocActionsCompte("outils", "")'));
+    t("aide : l'Aide intégrée pose la rubrique avant « Pour aller plus loin »",
+      /if \(cat\.cle === "plus-loin"\) ajouterRubriqueExtension\(\);/.test(lire("js/interfaceDocs.js")));
+    t("🩸 popup et fiche d'édition n'appellent l'extension que si la prise existe (myktamap.fr : rien)",
+      /K\.aPrise\("photos"\)\) \{\s*K\.photosCompleterPoint\(/.test(U) && /!K\.aPrise\("photos"\)\) return;/.test(ED));
+    t("🩸 restorePhoto sans opts.source = dépôt d'une EXTENSION (source « extension » : pas de renvoi au serveur)",
+      /: "extension";/.test(PH) && /_emettre\(rec\.planId, \[id\], "ajout", source\)/.test(PH));
+    const purge = PH.slice(PH.indexOf("function deletePhotosForPlan("), PH.indexOf("function restorePhoto("));
+    const vide = PH.slice(PH.indexOf("function clearAll("), PH.indexOf("function getStorageInfo("));
+    t("🩸 purges LOCALES (plan retiré, déconnexion, réinitialisation) : AUCUN événement de suppression",
+      purge.length > 0 && !/_emettre/.test(purge) && vide.length > 0 && !/_emettre/.test(vide));
+    const RESTAURE = ["js/main.js", "js/interfaceImportExport.js", "js/profileExportImport.js"];
+    // (d'autres options peuvent suivre : `siAbsente: true` pour la fusion du réimport de session, 12/10/2026)
+    t("restaurations de l'app marquées source « import » (session, plan ZIP, profil)",
+      RESTAURE.every((f) => /restorePhoto\([\s\S]{0,700}?\}, \{ source: "import"(?:, \w+: \w+)* \}\)/.test(lire(f))));
   }
 
   // ═════════ 7. CÂBLAGE (fichiers réels) ═════════

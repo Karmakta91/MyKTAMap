@@ -1,0 +1,91 @@
+# =====================================================================
+# MyKTAMap — Smoke navigateur (Playwright), lancé À LA MAIN (backlog CI/CD, 10/10/2026)
+# =====================================================================
+# scripts/smoke/smoke.js boote l'app dans Chromium headless, traverse HOME, Configuration, éditeur de données,
+# chargement d'un plan, Réglages, Légende, Session/Carnet, Aide, et échoue sur toute erreur console, pageerror,
+# clé i18n manquante, 404 ou modale invisible. Il démarre SON serveur (scripts/smoke/server.js, port 8123) qui
+# sert la CSP STRICTE de docker/nginx-docker.conf : un script inline oublié devient une erreur console.
+#
+# Déclenchement manuel seulement (onglet Actions › Smoke › Run workflow) : ~1 min d'installation de Chromium,
+# trop lourd pour chaque push. C'est la marche 1bis de docs/RELEASE_GATE.md sans poste (lançable depuis un
+# téléphone, sur n'importe quelle branche) ; la marche 2 (13 points sur dev.myktamap.fr) reste manuelle.
+#
+# Plan : un checkout ne contient que ce que Git suit dans data/ — data/index.json et le relevé fictif data/test
+# (aucun relevé réel ne part sur le dépôt). Le smoke ouvre donc le relevé fictif ; l'étape « Plan de test »
+# rougit si l'index suivi venait à pointer ailleurs. Aucun secret.
+# =====================================================================
+
+name: Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke navigateur
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/smoke/package-lock.json
+
+      - name: Plan de test (relevé fictif suivi par Git)
+        run: |
+          node -e '
+            const idx = require("./data/index.json");
+            const p = (idx.plans || []).find(function (x) { return /fictif/i.test(x.name || ""); });
+            if (!p) { console.error("❌ aucun relevé fictif dans data/index.json"); process.exit(1); }
+            require("fs").accessSync(p.path + "/plan-config.json");
+            console.log("✅ plan de test : " + p.name + " (" + p.path + ")");
+          '
+
+      # npm ci lance le postinstall du paquet (playwright install chromium) ; install-deps ajoute les
+      # bibliothèques système que Chromium attend sur le runner Ubuntu.
+      - name: Dépendances du smoke (Playwright + Chromium)
+        working-directory: scripts/smoke
+        run: |
+          npm ci
+          npx playwright install-deps chromium
+
+      - name: Smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p smoke-resultats
+          node scripts/smoke/smoke.js 2>&1 | tee smoke-resultats/smoke.log
+
+      - name: Résumé
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## 🔥 Smoke navigateur"
+            echo '```'
+            tail -n 40 smoke-resultats/smoke.log 2>/dev/null || echo "(pas de journal : échec avant le smoke)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # smoke.js n'écrit aujourd'hui aucune capture : l'artefact porte le journal complet (et ce que le dossier
+      # contiendra si le harnais se met à en produire).
+      - name: Journal en artefact (si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-resultats
+          path: smoke-resultats/
+          if-no-files-found: warn
+          retention-days: 14

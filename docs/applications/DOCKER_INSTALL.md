@@ -3,6 +3,13 @@
 > Guide complet pour installer Docker et lancer MyKTAMap en self-host.
 > Cette doc est volontairement détaillée pour les utilisateurs qui n'ont jamais utilisé Docker.
 
+> 🧭 **Trois guides d'auto-hébergement, un rôle chacun** :
+> - **Installer avec Docker** → ce guide (le plus simple : une commande, HTTPS compris).
+> - **Installer sans Docker** (serveur Linux + Nginx, certificat Let's Encrypt ou d'entreprise, intranet) →
+>   [Installation auto-hébergée](../INSTALLATION_SELFHOST.md).
+> - **Proposer vos plans** à ceux qui ouvrent votre instance (liste des plans, sous-titre, mot de passe d'accès,
+>   mode consultation) → [Héberger une instance avec ses plans](SELFHOST.md). Ça vaut pour les deux installations.
+
 ## 📋 À qui s'adresse ce guide ?
 
 Tu veux faire tourner **MyKTAMap sur ton propre matériel** (PC, Mac, Raspberry Pi, NAS) au lieu d'utiliser `myktamap.fr`. Trois cas d'usage typiques :
@@ -159,11 +166,11 @@ Puis ouvre **https://localhost:8443/** dans ton navigateur.
 Si tu as téléchargé un ZIP `MyKTAMap-vX.Y.Z.zip` depuis la page **Releases** GitHub :
 
 ```bash
-# 1. Décompresse
-unzip MyKTAMap-v1.36.0.zip
-cd MyKTAMap-v1.36.0/
+# 1. Décompresse (remplace vX.Y.Z par la version téléchargée)
+unzip MyKTAMap-vX.Y.Z.zip
+cd MyKTAMap-vX.Y.Z/
 
-# 2. Vérifie que le ZIP contient le Dockerfile (≥ v1.36.0)
+# 2. Vérifie que le ZIP contient le Dockerfile
 ls Dockerfile docker/
 
 # 3. Build (~5-10 min la première fois)
@@ -177,10 +184,10 @@ Puis ouvre **https://localhost:8443/**.
 
 ### Option 3 — Cloner le repo
 
-Pour les devs qui veulent suivre la branche `Karma_dev` :
+Pour ceux qui veulent construire l'image depuis le code source (la branche `main` porte les versions publiées) :
 
 ```bash
-git clone https://github.com/Karmakta91/MyKTAMap.git
+git clone --branch main https://github.com/Karmakta91/MyKTAMap.git
 cd MyKTAMap
 docker build -t myktamap:dev .
 docker run -d --name myktamap -p 8443:8443 myktamap:dev
@@ -239,16 +246,24 @@ docker stats myktamap
 
 ## 🎛️ Options avancées
 
-### Persister tes plans entre redémarrages
+### Servir tes plans (et les garder entre deux mises à jour)
+
+L'app découvre les plans d'une instance par le fichier `data/index.json`, qui liste chaque plan et son
+emplacement dans `data/`. Prépare donc un dossier `data` sur ta machine (tes ZIP de plans + l'`index.json`
+fabriqué par la page `confadmin.html` — marche à suivre : [Héberger une instance avec ses plans](SELFHOST.md)),
+puis monte-le **à la place** du dossier `data/` de l'image :
 
 ```bash
 docker run -d --name myktamap \
   -p 8443:8443 \
-  -v /chemin/vers/tes/plans:/usr/share/nginx/html/data/plans \
+  -v /chemin/vers/ton/data:/usr/share/nginx/html/data \
   ghcr.io/karmakta91/myktamap:latest
 ```
 
-Sur Windows : `-v C:\Users\Toi\plans:/usr/share/nginx/html/data/plans`
+Sur Windows : `-v C:\Users\Toi\myktamap-data:/usr/share/nginx/html/data`
+
+Le dossier reste sur ta machine : supprimer ou mettre à jour le conteneur ne le touche pas. Il remplace le plan
+d'exemple fourni dans l'image. ⚠️ Un dossier monté sans `index.json` ne fait apparaître aucun plan.
 
 ### Utiliser ton propre certificat TLS
 
@@ -308,9 +323,9 @@ Docker n'est pas installé. Va à [Installer Docker](#-installer-docker).
 Docker installé mais pas démarré. Va à [Démarrer Docker](#-démarrer-docker-desktop-windowsmac).
 
 ### `docker: Error response from daemon: pull access denied for ghcr.io/karmakta91/myktamap, repository does not exist or may require authentication`
-L'image n'est pas (encore) publique sur ghcr.io. Soit :
-- attends que l'auteur la passe en public (cas v1.36.0 vient d'être publiée)
-- utilise [Option 2 ou 3](#-lancer-myktamap) (build local)
+L'image n'est pas accessible sans compte sur ghcr.io (ou le nom est mal tapé : tout en minuscules). Soit :
+- construis l'image toi-même : [Option 2 ou 3](#-lancer-myktamap) (build local)
+- signale-le à l'auteur (contact@myktamap.fr)
 
 ### `Bind for 0.0.0.0:8443 failed: port is already allocated`
 Un autre service utilise déjà le port 8443. Solutions :
@@ -347,7 +362,8 @@ Solutions par ordre de probabilité :
 ### Sur Raspberry Pi : `exec format error`
 Ton Pi est en 32-bit. L'image MyKTAMap ne supporte que arm64.
 - **Solution** : réinstalle Raspberry Pi OS en version **64-bit**
-- **Alternative** : utilise l'[Option A](#-installer-docker) (servir le ZIP avec Nginx local sur le Pi 32-bit)
+- **Alternative** : sers le ZIP de l'app sans Docker, avec Nginx directement sur le Pi —
+  [Installation auto-hébergée](../INSTALLATION_SELFHOST.md)
 
 ---
 
@@ -358,21 +374,20 @@ Si Docker te paraît trop complexe, tu peux aussi :
 ### Python `http.server` (le plus simple, sans HTTPS)
 
 ```bash
-cd /chemin/vers/MyKTAMap-v1.36.0/
+cd /chemin/vers/MyKTAMap-vX.Y.Z/
 python -m http.server 8080
 # → http://localhost:8080/
 ```
 
-⚠️ Sans HTTPS, le Service Worker peut ne pas s'installer et certaines APIs sensibles (commande vocale 🎤, MediaRecorder) ne fonctionneront pas. C'est OK pour un test rapide, pas pour usage régulier.
+⚠️ Sans HTTPS, l'app ne marche complètement **que sur la machine elle-même** (`http://localhost`, que les
+navigateurs traitent comme sûr). Ouverte depuis un autre appareil (`http://192.168.1.X:8080/`), elle ne
+s'installe pas, ne marche pas hors ligne, et les capteurs (boussole, micro de la commande vocale 🎤) restent
+coupés. C'est OK pour un test rapide, pas pour un usage régulier.
 
-### Nginx local
+### Nginx (serveur Linux, intranet)
 
-Tutoriels complets disponibles ici :
-- Windows : https://nginx.org/en/docs/windows.html
-- Linux : `sudo apt install nginx` puis copie le contenu du ZIP dans `/var/www/html/`
-- Mac : `brew install nginx` puis idem
-
-Tu peux réutiliser la config `docs/nginx-csp-config.conf` du repo pour avoir la même CSP stricte que la prod.
+Pour une installation durable sans Docker — Nginx, certificat Let's Encrypt ou d'autorité locale, en-têtes de
+sécurité, mises à jour, sauvegarde — suis le guide dédié : [Installation auto-hébergée](../INSTALLATION_SELFHOST.md).
 
 ### Caddy (auto-HTTPS via Let's Encrypt)
 
@@ -381,7 +396,7 @@ Si tu as un nom de domaine pointé vers ta machine :
 ```caddyfile
 # Caddyfile
 myktamap.example.com {
-    root * /chemin/vers/MyKTAMap-v1.36.0/
+    root * /chemin/vers/MyKTAMap-vX.Y.Z/
     file_server
     encode gzip
 }
@@ -391,18 +406,22 @@ myktamap.example.com {
 caddy run
 ```
 
-Caddy gère HTTPS auto via Let's Encrypt — pas de cert auto-signé à accepter.
+Caddy gère HTTPS auto via Let's Encrypt — pas de cert auto-signé à accepter. Ce Caddyfile minimal ne pose ni la
+politique de sécurité (CSP) ni l'interdiction de mettre en cache `sw.js` et `version.json` : sans la seconde,
+les mises à jour de l'app arrivent en retard. Les règles à reproduire sont dans
+[Installation auto-hébergée](../INSTALLATION_SELFHOST.md) § 5.
 
 ---
 
 ## 📚 Pour aller plus loin
 
-- **Doc utilisateur principale** : `docs/applications/README_USER.md` (section « 🐳 Self-host avec Docker »)
-- **Architecture technique** : `docs/architecture/docker-selfhost.md` (Dockerfile, workflow CI, sécurité)
-- **Audit réseau** : `docs/applications/NETWORK_AUDIT.md` (impact réseau v1.36.0)
+- **Guide utilisateur** : [README_USER](README_USER.md) (section « 🖥️ Héberger l'app sur ton serveur »)
+- **Proposer tes plans sur ton instance** : [Héberger une instance avec ses plans](SELFHOST.md)
+- **Installer sans Docker** : [Installation auto-hébergée](../INSTALLATION_SELFHOST.md)
+- **Audit réseau** (ce que l'app envoie, et à qui) : [Audit réseau](NETWORK_AUDIT.html)
 - **Docker docs officielle** : https://docs.docker.com/
 
-Si t'es bloqué malgré tout ça, ouvre une issue sur le repo GitHub avec :
+Si t'es bloqué malgré tout ça, écris à l'auteur (contact@myktamap.fr) avec :
 1. Ton OS (Windows / Mac / Linux + version)
 2. Sortie complète de `docker version`
 3. Sortie complète de `docker logs myktamap` (si le conteneur a démarré)

@@ -511,7 +511,7 @@
   // On ne fige donc aucune hauteur : on mesure ce qui est là et on se place
   // au-dessus. Ajouter un flottant à cette liste suffira pour le suivant.
   // 🐛 30/09/2026 (capture KARMA) : la BARRE D'ÉTAT elle-même manquait — elle grandit
-  // quand un plan de secours tourne (pastille « 🚨 Secours ») et recouvrait le bouton,
+  // quand un plan de secours tourne (pastille « 🚑 Secours ») et recouvrait le bouton,
   // resté à sa hauteur CSS fixe. Sa taille change sans ajout de nœud à <html> : elle
   // est aussi suivie par un ResizeObserver (cf _observerFloaters).
   const FLOATERS_BAS = ["#kta-ipl-back-float", ".kta-ipr-next-float",

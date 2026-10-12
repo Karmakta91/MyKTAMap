@@ -130,10 +130,10 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:680px;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">🐛 Logs de débogage</span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("debug.title")}</span>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="kta-btn kta-btn-ghost" id="kta-debug-vider" style="font-size:11px;padding:4px 10px;">Vider</button>
-            <button class="kta-btn kta-btn-primary" id="kta-debug-copier" style="font-size:11px;padding:4px 10px;">Copier</button>
+            <button class="kta-btn kta-btn-ghost" id="kta-debug-vider" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnClear")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-debug-copier" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnCopy")}</button>
             <button class="kta-panneau-close" id="kta-debug-fermer">✕</button>
           </div>
         </div>
@@ -164,17 +164,19 @@
 
     document.getElementById("kta-debug-copier").addEventListener("click", function() {
       const text = _logBuffer.join("\n");
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() { alert(window.I18n.t("debug.logsCopied")); });
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.cssText = "position:fixed;opacity:0;top:0;left:0;width:1px;height:1px;";
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        try { document.execCommand("copy"); alert(window.I18n.t("debug.logsCopied")); } catch(e) { alert(window.I18n.t("debug.copyManual", { text: text.slice(0,200) })); }
-        document.body.removeChild(ta);
-      }
+      // Copie réussie = geste confirmé : toast « info » (masqué en Essentielles, voulu).
+      const _toastCopie = function() {
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(window.I18n.t("debug.logsCopied"), "info");
+        }
+      };
+      // Helper commun (utils.js) : clipboard puis repli execCommand (HTTP local).
+      // Échec des deux = on montre le début du journal pour une copie à la main.
+      const _copieManuelle = function() {
+        window.ktaAlerte(window.I18n.t("debug.copyManual", { text: text.slice(0,200) }));
+      };
+      if (typeof window.ktaCopierTexte !== "function") { _copieManuelle(); return; }
+      window.ktaCopierTexte(text).then(function(ok) { if (ok) _toastCopie(); else _copieManuelle(); });
     });
   };
 

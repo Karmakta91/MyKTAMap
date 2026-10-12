@@ -331,16 +331,19 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     return "";
   };
   const migr = fn(PH, "migrerPhotosPlan"), setP = fn(PH, "setPhotoPointId"), ref = fn(PH, "getPhotosForPointRef");
+  // 📸 10/10/2026 — setPhotoPointId, migrerPhotosPlan et rattacher partagent l'écriture _poserPointId
+  // (une transaction pour plusieurs photos, fiche facultative) : c'est elle qu'on lit.
+  const pose = fn(PH, "_poserPointId");
   t("photos : getPhotosForPointRef, setPhotoPointId, migrerPhotosPlan exposées",
     /getPhotosForPointRef:\s+getPhotosForPointRef/.test(PH) && /setPhotoPointId:\s+setPhotoPointId/.test(PH) && /migrerPhotosPlan:\s+migrerPhotosPlan/.test(PH));
   t("🩸 migration : ne SUPPRIME jamais une photo (aucun delete dans migrerPhotosPlan ni setPhotoPointId)",
-    !!migr && !!setP && !/delete/i.test(migr) && !/\.delete\(|deletePhoto/.test(setP));
+    !!migr && !!setP && !!pose && !/delete/i.test(migr) && !/\.delete\(|deletePhoto/.test(setP) && !/\.delete\(|deletePhoto/.test(pose));
   t("🩸 migration : rattache seulement si UN SEUL point porte ce nom ET qu'il a un uid",
     /c\.length === 1 && typeof c\[0\]\.uid === "string" && c\[0\]\.uid/.test(migr));
   t("migration : une photo déjà rangée sous un uid connu n'est pas touchée", /if \(!cle \|\| uids\.has\(cle\)\) return;/.test(migr));
   t("double lecture : uid PUIS nom, sans doublon, marque _parNom", /rec\._parNom = !!uid;/.test(ref) && /if \(vus\.has\(rec\.id\)\) return;/.test(ref));
   t("setPhotoPointId : lecture et écriture dans les rappels de la même requête (transaction active)",
-    /g\.onsuccess = function\(\) \{[\s\S]*const put = store\.put\(rec\);/.test(setP));
+    /_poserPointId\(\[photoId\], pointId/.test(setP) && /g\.onsuccess = function\(\) \{[\s\S]*const put = store\.put\(rec\);/.test(pose));
 
   // Éditeur
   t("éditeur : en ajout, les photos sont rangées sous l'uid du FUTUR point", /_uidAjout = window\.KtaUid\.genUid\("pt"\);\s*_photoPointId = _uidAjout;/.test(ED));
