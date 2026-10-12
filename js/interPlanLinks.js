@@ -587,8 +587,12 @@
   // l'itinéraire inter-plan voyait « 0 tracés » sur ces plans serveur.
   // (Les plans ZIP locaux avaient déjà leur fallback `|| zip.file(file)`.)
   async function _fetchLayerJson(basePath, file) {
-    const essais = [basePath + "/" + file];
-    if (String(file).indexOf("/") >= 0) essais.push(file);
+    // Chemin déjà complet (il commence par le dossier du plan) : on le prend tel quel, sans passer par
+    // l'URL doublée qui finit en 404 (bruit dans la console à chaque recherche multi-plans).
+    const base = String(basePath).replace(/\/+$/, "");
+    const f = String(file);
+    const essais = f.indexOf(base + "/") === 0 ? [f] : [base + "/" + f];
+    if (f.indexOf("/") >= 0 && essais.indexOf(f) < 0) essais.push(f);
     for (let i = 0; i < essais.length; i++) {
       try {
         const resp = await fetch(essais[i], { cache: "no-cache" });
