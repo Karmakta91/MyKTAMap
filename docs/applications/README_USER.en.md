@@ -1088,7 +1088,7 @@ When the record opens, the app checks whether the server has changed: **⚠️ U
 
 ### ⚙️ Configuration (home screen) — the whole app
 
-The **⚙️** button at the top of the home screen opens **⚙️ Configuration**: the settings that apply to **all your maps**.
+The **⚙️** button at the top of the home screen opens **⚙️ Configuration**: the settings that apply to **all your maps**. Each section folds with a tap on its title (on a phone, only the first one starts open); your choice is kept.
 
 - **🌍 Application** — the **language**: Français, English, Español. It applies at once, guide and tutorial included; the flag in the 📖 Documentation window changes the language of the guide only. It can also be chosen on the unlock screen, and is kept in incognito mode.
 - **🎨 Display**:

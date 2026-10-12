@@ -1088,7 +1088,7 @@ Un plan **mémorisé** fonctionne déjà hors connexion. Un plan **serveur**, no
 
 ### ⚙️ Configuration (accueil) — toute l'app
 
-Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les réglages qui valent pour **tous tes plans**.
+Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les réglages qui valent pour **tous tes plans**. Chaque rubrique se replie d'un appui sur son titre (sur téléphone, seule la première est ouverte au départ) ; ton choix est gardé.
 
 - **🌍 Application** — la **langue** : Français, English, Español. Elle s'applique tout de suite, guide et tutoriel compris ; le drapeau de la fenêtre 📖 Documentation change la langue du seul guide. Elle se choisit aussi sur l'écran de déverrouillage, et reste gardée en mode incognito.
 - **🎨 Affichage** :

@@ -1088,7 +1088,7 @@ Al abrir la ficha, la app comprueba si el servidor ha cambiado: **⚠️ Actuali
 
 ### ⚙️ Configuración (inicio) — toda la app
 
-El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuración**: los ajustes que valen para **todos tus mapas**.
+El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuración**: los ajustes que valen para **todos tus mapas**. Cada sección se pliega tocando su título (en el teléfono, solo la primera empieza abierta); tu elección se conserva.
 
 - **🌍 Aplicación** — el **idioma**: Français, English, Español. Se aplica al momento, guía y tutorial incluidos; la bandera de la ventana 📖 Documentación cambia solo el idioma de la guía. También se elige en la pantalla de desbloqueo, y se conserva en modo incógnito.
 - **🎨 Visualización**:

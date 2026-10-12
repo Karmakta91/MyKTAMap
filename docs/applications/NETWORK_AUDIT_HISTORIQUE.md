@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.15.0 (interface allégée)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Les fenêtres perdent la plupart de leurs paragraphes d'explication et les réglages de l'accueil se replient : changements d'affichage seulement. La recherche multi-plans ne demande plus d'abord une adresse fausse (un 404 en moins par calque sur les anciens plans du site) ; l'export image d'un plan tuilé réutilise les tuiles déjà sur l'appareil au lieu de retélécharger l'image.
+
 ### v2.14.1 (tuile d'outils d'une installation reliée)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Sur une installation reliée, les actions du compte passent de 👤 Mon profil à une tuile de 🧰 Outils ; sans installation reliée (myktamap.fr), rien ne change.

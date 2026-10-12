@@ -1,8 +1,8 @@
 {
-  "version": "v2.14.1",
-  "released": "2026-10-11",
+  "version": "v2.15.0",
+  "released": "2026-10-12",
   "notes": [
-    "💾 Tes sessions ne sont plus limitées à 5 Mo et ne se perdent plus en silence (jauge dans 📊 Détails de la session). Nouveau : 🧰 Outils › 📸 Mes photos retrouve toutes tes photos, même celles d'un point supprimé.",
-    "💬 Messages dans les fenêtres de l'app, PDF avec leurs accents, 🔆 Affichage XL (ex-« Mode urgence »), Sortie d'urgence qui prévient si la sortie trouvée est coupée, carte plus fluide et sécurité renforcée."
+    "✨ Interface allégée : beaucoup moins de texte dans les fenêtres, et les réglages se rangent en rubriques qui se replient. Le détail de chaque option est dans 📖 Documentation.",
+    "💾 Sessions sans limite de 5 Mo, 📸 Mes photos retrouve toutes tes photos (même d'un point supprimé), messages dans les fenêtres de l'app, PDF avec leurs accents, 🔆 Affichage XL et carte plus fluide."
   ]
 }

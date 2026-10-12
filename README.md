@@ -21,8 +21,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.14.1` (11/10/2026)
+## 📦 Version courante — `v2.15.0` (12/10/2026)
 
+> ✨ **v2.15.0 — Interface allégée** : ~60 % des paragraphes d'explication retirés des fenêtres (168 clés en moins par dico, détail dans le Guide) ; rubriques repliables dans ⚙️ Configuration de l'accueil ; « Précharger le ZIP » → « 💾 Mémoriser les plans dans l'app » ; espagnol harmonisé sur « mapa » ; photos (réimport qui fusionne, fiche du point dans le ZIP, limite de 5 au rattachement), analyse d'un plan sans charger son archive, export image d'un plan tuilé depuis ses tuiles ; noms réels neutralisés dans le dépôt public ; smoke et checkups réparés (CSP, repli Edge).
+>
 > 🧰 **v2.14.1** : sur une installation reliée, les actions du compte passent dans une tuile de 🧰 Outils (prise `outilHome`), 👤 Mon profil redevient celui du community ; Aide IA : le code source est public (CC BY-NC-SA 4.0).
 >
 > 📸 **v2.14.0 — Release de prod depuis v2.11.0 (regroupe v2.12.0 → v2.13.2)** : sessions en IndexedDB (fini le plafond ~5 Mo du localStorage, migration vérifiée) ; 🧰 Outils › 📸 Mes photos (galerie, photos d'un point supprimé rattachées ou recréées) ; export / import de profil sans les plans d'une organisation, import limité aux préférences connues ; guides reliés à doc.myktamap.fr ; écran de licence invalide avec lien vers la licence pro ; prises d'extension neutres (rubriques du compte, rubrique d'aide, outils du Mode Développeur) ; splash avant la gate déléguée ; pages d'audit réseau générées ; sonde d'intégrité des sites.
@@ -582,6 +584,18 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.15.0 (12/10/2026) — Interface allégée (branche `Karma_dev`)
+
+Bump demandé par KARMA pour livrer la refonte des textes de l'interface (règle « réglages Android » : un titre clair, au plus une ligne d'avertissement).
+
+- **Allègement en deux passes** (`f69570f`…`f38953f`) : Configuration de l'accueil, Réglages du plan, Niveaux/Jonction, accueil, exports/imports, itinéraire, légende, heatmap, Mode Secours, Générateur, éditeur de données, inspecteurs, boussole, Aide IA, multi-plans, galerie, carnet, 6 fiches de l'Aide intégrée. ~60 % des textes retirés, 168 clés en moins par dico (FR/EN/ES alignés). Gardés : perte de données, irréversible, vie privée, plantage. Le Guide couvrait déjà l'information retirée (section « Nouveau plan » complétée).
+- **Rubriques repliables** dans ⚙️ Configuration de l'accueil (`8348a14`) : même balisage que les Réglages du plan, `window.ktaGroupesRepliables`, mémoire séparée (`myktamap_home_cfg_groupes_v1`).
+- **Libellés** : « 💾 Mémoriser les plans dans l'app » (ex-« Précharger le ZIP ») ; zone de dépôt réduite à une ligne d'extensions ; emoji en double retiré des cartes de l'éditeur de données ; espagnol : « mapa » partout (344 valeurs + Guide ES).
+- **Photos** (`aaee28c`, `886da21`, `80448b0`) : réimport d'une session ZIP = fusion ; fiche du point dans le ZIP ; limite de 5 au rattachement ; analyse depuis l'accueil par lecture partielle de l'archive. **Export image** d'un plan tuilé composé depuis les tuiles déjà sur l'appareil (`6a829cd`).
+- **Multi-plans** (`700e20a`) : un datalayer au chemin complet n'est plus précédé d'un 404.
+- **Dépôt public** : nom du département, noms de plans réels, région et dimensions d'un vrai plan neutralisés ; `check-noms-reels.js` (empreintes). `guard-git.js` applique l'union des règles git à tous les dépôts.
+- **Harnais** : `scripts/smoke/attendre.js` remplace `page.waitForFunction`, refusé par la CSP (faux rouge du smoke à l'étape 4) ; `scripts/smoke/navigateur.js` donne aux checkups le repli Edge du smoke.
 
 #### v2.14.1 (11/10/2026) — Tuile d'outils d'une installation reliée (branche `Karma_dev`)
 
