@@ -648,7 +648,7 @@
       if (!nom || nom.slice(0, 2) === "on") continue;
       if ((nom === "href" || nom === "src") && valeur !== null &&
           valeur.trim().toLowerCase().replace(/[\t\n\r ]/g, "").indexOf("javascript:") === 0) valeur = "#";
-      out += " " + nom + (valeur === null ? "" : "=\"" + valeur.replace(/"/g, "&quot;") + "\"");
+      out += " " + nom + (valeur === null ? "" : "=\"" + valeur.replaceAll("\"", "&quot;") + "\"");
     }
     return out;
   }
@@ -669,7 +669,7 @@
       const nom = corps.slice(debut, k).toLowerCase();
       i = gt + 1;
       if (bloc) { if (ferme && nom === bloc) bloc = null; continue; }
-      if (!nom || !/[a-z]/.test(nom[0])) { out += "&lt;" + corps.replace(/</g, "&lt;") + "&gt;"; continue; }
+      if (!nom || !/[a-z]/.test(nom[0])) { out += "&lt;" + corps.replaceAll("<", "&lt;") + "&gt;"; continue; }
       if (_HTML_BLOC[nom]) { if (!ferme) bloc = nom; continue; }
       if (_HTML_SEUL[nom]) continue;
       out += ferme ? "</" + nom + ">" : "<" + nom + _attributsSurs(corps.slice(k)) + ">";
