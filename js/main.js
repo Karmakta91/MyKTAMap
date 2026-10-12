@@ -2495,6 +2495,13 @@ window.proposerRedemarrageLangue = function() {
   window.addEventListener("mktm:plans-extension-changes", function() {
     _decouvrirPlansExtension().then(function() {
       if (typeof window.refreshPlansList === "function") window.refreshPlansList();
+      // 🩸 12/10/2026 (retour KARMA) — la Vue OSM de l'accueil gardait les noms de la PREMIÈRE lecture (encore
+      // illisibles quand l'extension ne les avait pas fini de traiter) jusqu'à l'ouverture d'un plan : elle suit
+      // désormais la liste, quand l'accueil est affiché (en mode carte, le retour à l'accueil la remonte déjà).
+      const osm = document.getElementById("ktaOsmHomeContent");
+      if (osm && osm.offsetParent !== null && window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
+        try { window.OsmHomePreview.refresh(); } catch (e) { console.warn("[Main] Vue OSM après la liste :", e); }
+      }
     }).catch(function(e) { console.warn("[Main] plans d'extension :", e); });
   });
 
