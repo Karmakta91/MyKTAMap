@@ -98,7 +98,7 @@ DOCS.forEach(function (d) {
 
   // 🩸 Les fantomes connus ne doivent pas repousser.
   t("🩸 " + d.l + " : le Générateur n'est PAS présenté comme un groupe de la barre",
-    !/\| \*\*(Créer \/ Modifier plan|Create \/ Edit plan|Crear \/ Modificar plano)\*\*/.test(DOC));
+    !/\| \*\*(Créer \/ Modifier plan|Create \/ Edit plan|Crear \/ Modificar (?:plano|mapa))\*\*/.test(DOC));
   t("🩸 " + d.l + " : la ligne Édition ne promet plus « effacer » depuis la barre",
     !/\| \*\*(Édition de points|Point editing|Edición de puntos)\*\*[^\n]*(, effacer|, clear|, borrar)/.test(DOC));
 
