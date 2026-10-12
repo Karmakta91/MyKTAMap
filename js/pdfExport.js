@@ -167,10 +167,6 @@
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
-          '<p class="kta-ses-intro">' +
-            T("pdfexport.intro") +
-          '</p>' +
-
           // 📐 Format de page — 2 lignes : taille + orientation
           '<div class="kta-ses-section">' +
             '<div class="kta-ses-section-title">' + T("pdfexport.taille.titre") + '</div>' +

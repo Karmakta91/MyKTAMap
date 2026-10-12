@@ -1424,9 +1424,6 @@ photos: false, histoirePdfs: false, crashes: false
     if (!corps) return;
     const T = window.I18n.t.bind(window.I18n);
     let html = '';
-    html += '<p class="kta-profile-intro">';
-    html += T("profileio.export_intro");
-    html += '</p>';
     html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:#ffae80;">';
     html += '🔐 ' + T("profileio.export_security");
     html += '</p>';
@@ -1435,15 +1432,15 @@ photos: false, histoirePdfs: false, crashes: false
     }
 
     html += '<div class="kta-profile-sections">';
-    html += _renderSectionRow("user",        "👤", T("profileio.sec_user_label"),        sizes.user,        true,  T("profileio.sec_user_hint"));
-    html += _renderSectionRow("registry",    "🗂️", T("profileio.sec_registry_label"),    sizes.registry,    true,  T("profileio.sec_registry_hint"));
-    html += _renderSectionRow("preferences", "⚙️", T("profileio.sec_preferences_label"), sizes.preferences, true,  T("profileio.sec_preferences_hint"));
-    html += _renderSectionRow("perPlanLs",   "📍", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  T("profileio.sec_perplan_hint"));
-    html += _renderSectionRow("favoris",     "⭐", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  T("profileio.sec_favoris_hint"));
-    html += _renderSectionRow("sessions",    "💾", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  T("profileio.sec_sessions_hint"));
-    html += _renderSectionRow("carnet",      "📔", T("profileio.sec_carnet_label"),      sizes.carnet,      true,  T("profileio.sec_carnet_hint"));
-    html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  T("profileio.sec_backups_hint"));
-    html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  T("profileio.sec_tutorial_hint"));
+    html += _renderSectionRow("user",        "👤", T("profileio.sec_user_label"),        sizes.user,        true,  "");
+    html += _renderSectionRow("registry",    "🗂️", T("profileio.sec_registry_label"),    sizes.registry,    true,  "");
+    html += _renderSectionRow("preferences", "⚙️", T("profileio.sec_preferences_label"), sizes.preferences, true,  "");
+    html += _renderSectionRow("perPlanLs",   "📍", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  "");
+    html += _renderSectionRow("favoris",     "⭐", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  "");
+    html += _renderSectionRow("sessions",    "💾", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  "");
+    html += _renderSectionRow("carnet",      "📔", T("profileio.sec_carnet_label"),      sizes.carnet,      true,  "");
+    html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  "");
+    html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  "");
     html += _renderSectionRow("photos",      "📸", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
     html += _renderSectionRow("histoirePdfs", "📄", T("profileio.sec_histpdf_label"),    sizes.histoirePdfs, false, T("profileio.sec_histpdf_hint"));
     html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
@@ -1457,7 +1454,6 @@ photos: false, histoirePdfs: false, crashes: false
     if (archivables.length) {
       html += '<div class="kta-profile-sections" style="margin-top:10px;">';
       html += '<div style="font-weight:600; margin:2px 0 4px;">📦 ' + T("profileio.arch_title") + '</div>';
-      html += '<div class="kta-profile-row-hint" style="margin:0 0 6px;">' + T("profileio.arch_hint") + '</div>';
       html += '<label class="kta-profile-row" style="font-size:12px;">' +
                 '<input type="checkbox" id="kta-profile-arch-all">' +
                 '<span class="kta-profile-row-label"><strong>' + T("profileio.arch_all") + '</strong></span>' +
@@ -1574,7 +1570,7 @@ photos: false, histoirePdfs: false, crashes: false
              '<span class="kta-profile-row-label">' +
                '<strong>' + _escHtml(label) + '</strong> ' +
                '<span class="kta-profile-row-meta">' + c + ' &middot; ' + _formatBytes(b) + '</span>' +
-               '<div class="kta-profile-row-hint">' + hint + '</div>' +
+               (hint ? '<div class="kta-profile-row-hint">' + hint + '</div>' : '') +
              '</span>' +
            '</label>';
   }
@@ -1690,7 +1686,6 @@ photos: false, histoirePdfs: false, crashes: false
               '<span class="kta-profile-row-label">' +
                 '<strong>' + T("profileio.arch_import_label", { n: nbArchives }) + '</strong> ' +
                 '<span class="kta-profile-row-meta">' + _formatBytes(file.size) + '</span>' +
-                '<div class="kta-profile-row-hint">' + T("profileio.arch_import_hint") + '</div>' +
               '</span>' +
             '</label>') : '') +
         '</div>' +
@@ -1926,10 +1921,6 @@ photos: false, histoirePdfs: false, crashes: false
       html += '<div><strong>' + T("profileio.fileinfo_source_version") + '</strong> : ' + _escHtml(stats.appVersion) + '</div>';
     }
     html += '</div>';
-
-    html += '<p class="kta-profile-intro">' +
-              T("profileio.import_intro") +
-            '</p>';
 
     // Sections présentes dans le profil
     html += '<div class="kta-profile-sections">';

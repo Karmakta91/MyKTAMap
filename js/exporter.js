@@ -255,9 +255,6 @@
                  - transparent : pas de fillRect (canvas alpha) -->
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">${T("imgexport.fond.titre")}</div>
-              <p style="font-size:11.5px; color:#8892a4; margin:4px 0 8px 0; line-height:1.5;">
-                ${T("imgexport.fond.intro")}
-              </p>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="image" checked>
@@ -302,9 +299,6 @@
             <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
             <div class="kta-aide-section" id="kta-export-levels-section" style="display:none;">
               <div class="kta-aide-section-titre">${T("imgexport.niveaux.titre")}</div>
-              <p style="font-size:11.5px; color:#8892a4; margin:0 0 8px 0; line-height:1.5;">
-                ${T("imgexport.niveaux.intro")}
-              </p>
               <div id="kta-export-levels" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
 

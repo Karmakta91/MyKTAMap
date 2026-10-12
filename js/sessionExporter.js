@@ -578,7 +578,7 @@
           (_filtreActif() ? '<button type="button" class="kta-ses-btn" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
-          ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : t("export.filtre.aide")) + '</div>' +
+          ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
       '</div>';
   }
   function _brancherFiltre(modal) {
@@ -931,10 +931,6 @@
     // async après render via _kta_majCompteurPhotosFull (cf. _afficherModale).
     // En attendant, on affiche "Chargement…" pour ne pas bloquer le render.
     return _htmlFiltre() + `
-      <div class="kta-ses-intro">
-        ${t("export.full.intro")}
-        <br><span style="color:#8892a4;">${t("export.full.introDetail")}</span>
-      </div>
       <div class="kta-ses-summary">
         <div>✏️ ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
         <div>🛣️ ${t("export.full.roads", { n: d.roads.length, s: d.roads.length > 1 ? "s" : "" })}</div>
@@ -1021,10 +1017,6 @@
     }
 
     return _htmlFiltre() + `
-      <div class="kta-ses-intro">
-        ${t("export.adv.intro")}
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.adv.contentTitle")}</div>
 
@@ -1236,11 +1228,6 @@
       rowTypeSub("conv_structures_front-2",  t("export.conv.structFront2"),  structureCountByType["front-2"].length,  true);
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.conv.s2dIntro")}
-        <br><span style="color:#8892a4;">${t("export.conv.s2dIntroDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.conv.s2dContentTitle")}</div>
         ${row("conv_points", t("export.conv.points"),  d.points.length, true)}
@@ -1317,11 +1304,6 @@
     }
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.conv.d2sIntro")}
-        <br><span style="color:#8892a4;">${t("export.conv.d2sIntroDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.conv.d2sSourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-conv-d2e-drop">
@@ -3077,11 +3059,6 @@
     }
 
     return `
-      <div class="kta-ses-intro">
-        ${t("export.fusion.intro")}
-        <br><span style="color:#8892a4;">${t("export.fusion.introDetail")}</span>
-      </div>
-
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">${t("export.fusion.sourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-fusion-drop">
@@ -3398,9 +3375,6 @@
     const niveauxBloc = mlOn
       ? '<div class="kta-kmz-section">' +
           '<div class="kta-kmz-section-titre">' + t("export.kmz.niveauxTitre") + '</div>' +
-          '<p style="font-size:11.5px; color:#8892a4; margin:4px 0;">' +
-            t("export.kmz.niveauxHint") +
-          '</p>' +
           '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
         '</div>'
       : '';
@@ -3417,10 +3391,6 @@
       : t("export.extern.descGpx");
 
     return '' +
-      '<div class="kta-ses-intro">' +
-        t("export.extern.intro") +
-      '</div>' +
-
       // 🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréf GPS (si applicable)
       ((typeof window.renderBannerCoherenceEchelle === "function")
         ? window.renderBannerCoherenceEchelle(_kmzCurrentPlanId(), { context: "export" })

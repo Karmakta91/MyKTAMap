@@ -179,7 +179,6 @@ window.ouvrirImportGpx = function(fichierInitial) {
         :
           '<div class="kta-aide-section">' +
             '<p>' + window.I18n.t("impexp.gpx.intro") + '</p>' +
-            '<p>' + window.I18n.t("impexp.gpx.compat") + '</p>' +
             '<p>' + window.I18n.t("impexp.gpx.undoable") + '</p>' +
           '</div>' +
           '<div class="kta-aide-section">' +

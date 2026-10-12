@@ -514,8 +514,7 @@
           '</div>' +
           '<label class="kta-impm-precharger">' +
             '<input type="checkbox" id="kta-impm-precharger"' + (_precharger ? ' checked' : '') + '>' +
-            '<span><span class="kta-impm-precharger-label">' + _esc(_t("impmasse.precharger.label")) + '</span>' +
-            '<span class="kta-impm-precharger-info">' + _esc(_t("impmasse.precharger.info")) + '</span></span>' +
+            '<span><span class="kta-impm-precharger-label">' + _esc(_t("impmasse.precharger.label")) + '</span></span>' +
           '</label>' +
           '<div class="kta-impm-resume" id="kta-impm-resume"></div>' +
           '<div class="kta-impm-alerte" id="kta-impm-alerte" style="display:none;"></div>' +
