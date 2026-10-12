@@ -1511,7 +1511,6 @@ function planRowHTML(plan) {
               '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
                 '<span id="kta-plan-tiling-status" style="font-size:12px; color:#8892a4;"></span>' +
               '</div>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tilingHint")) + '</div>' +
             '</div>';
         }
 
@@ -1567,8 +1566,6 @@ function planRowHTML(plan) {
               '<div id="kta-plan-offline-zone" style="min-height:28px;">' +
                 '<span style="font-size:12px; color:#8892a4;">⏳</span>' +
               '</div>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
-                escapeHtml(_t("home.plans.offline.hint")) + '</div>' +
             '</div>';
         }
 
@@ -1635,8 +1632,6 @@ function planRowHTML(plan) {
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                 '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
                   escapeHtml(_t("home.plans.removeBtnTitle")) + '</button>' +
-                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
-                  escapeHtml(_t("home.plans.info.removeHint")) + '</div>' +
               '</div>' +
             '</div>' +
           '</div>';

@@ -904,7 +904,6 @@
                     'value="' + (snap.surnom || "").replace(/"/g, "&quot;") + '">' +
                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">' + _t("home.profile.saveName") + '</button>' +
                 '</div>' +
-                '<p class="kta-profile-details-hint">' + _t("home.profile.nicknameHint") + '</p>' +
               '</div>' +
 
               // 🆕 v1.52.0 — Rang / badge (gamification, hydraté par _hydrateProfileRank)
@@ -982,7 +981,6 @@
                     '<input type="range" id="kta-wall-posy" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + '">' +
                     '<span class="kta-wall-voile-val" id="kta-wall-posy-val">' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + ' %</span>' +
                   '</div>' +
-                  '<p class="kta-profile-details-hint">' + _t("home.profile.wallCadrageHint") + '</p>' +
                 '</div>' +
                 '<p class="kta-profile-details-hint">' + _t("home.profile.wallHint") + '</p>' +
               '</div>' +
@@ -1375,9 +1373,6 @@
                 '<div style="background:rgba(110,226,135,0.06); border:1px solid rgba(110,226,135,0.22); border-radius:6px; padding:10px 12px; margin-bottom:8px;">' +
                   _t("home.profile.resetKept") +
                 '</div>' +
-                '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
-                  _t("home.profile.resetAfterHint") +
-                '</p>' +
               '</div>' +
               '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
                 '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">' + _t("home.profile.cancel") + '</button>' +
@@ -1615,9 +1610,6 @@
                 '<tfoot id="kta-profile-plansstats-tfoot"></tfoot>' +
               '</table>' +
             '</div>' +
-            '<p class="kta-profile-plansstats-note">' +
-              _t("home.profile.stats.plansNote") +
-            '</p>' +
           '</div>';
 
         // Lancement async du calcul agrégé séquentiel (anti-crash)

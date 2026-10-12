@@ -11494,12 +11494,6 @@ a.kta-level-btn {
   color: #f4c542;
   margin-bottom: 6px;
 }
-.kta-niv-section-hint {
-  font-size: 12px;
-  color: #8892a4;
-  margin: 0 0 10px 0;
-  line-height: 1.5;
-}
 
 /* Grille checkboxes visibles */
 .kta-niv-vis-grid {
@@ -18903,13 +18897,6 @@ html.kta-theme-light .kta-profile-pies-card-title {
   font-size: 11.5px;
 }
 .kta-profile-plansstats-table tfoot th:first-child { text-align: left; }
-.kta-profile-plansstats-note {
-  margin: 6px 0 0;
-  font-size: 10.5px;
-  color: #8892a4;
-  font-style: italic;
-  line-height: 1.4;
-}
 
 /* Thème clair — section plans stats */
 body.kta-theme-light .kta-profile-plansstats,
@@ -22141,7 +22128,6 @@ html.kta-theme-light .kta-readme-search-count { color: #5a6478; }
 }
 input.kta-cfg-ok { animation: kta-cfg-ok-flash 1.2s ease-out; }
 input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(255, 91, 69, 0.4) !important; }
-.kta-cfg-globaux-hint { font-size: 11.5px; color: #8892a4; line-height: 1.5; margin: 2px 0 8px; }
 .kta-cfg-globaux-liste {
   display: grid;
   grid-template-columns: 1fr auto;
