@@ -1952,7 +1952,6 @@ function _ouvrirChoixDureeVerrou() {
         '<button class="kta-panneau-close" id="kta-verrou-close">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">' + window.I18n.t("tracker.verrou.aide") + '</p>' +
         '<div style="display:flex; flex-direction:column; gap:8px;">' + boutons + '</div>' +
       '</div>' +
     '</div>';

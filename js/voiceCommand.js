@@ -410,9 +410,6 @@
             _t("voice.aide.intro") +
           '</p>' +
           listHtml +
-          '<p style="font-size:11.5px; color:#8892a4; font-style:italic; margin-top:14px; line-height:1.5;">' +
-            _t("voice.aide.hint") +
-          '</p>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(m);

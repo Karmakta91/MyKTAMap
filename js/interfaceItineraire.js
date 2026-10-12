@@ -1401,9 +1401,6 @@ function _htmlSectionAvoidItineraire(prefs) {
     '<div class="kta-iti-section">' +
       '<details class="kta-iti-avoid-details">' +
         '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.I18n.t("iti.avoid.title") + '</summary>' +
-        '<p class="kta-iti-help">' +
-          window.I18n.t("iti.avoid.help") +
-        '</p>' +
 
         // === Points à éviter ===
         '<div class="kta-iti-avoid-group">' +
@@ -1427,9 +1424,6 @@ function _htmlSectionAvoidItineraire(prefs) {
         // === Tags à éviter ===
         '<div class="kta-iti-avoid-group">' +
           '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
-          '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
-            window.I18n.t("iti.avoid.tagsHelp") +
-          '</p>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
         '</div>' +
 
@@ -1443,9 +1437,6 @@ function _htmlSectionAvoidItineraire(prefs) {
               (prefs.respecterInaccessibles === false ? '' : ' checked') + '>' +
             '<span>' + window.I18n.t("iti.inacc.label") + '</span>' +
           '</label>' +
-          '<p class="kta-iti-help" style="margin:2px 0 0; font-size:11.5px;">' +
-            window.I18n.t("iti.inacc.help") +
-          '</p>' +
         '</div>' +
 
         // === Zones à éviter (🆕 v1.48.0) ===
@@ -1886,7 +1877,6 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-speed-segmented" id="kta-iti-speed-segmented">' +
         speedButtonsHtml +
       '</div>' +
-      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.speed.hint") + '</p>' +
     '</div>';
 
   // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable entre chaque
@@ -1908,7 +1898,6 @@ window.ouvrirItinerairModal = function() {
         '<input type="number" id="kta-iti-pause-min" min="0" max="120" step="1" ' +
                'value="' + pauseMin + '" style="width:70px;"> ' + window.I18n.t("iti.pause.minUnit") +
       '</div>' +
-      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.pause.hint") + '</p>' +
     '</div>';
 
   const sectionAction =

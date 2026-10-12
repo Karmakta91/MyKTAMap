@@ -856,9 +856,6 @@ window.LegendCustomization = (function() {
           '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
-          '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
-            window.I18n.t("legend.editor.intro") +
-          '</p>' +
           // 🎨 v1.76.0 (F6) — lève l'ambiguïté historique de la case à cocher.
           // Elle n'a JAMAIS masqué quoi que ce soit de la carte : elle ne
           // retire l'entrée que de la BOÎTE de légende. Le masquage carte

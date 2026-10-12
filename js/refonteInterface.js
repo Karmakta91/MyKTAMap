@@ -1546,9 +1546,6 @@
               '<button type="button" class="kta-btn kta-btn-primary" id="kta-refonte-session-open-stats-glob">' +
                 '📊 ' + window.I18n.t("ui.refonte.modal_cta_stats_glob") +
               '</button>' +
-              '<div style="font-size:11.5px; color:#8892a4; margin-top:4px; text-align:center; font-style:italic;">' +
-                window.I18n.t("ui.refonte.modal_cta_stats_glob_hint") +
-              '</div>' +
             '</div>';
 
     // 🚨 Q46 (audit 13/09/2026) : « Enregistré il y a N s » en tête — rien ne
@@ -1859,9 +1856,6 @@
     // courant + total cross-plan.
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-favoris-section">';
     html += '<div class="kta-refonte-session-section-titre">⭐ ' + window.I18n.t("ui.refonte.section_favoris") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
-    html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-              window.I18n.t("ui.refonte.favoris_desc") +
-            '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-current">' +
                 '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_current") +

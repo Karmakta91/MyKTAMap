@@ -468,7 +468,6 @@
           '<p class="kta-guid-feuille-resume">' +
             _esc(_t("guid.feuille.resume", { dist: _fmtM(totalM), n: guide.consignes.length })) + '</p>' +
           '<ol class="kta-guid-feuille-liste">' + lignes + '</ol>' +
-          '<p class="kta-guid-feuille-note">' + _esc(_t("guid.feuille.note")) + '</p>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(modal);

@@ -217,7 +217,6 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
         '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="' + window.I18n.t("alerts.btn.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-alert-selector-corps">' +
-        '<p class="kta-alert-selector-hint">' + window.I18n.t("alerts.selector.hint") + '</p>' +
         '<div class="kta-alert-selector-list">' + rowsHtml + '</div>' +
       '</div>' +
     '</div>';
