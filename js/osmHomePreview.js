@@ -2103,7 +2103,13 @@
       const parent = _mapInstance.getPane(paneNom);
       if (!parent) return null;
       pane = _mapInstance.createPane(nom, parent);
-      pane.style.zIndex = "-1";
+      // 🩸 12/10/2026 (iPhone, vidéo KARMA : le plan disparaît PENDANT le glissé, revient à la fin) — plus de
+      // z-index NÉGATIF : Safari iOS repeignait ce sous-calque derrière le fond OSM tant que la carte bougeait.
+      // Il passe en PREMIER enfant (sous les tracés du plan par l'ordre du DOM) et a sa propre couche de
+      // composition (translateZ + will-change), le remède connu au clignotement d'un calque semi-transparent.
+      parent.insertBefore(pane, parent.firstChild);
+      pane.style.transform = "translateZ(0)";
+      pane.style.willChange = "opacity";
     }
     if (op != null) pane.style.opacity = String(op);
     return nom;

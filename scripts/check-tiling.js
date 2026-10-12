@@ -614,7 +614,9 @@ function _opaciteCalque() {
   t("🫥 accueil : vue d'ensemble ET tuiles nettes dans le même sous-calque opaque du plan, opacité sur le calque",
     /const pTuiles = _paneTuiles\(paneNom, opacite\);/.test(HP) && /opacity: pTuiles \? 1 : opacite/.test(HP) &&
     /const pT   = pn \? _paneTuiles\(pn\.nom, op\) : null;/.test(HP) && /opacity: pT \? 1 : op/.test(HP) &&
-    /pane\.style\.zIndex = "-1";/.test(HP));
+    /parent\.insertBefore\(pane, parent\.firstChild\);/.test(HP) && !/pane\.style\.zIndex = "-1";/.test(HP));
+  // 🩸 12/10/2026 : plus de z-index négatif (Safari iOS le repeignait derrière le fond OSM pendant le glissé) ;
+  // le sous-calque reste sous les tracés par l'ordre du DOM (premier enfant du calque du plan).
   t("🫥 accueil : les 3 réglages d'opacité passent par le calque (sinon la tuile se re-multiplie)",
     (HP.match(/_opaciteTuilesPlan\(/g) || []).length === 4);
 }
