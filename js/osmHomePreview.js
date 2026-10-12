@@ -2103,7 +2103,13 @@
       const parent = _mapInstance.getPane(paneNom);
       if (!parent) return null;
       pane = _mapInstance.createPane(nom, parent);
-      pane.style.zIndex = "-1";
+      // 🩸 12/10/2026 (iPhone, vidéo KARMA : le plan disparaît PENDANT le glissé, revient à la fin) — plus de
+      // z-index NÉGATIF : Safari iOS repeignait ce sous-calque derrière le fond OSM tant que la carte bougeait.
+      // Il passe en PREMIER enfant (sous les tracés du plan par l'ordre du DOM) et a sa propre couche de
+      // composition (translateZ + will-change), le remède connu au clignotement d'un calque semi-transparent.
+      parent.insertBefore(pane, parent.firstChild);
+      pane.style.transform = "translateZ(0)";
+      pane.style.willChange = "opacity";
     }
     if (op != null) pane.style.opacity = String(op);
     return nom;
@@ -2665,7 +2671,19 @@
     else _retirerPlansOsm(e.ids);
   }
 
-  async function _ajouterPlansOsm(ids, libelle) {
+  // 📁 Tous les plans géoréférencés d'un dossier, pas encore affichés : même chemin que le lot par étiquette.
+  function _ajouterDossierOsm(dossierId) {
+    const PR = window.PlanRegistry;
+    if (!PR || typeof PR.planFolderId !== "function") return;
+    const f = PR.findFolder ? PR.findFolder(dossierId) : null;
+    const ids = _listGeorefPlans().filter(function(p) {
+      const e = PR.findById ? PR.findById(p.id) : null;
+      return e && PR.planFolderId(e) === dossierId && _stackOrder.indexOf(p.id) === -1;
+    }).map(function(p) { return p.id; });
+    if (ids.length) _ajouterPlansOsm(ids, f ? f.name : "", "osm_mode.multi.folderConfirm");
+  }
+
+  async function _ajouterPlansOsm(ids, libelle, cleConfirm) {
     // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
     // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
     // sur un lot, « après coup » veut dire une fois les vingt plans montés,
@@ -2673,7 +2691,7 @@
     // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
     const total = _stackOrder.length + ids.length;
     if (ids.length >= 2 && total > 3) {
-      const ok = await window.ktaConfirm(window.I18n.t("osm_mode.multi.tagConfirm",
+      const ok = await window.ktaConfirm(window.I18n.t(cleConfirm || "osm_mode.multi.tagConfirm",
         { n: ids.length, tag: window.ktaEsc(libelle || ""), total: total }));
       if (!ok) return;
     }
@@ -2807,7 +2825,11 @@
     const multiAdd = overlay.querySelector("#ktaOsmMultiAdd");
     if (multiAdd) {
       multiAdd.addEventListener("change", function() {
-        if (multiAdd.value) { _ajouterPlanOsm(multiAdd.value); multiAdd.value = ""; }
+        const v = multiAdd.value;
+        multiAdd.value = "";
+        if (!v) return;
+        if (v.indexOf("dossier:") === 0) { _ajouterDossierOsm(v.slice(8)); return; }
+        _ajouterPlanOsm(v);
       });
     }
     _renderModalGlobaux();
@@ -3053,10 +3075,28 @@
 
     // Sélecteur d'ajout : plans georef restants
     const restants = plans.filter(function(p) { return _stackOrder.indexOf(p.id) === -1; });
-    addSel.innerHTML = '<option value="">' + _escapeHtml(window.I18n.t("osm_mode.multi.add")) + '</option>' +
-      restants.map(function(p) {
-        return '<option value="' + _escapeHtml(p.id) + '">' + _escapeHtml(p.name) + '</option>';
-      }).join("");
+    const opt = function(p) { return '<option value="' + _escapeHtml(p.id) + '">' + _escapeHtml(p.name) + '</option>'; };
+    // 📁 12/10/2026 (KARMA) — rangés par DOSSIER de « Mes plans » (même règle que la liste : rangement manuel,
+    // sinon règle d'étiquettes), avec « ajouter tout le dossier » en tête d'un dossier de 2 plans ou plus.
+    const PR = window.PlanRegistry;
+    const dossiers = (PR && typeof PR.getFolders === "function") ? PR.getFolders() : [];
+    let corps;
+    if (!dossiers.length || typeof PR.planFolderId !== "function") {
+      corps = restants.map(opt).join("");
+    } else {
+      const dossierDe = function(p) { const e = PR.findById ? PR.findById(p.id) : null; return e ? PR.planFolderId(e) : null; };
+      const groupes = dossiers.map(function(f) { return { f: f, plans: restants.filter(function(p) { return dossierDe(p) === f.id; }) }; });
+      const ranges = {}; groupes.forEach(function(g) { g.plans.forEach(function(p) { ranges[p.id] = true; }); });
+      const autres = restants.filter(function(p) { return !ranges[p.id]; });
+      corps = groupes.filter(function(g) { return g.plans.length; }).map(function(g) {
+        return '<optgroup label="📁 ' + _escapeHtml(g.f.name) + '">' +
+          (g.plans.length >= 2 ? '<option value="dossier:' + _escapeHtml(g.f.id) + '">' +
+            _escapeHtml(window.I18n.t("osm_mode.multi.addFolder", { n: g.plans.length })) + '</option>' : "") +
+          g.plans.map(opt).join("") + '</optgroup>';
+      }).join("") + (autres.length ? '<optgroup label="' + _escapeHtml(window.I18n.t("home.plans.folders.unfiled")) + '">' +
+        autres.map(opt).join("") + '</optgroup>' : "");
+    }
+    addSel.innerHTML = '<option value="">' + _escapeHtml(window.I18n.t("osm_mode.multi.add")) + '</option>' + corps;
     addSel.style.display = restants.length ? "" : "none";
 
     // Bindings (rows reconstruits → rebind à chaque render, listeners courts)

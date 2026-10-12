@@ -154,7 +154,7 @@ La pantalla de inicio ofrece:
 
 - **▶️ Reanudar [nombre]** — vuelve a abrir el último mapa utilizado.
 - **📚 Mis mapas** — todos los mapas que ya has abierto (🌐 servidor o 💾 local), del más reciente al más antiguo; los mapas disponibles en el servidor aparecen ahí solos. Una pulsación vuelve a abrir el mapa.
-- **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista.
+- **📦 Añadir un mapa** — arrastra tu archivo ZIP a la zona (o púlsala para elegirlo) y luego **▶️ Cargar este mapa**. El mapa se suma a tu lista. Una **imagen** (`.jpg`, `.png`, `.webp`) soltada ahí abre el **Generador** con la imagen como fondo: solo falta darle un nombre al mapa.
 - **🏗️ Generar un mapa** — crea un mapa desde cero.
 
 > 🔄 **Volver a importar un mapa regenerado** — si tu ZIP tiene el **mismo nombre** que un mapa de tu lista (sean cuales sean el autor y la versión), la app te pregunta qué hacer en lugar de sobrescribirlo o apilar un duplicado:
@@ -606,7 +606,7 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 
 **🗂️ Varios mapas a la vez**: el botón **≡** del encabezado abre una ventana con los ajustes de visualización, el filtro por tag y la pila de mapas mostrados:
 
-- ➕ añadir un mapa, ▲▼ ponerlo encima o debajo, un control de **opacidad** por mapa, ✕ retirarlo; ◉ marca el mapa principal;
+- ➕ añadir un mapa — el menú los agrupa por **carpeta** de «Mis mapas», y «📁 Añadir toda la carpeta» los muestra de una vez —, ▲▼ ponerlo encima o debajo, un control de **opacidad** por mapa, ✕ retirarlo; ◉ marca el mapa principal;
 - en cada línea, 5 minibotones ocultan la imagen, los puntos, los trazados, las zonas o las estructuras de ese mapa;
 - **por etiqueta**: las etiquetas compartidas por al menos dos de tus mapas georreferenciados aparecen como fichas; un clic muestra todos sus mapas, un segundo clic los retira. Más allá de 3 mapas, la app pide confirmación y los carga uno a uno (más lento en el móvil).
 

@@ -1,13 +1,8 @@
 # 📘 MyKTAMap
 
-**📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr)** — guides utilisateur, installation, sécurité, comment chaque version est vérifiée. · Licence [CC BY-NC-SA 4.0](LICENSE) (usage commercial sur accord).
+**🟢 Application : [myktamap.fr](https://myktamap.fr) · 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr)** — guides utilisateur, installation, sécurité, comment chaque version est vérifiée. · Licence [CC BY-NC-SA 4.0](LICENSE) (usage commercial sur accord).
 
 > Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains / industriels). **100 % hors-ligne**, sans GPS requis, sans framework.
-
-**🌍 Environnements :**
-- 🟢 Production : [myktamap.fr](https://myktamap.fr)
-- 🔧 Développement : [dev.myktamap.fr](https://dev.myktamap.fr)
-- 📖 Documentation : [doc.myktamap.fr](https://doc.myktamap.fr) (guides, installation, sécurité, comment on livre)
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
@@ -21,8 +16,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.15.0` (12/10/2026)
+## 📦 Version courante — `v2.15.1` (12/10/2026)
 
+> 🗺️ **v2.15.1 — Vue OSM sur iPhone, ajout par dossier** : plans qui disparaissaient pendant le glissé de la carte sur iPhone (sous-calque des tuiles sans z-index négatif) ; menu « Ajouter un plan » rangé par dossier + « Ajouter tout le dossier » ; image déposée sur « Ajouter un plan » → Générateur sur l'étape Nom ; domaine de dev retiré du README et de l'audit ; smoke/checkups réparés et repli Edge ; porte Sonar (expressions à retour arrière, nettoyeur HTML de la prise aide).
+>
 > ✨ **v2.15.0 — Interface allégée** : ~60 % des paragraphes d'explication retirés des fenêtres (168 clés en moins par dico, détail dans le Guide) ; rubriques repliables dans ⚙️ Configuration de l'accueil ; « Précharger le ZIP » → « 💾 Mémoriser les plans dans l'app » ; espagnol harmonisé sur « mapa » ; photos (réimport qui fusionne, fiche du point dans le ZIP, limite de 5 au rattachement), analyse d'un plan sans charger son archive, export image d'un plan tuilé depuis ses tuiles ; noms réels neutralisés dans le dépôt public ; smoke et checkups réparés (CSP, repli Edge).
 >
 > 🧰 **v2.14.1** : sur une installation reliée, les actions du compte passent dans une tuile de 🧰 Outils (prise `outilHome`), 👤 Mon profil redevient celui du community ; Aide IA : le code source est public (CC BY-NC-SA 4.0).
@@ -584,6 +581,17 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.15.1 (12/10/2026) — Vue OSM sur iPhone, ajout par dossier (branche `Karma_dev`)
+
+Bump demandé par KARMA (« go bump »), juste après la prod v2.15.0.
+
+- **Vue OSM, iPhone** (`bd98638`) : le sous-calque des tuiles de chaque plan (qui porte l'opacité depuis le 08/10) était placé sous les tracés par un z-index négatif ; Safari iOS le repeignait derrière le fond OSM pendant le glissé (plan qui disparaît puis revient, même seul). Premier enfant du calque du plan, sans z-index, couche de composition propre. `check-tiling` refuse le retour du z-index négatif. Non reproduit au harnais (PC, émulation iPhone) ; **confirmé corrigé sur iPhone par KARMA** le 12/10/2026.
+- **Vue OSM, noms de plans** (`ba51af4`) : avec une extension, la Vue OSM de l'accueil gardait les noms de la première lecture de la liste (pas encore traités) jusqu'à l'ouverture d'un plan ; elle suit désormais `mktm:plans-extension-changes`, comme « Mes plans ».
+- **Ajout par dossier** (`c159675`) : menu « Ajouter un plan » de Plans & filtres OSM groupé par dossier de « Mes plans » ; « 📁 Ajouter tout le dossier (n) » passe par le lot des étiquettes (confirmation au-delà de 3 plans, chargements en série).
+- **Image déposée** (`07605aa`) : .jpg/.png/.webp sur « Ajouter un plan » → Générateur, image posée, étape Nom préremplie.
+- **Dépôt public** (`eb62a60`) : domaine de développement retiré du README, de la modale réseau et de l'audit ; `check-audit-domaine` le refuse.
+- **Harnais et qualité** (`f2c4e5e`, `be3092b`, `33f0fb3`, `6de8481`, `700e20a`, `d977b90`, `2ee5706`) : attente sans `waitForFunction` (CSP), repli Edge des checkups, porte Sonar verte, multi-plans sans 404, emoji en double de l'éditeur, espagnol sur « mapa ».
 
 #### v2.15.0 (12/10/2026) — Interface allégée (branche `Karma_dev`)
 

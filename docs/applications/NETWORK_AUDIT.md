@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.15.0** (12 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.15.1** (12 octobre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -24,8 +24,7 @@ suite du document t'explique comment.
 
 <!-- kta:classe kta-alerte -->
 > **⚠️ Cette garantie de sécurité et de non-télémétrie s'applique
-> UNIQUEMENT au domaine officiel `myktamap.fr`** (et à l'environnement
-> de développement `dev.myktamap.fr`, géré par le même auteur).
+> UNIQUEMENT au domaine officiel `myktamap.fr`**.
 
 Le code source de MyKTAMap est **public** sous licence CC BY-NC-SA 4.0. Il
 peut donc être **copié, forké, miroir ou redéployé** par n'importe qui dans
@@ -45,7 +44,7 @@ quelqu'un de prendre notre code et de le modifier.
 ### Comment t'assurer que tu es sur le vrai site ?
 
 1. Vérifie l'URL dans la **barre d'adresse** de ton navigateur
-2. Elle doit commencer par `https://myktamap.fr` ou `https://dev.myktamap.fr`
+2. Elle doit commencer par `https://myktamap.fr`
 3. Vérifie que le cadenas 🔒 est présent (HTTPS valide, certificat émis par Let's Encrypt)
 4. Si l'URL ne correspond pas, **tout ce qui est écrit dans cette page ne te concerne pas** — c'est une copie tierce sur laquelle nous n'avons aucun contrôle
 
@@ -100,9 +99,7 @@ envoyé** (réponse : rien, jamais).
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
 `<origin>` = le domaine sur lequel l'app est servie. Pour la prod c'est
-`myktamap.fr`.
-Pour dev : `dev.myktamap.fr`. Sur ton réseau local en
-développement : `localhost` ou IP locale.
+`myktamap.fr`. Sur ton réseau local en développement : `localhost` ou IP locale.
 
 **Sur `myktamap.fr`, aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`,
 `WebSocket`, `EventSource` ou n'importe quelle autre méthode d'envoi de
@@ -122,7 +119,6 @@ Pour savoir si Internet répond, l'app n'interroge **aucun service tiers**
 servi sur **le même domaine que l'app** (same-origin) :
 
 - Prod : `https://myktamap.fr/ping.html`
-- Dev : `https://dev.myktamap.fr/ping.html`
 
 L'URL est résolue dynamiquement via `location.origin + "/ping.html"`.
 Le body attendu est exactement `"OK"`.

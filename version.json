@@ -1,8 +1,8 @@
 {
-  "version": "v2.15.0",
+  "version": "v2.15.1",
   "released": "2026-10-12",
   "notes": [
-    "✨ Interface allégée : beaucoup moins de texte dans les fenêtres, et les réglages se rangent en rubriques qui se replient. Le détail de chaque option est dans 📖 Documentation.",
-    "💾 Sessions sans limite de 5 Mo, 📸 Mes photos retrouve toutes tes photos (même d'un point supprimé), messages dans les fenêtres de l'app, PDF avec leurs accents, 🔆 Affichage XL et carte plus fluide."
+    "🗺️ Vue OSM : sur iPhone, les plans ne disparaissent plus quand tu déplaces ou zoomes la carte, et tu peux afficher tous les plans d'un dossier d'un coup.",
+    "🖼️ Dépose une image (.jpg, .png) sur « Ajouter un plan » : le Générateur s'ouvre, il ne reste qu'à nommer le plan."
   ]
 }

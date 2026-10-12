@@ -5957,3 +5957,23 @@ function _afficherImporterGeoTiff(fichier) {
   }
 }
 window.afficherImporterGeoTiff = _afficherImporterGeoTiff;
+
+// 🖼️ IMAGE DÉPOSÉE SUR « CHARGER UN PLAN » (12/10/2026, demande KARMA) — un .jpg/.png/.webp n'est pas un plan
+// mais l'IMAGE DE FOND d'un plan à créer : même injection que le GeoTIFF (pas de géoréf ici, l'image n'en porte
+// pas), puis arrivée directe sur l'étape « Nom », préremplie avec le nom du fichier et sélectionnée pour être
+// retapée. Un nom déjà saisi n'est jamais écrasé.
+function _afficherImporterImage(fichier) {
+  if (!_afficherImporterGeoTiff(fichier)) return false;
+  const nom = document.getElementById("pl_name");
+  if (nom && !nom.value.trim()) {
+    const point = fichier.name.lastIndexOf(".");
+    nom.value = (point > 0 ? fichier.name.slice(0, point) : fichier.name).slice(0, 80);
+  }
+  if (_wizActif) {
+    const i = _wizPages.findIndex(function(p) { return p.def.id === "identite"; });
+    if (i >= 0) _wizAfficherPage(i);
+  }
+  if (nom) { try { nom.focus(); nom.select(); } catch (e) { /* champ masqué : pas de focus */ } }
+  return true;
+}
+window.afficherImporterImage = _afficherImporterImage;

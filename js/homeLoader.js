@@ -289,6 +289,24 @@
         return window.afficherImporterGeoTiff(f) !== false;
       }
 
+      // 🖼️ Image de fond (12/10/2026) : un .jpg/.png/.webp n'est pas un plan — il ouvre le Générateur, image posée,
+      // sur l'étape « Nom ». Le .tif garde son propre chemin (géoréf lu dans le fichier).
+      function _estImageFond(nomMinuscule) {
+        return /.(jpe?g|png|webp)$/.test(nomMinuscule);
+      }
+      function _routerImage(f) {
+        if (typeof window.afficherImporterImage !== "function") return false;
+        return window.afficherImporterImage(f) !== false;
+      }
+      function _annoncerImage(f, plusieurs) {
+        if (_routerImage(f)) {
+          zipFileName.textContent = "🖼️ " + f.name + ((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.imageRoute") : " — ouverture du Générateur…");
+          if (plusieurs) setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.imageSeule") : "Une seule image à la fois : seule la première est utilisée."), false);
+        } else {
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.imageUnavailable") : "Générateur indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là."), true);
+        }
+      }
+
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
@@ -338,6 +356,12 @@
           }
           return;
         }
+        if (_estImageFond(lower)) {
+          const plusieurs = zipFileInput.files.length > 1;
+          zipFileInput.value = "";
+          _annoncerImage(f, plusieurs);
+          return;
+        }
         zipFileName.textContent = "✅ " + f.name;
         // Note : pas d'auto-bascule de preset selon la taille — le mode "Auto" du
         // segmented control s'occupe naturellement des gros fichiers (> 60 Mo)
@@ -384,6 +408,8 @@
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.tiffUnavailable") : "Module GeoTIFF indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là."), true);
           }
+        } else if (_estImageFond(lower)) {
+          _annoncerImage(f, e.dataTransfer.files.length > 1);
         } else {
           setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz, un .gpx ou un fichier SIG (.geojson, .kml)"), true);
         }

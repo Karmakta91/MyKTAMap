@@ -154,7 +154,7 @@ The home screen offers:
 
 - **▶️ Resume [name]** — reopens the last map you used.
 - **📚 My maps** — every map you have already opened (🌐 server or 💾 local), most recent first; maps available on the server show up there on their own. A tap reopens the map.
-- **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list.
+- **📦 Add a map** — drop your ZIP file on the area (or tap it to pick the file), then **▶️ Load this map**. The map joins your list. An **image** (`.jpg`, `.png`, `.webp`) dropped there opens the **Generator** with the image as background: you just name the map.
 - **🏗️ Generate a map** — creates a map from scratch.
 
 > 🔄 **Re-importing a regenerated map** — if your ZIP has the **same name** as a map in your list (whatever the author and version), the app asks what to do instead of overwriting it or stacking a duplicate:
@@ -606,7 +606,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
-- ➕ add a map, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;
+- ➕ add a map — the menu groups them by **folder** of “My maps”, and “📁 Add the whole folder” shows them all at once —, ▲▼ move it above or below, an **opacity** slider per map, ✕ remove it; ◉ marks the main map;
 - on each row, 5 mini-buttons hide the image, points, paths, zones or structures of that map;
 - **by label**: the labels shared by at least two of your georeferenced maps appear as chips; one click shows all their maps, a second one removes them. Beyond 3 maps, the app asks for confirmation and loads them one by one (slower on mobile).
 
