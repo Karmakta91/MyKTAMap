@@ -142,8 +142,7 @@
           // Outils fournis par une extension (prise « outilsDev ») : aucun sans extension.
           _outilsExt().map(function(o, i) {
             return '<button class="loader-btn-secondary" type="button" data-devmode-outil="' + i + '" style="width:100%; margin-top:8px;"></button>';
-          }).join("") +
-          '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hint") + '</p>'
+          }).join("")
         ) : (
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hintOff") + '</p>'
         ));

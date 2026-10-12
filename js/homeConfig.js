@@ -123,30 +123,21 @@
             icon.textContent  = "🕵️";
             label.textContent = _t("home.privacy.incognitoRelieLabel", "Mode incognito indisponible ici");
             hint.textContent  = _t("home.privacy.incognitoRelieHint",
-              "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur. " +
-              "Le mode incognito n'aurait donc pas de sens ici.");
+              "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur.");
             return;
           }
           if (actif) {
             btn.classList.add("kta-cfg-incognito-btn-quit");
             icon.textContent  = "✕";
             label.textContent = _t("home.privacy.incognitoQuitLabel", "Quitter le mode incognito");
-            hint.innerHTML    = _t("home.privacy.incognitoQuitHint",
-              "Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong> " +
-              "(points, tracker, notes) <strong>seront perdues</strong>. Ta session principale " +
-              "reste intacte dans son onglet.<br>" +
-              "<span style=\"color:#a78bfa;\">Si le navigateur bloque la fermeture, " +
-              "l'onglet recharge automatiquement en mode normal.</span>");
+            hint.textContent  = _t("home.privacy.incognitoQuitHint",
+              "Les points, le tracker et les notes de cette fenêtre seront perdus.");
           } else {
             btn.classList.remove("kta-cfg-incognito-btn-quit");
             icon.textContent  = "🕵️";
             label.textContent = _t("home.privacy.incognitoStartLabel", "Démarrer en mode incognito");
-            hint.innerHTML    = _t("home.privacy.incognitoStartHint",
-              "Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> " +
-              "(ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo " +
-              "publique, prêter ta session à un tiers ou tester sans polluer ton historique " +
-              "local. Bordure violette + badge dans le titre rappellent le contexte.<br>" +
-              "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>");
+            // 12/10/2026 — le libellé suffit (le mode incognito est décrit dans le Guide).
+            hint.textContent  = "";
           }
         }
         // Rendu immédiat UNIQUEMENT si le dico est déjà là (cas FR, et tout cas

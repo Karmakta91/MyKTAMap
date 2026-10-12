@@ -705,7 +705,6 @@
             <label class="kta-cfg-lang-label" for="loaderAppLang"><span data-i18n="home.lang.label">Langue</span></label>
             <select class="kta-cfg-lang-select" id="loaderAppLang" data-i18n-title="home.lang.label"></select>
           </div>
-          <div class="kta-cfg-lang-hint" data-i18n="home.lang.hint">Choix mémorisé globalement. Pilote toute l'interface (menus, modales, aide).</div>
         </div>
 
         </div></div><!-- /kta-cfg-group -->
@@ -723,7 +722,6 @@
             <input type="checkbox" id="loaderScaledMarkers">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.display.scaledMarkers.label"></span>
-              <span class="kta-perf-ultra-hint" data-i18n-html="config.display.scaledMarkers.hint"></span>
             </span>
           </label>
           <!-- ❓ v1.94.0 (D35, exigence KARMA) — l'aide contextuelle se coupe.
@@ -733,7 +731,6 @@
             <input type="checkbox" id="loaderAideCtxCb">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.aidectx.label">❓ Bouton d'aide dans les fenêtres</span>
-              <span class="kta-perf-ultra-hint" data-i18n="config.aidectx.hint"></span>
             </span>
           </label>
           <!-- 🔕 17/09/2026 (KARMA : « beaucoup de popups d'information inutiles ») —
@@ -742,7 +739,6 @@
           <div class="kta-perf-ultra-row kta-notifs-row" style="margin-top:10px;">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" id="loaderNotifsLabel" data-i18n="config.notifs.label">🔔 Notifications</span>
-              <span class="kta-perf-ultra-hint" data-i18n="config.notifs.hint"></span>
             </span>
             <select class="kta-cfg-input kta-notifs-select" id="loaderNotifsSel" aria-labelledby="loaderNotifsLabel">
               <option value="all" data-i18n="config.notifs.all"></option>
@@ -754,14 +750,12 @@
             <input type="checkbox" id="loaderPanneauxAncres">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.panneaux.label"></span>
-              <span class="kta-perf-ultra-hint" data-i18n-html="config.panneaux.hint"></span>
             </span>
           </label>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderSnapDraw">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.snapdraw.label"></span>
-              <span class="kta-perf-ultra-hint" data-i18n-html="config.snapdraw.hint"></span>
             </span>
           </label>
           <div class="kta-cfg-row" style="margin-top:8px;">
@@ -804,7 +798,7 @@
                ThemeManager → réglage unique persisté en localStorage. -->
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(244, 197, 66, 0.08); border-color: rgba(244, 197, 66, 0.30);">
             <input type="checkbox" id="loaderThemeLightCb">
-            <span data-i18n-html="home.cfg.themeLight"><strong>☀️ Activer le thème CLAIR</strong> — fond beige cataphile au lieu du fond noir. Choix mémorisé globalement, valable pour la home, les modales, et tout le mode carte. <em>⚠️ Le changement déclenche un reload complet de l'app (v1.14.2).</em></span>
+            <span data-i18n-html="home.cfg.themeLight"><strong>☀️ Thème clair</strong></span>
           </label>
           <!-- 🆕 v1.21.1+ (KARMA "on doit pouvoir l'activer aussi depuis
                parametre du home") : toggle Wake Lock dans Configuration home
@@ -814,7 +808,7 @@
                toggles (home + map mode) pointent sur le même module. -->
           <label class="kta-net-paranoia-toggle" id="loaderWakeLockRow" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22); display:none;">
             <input type="checkbox" id="loaderWakeLockCb">
-            <span data-i18n-html="home.cfg.wakeLock"><strong>🔆 Garder l'écran allumé (Wake Lock)</strong> — empêche la mise en veille de l'écran tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas avoir à débloquer son téléphone toutes les 30s. Auto-relâché si tu changes d'onglet/app, ré-activé au retour. <em>Compat : Chrome/Edge/Safari iOS 16.4+ (toggle caché si Firefox).</em></span>
+            <span data-i18n-html="home.cfg.wakeLock"><strong>🔆 Garder l'écran allumé</strong></span>
           </label>
         </div>
 
@@ -832,26 +826,23 @@
         <div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;display:flex;align-items:center;gap:8px;cursor:pointer;"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
         <div class="kta-aide-section">
-          <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;" data-i18n-html="config.optionnels.intro">Fonctions secondaires, désactivées par défaut.</div>
           <label class="kta-net-paranoia-toggle" id="loaderReplayRow">
             <input type="checkbox" id="loaderReplayCb">
-            <span><strong data-i18n="config.replay.label">🎬 Replay du tracker</strong><br>
-              <span data-i18n-html="config.replay.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+            <span><strong data-i18n="config.replay.label">🎬 Replay du tracker</strong></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderHeatmapRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderHeatmapCb">
-            <span><strong data-i18n="config.heatmap.label">🔥 Heatmap</strong><br>
-              <span data-i18n-html="config.heatmap.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+            <span><strong data-i18n="config.heatmap.label">🔥 Heatmap</strong></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderBatterieRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderBatterieCb">
-            <span><strong data-i18n="config.batterie.label">🔋 Niveau de batterie</strong><br>
-              <span id="loaderBatterieHint" data-i18n-html="config.batterie.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+            <span><strong data-i18n="config.batterie.label">🔋 Niveau de batterie</strong>
+              <span id="loaderBatterieHint" class="kta-cfg-raison"></span></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderVibrationRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderVibrationCb">
-            <span><strong data-i18n="config.display.vibration.label">📳 Vibration haptique</strong><br>
-              <span id="loaderVibrationHint" data-i18n-html="config.display.vibration.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+            <span><strong data-i18n="config.display.vibration.label">📳 Vibration haptique</strong>
+              <span id="loaderVibrationHint" class="kta-cfg-raison"></span></span>
           </label>
         </div>
         <!-- 🕵️ Mode incognito : dans les fonctionnalités optionnelles depuis le 07/10/2026 (KARMA). Grisé sur une
@@ -861,7 +852,7 @@
             <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
             <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
           </button>
-          <div id="loaderIncognitoHint" style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+          <div id="loaderIncognitoHint" class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">
             <!-- Rempli dynamiquement par le script bind plus bas. -->
           </div>
 
@@ -911,7 +902,6 @@
             <input type="checkbox" id="loaderJournalCb">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.journal.label">📔 Tenir un carnet de mes sorties</span>
-              <span class="kta-perf-ultra-hint" data-i18n="config.journal.hint"></span>
             </span>
           </label>
           <!-- 💾 15/09/2026 (KARMA : « ce truc à cocher alourdit pour rien le
@@ -923,7 +913,6 @@
             <input type="checkbox" id="loaderMemoriserCb">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.memoriser.label">💾 Mémoriser le plan dans l'app au premier chargement</span>
-              <span class="kta-perf-ultra-hint" data-i18n="config.memoriser.hint"></span>
             </span>
           </label>
         </div>
@@ -937,11 +926,7 @@
              gérée par le script inline plus bas (window._pinSetupHandlers). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.cfg.pinTitle">🔐 Code d'accès local</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.cfg.pinHint">
-            <strong>Optionnel</strong>. Verrouille l'app par PIN 4-6 chiffres à chaque boot.
-            <strong>Face ID / Touch ID</strong> supporté si ton appareil le permet (fallback PIN sinon).
-            <br>⚠️ <strong>Pas de recovery</strong> en cas d'oubli → reset complet requis. C'est une barrière UX, pas un chiffrement des données.
-          </p>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.cfg.pinHint">⚠️ <strong>Aucune récupération en cas d'oubli</strong> (il faut tout effacer). Barrière d'usage, pas un chiffrement.</p>
           <div id="loaderPinStatus" class="kta-loader-pin-status">
             <span class="kta-loader-pin-status-icon" id="loaderPinStatusIcon">○</span>
             <span class="kta-loader-pin-status-text" id="loaderPinStatusText" data-i18n="home.cfg.pinLoading">Chargement…</span>
@@ -964,9 +949,6 @@
              (Force update = cache PWA uniquement, Reset = tout). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.privacy.intro">
-            MyKTAMap est <strong>100% client-side</strong> : aucune de tes données n'est envoyée à un serveur. Tu peux le vérifier toi-même.
-          </p>
           <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" data-i18n="home.privacy.netLogBtn">
             📋 Voir le journal réseau
           </button>
@@ -979,7 +961,7 @@
                tuile (cf js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
             <input type="checkbox" id="loaderOsmOptInCb">
-            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — affiche tes plans calibrés GPS au-dessus d'une carte du monde. Contacte <code>tile.openstreetmap.org</code> dès que le widget de l'accueil ou la modale Vue OSM s'affiche. <strong>Activé par défaut</strong> depuis la v1.90.2 ; décoché, il le reste (aucune mise à jour ne revient dessus).</span>
+            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte. Activée par défaut.</span>
           </label>
         </div>
 
@@ -1000,7 +982,7 @@
             <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></div>
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(180, 140, 255, 0.06); border-color: rgba(180, 140, 255, 0.30);">
             <input type="checkbox" id="loaderSkipServerPlansCb">
-            <span data-i18n-html="home.cfg.skipServerPlans"><strong>🚫 Ne pas charger les plans du site au démarrage</strong> — ignore la liste des plans posés sur le site (<code>data/index.json</code>) et masque la case « Afficher les plans du site » de l'accueil. Ces plans 🌐 sont aussi exclus des statistiques du bandeau profil. <em>⚠️ Rechargement requis pour un effet complet.</em></span>
+            <span data-i18n-html="home.cfg.skipServerPlans"><strong>🚫 Ne pas charger les plans du site au démarrage</strong> <em>(effet au rechargement)</em></span>
           </label>
         </div>
 
@@ -1040,9 +1022,6 @@
              Bouton 📋 Copier le rapport pour partager par DM en cas de bug. -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre" data-i18n="home.inspector.title">📊 Inspecteur</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.inspector.intro">
-            Topo lisible de ce qui est actuellement <strong>chargé en mémoire</strong> côté navigateur : localStorage, IndexedDB, Cache PWA, état runtime. Utile pour comprendre la consommation et diagnostiquer un problème.
-          </p>
           <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
             📊 Voir l'état mémoire
           </button>
@@ -1059,10 +1038,8 @@
              (#loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn) sont
              portés par les boutons de la fenêtre. -->
         <div class="kta-aide-section">
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;" data-i18n="home.cfg.depannage.hint">
-            L'app ne se met pas à jour, reste bloquée ou plante ? Les outils de réparation sont ici.
-          </p>
-          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn">
+          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn"
+                  data-i18n-title="home.cfg.depannage.hint" title="L'app ne se met pas à jour, reste bloquée ou plante">
             🆘 Dépannage
           </button>
         </div>

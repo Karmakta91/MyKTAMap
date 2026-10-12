@@ -5626,17 +5626,20 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   background: rgba(140,180,255,0.16);
   border-color: rgba(140,180,255,0.5);
 }
-.kta-cfg-lang-hint {
+/* Emplacement d'une RAISON sous une option (capteur refusé, incognito
+   indisponible…) : vide la plupart du temps, il ne prend alors aucune place.
+   Les réglages n'ont plus de paragraphe d'explication permanent (12/10/2026) :
+   le libellé suffit, le détail vit dans le Guide et l'aide intégrée. */
+.kta-cfg-raison {
+  display: block;
   font-size: 11.5px;
   color: #8892a4;
-  margin-top: 8px;
   line-height: 1.5;
-  padding: 0 4px;
 }
-/* 🆕 v1.46.4 (audit P3-LOW #5) : variante thème clair du hint langue (était
-   #8892a4 → trop pâle/illisible sur le fond crème). Aligné sur le muted clair. */
-body.kta-theme-light .kta-cfg-lang-hint,
-html.kta-theme-light .kta-cfg-lang-hint { color: var(--kta-light-text-muted, #6b6354); }
+.kta-cfg-raison:empty,
+.kta-perf-ultra-hint:empty { display: none; }
+body.kta-theme-light .kta-cfg-raison,
+html.kta-theme-light .kta-cfg-raison { color: var(--kta-light-text-muted, #6b6354); }
 body.kta-theme-light .kta-cfg-lang-label,
 html.kta-theme-light .kta-cfg-lang-label { color: #2a2118; }
 body.kta-theme-light .kta-cfg-lang-select,

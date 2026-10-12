@@ -147,7 +147,7 @@ let table = {};
   ["fr", "en", "es"].forEach(function (l) {
     const d = JSON.parse(lire("lang/" + l + ".json"));
     t("🌍 " + l + " : libellés du bouton et du réglage",
-      ["aide.ctx.btn", "config.aidectx.label", "config.aidectx.hint",
+      ["aide.ctx.btn", "config.aidectx.label",
        "config.aidectx.toastOn", "config.aidectx.toastOff"].every(function (k) { return typeof d[k] === "string"; }));
   });
 }

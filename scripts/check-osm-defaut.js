@@ -225,7 +225,7 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
   t("🩸 …et que c'est le WIDGET DE L'ACCUEIL aussi, pas seulement la modale",
     /accueil/i.test(lib));
   t("📄 le libellé de repli d'index.html dit la même chose",
-    IDX.indexOf("Activé par défaut") >= 0 && IDX.indexOf("default OFF") < 0);
+    /Activée? par défaut/.test(IDX) && IDX.indexOf("default OFF") < 0);
 
   // L'audit réseau est la page où l'on promet de tout dire : le changement de
   // défaut doit y être, faute de quoi la promesse ne vaut plus rien.

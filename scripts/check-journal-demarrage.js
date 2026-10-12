@@ -134,8 +134,9 @@ const RFI = lire("js/refonteInterface.js");
     const d = JSON.parse(lire("lang/" + l + ".json"));
     t("🌍 " + l + " : les 7 textes du démarrage manuel existent", CLES.every(k => typeof d[k] === "string"));
     t("❓ " + l + " : l'aide du carnet explique le démarrage manuel", (d["aide.sec.carnet.html"] || "").includes(A[l]));
-    t("⚙️ " + l + " : le réglage du carnet dit que le bouton reste, décoché",
-      (d["config.journal.hint"] || "").includes(H[l].replace("📔 ", "")));
+    // ⚙️ 12/10/2026 — la case du carnet n'a plus de paragraphe d'explication
+    // (le libellé suffit) : le démarrage manuel est dit par l'aide (ci-dessus)
+    // et par le Guide (ci-dessous), qui restent contrôlés.
     t("📖 " + l + " : le README documente le bouton", lire("docs/applications/" + F[l]).includes(H[l]));
   }
 }

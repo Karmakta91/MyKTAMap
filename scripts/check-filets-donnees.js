@@ -199,7 +199,7 @@ for (const lang of ["fr", "en", "es"]) {
     "history.action.abandonZone", "zones.toast.fermee", "zones.toast.abandon", "struct.undo.abandon", "struct.toast.fermee",
     "struct.toast.abandon", "session.confirm.clear", "session.confirm.clearTitle", "session.toast.clearedSnap",
     "session.banner.storageFull", "session.banner.exportBtn", "ui.refonte.confirm_remove_snapshot", "export.full.structures",
-    "export.full.tracker", "config.confirm.reset", "config.georef.confirmClear", "config.journal.label", "config.journal.hint",
+    "export.full.tracker", "config.confirm.reset", "config.georef.confirmClear", "config.journal.label",
     "gen.confirm.abandon", "maint.reset_item_photos", "maint.reset_item_journal", "maint.reset_item_backups",
     "maint.reset_item_profile", "maint.reset_item_secours", "maint.btn_export_profile_first", "pin.err.lockoutTemp",
     "pin.lockout.attente", "pin.lockout.escalade", "gate.lockout.attente"]

@@ -81,7 +81,7 @@ const OOM = lire("js/oomGuard.js");
   t("homeConfig lit et écrit par OOMGuard, sans copie locale de l'état", /OOMGuard\.niveauNotifs\(\)/.test(HC) && /OOMGuard\.setNiveauNotifs\(sel\.value\)/.test(HC));
   for (const l of ["fr", "en", "es"]) {
     const d = JSON.parse(lire("lang/" + l + ".json"));
-    t("🌍 " + l + " : textes du réglage", ["config.notifs.label", "config.notifs.hint", "config.notifs.all", "config.notifs.essential", "config.notifs.silent"].every(function (k) { return typeof d[k] === "string" && d[k]; }));
+    t("🌍 " + l + " : textes du réglage", ["config.notifs.label", "config.notifs.all", "config.notifs.essential", "config.notifs.silent"].every(function (k) { return typeof d[k] === "string" && d[k]; }));
   }
   t("les alertes serveur ne passent pas par les toasts (hors de portée du réglage par construction)", !/showToast\(/.test(lire("js/alertChecker.js")));
 }
