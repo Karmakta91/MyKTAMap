@@ -53,6 +53,9 @@
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
   function _toucher(obj) { if (window.KtaUid && obj) window.KtaUid.touch(obj); }
+  // Titre d'une carte source : la carte a déjà son icône, on retire l'emoji de tête de la clé (gardé
+  // ailleurs, ex. titre de la fenêtre de fusion).
+  function _sansIcone(s) { return String(s).replace(/^[^\p{L}\p{N}]+/u, ""); }
 
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
@@ -375,7 +378,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-fusion">
               <span class="kta-tbl-source-ico">🔗</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.fusion")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.fusion"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
               </span>
             </button>
@@ -386,7 +389,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
               <span class="kta-tbl-source-ico">🔁</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.resol")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.resol"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
@@ -395,7 +398,7 @@
             <button class="kta-tbl-source-card" id="kta-tbl-src-dedup">
               <span class="kta-tbl-source-ico">🧹</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.dedup")}</span>
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.dedup"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.dedupHint")}</span>
               </span>
             </button>
