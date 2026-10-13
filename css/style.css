@@ -5425,21 +5425,37 @@ html.kta-theme-light .kta-osm-home-empty strong {
  * 🐛 v1.43.16 — KARMA "la croix est trop grosse" : padding 10×14 → 4×9,
  * font 18 → 13 (= taille bouton standard du bandeau, juste mieux placé). */
 .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn {
+  /* 14/10/2026 (KARMA « pas jolie, trop grosse, mal ancrée ») : croix discrète comme celle des fenêtres
+     (.kta-panneau-close), centrée sur la ligne de titre « Vue OSM » (texte à 10 px, 16 px de haut). */
   position: fixed;
-  top: 10px;
+  top: 3px;
   right: 10px;
   z-index: 10001;
-  padding: 4px 9px;
-  font-size: 13px;
-  font-weight: 700;
-  background: rgba(244, 197, 66, 0.95);
-  color: #1a1f2e;
-  border: 1px solid rgba(244, 197, 66, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+  background: none;
+  color: #c8d0e0;
+  border: none;
+  box-shadow: none;
+  border-radius: 6px;
 }
 .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
-  background: #f4c542;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8eaf0;
+}
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn,
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn { color: #3a4256; }
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover,
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1a1f2e;
 }
 /* Empêche le scroll du body pendant le fullscreen (sinon Leaflet wheel
    peut faire défiler la page derrière). */
