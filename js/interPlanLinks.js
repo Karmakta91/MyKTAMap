@@ -603,6 +603,14 @@
     throw new Error("datalayer introuvable : " + file);
   }
 
+  // Plan lu dans sa copie ZIP de l'appareil : local, ZIP de l'index, et plan fourni par une extension (« ext »,
+  // plan de l'installation, gardé après sa 1re ouverture). 13/10/2026 : « ext » manquait — ses points et son réseau
+  // étaient ignorés EN SILENCE (ni lus, ni signalés en dataError) : recherche multi-plans et itinéraire inter-plans
+  // calculés sur la seule session.
+  function _planLuParZip(plan) {
+    return plan.type === "local" || plan.type === "ext" || !!plan.zip;
+  }
+
   async function _collecterPointsDuPlan(plan, stats) {
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
@@ -635,7 +643,7 @@
             });
           } catch(e) { /* layer illisible → skip */ }
         }
-      } else if ((plan.type === "local" || plan.zip) && window.PlanRegistry && window.JSZip) {
+      } else if (_planLuParZip(plan) && window.PlanRegistry && window.JSZip) {
         const blob = await window.PlanRegistry.getBlob(plan.id);
         if (!blob && stats) stats.dataError = true;   // 🆕 v1.59.0 (U2) : ZIP absent d'IDB
         if (blob) {
@@ -729,7 +737,7 @@
             _absorber(dj.roads, dj.zones);
           } catch(e) { /* layer illisible → skip */ }
         }
-      } else if ((plan.type === "local" || plan.zip) && window.PlanRegistry && window.JSZip) {
+      } else if (_planLuParZip(plan) && window.PlanRegistry && window.JSZip) {
         const blob = await window.PlanRegistry.getBlob(plan.id);
         if (!blob && stats) stats.dataError = true;
         if (blob) {
