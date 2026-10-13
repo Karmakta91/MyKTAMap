@@ -1081,12 +1081,22 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   line-height: 1.2;
   color: inherit;
 }
-/* Tuile active (Play en cours, boussole visible, recalage armé) — accent bleu */
+/* Tuile active (suivi en cours, plan orienté, guidage, verrou en service…) — vert « en route » (13/10/2026,
+   KARMA ; même vert que .kta-tx-ok). En pause = orange, coupée dans la configuration = grisée. */
 .kta-tracker-modal-tile.kta-actif {
-  border-color: #8cb4ff;
-  color: #8cb4ff;
-  background: rgba(140, 180, 255, 0.12);
-  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.35) inset;
+  border-color: #6ee287;
+  color: #6ee287;
+  background: rgba(110, 226, 135, 0.12);
+  box-shadow: 0 0 0 1px rgba(110, 226, 135, 0.35) inset;
+}
+.kta-tracker-modal-tile.kta-pause {
+  border-color: #ffb380;
+  color: #ffb380;
+  background: rgba(255, 179, 128, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 179, 128, 0.35) inset;
+}
+.kta-tracker-modal-tile.kta-inactif {
+  opacity: 0.45;
 }
 /* Tuile urgence : .kta-sous-action-urgence force déjà bg/bordure/texte rouges
    (!important) ; on s'assure juste que l'icône/label internes héritent. */
@@ -14316,6 +14326,16 @@ body.kta-theme-light .kta-tracker-modal-tile {
 body.kta-theme-light .kta-tracker-modal-tile:hover {
   background: #eef2fb;
   border-color: rgba(90, 130, 220, 0.5);
+}
+body.kta-theme-light .kta-tracker-modal-tile.kta-actif {
+  border-color: #1e7a3a;
+  color: #1e7a3a;
+  background: rgba(30, 122, 58, 0.1);
+}
+body.kta-theme-light .kta-tracker-modal-tile.kta-pause {
+  border-color: #8b3a00;
+  color: #8b3a00;
+  background: rgba(139, 58, 0, 0.1);
 }
 /* Urgence en clair (rouge plein) : la règle light existante ne cible que
    a.kta-sub / flyout-btn → on l'étend explicitement à la tuile du modal. */

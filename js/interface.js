@@ -1240,6 +1240,16 @@ function _creerTuileTracker(sub) {
   if (typeof sub.isActive === "function") {
     try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
   }
+  // 13/10/2026 (KARMA) : une tuile à trois états dit aussi « en pause » (orange) et « coupé dans la
+  // configuration » (grisée, toujours cliquable : le clic explique comment l'activer).
+  if (typeof sub.etat === "function") {
+    try {
+      const e = sub.etat();
+      tile.classList.toggle("kta-actif", e === "on");
+      tile.classList.toggle("kta-pause", e === "pause");
+      tile.classList.toggle("kta-inactif", e === "off");
+    } catch(e) {}
+  }
   const ic = document.createElement("span");
   ic.className = "kta-tracker-modal-tile-icon";
   ic.innerHTML = (typeof sub.dynamicIcon === "function")
@@ -2685,6 +2695,13 @@ _setGroupeModeActif("tracker", isTracking, null);
         icone: "🔓",
         titre: window.I18n.t("ui.subaction.verrouSuspend"),
         section: "suivi",
+        // Verrou coupé dans la configuration = grisé · suspendu = orange · en service = vert
+        dynamicIcon: function() { return _verrouSuspendu ? "🔓" : "🔒"; },
+        // (la suspension met smartNav à false le temps de la pause : elle se lit en premier)
+        etat: function() {
+          if (_verrouSuspendu) return "pause";
+          return (window.APP_CONFIG && window.APP_CONFIG.smartNav === true) ? "on" : "off";
+        },
         onClick: function() { _gererSuspensionVerrou(); }
       },
       {
