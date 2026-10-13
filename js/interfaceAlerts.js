@@ -235,6 +235,8 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   function _fermer() {
     if (modal.parentNode) modal.remove();
     document.removeEventListener("keydown", _onKey);
+    // Une alerte arrivée pendant que le sélecteur était ouvert s'ouvre maintenant (AlertChecker, 13/10/2026).
+    if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") window.AlertChecker.dismiss();
   }
   function _onKey(e) { if (e.key === "Escape") _fermer(); }
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });

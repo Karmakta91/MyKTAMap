@@ -96,7 +96,14 @@
   function _toutes() { return _siteAlerts.concat(_extAlerts); }
   // Non acquittées et pas encore ouvertes d'office : une liste relue (temps réel, retour au premier plan)
   // n'ouvre que les NOUVELLES alertes (ou une alerte modifiée : released change).
+  // Une modale d'alerte (ou le sélecteur) déjà ouverte : on n'ouvre rien par-dessus (afficherModaleAlerte refuserait)
+  // et on ne marque rien — ce qui attend s'ouvre à sa fermeture (dismiss, appelé aussi par le sélecteur).
+  let _enAttente = false;
+  function _modaleOuverte() {
+    return !!(document.getElementById("kta-alert-modal") || document.getElementById("kta-alert-selector-modal"));
+  }
   function _aOuvrirDOffice(alerts) {
+    if (_modaleOuverte()) { _enAttente = true; return []; }
     const l = _filtrerEtTrier(alerts).filter(function(a) { return _montreesAuto[a.id] !== a.released; });
     l.forEach(function(a) { _montreesAuto[a.id] = a.released; });
     return l;
@@ -202,6 +209,14 @@
     // Le cache _activeAlertsCache reste comme avant — c'est getActiveAlerts +
     // tri qui distingue acquittées/non. Mais on notifie les listeners.
     _notifyChange();
+    // Une alerte arrivée pendant que celle-ci était ouverte : à son tour (après le fondu de fermeture).
+    if (_enAttente) {
+      _enAttente = false;
+      setTimeout(function() {
+        const l = _aOuvrirDOffice(_toutes());
+        if (l.length > 0) _showOrDefer(l);
+      }, 300);
+    }
   }
 
   // =========================
