@@ -367,13 +367,11 @@ window.afficherModaleUpdateDispo = function(opts) {
           notesHtml +
         '</div>' +
 
+        // 13/10/2026 (KARMA) : un seul mode de mise à jour depuis le retrait du reset d'ici — plus de rubrique
+        // « deux modes » : une ligne dit ce qui est rafraîchi et ce qui est gardé.
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.modesTitre") + '</div>' +
-          '<div style="background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:8px; padding:10px 12px; margin-bottom:8px;">' +
-            '<div style="font-weight:700; color:#6ce28a; font-size:13px; margin-bottom:4px;">' + window.I18n.t("alerts.update.softTitre") + '</div>' +
-            '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-              window.I18n.t("alerts.update.softDesc") +
-            '</div>' +
+          '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
+            window.I18n.t("alerts.update.softDesc") +
           '</div>' +
           // 10/10/2026 (retour testeur en prod) : le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
           // à jour — il efface tout (sessions, photos, backups) sans recours. Il ne vit plus que dans 🆘 Dépannage.
