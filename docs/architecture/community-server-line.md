@@ -230,6 +230,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+- **Grades et hauts faits du profil** : `profilJeu() → bool` (information) — `false` coupe l'anneau, la médaille, le
+  bloc grade et les hauts faits (calcul compris) ; les statistiques restent. Sans extension ou en erreur : actifs. Le
+  profil se redessine à `mktm:extensions-changees`. Sert à une installation où les plans viennent de l'organisation
+  (ils gonfleraient le grade) — décision KARMA 13/10/2026.
 - **Sortie du plan affiché** : `KtaExtensions.quitterPlan(vers)`, appelée par `main.js` au changement de plan
   (`"plan"`) et au retour à l'accueil (`"accueil"`) — ferme le panneau d'extension, remet à zéro
   `KtaPresences` (présences, itinéraires, suivi, masquages) et émet **`mktm:plan-ferme`** `{ vers }` pour que

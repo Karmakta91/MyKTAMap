@@ -441,6 +441,20 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
   }
 
+  // ═════════ 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : grades et hauts faits actifs", K.profilJeuActif() === true);
+    K.register({ nom: "pj1", apiVersion: 1, profilJeu: () => false });
+    t("extension : profilJeu false → grades et hauts faits coupés", K.profilJeuActif() === false);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "pj2", apiVersion: 1, profilJeu: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → restent actifs (prise d'information), aucune exception", K2.profilJeuActif() === true);
+    const HP = lire("js/homeProfile.js");
+    t("profil : anneau, bloc grade, hauts faits (calcul ET grille) gardés par _jeuProfilActif ; redessin à l'arrivée d'une extension",
+      (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
+  }
+
   // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
   {
     const { K } = nouveauContexte(null);
@@ -612,7 +626,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
     const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
-      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"]/.test(EXT));
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"(, "profilJeu")?]/.test(EXT));
 
     // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
     const { K: A0 } = nouveauContexte(null);

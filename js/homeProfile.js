@@ -42,6 +42,8 @@
         // 🧩 v2.7.4 — compte d'une installation reliée (KtaExtensions.compte) :
         // la carte se redessine quand l'extension annonce un changement.
         window.addEventListener("mktm:compte-changed", function() { _refreshLoaderProfileBar(); });
+        // Une extension arrive APRÈS le 1er dessin : elle peut couper grades et hauts faits (profilJeu).
+        window.addEventListener("mktm:extensions-changees", function() { _refreshLoaderProfileBar(); });
         // 🆕 v1.21.1 : bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
         // Click anywhere → ouvre la modale Détails.
         bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
@@ -165,6 +167,13 @@
         // 🆕 v1.52.0 : anneau de rang (sur le wrap → survit au remplacement du innerHTML)
         // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
         const _rank = _appliquerRangAvatar(avatarWrap);
+        if (!_rank) {
+          // Grades coupés par une extension (prise profilJeu) : ni nom de grade, ni médaille.
+          const rankLabelEl = document.getElementById("kta-loader-profile-rank");
+          if (rankLabelEl) { rankLabelEl.textContent = ""; rankLabelEl.removeAttribute("data-kta-rank"); }
+          const badgeEl = document.getElementById("kta-loader-profile-badge");
+          if (badgeEl) { badgeEl.textContent = ""; badgeEl.style.display = "none"; }
+        }
         if (_rank && window.ProfileGamification) {
           const rankLabelEl = document.getElementById("kta-loader-profile-rank");
           if (rankLabelEl) {
@@ -408,8 +417,14 @@
         catch(e) { return {}; }
       }
       function _writeUnlockedAch(o) { try { localStorage.setItem(_ACH_LS_KEY, JSON.stringify(o)); } catch(e) {} }
+      // Grades et hauts faits : actifs sauf si une extension les coupe (prise profilJeu — ex. une installation
+      // où les plans viennent de l'organisation et gonfleraient le grade, 13/10/2026).
+      function _jeuProfilActif() {
+        return !(window.KtaExtensions && typeof window.KtaExtensions.profilJeuActif === "function"
+                 && window.KtaExtensions.profilJeuActif() === false);
+      }
       function _evalAchievements() {
-        if (!window.ProfileAchievements) return;
+        if (!window.ProfileAchievements || !_jeuProfilActif()) return;
         // 1er calcul (clé absente) → on accorde rétroactivement SANS toast (pas de spam).
         const firstRun = (localStorage.getItem(_ACH_LS_KEY) === null);
         const m = _collectGamifMetrics();
@@ -439,6 +454,7 @@
       function _hydrateProfileFeats() {
         const box = document.getElementById("kta-profile-details-feats");
         if (!box || !window.ProfileAchievements) return;
+        if (!_jeuProfilActif()) { box.innerHTML = ""; box.style.display = "none"; return; }
         const PA = window.ProfileAchievements;
         const tt = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
         const m = _collectGamifMetrics();
@@ -484,6 +500,7 @@
       // Applique l'anneau de rang sur un conteneur d'avatar (data-kta-rank lu par le CSS).
       function _appliquerRangAvatar(wrapEl) {
         if (!wrapEl || !window.ProfileGamification) return null;
+        if (!_jeuProfilActif()) { wrapEl.removeAttribute("data-kta-rank"); wrapEl.removeAttribute("title"); return null; }
         try {
           const rank = window.ProfileGamification.computeRank(_collectGamifMetrics());
           wrapEl.setAttribute("data-kta-rank", rank.id);
@@ -496,6 +513,7 @@
       function _hydrateProfileRank() {
         const box = document.getElementById("kta-profile-details-rank");
         if (!box || !window.ProfileGamification) return;
+        if (!_jeuProfilActif()) { box.innerHTML = ""; box.style.display = "none"; return; }
         const PG = window.ProfileGamification;
         const tt = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
         const m = _collectGamifMetrics();
@@ -1414,6 +1432,7 @@
         // 🆕 v1.52.0 : anneau de rang + 🆕 médaille de coin (parité avec le home)
         const _dRank = _appliquerRangAvatar(avatarEl);
         const _dBadge = document.getElementById("kta-profile-details-badge");
+        if (_dBadge && !_dRank) { _dBadge.textContent = ""; _dBadge.style.display = "none"; }
         if (_dBadge && _dRank) {
           if (_dRank.emoji) {
             _dBadge.textContent = _dRank.emoji;

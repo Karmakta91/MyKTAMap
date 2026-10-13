@@ -367,7 +367,7 @@
     if (ext.outilHome) _poserOutilHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -483,6 +483,14 @@
     catch (e) { console.warn("[Extensions] « " + nom + " » a échoué → refus :", e); return false; }
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
+  // Grades et hauts faits du profil (prise d'INFORMATION profilJeu → bool) : seul un false explicite les coupe ;
+  // sans extension ou en erreur, ils restent. Les statistiques ne sont jamais concernées.
+  function profilJeuActif() {
+    const ext = _prise("profilJeu");
+    if (!ext || typeof ext.profilJeu !== "function") return true;
+    try { return ext.profilJeu() !== false; }
+    catch (e) { console.warn("[Extensions] profilJeu :", e); return true; }
+  }
   function exportAutorise(planId) { return _permission("exportAutorise", [planId], true); }
   // Avant un effacement complet de l'appareil (« Tout réinitialiser ») : l'extension ferme sa
   // session (le cookie de session est HttpOnly : le code de la page ne peut pas l'effacer, et
@@ -1432,6 +1440,7 @@
     requete: requete,
     importAutorise: importAutorise,
     exportAutorise: exportAutorise,
+    profilJeuActif: profilJeuActif,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,
     dossiersExtension: dossiersExtension,
