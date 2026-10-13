@@ -366,21 +366,17 @@ async function _chargerPlanDirect(plan) {
     return;
   }
 
-  if (plan.type === "local" || plan.zip) {
-    // Pour les plans locaux, on a besoin de la logique de chargerPlanDuRegistre
-    // qui gère blob → fsHandle → re-sélection. Cette fonction est dans index.html.
-    // On revient au loader pour que l'utilisateur puisse cliquer dessus,
-    // ou on peut l'appeler directement si elle est exposée globalement.
-    if (typeof window.chargerPlanDuRegistre === "function") {
-      try { await window.chargerPlanDuRegistre(plan.id); }
-      catch(e) {
-        console.error("[Switcher] Erreur chargement local :", e);
-        if (window.afficherLoader) window.afficherLoader();
-      }
-    } else {
-      // Fallback : revenir au loader
+  // Tout le reste (local, ZIP de l'index, plan fourni par une extension « ext ») passe par
+  // chargerPlanDuRegistre (homeLoader.js), comme un clic sur l'accueil. 13/10/2026 (retour KARMA) : le test
+  // ne retenait que « local » / ZIP — un plan de l'installation (type « ext ») ne s'ouvrait pas d'ici.
+  if (typeof window.chargerPlanDuRegistre === "function") {
+    try { await window.chargerPlanDuRegistre(plan.id); }
+    catch(e) {
+      console.error("[Switcher] Erreur chargement :", e);
       if (window.afficherLoader) window.afficherLoader();
     }
+  } else if (window.afficherLoader) {
+    window.afficherLoader();
   }
 }
 
