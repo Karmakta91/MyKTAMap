@@ -17,6 +17,22 @@
 // des listeners (homeLoader → homeProfile → homeConfig → résiduel inline)
 // reproduit l'ordre d'exécution du bloc d'origine. Ne pas réordonner.
     window.addEventListener("load", function () {
+      // 🧩 13/10/2026 — Statistiques fournies par une extension (prise profilStats, KtaExtensions) : texte seulement,
+      // modale « Détails du profil » + choix du bandeau (clé « ext:<cle> »). Vide sans extension.
+      let _statsExt = [];
+      function _echapStat(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+      async function _relireStatsExt() {
+        if (!window.KtaExtensions || typeof window.KtaExtensions.profilStatsExtension !== "function") return;
+        try { _statsExt = await window.KtaExtensions.profilStatsExtension(); } catch(e) { _statsExt = []; }
+        _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
+        _hydrateProfileBarStats();
+      }
+      window.addEventListener("mktm:extensions-changees", function() { _relireStatsExt(); });
+      window.addEventListener("mktm:profil-stats-changees", function() { _relireStatsExt(); });
       async function _initLoaderProfileBar() {
         const bar = document.getElementById("kta-loader-profile-bar");
         if (!bar || !window.UserProfile) return;
@@ -42,8 +58,12 @@
         // 🧩 v2.7.4 — compte d'une installation reliée (KtaExtensions.compte) :
         // la carte se redessine quand l'extension annonce un changement.
         window.addEventListener("mktm:compte-changed", function() { _refreshLoaderProfileBar(); });
-        // Une extension arrive APRÈS le 1er dessin : elle peut couper grades et hauts faits (profilJeu).
-        window.addEventListener("mktm:extensions-changees", function() { _refreshLoaderProfileBar(); });
+        // Une extension arrive APRÈS le 1er dessin : elle peut couper grades et hauts faits (profilJeu) — les cases
+        // du bandeau suivent (score / hauts faits retirés si le jeu est coupé).
+        window.addEventListener("mktm:extensions-changees", function() {
+          _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
+          _refreshLoaderProfileBar();
+        });
         // 🆕 v1.21.1 : bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
         // Click anywhere → ouvre la modale Détails.
         bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
@@ -419,6 +439,9 @@
       function _writeUnlockedAch(o) { try { localStorage.setItem(_ACH_LS_KEY, JSON.stringify(o)); } catch(e) {} }
       // Grades et hauts faits : actifs sauf si une extension les coupe (prise profilJeu — ex. une installation
       // où les plans viennent de l'organisation et gonfleraient le grade, 13/10/2026).
+      // Plan fourni par une extension (☁️, registre type « ext ») : son contenu vient de plusieurs auteurs. Le
+      // profil le compte À PART des plans de l'appareil (13/10/2026).
+      function _estPlanExt(p) { return !!p && p.type === "ext"; }
       function _jeuProfilActif() {
         return !(window.KtaExtensions && typeof window.KtaExtensions.profilJeuActif === "function"
                  && window.KtaExtensions.profilJeuActif() === false);
@@ -598,6 +621,15 @@
       const PROFILE_BAR_STATS_LS_KEY = "myktamap_loader_bar_stats_v1";
       const PROFILE_BAR_STATS_MAX    = 3;  // cap mobile (et général)
 
+      // Une clé du bandeau s'affiche si elle existe ET a encore un sens : score / hauts faits seulement quand le jeu
+      // est actif (prise profilJeu), « ext:<clé> » seulement si l'extension fournit cette statistique. La préférence
+      // n'est pas réécrite : la stat revient d'elle-même si le jeu ou l'extension reviennent.
+      function _cleBandeauUtilisable(k) {
+        if (typeof k !== "string") return false;
+        if (k.indexOf("ext:") === 0) return _statsExt.some(function(x) { return "ext:" + x.cle === k; });
+        if ((k === "score" || k === "feats") && !_jeuProfilActif()) return false;
+        return !!PROFILE_BAR_STATS[k];
+      }
       function _getProfileBarStatsKeys() {
         try {
           const raw = localStorage.getItem(PROFILE_BAR_STATS_LS_KEY);
@@ -605,8 +637,8 @@
             const arr = JSON.parse(raw);
             if (Array.isArray(arr) && arr.length > 0) {
               // Filtre les keys valides (anti-corruption) et applique le cap
-              const filtered = arr.filter(function(k) { return !!PROFILE_BAR_STATS[k]; });
-              return filtered.slice(0, PROFILE_BAR_STATS_MAX);
+              const filtered = arr.filter(_cleBandeauUtilisable);
+              if (filtered.length) return filtered.slice(0, PROFILE_BAR_STATS_MAX);
             }
           }
         } catch(e) {}
@@ -624,16 +656,18 @@
         if (!wrap) return;
         wrap.innerHTML = "";
         keys.forEach(function(k) {
-          const cfg = PROFILE_BAR_STATS[k];
+          const ext = k.indexOf("ext:") === 0 ? _statsExt.find(function(x) { return "ext:" + x.cle === k; }) : null;
+          const cfg = ext ? { icon: ext.icone, titre: ext.titre || ext.libelle } : PROFILE_BAR_STATS[k];
           if (!cfg) return;
           const div = document.createElement("div");
           div.className = "kta-loader-profile-stat";
-          div.id = "kta-loader-profile-stat-" + k;
-          div.title = _t(cfg.titleKey);
+          div.id = "kta-loader-profile-stat-" + k.replace(/[^\w-]/g, "_");
+          div.title = cfg.titre != null ? cfg.titre : _t(cfg.titleKey);
           div.dataset.statKey = k;
-          div.innerHTML =
-            '<span class="kta-loader-profile-stat-icon">' + cfg.icon + '</span>' +
-            '<span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-' + k + '-val">—</span>';
+          // Texte seulement (une statistique d'extension est un texte, jamais du HTML).
+          const ic = document.createElement("span"); ic.className = "kta-loader-profile-stat-icon"; ic.textContent = cfg.icon;
+          const val = document.createElement("span"); val.className = "kta-loader-profile-stat-val"; val.textContent = "—";
+          div.appendChild(ic); div.appendChild(val);
           wrap.appendChild(div);
         });
       }
@@ -858,10 +892,13 @@
               if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
                 arr = arr.filter(function(p) { return p.type !== "server"; });
               }
-              valEl.textContent = arr.length;
+              valEl.textContent = arr.filter(function(p) { return !_estPlanExt(p); }).length;
             } catch(e) {
               valEl.textContent = "—";
             }
+          } else if (key.indexOf("ext:") === 0) {
+            const st = _statsExt.find(function(x) { return "ext:" + x.cle === key; });
+            valEl.textContent = st ? st.valeur : "—";
           } else if (key === "score") {
             try {
               const m = _collectGamifMetrics();
@@ -949,8 +986,14 @@
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>' + _t("home.profile.statTime") + '</span></label>' +
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>' + _t("home.profile.statStorage") + '</span></label>' +
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>' + _t("home.profile.statPlans") + '</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="score"> <span>' + _t("home.profile.statScore") + '</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="feats"> <span>' + _t("home.profile.statFeats") + '</span></label>' +
+                  (_jeuProfilActif()
+                    ? '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="score"> <span>' + _t("home.profile.statScore") + '</span></label>' +
+                      '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="feats"> <span>' + _t("home.profile.statFeats") + '</span></label>'
+                    : '') +
+                  _statsExt.map(function(x) {
+                    return '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="ext:' + _echapStat(x.cle) + '"> <span>' +
+                      _echapStat(x.icone + " " + x.libelle) + '</span></label>';
+                  }).join("") +
                 '</div>' +
               '</div>' +
 
@@ -1535,13 +1578,14 @@
         // + boucle photos POI) qui lisaient le localStorage brut sans
         // appliquer le filtre — divergence avec _hydrateProfileBarStats et
         // la table détaillée plus bas qui filtraient déjà.
+        // 13/10/2026 : même source que le bandeau (PlanRegistry.getAll, plus le JSON brut) ; les plans ☁️ d'une
+        // extension sont comptés À PART (_plansExtCount) — leur contenu vient de plusieurs auteurs.
+        let _plansExtCount = [];
         function _getPlansFiltered() {
           let plans = [];
-          try {
-            const raw = localStorage.getItem("myktamap_plans");
-            const parsed = raw ? JSON.parse(raw) : null;
-            if (parsed && Array.isArray(parsed.plans)) plans = parsed.plans;
-          } catch(e) {}
+          try { plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? (window.PlanRegistry.getAll() || []) : []; } catch(e) {}
+          _plansExtCount = plans.filter(_estPlanExt);
+          plans = plans.filter(function(p) { return !_estPlanExt(p); });
           if (typeof window._loaderSkipServerPlans === "function"
               && window._loaderSkipServerPlans()) {
             plans = plans.filter(function(p) { return p.type !== "server"; });
@@ -1569,16 +1613,16 @@
         }
         // Photos POI (count + bytes total) — utilise la liste FILTRÉE
         // (cohérence avec le compteur nbPlans ci-dessus). Cf v1.29.0-fix2.
-        let nbPhotos = 0, photosBytes = 0;
+        let nbPhotos = 0, photosBytes = 0, nbPhotosExt = 0;
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.getAllPhotosForPlan) {
           try {
-            for (const p of _plansForCount) {
+            for (const p of _plansForCount.concat(_plansExtCount)) {
               if (!p.id) continue;
               const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
-              if (Array.isArray(photos)) {
-                nbPhotos += photos.length;
-                photos.forEach(function(ph) { photosBytes += (ph.size || 0); });
-              }
+              if (!Array.isArray(photos)) continue;
+              if (_estPlanExt(p)) { nbPhotosExt += photos.length; continue; }
+              nbPhotos += photos.length;
+              photos.forEach(function(ph) { photosBytes += (ph.size || 0); });
             }
           } catch(e) {}
         }
@@ -1598,12 +1642,25 @@
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlans") + '</span></div>' +
+            (_plansExtCount.length ? '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.plansExtTitle") + '"><span class="kta-profile-stat-num">' + _plansExtCount.length + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlansExt") + '</span></div>' : '') +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSessions") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')' + (nbPhotosExt ? ' · ☁️ ' + nbPhotosExt : '') + '</span></div>' +
             '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblStorage") + '</span></div>' +
           '</div>' +
+          (_statsExt.length
+            ? '<div class="kta-profile-extstats">' +
+                '<div class="kta-profile-barstats-header">' + _t("home.profile.stats.extTitle") + '</div>' +
+                '<div class="kta-profile-stat-grid">' +
+                  _statsExt.map(function(x) {
+                    return '<div class="kta-profile-stat-cell" title="' + _echapStat(x.titre || x.libelle) + '">' +
+                      '<span class="kta-profile-stat-num">' + _echapStat(x.valeur) + '</span>' +
+                      '<span class="kta-profile-stat-lbl">' + _echapStat(x.icone + " " + x.libelle) + '</span></div>';
+                  }).join("") +
+                '</div>' +
+              '</div>'
+            : '') +
           // 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les
           // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
           // section enrichie avec calcul SÉQUENTIEL plan par plan (anti-crash :
@@ -1791,7 +1848,10 @@
           // 🏷️ v1.90.5 — Et dans le dictionnaire DURABLE : le cache de stats est
           // réécrit à chaque ouverture, mais il est aussi purgé et versionné.
           // Les noms, eux, doivent survivre — ils ne dépendent d'aucune version.
-          _persisterNoms(stats.labels);
+          // Plan ☁️ : ses noms de types restent dans SON cache (effacé avec lui), jamais dans le dictionnaire
+          // durable, qui survit à la déconnexion (13/10/2026).
+          const pc = window.PlanRegistry && window.PlanRegistry.findById ? window.PlanRegistry.findById(planId) : null;
+          if (!_estPlanExt(pc)) _persisterNoms(stats.labels);
         } catch(e) {
           console.warn("[ProfileStats] Persist plan stats échec :", e);
         }
@@ -1839,6 +1899,7 @@
         // avec un suffix "+N plan(s) en px" si certains sont orphelins.
         let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
+        let nbExt = 0, extPois = 0, extRoads = 0, extDistM = 0;   // plans ☁️ (13/10/2026)
         // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
         // 🐛 v1.90.3 — dictionnaire cross-plan des noms de types personnalisés.
         // Premier arrivé, premier servi : deux plans peuvent avoir forgé la même
@@ -2002,10 +2063,18 @@
           if (pois > 0 || roads > 0) nbAvecData++;
           if (isPartial)            nbPartial++;
 
-          totalPois  += pois;
-          totalRoads += roads;
+          if (_estPlanExt(plan)) {
+            // ☁️ : totaux à part (contenu de tous les auteurs du plan), pas dans « mes » totaux.
+            nbExt++; extPois += pois; extRoads += roads;
+            if (typeof distM === "number" && distM > 0) extDistM += distM;
+          } else {
+            totalPois  += pois;
+            totalRoads += roads;
+          }
           // Cumul intelligent : distM si dispo, sinon distPx orphelin
-          if (typeof distM === "number" && distM > 0) {
+          if (_estPlanExt(plan)) {
+            // déjà compté à part
+          } else if (typeof distM === "number" && distM > 0) {
             totalDistM += distM;
           } else if (distPx > 0) {
             totalDistPxOrphan += distPx;
@@ -2062,10 +2131,11 @@
           // 🆕 v1.21.3 : marqueur ⚠️ si stats partielles (session-only, data
           // layers absents car plan jamais ouvert dans cette release)
           const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">⚠️</span>' : '';
+          const extTag = _estPlanExt(plan) ? ' <span class="kta-pps-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">☁️</span>' : '';
           const row = document.createElement("tr");
           row.className = isCurrent ? "kta-pps-row-current" : (isPartial ? "kta-pps-row-partial" : "");
           row.innerHTML =
-            '<td class="kta-pps-name">' + safeLabel + versionTag + currentTag + partialTag + '</td>' +
+            '<td class="kta-pps-name">' + safeLabel + versionTag + extTag + currentTag + partialTag + '</td>' +
             '<td class="kta-pps-num">' + pois + '</td>' +
             '<td class="kta-pps-num">' + roads + '</td>' +
             '<td class="kta-pps-num">' + _fmtDist(stats) + '</td>';
@@ -2096,7 +2166,13 @@
               '<th class="kta-pps-num">' + totalPois + '</th>' +
               '<th class="kta-pps-num">' + totalRoads + '</th>' +
               '<th class="kta-pps-num">' + totalDistStr + '</th>' +
-            '</tr>';
+            '</tr>' +
+            (nbExt ? '<tr class="kta-pps-row-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">' +
+              '<th>' + _t("home.profile.stats.totalExt", { n: nbExt }) + '</th>' +
+              '<th class="kta-pps-num">' + extPois + '</th>' +
+              '<th class="kta-pps-num">' + extRoads + '</th>' +
+              '<th class="kta-pps-num">' + (extDistM > 0 && window.formatDistance ? window.formatDistance(extDistM, 0) : "—") + '</th>' +
+            '</tr>' : '');
         }
 
         // Header final (calcul terminé)
@@ -2334,7 +2410,7 @@
                 }
               }
             } catch (err) { echecs++; }
-            if (cl) Object.assign(trouves, _nomsDepuisLegende(cl));
+            if (cl && e.type !== "ext") Object.assign(trouves, _nomsDepuisLegende(cl));   // ☁️ : jamais dans le dictionnaire durable
             // Laisse respirer le thread UI entre deux plans, comme la boucle
             // d'agrégation : 20 lectures de ZIP d'affilée figeraient l'écran.
             await new Promise(function(r2) { setTimeout(r2, 0); });

@@ -367,7 +367,7 @@
     if (ext.outilHome) _poserOutilHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -512,6 +512,37 @@
           details: Array.isArray(a.details) ? a.details.map(function (d) { return txt(d, 500); }).filter(Boolean).slice(0, 20) : [] };
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });
+  }
+  // ── Statistiques du profil fournies par une extension (prise d'INFORMATION profilStats, 13/10/2026) ──
+  // profilStats() → [{ cle, icone, libelle, valeur, titre? }] (ou Promise) : lignes de texte affichées dans la
+  // modale « Détails du profil » et proposées au bandeau d'accueil (clé « ext:<cle> »). Nettoyées ici (12 lignes au
+  // plus, textes bornés, clé [\w-]), attente bornée ; erreur, délai ou forme inattendue → []. L'extension annonce un
+  // changement par mktm:profil-stats-changees.
+  const PROFIL_STATS_DELAI_MS = 3000;
+  function profilStatsExtension() {
+    const ext = _prise("profilStats");
+    if (!ext || typeof ext.profilStats !== "function") return Promise.resolve([]);
+    const txt = function (v, max) {
+      return (typeof v === "string" || typeof v === "number") && String(v).trim() ? String(v).trim().slice(0, max) : "";
+    };
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.profilStats(); }),
+      new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, PROFIL_STATS_DELAI_MS); })
+    ]).then(function (l) {
+      clearTimeout(delai);
+      if (!Array.isArray(l)) return [];
+      const vues = {};
+      return l.slice(0, 12).map(function (x) {
+        if (!x || typeof x !== "object") return null;
+        const cle = txt(x.cle, 40);
+        if (!/^[\w-]+$/.test(cle) || vues[cle]) return null;
+        vues[cle] = 1;
+        const libelle = txt(x.libelle, 60), valeur = txt(x.valeur, 40);
+        if (!libelle || !valeur) return null;
+        return { cle: cle, icone: txt(x.icone, 8) || "•", libelle: libelle, valeur: valeur, titre: txt(x.titre, 200) };
+      }).filter(Boolean);
+    }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] profilStats a échoué :", e); return []; });
   }
   // Grades et hauts faits du profil (prise d'INFORMATION profilJeu → bool) : seul un false explicite les coupe ;
   // sans extension ou en erreur, ils restent. Les statistiques ne sont jamais concernées.
@@ -1472,6 +1503,7 @@
     exportAutorise: exportAutorise,
     profilJeuActif: profilJeuActif,
     alertesExtension: alertesExtension,
+    profilStatsExtension: profilStatsExtension,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,
     dossiersExtension: dossiersExtension,

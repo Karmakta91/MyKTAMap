@@ -238,6 +238,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   (une fois par `released`). Source affichée (`source`, ou « Plateforme MyKTAMap » pour `alert.json` quand une
   extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
   à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation).
+- **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
+  attente bornée à 3 s, erreur = aucune ; 12 lignes, texte seul, clé `[\w-]` unique). Affichées dans « Détails du
+  profil » (rubrique « 🏢 Installation reliée ») et proposées au bandeau d'accueil sous la clé `ext:<cle>`. Relues à
+  `mktm:extensions-changees` et **`mktm:profil-stats-changees`**. Côté community, les plans `type: "ext"` sont comptés
+  **à part** (bandeau, modale, tableau par plan : ligne de total ☁️ séparée, photos « · ☁️ N ») et leurs noms de types
+  ne vont jamais dans le dictionnaire durable `myktamap_legend_labels_v1` ; le cache `myktamap_plan_stats_v1_<id>`
+  part avec le plan (`purgeAssociatedData`). Décision KARMA 13/10/2026.
 - **Grades et hauts faits du profil** : `profilJeu() → bool` (information) — `false` coupe l'anneau, la médaille, le
   bloc grade et les hauts faits (calcul compris) ; les statistiques restent. Sans extension ou en erreur : actifs. Le
   profil se redessine à `mktm:extensions-changees`. Sert à une installation où les plans viennent de l'organisation

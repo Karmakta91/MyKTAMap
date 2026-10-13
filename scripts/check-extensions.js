@@ -455,6 +455,30 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
   }
 
+  // ═════════ 6 bis septies. STATISTIQUES DU PROFIL (prise profilStats) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune statistique d'extension", (await K.profilStatsExtension()).length === 0);
+    K.register({ nom: "ps1", apiVersion: 1, profilStats: () => [
+      { cle: "plans-org", icone: "☁️", libelle: "Plans", valeur: 12, titre: "t" },
+      { cle: "plans-org", icone: "x", libelle: "doublon", valeur: 1 },
+      { cle: "mauvaise clé", libelle: "x", valeur: 1 }, { cle: "vide", libelle: "x", valeur: "" }, null
+    ] });
+    const l = await K.profilStatsExtension();
+    t("extension : lignes nettoyées (texte, clé [\\w-] unique, valeur requise)",
+      l.length === 1 && l[0].cle === "plans-org" && l[0].valeur === "12" && l[0].icone === "☁️");
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ps2", apiVersion: 1, profilStats: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → aucune ligne, aucune exception", (await K2.profilStatsExtension()).length === 0);
+    const HP = lire("js/homeProfile.js");
+    t("profil : score / hauts faits ni proposés ni affichés au bandeau quand le jeu est coupé ; stats d'extension en texte",
+      /\(k === "score" \|\| k === "feats"\) && !_jeuProfilActif\(\)/.test(HP) && /\(_jeuProfilActif\(\)\s*\n?\s*\? '<label/.test(HP) &&
+      /val\.textContent = "—"/.test(HP) && /_echapStat\(x\.valeur\)/.test(HP));
+    t("profil : plans ☁️ comptés à part, noms de types ☁️ jamais dans le dictionnaire durable, cache de stats purgé avec le plan",
+      /_estPlanExt/.test(HP) && /if \(!_estPlanExt\(pc\)\) _persisterNoms/.test(HP) &&
+      /removeItem\("myktamap_plan_stats_v1_" \+ id\)/.test(lire("js/planRegistry.js")));
+  }
+
   // ═════════ 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ═════════
   {
     const { K } = nouveauContexte(null);
