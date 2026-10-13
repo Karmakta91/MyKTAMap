@@ -163,6 +163,15 @@ window.afficherModaleAlerteAbsente = function(status) {
 // `opts.fromBoot` : si true (boot post-splash), bypass-acquittement check
 //                   (= filtre sur non-acquittées seulement). Si false (click
 //                   bouton 🚨), affiche TOUTES les alertes même acquittées.
+// 🧩 13/10/2026 — Source d'une alerte : celle que fournit une extension (« 🏢 Organisation… ») ; une alerte du
+// fichier alert.json n'est étiquetée « plateforme » que si une extension fournit aussi des alertes (sinon rien
+// ne change à l'écran). Texte échappé par l'appelant.
+function _ktaSourceAlerte(a) {
+  if (a && a.source) return a.source;
+  const ext = window.KtaExtensions && typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("alertes");
+  return ext ? window.I18n.t("alerts.source.site") : "";
+}
+
 window.afficherSelecteurAlertes = function(alerts, opts) {
   if (!Array.isArray(alerts) || alerts.length === 0) return;
   if (document.getElementById("kta-alert-selector-modal")) return;
@@ -195,13 +204,14 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   const rowsHtml = sorted.map(function(a) {
     const level = (a.level === "warning" || a.level === "info") ? a.level : "emergency";
     const acq   = _isAcquittee(a);
+    const src   = _ktaSourceAlerte(a);
     const ts    = a.released ? a.released.replace("T", " ").replace(/:\d{2}\.?\d*Z?$/, "") : "";
     return '' +
       '<button type="button" class="kta-alert-selector-row kta-alert-selector-row-' + level + (acq ? ' kta-alert-selector-row-seen' : '') + '" data-alert-id="' + _esc(a.id || "") + '">' +
         '<span class="kta-alert-selector-dot"></span>' +
         '<span class="kta-alert-selector-content">' +
           '<span class="kta-alert-selector-title">' + _esc(a.title || window.I18n.t("alerts.selector.noTitle")) + '</span>' +
-          (ts ? '<span class="kta-alert-selector-meta">' + _esc(ts) + (acq ? window.I18n.t("alerts.selector.acknowledgedSuffix") : '') + '</span>' : '') +
+          (ts || src ? '<span class="kta-alert-selector-meta">' + _esc([src, ts].filter(Boolean).join(" · ")) + (acq ? window.I18n.t("alerts.selector.acknowledgedSuffix") : '') + '</span>' : '') +
         '</span>' +
         '<span class="kta-alert-selector-arrow">›</span>' +
       '</button>';
@@ -275,9 +285,10 @@ window.afficherModaleAlerte = function(alert, onClose) {
       '</ul>'
     : '';
 
-  const footerInfo = released
+  const source = _ktaSourceAlerte(alert);
+  const footerInfo = (source ? '<div class="kta-alert-released">' + _esc(source) + '</div>' : '') + (released
     ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(released) }) + '</div>'
-    : '';
+    : '');
 
   const modal = document.createElement("div");
   modal.id = "kta-alert-modal";

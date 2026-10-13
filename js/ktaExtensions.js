@@ -367,7 +367,7 @@
     if (ext.outilHome) _poserOutilHome();
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -483,6 +483,36 @@
     catch (e) { console.warn("[Extensions] « " + nom + " » a échoué → refus :", e); return false; }
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
+  // ── Alertes fournies par une extension (prise d'INFORMATION « alertes », 13/10/2026) ──
+  // alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]> : mêmes champs que
+  // alert.json, affichées par AlertChecker dans la MÊME modale (badge 🚨, sélecteur, acquittement par id).
+  // Nettoyées ici (textes seulement, bornés, niveau connu sinon « info ») ; id préfixé « ext_ » (pas de
+  // collision avec alert.json). Attente bornée ; erreur, délai ou forme inattendue → []. L'extension annonce
+  // une liste changée par l'événement mktm:alertes-changees (AlertChecker la relit).
+  const ALERTES_DELAI_MS = 3000;
+  function alertesExtension() {
+    const ext = _prise("alertes");
+    if (!ext || !ext.alertes || typeof ext.alertes.lister !== "function") return Promise.resolve([]);
+    const txt = function (v, max) { return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : ""; };
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.alertes.lister(); }),
+      new Promise(function (ok) { delai = setTimeout(function () { ok(null); }, ALERTES_DELAI_MS); })
+    ]).then(function (l) {
+      clearTimeout(delai);
+      if (!Array.isArray(l)) return [];
+      return l.slice(0, 50).map(function (a) {
+        if (!a || typeof a !== "object") return null;
+        const id = txt(String(a.id == null ? "" : a.id), 80).replace(/[^\w.-]/g, "_");
+        const released = txt(a.released, 40);
+        const title = txt(a.title, 200), message = txt(a.message, 4000);
+        if (!id || !released || (!title && !message)) return null;
+        return { id: "ext_" + id, level: (["emergency", "warning", "info"].indexOf(a.level) >= 0) ? a.level : "info",
+          title: title, message: message, released: released, source: txt(a.source, 80),
+          details: Array.isArray(a.details) ? a.details.map(function (d) { return txt(d, 500); }).filter(Boolean).slice(0, 20) : [] };
+      }).filter(Boolean);
+    }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });
+  }
   // Grades et hauts faits du profil (prise d'INFORMATION profilJeu → bool) : seul un false explicite les coupe ;
   // sans extension ou en erreur, ils restent. Les statistiques ne sont jamais concernées.
   function profilJeuActif() {
@@ -1441,6 +1471,7 @@
     importAutorise: importAutorise,
     exportAutorise: exportAutorise,
     profilJeuActif: profilJeuActif,
+    alertesExtension: alertesExtension,
     gateDeleguee: gateDeleguee,
     listerPlansExtension: listerPlansExtension,
     dossiersExtension: dossiersExtension,

@@ -230,6 +230,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+- **Alertes** : `alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]>`
+  (information, attente bornée à 3 s, erreur = aucune) — mêmes champs qu'`alert.json`, nettoyés (textes bornés,
+  niveau inconnu → `info`, sans `released` ou sans texte écartées), id préfixé `ext_`. `AlertChecker` les fusionne
+  avec `alert.json` : même badge 🚨, même sélecteur, même acquittement par id (un `released` changé rouvre
+  l'alerte). L'extension annonce une liste changée par **`mktm:alertes-changees`** : les nouvelles s'ouvrent d'office
+  (une fois par `released`). Source affichée (`source`, ou « Plateforme MyKTAMap » pour `alert.json` quand une
+  extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
+  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation).
 - **Grades et hauts faits du profil** : `profilJeu() → bool` (information) — `false` coupe l'anneau, la médaille, le
   bloc grade et les hauts faits (calcul compris) ; les statistiques restent. Sans extension ou en erreur : actifs. Le
   profil se redessine à `mktm:extensions-changees`. Sert à une installation où les plans viennent de l'organisation

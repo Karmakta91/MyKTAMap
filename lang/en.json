@@ -31,6 +31,7 @@
   "alerts.detail.defaultTitle": "🚨 Alert",
   "alerts.detail.publishedOn": "Released on {date}",
   "alerts.detail.understood": "Got it",
+  "alerts.source.site": "🌐 MyKTAMap platform",
   "alerts.selector.acknowledgedSuffix": " · ✓ acknowledged",
   "alerts.selector.noTitle": "(untitled)",
   "alerts.selector.titre": "📋 {count} active alerts",

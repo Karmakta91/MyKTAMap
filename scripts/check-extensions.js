@@ -455,6 +455,28 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
   }
 
+  // ═════════ 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune alerte d'extension", (await K.alertesExtension()).length === 0 && K.aPrise("alertes") === false);
+    K.register({ nom: "al1", apiVersion: 1, alertes: { lister: () => [
+      { id: "a/1", level: "emergency", title: " Gaz ", message: "Évacuez", released: "2026-10-13T10:00:00Z", source: "🏢 Org", details: ["x", 3, ""] },
+      { id: "b", level: "panique", title: "T", released: "2026-10-13T11:00:00Z" },
+      { id: "c", title: "sans date" }, null, "texte"
+    ] } });
+    const l = await K.alertesExtension();
+    t("extension : alertes nettoyées, id préfixé ext_, niveau inconnu → info, sans date ni texte écartées",
+      l.length === 2 && l[0].id === "ext_a_1" && l[0].title === "Gaz" && l[0].details.length === 1 && l[0].source === "🏢 Org" &&
+      l[1].level === "info");
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "al2", apiVersion: 1, alertes: { lister: () => { throw new Error("x"); } } });
+    t("🩸 extension en erreur → aucune alerte, aucune exception", (await K2.alertesExtension()).length === 0);
+    const AC = lire("js/alertChecker.js");
+    t("AlertChecker : liste de l'extension fusionnée (check, bouton 🚨), relue à mktm:alertes-changees, attente bornée",
+      /KtaExtensions\.alertesExtension\(\)/.test(AC) && /addEventListener\("mktm:alertes-changees"/.test(AC) &&
+      /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));
+  }
+
   // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
   {
     const { K } = nouveauContexte(null);
@@ -626,7 +648,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
     const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
-      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"(, "profilJeu")?]/.test(EXT));
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"(, "[a-zA-Z]+")*]/.test(EXT));
 
     // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
     const { K: A0 } = nouveauContexte(null);
