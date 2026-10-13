@@ -1571,6 +1571,9 @@
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const statsEl = document.getElementById("kta-profile-details-stats");
         if (!statsEl) return;
+        // Statistiques de l'extension relues à l'ouverture : la liste des plans ☁️ arrive souvent APRÈS le dernier
+        // événement (vu au scénario du 13/10/2026 : « 0 plans de l'organisation » pour 1 plan ☁️ listé).
+        await _relireStatsExt();
         // 🆕 v1.29.0-fix2 (KARMA "si je relance, mes plans srv disparaissent
         // mais ils restent dans les stats profil — 2 plans en trop") :
         // helper qui retourne la liste des plans filtrée selon la pref
