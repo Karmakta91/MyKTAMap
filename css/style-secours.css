@@ -104,21 +104,6 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   gap: 10px 16px;
   margin-top: 4px;
 }
-.kta-secours-pause-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-  font-size: 13px;
-  color: #e8eaf0;
-}
-.kta-secours-pause-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #f4c542;
-  cursor: pointer;
-}
 .kta-secours-pause-input-wrap {
   display: inline-flex;
   align-items: center;
@@ -152,8 +137,6 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   font-size: 12px;
 }
 /* Thème clair */
-body.kta-theme-light .kta-secours-pause-toggle,
-html.kta-theme-light .kta-secours-pause-toggle,
 body.kta-theme-light .kta-secours-pause-input-wrap,
 html.kta-theme-light .kta-secours-pause-input-wrap {
   color: var(--kta-light-text, #2a2620) !important;
@@ -846,18 +829,6 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
 .kta-btn-sm {
   font-size: 11px !important;
   padding: 4px 9px !important;
-}
-
-/* Bouton sidebar 🚨 Mode Secours — fond rouge cohérent urgences */
-.kta-leaflet-emergency-btn,
-.leaflet-bar a.kta-secours-sub {
-  background: rgba(255, 70, 70, 0.85) !important;
-  color: #fff !important;
-  border-color: rgba(255, 70, 70, 0.95) !important;
-}
-.leaflet-bar a.kta-secours-sub:hover {
-  background: rgba(255, 70, 70, 1) !important;
-  box-shadow: 0 0 8px rgba(255, 70, 70, 0.6);
 }
 
 /* ─── Thème clair ─── */

@@ -123,18 +123,6 @@ plan »). Mis de côté le 29/09, sans arbitrage. Si on le rouvre, trois faits m
 `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture, mais les 21 sondes 404 restent :
 **régénérer chaque plan** est le seul nettoyage.
 
-## 🔒 Affichage de données d'autres comptes — XSS et CSP (04/10/2026)
-
-Contexte : sur une **installation reliée** (synchro), l'app affiche des noms et des notes écrits par d'autres comptes ;
-avant, toute donnée affichée venait de l'utilisateur lui-même. La CSP servie est stricte (`script-src 'self'`) depuis
-le 10/10/2026, sur dev et prod (`security-legal.md` §40.7.1).
-Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
-synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
-
-- ⚪ `js/itiGuidage.js` et `js/sortieUrgence.js` gardent leur copie d'échappement (exception de `scripts/check-esc.js`) :
-  `scripts/check-guidage.js` les charge seuls en VM, sans `langManager.js`. Poser `ktaEsc` dans ce contexte, puis
-  migrer les deux copies et retirer l'exception.
-
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 
 - 🔬 Pastille hors-ligne : coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange
@@ -186,16 +174,18 @@ malgré son commentaire », donc branché — à tort : il révoquait les URLs d
 d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN avant de brancher un cleanup.**
 
 ### 🟡 À vérifier avant de toucher
-- Fragments de sélecteurs morts dans **`style-secours.css`** — pas encore inventoriés (ceux de `style.css` sont
-  retirés le 10/10/2026) ; contrôle runtime (`querySelectorAll(...).length === 0`) + grep des concaténations
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?) et exports `window.*` sans
-  consommateur hors de leur fichier (re-grep du 10/10/2026) : `getPlanScale`, `getPlanSmartNav`, `getBaseName`,
-  `ktaNettoyerIconesConfig` (config.js) · `chargerImageTuillee`, `tuilingNecessaire` (tiling.js, dette documentée
-  dans `TILING.md`) · `PROF_*_DEFAUT` non revérifiés. API = contrat : gain faible, risque non nul — à arbitrer par
-  KARMA, pas à supprimer d'office
+  consommateur hors de leur fichier (re-grep du 14/10/2026, community **et** pro) : `getPlanScale`,
+  `getPlanSmartNav`, `getBaseName`, `ktaNettoyerIconesConfig`, `PROF_NIVEAU0_DEFAUT`, `PROF_PAS_DEFAUT`
+  (config.js ; la fonction ou constante sert DANS le fichier, seul l'export est orphelin) · `chargerImageTuillee`,
+  `tuilingNecessaire` (tiling.js, dette documentée dans `TILING.md`). API = contrat : gain faible, risque non nul —
+  à arbitrer par KARMA, pas à supprimer d'office
 
 > ✅ **Vérifié vivant, ne plus signaler** : `kta-toast-error` / `kta-toast-info` (`oomGuard.js` les construit par
-> `"kta-toast-" + type` ; `showToast(…, "error")` ×6, `"info"` ×48, `"warn"` ×34 au 10/10/2026).
+> `"kta-toast-" + type` ; `showToast(…, "error")` ×6, `"info"` ×48, `"warn"` ×34 au 10/10/2026) ·
+> `style-secours.css`, inventorié le 14/10/2026 (4 sélecteurs morts retirés) : `.kta-secours-retour--*` (construits
+> par `"kta-secours-retour--" + …`), `.kta-secours-mc-note` (`"kta-secours-mc-" + clé`, clé `secours.mc.note`),
+> `.leaflet-tooltip` (posé par Leaflet).
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, rétro-compat v1.7.3) · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
@@ -243,8 +233,7 @@ d'un plan B. **« Jamais appelé » ≠ « à appeler ». Vérifier le DESIGN av
 | # | Sujet | État | Qui débloque |
 |---|---|---|---|
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
-| **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
-| **D-guidage-instable** | `check-guidage.js` a sorti « ⚠️ 1 echec(s) » une fois au pre-commit (09/10, juste après les tests d'itinéraire Secours brancard / accès barrés), puis vert sur 2 relances sans changement | 🔬 non reproduit — possible concurrence avec une autre session | personne — s'il revient, garder la sortie complète du hook |
+| **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme **réfuté** au harnais (14/10), non reproduit — à fermer sauf fait nouveau | **KARMA** — fermer, ou montrer le tracé qui reste |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
 
@@ -259,7 +248,17 @@ fix de la v1.77.0.*
 
 #### D3 — 🗺️ Toggle « Mes annotations » ne masque pas les polylines roads
 
-🔬 **hypothèse — mécanisme corroboré par le code le 31/08.** `road.js` fait `return window.layerEditor || window.map` : si `layerEditor` n'existe pas encore au moment de l'`addTo`, la road part sur la **map** — et le toggle, qui n'agit que sur `layerEditor`, **ne la reprendra jamais**. **Avant tout code** : sur un plan réel, un tracé récalcitrant → `window.layerEditor.hasLayer(<layer>)`. S'il renvoie `false`, le mécanisme est confirmé et le fix est court.
+🔬 **Mécanisme du 31/08 réfuté le 14/10/2026.** `road.js > _targetLayerForRoad` fait bien
+`return window.layerEditor || window.map`, mais le repli n'est atteint par **aucun chemin réel** : `map.js` pose
+`window.layerEditor` dans `initMapFromConfig()`, que `main.js` attend **avant** `initRoad()` et
+`SessionPersist.onPlanLoaded()` ; il n'est jamais remis à `undefined` (au changement de plan, il pointe un instant
+sur l'ANCIEN calque, détaché de la carte : un tracé y serait invisible, pas impossible à masquer — et la
+restauration qui suit redessine tout dans le nouveau). Harnais Playwright (ZIP de test, 12/12) : tracé posé, dessiné
+au clic, re-rendu calque masqué, culling ultra + pan calque masqué, session restaurée au rechargement, plan
+ré-ouvert → le toggle retire **chaque fois** toutes les polylines de la carte, aucune hors du calque editor.
+**Ce qui reste visible au toggle, par design** : l'**itinéraire** (exception voulue, sur `window.map`) et les roads
+**embarquées d'un autre calque de données** (elles suivent LEUR case). Probable source du signalement. À fermer ;
+ne rouvrir qu'avec un tracé récalcitrant sous la main → `window.layerEditor.hasLayer(<layer>)` et son `type`.
 
 ### ⚪ Aucune action — décisions arrêtées, gardées pour mémoire
 

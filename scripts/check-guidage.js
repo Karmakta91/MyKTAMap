@@ -30,6 +30,13 @@ const vm = require("vm");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
+// Échappeur canonique (js/langManager.js), extrait tel quel : itiGuidage et sortieUrgence s'en servent (check-esc.js).
+const KTA_ESC = (function () {
+  const src = fs.readFileSync(path.join(ROOT, "js/langManager.js"), "utf8");
+  const m = src.match(/window\.ktaEsc = (function\(s\) \{[\s\S]*?\n\};)/);
+  if (!m) throw new Error("window.ktaEsc introuvable dans js/langManager.js");
+  return vm.runInNewContext("(" + m[1].replace(/;$/, "") + ")");
+})();
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
@@ -46,6 +53,7 @@ function bac(roads, cfg) {
     getProfondeurNiveau: () => null
   };
   win.window = win;
+  win.ktaEsc = KTA_ESC;
   const ctx = vm.createContext(win);
   ["js/pathfinder.js", "js/itiGuidage.js"].forEach(function(f) {
     vm.runInContext("var window = this;" + fs.readFileSync(path.join(ROOT, f), "utf8"), ctx);
@@ -228,6 +236,7 @@ async function evacuationBrancard() {
   w.requestAnimationFrame = f => f();
   w.setTimeout = setTimeout;
   w.itineraireYAller = (x, y, nom, o) => { trace = { x: x, y: y, o: o }; };
+  w.ktaEsc = KTA_ESC;
   vm.runInContext("var window = this;" + fs.readFileSync(path.join(ROOT, "js/sortieUrgence.js"), "utf8"), vm.createContext(w));
   const supp = [{ x: 500, y: 500, nom: "A" }, { x: 900, y: 500, nom: "B" }];
   async function evacuer(contraintes, de) {
@@ -483,6 +492,13 @@ async function evacuationBrancard() {
   // croisement tombe au MILIEU d'un segment des deux côtés, à 20 px de tout
   // sommet, au-delà de la tolérance de proximité (15 px) : aucun raccourci
   // diagonal, la distance attendue est exacte.
+  // ⏱️ Temps CPU de CE processus, pas l'horloge murale (14/10/2026) : sous
+  // charge (pre-commit pendant qu'une autre session calcule), Date.now()
+  // comptait le temps passé à attendre le processeur — 36 instances en
+  // parallèle donnaient 3 à 9 s « mesurées » pour ~1 s de calcul, et le
+  // filet tombait au hasard (D-guidage-instable). Le CPU consommé, lui, ne
+  // dépend pas des voisins : la régression O(S²) visée (~40 s) reste prise.
+  const cpuMs = () => { const u = process.cpuUsage(); return (u.user + u.system) / 1000; };
   {
     const N = 90, PAS = 40, L = N * PAS;
     const roads = [];
@@ -494,21 +510,21 @@ async function evacuationBrancard() {
     const w = bac(roads);
     const logs = [];
     w.console = { log(...a) { logs.push(a.join(" ")); }, warn() {}, error() {} };
-    let t0 = Date.now();
+    let t0 = cpuMs();
     const g = w.Pathfinder.buildNetworkGraph({});
-    const msGraphe = Date.now() - t0;
+    const msGraphe = Math.round(cpuMs() - t0);
     const ligne = logs.find(l => /Graphe enrichi/.test(l)) || "";
     const m = ligne.match(/croisements stricts: (\d+)/);
     t("pathfinder : les " + (N * N) + " croisements du quadrillage sont trouvés (grille spatiale)",
       !!m && Number(m[1]) === N * N);
     t("pathfinder : graphe de ~" + g.segments.length + " segments enrichi en < 3 s (" + msGraphe + " ms ; avant : O(S²))",
       msGraphe < 3000);
-    t0 = Date.now();
+    t0 = cpuMs();
     // Coin à coin, sur les galeries : la distance exacte est connue d'avance.
     // Départ (20, 20) = croisement H0 × V0 ; arrivée = croisement de la dernière H × dernière V.
     const r = await w.Pathfinder.computeRoute(
       [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
-    const msRoute = Date.now() - t0;
+    const msRoute = Math.round(cpuMs() - t0);
     const attendu = 2 * (N - 1) * PAS;   // Manhattan sur le quadrillage
     t("pathfinder : distance coin à coin exacte (" + Math.round(r.totalDistance) + " px, attendu " + attendu + ")",
       Math.abs(r.totalDistance - attendu) < 1e-6);
@@ -522,10 +538,10 @@ async function evacuationBrancard() {
       [{ x: 20, y: 20, label: "A" }, { x: (N - 1) * PAS + 20, y: (N - 1) * PAS + 20, label: "B" }], {});
     t("pathfinder : à égalité de longueur, le même trajet à chaque calcul",
       JSON.stringify(r.path) === JSON.stringify(r2.path));
-    t0 = Date.now();
+    t0 = cpuMs();
     const zone = w.Pathfinder.computeReachable({ x: 20, y: 20 }, 400, {});
-    t("pathfinder : zone atteignable calculée en < 3 s (" + (Date.now() - t0) + " ms)",
-      !!zone && (Date.now() - t0) < 3000);
+    const msZone = Math.round(cpuMs() - t0);
+    t("pathfinder : zone atteignable calculée en < 3 s (" + msZone + " ms)", !!zone && msZone < 3000);
   }
 
   // 13) ITINÉRAIRE INTER-PLANS (01/10/2026) — l'étape sur l'AUTRE plan est

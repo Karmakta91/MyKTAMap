@@ -33,10 +33,6 @@ const EXCEPTIONS = {
   "gpxIO.js": 2,         // _xmlEsc : XML (GPX), « &apos; » et non une entité HTML
   "kmzExport.js": 2,     // _xmlEsc : XML (KML), idem
   "ktaExtensions.js": 1, // assainisseur HTML des extensions : une balise inconnue est rendue en texte
-  // Chargés SEULS dans une VM par scripts/check-guidage.js (sans langManager.js) : à migrer quand ce contrôle
-  // posera window.ktaEsc dans son contexte. Leurs copies échappent déjà & < > (itiGuidage : les 5).
-  "itiGuidage.js": 1,
-  "sortieUrgence.js": 3
 };
 const LITTERAL = /["'`]&(?:amp|lt);["'`]/;
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js"));
