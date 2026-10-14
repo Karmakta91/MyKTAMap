@@ -237,7 +237,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
-- **Dictionnaires d'une extension** : `I18n.ajouter(code, dico)` → nombre de clés retenues (textes, clés `[w.-]`,
+- **Dictionnaires d'une extension** : `I18n.ajouter(code, dico)` → nombre de clés retenues (textes, clés `[\w.-]`,
   langues connues seulement). Gardés à part et refusionnés à chaque chargement du dico (paresseux, `reload`) ; une clé
   de l'app n'est **jamais** écrasée — préfixe propre recommandé (`pro.`). Le texte d'une extension n'entre jamais dans
   `lang/*.json`. Repli comme le reste : langue active → FR → clé humanisée. Décision KARMA 14/10/2026.
