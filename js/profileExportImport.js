@@ -1372,11 +1372,7 @@ photos: false, histoirePdfs: false, crashes: false
   // UI : MODALE EXPORT
   // ===========================================================
 
-  function _escHtml(s) {
-    return String(s || "").replace(/[&<>"']/g, function(c) {
-      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c];
-    });
-  }
+  function _escHtml(s) { return window.ktaEsc(s); }
 
   async function ouvrirExportModale() {
     _fermerModales();

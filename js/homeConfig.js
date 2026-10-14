@@ -643,11 +643,7 @@
       function _ouvrirDepannage() {
         _fermerDepannage();
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-        const _esc = function(s) {
-          return String(s).replace(/[&<>"]/g, function(c) {
-            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-          });
-        };
+        const _esc = window.ktaEsc;
         // Adresse de la page de secours, relative à l'origine (dev, prod, selfhost).
         let urlSecours = "killsw.html";
         try { urlSecours = new URL("killsw.html", window.location.href).href; } catch(e) {}

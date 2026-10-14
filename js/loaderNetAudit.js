@@ -45,10 +45,7 @@
     "unknown":       "#c8d0e0"
   };
 
-  function _escapeHtml(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                   .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   function _formatTime(ts) {
     const d = new Date(ts);

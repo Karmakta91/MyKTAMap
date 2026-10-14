@@ -49,11 +49,7 @@
     return fallback;
   }
 
-  function _esc(s) {
-    return String(s).replace(/[&<>"]/g, function(c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-    });
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   function isOpen() {
     return !!document.getElementById(OVERLAY_ID);

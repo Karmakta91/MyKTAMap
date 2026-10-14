@@ -59,11 +59,7 @@
 // =========================
 // ITINÉRAIRE — modale + mode clic + rendu du tracé calculé
 // =========================
-function _escapeHtml(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-  });
-}
+function _escapeHtml(s) { return window.ktaEsc(s); }
 
 // =========================
 // 🪧 GUIDAGE (27/09/2026) — ce que l'itinéraire garde du calcul
@@ -1474,9 +1470,7 @@ function _rafraichirListeAvoidPoints() {
     el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.listEmpty") + '</p>';
     return;
   }
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
   el.innerHTML = prefs.points.map(function(p, idx) {
     return '<div class="kta-iti-avoid-chip">' +
              '<span class="kta-iti-avoid-chip-label">' + _esc(p.label || p.id || ("(" + p.x.toFixed(0) + "," + p.y.toFixed(0) + ")")) + '</span>' +
@@ -1513,9 +1507,7 @@ async function _rafraichirChipsAvoidTags() {
     el2.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.tagsNone") + '</p>';
     return;
   }
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
   el2.innerHTML = available.map(function(tag) {
     const active = prefs.tags.indexOf(tag) >= 0;
     return '<button class="kta-iti-avoid-tag-chip' + (active ? ' kta-iti-avoid-tag-chip-active' : '') + '" ' +
@@ -1563,9 +1555,7 @@ function _bindAvoidSectionHandlers() {
           searchRes.style.display = "block";
           return;
         }
-        function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        }
+        function _esc(s) { return window.ktaEsc(s); }
         searchRes.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
           const label = p.nom || p.id || window.I18n.t("iti.search.unnamed");
@@ -2314,9 +2304,7 @@ window.ouvrirItinerairModal = function() {
       // Message fallback si certains evitements n'ont pas pu etre respectes
       let fallbackHtml = "";
       if (result.usedFallback && Array.isArray(result.avoidedThrough) && result.avoidedThrough.length > 0) {
-        function _esc(s) {
-          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        }
+        function _esc(s) { return window.ktaEsc(s); }
         const noms = result.avoidedThrough.map(function(ap) {
           return _esc(ap.label || ap.id || window.I18n.t("iti.avoid.pointFallback"));
         }).join(", ");

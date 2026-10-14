@@ -79,10 +79,7 @@ window.afficherModaleAlerteAbsente = function(status) {
   }
 
   // Échappe le texte HTML (anti-XSS sur contenu remote)
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   let icon, title, msg, extraHtml = "";
   if (isOffline) {
@@ -177,10 +174,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   if (document.getElementById("kta-alert-selector-modal")) return;
   opts = opts || {};
 
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   // Tri par priorité (emergency > warning > info) puis released desc
   const prioOrder = { emergency: 0, warning: 1, info: 2 };
@@ -269,10 +263,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
   if (!alert) return;
   if (document.getElementById("kta-alert-modal")) return;
 
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   const id    = alert.id    || "";  // v163 : acquit individuel par id
   const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
@@ -346,7 +337,7 @@ window.afficherModaleUpdateDispo = function(opts) {
 
   const notesHtml = notes.length
     ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.6;">' +
-        notes.map(function(n) { return '<li>' + String(n).replace(/</g, "&lt;") + '</li>'; }).join("") +
+        notes.map(function(n) { return '<li>' + window.ktaEsc(n) + '</li>'; }).join("") +
       '</ul>'
     : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">' + window.I18n.t("alerts.update.noNotes") + '</p>';
 

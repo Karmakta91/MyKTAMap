@@ -33,13 +33,6 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 | Import VisualTopo | **Pas maintenant** | — |
 | Protection de branche GitHub (payante) | **Non tant que KARMA est seul** à écrire | — |
 
-## 🔐 Audit du 10/10/2026 (pro, connexion) — reste
-
-(Les 4 points sont corrigés : pro 066220b, f07d7e8, 65b1fd2 ; community 7e6b534 — revérifiés le 14/10/2026.)
-
-- 🔬 **Non audité** : la migration des ~190 popups côté community (ordre, z-index, toasts, échappement des appelants de
-  `ktaConfirm`, qui insère son message en HTML). Second passage à faire.
-
 ---
 
 ## ⚠️ Règle de vérification (à lire avant d'utiliser ce fichier)
@@ -138,8 +131,9 @@ le 10/10/2026, sur dev et prod (`security-legal.md` §40.7.1).
 Analyse complète côté installation : dépôt pro, `docs/SECURITE.md`. myktamap.fr n'est pas concerné tant qu'il n'a pas de
 synchro (un plan ZIP importé reste une donnée choisie par l'utilisateur, mais le même audit le couvre).
 
-- ⚪ **Un seul `window.ktaEsc`** au lieu des copies locales d'échappement (cosmétique, au fil de l'eau). Le XSS est
-  corrigé et gardé par `scripts/check-xss.js` (06/10/2026).
+- ⚪ `js/itiGuidage.js` et `js/sortieUrgence.js` gardent leur copie d'échappement (exception de `scripts/check-esc.js`) :
+  `scripts/check-guidage.js` les charge seuls en VM, sans `langManager.js`. Poser `ktaEsc` dans ce contexte, puis
+  migrer les deux copies et retirer l'exception.
 
 ## 🔒 Réseau et 🧰 Configuration — reliquats (03/10/2026)
 

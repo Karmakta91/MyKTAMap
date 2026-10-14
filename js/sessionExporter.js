@@ -3119,11 +3119,7 @@
   }
 
   // ========== UTILITAIRES ==========
-  function _escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   function _filename(prefix, ext) {
     ext = ext || "json";

@@ -38,11 +38,7 @@
   // ============================================================
   // HELPERS
   // ============================================================
-  function _escapeHtml(s) {
-    return String(s || "").replace(/[&<>"']/g, function(c) {
-      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c];
-    });
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // ========== HELPER I18N ==========
   // Appelé AU RENDU uniquement (jamais au load) → les dicos sont prêts.

@@ -272,6 +272,10 @@ node scripts/check-repositionner.js || exit $?
 # filtres d'entrée d'un plan et d'une légende exécutés contre des charges d'attaque. BLOQUANT.
 node scripts/check-xss.js || exit $?
 
+# 🧹 Échappement HTML unique (14/10/2026) : window.ktaEsc (js/langManager.js, chargé 2e), aucune copie
+# locale ni repli qui n'échappe pas ; exceptions motivées dans le script. Lit tout js/ (pas l'index). BLOQUANT.
+node scripts/check-esc.js || exit $?
+
 # 🔁 Relais Secours en direct (05/10/2026) : l'intervention en cours n'est jamais effacée par le
 # scénario reçu d'un autre appareil, le poste reste celui de l'appareil. BLOQUANT.
 node scripts/check-secours-relais.js || exit $?

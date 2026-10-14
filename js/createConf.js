@@ -2851,7 +2851,7 @@ function _afficherErreurV2(titre, message) {
   const overlay = document.createElement("div");
   overlay.id = "kta-v2-error-overlay";
   overlay.className = "kta-readme-modal-overlay";
-  const safeMessage = String(message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g, "<br>");
+  const safeMessage = window.ktaEsc(message || "").replace(/\n/g, "<br>");
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
       '<div class="kta-readme-modal-header kta-v2-error-header">' +
@@ -4844,11 +4844,7 @@ async function _kmzImpGenerer() {
   }
 }
 
-function _escHtml(s) {
-  return String(s).replace(/[&<>"']/g, function(c) {
-    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-  });
-}
+function _escHtml(s) { return window.ktaEsc(s); }
 
 // =====================================================================
 // 📤 MODALE IMPORT GPX → ZIP MyKTAMap (depuis v1.15.0)
@@ -5794,11 +5790,8 @@ function _sigImpRendreTables() {
   });
 }
 
-function _escHtmlSig(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+function _escHtmlSig(s) { return window.ktaEsc(s); }
+function _escAttrSig(s) { return window.ktaEsc(s); }
 
 // 🏷️ v1.82.0 — LECTURE DU MAPPING, extraite pour être partagée.
 // La génération n'est plus seule à en avoir besoin : la prévisualisation des

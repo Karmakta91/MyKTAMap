@@ -839,11 +839,7 @@ window.LegendCustomization = (function() {
     const existing = document.getElementById("kta-legend-editor-modal");
     if (existing) { existing.remove(); if (opts.onClose) opts.onClose(); return; }
 
-    function _esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
+    function _esc(s) { return window.ktaEsc(s); }
 
     const modal = document.createElement("div");
     modal.id = "kta-legend-editor-modal";

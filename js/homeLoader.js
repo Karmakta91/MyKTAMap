@@ -493,7 +493,7 @@
           const ov = document.createElement("div");
           ov.className = "kta-readme-modal-overlay";
           ov.style.display = "flex";
-          const esc = (typeof window.ktaEsc === "function") ? window.ktaEsc : function(x){return x;};
+          const esc = window.ktaEsc;
           ov.innerHTML =
             '<div class="kta-modal" style="max-width:440px;">' +
               '<div class="kta-modal-icon" style="color:#f4c542;">🔄</div>' +
@@ -2053,11 +2053,7 @@ function planRowHTML(plan) {
         document.addEventListener("keydown", onEsc);
       }
 
-      function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, function(c) {
-          return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-        });
-      }
+      function escapeHtml(s) { return window.ktaEsc(s); }
 
       window.refreshPlansList = function() {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};

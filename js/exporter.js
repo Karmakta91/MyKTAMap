@@ -601,11 +601,7 @@
     return entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
   }
 
-  function _escapeHtmlExport(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
+  function _escapeHtmlExport(s) { return window.ktaEsc(s); }
 
   // Affiche les sous-cases (tags + types roads + types zones) pour un calque + branche les synchros
   function _renderInfosCalque(layerCfg, infos) {
@@ -1050,11 +1046,7 @@
       return;
     }
 
-    function _esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
+    function _esc(s) { return window.ktaEsc(s); }
 
     function _sourceBadge(source) {
       if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("imgexport.legende.custom.srcSession") + '">✏️</span>';

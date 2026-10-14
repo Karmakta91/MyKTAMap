@@ -916,12 +916,8 @@
   // ============================================================
   // HELPERS
   // ============================================================
-  function _escHtml(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-  function _escAttr(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  }
+  function _escHtml(s) { return window.ktaEsc(s); }
+  function _escAttr(s) { return window.ktaEsc(s); }
 
   // ============================================================
   // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION

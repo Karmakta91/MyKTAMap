@@ -477,7 +477,7 @@
     overlay.id = "kta-v2-crash-modal";
     overlay.className = "kta-readme-modal-overlay";
     const sizeTxt = info.imageSizeMB ? info.imageSizeMB + " Mo" : t("oom.v2.unknownSize");
-    const nomTxt = String(info.planName).replace(/[<>&]/g, function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];});
+    const nomTxt = window.ktaEsc(info.planName);
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
         '<div class="kta-readme-modal-header kta-v2-error-header">' +

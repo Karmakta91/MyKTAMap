@@ -378,10 +378,7 @@
     console.log("[LostMode] Plan max dim :", planMaxDim, "px → zone overflow ?", _zoneOverflow);
 
     // Helper d'échappement HTML (sécurité + cohérence visuelle)
-    function _esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    function _esc(s) { return window.ktaEsc(s); }
 
     // Marker dernière position connue (avec popup charte dark au clic)
     const lastIcon = L.divIcon({

@@ -116,15 +116,22 @@ function corps(src, nom) {
   t("plan du site : loadAppConfig assainit", /ktaAssainirPlanConfig\(config/.test(CONFIG.slice(CONFIG.indexOf("async function loadAppConfig("))));
 }
 
-// ═════════ 6. Message de window.ktaConfirm : un nom brut n'y entre pas ═════════
-// ktaConfirm insère son message en HTML (contrat voulu, cf en-tête dans utils.js) : un nom de plan, de
-// fichier, de dossier ou un libellé doit passer par un échappeur. Contrôle VOLONTAIREMENT étroit (zéro faux
-// positif) : dans le 1er argument d'un appel, une propriété de nom (.name .nom .label .libelle .titre
-// .title .displayName) hors de tout ktaEsc / _escHtml / escapeHtml / _esc. Un message construit dans une
-// variable (`msg`) échappe à ce contrôle : la relecture reste due.
+// ═════════ 6. Fenêtres de message : une donnée brute n'entre pas dans un message rendu en HTML ═════════
+// window.ktaConfirm insère son message en HTML (contrat voulu, cf en-tête dans utils.js) : un nom de plan, de
+// fichier, de dossier, un libellé, une version ou un message venus d'ailleurs passent par un échappeur
+// (window.ktaEsc ou un alias local). Contrôle VOLONTAIREMENT étroit (zéro faux positif), dans le 1er argument
+// d'un appel — ou, s'il s'agit d'une variable (`msg`), dans sa dernière affectation qui précède l'appel :
+//   a. une propriété de nom (.name .nom .label .libelle .titre .title .displayName .version .message
+//      .planName .pseudo .fileName) hors de tout échappeur ;
+//   b. une variable au nom de donnée (nom, label, planName, pseudo, fichier, version, err, msg…) posée
+//      telle quelle en paramètre i18n (`{ nom: nom }`) ou concaténée (`+ nom`).
+// window.ktaAlerte échappe elle-même : seule l'option `html` (message déjà sûr) y rouvre la porte, et elle
+// est refusée ici (aucun appelant aujourd'hui ; en ajouter un = l'échapper puis élargir ce contrôle).
 {
-  const ECHAPPEURS = /\b(?:ktaEsc|_escHtml|escapeHtml|_esc)\s*\(/g;
-  const NOM_BRUT = /\.\s*(?:name|nom|label|libelle|titre|title|displayName)\b/;
+  const ECHAPPEURS = /\b(?:ktaEsc|_escHtml|escapeHtml|_esc|esc)\s*\(/g;
+  const NOM_BRUT = /\.\s*(?:name|nom|label|libelle|titre|title|displayName|version|message|planName|pseudo|fileName)\b/;
+  const VAR_BRUTE = new RegExp("(?::|\\+)\\s*(?:nom|name|label|libelle|planName|nomPlan|pseudo|fichier|file|fileName|" +
+    "version|err|error|e|msg|texte|detail)\\b(?!\\s*[.(\\[])");
   // Fin d'une expression parenthésée : index de la « ) » qui ferme l'ouvrante située en `i - 1`.
   const fermante = (s, i) => {
     for (let p = 0; i < s.length; i++) {
@@ -144,36 +151,60 @@ function corps(src, nom) {
     }
     return r + s.slice(i);
   };
-  const premierArg = (s, i) => {
+  // Expression qui commence en `i` et s'arrête au premier séparateur de profondeur 0 (`stop`).
+  const expression = (s, i, stop) => {
     let p = 0, j = i;
     for (; j < s.length; j++) {
       const c = s[j];
       if ("([{".includes(c)) p++;
-      else if (")]}".includes(c)) { if (p === 0) break; p--; } else if (c === "," && p === 0) break;
+      else if (")]}".includes(c)) { if (p === 0) break; p--; } else if (stop.includes(c) && p === 0) break;
     }
     return s.slice(i, j);
   };
+  const brut = (expr) => { const x = sansEchappes(expr); return NOM_BRUT.test(x) || VAR_BRUTE.test(x); };
+  const enCommentaire = (src, i) => /^\s*\/\//.test(src.slice(src.lastIndexOf("\n", i) + 1, i));
   const fautifs = (src, f) => {
     const out = [];
-    const re = /\bktaConfirm\s*\(/g;
+    const re = /\bkta(Confirm|Alerte)\s*\(/g;
     let m;
     while ((m = re.exec(src))) {
-      if (/function\s*$/.test(src.slice(Math.max(0, m.index - 12), m.index))) continue;
-      const arg = premierArg(src, m.index + m[0].length);
-      if (NOM_BRUT.test(sansEchappes(arg))) {
-        out.push(f + ":" + src.slice(0, m.index).split("\n").length + " " + arg.replace(/\s+/g, " ").trim().slice(0, 90));
+      if (/function\s*$/.test(src.slice(Math.max(0, m.index - 12), m.index)) || enCommentaire(src, m.index)) continue;
+      const ligne = f + ":" + src.slice(0, m.index).split("\n").length + " ";
+      const debut = m.index + m[0].length;
+      if (m[1] === "Alerte") {
+        if (/\bhtml\s*:/.test(expression(src, debut, ""))) out.push(ligne + "ktaAlerte avec l'option html");
+        continue;
       }
+      let arg = expression(src, debut, ",").trim();
+      if (/^[A-Za-z_$][\w$]*$/.test(arg)) {   // message construit dans une variable : sa dernière affectation
+        const avant = src.slice(Math.max(0, m.index - 4000), m.index);
+        const aff = new RegExp("\\b" + arg.replace(/\$/g, "\\$") + "\\s*(?:\\+=|=(?!=))", "g");
+        let a, der = null;
+        while ((a = aff.exec(avant))) der = a;
+        arg = der ? expression(avant, der.index + der[0].length, ";") : "";
+      }
+      if (brut(arg)) out.push(ligne + arg.replace(/\s+/g, " ").trim().slice(0, 90));
     }
     return out;
   };
   // Auto-test du contrôle (sinon il peut passer à vide sans que personne ne le voie).
-  const piege = 'window.ktaConfirm(t("k", { nom: plan.name }));\nktaConfirm("Supprimer " + f.label + " ?");';
+  const piege = 'window.ktaConfirm(t("k", { nom: plan.name }));\nktaConfirm("Supprimer " + f.label + " ?");\n' +
+    'const msg = t("k", { v: remote.version });\nwindow.ktaConfirm(msg);\nktaConfirm(t("k", { nom: nom }));\n' +
+    'ktaConfirm("Fichier " + fichier);\nwindow.ktaAlerte(x, { html: true });';
   const sain = 'window.ktaConfirm(t("k", { nom: escapeHtml(PR.displayName(p)), n: ids.length }));\n' +
-    'ktaConfirm(_escHtml(t("k", { nom: pf.name })));\nktaConfirm(t("k", { nom: window.ktaEsc(s.nom) }), { titre: x.titre });';
-  t("ktaConfirm : le contrôle voit un nom brut (auto-test)", fautifs(piege, "test").length === 2, fautifs(piege, "test").join(" | "));
-  t("ktaConfirm : le contrôle accepte un nom échappé (auto-test)", fautifs(sain, "test").length === 0, fautifs(sain, "test").join(" | "));
-  const tous = fs.readdirSync("js").filter((f) => f.endsWith(".js")).reduce((acc, f) => acc.concat(fautifs(lire("js/" + f), "js/" + f)), []);
-  t("🩸 ktaConfirm : aucun nom / libellé brut dans un message (rendu en HTML) — ktaEsc()", tous.length === 0, tous.join(" | "));
+    'ktaConfirm(_escHtml(t("k", { nom: pf.name })));\n' +
+    'ktaConfirm(t("k", { nom: window.ktaEsc(s.nom) }), { titre: x.titre });\n' +
+    'const msg = t("k", { label: window.ktaEsc(p.label), n: p.objets });\nwindow.ktaConfirm(msg);\n' +
+    'window.ktaAlerte(t("k", { nom: plan.name }), { type: "erreur" });\n' +
+    '// window.ktaConfirm(t("k", { nom: plan.name }))';
+  t("fenêtres de message : le contrôle voit une donnée brute (auto-test, 6 pièges)",
+    fautifs(piege, "test").length === 6, fautifs(piege, "test").join(" | "));
+  t("fenêtres de message : le contrôle accepte un message échappé (auto-test)",
+    fautifs(sain, "test").length === 0, fautifs(sain, "test").join(" | "));
+  const tous = fs.readdirSync("js").filter((f) => f.endsWith(".js"))
+    .reduce((acc, f) => acc.concat(fautifs(lire("js/" + f), "js/" + f)), []);
+  t("🩸 ktaConfirm / ktaAlerte : aucune donnée brute dans un message rendu en HTML — ktaEsc()",
+    tous.length === 0, tous.join(" | "));
 }
 
 console.log(ko ? "\n❌ check-xss : " + ko + " échec(s)" : "\n🎉 XSS : fiche sans gestionnaire inline, entrées d'un plan et d'une légende filtrées");

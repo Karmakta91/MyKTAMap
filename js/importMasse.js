@@ -96,11 +96,7 @@
     }
     return sel.value || null;
   }
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
+  function _esc(s) { return window.ktaEsc(s); }
   function _poids(o) {
     const n = Number(o) || 0;
     if (n >= 1024 * 1024 * 1024) return (n / 1073741824).toFixed(1) + " Go";

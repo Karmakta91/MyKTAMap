@@ -399,11 +399,7 @@ function _retourLoaderAvecConfirm() {
 // "Changer de plan" au lieu du confirm() natif du navigateur.
 window._retourLoaderAvecConfirm = _retourLoaderAvecConfirm;
 
-function escapeHtmlSwitcher(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-  });
-}
+function escapeHtmlSwitcher(s) { return window.ktaEsc(s); }
 
 // =========================
 // PANNEAU ANCRÉ AUX BOUTONS

@@ -892,9 +892,7 @@
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
     const planName = _currentPlanName();
-    const planNameSafe = planName.replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
+    const planNameSafe = window.ktaEsc(planName);
     const planLine = planName
       ? '<div class="kta-session-modal-plan">📍 ' + planNameSafe + '</div>'
       : '';
@@ -1113,7 +1111,7 @@
 
   function _proposerSessionAutreNom(saved, nomActuel, planId) {
     _decisionEnAttente = true;
-    const esc = window.ktaEsc || function (x) { return String(x); };
+    const esc = window.ktaEsc;
     const copie = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
       ? Promise.resolve(window.SessionBackups.snapshot("session-autre-nom")).catch(function () { return null; })
       : Promise.resolve(null);

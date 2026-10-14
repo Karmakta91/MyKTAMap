@@ -292,3 +292,17 @@
     _STORAGE_KEY: LANG_STORAGE_KEY
   };
 })();
+
+// =========================
+// 🧹 window.ktaEsc(s) — ÉCHAPPEMENT HTML UNIQUE de l'application
+// =========================
+// & < > " ' → entités ; null / undefined → "". Sûr dans un texte comme dans un attribut entre
+// guillemets (simples ou doubles). Posé ICI (2e script chargé, sans defer) et non dans utils.js
+// (defer) : les modules non différés (accueil, profil, inspecteurs) s'en servent dès leur chargement.
+// Une copie locale d'échappement est refusée par scripts/check-esc.js : un module garde au plus un
+// alias (`function _esc(s) { return window.ktaEsc(s); }`). Exceptions motivées : voir ce contrôle.
+window.ktaEsc = function(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+  });
+};

@@ -44,15 +44,7 @@
   // Échappe les 5 caractères qui peuvent casser le HTML / introduire des
   // tags. Idempotent : appeler 2× est sans effet (les entités sont elles-
   // mêmes échappées au 2e passage).
-  function escapeHtml(s) {
-    if (s == null) return "";
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  function escapeHtml(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
 
   // ========== URL SAFE ==========
   // Whitelist des schémas autorisés dans les liens [txt](url). Refuser

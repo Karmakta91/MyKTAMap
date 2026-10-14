@@ -90,9 +90,13 @@ Structure type :
   passent `<b>`, `<br>`, classes `.kta-tx-*`). **Toute donnée d'utilisateur ou de fichier** (nom de plan, de dossier,
   de fichier, libellé de point) passe par `window.ktaEsc` **avant** d'entrer dans le message — typiquement
   `I18n.t("cle", { nom: window.ktaEsc(plan.name) })`. Pour un texte brut, préférer `ktaAlerte` (elle échappe).
-  🛡️ `scripts/check-xss.js` §6 refuse une propriété de nom (`.name`, `.nom`, `.label`, `.libelle`, `.titre`,
-  `.title`, `.displayName`) hors échappeur dans le 1er argument d'un appel ; un message préparé dans une variable
-  (`msg`) lui échappe : la relecture reste due.
+  🛡️ `scripts/check-xss.js` §6 refuse, hors échappeur, dans le 1er argument d'un appel **ou dans la dernière
+  affectation de la variable** qui le porte (`msg`) : une propriété de donnée (`.name`, `.nom`, `.label`, `.libelle`,
+  `.titre`, `.title`, `.displayName`, `.version`, `.message`, `.planName`, `.pseudo`, `.fileName`) et une variable
+  de donnée (`nom`, `label`, `planName`, `fichier`, `version`, `err`, `msg`…) posée en paramètre i18n ou concaténée.
+  Il refuse aussi l'option `html` de `ktaAlerte` (aucun appelant). Second passage du 14/10/2026 : les ~235 appels
+  relus (70 `ktaConfirm`, 165 `ktaAlerte`), une version serveur non échappée corrigée (`updateChecker.js`), aucun
+  défaut d'empilement : les fenêtres ouvertes au-dessus de 100002 qui posent une question passent `opts.zIndex`.
 - `opts.sansAnnuler` : un seul bouton (c'est `ktaAlerte`) ; le **clic sur le fond ne ferme pas** (message à lire).
 - `opts.zIndex` : appelant ouvert au-dessus de 100002 (éditeur de légende, 100050) — sinon fenêtre invisible.
 - `opts.caseACocher = {label, coche}`, `opts.nombre = {label, valeur, min, max}`,

@@ -460,7 +460,8 @@ function _renderMarkdown(md) {
   });
 
   // 2. Échapper le HTML (hors blocs protégés)
-  md = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Guillemets compris : une URL ou un alt de doc repart dans un attribut (src="…", href="…").
+  md = window.ktaEsc(md);
 
   // 3. Code inline
   md = md.replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -542,8 +543,7 @@ function _renderMarkdown(md) {
 
   // 13. Restaurer les blocs de code
   md = md.replace(/%%CODE(\d+)%%/g, function(_, i) {
-    const escaped = codeBlocks[parseInt(i)]
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const escaped = window.ktaEsc(codeBlocks[parseInt(i)]);
     return "<pre><code>" + escaped + "</code></pre>";
   });
 

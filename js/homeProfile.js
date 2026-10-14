@@ -20,11 +20,7 @@
       // 🧩 13/10/2026 — Statistiques fournies par une extension (prise profilStats, KtaExtensions) : texte seulement,
       // modale « Détails du profil » + choix du bandeau (clé « ext:<cle> »). Vide sans extension.
       let _statsExt = [];
-      function _echapStat(s) {
-        return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-        });
-      }
+      function _echapStat(s) { return window.ktaEsc(s); }
       async function _relireStatsExt() {
         if (!window.KtaExtensions || typeof window.KtaExtensions.profilStatsExtension !== "function") return;
         try { _statsExt = await window.KtaExtensions.profilStatsExtension(); } catch(e) { _statsExt = []; }
@@ -2193,8 +2189,8 @@
           // Append row au tbody (rendu progressif visible par l'user)
           const isCurrent = (plan.id === _currentId);
           const planName  = plan.name || plan.id;
-          const safeLabel = String(planName).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          const versionTag = plan.version ? ' <span class="kta-pps-version">' + String(plan.version).replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</span>' : '';
+          const safeLabel = window.ktaEsc(planName);
+          const versionTag = plan.version ? ' <span class="kta-pps-version">' + window.ktaEsc(plan.version) + '</span>' : '';
           const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé (stats live + data layers)">●</span>' : '';
           // 🆕 v1.21.3 : marqueur ⚠️ si stats partielles (session-only, data
           // layers absents car plan jamais ouvert dans cette release)
@@ -2412,8 +2408,7 @@
           // referencer ici serait une ReferenceError au runtime, que `node -c`
           // ne voit pas. C est la faute exacte de `meta` en v1.88.1.
           const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
-          const txt = String(tr("home.profile.pies.typesInconnus", { n: inconnus.length }))
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const txt = window.ktaEsc(tr("home.profile.pies.typesInconnus", { n: inconnus.length }));
           // Le bouton n'apparaît QU'UNE FOIS pour tout le bloc (il interroge
           // tous les plans d'un coup) : le premier camembert qui a des types
           // inconnus le porte.
@@ -2424,8 +2419,7 @@
               return e.type === "server" || window.PlanRegistry;
             }).length;
             bouton = ' <button type="button" class="kta-profile-pies-fix">' +
-                       String(tr("home.profile.pies.retrouverNoms", { n: nbPlans }))
-                         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                       window.ktaEsc(tr("home.profile.pies.retrouverNoms", { n: nbPlans })) +
                      '</button>';
           }
           return '<div class="kta-profile-pies-note">' + txt + bouton + '</div>';
@@ -2541,11 +2535,7 @@
         }
 
         // 🩸 Autonome : `escapeHtml` n'est pas déclaré au niveau de ce module.
-        function _echapper(s2) {
-          return String(s2 == null ? "" : s2)
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/\"/g, "&quot;");
-        }
+        function _echapper(s2) { return window.ktaEsc(s2); }
 
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
