@@ -222,7 +222,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   (itinéraires), les rouges (urgence), le gris (position ancienne) et le bleu du tracker de l'utilisateur, et
   reste lisible sur fond sombre comme clair (contour sombre) — contrôlé par `check-extensions.js`. Priorité :
   `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
-  panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `presenceActive()` / `basculerPresence()` : une erreur de
+  panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `masquerPersonne(id, bool)` / `personneMasquee(id)` (14/10/2026) : ni repère ni trace, plus suivie, oublié en sortie de plan (`reinitialiser`). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode

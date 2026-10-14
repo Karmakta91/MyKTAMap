@@ -454,6 +454,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const etq = rep[2].icone.html.enfants[1];
     t("🩸 pseudo toujours affiché, posé en texte (textContent), jamais interprété",
       etq.className === "kta-presence-etiquette" && etq.textContent.indexOf("<img src=x onerror=1> · ") === 0 && !/innerHTML/.test(PR));
+    // « Masquer une personne » (14/10/2026) : ni repère ni trace, réversible, plus suivie, oublié en sortie de plan.
+    wp.map.getZoom = () => 1; wp.map.setView = () => {};
+    P.suivre("a1");
+    couches.length = 0;
+    t("👁️ masquerPersonne : ni repère ni trace pour elle, les autres restent", P.masquerPersonne("a1", true) === true &&
+      P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 2 &&
+      couches.filter((c) => c.type === "trace").every((c) => c.o.color !== P.couleurDe("a1")));
+    t("👁️ …une personne masquée n'est plus suivie", P.suivi() === null);
+    couches.length = 0;
+    P.masquerPersonne("a1", false);
+    t("👁️ réafficher : son repère revient", !P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 3);
+    P.masquerPersonne("b2", true); P.reinitialiser();
+    t("👁️ sortie de plan : les masquages sont oubliés", !P.personneMasquee("b2"));
   }
 
   // ═════════ 6 bis ter. LECTURE SEULE et SORTIE DE PLAN (audit du 05/10/2026) ═════════

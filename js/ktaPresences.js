@@ -24,6 +24,7 @@
   var _calqueIti = null;
   var _itis = [];
   var _itisMasques = {};             // id → true : itinéraire non dessiné
+  var _personnesMasquees = {};       // id → true : ni repère ni trace (14/10/2026, « Masquer une personne »)
 
   // 🎨 Qui est qui : une couleur par personne, tirée de son identifiant (même couleur sur tous les
   // appareils, sans serveur). Palette lisible sur fond sombre comme clair (contour sombre), et qui
@@ -110,6 +111,7 @@
     if (!map || !_liste.length || typeof L === "undefined") return;
     _calque = L.layerGroup();
     _liste.forEach(function (p) {
+      if (_personnesMasquees[p.id]) return;   // masquée depuis le panneau : réversible, oubliée au changement de plan
       var ancienne = Date.now() - p.ts > ANCIENNE_MS;
       // Autre niveau que ceux affichés : repère atténué (la personne n'est pas « ici »).
       var horsNiveau = p.niveau !== null && typeof window.passeFiltreNiveau === "function" &&
@@ -243,6 +245,7 @@
   function reinitialiser() {
     clearInterval(_minuteur); _minuteur = null;
     _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
+    _personnesMasquees = {};
     _vider(); _viderItis();
   }
 
@@ -259,6 +262,13 @@
     suivi: function () { return _suivi; },
     masquerTrace: function (id, masquer) { if (masquer) _tracesMasquees[id] = true; else delete _tracesMasquees[id]; _dessiner(); return !!masquer; },
     traceMasquee: function (id) { return !!_tracesMasquees[id]; },
+    // Masquer une personne : son repère ET sa trace (son itinéraire garde son propre réglage). Ne plus la suivre.
+    masquerPersonne: function (id, masquer) {
+      if (masquer) { _personnesMasquees[id] = true; if (_suivi === id) _suivi = null; } else delete _personnesMasquees[id];
+      _dessiner();
+      return !!masquer;
+    },
+    personneMasquee: function (id) { return !!_personnesMasquees[id]; },
     afficherItineraires: afficherItineraires,
     cadrerItineraire: cadrerItineraire,
     masquerItineraire: function (id, masquer) { if (masquer) _itisMasques[id] = true; else delete _itisMasques[id]; _dessinerItis(); return !!masquer; },
