@@ -33,15 +33,10 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
 | Import VisualTopo | **Pas maintenant** | — |
 | Protection de branche GitHub (payante) | **Non tant que KARMA est seul** à écrire | — |
 
-## 🔐 Audit du 10/10/2026 (pro, connexion) — à corriger (Claude, pro)
+## 🔐 Audit du 10/10/2026 (pro, connexion) — reste
 
-(Corrigés côté pro depuis : secret 2FA indépendant de `JWT_SECRET` + `2fa_secret_illisible`, `X-Forwarded-Host` jamais
-cru, délai limite des formulaires de connexion.)
+(Les 4 points sont corrigés : pro 066220b, f07d7e8, 65b1fd2 ; community 7e6b534 — revérifiés le 14/10/2026.)
 
-- 🟠 Licence refusée pendant la reprise → retombe en « down » (`_reprise`, `_sonde`, barre de la gate) au lieu de fermer.
-- 🟠 Barre d'état de la gate sur les écrans post-connexion : `signaler("on")` en mode local sans session.
-- 🟡 « down » venu de l'événement `offline` : `_debloquerSiDown` ne suffit pas (`_reseauCoupe`).
-- 🟡 Mot de passe oublié ouvert sans licence ; 🆘 inactif avant `load`.
 - 🔬 **Non audité** : la migration des ~190 popups côté community (ordre, z-index, toasts, échappement des appelants de
   `ktaConfirm`, qui insère son message en HTML). Second passage à faire.
 
