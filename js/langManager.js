@@ -104,6 +104,32 @@
     return _cachedLang;
   }
 
+  // 🧩 14/10/2026 — Dictionnaires fournis par une EXTENSION (I18n.ajouter) : gardés à part et refusionnés à
+  // chaque chargement du dico de la langue (chargement paresseux, reload). Une clé de l'app n'est JAMAIS
+  // écrasée : l'extension n'ajoute que des clés qui n'existent pas (préfixe propre recommandé, ex. « pro. »).
+  const _ajouts = {};          // code → { clé: texte }
+  const _clesAjoutees = {};    // code → { clé: true } (posées par une extension, donc remplaçables par elle)
+  function _fusionnerAjouts(code) {
+    const d = _dicts[code], a = _ajouts[code];
+    if (!d || !a) return;
+    const posees = _clesAjoutees[code] = _clesAjoutees[code] || {};
+    Object.keys(a).forEach(function(k) {
+      if (Object.prototype.hasOwnProperty.call(d, k) && !posees[k]) return;   // clé de l'app : intouchable
+      d[k] = a[k]; posees[k] = true;
+    });
+  }
+  // I18n.ajouter(code, dico) → nombre de clés retenues. Textes seulement, clés [\w.-]+ ; langue inconnue : 0.
+  function ajouter(code, dico) {
+    if (!_isKnownLang(code) || !dico || typeof dico !== "object") return 0;
+    const a = _ajouts[code] = _ajouts[code] || {};
+    let n = 0;
+    Object.keys(dico).forEach(function(k) {
+      if (typeof dico[k] === "string" && /^[\w.-]{1,120}$/.test(k)) { a[k] = dico[k]; n++; }
+    });
+    _fusionnerAjouts(code);
+    return n;
+  }
+
   // Fetch + parse un dico de langue. Résout {} en cas d'échec (jamais reject :
   // une langue manquante doit dégrader vers le fallback, pas casser l'app).
   function _loadDict(code) {
@@ -130,11 +156,15 @@
       })
       .then(function(json) {
         _dicts[code] = (json && typeof json === "object") ? json : {};
+        _clesAjoutees[code] = {};
+        _fusionnerAjouts(code);
         return _dicts[code];
       })
       .catch(function(e) {
         console.warn("[I18n] Échec chargement lang/" + code + ".json :", e.message || e);
         _dicts[code] = {};
+        _clesAjoutees[code] = {};
+        _fusionnerAjouts(code);
         return _dicts[code];
       });
   }
@@ -289,6 +319,7 @@
     reload:     reload,
     available:  available,
     resolveContentLang: resolveContentLang,
+    ajouter:    ajouter,
     _STORAGE_KEY: LANG_STORAGE_KEY
   };
 })();

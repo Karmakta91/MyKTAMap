@@ -531,6 +531,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
   }
 
+  // ═════════ 6 bis octies. DICTIONNAIRES D'UNE EXTENSION (I18n.ajouter, 14/10/2026) ═════════
+  {
+    const LM = lire("js/langManager.js");
+    t("I18n.ajouter : exposé, ajouts gardés à part et refusionnés à chaque chargement de dico (paresseux, reload)",
+      /ajouter:\s+ajouter/.test(LM) && (LM.match(/_fusionnerAjouts\(code\);/g) || []).length >= 3);
+    t("🩸 I18n.ajouter : une clé de l'app n'est jamais écrasée (seules les clés posées par l'extension se remplacent)",
+      /hasOwnProperty\.call\(d, k\) && !posees\[k\]\) return;/.test(LM));
+  }
+
   // ═════════ 6 bis septies. STATISTIQUES DU PROFIL (prise profilStats) ═════════
   {
     const { K } = nouveauContexte(null);
