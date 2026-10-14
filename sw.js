@@ -176,7 +176,6 @@ const ASSETS_TO_CACHE = [
   // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
   "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
-  "./lib/fonts/kalam-700-splash.woff2",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",

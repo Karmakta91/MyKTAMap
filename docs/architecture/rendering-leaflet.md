@@ -100,18 +100,8 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
   `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA). **Le splash n'affiche plus « -pro »**
   depuis v2.0.0, même en édition pro (décision KARMA) : le suffixe et sa révélation restent dans
   l'en-tête de l'accueil (`.loader-titre-nom`). Pièges de spécificité du suffixe : `security-legal.md §84`.
-- 2️⃣ **Identité de la série 2.x** (v2.0.0, décision KARMA — l'accueil change avec chaque version majeure,
-  comme sous Windows, sans toucher à la philosophie du splash ni à ses 3,5 s) :
-  - un **« 2 » orange brûlé (`#e07b1a` ; `#a8530a` en clair), plus foncé que le doré, de
-    biais, qui mord légèrement sur le « p » de « MyKTAMap »** (`#splashMajeure`) — contraste voulu avec
-    le doré du titre. Posé sur `.kta-titre-base-cadre`, HORS de `.kta-titre-base` dont le clip-path de
-    révélation le couperait. Il « tampe » à 1,5 s, une fois le mot révélé ;
-  - aucun cadre autour de l'écran (essayé en v2.0.0, retiré en v2.7.3 à la demande de KARMA) ;
-  - la **version en haut à droite** passe à l'accent charte (`#f4c542`, `#b8860b` en clair), en gras, 13 px ;
-  - `_splashStart()` écrit le chiffre depuis la version majeure et le montre **à partir de la v2
-    seulement** : une v3 affichera « 3 » sans rien toucher ;
-  - police : sous-ensemble Kalam 700 **réduit aux chiffres** (`lib/fonts/kalam-700-splash.woff2`, ~3,5 Ko,
-    OFL — licence à côté), précaché ; la CSP n'accepte que les polices du site.
+- **Version en haut à droite** : accent charte (`#f4c542`, `#b8860b` en clair), en gras, 13 px. Le chiffre de version
+  majeure de biais (« 2 », v2.0.0) a été retiré le 14/10/2026 (KARMA), avec sa police manuscrite.
 
 ---
 

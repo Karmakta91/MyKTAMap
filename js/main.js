@@ -1933,15 +1933,6 @@ function _splashStart() {
     ver.textContent = b ? (b.charAt(0) === "v" ? b : "v" + b) : "";
   }
 
-  // 2️⃣ v2.0.0 — Identité visuelle de la série (décision KARMA) : le chiffre de
-  // la version majeure, en orange et de biais au-dessus de « MyKTAMap ». À partir
-  // de la v2 seulement ; chaque version majeure peut ensuite avoir son propre accueil.
-  const majeure = parseInt(String((window.__MKM__ && window.__MKM__.build) || "").replace(/^v/, ""), 10);
-  const chiffre = document.getElementById("splashMajeure");
-  if (chiffre && majeure >= 2) {
-    chiffre.textContent = String(majeure);
-    chiffre.hidden = false;
-  }
 }
 
 async function _splashEnd() {

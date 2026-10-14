@@ -1,7 +1,7 @@
 html, body {
   /* 🐛 12/10/2026 (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
      tout élément sans police explicite (fenêtres posées sur <html>, textes d'aide) retombait sur la police par
-     défaut du navigateur, à empattements. Police de la charte à la base ; les titres « KTA Main » gardent la leur. */
+     défaut du navigateur, à empattements. Police de la charte à la base ; aucune police propre aux titres. */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
      pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
@@ -4371,57 +4371,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
      Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte.
      🎬 Ligne d'arrivée commune du splash (07/10/2026, KARMA : « titre et sous-titre doivent finir en même
      temps, pareil pour KARMA et les autres ») : TOUS les textes finissent à 2,2 s — départs décalés, arrivée
-     ensemble ; le « 2 » claque juste après (2,2 → 2,6 s) ; la boussole garde son « nord trouvé » à 3,5 s. */
+     ensemble ; la boussole garde son « nord trouvé » à 3,5 s. */
   animation: splashTextIn 0.6s ease-out 0.45s both,
              kta-titre-base-reveal 1.3s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
-}
-
-/* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
-   (#e07b1a, plus foncé que le doré du titre : contraste voulu, choix KARMA), de biais,
-   au-dessus à droite de « MyKTAMap » — comme les accueils qui changent à chaque
-   version de Windows, sans toucher à la philosophie du splash (rose, arc, titre,
-   signature, 3,5 s). Le cadre doré autour de l'écran a été retiré (KARMA, v2.7.3).
-   - Le chiffre est posé sur le cadre de « MyKTAMap » et mord légèrement sur la
-     panse du « p » (choix KARMA). Le splash n'affiche plus « -pro » depuis
-     v2.0.0, même en édition pro : rien ne vient se loger à sa droite.
-   - Il vit HORS de .kta-titre-base, dont le clip-path de révélation le couperait.
-   - Il « tampe » après la révélation du titre (fin à ~1,45 s) : 0,5 s dès 1,5 s.
-   Police embarquée (sous-ensemble Kalam 700, chiffres seuls, OFL) : la CSP
-   n'accepte que les polices du site. Main levée, comme la signature KARMA. */
-@font-face {
-  font-family: "KTA Main";
-  src: url("../lib/fonts/kalam-700-splash.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: block;
-}
-.kta-titre-base-cadre {
-  position: relative;
-  display: inline-block;
-}
-#splashMajeure {
-  position: absolute;
-  top: -0.1em;
-  right: -0.4em;
-  font-family: "KTA Main", "Segoe Script", "Bradley Hand", cursive;
-  font-weight: 700;
-  font-size: 1.15em;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #e07b1a;
-  text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
-  transform: rotate(-12deg);
-  opacity: 0;
-  animation: kta-splash-majeure 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 2.2s forwards;   /* après la ligne d'arrivée (2,2 s) */
-}
-#splashMajeure[hidden] { display: none; }
-@keyframes kta-splash-majeure {
-  from { opacity: 0; transform: rotate(-30deg) scale(0.4); }
-  to   { opacity: 1; transform: rotate(-12deg) scale(1); }
-}
-html.kta-theme-light #splashMajeure {
-  color: #a8530a !important;
-  text-shadow: none;
 }
 
 @keyframes splashTextIn {
