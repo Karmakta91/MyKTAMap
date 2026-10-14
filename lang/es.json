@@ -635,7 +635,6 @@
   "gate.err.incorrect": "❌ Código incorrecto. Intentos restantes: <strong>{n}</strong>",
   "gate.info": "Esta aplicación es privada. Introduce el código de acceso que te han facilitado. Si no tienes el código, contacta con el autor a través de:",
   "gate.libre.titre": "Bienvenido",
-  "gate.libre.info": "MyKTAMap es libre y gratuita para un uso no comercial.",
   "gate.libre.continuer": "Continuar",
   "gate.lockout.hint": "El plazo crece con cada serie de errores (10 min, 1 h, 6 h, 24 h); un código correcto lo reinicia todo. Si conoces legítimamente el código, espera a que termine el plazo. Si no, contacta con el autor:",
   "gate.lockout.msg": "Acceso bloqueado temporalmente tras 5 códigos incorrectos.",
