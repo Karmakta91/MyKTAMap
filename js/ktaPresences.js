@@ -25,6 +25,20 @@
   var _itis = [];
   var _itisMasques = {};             // id → true : itinéraire non dessiné
 
+  // 🎨 Qui est qui : une couleur par personne, tirée de son identifiant (même couleur sur tous les
+  // appareils, sans serveur). Palette lisible sur fond sombre comme clair (contour sombre), et qui
+  // évite le jaune d'accent (itinéraires), les rouges (urgence), les gris (position ancienne) et le
+  // bleu de MON tracker (#8cb4ff) : on ne doit jamais confondre un autre avec soi.
+  // 9 teintes choisies pour rester distinctes deux à deux (écart CIELAB ≥ 40, cf check-extensions.js).
+  var PALETTE = ["#f5862e", "#2fd92f", "#86a32a", "#ff5cad", "#d933e6",
+    "#5068f0", "#14b8a6", "#ffffff", "#8b5a2b"];
+  // Empreinte FNV-1a 32 bits de l'identifiant → case de la palette (déterministe).
+  function couleurDe(id) {
+    var s = String(id === undefined || id === null ? "" : id), h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return PALETTE[h % PALETTE.length];
+  }
+
   function _t(cle, vars) { return window.I18n ? window.I18n.t(cle, vars) : cle; }
   function _coord(x, y) {
     if (typeof window.convertCoord === "function") return window.convertCoord(x, y);
@@ -58,6 +72,33 @@
     return _t("presence.age.min", { n: Math.round(s / 60) });
   }
 
+  // Repère : la forme de l'icône de mon tracker (triangle et rond blanc), redessinée en SVG pour
+  // prendre la couleur de la personne. Pas de cap transmis : le repère reste pointe en haut.
+  var TAILLE = 40;
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function _repere(couleur) {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "kta-presence-repere");
+    svg.setAttribute("viewBox", "0 0 50 50");
+    svg.setAttribute("width", String(TAILLE));
+    svg.setAttribute("height", String(TAILLE));
+    svg.setAttribute("aria-hidden", "true");
+    var tri = document.createElementNS(SVG_NS, "path");
+    tri.setAttribute("d", "M25 3 L42 39 L8 39 Z");
+    tri.setAttribute("fill", couleur);
+    tri.setAttribute("stroke", "#0a0d18");
+    tri.setAttribute("stroke-width", "2.5");
+    tri.setAttribute("stroke-linejoin", "round");
+    var rond = document.createElementNS(SVG_NS, "circle");
+    rond.setAttribute("cx", "25"); rond.setAttribute("cy", "31"); rond.setAttribute("r", "5.5");
+    rond.setAttribute("fill", "#ffffff");
+    rond.setAttribute("stroke", "#0a0d18");
+    rond.setAttribute("stroke-width", "2");
+    svg.appendChild(tri);
+    svg.appendChild(rond);
+    return svg;
+  }
+
   function _vider() {
     if (_calque && _calque._map) { try { _calque._map.removeLayer(_calque); } catch (e) { /* carte fermée */ } }
     _calque = null;
@@ -73,24 +114,24 @@
       // Autre niveau que ceux affichés : repère atténué (la personne n'est pas « ici »).
       var horsNiveau = p.niveau !== null && typeof window.passeFiltreNiveau === "function" &&
         !window.passeFiltreNiveau({ level: p.niveau });
+      // Couleur fournie par l'extension (ex. équipe d'une intervention Secours) prioritaire, sinon la sienne.
+      var couleur = p.couleur || couleurDe(p.id);
       if (p.trace.length > 1 && !_tracesMasquees[p.id]) {
         L.polyline(p.trace.map(function (q) { return _coord(q[0], q[1]); }), {
-          color: "#8cb4ff", weight: 3, opacity: horsNiveau ? 0.2 : 0.55, dashArray: "6 6", interactive: false
+          color: couleur, weight: 3, opacity: horsNiveau ? 0.2 : 0.55, dashArray: "6 6", interactive: false
         }).addTo(_calque);
       }
       var el = document.createElement("div");
       el.className = "kta-presence" + (ancienne ? " kta-presence-ancienne" : "") + (horsNiveau ? " kta-presence-hors-niveau" : "");
-      var pastille = document.createElement("span");
-      pastille.className = "kta-presence-pastille";
-      pastille.textContent = (Array.from(p.pseudo)[0] || "?").toUpperCase();
-      if (p.couleur && !ancienne) pastille.style.background = p.couleur;
+      el.dataset.couleur = couleur;
+      el.appendChild(_repere(couleur));
       var etiquette = document.createElement("span");
       etiquette.className = "kta-presence-etiquette";
       etiquette.textContent = p.pseudo + " · " + _age(p.ts) + (p.niveau !== null ? " · N" + p.niveau : "");
-      el.appendChild(pastille);
       el.appendChild(etiquette);
       L.marker(_coord(p.x, p.y), {
-        icon: L.divIcon({ className: "kta-presence-icone", html: el, iconSize: [26, 26], iconAnchor: [13, 13] }),
+        icon: L.divIcon({ className: "kta-presence-icone", html: el, iconSize: [TAILLE, TAILLE],
+          iconAnchor: [TAILLE / 2, TAILLE / 2] }),
         keyboard: false, zIndexOffset: 500
       }).addTo(_calque);
     });
@@ -185,7 +226,8 @@
     return true;
   }
 
-  // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …] }] ; [] efface.
+  // liste : [{ id, pseudo, x, y, niveau?, ts?, trace?: [[x, y], …], couleur?: "#rrggbb" }] ; [] efface.
+  // Sans `couleur`, le repère et la trace prennent couleurDe(id).
   function afficher(liste) {
     _liste = _nettoyer(liste);
     _dessiner();
@@ -206,6 +248,9 @@
 
   window.KtaPresences = {
     afficher: afficher,
+    // Couleur d'une personne (identifiant de compte) : la même sur la carte et dans un panneau d'extension.
+    couleurDe: couleurDe,
+    palette: function () { return PALETTE.slice(); },
     reinitialiser: reinitialiser,
     redessiner: function () { _dessiner(); _dessinerItis(); },   // changement de niveau affiché
     // Actions neutres pour un panneau d'extension (« 👥 Équipe ») : jamais déclenchées par l'app seule.

@@ -213,9 +213,16 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
   suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
-  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère + pseudo + ancienneté, grisé
-  après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
-  2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
+  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère = forme de l'icône du tracker
+  en SVG (40 px, sans rotation : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
+  affichés à côté (texte), éteint et désaturé après 2 min, atténué hors niveau, trace pointillée de la même
+  couleur ; entrées non conformes écartées, 200 personnes et 2000 points max ; aucune requête réseau).
+  **Qui est qui** : `KtaPresences.couleurDe(id)` tire la couleur de l'identifiant (FNV-1a → palette de 9 teintes,
+  `KtaPresences.palette()`), la même sur tous les appareils et sans serveur ; la palette évite le jaune d'accent
+  (itinéraires), les rouges (urgence), le gris (position ancienne) et le bleu du tracker de l'utilisateur, et
+  reste lisible sur fond sombre comme clair (contour sombre) — contrôlé par `check-extensions.js`. Priorité :
+  `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
+  panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
@@ -314,7 +321,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `afficherAlerteSecours({ id, titre, texte, actions, sonner? })` / `retirerAlerteSecours(id)` : bandeau rouge
   persistant (son + vibration). Sortants : `mktm:secours-etape-changee` / `mktm:secours-suivi-change` ; entrants :
   `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` (la plus récente gagne, jamais ré-émis) ;
-  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb).
+  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb), prioritaire
+  sur `KtaPresences.couleurDe(id)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Photos des points** (10/10/2026) : prise d'information `photos: { completerPoint(planId, pointId) →
@@ -343,7 +351,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
   ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
   `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :
-  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule).
+  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule),
+  et `KtaPresences.couleurDe(id)` pour afficher la couleur de chacun.
   Sans extension : ni bouton ni fenêtre.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un

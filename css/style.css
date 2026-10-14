@@ -22651,17 +22651,18 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 
 /* 📡 Présences d'une installation reliée (js/ktaPresences.js) */
 .kta-presence-icone { background: none; border: none; }
-.kta-presence { position: relative; width: 26px; height: 26px; }
-.kta-presence-pastille {
-  display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
-  background: #8cb4ff; color: #0a0d18; font-weight: 700; font-size: 13px; border: 2px solid #e8eaf0;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-}
+/* Repère = forme de l'icône du tracker, à la couleur de la personne (SVG, 40 px ; le mien fait 50 px). */
+.kta-presence { position: relative; width: 40px; height: 40px; }
+.kta-presence-repere { display: block; width: 40px; height: 40px; overflow: visible;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)); }
 .kta-presence-etiquette {
-  position: absolute; left: 30px; top: 3px; white-space: nowrap; font-size: 11px; padding: 1px 6px;
+  position: absolute; left: 40px; top: 11px; white-space: nowrap; font-size: 11px; padding: 1px 6px;
   border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #e8eaf0; pointer-events: none;
 }
-.kta-presence-ancienne .kta-presence-pastille { background: #8892a4; }
+/* Position plus mise à jour : couleur gardée mais éteinte (on reconnaît encore la personne). */
+.kta-presence-ancienne .kta-presence-repere {
+  filter: grayscale(0.85) drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)); opacity: 0.6;
+}
 .kta-presence-ancienne .kta-presence-etiquette { color: #8892a4; }
 .kta-presence-hors-niveau { opacity: 0.4; }
 /* 🧭 Itinéraire publié par un autre : étiquette au point d'arrivée */
