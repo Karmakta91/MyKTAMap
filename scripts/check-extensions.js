@@ -477,6 +477,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("profil : plans ☁️ comptés à part, noms de types ☁️ jamais dans le dictionnaire durable, cache de stats purgé avec le plan",
       /_estPlanExt/.test(HP) && /if \(!_estPlanExt\(pc\)\) _persisterNoms/.test(HP) &&
       /removeItem\("myktamap_plan_stats_v1_" \+ id\)/.test(lire("js/planRegistry.js")));
+    t("profil : 💾 compte les bases IDB « kta_ / myktamap » listées par le navigateur (jamais créées) et isole ☁️",
+      /indexedDB\.databases\(\)/.test(HP) && /presentes && presentes\.indexOf\(nom\) < 0/.test(HP) &&
+      /n\.indexOf\("kta_"\) === 0 \|\| n\.indexOf\("myktamap"\) === 0/.test(HP) &&
+      /acc\.ids\[cur\.key\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
+    t("profil : cache de stats du plan courant recalculé (2 s) après des changements reçus",
+      /dispatchEvent\(new CustomEvent\("mktm:changements-appliques"\)\)/.test(lire("js/ktaExtensions.js")) &&
+      /addEventListener\("mktm:changements-appliques"[\s\S]{0,200}_persisterStatsPlanCourant\(\)[\s\S]{0,40}2000/.test(HP));
+    const SG = lire("js/statsGlobales.js");
+    t("stats du plan : répartition par auteur seulement avec la prise auteurObjet, noms échappés",
+      /K\.aPrise\("auteurObjet"\)/.test(SG) && /_escapeHtml\(a\.nom != null/.test(SG));
   }
 
   // ═════════ 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ═════════

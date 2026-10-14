@@ -244,7 +244,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `mktm:extensions-changees` et **`mktm:profil-stats-changees`**. Côté community, les plans `type: "ext"` sont comptés
   **à part** (bandeau, modale, tableau par plan : ligne de total ☁️ séparée, photos « · ☁️ N ») et leurs noms de types
   ne vont jamais dans le dictionnaire durable `myktamap_legend_labels_v1` ; le cache `myktamap_plan_stats_v1_<id>`
-  part avec le plan (`purgeAssociatedData`). Décision KARMA 13/10/2026.
+  part avec le plan (`purgeAssociatedData`). Décision KARMA 13/10/2026. 💾 compte aussi toute base IndexedDB
+  `kta_…`/`myktamap…` listée par `indexedDB.databases()` (jamais ouverte si absente) et affiche « dont ☁️ » (ZIP des
+  plans ext) ; après `appliquerChangements`, l'événement **`mktm:changements-appliques`** fait recalculer (2 s) le
+  cache du plan ouvert. Stats du plan : « ajoutés / d'origine », et avec `auteurObjet` une ligne « par auteur ».
 - **Grades et hauts faits du profil** : `profilJeu() → bool` (information) — `false` coupe l'anneau, la médaille, le
   bloc grade et les hauts faits (calcul compris) ; les statistiques restent. Sans extension ou en erreur : actifs. Le
   profil se redessine à `mktm:extensions-changees`. Sert à une installation où les plans viennent de l'organisation

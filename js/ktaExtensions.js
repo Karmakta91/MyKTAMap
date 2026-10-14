@@ -1032,6 +1032,10 @@
       }
     }
     if (!rien && window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save({ force: true });
+    // Le plan ouvert a changé après son ouverture : les statistiques (cache par plan du profil) se recalculent.
+    if (!rien) {
+      try { window.dispatchEvent(new CustomEvent("mktm:changements-appliques")); } catch (e) { /* rien */ }
+    }
     return { fusionnes: r.fusionnes, supprimes: r.supprimes };
   }
   // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).

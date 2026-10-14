@@ -691,14 +691,18 @@
       // Fix : calcul ciblé qui scanne uniquement les sources MyKTAMap fiables :
       //   - localStorage keys prefix "myktamap_" / "kta_" / "app_user_prefs"
       //   - IDB stores connus (handles/blobs, backups, photos, profile, crashes)
+      //   - toute autre base IDB de l'origine nommée "kta_…" / "myktamap…" (base créée par une extension, cache de
+      //     tuiles…), découverte par indexedDB.databases() quand le navigateur l'offre ; sans lui, les connues seules.
+      // Les ZIP des plans d'extension (registre type "ext") sont mesurés à part au même passage (« dont ☁️ »).
       //
       // Cache mémoire 30s pour éviter de recalculer à chaque ouverture du
       // loader (le scan IDB est rapide mais inutile en re-render).
-      let _storageCalcCache = null;  // { ts: number, bytes: number }
+      let _storageCalcCache = null;  // { ts: number, bytes: number, extBytes: number }
       const _STORAGE_CACHE_MS = 30000;
       const _IDB_STORES = [
         { db: "myktamap_handles", store: "handles", blobFields: [] },
-        { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
+        // ext: true → les ZIP rangés sous l'id d'un plan d'extension sont aussi cumulés à part (« dont ☁️ »).
+        { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"], ext: true },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
         // Sessions auto-sauvegardées (js/sessionStore.js, IndexedDB depuis le 10/10/2026).
         { db: "myktamap_sessions", store: "sessions", blobFields: [] },
@@ -749,7 +753,10 @@
       //   1. Valeur EST un Blob (a `.size` + `.type` typique Blob)
       //   2. Valeur est un objet wrapper (cherche les champs Blob déclarés)
       //   3. Valeur est un objet opaque (FileSystemHandle) → ~200 bytes flat
-      function _accStoreBytes(db, storeName, blobFields) {
+      // blobFields === null : base inconnue (extension) → les champs Blob de 1er niveau sont détectés valeur par valeur.
+      // acc (facultatif) : { ids: { <idPlan>: true }, ext: 0 } — cumule à part les valeurs rangées sous un id de plan ext.
+      function _accStoreBytes(db, storeName, blobFields, acc) {
+        const auto = blobFields === null;
         return new Promise(function(resolve) {
           if (!db.objectStoreNames.contains(storeName)) { resolve(0); return; }
           let total = 0;
@@ -761,6 +768,11 @@
               const cur = e.target.result;
               if (!cur) { resolve(total); return; }
               const val = cur.value;
+              const avant = total;
+              if (auto) {
+                blobFields = [];
+                try { for (const k in val) { if (val[k] instanceof Blob) blobFields.push(k); } } catch(e) {}
+              }
               // Compte la clé (string ID typique 30-50 chars)
               try {
                 if (typeof cur.key === "string") total += cur.key.length * 2;
@@ -799,6 +811,7 @@
                   total += blobBytes;
                 }
               }
+              if (acc && typeof cur.key === "string" && acc.ids[cur.key]) acc.ext += total - avant;
               cur.continue();
             };
             req.onerror = function() { resolve(total); };
@@ -819,27 +832,60 @@
             }
           }
         } catch(e) {}
+        // Ids des plans d'extension : leurs ZIP (store blobs) sont cumulés à part.
+        const acc = { ids: {}, ext: 0 };
+        try {
+          const reg = (window.PlanRegistry && window.PlanRegistry.getAll) ? (window.PlanRegistry.getAll() || []) : [];
+          reg.forEach(function(p) { if (_estPlanExt(p) && p.id) acc.ids[p.id] = true; });
+        } catch(e) {}
+        // Bases présentes sur l'origine, quand le navigateur sait les lister (sinon null → les connues seules).
+        // Une base connue absente de la liste n'est pas ouverte (pas de création-suppression à vide).
+        let presentes = null;
+        try {
+          if (typeof indexedDB.databases === "function") {
+            presentes = (await indexedDB.databases()).map(function(d) { return d && d.name; }).filter(Boolean);
+          }
+        } catch(e) { presentes = null; }
         // 2. IDB stores MyKTAMap (lecture seule, skip si DB absente)
         const seenDbs = {};
+        async function _ouvrir(nom) {
+          if (seenDbs[nom] === undefined) {
+            seenDbs[nom] = (presentes && presentes.indexOf(nom) < 0) ? null : await _openIdbReadOnly(nom);
+          }
+          return seenDbs[nom];  // peut être null
+        }
         for (let i = 0; i < _IDB_STORES.length; i++) {
           const spec = _IDB_STORES[i];
           try {
-            let db = seenDbs[spec.db];
-            if (db === undefined) {
-              db = await _openIdbReadOnly(spec.db);
-              seenDbs[spec.db] = db;  // peut être null
-            }
+            const db = await _ouvrir(spec.db);
             if (!db) continue;
-            const bytes = await _accStoreBytes(db, spec.store, spec.blobFields);
+            const bytes = await _accStoreBytes(db, spec.store, spec.blobFields, spec.ext ? acc : null);
             total += bytes;
           } catch(e) {}
+        }
+        // 2bis. Autres bases "kta_…" / "myktamap…" de l'origine (extension, caches) : tous leurs stores, champs Blob
+        // détectés à la volée. Uniquement des bases LISTÉES par le navigateur → jamais de création.
+        if (presentes) {
+          const connues = {};
+          _IDB_STORES.forEach(function(sp) { connues[sp.db] = true; });
+          const autres = presentes.filter(function(n) {
+            return !connues[n] && (n.indexOf("kta_") === 0 || n.indexOf("myktamap") === 0);
+          });
+          for (let j = 0; j < autres.length; j++) {
+            try {
+              const db = await _ouvrir(autres[j]);
+              if (!db) continue;
+              const stores = Array.prototype.slice.call(db.objectStoreNames);
+              for (let k = 0; k < stores.length; k++) total += await _accStoreBytes(db, stores[k], null);
+            } catch(e) {}
+          }
         }
         // 3. Close les DBs ouvertes
         for (const dbName in seenDbs) {
           const db = seenDbs[dbName];
           if (db) { try { db.close(); } catch(e) {} }
         }
-        return total;
+        return { bytes: total, extBytes: acc.ext };
       }
 
       async function _getStorageMyktamapCached(forceRefresh) {
@@ -847,10 +893,13 @@
         if (!forceRefresh && _storageCalcCache && (now - _storageCalcCache.ts) < _STORAGE_CACHE_MS) {
           return _storageCalcCache.bytes;
         }
-        const bytes = await _calculerStorageMyktamapBytes();
-        _storageCalcCache = { ts: now, bytes: bytes };
-        return bytes;
+        const r = await _calculerStorageMyktamapBytes();
+        _storageCalcCache = { ts: now, bytes: r.bytes, extBytes: r.extBytes };
+        return r.bytes;
       }
+      // Part des ZIP de plans d'extension dans le dernier calcul (0 sans plan ext) — lue juste après
+      // _getStorageMyktamapCached(), qui l'a mise en cache au même passage.
+      function _storageExtBytes() { return (_storageCalcCache && _storageCalcCache.extBytes) || 0; }
 
       // Hydrate les stats compactes du bandeau profil — refactor dynamique
       // 🆕 v1.21.3 : itère les slots PRÉSENTS dans le DOM (data-stat-key)
@@ -875,6 +924,11 @@
               const mem = S ? S.mesurer() : null;
               const alerte = mem && mem.ratio >= S.SEUIL_ALERTE;
               valEl.textContent = _formatBytesShort(bytes) + (alerte ? " ⚠️" : "");
+              // Part des plans d'extension (☁️) : dans l'infobulle seulement, la valeur reste le total.
+              const ext = _storageExtBytes();
+              const titreBase = window.I18n.t("home.profile.stats.storageTitle");
+              slot.title = ext ? titreBase + " — " + window.I18n.t("home.profile.stats.dontExt",
+                { taille: _formatBytesShort(ext) }) : titreBase;
               if (alerte) {
                 slot.title = window.I18n.t("home.profile.stats.memoireAlerte",
                   { pct: Math.min(100, Math.round(mem.ratio * 100)), occupe: S.mo(mem.car), limite: S.mo(mem.limite) });
@@ -1642,6 +1696,7 @@
         try {
           storageTotalBytes = await _getStorageMyktamapCached();
         } catch(e) {}
+        const storageExtBytes = _storageExtBytes();  // ZIP des plans ☁️ (inclus dans le total)
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlans") + '</span></div>' +
@@ -1650,7 +1705,7 @@
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')' + (nbPhotosExt ? ' · ☁️ ' + nbPhotosExt : '') + '</span></div>' +
-            '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblStorage") + '</span></div>' +
+            '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblStorage") + (storageExtBytes ? ' · ' + _t("home.profile.stats.dontExt", { taille: _fmtBytes(storageExtBytes) }) : '') + '</span></div>' +
           '</div>' +
           (_statsExt.length
             ? '<div class="kta-profile-extstats">' +
@@ -1859,6 +1914,16 @@
           console.warn("[ProfileStats] Persist plan stats échec :", e);
         }
       };
+      // Objets arrivés APRÈS l'ouverture (changements reçus d'une installation reliée, appliqués par
+      // KtaExtensions.appliquerChangements) : le cache du plan COURANT est recalculé, regroupé à 2 s (une
+      // synchro peut enchaîner plusieurs lots). Sans extension, l'événement n'est jamais émis.
+      let _statsPlanDiffere = null;
+      window.addEventListener("mktm:changements-appliques", function() {
+        clearTimeout(_statsPlanDiffere);
+        _statsPlanDiffere = setTimeout(function() {
+          try { window._persisterStatsPlanCourant(); } catch(e) {}
+        }, 2000);
+      });
 
       // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
       // Itère le PlanRegistry, pour chaque plan lit sa session (KtaSessionStore,
