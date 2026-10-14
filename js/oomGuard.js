@@ -134,7 +134,12 @@
       if (!items.length) return;
       let type2 = "info", important = false;
       items.forEach(function(it) { if (POIDS[it.type] > POIDS[type2]) type2 = it.type; if (it.opts && it.opts.important) important = true; });
-      _emettre(items.map(function(it) { return it.message; }).join(" · "), type2, { important: important });
+      // 14/10/2026 (capture KARMA : « Lecture seule… » ×7 dans un seul toast) : un message identique n'apparaît
+      // qu'une fois — répéter le même geste refusé ne doit pas allonger le toast.
+      const vus = {};
+      const uniques = items.map(function(it) { return it.message; })
+        .filter(function(m) { if (vus[m]) return false; vus[m] = true; return true; });
+      _emettre(uniques.join(" · "), type2, { important: important });
     }, GROUPE_FENETRE_MS);
   }
 

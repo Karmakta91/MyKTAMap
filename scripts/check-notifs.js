@@ -57,7 +57,9 @@ const OOM = lire("js/oomGuard.js");
     /function _emettre\([\s\S]{0,200}_decisionToast\(niveauNotifs\(\), type, opts\)[\s\S]{0,300}_toastQueue\.push/.test(OOM));
   t("la file du splash rejoue la vibration DÉCIDÉE, pas celle du type", (OOM.match(/if \(t\.vibrer && window\.kta_vibrate\)/g) || []).length >= 2 && !/type === "warn" \|\| type === "error"\) \{\s*window\.kta_vibrate/.test(OOM));
   t("regroupement : un groupe sort en UN toast après une fenêtre courte, au niveau le plus fort",
-    /function _grouper\([\s\S]{0,700}join\(" · "\)/.test(OOM) && /GROUPE_FENETRE_MS = \d+/.test(OOM));
+    /function _grouper\([\s\S]{0,1400}join\(" · "\)/.test(OOM) && /GROUPE_FENETRE_MS = \d+/.test(OOM));
+  t("regroupement : un message identique n'y apparaît qu'une fois (capture du 14/10/2026 : « Lecture seule » ×7)",
+    /function _grouper\([\s\S]{0,1400}if \(vus\[m\]\) return false;[\s\S]{0,120}uniques\.join\(" · "\)/.test(OOM));
   const OSM = lire("js/osmView.js");
   t("🩸 le toast maison de la Vue OSM demande la permission au goulot", /toastAutorise\("info"\)\) return;/.test(OSM));
   // aucun autre module ne dessine un .kta-toast à lui
