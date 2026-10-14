@@ -1641,7 +1641,15 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         if (window.PlanRegistry.requestPersistentStorage) {
           await window.PlanRegistry.requestPersistentStorage();
         }
-        const result = await window.PlanRegistry.saveBlob(id, meta.zipFile);
+        // 🩸 14/10/2026 : un plan d'extension dont la copie est DÉJÀ gardée (même taille) n'est pas réécrit sur
+        // lui-même — réécrire l'enregistrement efface, sous iOS, les données du fichier encore en lecture (« object
+        // can not be found »). L'extension garde elle-même sa copie à jour.
+        let _dejaGarde = false;
+        if (meta.typeRegistre === "ext" && typeof window.PlanRegistry.getBlob === "function") {
+          const g = await window.PlanRegistry.getBlob(id).catch(function() { return null; });
+          _dejaGarde = !!g && g.size === meta.zipFile.size;
+        }
+        const result = _dejaGarde ? { ok: true } : await window.PlanRegistry.saveBlob(id, meta.zipFile);
         if (result.ok) {
           entry.storedBlob = true;
           // 📦 Plan ZIP de l'index : les validateurs HTTP de la copie gardée, pour la requête

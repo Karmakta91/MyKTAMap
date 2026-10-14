@@ -530,10 +530,37 @@
         });
       }
 
+      // 🩸 14/10/2026 (retour KARMA, iPhone) : « The object can not be found here » (NotFoundError) — le fichier
+      // vient d'IndexedDB et son enregistrement a été remplacé entre-temps (WebKit efface alors les données du
+      // Blob qu'on lisait). L'ouverture restait sur l'accueil ; il fallait recliquer 2-3 fois.
+      function _blobPerdu(e) {
+        const m = String((e && (e.message || e.name)) || e || "");
+        return !!e && (e.name === "NotFoundError" || /can ?not be found|could not be found|NotReadableError/i.test(m) ||
+          e.name === "NotReadableError");
+      }
+      // Copie gardée relue (référence fraîche) quand celle qu'on tenait est devenue illisible ; null sinon.
+      async function _copieFraiche(zipFile, meta) {
+        const id = meta && meta.planId;
+        if (!id || !window.PlanRegistry || typeof window.PlanRegistry.getBlob !== "function") return null;
+        const b = await window.PlanRegistry.getBlob(id).catch(function() { return null; });
+        if (!b) return null;
+        try { await b.slice(0, 4).arrayBuffer(); } catch (e) { return null; }   // elle aussi illisible : on abandonne
+        return new File([b], (zipFile && zipFile.name) || (id + ".zip"), { type: "application/zip" });
+      }
       async function chargerZipFichier(zipFile, presetChoisi, meta) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (typeof window.startImportedPlan !== "function") {
           throw new Error("startImportedPlan introuvable");
+        }
+        // Sonde de 4 octets : un fichier venu d'IndexedDB déjà illisible est remplacé par une relecture de la copie
+        // gardée AVANT d'aller plus loin (sinon empreinte puis extraction échouaient, sans rien dire à l'utilisateur).
+        try { await zipFile.slice(0, 4).arrayBuffer(); }
+        catch (eSonde) {
+          const neuf = _blobPerdu(eSonde) ? await _copieFraiche(zipFile, meta) : null;
+          if (!neuf) throw eSonde;
+          console.warn("[Loader] Fichier du plan devenu illisible — copie gardée relue :", eSonde && eSonde.message);
+          zipFile = neuf;
+          if (meta && meta.zipFile) meta.zipFile = neuf;
         }
         // 🆕 v1.42.0 — Kill-switch anti-fuite : check denylist AVANT extraction.
         // Si le ZIP a une empreinte SHA-256 dans denylist.json côté serveur, on
@@ -584,7 +611,17 @@
           let _step = "extraction du ZIP";
           let planConfigFile, assetFiles;
           try {
-            const res = await extraireZip(zipFile);
+            let res;
+            try { res = await extraireZip(zipFile); }
+            catch (ePerdu) {
+              // Remplacé PENDANT la lecture : une seule reprise, sur une copie relue.
+              const neuf = _blobPerdu(ePerdu) ? await _copieFraiche(zipFile, meta) : null;
+              if (!neuf) throw ePerdu;
+              console.warn("[Loader] Fichier du plan perdu pendant l'extraction — reprise sur la copie gardée");
+              zipFile = neuf;
+              if (meta && meta.zipFile) meta.zipFile = neuf;
+              res = await extraireZip(zipFile);
+            }
             planConfigFile = res.planConfigFile;
             assetFiles = res.assetFiles;
           } catch(eExtr) {
