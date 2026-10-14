@@ -17,24 +17,6 @@ chargement d'un plan et dès qu'une écriture échoue (`window.ktaStockageLocal`
   ouverture (voulu : rien n'est effacé sans son accord) — à revoir s'il s'en plaint.
 - ❓ Testeur : « inutilisable dans les seconds niveaux » — à préciser avec lui (plan, itinéraire, lisibilité ?).
 
-## 🧰 Barre d'outils de droite — boutons en double (retour KARMA du 11/10/2026, v2.14.0, iPhone)
-
-- 🟡 **Reste un doublon 📐** quand la mesure est ouverte : le groupe 📐 Mesure et sa sous-action 📐 Distance. Fait le
-  12/10/2026 : la SURFACE mesurée prend ♦️ partout (plus de confusion avec ⬛ Zones), le groupe ne reflète plus
-  l'icône du mode actif. Ce n'était pas une injection en double mais l'accordéon (groupe + sous-actions). Piste :
-  une icône propre à la Distance (📏 est pris par la distance totale des tracés en barre d'état).
-
-## 👥 Plusieurs personnes sur la même carte (retour KARMA du 11/10/2026, capture sur téléphone)
-
-- 🟠 **On ne distingue pas qui est qui** : sur la capture, deux marqueurs identiques (triangles bleus), sans pastille ni
-  étiquette lisible. **À vérifier d'abord** : ces triangles sont-ils les présences (`js/ktaPresences.js` dessine une
-  pastille à l'initiale + une étiquette « pseudo · il y a N min ») ou un autre marqueur (tracker, itinéraire) ? Puis :
-  une couleur par personne, stable (dérivée de l'identifiant, palette lisible en clair et en sombre — aujourd'hui seule
-  une équipe Secours a sa couleur, trace toujours `#8cb4ff`), et l'étiquette lisible à tous les zooms.
-- 🟡 **Masquer une personne** depuis le menu équipe : on masque déjà sa **trace** et son **itinéraire**
-  (`masquerTrace`, `masquerItineraire`), pas son **marqueur**. Ajouter « Masquer <pseudo> » (marqueur + trace),
-  réversible, oublié au changement de plan comme les autres masquages.
-
 ## ✅ Décisions KARMA du 10/10/2026 (QCM) — à exécuter
 
 | Sujet | Décision | Qui |
@@ -310,6 +292,7 @@ fix de la v1.77.0.*
 
 | Sujet | Statut |
 |---|---|
+| **Doublon 📐 Mesure / 📐 Distance** dans la barre de droite (mesure ouverte) | Accepté le 14/10/2026 (KARMA : « ne me dérange pas ») — c'est l'accordéon groupe + sous-action, pas une injection en double |
 | **Podomètre / mode poche** | Enterré le 29/09 : **infaisable en l'état**. Le podomètre du téléphone est inaccessible depuis une page web (aucune plateforme), Web Bluetooth n'existe pas sur iOS, et le vrai obstacle en poche est le **cap**, pas le comptage. Étude : `docs/ETUDE_PODOMETRE.md` (archivé : tag Git `archive-docs-2026-09-30`) |
 | **Plein écran iPhone** | 2 tentatives (v1.9.2, v1.71.0), 2 rollbacks. Un commentaire d'`index.html` **interdit une 3ᵉ tentative** sans diagnostic précis sur appareil |
 | **QR Share Secours (Phase 4)** | Densité QR v35+ illisible par les scanners. Remplacé par l'import consolidé v1.26 (réellement fonctionnel entre deux appareils depuis le correctif A1 du 29/09) |
