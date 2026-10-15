@@ -1637,3 +1637,38 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 - **Numérotation** : `_numEtape` / `_nomEtape` (E, 1…N, S). Statut `non-renseigne` (`auto: true`, filtré des boutons).
 - **Étapes loin** : `_etapesLoin(raccords)` (≥ `SEUIL_ETAPE_LOIN_M` = 25 m) / `_texteEtapesLoin`.
 - **Écran XL** (`emergencyMode.js`) : `MAX_POINTS_ITI = 600`, plus de saut au-delà de 500 points.
+
+## 🧹 Secteurs et parcours de balayage (lot C1, 15/10/2026)
+
+Décisions KARMA (QCM du 15/10) : un seul découpage sur tout le réseau, jonctions comprises ; le guidage REJOINT le
+circuit après un écart ; étapes saisies réordonnées, aucune étape automatique ; deux modes, ossature et complet.
+
+- **Moteur** `js/secoursBalayage.js` (calcul pur, chargé après `secoursMode.js`, précaché) sur
+  `Pathfinder.buildNetworkGraph({ includeZones: true })` :
+  - `pieces(graph)` : un segment coupé à chaque nœud que l'enrichissement a posé dessus (nœud relié à ses DEUX
+    extrémités) → `[{ a, b, len, seg }]` ; `graph.segments[i].road` = tracé d'origine (ajout de `pathfinder.js`).
+    Réseau de calcul `_adj` : pièces + raccords, SANS les arêtes d'origine qui enjambent un croisement (elles
+    faisaient sauter un secteur chez le voisin).
+  - `decouper(graph, { n, departs })` : germes au plus loin des accès puis les uns des autres, croissance équilibrée
+    (le moins chargé avance ; jamais à travers la pièce d'un voisin ; nœud atteint par une pièce prise entre-temps =
+    oublié), puis recentrage (Lloyd : germe au plus près du centre de gravité, 12 tours au plus, on garde le plus
+    équilibré). Rend `{ secteurs: [{ pieces, longueur, germe, acces }], horsReseau, total }`.
+  - `parcours(graph, pieces, { depart, arrivee, mode })` : postier chinois rural — connexité (plus courts chemins
+    vers le morceau du départ), appariement glouton des nœuds impairs (8 voisins, puis le plus proche), circuit
+    eulérien (Hierholzer) ; arrivée ≠ départ = arête fictive retirée à la fin. `ossature` = 2-cœur (tout si vide).
+    Rend `{ path: [{x, y, level|null}], longueur, couvert, aCouvrir }` (pixels plan).
+- **Découper en secteurs** (`_decouperEnSecteurs`) : accès = `_poisAcces()` hors `CRIT_FERMES` ; chaque tracé
+  (`_cleTrace`) va au secteur qui en porte le plus ; équipe « Secteur k » : zone `roads`, entrée = sortie = accès,
+  niveau dominant, `parcoursMode: "complet"`, balayage calculé aussitôt.
+- **Mode de parcours** `g.parcoursMode` : `null` (plus court chemin, défaut) | `"complet"` | `"ossature"`.
+  `_estBalayage(g)` (zone `roads` ou polygone) court-circuite `_recalculerItineraireGroupe` et sa version async
+  (export) vers `_appliquerBalayage` : `itineraireSuggere`, `guidage` (`carrefours` via
+  `Pathfinder.carrefoursSurChemin`, raccords entrée/sortie, `n`), durée, étapes réordonnées au premier passage.
+- **Guidage** : `_suivreParcours` pose `road.secours.balayage` (le circuit) et `balayageIdx` ; `_veilleArrivee`
+  avance `balayageIdx` (`_avancerBalayage` : 15 m, 400 m devant, le plus tôt à égalité) ;
+  `interfaceItineraire > _replanifierDepuis` vise le point du circuit le plus proche à partir de `balayageIdx`
+  (pénalité 0,02 × avance), plus court chemin jusqu'à lui, puis la suite du circuit.
+- **Mesuré** (plan réel, headless) : 6 secteurs de 12,6 à 17,1 km (écart 1,35), 100 % de chaque secteur
+  parcouru, 24,6 à 29,3 km de marche par secteur, calcul ≤ 1 s par parcours.
+- **Garde-fou** `scripts/check-secours-balayage.js` (pre-commit, CI) : vrai moteur sur un réseau fictif (boucles,
+  culs-de-sac, puits, bout isolé) + câblage dans `secoursMode.js` / `interfaceItineraire.js`.

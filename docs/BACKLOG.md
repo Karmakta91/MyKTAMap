@@ -4,7 +4,7 @@
 > **ouvert**. Une entrée soldée est **supprimée**, pas barrée — son histoire vit dans le journal et les commits
 > (`git log -p docs/BACKLOG.md` pour les versions antérieures).
 >
-> **Dernier ménage : 14/10/2026** (précédent : 10/10/2026). Rangé par **qui doit agir**.
+> **Dernier ménage : 15/10/2026** (précédent : 14/10/2026). Rangé par **qui doit agir**.
 
 ## ⚠️ Avant de traiter une entrée
 
@@ -20,8 +20,6 @@ chantier déjà fait (cas réel du 31/08). **Reclore le jour même.**
 
 | Sujet | Détail | Taille |
 |---|---|---|
-| **« Rien à exporter »** | Toast `warn` **marqué important** (visible même en Silence) au lieu d'une fenêtre — décision KARMA du 10/10 | S |
-| **Branche `karma-dev` du dépôt client** | Synchronisée à chaque release par `export-backend.ps1` — décision du 10/10, à vérifier dans le script (pro) | S |
 | **FR en dur restant** | Tri complet fait le 09/10. Reste assumé : `confadmin.html` (100 % FR), motifs de config invalide de `ktaExtensions.js`, `Error` techniques. **Au fil de l'eau** | — |
 | **Pastille hors-ligne** | 🔬 coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange et thème clair non testés en navigateur | S |
 | **Vieille clé de profil** | ⚪ un vieil export de profil réécrit `myktamap_network_paranoia_v1` (inerte) — purge en 1 ligne si gênant | XS |
@@ -30,8 +28,10 @@ chantier déjà fait (cas réel du 31/08). **Reclore le jour même.**
 
 Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit-secours-v1.md). Un commit par case.
 - **Si un exercice le demande** : préparer le parcours de la phase 2 pendant la phase 1 **L**.
-- **Lot C (plus tard)** : C1 découpage auto en secteurs + parcours de balayage **L** · C2 gabarit brancard **L** ·
-  C3 rôle par personne en liste fermée, seulement si des exercices le réclament **M**.
+- **Lot C (plus tard)** : C2 gabarit brancard **L** · C3 rôle par personne en liste fermée, seulement si des
+  exercices le réclament **M**. (C1 secteurs + balayage : livré le 15/10/2026, `secours.md` § Secteurs.)
+- 🔬 **Balayage (C1)** : écart entre secteurs de 1,35 sur un plan réel (l'audit visait 1,16 avec un découpage par
+  niveau) — à affiner seulement si un exercice le demande.
 - 🔬 **Deux interventions simultanées sur un même plan** : non vérifié.
 
 ---
@@ -59,6 +59,9 @@ Rapport : [`docs/audits/2026-09-29_audit-secours-v1.md`](audits/2026-09-29_audit
   recale la position (question au-delà de 30 m) ; écran XL avec un long itinéraire ; « Retour impératif ».
 - **Photos et export** : réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros plan depuis
   l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
+- **Balayage Secours (C1)** : temps de « Découper en secteurs » sur un vieux téléphone ; « Suivre mon parcours » en
+  balayage sur le terrain (un écart doit rejoindre le circuit là où l'équipe en était, pas au début).
+- **Export KMZ « Grandes images »** (15/10) : « Nette » validé sur iPhone ; « Très nette » (16 images) non essayé.
 - **Ouverture de plans sur iPhone** (14/10) : plus de clics répétés ; si le journal montre souvent « copie gardée
   relue », quelque chose réécrit encore les copies — envoyer le journal.
 - **Guide utilisateur, chiffres repris sans vérification** : stockage par appareil (~50 Mo Safari, ~1 Go app
