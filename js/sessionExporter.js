@@ -381,6 +381,31 @@
         font-size: 12px;
         color: #c0c8d8;
       }
+      /* 15/10/2026 — choix de netteté KMZ : la liste ne déborde jamais (capture iPhone : 870 px de large,
+         tout le contenu décalé à gauche), fond sombre de la charte au lieu du blanc natif. */
+      .kta-kmz-nettete {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0 0 24px;
+        min-width: 0;
+        max-width: calc(100% - 24px);
+      }
+      .kta-kmz-nettete select {
+        flex: 1;
+        min-width: 0;
+        max-width: 100%;
+        background: #0a0d18;
+        color: #e8eaf0;
+        border: 1px solid rgba(140,180,255,0.35);
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 12px;
+        text-overflow: ellipsis;
+      }
+      .kta-kmz-nettete select:disabled { opacity: 0.5; }
+      body.kta-theme-light .kta-kmz-nettete select,
+      html.kta-theme-light .kta-kmz-nettete select { background: #fff; color: #1a1f2e; border-color: rgba(0,0,0,0.2); }
       .kta-kmz-opacity-row.disabled {
         opacity: 0.4;
         pointer-events: none;
@@ -3527,8 +3552,8 @@
                 '<input type="checkbox" id="kmz_img_unique" checked>' +
                 '<span>' + t("export.kmz.imageUnique") + ' <span style="color:#8892a4;">' + t("export.kmz.imageUniqueAide") + '</span></span>' +
               '</label>' +
-              '<label style="display:flex;gap:6px;align-items:center;margin:4px 0 0 24px;">' + t("export.kmz.nettete") +
-                ' <select id="kmz_img_nettete" class="kta-select">' +
+              '<label class="kta-kmz-nettete">' + '<span class="kta-kmz-opacity-lbl">' + t("export.kmz.nettete") + '</span>' +
+                '<select id="kmz_img_nettete">' +
                   '<option value="4096">' + t("export.kmz.nettete1") + '</option>' +
                   '<option value="8192" selected>' + t("export.kmz.nettete4") + '</option>' +
                   '<option value="16384">' + t("export.kmz.nettete16") + '</option>' +
