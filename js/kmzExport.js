@@ -672,7 +672,7 @@
       // (très rare, mais défensif).
       // 🔒 05/10/2026 (audit XSS) : le texte est échappé (Google Earth rend la description en HTML ;
       // une note partagée ne doit pas y devenir du balisage). « ]]> » ne peut plus survivre à l'échappement.
-      const html = window.ktaEsc(s).replace(/\n/g, "<br/>");
+      const html = window.ktaEsc(s).replaceAll("\n", "<br/>");
       return '<description><![CDATA[' + html + ']]></description>';
     }
 

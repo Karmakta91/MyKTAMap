@@ -109,7 +109,7 @@
       // Poids du segment dans le graphe (une jonction pèse son dénivelé réel).
       let w = Infinity;
       graph.edges[sg.a].forEach(function(e) { if (e.to === sg.b && e.weight < w) w = e.weight; });
-      if (!isFinite(w)) w = L;
+      if (!Number.isFinite(w)) w = L;
       // Nœuds posés SUR ce segment par l'enrichissement : reliés à ses deux extrémités.
       const sur = [];
       if (L2 > 0) {
@@ -258,7 +258,7 @@
     for (let s = 0; s < nb; s++) {
       let best = -1, bd = -1;
       for (let i = 0; i < N; i++) {
-        if (!incid[i].length || !isFinite(minD[i])) continue;
+        if (!incid[i].length || !Number.isFinite(minD[i])) continue;
         if (minD[i] > bd) { bd = minD[i]; best = i; }
       }
       if (best < 0 || (s > 0 && bd <= 0)) break;
@@ -403,7 +403,7 @@
     paires.sort(function(p, q) { return p.d - q.d; });
     const apparier = function(a, b) {
       const r = _dijkstra(graph, [a], function(u) { return u === b; });
-      if (!isFinite(r.dist[b])) return false;
+      if (!Number.isFinite(r.dist[b])) return false;
       ajouterChemin(_chemin(r.prev, b));
       restants.delete(a); restants.delete(b);
       return true;
@@ -466,7 +466,7 @@
       path.push({ x: N.x, y: N.y, level: niveauDe(n) });
     });
     let longueur = 0;
-    aretes.forEach(function(e) { if (!e.fictive && isFinite(e.w)) longueur += e.w; });
+    aretes.forEach(function(e) { if (!e.fictive && Number.isFinite(e.w)) longueur += e.w; });
     const aCouvrir = (piecesIdx || []).reduce(function(x, i) { return x + (P[i] ? P[i].len : 0); }, 0);
     const couvert = req.reduce(function(x, i) { return x + (comp[P[i].a] !== undefined ? P[i].len : 0); }, 0);
     return { path: path, longueur: longueur, couvert: couvert, aCouvrir: aCouvrir, nbPieces: req.length };

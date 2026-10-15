@@ -2851,7 +2851,7 @@ function _afficherErreurV2(titre, message) {
   const overlay = document.createElement("div");
   overlay.id = "kta-v2-error-overlay";
   overlay.className = "kta-readme-modal-overlay";
-  const safeMessage = window.ktaEsc(message || "").replace(/\n/g, "<br>");
+  const safeMessage = window.ktaEsc(message || "").replaceAll("\n", "<br>");
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
       '<div class="kta-readme-modal-header kta-v2-error-header">' +

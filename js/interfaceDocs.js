@@ -543,7 +543,7 @@ function _renderMarkdown(md) {
 
   // 13. Restaurer les blocs de code
   md = md.replace(/%%CODE(\d+)%%/g, function(_, i) {
-    const escaped = window.ktaEsc(codeBlocks[parseInt(i)]);
+    const escaped = window.ktaEsc(codeBlocks[Number.parseInt(i, 10)]);
     return "<pre><code>" + escaped + "</code></pre>";
   });
 

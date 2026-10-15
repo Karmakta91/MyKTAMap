@@ -4233,7 +4233,7 @@
             // composée floue. L'image unique ne part plus dans le KMZ.
             // 15/10/2026 — « Grandes images » cochée : une mosaïque lisible par Google Earth sur mobile.
             const uniqueVoulue = !!document.getElementById("kmz_img_unique")?.checked;
-            const cible = parseInt(document.getElementById("kmz_img_nettete")?.value, 10) || 8192;
+            const cible = Number.parseInt(document.getElementById("kmz_img_nettete")?.value, 10) || 8192;
             const unique = uniqueVoulue ? await _composerMosaique(cible) : null;
             if (unique) {
               tilesOverlay = unique;

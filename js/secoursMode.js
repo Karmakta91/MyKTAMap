@@ -5108,7 +5108,7 @@
     const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
     if (!m) return hex;
     return "#" + [m[1], m[2], m[3]].map(function(h) {
-      const v = Math.round(parseInt(h, 16) * (1 - f));
+      const v = Math.round(Number.parseInt(h, 16) * (1 - f));
       return (v < 16 ? "0" : "") + v.toString(16);
     }).join("");
   }

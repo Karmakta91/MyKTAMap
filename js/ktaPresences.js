@@ -36,7 +36,7 @@
   // Empreinte FNV-1a 32 bits de l'identifiant → case de la palette (déterministe).
   function couleurDe(id) {
     var s = String(id === undefined || id === null ? "" : id), h = 0x811c9dc5;
-    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    for (var i = 0; i < s.length; i++) { h ^= s.codePointAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
     return PALETTE[h % PALETTE.length];
   }
 
