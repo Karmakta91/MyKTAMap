@@ -1514,6 +1514,11 @@
        kmzExport.js (export géolocalisé) et pdfExport.js (export PDF). -->
   <script src="js/secoursMode.js" defer></script>
 
+  <!-- 🧹 15/10/2026 (lot C1 de l'audit Secours) : découpage du réseau en secteurs
+       et parcours de balayage — calcul pur sur le graphe de pathfinder.js,
+       appelé par secoursMode.js à la demande. -->
+  <script src="js/secoursBalayage.js" defer></script>
+
   <!-- 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live).
        Doit être chargé APRÈS secoursMode.js mais avant main.js. Réfère à
        __MKM__ pour le watermark + utilise navigator.indexedDB direct. -->

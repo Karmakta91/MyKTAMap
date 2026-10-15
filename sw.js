@@ -384,6 +384,8 @@ const ASSETS_TO_CACHE = [
   "./js/cssLazy.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
   "./js/secoursMode.js",
+  // 🧹 15/10/2026 (lot C1) : secteurs + parcours de balayage du Mode Secours
+  "./js/secoursBalayage.js",
   // 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
   "./js/secoursPhotos.js",
   // ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — entry retirée

@@ -510,7 +510,8 @@
             a:        prevIdx,
             b:        idx,
             roadType: road.type,
-            level:    segLevel   // numeric pour road, "transit" pour jonction
+            level:    segLevel,  // numeric pour road, "transit" pour jonction
+            road:     road       // tracé d'origine (secteurs du Secours → zone « tracés »)
           });
         }
         prevIdx = idx;
