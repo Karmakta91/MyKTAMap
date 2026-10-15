@@ -1598,7 +1598,29 @@ function planRowHTML(plan) {
         //   • storedBlob        → actif
         //   • fsHandle / re-pick → grisé + raison (le ZIP vit sur le disque, pas ici)
         let dlHtml = "";
-        if (plan.type === "local") {
+        // 15/10/2026 (KARMA : « en pro on ne peut pas télécharger un plan en base depuis la fiche ») — un plan
+        // d'une extension (type "ext", plan de l'installation) a lui aussi une copie gardée sur l'appareil :
+        // bouton actif si elle est là ET si l'extension permet l'export de ce plan (même droit que le verrou
+        // d'export, KtaExtensions.exportAutorise) ; grisé avec la raison sinon.
+        const _ext = plan.type === "ext";
+        const _exportPermis = !_ext || !window.KtaExtensions || typeof window.KtaExtensions.exportAutorise !== "function" ||
+          window.KtaExtensions.exportAutorise(plan.id);
+        const _boutonGrise = function(raison) {
+          return '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
+                 'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
+                 '</button>' +
+                 '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                 escapeHtml(raison) + '</div>';
+        };
+        if (_ext) {
+          if (!_exportPermis) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtRefuse"));
+          else if (!plan.storedBlob) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtPasCopie"));
+          else {
+            dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
+                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
+                     escapeHtml(_t("home.plans.info.dlZip")) + '</button>';
+          }
+        } else if (plan.type === "local") {
           if (plan.storedBlob) {
             dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
                      'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
@@ -2021,7 +2043,7 @@ function planRowHTML(plan) {
               // On le dit clairement plutôt que de télécharger un fichier vide.
               if (!blob || blob.size === 0) {
                 st.style.color = "#ff8c8c";
-                st.textContent = _t("home.plans.info.dlZipMissing");
+                st.textContent = _t(plan.type === "ext" ? "home.plans.info.dlZipExtMissing" : "home.plans.info.dlZipMissing");
                 btnDl.disabled = false;
                 return;
               }
