@@ -137,5 +137,32 @@ const kml2 = KE.genererKml({
 t("sans tilesOverlay : GroundOverlay unique historique",
   (kml2.match(/<GroundOverlay>/g) || []).length === 1 && kml2.indexOf("files/plan.png") >= 0);
 
+// Mosaïque (15/10/2026, Google Earth sur iPhone : aucune tuile du superoverlay affichée, une image de
+// 4 096 px oui) : quelques grandes images, bornes NATIVES fournies, sans Region/Lod.
+const kml3 = KE.genererKml({
+  planName: "Test", planVersion: "V1", planAuthor: "T",
+  imageW: 1024, imageH: 768, transform: T,
+  include: { image: true, points: false, roads: false, zones: false, structures: false },
+  imageBaseUrl: null, imageOpacity: 60,
+  tilesOverlay: { mosaique: true, tileSize: 4096, levels: [{ z: 0, tiles: [
+    { kmzPath: "files/plan_1_1.jpg", blob: B, col: 0, k: 1, nx0: 0, ny0: 0, nx1: 512, ny1: 768 },
+    { kmzPath: "files/plan_1_2.jpg", blob: B, col: 1, k: 1, nx0: 512, ny0: 0, nx1: 1024, ny1: 768 }
+  ] }] },
+  points: [], roads: [], zones: [], structures: []
+});
+t("mosaïque : 2 GroundOverlays nommés, sans Region ni sous-dossier de détail",
+  (kml3.match(/<GroundOverlay><name>Image 1,[12]<\/name>/g) || []).length === 2 &&
+  kml3.indexOf("<Region>") < 0 && kml3.indexOf("Détail") < 0);
+const q3 = [];
+const reQ3 = /<gx:LatLonQuad[^>]*><coordinates>([^<]+)<\/coordinates>/g;
+let m3;
+while ((m3 = reQ3.exec(kml3)) !== null) {
+  q3.push(m3[1].trim().split(/\s+/).map(function(c) { const p = c.split(",").map(Number); return { lng: p[0], lat: p[1] }; }));
+}
+const pMid = KE.planToGps(T, 512, 0);
+t("mosaïque : les deux images se joignent au pixel 512 et couvrent le plan",
+  q3.length === 2 && Math.abs(q3[0][2].lng - pMid.lng) < eps && Math.abs(q3[1][3].lng - pMid.lng) < eps &&
+  Math.abs(q3[0][3].lat - pTL.lat) < eps && Math.abs(q3[1][1].lng - pBR.lng) < eps);
+
 console.log(ko === 0 ? "\n🎉 superoverlay KMZ : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);

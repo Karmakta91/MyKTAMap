@@ -510,7 +510,9 @@
       const opPct2 = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
       const a255 = Math.round(Math.max(0, Math.min(100, opPct2)) * 2.55);
       const colorTag2 = '<color>' + (a255 < 16 ? "0" : "") + a255.toString(16) + 'ffffff</color>';
-      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + " — plan (tuiles)") + '</name>'];
+      // 15/10/2026 — mosaïque (Google Earth mobile) : quelques grandes images, bornes natives fournies, sans Region.
+      const mosaique = TO.mosaique === true;
+      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + (mosaique ? " — plan" : " — plan (tuiles)")) + '</name>'];
       TO.levels.forEach(function(lvl) {
         const scale = Math.pow(2, -lvl.z);
         // Lod : un seul niveau visible à la fois (128→512 px écran par tuile),
@@ -528,22 +530,25 @@
         const lvlW = Math.ceil(opts.imageW / scale);
         // 15/10/2026 — un sous-dossier par niveau et des tuiles NOMMÉES : sans nom, Google Earth (mobile)
         // listait 2 177 « Superposition sans titre » à plat.
-        morceaux.push('<Folder><name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " (" + lvl.tiles.length + " tuiles)") + '</name>');
+        if (!mosaique) morceaux.push('<Folder><name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " (" + lvl.tiles.length + " tuiles)") + '</name>');
         lvl.tiles.forEach(function(tu) {
-          const x0 = tu.col * TO.tileSize * scale;
-          const x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
-          const y1 = Math.min((lvlH - (tu.k - 1) * TO.tileSize) * scale, opts.imageH);   // bas de la tuile
-          const y0 = Math.max(0, (lvlH - tu.k * TO.tileSize)) * scale;                   // haut de la tuile
+          let x0 = tu.col * TO.tileSize * scale;
+          let x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
+          let y1 = Math.min((lvlH - (tu.k - 1) * TO.tileSize) * scale, opts.imageH);   // bas de la tuile
+          let y0 = Math.max(0, (lvlH - tu.k * TO.tileSize)) * scale;                   // haut de la tuile
+          if (mosaique) { x0 = tu.nx0; y0 = tu.ny0; x1 = tu.nx1; y1 = tu.ny1; }
           const qTL = planToGps(t, x0, y0), qTR = planToGps(t, x1, y0);
           const qBR = planToGps(t, x1, y1), qBL = planToGps(t, x0, y1);
           const lats = [qTL.lat, qTR.lat, qBR.lat, qBL.lat];
           const lngs = [qTL.lng, qTR.lng, qBR.lng, qBL.lng];
           morceaux.push(
             '<GroundOverlay>' +
-              '<name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " — tuile " + (tu.col + 1) + "," + tu.k) + '</name>' +
+              '<name>' + _xmlEsc(mosaique ? "Image " + tu.k + "," + (tu.col + 1)
+                : "Détail " + (lvl.z - zMinP + 1) + " — tuile " + (tu.col + 1) + "," + tu.k) + '</name>' +
               colorTag2 +
               '<drawOrder>' + (lvl.z - zMinP) + '</drawOrder>' +
               '<Icon><href>' + _xmlEsc(tu.kmzPath) + '</href></Icon>' +
+              (mosaique ? '' :
               '<Region>' +
                 '<LatLonAltBox>' +
                   '<north>' + Math.max.apply(null, lats).toFixed(8) + '</north>' +
@@ -552,13 +557,13 @@
                   '<west>'  + Math.min.apply(null, lngs).toFixed(8) + '</west>' +
                 '</LatLonAltBox>' +
                 '<Lod><minLodPixels>' + lodMin + '</minLodPixels><maxLodPixels>' + lodMax + '</maxLodPixels></Lod>' +
-              '</Region>' +
+              '</Region>') +
               '<gx:LatLonQuad xmlns:gx="http://www.google.com/kml/ext/2.2">' +
                 '<coordinates>' + _coord(qBL) + ' ' + _coord(qBR) + ' ' + _coord(qTR) + ' ' + _coord(qTL) + '</coordinates>' +
               '</gx:LatLonQuad>' +
             '</GroundOverlay>');
         });
-        morceaux.push('</Folder>');
+        if (!mosaique) morceaux.push('</Folder>');
       });
       morceaux.push('</Folder>');
       groundOverlay = morceaux.join("");
