@@ -3153,6 +3153,25 @@
       fullOpts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
     }
 
+    // 15/10/2026 (KARMA : « le générateur PDF ne marche pas » sur un plan de 23 434 × 17 457) — « standard » =
+    // résolution native = 409 Mpx : le navigateur refuse le canvas, le PDF partait avec une image 0 × 0, sans
+    // message. Même garde-fou que l'export image : au plus SEUIL_PX_EXPORT (iPhone : IOS_MAX_PX_CANVAS). Un PDF
+    // n'a de toute façon pas besoin de plus (A0 à 300 dpi ≈ 140 Mpx).
+    const pc = config && config.plan;
+    const W = fullOpts.region ? fullOpts.region.w : (pc && pc.imageWidth);
+    const H = fullOpts.region ? fullOpts.region.h : (pc && pc.imageHeight);
+    if (W > 0 && H > 0) {
+      const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
+      const budget = ios ? IOS_MAX_PX_CANVAS : SEUIL_PX_EXPORT;
+      const px = W * H * fullOpts.resol * fullOpts.resol;
+      if (px > budget) {
+        const avant = fullOpts.resol;
+        fullOpts.resol = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+        console.log("[Exporter] Canvas plafonné : résolution " + avant + " → " + fullOpts.resol +
+                    " (" + Math.round(W * fullOpts.resol) + "×" + Math.round(H * fullOpts.resol) + ")");
+      }
+    }
+
     return await _genererCanvasExport(fullOpts, false);
   }
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
