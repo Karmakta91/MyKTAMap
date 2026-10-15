@@ -2635,24 +2635,24 @@ function initInterface() {
         // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
-          if (typeof modeRecalage === "undefined") return;
+          if (typeof window.modeRecalage === "undefined") return;
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
           if (dejaActif) {
-            modeRecalage = false;
+            window.modeRecalage = false;
             // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
 // tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
 _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
-          modeRecalage = true;
+          window.modeRecalage = true;
           btnSub.classList.add("kta-actif");
           // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
           // repartir sur la boussole") : helper exposé pour que tracking.js
           // puisse appeler la même fn de désactivation après le clic carte
           // (= retire .kta-actif + remet l'icône principale à 🧭).
           const _desactiverFn = function() {
-            modeRecalage = false;
+            window.modeRecalage = false;
             btnSub.classList.remove("kta-actif");
             delete _modesActifs["recalage"];
             // 🆕 v1.11.3-fix2 (KARMA "fix marche pas quand on est en play") :

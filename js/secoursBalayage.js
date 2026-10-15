@@ -151,7 +151,10 @@
       adj[p.a].push({ to: p.b, weight: p.len, p: i });
       adj[p.b].push({ to: p.a, weight: p.len, p: i });
       estPiece.add(cle(p.a, p.b));
-      [p.a, p.b].forEach(function(n) { (segsDe[n] = segsDe[n] || new Set()).add(p.seg); });
+      [p.a, p.b].forEach(function(n) {
+        if (!segsDe[n]) segsDe[n] = new Set();
+        segsDe[n].add(p.seg);
+      });
     });
     const vus = new Set();
     for (let u = 0; u < N; u++) {
@@ -423,8 +426,10 @@
     const fictive = (t !== s) ? aretes.push({ u: t, v: s, w: 0, fictive: true }) - 1 : -1;
     const adj = {};
     aretes.forEach(function(e, i) {
-      (adj[e.u] = adj[e.u] || []).push(i);
-      (adj[e.v] = adj[e.v] || []).push(i);
+      if (!adj[e.u]) adj[e.u] = [];
+      if (!adj[e.v]) adj[e.v] = [];
+      adj[e.u].push(i);
+      adj[e.v].push(i);
     });
     const utilisee = new Uint8Array(aretes.length);
     const ptr = {};
@@ -485,7 +490,8 @@
     if (!Array.isArray(segs) || !segs.length) return [];
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     segs.forEach(function(s) { s.forEach(function(p) {
-      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
     }); });
     let c = Math.max(1, opts.cellule || 10), R, M, W, H, pad;
     for (;;) {   // grille bornée à ~2 M de cellules : au-delà, cellules plus grosses
@@ -512,16 +518,18 @@
       for (let j = 0; j < H; j++) {
         let cpt = 0;
         for (let i = -r; i < W; i++) {
-          const e = i + r; if (e < W && src[j * W + e]) cpt++;
-          const s0 = i - r - 1; if (s0 >= 0 && src[j * W + s0]) cpt--;
+          const e = i + r, s0 = i - r - 1;
+          if (e < W && src[j * W + e]) cpt++;
+          if (s0 >= 0 && src[j * W + s0]) cpt--;
           if (i >= 0) tmp[j * W + i] = cpt > 0 ? 1 : 0;
         }
       }
       for (let i = 0; i < W; i++) {
         let cpt = 0;
         for (let j = -r; j < H; j++) {
-          const e = j + r; if (e < H && tmp[e * W + i]) cpt++;
-          const s0 = j - r - 1; if (s0 >= 0 && tmp[s0 * W + i]) cpt--;
+          const e = j + r, s0 = j - r - 1;
+          if (e < H && tmp[e * W + i]) cpt++;
+          if (s0 >= 0 && tmp[s0 * W + i]) cpt--;
           if (j >= 0) out[j * W + i] = cpt > 0 ? 1 : 0;
         }
       }
@@ -537,8 +545,10 @@
       if (ext[k] || g[k]) continue;
       ext[k] = 1;
       const i = k % W, j = (k - i) / W;
-      if (i > 0) file.push(k - 1); if (i < W - 1) file.push(k + 1);
-      if (j > 0) file.push(k - W); if (j < H - 1) file.push(k + W);
+      if (i > 0) file.push(k - 1);
+      if (i < W - 1) file.push(k + 1);
+      if (j > 0) file.push(k - W);
+      if (j < H - 1) file.push(k + W);
     }
     for (let k = 0; k < W * H; k++) g[k] = ext[k] ? 0 : 1;
     // Érosion de R − M (= dilatation du vide) : il reste M cellules autour des galeries.
@@ -552,7 +562,10 @@
     const plein = function(i, j) { return i >= 0 && j >= 0 && i < W && j < H && g[j * W + i] === 1; };
     const V = function(i, j) { return j * (W + 1) + i; };
     const suivants = new Map();
-    const arete = function(a, b) { let l = suivants.get(a); if (!l) suivants.set(a, l = []); l.push(b); };
+    const arete = function(a, b) {
+      if (!suivants.has(a)) suivants.set(a, []);
+      suivants.get(a).push(b);
+    };
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       if (!plein(i, j)) continue;
       if (!plein(i, j - 1)) arete(V(i, j), V(i + 1, j));
