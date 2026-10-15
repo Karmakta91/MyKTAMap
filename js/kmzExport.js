@@ -1199,19 +1199,29 @@
       throw new Error(window.I18n.t("kmz.err.jszipExport"));
     }
     const zip = new JSZip();
+    // 15/10/2026 (KMZ d'un grand plan tuilé : croix rouges dans Google Earth sur iPhone, archive pourtant saine) :
+    // 1. le KML est écrit EN PREMIER dans l'archive (usage du format ; certains lecteurs prennent le 1er .kml) ;
+    // 2. les images (JPEG / PNG, déjà compressées) sont RANGÉES sans recompression (STORE) : aucun gain à les
+    //    dégonfler, seulement du temps et de la mémoire à l'export comme à la lecture.
+    const SANS_COMPRESSION = { compression: "STORE" };
 
     // Préparation de l'imageBaseUrl pour le KML
-    let imageBaseUrl = null;
+    let imageBaseUrl = null, imageBasename = null;
     if (opts.include.image && opts.imageBlob && opts.imageFilename) {
-      const basename = String(opts.imageFilename).split("/").pop() || "plan.png";
-      imageBaseUrl = "files/" + basename;
-      zip.folder("files").file(basename, opts.imageBlob);
+      imageBasename = String(opts.imageFilename).split("/").pop() || "plan.png";
+      imageBaseUrl = "files/" + imageBasename;
     }
+
+    // Generation KML — d'abord, pour qu'il soit le premier fichier de l'archive
+    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
+    zip.file("doc.kml", kml);
+
+    if (imageBaseUrl) zip.folder("files").file(imageBasename, opts.imageBlob, SANS_COMPRESSION);
     // 🗼 v1.76.4 — tuiles du superoverlay V2 : embarquées telles quelles
     // (kmzPath relatif référencé par les <Icon> des GroundOverlays)
     if (opts.include.image && opts.tilesOverlay && Array.isArray(opts.tilesOverlay.levels)) {
       opts.tilesOverlay.levels.forEach(function(lvl) {
-        lvl.tiles.forEach(function(tu) { zip.file(tu.kmzPath, tu.blob); });
+        lvl.tiles.forEach(function(tu) { zip.file(tu.kmzPath, tu.blob, SANS_COMPRESSION); });
       });
     }
 
@@ -1224,14 +1234,14 @@
         const ic = opts.iconsToEmbed[tag];
         if (!ic) continue;
         if (ic instanceof Blob) {
-          filesFolder.file(tag + ".png", ic);
+          filesFolder.file(tag + ".png", ic, SANS_COMPRESSION);
         } else if (typeof ic === "string") {
           // URL → fetch + ajout
           try {
             const r = await fetch(ic);
             if (r.ok) {
               const b = await r.blob();
-              filesFolder.file(tag + ".png", b);
+              filesFolder.file(tag + ".png", b, SANS_COMPRESSION);
             }
           } catch(e) {
             console.warn("[KmzExport] Echec fetch icone", tag, e);
@@ -1239,10 +1249,6 @@
         }
       }
     }
-
-    // Generation KML
-    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
-    zip.file("doc.kml", kml);
 
     // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
     // Embed `customLegend` dans un fichier JSON annexe au doc.kml. Les apps
