@@ -1523,6 +1523,11 @@ html.kta-theme-light .kta-secours-pick-result strong {
     gap: 8px;
     padding: 10px 12px;
   }
+  /* 15/10/2026 (capture iPhone : ~200 px de vide sous « Prêt à déclencher… ») — en
+     colonne, la base « flex: 1 1 200px » du bloc titre devenait une HAUTEUR. */
+  .kta-secours-lancer-bandeau-info {
+    flex: 0 0 auto;
+  }
   .kta-secours-lancer-bandeau-actions {
     /* Empile les boutons verticalement à hauteur naturelle (au lieu
        d'inégalement étirés en row). Plus compact + moins de blanc. */
