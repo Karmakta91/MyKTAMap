@@ -510,7 +510,8 @@
             a:        prevIdx,
             b:        idx,
             roadType: road.type,
-            level:    segLevel   // numeric pour road, "transit" pour jonction
+            level:    segLevel,  // numeric pour road, "transit" pour jonction
+            road:     road       // tracé d'origine (secteurs du Secours → zone « tracés »)
           });
         }
         prevIdx = idx;
@@ -1857,6 +1858,9 @@
     resolvePointById:  resolvePointById,
     // 🆕 Nav Intelligente C1 — graphe réseau réutilisable (cf js/roadGraph.js)
     buildNetworkGraph: buildNetworkGraph,
-    snapPointToGraph:  snapPointToGraph
+    snapPointToGraph:  snapPointToGraph,
+    // 🧹 15/10/2026 (Secours C1) — carrefours d'un chemin calculé ailleurs (parcours de
+    // balayage) : mêmes règles que ceux de computeRoute, pour le même guidage.
+    carrefoursSurChemin: function(graph, path, echelle) { return _carrefoursSurChemin(graph, path, echelle); }
   };
 })();

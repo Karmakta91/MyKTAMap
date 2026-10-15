@@ -1451,7 +1451,7 @@
     const m = S.mesurer();
     const pct = Math.min(100, Math.round(m.ratio * 100));
     const niveau = m.ratio >= 0.95 ? "plein" : (m.ratio >= S.SEUIL_ALERTE ? "presque" : "ok");
-    const esc = window.ktaEsc || function (x) { return String(x); };
+    const esc = window.ktaEsc;
     const plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? window.PlanRegistry.getAll() : [];
     const nomDe = function (id) {
       const p = plans.find(function (x) { return x && x.id === id; });
@@ -1505,11 +1505,7 @@
     const multiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
 
     // ─── HTML helpers ───
-    function _esc(s) {
-      return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-        return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-      });
-    }
+    function _esc(s) { return window.ktaEsc(s); }
     function _distRoad(road) {
       if (!road || !Array.isArray(road.points) || road.points.length < 2) return 0;
       let total = 0;
@@ -2151,11 +2147,7 @@
           listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + emptyMsg + '</div>';
           return;
         }
-        function _esc(s) {
-          return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-            return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-          });
-        }
+        function _esc(s) { return window.ktaEsc(s); }
         function _fmtDate(ts) {
           const d = new Date(ts);
           const j = String(d.getDate()).padStart(2, "0");
@@ -2470,9 +2462,7 @@
       Object.keys(byPoint).forEach(function(pid) {
         const stats = byPoint[pid];
         const nom = nomByPid[pid] || window.I18n.t("ui.refonte.label_point_not_found", { id: pid });
-        const safeName = String(nom).replace(/[&<>"']/g, function(c) {
-          return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-        });
+        const safeName = window.ktaEsc(nom);
         html += '<li>' +
           '<strong>' + safeName + '</strong>' +
           '<span class="kta-refonte-session-meta">' +

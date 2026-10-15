@@ -272,6 +272,10 @@ node scripts/check-repositionner.js || exit $?
 # filtres d'entrée d'un plan et d'une légende exécutés contre des charges d'attaque. BLOQUANT.
 node scripts/check-xss.js || exit $?
 
+# 🧹 Échappement HTML unique (14/10/2026) : window.ktaEsc (js/langManager.js, chargé 2e), aucune copie
+# locale ni repli qui n'échappe pas ; exceptions motivées dans le script. Lit tout js/ (pas l'index). BLOQUANT.
+node scripts/check-esc.js || exit $?
+
 # 🔁 Relais Secours en direct (05/10/2026) : l'intervention en cours n'est jamais effacée par le
 # scénario reçu d'un autre appareil, le poste reste celui de l'appareil. BLOQUANT.
 node scripts/check-secours-relais.js || exit $?
@@ -578,6 +582,13 @@ node scripts/check-home-layout.js || exit $?
 # raccord à vol d'oiseau est compté et alerté au-delà de 50 m — et le chemin
 # ne part plus en arrière au départ (défaut du pathfinder révélé ici). BLOQUANT.
 node scripts/check-guidage.js || exit $?
+
+# 🧹 15/10/2026 — Lot C1 de l'audit Secours : découpage en secteurs et parcours de
+# balayage (js/secoursBalayage.js) EXÉCUTÉS sur le vrai graphe de pathfinder.js
+# (réseau fictif) : chaque galerie parcourue, rien de compté deux fois aux
+# croisements, secteurs équilibrés et d'un seul tenant, entrée / sortie
+# respectées, ossature sans culs-de-sac. BLOQUANT.
+node scripts/check-secours-balayage.js || exit $?
 
 # 🌍 27/09/2026 — Parité des 3 guides utilisateur servis dans l'app
 # (README_USER .md / .en.md / .es.md). check-i18n garde les DICTIONNAIRES,

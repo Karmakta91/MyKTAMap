@@ -856,11 +856,7 @@
 
   // Mini-helper d'escape HTML pour les popups (évite XSS sur les noms de POI
   // qui peuvent contenir <, >, & si l'user a saisi des trucs bizarres).
-  function _escapeHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // =========================
   // 🆕 v1.39.13 — TRACKER SUR OSM (Step 2)

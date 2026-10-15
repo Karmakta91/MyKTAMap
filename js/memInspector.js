@@ -50,11 +50,7 @@
     return (num / (1024 * 1024 * 1024)).toFixed(2) + " GB";
   }
 
-  function _escapeHtml(s) {
-    return String(s || "").replace(/[&<>"']/g, function(c) {
-      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c];
-    });
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // ========== COLLECTE : localStorage ==========
   function _collectLocalStorage() {

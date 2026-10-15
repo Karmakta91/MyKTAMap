@@ -1,7 +1,7 @@
 html, body {
   /* 🐛 12/10/2026 (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
      tout élément sans police explicite (fenêtres posées sur <html>, textes d'aide) retombait sur la police par
-     défaut du navigateur, à empattements. Police de la charte à la base ; les titres « KTA Main » gardent la leur. */
+     défaut du navigateur, à empattements. Police de la charte à la base ; aucune police propre aux titres. */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
      pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
@@ -1081,12 +1081,22 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   line-height: 1.2;
   color: inherit;
 }
-/* Tuile active (Play en cours, boussole visible, recalage armé) — accent bleu */
+/* Tuile active (suivi en cours, plan orienté, guidage, verrou en service…) — vert « en route » (13/10/2026,
+   KARMA ; même vert que .kta-tx-ok). En pause = orange, coupée dans la configuration = grisée. */
 .kta-tracker-modal-tile.kta-actif {
-  border-color: #8cb4ff;
-  color: #8cb4ff;
-  background: rgba(140, 180, 255, 0.12);
-  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.35) inset;
+  border-color: #6ee287;
+  color: #6ee287;
+  background: rgba(110, 226, 135, 0.12);
+  box-shadow: 0 0 0 1px rgba(110, 226, 135, 0.35) inset;
+}
+.kta-tracker-modal-tile.kta-pause {
+  border-color: #ffb380;
+  color: #ffb380;
+  background: rgba(255, 179, 128, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 179, 128, 0.35) inset;
+}
+.kta-tracker-modal-tile.kta-inactif {
+  opacity: 0.45;
 }
 /* Tuile urgence : .kta-sous-action-urgence force déjà bg/bordure/texte rouges
    (!important) ; on s'assure juste que l'icône/label internes héritent. */
@@ -4361,57 +4371,9 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
      Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte.
      🎬 Ligne d'arrivée commune du splash (07/10/2026, KARMA : « titre et sous-titre doivent finir en même
      temps, pareil pour KARMA et les autres ») : TOUS les textes finissent à 2,2 s — départs décalés, arrivée
-     ensemble ; le « 2 » claque juste après (2,2 → 2,6 s) ; la boussole garde son « nord trouvé » à 3,5 s. */
+     ensemble ; la boussole garde son « nord trouvé » à 3,5 s. */
   animation: splashTextIn 0.6s ease-out 0.45s both,
              kta-titre-base-reveal 1.3s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.9s both;
-}
-
-/* 2️⃣ v2.0.0 (KARMA) — Identité de la série 2.x : un « 2 » orange brûlé
-   (#e07b1a, plus foncé que le doré du titre : contraste voulu, choix KARMA), de biais,
-   au-dessus à droite de « MyKTAMap » — comme les accueils qui changent à chaque
-   version de Windows, sans toucher à la philosophie du splash (rose, arc, titre,
-   signature, 3,5 s). Le cadre doré autour de l'écran a été retiré (KARMA, v2.7.3).
-   - Le chiffre est posé sur le cadre de « MyKTAMap » et mord légèrement sur la
-     panse du « p » (choix KARMA). Le splash n'affiche plus « -pro » depuis
-     v2.0.0, même en édition pro : rien ne vient se loger à sa droite.
-   - Il vit HORS de .kta-titre-base, dont le clip-path de révélation le couperait.
-   - Il « tampe » après la révélation du titre (fin à ~1,45 s) : 0,5 s dès 1,5 s.
-   Police embarquée (sous-ensemble Kalam 700, chiffres seuls, OFL) : la CSP
-   n'accepte que les polices du site. Main levée, comme la signature KARMA. */
-@font-face {
-  font-family: "KTA Main";
-  src: url("../lib/fonts/kalam-700-splash.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: block;
-}
-.kta-titre-base-cadre {
-  position: relative;
-  display: inline-block;
-}
-#splashMajeure {
-  position: absolute;
-  top: -0.1em;
-  right: -0.4em;
-  font-family: "KTA Main", "Segoe Script", "Bradley Hand", cursive;
-  font-weight: 700;
-  font-size: 1.15em;
-  line-height: 1;
-  letter-spacing: 0;
-  color: #e07b1a;
-  text-shadow: 0 2px 16px rgba(224, 123, 26, 0.4);
-  transform: rotate(-12deg);
-  opacity: 0;
-  animation: kta-splash-majeure 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 2.2s forwards;   /* après la ligne d'arrivée (2,2 s) */
-}
-#splashMajeure[hidden] { display: none; }
-@keyframes kta-splash-majeure {
-  from { opacity: 0; transform: rotate(-30deg) scale(0.4); }
-  to   { opacity: 1; transform: rotate(-12deg) scale(1); }
-}
-html.kta-theme-light #splashMajeure {
-  color: #a8530a !important;
-  text-shadow: none;
 }
 
 @keyframes splashTextIn {
@@ -5415,21 +5377,37 @@ html.kta-theme-light .kta-osm-home-empty strong {
  * 🐛 v1.43.16 — KARMA "la croix est trop grosse" : padding 10×14 → 4×9,
  * font 18 → 13 (= taille bouton standard du bandeau, juste mieux placé). */
 .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn {
+  /* 14/10/2026 (KARMA « pas jolie, trop grosse, mal ancrée ») : croix discrète comme celle des fenêtres
+     (.kta-panneau-close), centrée sur la ligne de titre « Vue OSM » (texte à 10 px, 16 px de haut). */
   position: fixed;
-  top: 10px;
+  top: 3px;
   right: 10px;
   z-index: 10001;
-  padding: 4px 9px;
-  font-size: 13px;
-  font-weight: 700;
-  background: rgba(244, 197, 66, 0.95);
-  color: #1a1f2e;
-  border: 1px solid rgba(244, 197, 66, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+  background: none;
+  color: #c8d0e0;
+  border: none;
+  box-shadow: none;
+  border-radius: 6px;
 }
 .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
-  background: #f4c542;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8eaf0;
+}
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn,
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn { color: #3a4256; }
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover,
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1a1f2e;
 }
 /* Empêche le scroll du body pendant le fullscreen (sinon Leaflet wheel
    peut faire défiler la page derrière). */
@@ -14317,6 +14295,16 @@ body.kta-theme-light .kta-tracker-modal-tile:hover {
   background: #eef2fb;
   border-color: rgba(90, 130, 220, 0.5);
 }
+body.kta-theme-light .kta-tracker-modal-tile.kta-actif {
+  border-color: #1e7a3a;
+  color: #1e7a3a;
+  background: rgba(30, 122, 58, 0.1);
+}
+body.kta-theme-light .kta-tracker-modal-tile.kta-pause {
+  border-color: #8b3a00;
+  color: #8b3a00;
+  background: rgba(139, 58, 0, 0.1);
+}
 /* Urgence en clair (rouge plein) : la règle light existante ne cible que
    a.kta-sub / flyout-btn → on l'étend explicitement à la tuile du modal. */
 body.kta-theme-light .kta-tracker-modal-tile.kta-sous-action-urgence {
@@ -22615,17 +22603,18 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
 
 /* 📡 Présences d'une installation reliée (js/ktaPresences.js) */
 .kta-presence-icone { background: none; border: none; }
-.kta-presence { position: relative; width: 26px; height: 26px; }
-.kta-presence-pastille {
-  display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
-  background: #8cb4ff; color: #0a0d18; font-weight: 700; font-size: 13px; border: 2px solid #e8eaf0;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-}
+/* Repère = forme de l'icône du tracker, à la couleur de la personne (SVG, 40 px ; le mien fait 50 px). */
+.kta-presence { position: relative; width: 40px; height: 40px; }
+.kta-presence-repere { display: block; width: 40px; height: 40px; overflow: visible;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)); }
 .kta-presence-etiquette {
-  position: absolute; left: 30px; top: 3px; white-space: nowrap; font-size: 11px; padding: 1px 6px;
+  position: absolute; left: 40px; top: 11px; white-space: nowrap; font-size: 11px; padding: 1px 6px;
   border-radius: 8px; background: rgba(10, 13, 24, 0.85); color: #e8eaf0; pointer-events: none;
 }
-.kta-presence-ancienne .kta-presence-pastille { background: #8892a4; }
+/* Position plus mise à jour : couleur gardée mais éteinte (on reconnaît encore la personne). */
+.kta-presence-ancienne .kta-presence-repere {
+  filter: grayscale(0.85) drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)); opacity: 0.6;
+}
 .kta-presence-ancienne .kta-presence-etiquette { color: #8892a4; }
 .kta-presence-hors-niveau { opacity: 0.4; }
 /* 🧭 Itinéraire publié par un autre : étiquette au point d'arrivée */

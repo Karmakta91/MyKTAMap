@@ -79,10 +79,7 @@ window.afficherModaleAlerteAbsente = function(status) {
   }
 
   // Échappe le texte HTML (anti-XSS sur contenu remote)
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   let icon, title, msg, extraHtml = "";
   if (isOffline) {
@@ -163,15 +160,21 @@ window.afficherModaleAlerteAbsente = function(status) {
 // `opts.fromBoot` : si true (boot post-splash), bypass-acquittement check
 //                   (= filtre sur non-acquittées seulement). Si false (click
 //                   bouton 🚨), affiche TOUTES les alertes même acquittées.
+// 🧩 13/10/2026 — Source d'une alerte : celle que fournit une extension (« 🏢 Organisation… ») ; une alerte du
+// fichier alert.json n'est étiquetée « plateforme » que si une extension fournit aussi des alertes (sinon rien
+// ne change à l'écran). Texte échappé par l'appelant.
+function _ktaSourceAlerte(a) {
+  if (a && a.source) return a.source;
+  const ext = window.KtaExtensions && typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("alertes");
+  return ext ? window.I18n.t("alerts.source.site") : "";
+}
+
 window.afficherSelecteurAlertes = function(alerts, opts) {
   if (!Array.isArray(alerts) || alerts.length === 0) return;
   if (document.getElementById("kta-alert-selector-modal")) return;
   opts = opts || {};
 
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   // Tri par priorité (emergency > warning > info) puis released desc
   const prioOrder = { emergency: 0, warning: 1, info: 2 };
@@ -195,13 +198,14 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   const rowsHtml = sorted.map(function(a) {
     const level = (a.level === "warning" || a.level === "info") ? a.level : "emergency";
     const acq   = _isAcquittee(a);
+    const src   = _ktaSourceAlerte(a);
     const ts    = a.released ? a.released.replace("T", " ").replace(/:\d{2}\.?\d*Z?$/, "") : "";
     return '' +
       '<button type="button" class="kta-alert-selector-row kta-alert-selector-row-' + level + (acq ? ' kta-alert-selector-row-seen' : '') + '" data-alert-id="' + _esc(a.id || "") + '">' +
         '<span class="kta-alert-selector-dot"></span>' +
         '<span class="kta-alert-selector-content">' +
           '<span class="kta-alert-selector-title">' + _esc(a.title || window.I18n.t("alerts.selector.noTitle")) + '</span>' +
-          (ts ? '<span class="kta-alert-selector-meta">' + _esc(ts) + (acq ? window.I18n.t("alerts.selector.acknowledgedSuffix") : '') + '</span>' : '') +
+          (ts || src ? '<span class="kta-alert-selector-meta">' + _esc([src, ts].filter(Boolean).join(" · ")) + (acq ? window.I18n.t("alerts.selector.acknowledgedSuffix") : '') + '</span>' : '') +
         '</span>' +
         '<span class="kta-alert-selector-arrow">›</span>' +
       '</button>';
@@ -225,6 +229,8 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   function _fermer() {
     if (modal.parentNode) modal.remove();
     document.removeEventListener("keydown", _onKey);
+    // Une alerte arrivée pendant que le sélecteur était ouvert s'ouvre maintenant (AlertChecker, 13/10/2026).
+    if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") window.AlertChecker.dismiss();
   }
   function _onKey(e) { if (e.key === "Escape") _fermer(); }
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
@@ -257,10 +263,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
   if (!alert) return;
   if (document.getElementById("kta-alert-modal")) return;
 
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   const id    = alert.id    || "";  // v163 : acquit individuel par id
   const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
@@ -275,9 +278,10 @@ window.afficherModaleAlerte = function(alert, onClose) {
       '</ul>'
     : '';
 
-  const footerInfo = released
+  const source = _ktaSourceAlerte(alert);
+  const footerInfo = (source ? '<div class="kta-alert-released">' + _esc(source) + '</div>' : '') + (released
     ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(released) }) + '</div>'
-    : '';
+    : '');
 
   const modal = document.createElement("div");
   modal.id = "kta-alert-modal";
@@ -333,7 +337,7 @@ window.afficherModaleUpdateDispo = function(opts) {
 
   const notesHtml = notes.length
     ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.6;">' +
-        notes.map(function(n) { return '<li>' + String(n).replace(/</g, "&lt;") + '</li>'; }).join("") +
+        notes.map(function(n) { return '<li>' + window.ktaEsc(n) + '</li>'; }).join("") +
       '</ul>'
     : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">' + window.I18n.t("alerts.update.noNotes") + '</p>';
 
@@ -367,13 +371,11 @@ window.afficherModaleUpdateDispo = function(opts) {
           notesHtml +
         '</div>' +
 
+        // 13/10/2026 (KARMA) : un seul mode de mise à jour depuis le retrait du reset d'ici — plus de rubrique
+        // « deux modes » : une ligne dit ce qui est rafraîchi et ce qui est gardé.
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.modesTitre") + '</div>' +
-          '<div style="background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:8px; padding:10px 12px; margin-bottom:8px;">' +
-            '<div style="font-weight:700; color:#6ce28a; font-size:13px; margin-bottom:4px;">' + window.I18n.t("alerts.update.softTitre") + '</div>' +
-            '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-              window.I18n.t("alerts.update.softDesc") +
-            '</div>' +
+          '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
+            window.I18n.t("alerts.update.softDesc") +
           '</div>' +
           // 10/10/2026 (retour testeur en prod) : le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
           // à jour — il efface tout (sessions, photos, backups) sans recours. Il ne vit plus que dans 🆘 Dépannage.

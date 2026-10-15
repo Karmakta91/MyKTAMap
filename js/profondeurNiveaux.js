@@ -32,11 +32,7 @@
   function _t(cle, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(cle, p) : cle;
   }
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
   function _niveauxDuPlan() {
     const c = window.APP_CONFIG || {};
     const l = Array.isArray(c.availableLevels) && c.availableLevels.length

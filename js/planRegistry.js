@@ -200,6 +200,9 @@
       if (S.lire(id) != null) bilan.session = true;
       S.retirer(id);   // + son ancienne copie localStorage d'avant la migration IndexedDB
     } catch(e) {}
+    // Statistiques du plan (cache du profil) : elles partent avec lui (13/10/2026 — un plan ☁️ retiré à la
+    // déconnexion ne doit rien laisser de son contenu, ni décomptes ni noms de types).
+    try { localStorage.removeItem("myktamap_plan_stats_v1_" + id); } catch(e) {}
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
         localStorage.removeItem("myktamap_kmz_calib_" + id);

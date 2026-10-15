@@ -510,7 +510,9 @@
       const opPct2 = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
       const a255 = Math.round(Math.max(0, Math.min(100, opPct2)) * 2.55);
       const colorTag2 = '<color>' + (a255 < 16 ? "0" : "") + a255.toString(16) + 'ffffff</color>';
-      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + " — plan (superoverlay)") + '</name>'];
+      // 15/10/2026 — mosaïque (Google Earth mobile) : quelques grandes images, bornes natives fournies, sans Region.
+      const mosaique = TO.mosaique === true;
+      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + (mosaique ? " — plan" : " — plan (tuiles)")) + '</name>'];
       TO.levels.forEach(function(lvl) {
         const scale = Math.pow(2, -lvl.z);
         // Lod : un seul niveau visible à la fois (128→512 px écran par tuile),
@@ -526,20 +528,27 @@
         // NIVEAU convertis au natif, bornés à l'emprise.
         const lvlH = Math.ceil(opts.imageH / scale);
         const lvlW = Math.ceil(opts.imageW / scale);
+        // 15/10/2026 — un sous-dossier par niveau et des tuiles NOMMÉES : sans nom, Google Earth (mobile)
+        // listait 2 177 « Superposition sans titre » à plat.
+        if (!mosaique) morceaux.push('<Folder><name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " (" + lvl.tiles.length + " tuiles)") + '</name>');
         lvl.tiles.forEach(function(tu) {
-          const x0 = tu.col * TO.tileSize * scale;
-          const x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
-          const y1 = Math.min((lvlH - (tu.k - 1) * TO.tileSize) * scale, opts.imageH);   // bas de la tuile
-          const y0 = Math.max(0, (lvlH - tu.k * TO.tileSize)) * scale;                   // haut de la tuile
+          let x0 = tu.col * TO.tileSize * scale;
+          let x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
+          let y1 = Math.min((lvlH - (tu.k - 1) * TO.tileSize) * scale, opts.imageH);   // bas de la tuile
+          let y0 = Math.max(0, (lvlH - tu.k * TO.tileSize)) * scale;                   // haut de la tuile
+          if (mosaique) { x0 = tu.nx0; y0 = tu.ny0; x1 = tu.nx1; y1 = tu.ny1; }
           const qTL = planToGps(t, x0, y0), qTR = planToGps(t, x1, y0);
           const qBR = planToGps(t, x1, y1), qBL = planToGps(t, x0, y1);
           const lats = [qTL.lat, qTR.lat, qBR.lat, qBL.lat];
           const lngs = [qTL.lng, qTR.lng, qBR.lng, qBL.lng];
           morceaux.push(
             '<GroundOverlay>' +
+              '<name>' + _xmlEsc(mosaique ? "Image " + tu.k + "," + (tu.col + 1)
+                : "Détail " + (lvl.z - zMinP + 1) + " — tuile " + (tu.col + 1) + "," + tu.k) + '</name>' +
               colorTag2 +
               '<drawOrder>' + (lvl.z - zMinP) + '</drawOrder>' +
               '<Icon><href>' + _xmlEsc(tu.kmzPath) + '</href></Icon>' +
+              (mosaique ? '' :
               '<Region>' +
                 '<LatLonAltBox>' +
                   '<north>' + Math.max.apply(null, lats).toFixed(8) + '</north>' +
@@ -548,12 +557,13 @@
                   '<west>'  + Math.min.apply(null, lngs).toFixed(8) + '</west>' +
                 '</LatLonAltBox>' +
                 '<Lod><minLodPixels>' + lodMin + '</minLodPixels><maxLodPixels>' + lodMax + '</maxLodPixels></Lod>' +
-              '</Region>' +
+              '</Region>') +
               '<gx:LatLonQuad xmlns:gx="http://www.google.com/kml/ext/2.2">' +
                 '<coordinates>' + _coord(qBL) + ' ' + _coord(qBR) + ' ' + _coord(qTR) + ' ' + _coord(qTL) + '</coordinates>' +
               '</gx:LatLonQuad>' +
             '</GroundOverlay>');
         });
+        if (!mosaique) morceaux.push('</Folder>');
       });
       morceaux.push('</Folder>');
       groundOverlay = morceaux.join("");
@@ -662,7 +672,7 @@
       // (très rare, mais défensif).
       // 🔒 05/10/2026 (audit XSS) : le texte est échappé (Google Earth rend la description en HTML ;
       // une note partagée ne doit pas y devenir du balisage). « ]]> » ne peut plus survivre à l'échappement.
-      const html = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>");
+      const html = window.ktaEsc(s).replaceAll("\n", "<br/>");
       return '<description><![CDATA[' + html + ']]></description>';
     }
 
@@ -1199,19 +1209,29 @@
       throw new Error(window.I18n.t("kmz.err.jszipExport"));
     }
     const zip = new JSZip();
+    // 15/10/2026 (KMZ d'un grand plan tuilé : croix rouges dans Google Earth sur iPhone, archive pourtant saine) :
+    // 1. le KML est écrit EN PREMIER dans l'archive (usage du format ; certains lecteurs prennent le 1er .kml) ;
+    // 2. les images (JPEG / PNG, déjà compressées) sont RANGÉES sans recompression (STORE) : aucun gain à les
+    //    dégonfler, seulement du temps et de la mémoire à l'export comme à la lecture.
+    const SANS_COMPRESSION = { compression: "STORE" };
 
     // Préparation de l'imageBaseUrl pour le KML
-    let imageBaseUrl = null;
+    let imageBaseUrl = null, imageBasename = null;
     if (opts.include.image && opts.imageBlob && opts.imageFilename) {
-      const basename = String(opts.imageFilename).split("/").pop() || "plan.png";
-      imageBaseUrl = "files/" + basename;
-      zip.folder("files").file(basename, opts.imageBlob);
+      imageBasename = String(opts.imageFilename).split("/").pop() || "plan.png";
+      imageBaseUrl = "files/" + imageBasename;
     }
+
+    // Generation KML — d'abord, pour qu'il soit le premier fichier de l'archive
+    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
+    zip.file("doc.kml", kml);
+
+    if (imageBaseUrl) zip.folder("files").file(imageBasename, opts.imageBlob, SANS_COMPRESSION);
     // 🗼 v1.76.4 — tuiles du superoverlay V2 : embarquées telles quelles
     // (kmzPath relatif référencé par les <Icon> des GroundOverlays)
     if (opts.include.image && opts.tilesOverlay && Array.isArray(opts.tilesOverlay.levels)) {
       opts.tilesOverlay.levels.forEach(function(lvl) {
-        lvl.tiles.forEach(function(tu) { zip.file(tu.kmzPath, tu.blob); });
+        lvl.tiles.forEach(function(tu) { zip.file(tu.kmzPath, tu.blob, SANS_COMPRESSION); });
       });
     }
 
@@ -1224,14 +1244,14 @@
         const ic = opts.iconsToEmbed[tag];
         if (!ic) continue;
         if (ic instanceof Blob) {
-          filesFolder.file(tag + ".png", ic);
+          filesFolder.file(tag + ".png", ic, SANS_COMPRESSION);
         } else if (typeof ic === "string") {
           // URL → fetch + ajout
           try {
             const r = await fetch(ic);
             if (r.ok) {
               const b = await r.blob();
-              filesFolder.file(tag + ".png", b);
+              filesFolder.file(tag + ".png", b, SANS_COMPRESSION);
             }
           } catch(e) {
             console.warn("[KmzExport] Echec fetch icone", tag, e);
@@ -1239,10 +1259,6 @@
         }
       }
     }
-
-    // Generation KML
-    const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
-    zip.file("doc.kml", kml);
 
     // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
     // Embed `customLegend` dans un fichier JSON annexe au doc.kml. Les apps

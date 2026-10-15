@@ -1261,17 +1261,12 @@ function libererTuiles(overlays, map) {
   });
 }
 
-function tuilingNecessaire(imageWidth, imageHeight) {
-  return (imageWidth * imageHeight) > TUILING_NECESSAIRE_PIXELS;
-}
-
 // =========================
 // EXPORTS
 // =========================
 window.chargerImage             = chargerImage;
 window.chargerImageTuillee      = chargerImageTuillee;
 window.libererTuiles            = libererTuiles;
-window.tuilingNecessaire        = tuilingNecessaire;
 window.resoudrePerfPreset       = resoudrePerfPreset;
 window.PERF_PRESETS             = PERF_PRESETS;
 window.PERF_AUTO_TILE_THRESHOLD = PERF_AUTO_TILE_THRESHOLD;

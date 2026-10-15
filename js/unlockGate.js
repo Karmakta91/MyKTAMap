@@ -291,9 +291,8 @@
         '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
         '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
-        '<p class="kta-unlock-info">' +
-          t(libre ? "gate.libre.info" : "gate.info") +
-        '</p>' +
+        // 14/10/2026 (KARMA) : plus de phrase sous le titre en mode libre ; le mode mot de passe garde la sienne.
+        (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
         // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
         // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +

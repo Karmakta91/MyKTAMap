@@ -353,11 +353,7 @@
            '</label>';
   }
 
-  function _escAttr(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
+  function _escAttr(s) { return window.ktaEsc(s); }
 
   // Slugify d'un id de calque pour un id DOM safe (cohérent avec exporter.js > _slugLayerId)
   function _slug(id) {
@@ -477,11 +473,7 @@
       '</div>';
   }
 
-  function _escHtml(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
+  function _escHtml(s) { return window.ktaEsc(s); }
 
   // ============================================================
   // GÉNÉRATION PDF

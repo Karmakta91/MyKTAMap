@@ -947,6 +947,11 @@
     if ("pointsCles" in partial && Array.isArray(partial.pointsCles)) {
       s.pointsCles = partial.pointsCles.slice();
     }
+    // 15/10/2026 — types de POI exclus de « ✨ POI de la zone » (chaînes courtes, 100 au plus)
+    if ("tagsExclusPoiZone" in partial && Array.isArray(partial.tagsExclusPoiZone)) {
+      s.tagsExclusPoiZone = partial.tagsExclusPoiZone.filter(function(x) { return typeof x === "string"; })
+        .map(function(x) { return x.slice(0, 60); }).slice(0, 100);
+    }
     if ("reglagesDuree" in partial && partial.reglagesDuree && typeof partial.reglagesDuree === "object") {
       const r = partial.reglagesDuree;
       s.reglagesDuree = {
@@ -2637,6 +2642,11 @@
       raccords: (gd && gd.raccords) || [], carrefours: (gd && gd.carrefours) || [],
       secours: { scenarioId: sid, equipeId: gid, avoidPoints: avoidPoints, avoidRadius: 30 }
     };
+    // C1 : parcours de balayage → le guidage le garde (un écart le fait rejoindre plus loin).
+    if (_estBalayage(g)) {
+      road.secours.balayage = points.map(function(p) { return { x: p.x, y: p.y, level: p.level }; });
+      road.secours.balayageIdx = 0;
+    }
     window.itineraireActiverRoad(road, { confirmer: true, onDone: function() {
       fermer();   // la carte, le bandeau de guidage — la zone reste affichée
       _toast(t("secours.suivre.lance"), "info");
@@ -2663,6 +2673,24 @@
     });
     if (change && typeof window.setRoads === "function") window.setRoads(window.getRoads());
   }
+  // C1 — progression sur un parcours de BALAYAGE : le point du circuit atteint (à 15 m
+  // près, dans les 400 m qui suivent ; à égalité, le plus tôt — un cul-de-sac repasse
+  // par les mêmes points à l'aller et au retour). Sert au recalcul après un écart, qui
+  // repart d'ici au lieu du début (interfaceItineraire > _replanifierDepuis).
+  function _avancerBalayage(road, pos) {
+    const sec = road && road.secours;
+    if (!sec || !Array.isArray(sec.balayage) || sec.balayage.length < 2) return;
+    const B = sec.balayage;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const i0 = Number.isInteger(sec.balayageIdx) ? sec.balayageIdx : 0;
+    let cumul = 0, best = -1, bd = 15 * pxParM;
+    for (let i = i0; i < B.length && cumul <= 400 * pxParM; i++) {
+      if (i > i0) cumul += Math.hypot(B[i].x - B[i - 1].x, B[i].y - B[i - 1].y);
+      const d = Math.hypot(B[i].x - pos.x, B[i].y - pos.y);
+      if (d < bd - 2 * pxParM || (best < 0 && d <= bd)) { bd = d; best = i; }
+    }
+    if (best > i0) sec.balayageIdx = best;
+  }
   // 4:a — arrivée sur la prochaine étape : un toast, et la vue live s'ouvrira dessus.
   let _veilleArriveeId = null;
   const _arriveesNotifiees = {};
@@ -2676,6 +2704,7 @@
     if (!(typeof window.getTrackingActif === "function" && window.getTrackingActif())) return;
     const pos = window.getTrackingPosition && window.getTrackingPosition();
     const s = get(road.secours.scenarioId);
+    if (pos) _avancerBalayage(road, pos);
     if (!pos || !s || !_estExecutionActive(s)) return;
     const prochain = (road.waypoints || []).find(function(w) { return w.source === "secours" && !w.done; });
     if (!prochain || !prochain.wid || _arriveesNotifiees[prochain.wid]) return;
@@ -2806,6 +2835,62 @@
   // Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la fenêtre
   // de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
   const BRANCARD_COCHES = ["eau", "remblais"];
+  // 15/10/2026 — « ✨ POI de la zone » : les types (tags) à exclure des étapes, avec leur
+  // nombre. Un POI reste s'il a au moins un type gardé ; sans type = « Sans type ». Le
+  // choix est gardé dans le scénario (s.tagsExclusPoiZone) pour toutes les équipes. Un
+  // seul type présent : pas de question.
+  function _demanderTagsPoiZone(s, candidats, onChoix) {
+    const cleDe = function(c) { return (c.tags && c.tags.length) ? c.tags.map(function(x) { return String(x || "").trim().toLowerCase(); }) : [""]; };
+    const compte = {};
+    candidats.forEach(function(c) { cleDe(c).forEach(function(k) { compte[k] = (compte[k] || 0) + 1; }); });
+    const tags = Object.keys(compte).sort(function(a, b) { return compte[b] - compte[a]; });
+    const exclus = Array.isArray(s.tagsExclusPoiZone) ? s.tagsExclusPoiZone : [];
+    const filtrer = function(ex) {
+      return candidats.filter(function(c) { return cleDe(c).some(function(k) { return ex.indexOf(k) < 0; }); });
+    };
+    if (tags.length < 2) { onChoix(filtrer(exclus)); return; }
+    const libelle = function(k) {
+      if (!k) return t("secours.poiZone.sansType");
+      return (window.I18n && window.I18n.has && window.I18n.has("editor.tag." + k)) ? t("editor.tag." + k) : k;
+    };
+    const old = document.getElementById("kta-secours-tags-modal");
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-tags-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">' + _escHtml(t("secours.poiZone.titre")) + '</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-form-hint">' + _escHtml(t("secours.poiZone.intro", { n: candidats.length })) + '</div>' +
+          tags.map(function(k) {
+            return '<label class="kta-secours-brancard-ligne"><input type="checkbox" data-tag="' + _escAttr(k) + '"' +
+              (exclus.indexOf(k) < 0 ? " checked" : "") + '> ' + _escHtml(libelle(k)) +
+              ' <span class="kta-tx-muted">(' + compte[k] + ')</span></label>';
+          }).join("") +
+          '<div class="kta-secours-form-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + _escHtml(t("secours.btn.annuler")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + _escHtml(t("secours.poiZone.ajouter")) + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    function _close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
+    overlay.querySelector('[data-action="confirm"]').addEventListener("click", function() {
+      const ex = [].slice.call(overlay.querySelectorAll("input[data-tag]")).filter(function(i) { return !i.checked; })
+        .map(function(i) { return i.getAttribute("data-tag"); });
+      _close();
+      updateScenario(s.id, { tagsExclusPoiZone: ex });
+      onChoix(filtrer(ex));
+    });
+  }
+
   function _demanderOptionsBrancard(onChoix) {
     const types = typeof window.getAvoidableZoneTypes === "function" ? (window.getAvoidableZoneTypes() || []) : [];
     const nbInacc = [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
@@ -3364,6 +3449,9 @@
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
+      tagsExclusPoiZone: Array.isArray(sc.tagsExclusPoiZone)
+        ? sc.tagsExclusPoiZone.filter(function(x) { return typeof x === "string"; }).map(function(x) { return x.slice(0, 60); }).slice(0, 100)
+        : [],
       reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
         vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
@@ -4784,6 +4872,11 @@
     if ("zoneType" in partial) g.zoneType = partial.zoneType;  // "polygon"|"roads"|null
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
+    // C1 (15/10/2026) — "court" (défaut : plus court chemin par les étapes) | "complet" | "ossature"
+    if ("approcheM" in partial) g.approcheM = (typeof partial.approcheM === "number" && partial.approcheM >= 0) ? partial.approcheM : null;
+    if ("parcoursMode" in partial) {
+      g.parcoursMode = (partial.parcoursMode === "complet" || partial.parcoursMode === "ossature") ? partial.parcoursMode : null;
+    }
     if ("itineraireSuggere" in partial) g.itineraireSuggere = partial.itineraireSuggere;
     if ("guidage" in partial) g.guidage = partial.guidage;   // B1 : carrefours / raccords du calcul
     if ("distanceM" in partial) g.distanceM = partial.distanceM;
@@ -4996,6 +5089,30 @@
     }
   }
 
+  // Enveloppe d'une zone « tracés » (SecoursBalayage.enveloppe), mémorisée par zone :
+  // cellule 5 m, galeries voisines réunies jusqu'à 40 m, 12 m de marge.
+  const _enveloppes = {};
+  function _enveloppeZone(g, traces) {
+    if (!window.SecoursBalayage || typeof window.SecoursBalayage.enveloppe !== "function" || !traces.length) return [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const cle = g.id + "|" + pxParM + "|" + traces.map(_cleTrace).join(",");
+    if (_enveloppes[g.id] && _enveloppes[g.id].cle === cle) return _enveloppes[g.id].anneaux;
+    const segs = [];
+    traces.forEach(function(r) { for (let i = 1; i < r.points.length; i++) segs.push([r.points[i - 1], r.points[i]]); });
+    const anneaux = window.SecoursBalayage.enveloppe(segs, { cellule: 5 * pxParM, fermeture: 40 * pxParM, marge: 12 * pxParM });
+    _enveloppes[g.id] = { cle: cle, anneaux: anneaux };
+    return anneaux;
+  }
+  // Teinte plus foncée d'une couleur #rrggbb (f = part de noir).
+  function _assombrir(hex, f) {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
+    if (!m) return hex;
+    return "#" + [m[1], m[2], m[3]].map(function(h) {
+      const v = Math.round(Number.parseInt(h, 16) * (1 - f));
+      return (v < 16 ? "0" : "") + v.toString(16);
+    }).join("");
+  }
+
   function _renderGroupeOverlay(g, couleur, s) {
     // 🆕 hotfix3 — Param `s` optionnel pour récupérer les étapes execution
     // et afficher les ✓ verts sur les waypoints effectués. Si s absent
@@ -5014,21 +5131,25 @@
       poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
       poly.addTo(_overlayLayer);
     }
-    // Zone roads — repère chaque road sélectionnée avec halo couleur équipe
+    // Zone roads — 15/10/2026 (KARMA) : un POLYGONE sous tout le secteur (enveloppe des
+    // galeries, couleur de l'équipe en transparence) et les galeries de la zone dans une
+    // teinte plus foncée, en une seule ligne (avant : un halo épais par galerie).
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-      _tracesZone(g).forEach(function(road) {
-        if (!road || !Array.isArray(road.points)) return;
-        const latlngs = road.points.map(_planToLatLng);
-        const halo = L.polyline(latlngs, {
-          color:   couleur,
-          weight:  10,
-          opacity: 0.55,
-          lineCap: "round",
-          lineJoin: "round"
+      const traces = _tracesZone(g).filter(function(r) { return r && Array.isArray(r.points) && r.points.length >= 2; });
+      const env = _enveloppeZone(g, traces);
+      if (env.length) {
+        const poly = L.polygon(env.map(function(r) { return [r.map(_planToLatLng)]; }), {
+          color: couleur, weight: 2, opacity: 0.8, fillColor: couleur, fillOpacity: 0.18, interactive: true
         });
-        halo.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
-        halo.addTo(_overlayLayer);
-      });
+        poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+        poly.addTo(_overlayLayer);
+      }
+      if (traces.length) {
+        L.polyline(traces.map(function(r) { return r.points.map(_planToLatLng); }), {
+          color: _assombrir(couleur, 0.35), weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round",
+          interactive: !env.length
+        }).bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" }).addTo(_overlayLayer);
+      }
     }
     // Entrée — marker circle vert avec halo couleur équipe
     if (g.entree && typeof g.entree.x === "number" && typeof g.entree.y === "number") {
@@ -6750,6 +6871,79 @@
       vus[k] = true;
       return { p: p, tag: tg };
     }).filter(Boolean);
+  }
+
+  // ─── C1 (15/10/2026, QCM KARMA) — DÉCOUPER EN SECTEURS ───
+  // N équipes « Secteur k » d'un coup : zone « tracés » (chaque tracé va au secteur
+  // qui en porte le plus), entrée = sortie = accès OUVERT le plus proche par les
+  // galeries, niveau = celui qui pèse le plus. Les équipes existantes ne sont jamais
+  // touchées. Un seul découpage sur tout le réseau, jonctions comprises (décision 1).
+  // Calcul : js/secoursBalayage.js (garde-fou check-secours-balayage.js).
+  async function _decouperEnSecteurs(sid) {
+    const s = get(sid);
+    if (!s || !window.SecoursBalayage || !window.Pathfinder) return;
+    const opts = { titre: t("secours.secteurs.titre"), okLabel: t("secours.secteurs.ok"),
+      nombre: { label: t("secours.secteurs.combien"), valeur: 6, min: 2, max: 20 } };
+    const msg = t("secours.secteurs.confirm") +
+      (s.groupes.length ? "\n\n" + t("secours.secteurs.existantes", { n: s.groupes.length }) : "");
+    if (!(await window.ktaConfirm(msg, opts))) return;
+    const n = Math.max(2, Math.min(20, Math.round(Number(opts.nombre.valeur) || 6)));
+    _toast(t("secours.secteurs.calcul"), "info");
+    await new Promise(function(r) { setTimeout(r, 30); });   // laisser le toast s'afficher
+    const SB = window.SecoursBalayage;
+    const graph = window.Pathfinder.buildNetworkGraph({ includeZones: true });
+    const acces = _poisAcces().filter(function(a) { return CRIT_FERMES.indexOf(a.tag) < 0; });
+    const D = SB.decouper(graph, { n: n, departs: acces.map(function(a) { return { x: a.p.x, y: a.p.y }; }) });
+    if (!D.secteurs.length) { _toast(t("secours.secteurs.aucun"), "warn"); return; }
+    const P = SB.pieces(graph);
+    // Chaque tracé → le secteur qui en porte la plus grande longueur.
+    const parTrace = {};
+    D.secteurs.forEach(function(x, si) {
+      x.pieces.forEach(function(pi) {
+        const k = _cleTrace(graph.segments[P[pi].seg].road);
+        if (!k) return;
+        const e = parTrace[k] = parTrace[k] || {};
+        e[si] = (e[si] || 0) + P[pi].len;
+      });
+    });
+    const traces = D.secteurs.map(function() { return []; });
+    Object.keys(parTrace).forEach(function(k) {
+      let best = -1, bl = -1;
+      Object.keys(parTrace[k]).forEach(function(si) { if (parTrace[k][si] > bl) { bl = parTrace[k][si]; best = Number(si); } });
+      if (best >= 0) traces[best].push(k);
+    });
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    D.secteurs.forEach(function(x, si) {
+      const parNiv = {};
+      x.pieces.forEach(function(pi) {
+        const l = graph.segments[P[pi].seg].level;
+        if (Number.isInteger(l)) parNiv[l] = (parNiv[l] || 0) + P[pi].len;
+      });
+      let niv = null, nl = -1;
+      Object.keys(parNiv).forEach(function(l) { if (parNiv[l] > nl) { nl = parNiv[l]; niv = Number(l); } });
+      const g = addGroupe(sid, t("secours.secteurs.nom", { n: si + 1 }), _mlvlActif() ? niv : null);
+      if (!g) return;
+      const a = x.acces >= 0 ? acces[x.acces] : null;
+      const point = function() {
+        return { x: a.p.x, y: a.p.y, level: Number.isInteger(a.p.level) ? a.p.level : niv,
+                 pointId: a.p.id || null, pointUid: a.p.uid || null, label: a.p.nom || null };
+      };
+      const partiel = { zoneType: "roads", zoneRoadIds: traces[si], parcoursMode: "complet" };
+      if (a) { partiel.entree = point(); partiel.sortie = point(); }
+      updateGroupe(sid, g.id, partiel);
+      if (a) _appliquerBalayage(sid, g.id, { silencieux: true });
+    });
+    const fmt = function(px) { return (typeof window.formatDistance === "function") ? window.formatDistance(px / pxParM, 1) : Math.round(px / pxParM) + " m"; };
+    const lg = D.secteurs.map(function(x) { return x.longueur; });
+    const lignes = [t("secours.secteurs.fait", { n: D.secteurs.length,
+      min: fmt(Math.min.apply(null, lg)), max: fmt(Math.max.apply(null, lg)) })];
+    const hors = D.horsReseau.reduce(function(tt, i) { return tt + P[i].len; }, 0);
+    if (hors > 0) lignes.push(t("secours.secteurs.horsReseau", { long: fmt(hors) }));
+    if (!acces.length) lignes.push(t("secours.secteurs.sansAcces"));
+    else if (acces.length === 1) lignes.push(t("secours.secteurs.unAcces"));
+    _toast(lignes.join("\n"), lignes.length > 1 ? "warn" : "info");
+    if (_modal) _switchView("edit");
+    if (_overlayLayer) renderOverlay(sid);
   }
 
   // ─── ACCÈS SURFACE (test terrain 30/09) ───
@@ -9035,12 +9229,19 @@
         'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
         t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
       : '';
+    // C1 (15/10/2026) — découpage du réseau en secteurs (une équipe par secteur).
+    const decoupeBtn = (window.SecoursBalayage && window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
+                        window.Pathfinder.aDesTraces())
+      ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="decouper-secteurs" ' +
+        'title="' + _escAttr(t("secours.secteurs.btnTitle")) + '">' + t("secours.secteurs.btn") + '</button>'
+      : '';
     html += '<details class="kta-secours-section" open>' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
                   autoMLVLBtn +
+                  decoupeBtn +
                   (s.groupes.length > 1
                     ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-toutes-equipes">' +
                         (s.groupes.every(function(g) { return _estRepliee(g.id); })
@@ -9217,6 +9418,14 @@
                   _renderParcoursSection(g) +
                   _htmlInfoEquipeExt(scenario.id, g.id) +
                   _htmlActionsExt({ scenarioId: scenario.id, vue: "edition", equipeId: g.id }) +
+                  // C1 (15/10/2026) — mode de parcours : plus court chemin ou balayage de la zone.
+                  '<label class="kta-secours-parcours-mode">' + t("secours.balayage.label") + ' ' +
+                    '<select data-action="parcours-mode" data-gid="' + _escAttr(g.id) + '">' +
+                      ['court', 'complet', 'ossature'].map(function(m) {
+                        return '<option value="' + m + '"' + ((g.parcoursMode || "court") === m ? ' selected' : '') + '>' +
+                               t("secours.balayage.mode." + m) + '</option>';
+                      }).join('') +
+                    '</select></label>' +
                   '<div class="kta-secours-groupe-actions">' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
                     // 🆕 v1.22.0-fix4 (KARMA "on peut avoir un bouton tous les
@@ -10237,6 +10446,11 @@
       }
       if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
     }
+    // C1 — balayage : le trajet HORS des galeries de la zone (approche depuis une entrée
+    // extérieure, retour, passages de liaison) est compté à la vitesse d'approche.
+    if (geo && typeof geo.approcheM === "number" && geo.approcheM >= 0) {
+      approcheM = Math.min(distM, geo.approcheM); fouilleM = distM - approcheM;
+    }
     let raccordsM = 0;
     ((geo && geo.raccords) || []).forEach(function(rc) {
       raccordsM += ((Number(rc && rc.distPx) || 0) / pxParM) * ((rc && rc.role === "etape") ? 2 : 1);
@@ -10245,7 +10459,8 @@
            Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
   }
   function _geoDuree(g) {
-    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords };
+    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords,
+             approcheM: (_estBalayage(g) && typeof g.approcheM === "number") ? g.approcheM : undefined };
   }
 
   // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
@@ -10792,6 +11007,9 @@
           _switchView("edit");
         });
       });
+      corps.querySelectorAll('[data-action="decouper-secteurs"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { _decouperEnSecteurs(s.id); });
+      });
       // 🆕 v1.29.0 C2 — Multi-phases : handlers add-phase / edit-phase / delete-phase.
       // Présents en vue Edit (section "📋 Phases") ET en vue Live Op (footer ➕).
       corps.querySelectorAll('[data-action="add-phase"]').forEach(function(btn) {
@@ -10981,6 +11199,15 @@
       corps.querySelectorAll('[data-action="add-pois-zone"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _ajouterPoisDansZone(s.id, btn.getAttribute("data-gid"));
+        });
+      });
+      // C1 — mode de parcours : on recalcule tout de suite si un parcours existait.
+      corps.querySelectorAll('[data-action="parcours-mode"]').forEach(function(sel) {
+        sel.addEventListener("change", function() {
+          const gid = sel.getAttribute("data-gid");
+          updateGroupe(s.id, gid, { parcoursMode: sel.value });
+          const g = (get(s.id).groupes || []).find(function(x) { return x.id === gid; });
+          if (g && g.entree && g.sortie && Array.isArray(g.itineraireSuggere)) _recalculerItineraireGroupe(s.id, gid);
         });
       });
       // Calc itinéraire (commit 4)
@@ -12496,6 +12723,7 @@
       _toast(t("secours.toast.defEntreeSortie"), "warn");
       return null;
     }
+    if (_estBalayage(g)) return _appliquerBalayage(scenarioId, groupeId, {});
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
       _toast(t("secours.toast.pathfinderIndispo"), "error");
       return null;
@@ -12581,6 +12809,103 @@
       console.warn("[SecoursMode] Calcul itinéraire échoué (sync) :", e);
       _toast(t("secours.toast.erreurSync", { message: (e.message || e) }), "error");
     }
+  }
+
+  // ─── C1 (15/10/2026, QCM KARMA) — PARCOURS DE BALAYAGE ───
+  // Au lieu du plus court chemin par les étapes (qui saute les boucles : 62-72 % des
+  // galeries d'un secteur parcourues), un circuit qui passe sur CHAQUE galerie de la
+  // zone (« complet ») ou sur toutes sauf les culs-de-sac (« ossature », reconnaissance).
+  // Les étapes saisies restent, remises dans l'ordre où le circuit passe dessus (4:a).
+  // Le guidage garde le circuit : un écart le fait REJOINDRE plus loin (3:a,
+  // interfaceItineraire > _replanifierDepuis). Calcul : js/secoursBalayage.js.
+  function _estBalayage(g) {
+    return !!(g && (g.parcoursMode === "complet" || g.parcoursMode === "ossature") &&
+              (g.zoneType === "roads" || g.zoneType === "polygon") && window.SecoursBalayage);
+  }
+  // Pièces de galerie de la zone d'une équipe (index dans SecoursBalayage.pieces).
+  function _piecesZone(graph, g) {
+    const P = window.SecoursBalayage.pieces(graph);
+    const out = [];
+    if (g.zoneType === "roads") {
+      const cles = {};
+      (g.zoneRoadIds || []).forEach(function(k) { cles[k] = true; });
+      P.forEach(function(p, i) {
+        const r = graph.segments[p.seg].road;
+        if (r && ((r.id && cles[r.id]) || cles[_cleTrace(r)])) out.push(i);
+      });
+    } else if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+      P.forEach(function(p, i) {
+        const A = graph.nodes[p.a], B = graph.nodes[p.b], lvl = graph.segments[p.seg].level;
+        if (_dansZonePolygone(g, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, Number.isInteger(lvl) ? lvl : 0)) out.push(i);
+      });
+    }
+    return out;
+  }
+  function _appliquerBalayage(scenarioId, groupeId, opts) {
+    opts = opts || {};
+    const s = get(scenarioId);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === groupeId; });
+    if (!g || !g.entree || !g.sortie || !window.Pathfinder) return null;
+    const graph = window.Pathfinder.buildNetworkGraph({ includeZones: true });
+    const pieces = _piecesZone(graph, g);
+    if (!pieces.length) { if (!opts.silencieux) _toast(t("secours.balayage.zoneVide"), "warn"); return null; }
+    const r = window.SecoursBalayage.parcours(graph, pieces, {
+      depart: { x: g.entree.x, y: g.entree.y }, arrivee: { x: g.sortie.x, y: g.sortie.y }, mode: g.parcoursMode
+    });
+    if (!r || r.path.length < 2) { if (!opts.silencieux) _toast(t("secours.toast.aucunIti"), "warn"); return null; }
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const path = _niveauxItineraire(r.path, g.entree.level);
+    // Étapes : remises dans l'ordre du premier passage du circuit (à 2 m près du plus proche).
+    const passage = function(w) {
+      let best = Infinity;
+      const d = path.map(function(p) { const v = Math.hypot(p.x - w.x, p.y - w.y); if (v < best) best = v; return v; });
+      const seuil = best + 2 * pxParM;
+      for (let i = 0; i < d.length; i++) if (d[i] <= seuil) return i;
+      return d.length;
+    };
+    const inter = (g.intermediaires || []).filter(function(w) { return w && typeof w.x === "number"; })
+      .map(function(w) { return { w: w, i: passage(w) }; })
+      .sort(function(a, b) { return a.i - b.i; }).map(function(x) { return x.w; });
+    const raccord = function(w, p, role, index) {
+      return { index: index, role: role, label: w.label || null, de: { x: w.x, y: w.y }, vers: { x: p.x, y: p.y },
+               distPx: Math.hypot(w.x - p.x, w.y - p.y) };
+    };
+    const raccords = [raccord(g.entree, path[0], "depart", 0), raccord(g.sortie, path[path.length - 1], "arrivee", inter.length + 1)];
+    const carrefours = (typeof window.Pathfinder.carrefoursSurChemin === "function")
+      ? window.Pathfinder.carrefoursSurChemin(graph, path) : [];
+    const distM = r.longueur / pxParM;
+    // Approche = pas du circuit qui ne suivent pas une galerie de la zone (entrée hors
+    // zone, retour, liaisons entre deux bouts du secteur).
+    const P = window.SecoursBalayage.pieces(graph), dansZone = new Set();
+    pieces.forEach(function(i) {
+      const A = graph.nodes[P[i].a], B = graph.nodes[P[i].b];
+      dansZone.add(A.x + "," + A.y + "|" + B.x + "," + B.y); dansZone.add(B.x + "," + B.y + "|" + A.x + "," + A.y);
+    });
+    let approchePx = 0;
+    for (let i = 1; i < path.length; i++) {
+      if (!dansZone.has(path[i - 1].x + "," + path[i - 1].y + "|" + path[i].x + "," + path[i].y)) {
+        approchePx += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+      }
+    }
+    const approcheM = approchePx / pxParM;
+    const duree = Math.round(_dureeEquipeMin(s, distM, inter.length + 2, { g: g, path: path, raccords: raccords, approcheM: approcheM }));
+    const partiel = { itineraireSuggere: path, distanceM: distM, dureeEstimeeMin: duree, approcheM: approcheM,
+                      guidage: { carrefours: carrefours, raccords: raccords, n: path.length } };
+    const avant = (g.intermediaires || []).map(function(w) { return w && w.wid; }).join("|");
+    if (inter.map(function(w) { return w && w.wid; }).join("|") !== avant) partiel.intermediaires = inter;
+    updateGroupe(scenarioId, groupeId, partiel);
+    if (!opts.silencieux) {
+      const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
+      const lignes = [t("secours.balayage.calcule", { mode: t("secours.balayage.mode." + g.parcoursMode),
+        distance: fmt(distM), galeries: fmt(r.aCouvrir / pxParM), duree: duree })];
+      if (r.couvert < r.aCouvrir - pxParM) {
+        lignes.push(t("secours.balayage.horsAtteinte", { long: fmt((r.aCouvrir - r.couvert) / pxParM) }));
+      }
+      _toast(lignes.join("\n"), lignes.length > 1 ? "warn" : "info");
+    }
+    if (_modal) _switchView("edit");
+    if (_overlayLayer) renderOverlay(scenarioId);
+    return true;
   }
 
   // 🆕 v1.23.0 Phase 2 / Feature B — Collecte les waypoints des AUTRES
@@ -12760,6 +13085,7 @@
           pointId: p.id || null,
           pointUid: p.uid || null,   // 🆔 v2.4.0
           label:   p.nom || p.id || null,
+          tags:    Array.isArray(p.tags) ? p.tags : (p.tag ? [p.tag] : []),
           _d:      distFromEntree
         });
       });
@@ -12774,6 +13100,10 @@
         _toast(t("secours.toast.aucunPoiZone"), "info");
         return;
       }
+      // 15/10/2026 (KARMA : un plan couvert de plaques = des centaines d'étapes) — les types
+      // de POI à ne PAS prendre comme étapes, au choix, gardés par scénario.
+      _demanderTagsPoiZone(s, candidats, function(candidats) {
+      if (!candidats.length) { _toast(t("secours.toast.aucunPoiZone"), "info"); return; }
       // 🩸 29/09/2026 (audit Secours) — le commentaire promettait « greedy nearest
       // neighbor », le code triait par distance à l'ENTRÉE : l'équipe faisait des
       // allers-retours (mesuré sur 6 secteurs réels : +8 à +84 % de marche, ~+38 %
@@ -12791,6 +13121,7 @@
       updateGroupe(scenarioId, groupeId, { intermediaires: newIntermediaires });
       _toast(t("secours.toast.poiAjoutes", { n: candidats.length }), "info");
       _switchView("edit");
+      });
     }).catch(function(e) {
       console.warn("[SecoursMode] _ajouterPoisDansZone échoué :", e);
       _toast(t("secours.toast.erreurGenerique", { message: (e.message || e) }), "error");
@@ -12839,6 +13170,7 @@
       if (!s) { resolve(false); return; }
       const g = s.groupes.find(function(x) { return x.id === groupeId; });
       if (!g || !g.entree || !g.sortie) { resolve(false); return; }
+      if (_estBalayage(g)) { resolve(!!_appliquerBalayage(scenarioId, groupeId, { silencieux: true })); return; }
       if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
         resolve(false); return;
       }
@@ -12887,14 +13219,8 @@
   }
 
   // Helpers HTML escape (anti-XSS sur user input)
-  function _escHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-  function _escAttr(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-  }
+  function _escHtml(s) { return window.ktaEsc(s); }
+  function _escAttr(s) { return window.ktaEsc(s); }
   function isOpen() { return _modal !== null; }
   function getCurrentScenarioId() { return _currentScenarioId; }
 

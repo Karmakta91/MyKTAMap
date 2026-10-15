@@ -82,6 +82,32 @@
   let _pendingAlerts   = [];               // queue d'alertes à afficher après splash
   let _activeAlertsCache = [];             // dernier snapshot pour getActiveAlerts()
   const _changeListeners = [];             // callbacks pour MAJ badge
+  // 🧩 13/10/2026 — alertes d'une EXTENSION (prise « alertes », KtaExtensions.alertesExtension) : mêmes champs,
+  // id « ext_… », champ source (« 🏢 Organisation… »). Fusionnées avec alert.json dans la même modale, le même
+  // badge, le même acquittement. Aucun appel réseau ajouté ici : l'extension fournit sa liste (et sa copie hors
+  // ligne) ; elle annonce un changement par mktm:alertes-changees → relecture et affichage des nouvelles.
+  let _siteAlerts = [];                    // dernier alert.json lu (actif)
+  let _extAlerts  = [];                    // dernière liste de l'extension
+  const _montreesAuto = {};                // id → released déjà ouvert AUTOMATIQUEMENT (pas deux fois)
+  async function _lireExtension() {
+    if (!window.KtaExtensions || typeof window.KtaExtensions.alertesExtension !== "function") return [];
+    try { return await window.KtaExtensions.alertesExtension(); } catch(e) { return []; }
+  }
+  function _toutes() { return _siteAlerts.concat(_extAlerts); }
+  // Non acquittées et pas encore ouvertes d'office : une liste relue (temps réel, retour au premier plan)
+  // n'ouvre que les NOUVELLES alertes (ou une alerte modifiée : released change).
+  // Une modale d'alerte (ou le sélecteur) déjà ouverte : on n'ouvre rien par-dessus (afficherModaleAlerte refuserait)
+  // et on ne marque rien — ce qui attend s'ouvre à sa fermeture (dismiss, appelé aussi par le sélecteur).
+  let _enAttente = false;
+  function _modaleOuverte() {
+    return !!(document.getElementById("kta-alert-modal") || document.getElementById("kta-alert-selector-modal"));
+  }
+  function _aOuvrirDOffice(alerts) {
+    if (_modaleOuverte()) { _enAttente = true; return []; }
+    const l = _filtrerEtTrier(alerts).filter(function(a) { return _montreesAuto[a.id] !== a.released; });
+    l.forEach(function(a) { _montreesAuto[a.id] = a.released; });
+    return l;
+  }
 
   // =========================
   // NORMALISATION
@@ -183,6 +209,14 @@
     // Le cache _activeAlertsCache reste comme avant — c'est getActiveAlerts +
     // tri qui distingue acquittées/non. Mais on notifie les listeners.
     _notifyChange();
+    // Une alerte arrivée pendant que celle-ci était ouverte : à son tour (après le fondu de fermeture).
+    if (_enAttente) {
+      _enAttente = false;
+      setTimeout(function() {
+        const l = _aOuvrirDOffice(_toutes());
+        if (l.length > 0) _showOrDefer(l);
+      }, 300);
+    }
   }
 
   // =========================
@@ -324,43 +358,49 @@
   // CHECK AU BOOT
   // =========================
   async function check() {
-    let raw;
+    let raw, statutSite = null;
     try {
       const resp = await _fetchAlertJson();
-      if (!resp.ok) {
-        _activeAlertsCache = [];
-        _notifyChange();
-        return { status: "no-alert" };
-      }
-      raw = await resp.json();
+      if (!resp.ok) statutSite = "no-alert";
+      else raw = await resp.json();
     } catch(e) {
       console.log("[AlertChecker] Fetch échoué (offline ?) :", e.message);
-      _activeAlertsCache = [];
-      _notifyChange();
-      return { status: "offline" };
+      statutSite = "offline";
     }
-
-    const norm = _normaliserPayload(raw);
-    if (!norm.active) {
-      console.log("[AlertChecker] Aucune alerte active (active: false)");
-      _activeAlertsCache = [];
-      _notifyChange();
-      return { status: "inactive" };
+    _siteAlerts = [];
+    if (!statutSite) {
+      const norm = _normaliserPayload(raw);
+      if (!norm.active) { console.log("[AlertChecker] Aucune alerte active (active: false)"); statutSite = "inactive"; }
+      else _siteAlerts = norm.alerts.slice();
     }
+    _extAlerts = await _lireExtension();
 
-    _activeAlertsCache = norm.alerts.slice();
+    const toutes = _toutes();
+    _activeAlertsCache = toutes.slice();
     _notifyChange();
+    if (toutes.length === 0) return { status: statutSite || "inactive" };
 
-    const aShown = _filtrerEtTrier(norm.alerts);
+    const aShown = _aOuvrirDOffice(toutes);
     if (aShown.length === 0) {
       console.log("[AlertChecker] Toutes les alertes actives sont déjà acquittées");
-      return { status: "all-seen", alerts: norm.alerts };
+      return { status: "all-seen", alerts: toutes };
     }
 
-    console.log("[AlertChecker] " + aShown.length + " alerte(s) à afficher (sur " + norm.alerts.length + " active(s))");
+    console.log("[AlertChecker] " + aShown.length + " alerte(s) à afficher (sur " + toutes.length + " active(s))");
     _showOrDefer(aShown);
     return { status: "shown", alerts: aShown };
   }
+
+  // Liste de l'extension changée (alerte lancée, modifiée, terminée ; clés prêtes ; retour au premier plan) :
+  // badge à jour, et les NOUVELLES alertes s'ouvrent comme au démarrage (après le splash).
+  async function _relireExtension() {
+    _extAlerts = await _lireExtension();
+    _activeAlertsCache = _toutes();
+    _notifyChange();
+    const aShown = _aOuvrirDOffice(_extAlerts);
+    if (aShown.length > 0) _showOrDefer(aShown);
+  }
+  window.addEventListener("mktm:alertes-changees", function() { _relireExtension(); });
 
   // =========================
   // SHOW CURRENT (bouton 🚨 manuel)
@@ -380,31 +420,34 @@
       status = "offline";
     }
 
+    _siteAlerts = [];
     if (status === "ok" && raw) {
-      const norm = _normaliserPayload(raw);
-      if (norm.active && norm.alerts.length > 0) {
-        // v166 : si N>1, affiche un SELECTEUR (au lieu de la cascade auto).
-        // Si N=1, modale détail direct. fromManualClick=true → TOUTES les
-        // alertes visibles dans le sélecteur même acquittées (= l'user a
-        // explicitement demandé à les revoir).
-        const sorted = norm.alerts.slice().sort(function(a, b) {
-          const prio = { emergency: 0, warning: 1, info: 2 };
-          const pa = prio[a.level] != null ? prio[a.level] : 3;
-          const pb = prio[b.level] != null ? prio[b.level] : 3;
-          if (pa !== pb) return pa - pb;
-          return (b.released || "").localeCompare(a.released || "");
-        });
-        _afficherAlertes(sorted, true);  // true = fromManualClick
-        // MAJ cache et badge
-        _activeAlertsCache = norm.alerts.slice();
-        _notifyChange();
-        return { status: "shown", alerts: sorted };
-      } else {
-        status = "no-alert";
-        _activeAlertsCache = [];
-        _notifyChange();
-      }
+      const n = _normaliserPayload(raw);
+      if (n.active) _siteAlerts = n.alerts.slice();
     }
+    _extAlerts = await _lireExtension();
+    const toutes = _toutes();
+    if (toutes.length > 0) {
+      // v166 : si N>1, affiche un SELECTEUR (au lieu de la cascade auto).
+      // Si N=1, modale détail direct. fromManualClick=true → TOUTES les
+      // alertes visibles dans le sélecteur même acquittées (= l'user a
+      // explicitement demandé à les revoir). Site et extension mêlés (13/10/2026).
+      const sorted = toutes.slice().sort(function(a, b) {
+        const prio = { emergency: 0, warning: 1, info: 2 };
+        const pa = prio[a.level] != null ? prio[a.level] : 3;
+        const pb = prio[b.level] != null ? prio[b.level] : 3;
+        if (pa !== pb) return pa - pb;
+        return (b.released || "").localeCompare(a.released || "");
+      });
+      _afficherAlertes(sorted, true);  // true = fromManualClick
+      // MAJ cache et badge
+      _activeAlertsCache = toutes.slice();
+      _notifyChange();
+      return { status: "shown", alerts: sorted };
+    }
+    if (status === "ok") status = "no-alert";
+    _activeAlertsCache = [];
+    _notifyChange();
 
     if (typeof window.afficherModaleAlerteAbsente === "function") {
       window.afficherModaleAlerteAbsente(status);

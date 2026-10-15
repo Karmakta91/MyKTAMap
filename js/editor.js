@@ -177,10 +177,7 @@ function afficherFormulaire(x, y, existingPoint) {
 
   // Echappement pour pré-remplissage (sinon une apostrophe dans le nom
   // casserait l'attribut value HTML).
-  function _esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
-                    .replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   // planId courant — utilisé pour les opérations MyKTAMapPhotos.
   // Fallback "default" cohérent avec sessionExporter.js (cf. CLAUDE.md §27).

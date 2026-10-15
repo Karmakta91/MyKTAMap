@@ -404,11 +404,7 @@
     return (typeof window.formatDistance === "function") ? window.formatDistance(m, 0) : Math.round(m) + " m";
   }
 
-  function _esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   // =========================
   // FEUILLE DE ROUTE (lot 1) — toutes les consignes, sans tracker

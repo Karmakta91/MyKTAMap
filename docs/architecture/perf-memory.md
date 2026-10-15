@@ -50,8 +50,6 @@ Accessible depuis :
 
 ⚠️ **Le tuilage V1 dégrade l'image**, contrairement au V2 : `_imageVersCanvasReduit` downscale à `maxWorkDim`, puis chaque tuile est **ré-upscalée** à sa taille en unités-plan et **ré-encodée en JPEG**. Double rééchantillonnage + perte. Et le total des tuiles fait toujours ≈ W×H pixels : le gain n'est pas la quantité de pixels, c'est d'éviter **une seule texture géante**. Le V2, lui, garde z=0 en résolution **native** et dispose de 4 niveaux + LRU — meilleur sur les deux tableaux.
 
-`tuilingNecessaire()` est exporté (`window.tuilingNecessaire`) mais **appelé nulle part** — dette connue, laissée en place.
-
 **Fonction centralisée** : `resoudrePerfPreset(preset, fileSize, W, H)` retourne `{tile: bool, params: {maxWorkDim, tileSize, jpegQuality} | null}`. Utilisée par `chargerImage()`.
 
 **Persistance par plan** :

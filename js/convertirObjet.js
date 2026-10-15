@@ -342,11 +342,7 @@
     const catSrc = CAT_DE_FAMILLE[famille] || famille;
     const nomSrc = _libelle(catSrc, obj.type);
 
-    function _esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
+    function _esc(s) { return window.ktaEsc(s); }
 
     // Regroupées par catégorie : passer d'une famille à l'autre est le geste
     // qui change tout (un tracé entre dans le calcul d'itinéraire, pas une

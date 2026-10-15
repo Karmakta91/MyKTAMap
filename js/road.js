@@ -732,10 +732,14 @@ window.ktaPurgerFlashSnap = function() {
 // EXCEPTION : le type "itinerary" reste sur window.map direct, car il a son
 // propre cycle de vie (modale Itinéraire / ❌ Effacer / 🔄 Recalculer) et ne
 // doit PAS être masque par le toggle.
-// ⚠️ Note : le toggle "Mes annotations" peut ne pas masquer les polylines
-// roads sur certaines configurations (bug Leaflet subtil non identifie au
-// 09/05/2026). Les zones, markers et autres elements suivent bien le toggle.
-// Fallback window.map si layerEditor pas encore cree (init precoce).
+// Fallback window.map : filet seulement. Vérifié le 14/10/2026 (dette D3),
+// il n'est atteint par aucun chemin réel — map.js pose window.layerEditor
+// dans initMapFromConfig(), AVANT initRoad() et la restauration de session
+// (main.js), et ne le remet jamais à undefined. Harnais : tracé posé, dessiné
+// au clic, restauré au rechargement, plan ré-ouvert, culling + pan calque
+// masqué → le toggle retire chaque fois toutes les polylines de la carte.
+// Un tracé qui « reste » au toggle est donc l'ITINÉRAIRE (exception ci-dessus)
+// ou une road embarquée d'un AUTRE calque de données, pas une road de session.
 function _targetLayerForRoad(roadType) {
   if (roadType === "itinerary") return window.map;
   return window.layerEditor || window.map;
@@ -969,10 +973,10 @@ function renderRoads() {
   }
 
   // Tracés — utilisent le renderer canvas par defaut (preferCanvas:true sur la
-  // map). Tentative anterieure de forcer SVG (pour fixer le bug du toggle
-  // "Mes annotations" sur les polylines roads) abandonnee : le forcage SVG
-  // ne resolvait pas le toggle ET causait des crashes au dezoom sur les
-  // plans denses. Le bug du toggle reste ouvert (cf README suite 22).
+  // map). Tentative anterieure de forcer SVG (pour un bug supposé du toggle
+  // "Mes annotations" sur les polylines roads) abandonnee : elle causait des
+  // crashes au dezoom sur les plans denses. Le toggle, lui, masque bien les
+  // roads de session (cf _targetLayerForRoad, vérifié le 14/10/2026).
   // Seul l'itineraire garde un renderer SVG dedie : il en a besoin pour le
   // filter CSS drop-shadow (halo neon cyan), impossible sur le canvas.
   //

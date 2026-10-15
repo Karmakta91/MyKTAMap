@@ -49,12 +49,7 @@
   const FLOATER_ID = "kta-phg-floater";
 
   const _t = function (k, p) { return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k; };
-  const _esc = function (s) {
-    if (typeof window.ktaEsc === "function") return window.ktaEsc(s);
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  };
+  const _esc = window.ktaEsc;   // échappeur unique (js/langManager.js, chargé avant)
   function _taille(n) {
     if (typeof window._kta_formatBytes === "function") return window._kta_formatBytes(n);
     return (n < 1048576) ? Math.round((n || 0) / 1024) + " Ko" : (n / 1048576).toFixed(1) + " Mo";

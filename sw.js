@@ -176,7 +176,6 @@ const ASSETS_TO_CACHE = [
   // 🆔 v2.1.0 : identifiants stables des objets de carte (uid + updatedAt).
   "./js/ktaUid.js",
   // ✍️ v2.0.0 : police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
-  "./lib/fonts/kalam-700-splash.woff2",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
@@ -385,6 +384,8 @@ const ASSETS_TO_CACHE = [
   "./js/cssLazy.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
   "./js/secoursMode.js",
+  // 🧹 15/10/2026 (lot C1) : secteurs + parcours de balayage du Mode Secours
+  "./js/secoursBalayage.js",
   // 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
   "./js/secoursPhotos.js",
   // ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — entry retirée

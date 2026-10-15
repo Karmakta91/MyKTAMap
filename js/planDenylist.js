@@ -383,11 +383,7 @@
     } catch(e) { return false; }
   }
 
-  function _escapeHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // ============================================================
   // 🆕 v1.42.3 — AUDIT BOOT : check des plans LOCAUX déjà importés

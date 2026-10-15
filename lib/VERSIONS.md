@@ -16,7 +16,6 @@
 | **jsPDF** | `jspdf.umd.min.js` | **4.2.1** | exports PDF (plans, fiches Secours, historique) | [parallax/jsPDF](https://github.com/parallax/jsPDF) · [avis](https://github.com/advisories?query=jspdf) |
 | **html2canvas** | `html2canvas.min.js` | **1.4.1** | captures pour les exports image | [niklasvh/html2canvas](https://github.com/niklasvh/html2canvas) · [avis](https://github.com/advisories?query=html2canvas) |
 | **Leaflet.ImageOverlay.Rotated** | `leaflet-imageoverlay-rotated.js` | adaptation **maison** (intégrée en v1.38.0 de l'app), d'après l'original | images et tuiles posées par 3 coins (calques calibrés, Vue OSM) | [IvanSanchez/Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated) (BSD 2) — code réécrit, à relire nous-mêmes |
-| **Police Kalam 700** | `fonts/kalam-700-splash.woff2`, `fonts/OFL-Kalam.txt` | — | titre du splash | licence OFL (fichier joint) |
 
 ## ⚠️ À savoir
 

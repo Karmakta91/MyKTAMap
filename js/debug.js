@@ -111,7 +111,7 @@
       else if (entry.includes("[WARN]")) cls += " kta-debug-log-warn";
       else if (entry.includes("CRASH"))  cls += " kta-debug-log-crash";
       return '<div class="' + cls + '">' +
-             entry.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</div>';
+             window.ktaEsc(entry) + '</div>';
     }).join("");
     zone.scrollTop = zone.scrollHeight;
   }

@@ -320,7 +320,9 @@
     const charge = (window.__MKM__ && window.__MKM__.build) || null;
     if (remote && remote.version && _cmpShow <= 0 && charge && compareSemver(remote.version, charge) > 0 &&
         typeof window.ktaConfirm === "function") {
-      const ok = await window.ktaConfirm(window.I18n.t("update.attente.msg", { v: remote.version, charge: charge }), {
+      // ktaConfirm rend du HTML : la version vient du serveur (version.json) → échappée.
+      const ok = await window.ktaConfirm(window.I18n.t("update.attente.msg",
+        { v: window.ktaEsc(remote.version), charge: window.ktaEsc(charge) }), {
         titre: window.I18n.t("update.attente.titre"), okLabel: window.I18n.t("update.attente.relancer")
       });
       if (ok && typeof window.mettreAJourCodeSeul === "function") window.mettreAJourCodeSeul();

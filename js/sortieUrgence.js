@@ -297,7 +297,7 @@
     const lab = function(type) {
       const L = window.LegendCustomization;
       const l = L && typeof L.getLabel === "function" ? L.getLabel("zones", type) : null;
-      return String(l || type).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return window.ktaEsc(l || type);
     };
     const parts = [];
     if (Array.isArray(c.avoidZones) && c.avoidZones.length) {
@@ -331,8 +331,7 @@
     else if (window.kta_vibrate) window.kta_vibrate.medium();
 
     const meilleure = resultats[0];
-    const safeNom = String(meilleure.point.nom || window.I18n.t("sortie.item.sansNom"))
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeNom = window.ktaEsc(meilleure.point.nom || window.I18n.t("sortie.item.sansNom"));
     const distTxt = _formatDist(meilleure.distPx);
     // 🚨 Q4 (audit 13/09/2026) : une sortie « à vol d'oiseau » était présentée
     // comme atteignable, avec un « ≈ » gris de 12 px expliqué dans un title
@@ -398,8 +397,7 @@
           html += '<li class="kta-sortie-alt-sep">' + window.I18n.t("sortie.fallback.sep") + '</li>';
           sepPose = true;
         }
-        const n = String(r.point.nom || window.I18n.t("sortie.item.sansNomCourt"))
-          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const n = window.ktaEsc(r.point.nom || window.I18n.t("sortie.item.sansNomCourt"));
         const d = _formatDist(r.distPx);
         const fb = r.fallback
           ? ' <span class="kta-sortie-fallback">≈ ' + window.I18n.t("sortie.fallback.court") + '</span>'

@@ -213,9 +213,16 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
   suiviActif, ts }`, ou `null` tant qu'il n'y a ni suivi en cours ni position confirmée (jamais le point de
-  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère + pseudo + ancienneté, grisé
-  après 2 min, atténué hors niveau, trace pointillée ; entrées non conformes écartées, 200 personnes et
-  2000 points max ; aucune requête réseau). `presenceActive()` / `basculerPresence()` : une erreur de
+  départ du plan) — et `afficherPresences(liste)` (`js/ktaPresences.js` : repère = forme de l'icône du tracker
+  en SVG (40 px, sans rotation : aucun cap transmis) à la couleur de la personne, pseudo + ancienneté toujours
+  affichés à côté (texte), éteint et désaturé après 2 min, atténué hors niveau, trace pointillée de la même
+  couleur ; entrées non conformes écartées, 200 personnes et 2000 points max ; aucune requête réseau).
+  **Qui est qui** : `KtaPresences.couleurDe(id)` tire la couleur de l'identifiant (FNV-1a → palette de 9 teintes,
+  `KtaPresences.palette()`), la même sur tous les appareils et sans serveur ; la palette évite le jaune d'accent
+  (itinéraires), les rouges (urgence), le gris (position ancienne) et le bleu du tracker de l'utilisateur, et
+  reste lisible sur fond sombre comme clair (contour sombre) — contrôlé par `check-extensions.js`. Priorité :
+  `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
+  panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `masquerPersonne(id, bool)` / `personneMasquee(id)` (14/10/2026) : ni repère ni trace, plus suivie, oublié en sortie de plan (`reinitialiser`). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
@@ -230,6 +237,32 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   entrées non conformes écartées, sans carte : `false`.
 - **Auteur d'un objet** : `auteurObjet(uid) → { createur, modifiePar }` (textes ≤ 40 car., erreur = `null`) — filtre
   « Créé par » de l'export de session (onglets Complet et Avancé). Sans extension : filtre auteur absent, la période reste.
+- **Dictionnaires d'une extension** : `I18n.ajouter(code, dico)` → nombre de clés retenues (textes, clés `[\w.-]`,
+  langues connues seulement). Gardés à part et refusionnés à chaque chargement du dico (paresseux, `reload`) ; une clé
+  de l'app n'est **jamais** écrasée — préfixe propre recommandé (`pro.`). Le texte d'une extension n'entre jamais dans
+  `lang/*.json`. Repli comme le reste : langue active → FR → clé humanisée. Décision KARMA 14/10/2026.
+- **Alertes** : `alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]>`
+  (information, attente bornée à 3 s, erreur = aucune) — mêmes champs qu'`alert.json`, nettoyés (textes bornés,
+  niveau inconnu → `info`, sans `released` ou sans texte écartées), id préfixé `ext_`. `AlertChecker` les fusionne
+  avec `alert.json` : même badge 🚨, même sélecteur, même acquittement par id (un `released` changé rouvre
+  l'alerte). L'extension annonce une liste changée par **`mktm:alertes-changees`** : les nouvelles s'ouvrent d'office
+  (une fois par `released`). Source affichée (`source`, ou « Plateforme MyKTAMap » pour `alert.json` quand une
+  extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
+  à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation).
+- **Statistiques du profil** : `profilStats() → [{ cle, icone, libelle, valeur, titre? }]` (ou Promise ; information,
+  attente bornée à 3 s, erreur = aucune ; 12 lignes, texte seul, clé `[\w-]` unique). Affichées dans « Détails du
+  profil » (rubrique « 🏢 Installation reliée ») et proposées au bandeau d'accueil sous la clé `ext:<cle>`. Relues à
+  `mktm:extensions-changees` et **`mktm:profil-stats-changees`**. Côté community, les plans `type: "ext"` sont comptés
+  **à part** (bandeau, modale, tableau par plan : ligne de total ☁️ séparée, photos « · ☁️ N ») et leurs noms de types
+  ne vont jamais dans le dictionnaire durable `myktamap_legend_labels_v1` ; le cache `myktamap_plan_stats_v1_<id>`
+  part avec le plan (`purgeAssociatedData`). Décision KARMA 13/10/2026. 💾 compte aussi toute base IndexedDB
+  `kta_…`/`myktamap…` listée par `indexedDB.databases()` (jamais ouverte si absente) et affiche « dont ☁️ » (ZIP des
+  plans ext) ; après `appliquerChangements`, l'événement **`mktm:changements-appliques`** fait recalculer (2 s) le
+  cache du plan ouvert. Stats du plan : « ajoutés / d'origine », et avec `auteurObjet` une ligne « par auteur ».
+- **Grades et hauts faits du profil** : `profilJeu() → bool` (information) — `false` coupe l'anneau, la médaille, le
+  bloc grade et les hauts faits (calcul compris) ; les statistiques restent. Sans extension ou en erreur : actifs. Le
+  profil se redessine à `mktm:extensions-changees`. Sert à une installation où les plans viennent de l'organisation
+  (ils gonfleraient le grade) — décision KARMA 13/10/2026.
 - **Sortie du plan affiché** : `KtaExtensions.quitterPlan(vers)`, appelée par `main.js` au changement de plan
   (`"plan"`) et au retour à l'accueil (`"accueil"`) — ferme le panneau d'extension, remet à zéro
   `KtaPresences` (présences, itinéraires, suivi, masquages) et émet **`mktm:plan-ferme`** `{ vers }` pour que
@@ -292,7 +325,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `afficherAlerteSecours({ id, titre, texte, actions, sonner? })` / `retirerAlerteSecours(id)` : bandeau rouge
   persistant (son + vibration). Sortants : `mktm:secours-etape-changee` / `mktm:secours-suivi-change` ; entrants :
   `SecoursMode.appliquerEtapeDistante` / `appliquerSuiviDistant` (la plus récente gagne, jamais ré-émis) ;
-  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb).
+  `SecoursMode.rejoindre(scenarioId, { role, equipeId })`. Présences : `couleur` facultative (#rrggbb), prioritaire
+  sur `KtaPresences.couleurDe(id)`.
 - **Actions sur la fiche d'un objet** (v2.9.0) : `actionsObjet(uid) → [{ libelle, action }]` (synchrone) ; les fiches
   portent `data-kta-uid`, l'observateur n'est posé que si la prise existe.
 - **Photos des points** (10/10/2026) : prise d'information `photos: { completerPoint(planId, pointId) →
@@ -321,7 +355,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Panneau sur la carte** : prise `panneau: { icone, titre, rendre(conteneur) }` → un bouton à gauche sur la carte
   ouvre une fenêtre dont l'extension remplit le corps (`rendre` rappelé à l'ouverture et par
   `KtaExtensions.rafraichirPanneau()`) — ex. « 👥 Équipe ». Actions neutres pour un tel panneau :
-  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule).
+  `KtaPresences.centrer(id)`, `suivre(id | null)`, `masquerTrace(id, bool)` (jamais déclenchées par l'app seule),
+  et `KtaPresences.couleurDe(id)` pour afficher la couleur de chacun.
   Sans extension : ni bouton ni fenêtre.
 - **Badge d'un plan ☁️** : `badgePlan(idExt) → { texte, titre } | null` (8 / 160 car., rendu échappé) sur la ligne du
   plan à l'accueil — ex. l'activité « 👥 2 » / « ✏️ 1 » (qui a ce plan ouvert, qui l'édite). L'extension annonce un

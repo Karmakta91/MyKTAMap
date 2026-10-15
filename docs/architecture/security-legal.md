@@ -284,6 +284,15 @@ sans `docs/` depuis le 07/10/2026 (`infra-versioning.md` §85), un include du fi
 ⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement** (`check-xss`), et
 **jamais de gestionnaire inline** — un écouteur (`check-csp-inline`).
 
+**Échappeur HTML unique : `window.ktaEsc(s)`** (`&` `<` `>` `"` `'` → entités, `null`/`undefined` → `""`), défini dans
+`js/langManager.js` — 2e script chargé, sans `defer`, donc disponible pour les modules non différés (accueil, profil,
+inspecteurs) qui s'exécutent avant `utils.js`. Un module garde au plus un alias (`function _esc(s) { return
+window.ktaEsc(s); }`) ; jamais de copie locale ni de repli `window.ktaEsc || function (x) { … }` (les anciens replis
+n'échappaient rien). 🛡️ `scripts/check-esc.js` (pré-commit et CI, bloquant) : définition unique exécutée contre une
+charge, ordre de chargement dans `index.html`, aucune copie locale hors exceptions motivées dans le script (XML de
+`gpxIO`/`kmzExport`, `confadmin.html` qui ne charge pas `langManager.js`, assainisseur de `ktaExtensions`, et
+`itiGuidage`/`sortieUrgence` tant que `check-guidage.js` les charge seuls en VM).
+
 #### 40.8 Documentation utilisateur (docs/NETWORK_AUDIT.md)
 
 Page de transparence détaillée (~300 lignes) servie en static depuis le SW (ajoutée à `ASSETS_TO_CACHE`). Contenu :

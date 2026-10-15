@@ -391,6 +391,82 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const PR = lire("js/ktaPresences.js");
     t("🩸 présences : affichage seulement (aucune requête réseau dans le module)", !/fetch\(|XMLHttpRequest|WebSocket/.test(PR));
     t("présences : coordonnées par convertCoord", /window\.convertCoord\(x, y\)/.test(PR));
+    // 🎨 Qui est qui (13/10/2026) : une couleur par personne, tirée de son identifiant.
+    const elt = (tag) => ({ tag, attrs: {}, dataset: {}, style: {}, enfants: [], className: "", textContent: "",
+      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; },
+      appendChild(c) { this.enfants.push(c); return c; } });
+    const couches = [];
+    const groupe = () => ({ addTo(m) { this._map = m; return this; } });
+    const couche = (type, o) => ({ addTo() { couches.push(Object.assign({ type }, o)); return this; } });
+    const wp = { console: { log() {}, warn() {} }, setInterval: () => 1, clearInterval() {}, map: { removeLayer() {} },
+      convertCoord: (x, y) => [y, x], Date, Math, JSON, Array, String,
+      document: { createElement: elt, createElementNS: (ns, tag) => elt(tag) },
+      L: { layerGroup: groupe, polyline: (pts, o) => couche("trace", { o }), divIcon: (o) => o,
+        marker: (ll, o) => couche("repere", { icone: o.icon }), circleMarker: () => couche("etape", {}) } };
+    wp.window = wp;
+    const cp = vm.createContext(wp);
+    vm.runInContext("var document = window.document, L = window.L;", cp);
+    vm.runInContext(PR, cp, { filename: "ktaPresences.js" });
+    const P = wp.KtaPresences;
+    const pal = P.palette();
+    const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+    // Écart perçu (CIELAB, ΔE 1976) : la distance RGB brute juge mal le vert ou le violet.
+    const lab = (c) => { const v = hex(c).map((x) => { x /= 255; return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+      const f = (q) => (q > 0.008856 ? Math.cbrt(q) : 7.787 * q + 16 / 116);
+      const X = f((v[0] * 0.4124 + v[1] * 0.3576 + v[2] * 0.1805) / 0.95047), Y = f(v[0] * 0.2126 + v[1] * 0.7152 + v[2] * 0.0722);
+      const Z = f((v[0] * 0.0193 + v[1] * 0.1192 + v[2] * 0.9505) / 1.08883);
+      return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)]; };
+    const dist = (a, b) => { const x = lab(a), y = lab(b); return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+    const teinte = (c) => { const [r, g, b] = hex(c).map((v) => v / 255), M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;
+      if (!d) return { h: 0, s: 0 };
+      const h = M === r ? ((g - b) / d + 6) % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return { h: h * 60, s: d / (1 - Math.abs(M + m - 1)) }; };
+    const lum = (c) => { const v = hex(c).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    t("🎨 couleurDe : déterministe (même identifiant → même couleur)",
+      typeof P.couleurDe === "function" && P.couleurDe("compte-42") === P.couleurDe("compte-42") && P.couleurDe(7) === P.couleurDe("7"));
+    const ids = Array.from({ length: 300 }, (_, i) => "u" + i + "-" + (i * 7919).toString(36));
+    t("🎨 couleurDe : toujours dans la palette, et la palette sert presque entière (≥ 8 couleurs sur 300 comptes)",
+      pal.length >= 8 && ids.every((id) => pal.indexOf(P.couleurDe(id)) >= 0) && new Set(ids.map(P.couleurDe)).size >= Math.min(8, pal.length));
+    t("🎨 palette : couleurs distinctes deux à deux (ΔE ≥ 40)", pal.every((a, i) => pal.every((b, j) => i === j || dist(a, b) >= 40)));
+    t("🩸 palette : jamais le jaune d'accent ni sa teinte (itinéraires)", pal.every((c) => dist(c, "#f4c542") >= 35 &&
+      !(teinte(c).s > 0.4 && teinte(c).h >= 38 && teinte(c).h <= 62)));
+    t("🩸 palette : jamais de rouge (urgence)", pal.every((c) => { const x = teinte(c); return !(x.s > 0.35 && (x.h < 15 || x.h > 345)) &&
+      dist(c, "#b3261e") >= 35 && dist(c, "#ff8c8c") >= 35; }));
+    t("🩸 palette : ni le bleu de MON tracker, ni le gris d'une position ancienne",
+      pal.every((c) => dist(c, "#8cb4ff") >= 40 && dist(c, "#8892a4") >= 35));
+    t("palette : lisible sur fond sombre (contraste ≥ 3 avec #0a0d18 ; le contour sombre la porte sur fond clair)",
+      pal.every((c) => (lum(c) + 0.05) / (lum("#0a0d18") + 0.05) >= 3) && /"stroke", "#0a0d18"/.test(PR));
+    const fill = (r) => r.icone.html.enfants[0].enfants[0].attrs.fill;
+    couches.length = 0;
+    P.afficher([{ id: "a1", pseudo: "Ana", x: 1, y: 2, trace: [[0, 0], [1, 1]] },
+      { id: "b2", pseudo: "Bob", x: 3, y: 4, couleur: "#123abc", trace: [[0, 0], [1, 1]] },
+      { id: "c3", pseudo: "<img src=x onerror=1>", x: 5, y: 6, couleur: "red" }]);
+    const rep = couches.filter((c) => c.type === "repere"), tr = couches.filter((c) => c.type === "trace");
+    t("🎨 sans couleur fournie : repère ET trace à couleurDe(id)", rep.length === 3 && fill(rep[0]) === P.couleurDe("a1") &&
+      tr[0].o.color === P.couleurDe("a1") && rep[0].icone.html.dataset.couleur === P.couleurDe("a1"));
+    t("🎨 couleur fournie par l'extension (équipe Secours) : prioritaire, repère et trace",
+      fill(rep[1]) === "#123abc" && tr[1].o.color === "#123abc" && P.liste()[1].couleur === "#123abc");
+    t("🩸 couleur fournie non conforme (pas #rrggbb) : ignorée → couleurDe(id)", fill(rep[2]) === P.couleurDe("c3"));
+    t("repère = la forme du tracker (SVG triangle + rond), taille proche du mien (40 px contre 50)",
+      rep[0].icone.html.enfants[0].tag === "svg" && rep[0].icone.html.enfants[0].enfants.map((e) => e.tag).join() === "path,circle" &&
+      rep[0].icone.iconSize[0] === 40);
+    const etq = rep[2].icone.html.enfants[1];
+    t("🩸 pseudo toujours affiché, posé en texte (textContent), jamais interprété",
+      etq.className === "kta-presence-etiquette" && etq.textContent.indexOf("<img src=x onerror=1> · ") === 0 && !/innerHTML/.test(PR));
+    // « Masquer une personne » (14/10/2026) : ni repère ni trace, réversible, plus suivie, oublié en sortie de plan.
+    wp.map.getZoom = () => 1; wp.map.setView = () => {};
+    P.suivre("a1");
+    couches.length = 0;
+    t("👁️ masquerPersonne : ni repère ni trace pour elle, les autres restent", P.masquerPersonne("a1", true) === true &&
+      P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 2 &&
+      couches.filter((c) => c.type === "trace").every((c) => c.o.color !== P.couleurDe("a1")));
+    t("👁️ …une personne masquée n'est plus suivie", P.suivi() === null);
+    couches.length = 0;
+    P.masquerPersonne("a1", false);
+    t("👁️ réafficher : son repère revient", !P.personneMasquee("a1") && couches.filter((c) => c.type === "repere").length === 3);
+    P.masquerPersonne("b2", true); P.reinitialiser();
+    t("👁️ sortie de plan : les masquages sont oubliés", !P.personneMasquee("b2"));
   }
 
   // ═════════ 6 bis ter. LECTURE SEULE et SORTIE DE PLAN (audit du 05/10/2026) ═════════
@@ -439,6 +515,85 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const SE = lire("js/sessionExporter.js");
     t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
       /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
+  }
+
+  // ═════════ 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : grades et hauts faits actifs", K.profilJeuActif() === true);
+    K.register({ nom: "pj1", apiVersion: 1, profilJeu: () => false });
+    t("extension : profilJeu false → grades et hauts faits coupés", K.profilJeuActif() === false);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "pj2", apiVersion: 1, profilJeu: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → restent actifs (prise d'information), aucune exception", K2.profilJeuActif() === true);
+    const HP = lire("js/homeProfile.js");
+    t("profil : anneau, bloc grade, hauts faits (calcul ET grille) gardés par _jeuProfilActif ; redessin à l'arrivée d'une extension",
+      (HP.match(/!_jeuProfilActif()/g) || []).length >= 4 && /mktm:extensions-changees/.test(HP));
+  }
+
+  // ═════════ 6 bis octies. DICTIONNAIRES D'UNE EXTENSION (I18n.ajouter, 14/10/2026) ═════════
+  {
+    const LM = lire("js/langManager.js");
+    t("I18n.ajouter : exposé, ajouts gardés à part et refusionnés à chaque chargement de dico (paresseux, reload)",
+      /ajouter:\s+ajouter/.test(LM) && (LM.match(/_fusionnerAjouts\(code\);/g) || []).length >= 3);
+    t("🩸 I18n.ajouter : une clé de l'app n'est jamais écrasée (seules les clés posées par l'extension se remplacent)",
+      /hasOwnProperty\.call\(d, k\) && !posees\[k\]\) return;/.test(LM));
+  }
+
+  // ═════════ 6 bis septies. STATISTIQUES DU PROFIL (prise profilStats) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune statistique d'extension", (await K.profilStatsExtension()).length === 0);
+    K.register({ nom: "ps1", apiVersion: 1, profilStats: () => [
+      { cle: "plans-org", icone: "☁️", libelle: "Plans", valeur: 12, titre: "t" },
+      { cle: "plans-org", icone: "x", libelle: "doublon", valeur: 1 },
+      { cle: "mauvaise clé", libelle: "x", valeur: 1 }, { cle: "vide", libelle: "x", valeur: "" }, null
+    ] });
+    const l = await K.profilStatsExtension();
+    t("extension : lignes nettoyées (texte, clé [\\w-] unique, valeur requise)",
+      l.length === 1 && l[0].cle === "plans-org" && l[0].valeur === "12" && l[0].icone === "☁️");
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "ps2", apiVersion: 1, profilStats: () => { throw new Error("x"); } });
+    t("🩸 extension en erreur → aucune ligne, aucune exception", (await K2.profilStatsExtension()).length === 0);
+    const HP = lire("js/homeProfile.js");
+    t("profil : score / hauts faits ni proposés ni affichés au bandeau quand le jeu est coupé ; stats d'extension en texte",
+      /\(k === "score" \|\| k === "feats"\) && !_jeuProfilActif\(\)/.test(HP) && /\(_jeuProfilActif\(\)\s*\n?\s*\? '<label/.test(HP) &&
+      /val\.textContent = "—"/.test(HP) && /_echapStat\(x\.valeur\)/.test(HP));
+    t("profil : plans ☁️ comptés à part, noms de types ☁️ jamais dans le dictionnaire durable, cache de stats purgé avec le plan",
+      /_estPlanExt/.test(HP) && /if \(!_estPlanExt\(pc\)\) _persisterNoms/.test(HP) &&
+      /removeItem\("myktamap_plan_stats_v1_" \+ id\)/.test(lire("js/planRegistry.js")));
+    t("profil : 💾 compte les bases IDB « kta_ / myktamap » listées par le navigateur (jamais créées) et isole ☁️",
+      /indexedDB\.databases\(\)/.test(HP) && /presentes && presentes\.indexOf\(nom\) < 0/.test(HP) &&
+      /n\.indexOf\("kta_"\) === 0 \|\| n\.indexOf\("myktamap"\) === 0/.test(HP) &&
+      /acc\.ids\[cur\.key\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
+    t("profil : cache de stats du plan courant recalculé (2 s) après des changements reçus",
+      /dispatchEvent\(new CustomEvent\("mktm:changements-appliques"\)\)/.test(lire("js/ktaExtensions.js")) &&
+      /addEventListener\("mktm:changements-appliques"[\s\S]{0,200}_persisterStatsPlanCourant\(\)[\s\S]{0,40}2000/.test(HP));
+    const SG = lire("js/statsGlobales.js");
+    t("stats du plan : répartition par auteur seulement avec la prise auteurObjet, noms échappés",
+      /K\.aPrise\("auteurObjet"\)/.test(SG) && /_escapeHtml\(a\.nom != null/.test(SG));
+  }
+
+  // ═════════ 6 bis sexies. ALERTES D'UNE EXTENSION (prise alertes, même modale qu'alert.json) ═════════
+  {
+    const { K } = nouveauContexte(null);
+    t("sans extension : aucune alerte d'extension", (await K.alertesExtension()).length === 0 && K.aPrise("alertes") === false);
+    K.register({ nom: "al1", apiVersion: 1, alertes: { lister: () => [
+      { id: "a/1", level: "emergency", title: " Gaz ", message: "Évacuez", released: "2026-10-13T10:00:00Z", source: "🏢 Org", details: ["x", 3, ""] },
+      { id: "b", level: "panique", title: "T", released: "2026-10-13T11:00:00Z" },
+      { id: "c", title: "sans date" }, null, "texte"
+    ] } });
+    const l = await K.alertesExtension();
+    t("extension : alertes nettoyées, id préfixé ext_, niveau inconnu → info, sans date ni texte écartées",
+      l.length === 2 && l[0].id === "ext_a_1" && l[0].title === "Gaz" && l[0].details.length === 1 && l[0].source === "🏢 Org" &&
+      l[1].level === "info");
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "al2", apiVersion: 1, alertes: { lister: () => { throw new Error("x"); } } });
+    t("🩸 extension en erreur → aucune alerte, aucune exception", (await K2.alertesExtension()).length === 0);
+    const AC = lire("js/alertChecker.js");
+    t("AlertChecker : liste de l'extension fusionnée (check, bouton 🚨), relue à mktm:alertes-changees, attente bornée",
+      /KtaExtensions\.alertesExtension\(\)/.test(AC) && /addEventListener\("mktm:alertes-changees"/.test(AC) &&
+      /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));
   }
 
   // ═════════ 6 quinquies. MODE SECOURS RELIÉ (étude Secours, étapes 1-3) ═════════
@@ -612,7 +767,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("forme inattendue → 0 / { 0, 0 }", (await K3.photosCompleterPoint("p", "a")) === 0 && (await K3.photosCompleterPlan("p")).total === 0);
     const EXT = lire("js/ktaExtensions.js"), U = lire("js/utils.js"), ED = lire("js/editor.js"), PH = lire("js/photos.js");
     t("prise photos : attente bornée à 8 s, prise journalisée à la déclaration",
-      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"]/.test(EXT));
+      /const PHOTOS_DELAI_MS = 8000;/.test(EXT) && /"outilsDev", "photos", "aide", "outilHome"(, "[a-zA-Z]+")*]/.test(EXT));
 
     // ── Prise « aide » (11/10/2026) : une rubrique d'extension dans l'Aide intégrée ──
     const { K: A0 } = nouveauContexte(null);

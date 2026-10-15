@@ -1537,12 +1537,8 @@
   }
 
   // ========== UTILS ==========
-  function _escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
-  function _escapeAttr(s) { return _escapeHtml(s).replace(/"/g, "&quot;"); }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
+  function _escapeAttr(s) { return window.ktaEsc(s); }
 
   // ========== INVALIDATION DU CACHE AU CHANGEMENT DE PLAN ==========
   // (le cache se réinitialise automatiquement via _signaturePlan() à chaque ouverture)

@@ -1356,12 +1356,8 @@
     return indices;
   }
 
-  function _escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
-  function _escapeAttr(s) { return _escapeHtml(s).replace(/"/g, "&quot;"); }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
+  function _escapeAttr(s) { return window.ktaEsc(s); }
 
   // ========== FERMETURE AVEC CONFIRMATION ==========
   function _tenterFermer() {

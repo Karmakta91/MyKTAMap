@@ -42,11 +42,7 @@
   const MODAL_ID = "kta-stats-globales-modal";
 
   // ───────── HELPERS ─────────
-  function _escapeHtml(s) {
-    return String(s || "").replace(/[&<>"']/g, function(c) {
-      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" })[c];
-    });
-  }
+  function _escapeHtml(s) { return window.ktaEsc(s); }
 
   function _formatDist(m) {
     if (typeof window.formatDistance === "function") return window.formatDistance(m, 1);
@@ -440,6 +436,7 @@
     return {
       timestamp:    new Date().toISOString(),
       planId:       planId,
+      auteurs:      _compterAuteurs([sessionPts, sessionRoads, sessionZones, sessionStructs]),
       planMeta:     {
         name:       planMeta.name       || (window.I18n ? window.I18n.t("stats.plan.noName") : "(sans nom)"),
         version:    planMeta.version    || "",
@@ -503,6 +500,41 @@
     };
   }
 
+  // Objets ajoutés (session) par auteur, seulement quand une extension sait dire qui a créé un objet
+  // (prise auteurObjet, par uid). Sans elle : null, rien n'est affiché. Les objets sans uid, l'itinéraire
+  // et l'aperçu de tracé ne comptent pas. Rend [{ nom, n }] trié, nom null = auteur inconnu.
+  function _compterAuteurs(familles) {
+    const K = window.KtaExtensions;
+    if (!K || typeof K.aPrise !== "function" || !K.aPrise("auteurObjet") || typeof K.auteurObjet !== "function") {
+      return null;
+    }
+    const parNom = new Map();
+    familles.forEach(function(liste) {
+      liste.forEach(function(o) {
+        if (!o || typeof o.uid !== "string" || !o.uid || o.type === "itinerary" || o._preview) return;
+        const a = K.auteurObjet(o.uid);
+        const nom = (a && a.createur) || null;
+        parNom.set(nom, (parNom.get(nom) || 0) + 1);
+      });
+    });
+    return Array.from(parNom, function(e) { return { nom: e[0], n: e[1] }; })
+      .sort(function(x, y) { return y.n - x.n; });
+  }
+
+  // Ligne « Ajoutés, par auteur : Alice 12 · Bob 5 · inconnu 3 » (10 auteurs au plus, le reste en « +N »).
+  // Les noms viennent de l'extension : toujours échappés.
+  function _renderAuteurs(auteurs) {
+    if (!Array.isArray(auteurs) || !auteurs.length) return "";
+    const MAX = 10;
+    const parts = auteurs.slice(0, MAX).map(function(a) {
+      return _escapeHtml(a.nom != null ? a.nom : window.I18n.t("stats.auteurs.inconnu")) + " " + a.n;
+    });
+    if (auteurs.length > MAX) parts.push("+" + (auteurs.length - MAX));
+    return '<div class="kta-stats-glob-meta kta-stats-glob-auteurs" title="' +
+             _escapeHtml(window.I18n.t("stats.auteurs.title")) + '">' +
+             _escapeHtml(window.I18n.t("stats.auteurs.label")) + ' ' + parts.join(" · ") + '</div>';
+  }
+
   // ───────── RENDER UI ─────────
 
   function _renderHtml(rep) {
@@ -549,6 +581,7 @@
               '</div>';
     }
     html += '</div>';
+    html += _renderAuteurs(rep.auteurs);
 
     // Points par tag — 🆕 v1.21.0 : camembert SVG inline + légende
     if (t.points > 0) {
@@ -654,12 +687,14 @@
 
   function _statCard(emoji, num, label, sessionN, embeddedN) {
     let sub = "";
+    // « Ajoutés » = posés par-dessus les données d'origine du plan, par l'utilisateur ou reçus par synchronisation.
+    const titre = ' title="' + _escapeHtml(window.I18n.t("stats.card.sub.title")) + '"';
     if (sessionN > 0 && embeddedN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.sessionEmbed", { session: sessionN, embed: embeddedN }) + '</div>';
+      sub = '<div class="kta-stats-glob-card-sub"' + titre + '>' + window.I18n.t("stats.card.sub.sessionEmbed", { session: sessionN, embed: embeddedN }) + '</div>';
     } else if (sessionN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.session", { session: sessionN }) + '</div>';
+      sub = '<div class="kta-stats-glob-card-sub"' + titre + '>' + window.I18n.t("stats.card.sub.session", { session: sessionN }) + '</div>';
     } else if (embeddedN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.embed", { embed: embeddedN }) + '</div>';
+      sub = '<div class="kta-stats-glob-card-sub"' + titre + '>' + window.I18n.t("stats.card.sub.embed", { embed: embeddedN }) + '</div>';
     }
     return '<div class="kta-stats-glob-card">' +
              '<div class="kta-stats-glob-card-num">' + num + '</div>' +

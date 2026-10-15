@@ -720,8 +720,7 @@ window.ktaAlerte = function(message, opts) {
   const texte = message == null ? "" : String(message);
   try {
     if (!document.documentElement || typeof window.ktaConfirm !== "function") throw new Error("interface indisponible");
-    const esc = typeof window.ktaEsc === "function" ? window.ktaEsc
-      : function(s) { return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); };
+    const esc = window.ktaEsc;
     const t = function(k, repli) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli; };
     return window.ktaConfirm(opts.html ? texte : esc(texte), {
       sansAnnuler: true,
@@ -1007,12 +1006,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   };
   _majMode();
 
-  function _esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
+  function _esc(s) { return window.ktaEsc(s); }
 
   function _renderPopupHtml() {
     const current = getDescr() || "";
@@ -1234,16 +1228,8 @@ window.kta_copierGps = function(txt) {
   }
 };
 
-// 🧹 v1.61.0 (B6) — Échappement HTML CANONIQUE. Les modules récents
-// (legalGate, interPlanLinks, crossPlanSearch, interPlanRoute) délèguent ici
-// au lieu de dupliquer le corps (~8 copies recensées à l'audit). Les helpers
-// historiques (_escapeHtml locaux, _escAttr) restent en place — les migrer
-// n'apporte rien et risque des régressions de leurs variantes (attributs).
-window.ktaEsc = function(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-  });
-};
+// window.ktaEsc (échappement HTML unique) vit dans js/langManager.js, chargé 2e : les modules non
+// différés (accueil, profil, inspecteurs) s'exécutent AVANT ce fichier (defer) et s'en servent aussi.
 
 // =========================
 // 🫥 v1.62.0 — TRANSPARENCE DES PLANS (helpers partagés)
@@ -1319,8 +1305,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");
   // Echappement HTML pour le contenu affiche
-  const safeName = nom.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const safeDesc = desc.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeName = window.ktaEsc(nom);
+  const safeDesc = window.ktaEsc(desc);
   const id     = String(point.id || "");
   const x = Number(point.x) || 0;
   const y = Number(point.y) || 0;
@@ -1338,11 +1324,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _layerLabel = (layerInfo && layerInfo.layerLabel) || (isEditorSession ? "Mes ajouts" : "");
   const _firstTag   = (Array.isArray(point.tags) && point.tags[0]) || "default";
   // Échappement attribut pour les chaînes embarquées en data-* / args inline
-  function _escAttr(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  function _escAttr(s) { return window.ktaEsc(s); }
   const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));   // 🆔 v2.4.0
 
   // Bouton Supprimer : visible UNIQUEMENT pour les points de la session

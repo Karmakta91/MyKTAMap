@@ -1809,9 +1809,7 @@
     const filter = (typeof window.passeFiltreNiveau === "function")
                    ? window.passeFiltreNiveau
                    : function() { return true; };
-    const esc = function (v) {
-      return String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-    };
+    const esc = window.ktaEsc;
     const demi = MINIMAP_POI_PX / 2;
     let added = 0, ignores = 0;
     all.forEach(function (p) {

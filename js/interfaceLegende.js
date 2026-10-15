@@ -134,10 +134,7 @@ function afficherLegende() {
         <span style="color:#8892a4;">${window.I18n.t("legendui.orphans.aide")}</span>
       </div>`;
   }
-  function _escHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _escHtml(s) { return window.ktaEsc(s); }
 
   let contenuIcones = "";
 

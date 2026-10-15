@@ -731,7 +731,13 @@ function afficherPlanner() {
       _appliquerPlannerMode(btn.dataset.mode);
       _ecrirePlannerMode(btn.dataset.mode);
       // 🧙 v1.72.1 : le jeu de pages dépend du mode → reconstruire
-      if (_wizActif) { _wizConstruirePages(); _wizIdx = 0; _wizMaxVisite = 0; _wizSkip = {}; _wizAfficherPage(0); }
+      // On reste sur la page courante si le nouveau mode l'a aussi (arrivée directe sur « Nom »).
+      if (_wizActif) {
+        const courante = _wizPages[_wizIdx] ? _wizPages[_wizIdx].def.id : "accueil";
+        _wizConstruirePages(); _wizSkip = {};
+        const i = Math.max(0, _wizPages.findIndex(function(p) { return p.def.id === courante; }));
+        _wizIdx = i; _wizMaxVisite = i; _wizAfficherPage(i);
+      }
     });
   });
 
@@ -1226,6 +1232,9 @@ let _wizMaxVisite = 0;
 let _wizSkip = {};       // pageId → true (marquage « passé »)
 
 // Métadonnées par section (ordre DOM). `simple` = présente en mode Simple.
+// Page d'arrivée quand l'assistant ne s'ouvre pas sur l'accueil (image déposée sur « Charger un plan » → « Nom ») :
+// le choix Simple/Avancé y est montré aussi, sinon il n'apparaît jamais (13/10/2026, retour KARMA).
+let _wizPageEntree = "accueil";
 const WIZ_DEFS = [
   { id: "accueil",  simple: true,  skip: false },
   { id: "identite", simple: true,  skip: false, valider: function() {
@@ -1304,7 +1313,7 @@ function _wizAfficherPage(idx) {
   // Le switcher Simple/Avancé n'a de sens que sur l'accueil
   const sw = document.getElementById("kta-planner-mode-switcher");
   const hint = document.getElementById("kta-planner-mode-hint");
-  const surAccueil = (page.def.id === "accueil");
+  const surAccueil = (page.def.id === "accueil" || page.def.id === _wizPageEntree);
   if (sw && _plannerMode !== "modifier") sw.style.display = surAccueil ? "" : "none";
   if (hint) hint.style.display = surAccueil ? "" : "none";
 
@@ -1466,7 +1475,7 @@ function _wizAppliquerAffichage() {
     if (steps) steps.style.display = "";
     if (nav) nav.style.display = "";
     _wizConstruirePages();
-    _wizIdx = 0; _wizMaxVisite = 0; _wizSkip = {};
+    _wizIdx = 0; _wizMaxVisite = 0; _wizSkip = {}; _wizPageEntree = "accueil";
     _wizAfficherPage(0);
   } else {
     // Tout afficher = comportement historique intégral
@@ -2842,7 +2851,7 @@ function _afficherErreurV2(titre, message) {
   const overlay = document.createElement("div");
   overlay.id = "kta-v2-error-overlay";
   overlay.className = "kta-readme-modal-overlay";
-  const safeMessage = String(message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g, "<br>");
+  const safeMessage = window.ktaEsc(message || "").replaceAll("\n", "<br>");
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
       '<div class="kta-readme-modal-header kta-v2-error-header">' +
@@ -4835,11 +4844,7 @@ async function _kmzImpGenerer() {
   }
 }
 
-function _escHtml(s) {
-  return String(s).replace(/[&<>"']/g, function(c) {
-    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-  });
-}
+function _escHtml(s) { return window.ktaEsc(s); }
 
 // =====================================================================
 // 📤 MODALE IMPORT GPX → ZIP MyKTAMap (depuis v1.15.0)
@@ -5785,11 +5790,8 @@ function _sigImpRendreTables() {
   });
 }
 
-function _escHtmlSig(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+function _escHtmlSig(s) { return window.ktaEsc(s); }
+function _escAttrSig(s) { return window.ktaEsc(s); }
 
 // 🏷️ v1.82.0 — LECTURE DU MAPPING, extraite pour être partagée.
 // La génération n'est plus seule à en avoir besoin : la prévisualisation des
@@ -5971,7 +5973,7 @@ function _afficherImporterImage(fichier) {
   }
   if (_wizActif) {
     const i = _wizPages.findIndex(function(p) { return p.def.id === "identite"; });
-    if (i >= 0) _wizAfficherPage(i);
+    if (i >= 0) { _wizPageEntree = "identite"; _wizAfficherPage(i); }
   }
   if (nom) { try { nom.focus(); nom.select(); } catch (e) { /* champ masqué : pas de focus */ } }
   return true;

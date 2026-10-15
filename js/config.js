@@ -788,7 +788,6 @@ function nettoyerIconesConfig(config, ou) {
   }
   return config;
 }
-window.ktaNettoyerIconesConfig = nettoyerIconesConfig;
 
 function resolveServerPaths(config, baseDir) {
   if (!baseDir || baseDir === "data") return config; // racine = pas de réécriture
@@ -1480,8 +1479,6 @@ window.getPlanProfondeurs   = getPlanProfondeurs;
 window.setPlanProfondeurs   = setPlanProfondeurs;
 window.getProfondeurNiveau  = getProfondeurNiveau;
 window.proposerProfondeurs  = proposerProfondeurs;
-window.PROF_NIVEAU0_DEFAUT  = PROF_NIVEAU0_DEFAUT;
-window.PROF_PAS_DEFAUT      = PROF_PAS_DEFAUT;
 
 // =========================
 // 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
@@ -1580,7 +1577,6 @@ window.getPlanNorthOffset          = getPlanNorthOffset;
 window.setPlanNorthOffset          = setPlanNorthOffset;
 window.resetPlanNorthOffset        = resetPlanNorthOffset;
 window.normalizePath               = normalizePath;
-window.getBaseName                 = getBaseName;
 window.getRuntimeAsset             = getRuntimeAsset;
 window.getRuntimeAssetUrl          = getRuntimeAssetUrl;
 window.registerAsset               = registerAsset;

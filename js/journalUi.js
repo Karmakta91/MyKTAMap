@@ -44,12 +44,7 @@
   function _t(k, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
-  function _esc(s) {
-    if (typeof window.ktaEsc === "function") return window.ktaEsc(s);
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
-      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
-    });
-  }
+  function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
   function _toast(msg, type) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(msg, type || "info");

@@ -3,6 +3,7 @@
   "released": "2026-10-12",
   "notes": [
     "🗺️ Vue OSM : sur iPhone, les plans ne disparaissent plus quand tu déplaces ou zoomes la carte, et tu peux afficher tous les plans d'un dossier d'un coup.",
-    "🖼️ Dépose une image (.jpg, .png) sur « Ajouter un plan » : le Générateur s'ouvre, il ne reste qu'à nommer le plan."
+    "🖼️ Dépose une image (.jpg, .png) sur « Ajouter un plan » : le Générateur s'ouvre, il ne reste qu'à nommer le plan.",
+    "🌍 Export KMZ : un grand plan s'affiche enfin dans Google Earth sur téléphone (case « Grandes images », netteté au choix) ; sur ordinateur, les tuiles sont nommées et rangées par niveau de détail."
   ]
 }
