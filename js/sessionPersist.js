@@ -562,7 +562,7 @@
       btn.className = "kta-btn kta-btn-primary kta-storage-banner-btn";
       btn.textContent = _trModule("session.banner.exportBtn");
       btn.addEventListener("click", function() {
-        if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal();
+        if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("full", true);
       });
       b.appendChild(txt);
       b.appendChild(btn);

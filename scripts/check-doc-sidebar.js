@@ -70,7 +70,7 @@ const ATTENDUS = {
   settings:   { fr: "Réglages",           en: "Settings",      es: "Ajustes" },   // v1.92.0 (L4) : un seul mot, celui de la modale
   recherche:  { fr: "Recherche",          en: "Search",        es: "Búsqueda" },
   charger:    { fr: "Charger / Import",   en: "Load / Import", es: "Cargar / Importar" },
-  save:       { fr: "Enregistrer",        en: "Save",          es: "Guardar" },
+  save:       { fr: "Exporter",           en: "Export",        es: "Exportar" },
   history:    { fr: "Historique",         en: "History",       es: "Historial" },
   tracker:    { fr: "Tracker",            en: "Tracker",       es: "Rastreador" },
   mesure:     { fr: "Mesure",             en: "Measurement",   es: "Medición" },

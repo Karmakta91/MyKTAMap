@@ -889,8 +889,19 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       t("🩸 multi-comptes : l'historique d'annulation repart de zéro après une réception", /window\.HistoryManager\.reset\(\)/.test(EXT));
       t("lecture seule : prise lectureSeule, erreur = lecture seule, plan local jamais",
         /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
-      t("export : le goulot ktaExportPlanRefuse garde l'export de session et l'export image",
-        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")));
+      t("export : le goulot ktaExportPlanRefuse garde l'export de session, l'export image et le PDF imprimable",
+        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/sessionExporter.js")) && /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/exporter.js")) &&
+        /ktaExportPlanRefuse\(\)\) return;/.test(lire("js/pdfExport.js")));
+      {
+        // 🔒 Mode Secours : chaque export qui sort le plan (PDF équipes, KMZ, briefing, rapport PDF) passe le verrou.
+        const SEC = lire("js/secoursMode.js");
+        const garde = (nom) => new RegExp("async function " + nom + "\\([^)]*\\) \\{\\r?\\n(?:\\s*\\/\\/[^\\n]*\\n)?" +
+          "\\s*if \\(typeof window\\.ktaExportPlanRefuse === \"function\" && window\\.ktaExportPlanRefuse\\(\\)\\) return null;").test(SEC);
+        t("🔒 Mode Secours : PDF, KMZ, briefing et rapport PDF gardés par ktaExportPlanRefuse en tête",
+          ["exporterPDF", "exporterKMZ", "genererBriefingPompiersPDF", "genererRapportPDF"].every(garde));
+      }
+      t("export : la Fusion (fichiers téléversés, pas le plan affiché) échappe seule au verrou",
+        /if \(tab !== "fusion"\) \{\r?\n\s*if \(typeof window\.ktaExportPlanRefuse/.test(lire("js/sessionExporter.js")));
       const MAINT = lire("js/interfaceMaintenance.js");
       t("🩸 Tout réinitialiser : la session d'une installation est fermée AVANT l'effacement (prise bornée à 3 s)",
         MAINT.indexOf("avantReinitialisation()") > 0 && MAINT.indexOf("avantReinitialisation()") < MAINT.indexOf("localStorage.clear()") &&

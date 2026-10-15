@@ -382,6 +382,15 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
               </span>
             </button>
+            <!-- 🔄 15/10/2026 (KARMA) : la Conversion session ↔ calques de données quitte la barre
+                 d'onglets de l'export et vit ici, comme la Fusion (modale d'export en solo). -->
+            <button class="kta-tbl-source-card" id="kta-tbl-src-conv">
+              <span class="kta-tbl-source-ico">🔄</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.conv"))}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.convAide")}</span>
+              </span>
+            </button>
             <!-- 🔁 v1.76.2 (demande KARMA) : la conversion de résolution est
                  AUSSI une carte de cet accueil — clic → import JSON classique,
                  puis la dialog de conversion s'ouvre toute seule sur le
@@ -425,6 +434,15 @@
       fermer();
       if (typeof window.ouvrirExportSessionModal === "function") {
         window.ouvrirExportSessionModal("fusion", true);
+      } else {
+        console.warn("[TableEditor] ouvrirExportSessionModal indisponible");
+      }
+    });
+    // 🔄 Conversion session ↔ calques de données : onglet Conversion de l'export, en solo.
+    document.getElementById("kta-tbl-src-conv").addEventListener("click", function() {
+      fermer();
+      if (typeof window.ouvrirExportSessionModal === "function") {
+        window.ouvrirExportSessionModal("conversion", true);
       } else {
         console.warn("[TableEditor] ouvrirExportSessionModal indisponible");
       }

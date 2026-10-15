@@ -303,7 +303,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Ajustes** | ⚙️ | Ajustes del mapa: escala, Norte, georreferenciación, tracker, visualización… *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar un punto, un trazado, una zona o una estructura *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del mapa |
-| **Guardar** | ⬆️ | Exportar tu sesión, el mapa como imagen o un PDF imprimible |
+| **Exportar** | ⬆️ | Un lanzador: imagen (PNG / JPEG, PDF), sesión, exportación externa (KMZ / GPX) |
 | **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
 | **Rastreador** | 🧭 | **Menú a pantalla completa** de fichas: seguimiento, recolocación, Mi posición, brújula, itinerario, guiado, emergencias |
 | **Medición** | 📐 | Medir una distancia o una superficie, borrar |
@@ -869,7 +869,7 @@ Tus anotaciones (puntos, trazados, zonas, estructuras, mediciones) se guardan so
 Al reabrirlo (**▶️ Reanudar** en la pantalla de inicio), una ventana resume lo que se ha restaurado («3 puntos · 1 trazado · 2 zonas») y propone **🗑️ Borrar la sesión** (empezar de cero en este mapa) o **✓ Continuar**. Esc o un clic fuera = Continuar.
 
 - El camino del tracker no se restaura: vuelve a lanzar el seguimiento y recolócate.
-- Para guardar una sesión aparte, o pasarla a otro dispositivo: **⬆️ Guardar → 💾 Exportar** (ver «⬆️ Guardar y compartir»).
+- Para guardar una sesión aparte, o pasarla a otro dispositivo: **⬆️ Exportar → 💾 Exportación completa** (ver «⬆️ Guardar y compartir»).
 
 ### 📔 Mi cuaderno — el historial de tus salidas
 
@@ -970,22 +970,19 @@ En la ventana Perfil, **📤 Exportar mi perfil** genera un archivo que lleva to
 
 ## ⬆️ Guardar y compartir
 
-Todas las exportaciones están en el grupo **⬆️ Guardar** de la barra lateral. Antes de compartir una imagen, un PDF o un KMZ, comprueba que no revela nada sensible (accesos, lugar privado).
+Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral: abre un lanzador de mosaicos en tres partes — **🖼️ Imagen**, **💾 Sesión**, **🌍 Exportación externa**. Antes de compartir una imagen, un PDF o un KMZ, comprueba que no revela nada sensible (accesos, lugar privado).
 
 ### 📤 Exportar tu sesión
 
-**⬆️ → 💾 Exportar** abre una ventana con cinco pestañas:
+**⬆️ Exportar → 💾 Sesión** ofrece dos mosaicos:
 
-- **🚀 Completo** — toda la sesión en un archivo, para volver a importarla más tarde: puntos, trazados, zonas, estructuras, mediciones y seguimiento del tracker (posición, camino, cronología: el replay funciona tras reimportar). `.json`, o `.zip` si marcas las fotos. La opción **🛡️ Anonimizar para compartir públicamente** sustituye los nombres por códigos y quita el seguimiento.
-- **🎨 Avanzado** — tú eliges: puntos (por icono, incluido «sin etiqueta»), trazados, zonas y estructuras (por tipo), mediciones, tracker (un contador muestra lo que contiene). Salida en **📄 Un solo archivo de sesión** reimportable, o en **📦 ZIP multiarchivo** (uno por categoría).
-- **🔎 Conservar solo** (en cabecera de 🚀 Completo y 🎨 Avanzado) — limita los puntos, trazados, zonas y estructuras a un **periodo** (fecha de su última modificación) y, en una instalación conectada, a su autor (**Creado por**); un contador indica cuántos salen. Seguimiento, mediciones y notas se exportan tal cual.
-- **🔄 Conversión** — transforma tu sesión en **capa de datos** para integrarla en un mapa (ver «🏗️ Crear o modificar un mapa»). Misma elección por categoría y por icono; granularidad **Básico** (un archivo por categoría) o **Fino** (un archivo por tipo). El tracker nunca se convierte: una deriva fijada en un mapa engañaría a sus futuros usuarios. Una vez convertidos, esos datos ya no se modifican desde la app.
-- **🔗 Fusión** — reúne varias capas de datos (`.json` o `.zip`, de varias sesiones) en un solo juego por categoría. Una vista previa da los totales y señala los identificadores de puntos duplicados (se conservan tal cual). También accesible sin mapa abierto: **📊 Editor de datos → 🔗 Fusionar capas de datos**.
-- **📡 Exportación externa** — KMZ o GPX, ver más abajo.
+- **💾 Exportación completa** — toda la sesión en un archivo, para volver a importarla más tarde: puntos, trazados, zonas, estructuras, mediciones y seguimiento del tracker (posición, camino, cronología: el replay funciona tras reimportar). `.json`, o `.zip` si marcas las fotos. La opción **🛡️ Anonimizar para compartir públicamente** sustituye los nombres por códigos y quita el seguimiento.
+- **🎨 Exportación avanzada** — tú eliges: puntos (por icono, incluido «sin etiqueta»), trazados, zonas y estructuras (por tipo), mediciones, tracker (un contador muestra lo que contiene). Salida en **📄 Un solo archivo de sesión** reimportable, o en **📦 ZIP multiarchivo** (uno por categoría).
+- **🔎 Conservar solo** (en cabecera de ambos) — limita los puntos, trazados, zonas y estructuras a un **periodo** (fecha de su última modificación) y, en una instalación conectada, a su autor (**Creado por**); un contador indica cuántos salen. Seguimiento, mediciones y notas se exportan tal cual.
 
 ### 🖼️ Exportar como imagen
 
-**⬆️ → 🖼️ Exportar el mapa como imagen**, dos modos:
+**⬆️ Exportar → 🖼️ Imagen (PNG / JPEG)**, dos modos:
 
 - **⚡ Exportación rápida** — todo lo visible (mapa, capas, anotaciones, tracker), en PNG a la resolución original. Un clic en **Descargar**.
 - **🎨 Exportación avanzada** — marcas las capas de imagen, las capas de datos y tus anotaciones, y ajustas:
@@ -996,7 +993,7 @@ Todas las exportaciones están en el grupo **⬆️ Guardar** de la barra latera
 
 ### 🖨️ Exportar a PDF imprimible
 
-**⬆️ → 📤 Exportar en PDF imprimible**: un PDF para imprimir y llevar al terreno, enviar a alguien que no tiene la app, o archivar.
+**⬆️ Exportar → 🖨️ PDF imprimible**: un PDF para imprimir y llevar al terreno, enviar a alguien que no tiene la app, o archivar.
 
 - **Formato**: de A0 a A4, vertical u horizontal (A4 horizontal por defecto).
 - **Contenido**: tus anotaciones, la imagen del mapa y sus capas, las capas de datos, una cabecera (título e información del mapa).
@@ -1007,7 +1004,7 @@ El PDF lleva la mención «Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap
 
 ### 🌍 Exportar a otra app (KMZ, GPX)
 
-**⬆️ → 💾 Exportar → 📡 Exportación externa** genera:
+**⬆️ Exportar → 🌍 Exportación externa** (mosaico **KMZ** o **GPX**) genera:
 - un **KMZ**: tu mapa y tus anotaciones situados sobre el globo, para **Google Earth**, **OsmAnd**, **Locus** o **Avenza**;
 - un **GPX**: puntos y trazados, para TopoDroid, OsmAnd, Strava… y reimportable en MyKTAMap con sus niveles.
 
@@ -1681,6 +1678,8 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
 - **🗺️ Mapa actual**: las capas de datos del mapa abierto (no aparece desde la pantalla de inicio, donde no hay ningún mapa cargado).
 - **📦 Importar un ZIP**: las capas de un mapa completo.
 - **📄 Importar un archivo JSON**: un archivo de datos o de sesión.
+- **🔄 Convertir sesión ↔ capas**: transforma tu sesión en **capa de datos** para integrarla en un mapa (ver «🏗️ Crear o modificar un mapa»). Misma elección por categoría y por icono; granularidad **Básico** (un archivo por categoría) o **Fino** (un archivo por tipo). El tracker nunca se convierte: una deriva fijada en un mapa engañaría a sus futuros usuarios. Una vez convertidos, esos datos ya no se modifican desde la app.
+- **🔗 Fusionar capas**: reúne varias capas de datos (`.json` o `.zip`, de varias sesiones) en un solo juego por categoría. Una vista previa da los totales y señala los identificadores de puntos duplicados (se conservan tal cual).
 - **🔁 Convertir la resolución**: pasa tus archivos de datos de un escaneo antiguo a un escaneo nuevo del mismo mapa. Indica las dos resoluciones (o deja que la app las lea en las imágenes); si los márgenes difieren, añade una **referencia común** (el mismo pilar en ambos mapas), o **dos**, y la escala y la rotación se deducen. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
 - **🧹 Desduplicar los datos**: elimina los vértices idénticos consecutivos de trazados, zonas, estructuras y medidas, invisibles pero que hacen más pesados los archivos. Obtienes un archivo `_dedup.json` y el recuento de lo eliminado; los puntos nunca se tocan.
 

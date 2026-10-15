@@ -1131,6 +1131,9 @@ function _creerGroupeAccordeon(config) {
       // est le helper d'activation pour un id custom).
       useFlyout:        config.useFlyout === true,
       useModal:         config.useModal === true,
+      // 15/10/2026 : habillage du modal de tuiles (id, titre, sections, bande de
+      // statut). Absent → celui du Tracker (cf _MODAL_TRACKER).
+      modal:            config.modal || null,
       sousActionsConfig: config.sousActions || [],
       lcCat:             config.lcCat || null,
       customActivator:   config.customActivator || null,
@@ -1161,6 +1164,37 @@ function _creerGroupeAccordeon(config) {
 // (cf _ouvrirFlyout : _fermerFlyout() puis sub.onClick(btn) sur un bouton déjà
 // retiré du DOM). Sections : "suivi" / "outils" (champ sub.section) + "urgence"
 // (auto-détecté via sub.cssClass === "kta-sous-action-urgence").
+//
+// 15/10/2026 (audit ergonomique de l'export) : le modal est PARAMÉTRABLE par
+// groupe (`modal` de la config) — id, icône + clé du titre, sections, bande de
+// statut du suivi. Le groupe ⬆️ (id "save") s'en sert comme lanceur d'export.
+// Une section se remplit par `sub.section === cle`, ou par `sub.cssClass` si la
+// section en déclare un ; la section `defaut` recueille les actions non rangées.
+// Les titres sont des CLÉS, traduites à l'ouverture (jamais au chargement).
+
+const _MODAL_TRACKER = {
+  id: "kta-tracker-modal",
+  icone: "🧭",
+  titreCle: "ui.group.tracker",
+  statut: true,
+  sections: [
+    { cle: "suivi",   titreCle: "tracker.modal.sectionSuivi" },
+    { cle: "outils",  titreCle: "tracker.modal.sectionOutils", defaut: true },
+    { cle: "urgence", titreCle: "tracker.modal.sectionUrgence", cssClass: "kta-sous-action-urgence" }
+  ]
+};
+
+const _MODAL_EXPORT = {
+  id: "kta-export-lanceur",
+  icone: "⬆️",
+  titreCle: "ui.group.save",
+  statut: false,
+  sections: [
+    { cle: "image",   titreCle: "export.lanceur.sectionImage", defaut: true },
+    { cle: "session", titreCle: "export.lanceur.sectionSession" },
+    { cle: "externe", titreCle: "export.lanceur.sectionExterne" }
+  ]
+};
 
 let _trackerModalEl = null;
 let _trackerModalKeyHandler = null;
@@ -1249,9 +1283,11 @@ function _creerTuileTracker(sub) {
                  : (sub.icone || "");
   const lbl = document.createElement("span");
   lbl.className = "kta-tracker-modal-tile-label";
+  // `titreCle` : libellé traduit à l'ouverture (lanceur d'export).
+  const titreFixe = sub.titreCle ? window.I18n.t(sub.titreCle) : (sub.titre || "");
   lbl.textContent = (typeof sub.dynamicTitre === "function")
-                    ? (sub.dynamicTitre() || sub.titre || "")
-                    : (sub.titre || "");
+                    ? (sub.dynamicTitre() || titreFixe)
+                    : titreFixe;
   tile.appendChild(ic);
   tile.appendChild(lbl);
   tile.addEventListener("click", function(ev) {
@@ -1287,61 +1323,8 @@ function _ajouterSectionTracker(corps, titre, actions) {
   corps.appendChild(grid);
 }
 
-// 🚨 Q11 (audit 13/09/2026) : le chip 🧭 du footer promettait « cliquer pour
-// gérer » sans aucun gestionnaire. Exposé pour refonteInterface.js.
-window.ouvrirMenuTracker = function() { try { _ouvrirTrackerModal("tracker"); } catch(e) { console.warn("[Interface] menu tracker :", e); } };
-function _ouvrirTrackerModal(groupId) {
-  // Cohérence "1 menu à la fois" : ferme flyout + accordéon éventuels.
-  _fermerFlyout();
-  if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
-  _fermerTrackerModal();
-
-  const grp = _groupes[groupId];
-  if (!grp) return;
-  // 🧩 01/10/2026 — une tuile marquée `optionnel: "<cléAPP_CONFIG>"` n'apparaît
-  // que si l'utilisateur a activé la fonctionnalité (⚙️ › Fonctionnalités
-  // optionnelles). Filtré à chaque ouverture : la case agit sans recharger.
-  const baseActions = ((typeof grp.dynamicSousActions === "function")
-                        ? (grp.dynamicSousActions() || [])
-                        : (grp.sousActionsConfig || []).slice())
-    .filter(function(a) {
-      return !a.optionnel || !!(window.APP_CONFIG && window.APP_CONFIG[a.optionnel] === true);
-    });
-
-  const overlay = document.createElement("div");
-  overlay.className = "kta-tracker-modal-overlay";
-  overlay.addEventListener("click", function(ev) {
-    if (ev.target === overlay) _fermerTrackerModal();
-  });
-
-  const box = document.createElement("div");
-  box.className = "kta-tracker-modal-box";
-
-  // --- Header ---
-  // 🏷️ 14/09/2026 — id posé pour l'aide contextuelle : sans lui, rien ne
-  // pouvait désigner cette modale (elle est créée à la volée, sans identité).
-  overlay.id = "kta-tracker-modal";
-  const header = document.createElement("div");
-  header.className = "kta-tracker-modal-header";
-  const titleWrap = document.createElement("div");
-  titleWrap.className = "kta-tracker-modal-title";
-  const titleIcon = document.createElement("span");
-  titleIcon.textContent = "🧭";
-  const titleTxt = document.createElement("span");
-  titleTxt.textContent = window.I18n.t("ui.group.tracker");
-  titleWrap.appendChild(titleIcon);
-  titleWrap.appendChild(titleTxt);
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "kta-tracker-modal-close";
-  closeBtn.title = window.I18n.t("ui.btn.close");
-  closeBtn.textContent = "✕";
-  closeBtn.addEventListener("click", function(ev) { ev.stopPropagation(); _fermerTrackerModal(); });
-  header.appendChild(titleWrap);
-  header.appendChild(closeBtn);
-  box.appendChild(header);
-
-  // --- Bande de statut (suivi ON/OFF + distance + pas) ---
+// Bande de statut du modal Tracker (suivi ON/OFF + distance + pas).
+function _creerStatutSuivi() {
   const status = document.createElement("div");
   status.className = "kta-tracker-modal-status";
   // ⚠️ `isTracking` est local à initInterface() → hors de portée ici (scope
@@ -1387,21 +1370,84 @@ function _ouvrirTrackerModal(groupId) {
     pasEl.textContent = "👣 " + pas + " " + window.I18n.t("tracker.modal.steps");
     status.appendChild(pasEl);
   }
-  box.appendChild(status);
+  return status;
+}
+
+// 🚨 Q11 (audit 13/09/2026) : le chip 🧭 du footer promettait « cliquer pour
+// gérer » sans aucun gestionnaire. Exposé pour refonteInterface.js.
+window.ouvrirMenuTracker = function() { try { _ouvrirTrackerModal("tracker"); } catch(e) { console.warn("[Interface] menu tracker :", e); } };
+function _ouvrirTrackerModal(groupId) {
+  // Cohérence "1 menu à la fois" : ferme flyout + accordéon éventuels.
+  _fermerFlyout();
+  if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
+  _fermerTrackerModal();
+
+  const grp = _groupes[groupId];
+  if (!grp) return;
+  const cfg = grp.modal || _MODAL_TRACKER;
+  // 🧩 01/10/2026 — une tuile marquée `optionnel: "<cléAPP_CONFIG>"` n'apparaît
+  // que si l'utilisateur a activé la fonctionnalité (⚙️ › Fonctionnalités
+  // optionnelles). Filtré à chaque ouverture : la case agit sans recharger.
+  const baseActions = ((typeof grp.dynamicSousActions === "function")
+                        ? (grp.dynamicSousActions() || [])
+                        : (grp.sousActionsConfig || []).slice())
+    .filter(function(a) {
+      return !a.optionnel || !!(window.APP_CONFIG && window.APP_CONFIG[a.optionnel] === true);
+    });
+
+  const overlay = document.createElement("div");
+  overlay.className = "kta-tracker-modal-overlay";
+  overlay.addEventListener("click", function(ev) {
+    if (ev.target === overlay) _fermerTrackerModal();
+  });
+
+  const box = document.createElement("div");
+  box.className = "kta-tracker-modal-box";
+
+  // --- Header ---
+  // 🏷️ 14/09/2026 — id posé pour l'aide contextuelle : sans lui, rien ne
+  // pouvait désigner cette modale (elle est créée à la volée, sans identité).
+  overlay.id = cfg.id;
+  const header = document.createElement("div");
+  header.className = "kta-tracker-modal-header";
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "kta-tracker-modal-title";
+  const titleIcon = document.createElement("span");
+  titleIcon.textContent = cfg.icone;
+  const titleTxt = document.createElement("span");
+  titleTxt.textContent = window.I18n.t(cfg.titreCle);
+  titleWrap.appendChild(titleIcon);
+  titleWrap.appendChild(titleTxt);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "kta-tracker-modal-close";
+  closeBtn.title = window.I18n.t("ui.btn.close");
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", function(ev) { ev.stopPropagation(); _fermerTrackerModal(); });
+  header.appendChild(titleWrap);
+  header.appendChild(closeBtn);
+  box.appendChild(header);
+
+  // --- Bande de statut (suivi ON/OFF + distance + pas) — Tracker seulement ---
+  if (cfg.statut) box.appendChild(_creerStatutSuivi());
 
   // --- Corps : sections de tuiles ---
   const corps = document.createElement("div");
   corps.className = "kta-tracker-modal-body";
-  const suivi   = baseActions.filter(function(a) { return a.section === "suivi"; });
-  const outils  = baseActions.filter(function(a) { return a.section === "outils"; });
-  const urgence = baseActions.filter(function(a) { return a.cssClass === "kta-sous-action-urgence"; });
-  // Fallback robustesse : action sans section ni urgence → rangée en "outils"
-  // (évite qu'une option ajoutée sans `section` disparaisse du modal).
-  const classees = new Set([].concat(suivi, outils, urgence));
+  // Une section prend ses actions par `cssClass` (urgence) ou par `section`.
+  const parSection = cfg.sections.map(function(s) {
+    return baseActions.filter(function(a) {
+      return s.cssClass ? a.cssClass === s.cssClass : a.section === s.cle;
+    });
+  });
+  // Fallback robustesse : action rangée nulle part → section `defaut` ("outils"
+  // pour le Tracker), pour qu'une option ajoutée sans `section` ne disparaisse pas.
+  const classees = new Set([].concat.apply([], parSection));
   const autres = baseActions.filter(function(a) { return !classees.has(a); });
-  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionSuivi"), suivi);
-  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionOutils"), outils.concat(autres));
-  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionUrgence"), urgence);
+  cfg.sections.forEach(function(s, i) {
+    const actions = s.defaut ? parSection[i].concat(autres) : parSection[i];
+    _ajouterSectionTracker(corps, window.I18n.t(s.titreCle), actions);
+  });
   box.appendChild(corps);
 
   overlay.appendChild(box);
@@ -2301,18 +2347,25 @@ function initInterface() {
   // de création hors du mode carte", choix KARMA). Branche legacy supprimée
   // au cleanup v1.26.2.
 
-  // 5. ENREGISTRER
+  // 5. EXPORTER (id "save" conservé) — 15/10/2026 (audit ergonomique de
+  // l'export, décisions KARMA) : lanceur À TUILES sur le modèle du modal
+  // Tracker. Trois sections (Image / Session / Export externe), chaque tuile
+  // ouvre directement le bon écran : plus de fenêtre à onglets à parcourir.
+  // Le 2ᵉ argument `true` de ouvrirExportSessionModal = mode « solo » (sans
+  // barre d'onglets) ; le 3ᵉ `{ format }` présélectionne KMZ ou GPX.
+  function _ouvrirExportSession(onglet, opts) {
+    if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal(onglet, true, opts);
+    else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
+  }
   _creerGroupeAccordeon({
     id: "save",
     iconePrincipale: "⬆️",
     titre: window.I18n.t("ui.group.save"),
     position: "topleft",
+    useModal: true,
+    modal: _MODAL_EXPORT,
     sousActions: [
-      { icone: "💾", titre: window.I18n.t("ui.subaction.saveSession"), onClick: function() {
-          if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal();
-          else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
-        } },
-      { icone: "🖼️", titre: window.I18n.t("ui.subaction.exportImage"), onClick: function() {
+      { icone: "🖼️", titreCle: "export.lanceur.image", section: "image", onClick: function() {
           if (window.ouvrirExportModal) {
             window.ouvrirExportModal();
           } else if (window.telechargerPlan) {
@@ -2326,12 +2379,24 @@ function initInterface() {
         } },
       // 🆕 v1.10.3 : Export PDF imprimable A4/A3 portrait/paysage (via jsPDF).
       // Réutilise le canvas généré par exporter.js pour cohérence visuelle.
-      { icone: "📤", titre: window.I18n.t("ui.subaction.exportPdf"), onClick: function() {
+      { icone: "🖨️", titreCle: "export.lanceur.pdf", section: "image", onClick: function() {
           if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
             window.MyKTAMapPdfExport.afficherModale();
           } else {
             window.ktaAlerte(window.I18n.t("ui.alert.pdfIndispo"), { type: "erreur" });
           }
+        } },
+      { icone: "💾", titreCle: "export.lanceur.complet", section: "session", onClick: function() {
+          _ouvrirExportSession("full");
+        } },
+      { icone: "🎨", titreCle: "export.lanceur.avance", section: "session", onClick: function() {
+          _ouvrirExportSession("advanced");
+        } },
+      { icone: "🌍", titreCle: "export.lanceur.kmz", section: "externe", onClick: function() {
+          _ouvrirExportSession("extern", { format: "kmz" });
+        } },
+      { icone: "📍", titreCle: "export.lanceur.gpx", section: "externe", onClick: function() {
+          _ouvrirExportSession("extern", { format: "gpx" });
         } }
     ]
   });

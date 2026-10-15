@@ -5974,6 +5974,8 @@
   // (génération canvas du plan, async via Image() onload + toDataURL).
   // Caller `_handleExport` adapté pour gérer la Promise.
   async function genererRapportPDF(reportData) {
+    // 🔒 Verrou d'export de l'installation (plan dont l'export est interdit) : rien ne sort.
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return null;
     if (!reportData) return null;
     if (!window.jspdf || !window.jspdf.jsPDF) {
       _toast(t("secours.toast.pdfIndisponible"), "error");
@@ -6806,6 +6808,8 @@
   // les couches Vue OSM lors de la capture. Passé à _captureOsmCanvasForBriefing
   // via _drawBriefingSurfacePage.
   async function genererBriefingPompiersPDF(scenarioId, options) {
+    // 🔒 Verrou d'export de l'installation (plan dont l'export est interdit) : rien ne sort.
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return null;
     const s = get(scenarioId);
     if (!s) { _toast(t("secours.toast.scenarioIntrouvableAscii"), "error"); return null; }
     if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -7747,6 +7751,8 @@
   // exporter") : exporterPDF est désormais async pour générer un canvas du
   // plan + cropper la zone de chaque équipe avec overlay couleur + markers.
   async function exporterPDF(scenarioId) {
+    // 🔒 Verrou d'export de l'installation (plan dont l'export est interdit) : rien ne sort.
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return null;
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
       _toast(t("secours.toast.scenarioIntrouvable"), "error");
@@ -8336,6 +8342,8 @@
   // fetch HTTP) avant de la passer en GroundOverlay 60 % opacity. Pattern
   // strictement identique à sessionExporter.js:2906-2930.
   async function exporterKMZ(scenarioId) {
+    // 🔒 Verrou d'export de l'installation (plan dont l'export est interdit) : rien ne sort.
+    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return null;
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
       _toast(t("secours.toast.scenarioIntrouvable"), "error");

@@ -53,6 +53,12 @@
   // Mode "solo" : modale focalisée sur un seul onglet (barre masquée), ex. le
   // fusionneur ouvert depuis l'accueil via ouvrirExportSessionModal("fusion", true).
   let _soloTab = false;
+  // Titre de la modale en mode solo, par onglet.
+  const _TITRES_SOLO = {
+    full: "export.solo.full", advanced: "export.solo.advanced", extern: "export.solo.extern",
+    conversion: "export.solo.conversion", fusion: "tabledit.source.fusion"
+  };
+  let _onEchap = null; // écouteur Échap de la modale ouverte (retiré à toute fermeture)
 
   // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
   // le même calibrage GPS 2 points). Persisté côté localStorage pour
@@ -535,17 +541,28 @@
   }
 
   // ========== ENTRÉE PUBLIQUE ==========
-  window.ouvrirExportSessionModal = function(initialTab, solo) {
-    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
-    _injecterStyles();
-    if (_modal) { _modal.remove(); _modal = null; }
-    _filtre = { du: "", au: "", auteur: "" };
-    // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
+  // ouvrirExportSessionModal(initialTab, solo, opts)
+  //   initialTab  : "full" (défaut) | "advanced" | "extern" | "conversion" | "fusion"
+  //   solo        : true → un seul onglet, barre masquée, titre propre à l'onglet
+  //   opts.format : "kmz" | "gpx" → onglet extern ouvert sur ce format
+  // Conversion et Fusion n'ont plus d'onglet dans la barre (elles vivent dans l'Éditeur de données) :
+  // demandées, elles s'ouvrent toujours en solo.
+  window.ouvrirExportSessionModal = function(initialTab, solo, opts) {
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
-    _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
-    // solo = true → modale focalisée sur un seul onglet (barre d'onglets masquée
-    // + titre = libellé de l'onglet), ex. le fusionneur ouvert depuis l'accueil.
-    _soloTab = !!solo && TABS.indexOf(_activeTab) >= 0;
+    const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
+    // La Fusion n'exporte pas le plan affiché (elle fusionne des fichiers téléversés) : pas de verrou.
+    // Les autres onglets le gardent, Conversion comprise (son sens par défaut sort les données du plan).
+    if (tab !== "fusion") {
+      if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
+    }
+    _injecterStyles();
+    if (_modal) _fermer();
+    _filtre = { du: "", au: "", auteur: "" };
+    // initialTab optionnel (ex. "fusion" depuis l'Éditeur de données) ; défaut "full".
+    _activeTab = tab;
+    _soloTab = !!solo || tab === "conversion" || tab === "fusion";
+    const fmt = opts && opts.format;
+    if (fmt === "kmz" || fmt === "gpx") _externFormat = fmt;
     _afficherModal();
   };
 
@@ -800,15 +817,13 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_soloTab ? t("tabledit.source.fusion") : t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${_soloTab ? t(_TITRES_SOLO[_activeTab]) : t("export.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
 
         <div class="kta-ses-tabs"${_soloTab ? ' style="display:none;"' : ''}>
           <button class="kta-ses-tab" data-tab="full">${t("export.tab.full")}</button>
           <button class="kta-ses-tab" data-tab="advanced">${t("export.tab.advanced")}</button>
-          <button class="kta-ses-tab" data-tab="conversion">${t("export.tab.conversion")}</button>
-          <button class="kta-ses-tab" data-tab="fusion">${t("export.tab.fusion")}</button>
           <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
         </div>
 
@@ -824,20 +839,13 @@
     _modal = modal;
     _brancherFiltre(modal);
 
-    function fermer() {
-      if (_modal) _modal.remove();
-      _modal = null;
-    }
-
-    document.getElementById("kta-ses-close").addEventListener("click", fermer);
-    document.getElementById("kta-ses-cancel").addEventListener("click", fermer);
-    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
-    document.addEventListener("keydown", function onEsc(e) {
-      if (e.key === "Escape" && _modal) {
-        fermer();
-        document.removeEventListener("keydown", onEsc);
-      }
-    });
+    document.getElementById("kta-ses-close").addEventListener("click", _fermer);
+    document.getElementById("kta-ses-cancel").addEventListener("click", _fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+    // Un seul écouteur Échap, retiré par _fermer() quelle que soit la façon de fermer.
+    _detacherEchap();
+    _onEchap = function(e) { if (e.key === "Escape" && _modal) _fermer(); };
+    document.addEventListener("keydown", _onEchap);
 
     // Listeners onglets
     modal.querySelectorAll(".kta-ses-tab").forEach(function(tab) {
@@ -3184,9 +3192,15 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
+  function _detacherEchap() {
+    if (_onEchap) document.removeEventListener("keydown", _onEchap);
+    _onEchap = null;
+  }
+
   function _fermer() {
     if (_modal) _modal.remove();
     _modal = null;
+    _detacherEchap();
     // Reset de l'état de la conversion data2ed pour la prochaine ouverture
     _convUploadedJson = null;
     _convUploadedName = "";
