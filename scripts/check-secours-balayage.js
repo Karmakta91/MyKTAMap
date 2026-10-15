@@ -93,6 +93,16 @@ const continu = D.secteurs.every((x) => {
 });
 t("découpage : chaque secteur est d'un seul tenant", continu);
 
+// Plusieurs accès : chaque secteur reçoit le plus proche par les galeries.
+const D2a = SB.decouper(graph, { n: 2, departs: [{ x: 0, y: 0 }, { x: 300, y: 300 }] });
+t("accès : chaque secteur reçoit l'accès le plus proche de son germe", D2a.secteurs.length === 2 && D2a.secteurs.every((x) => {
+  const G = graph.nodes[x.germe];
+  const proche = Math.hypot(G.x, G.y) <= Math.hypot(G.x - 300, G.y - 300) ? 0 : 1;
+  return x.acces === proche;
+}), D2a.secteurs.map((x) => x.acces));
+t("accès : sans accès fourni, acces = −1", D.secteurs.every((x) => x.acces === 0) &&
+  SB.decouper(graph, { n: 2 }).secteurs.every((x) => x.acces === -1));
+
 // ---------- 3. Parcours complet ----------
 function couvreTout(res, idx) {
   const pas = new Set();

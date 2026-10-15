@@ -6752,6 +6752,78 @@
     }).filter(Boolean);
   }
 
+  // ─── C1 (15/10/2026, QCM KARMA) — DÉCOUPER EN SECTEURS ───
+  // N équipes « Secteur k » d'un coup : zone « tracés » (chaque tracé va au secteur
+  // qui en porte le plus), entrée = sortie = accès OUVERT le plus proche par les
+  // galeries, niveau = celui qui pèse le plus. Les équipes existantes ne sont jamais
+  // touchées. Un seul découpage sur tout le réseau, jonctions comprises (décision 1).
+  // Calcul : js/secoursBalayage.js (garde-fou check-secours-balayage.js).
+  async function _decouperEnSecteurs(sid) {
+    const s = get(sid);
+    if (!s || !window.SecoursBalayage || !window.Pathfinder) return;
+    const opts = { titre: t("secours.secteurs.titre"), okLabel: t("secours.secteurs.ok"),
+      nombre: { label: t("secours.secteurs.combien"), valeur: 6, min: 2, max: 20 } };
+    const msg = t("secours.secteurs.confirm") +
+      (s.groupes.length ? "\n\n" + t("secours.secteurs.existantes", { n: s.groupes.length }) : "");
+    if (!(await window.ktaConfirm(msg, opts))) return;
+    const n = Math.max(2, Math.min(20, Math.round(Number(opts.nombre.valeur) || 6)));
+    _toast(t("secours.secteurs.calcul"), "info");
+    await new Promise(function(r) { setTimeout(r, 30); });   // laisser le toast s'afficher
+    const SB = window.SecoursBalayage;
+    const graph = window.Pathfinder.buildNetworkGraph({ includeZones: true });
+    const acces = _poisAcces().filter(function(a) { return CRIT_FERMES.indexOf(a.tag) < 0; });
+    const D = SB.decouper(graph, { n: n, departs: acces.map(function(a) { return { x: a.p.x, y: a.p.y }; }) });
+    if (!D.secteurs.length) { _toast(t("secours.secteurs.aucun"), "warn"); return; }
+    const P = SB.pieces(graph);
+    // Chaque tracé → le secteur qui en porte la plus grande longueur.
+    const parTrace = {};
+    D.secteurs.forEach(function(x, si) {
+      x.pieces.forEach(function(pi) {
+        const k = _cleTrace(graph.segments[P[pi].seg].road);
+        if (!k) return;
+        const e = parTrace[k] = parTrace[k] || {};
+        e[si] = (e[si] || 0) + P[pi].len;
+      });
+    });
+    const traces = D.secteurs.map(function() { return []; });
+    Object.keys(parTrace).forEach(function(k) {
+      let best = -1, bl = -1;
+      Object.keys(parTrace[k]).forEach(function(si) { if (parTrace[k][si] > bl) { bl = parTrace[k][si]; best = Number(si); } });
+      if (best >= 0) traces[best].push(k);
+    });
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    D.secteurs.forEach(function(x, si) {
+      const parNiv = {};
+      x.pieces.forEach(function(pi) {
+        const l = graph.segments[P[pi].seg].level;
+        if (Number.isInteger(l)) parNiv[l] = (parNiv[l] || 0) + P[pi].len;
+      });
+      let niv = null, nl = -1;
+      Object.keys(parNiv).forEach(function(l) { if (parNiv[l] > nl) { nl = parNiv[l]; niv = Number(l); } });
+      const g = addGroupe(sid, t("secours.secteurs.nom", { n: si + 1 }), _mlvlActif() ? niv : null);
+      if (!g) return;
+      const a = x.acces >= 0 ? acces[x.acces] : null;
+      const point = function() {
+        return { x: a.p.x, y: a.p.y, level: Number.isInteger(a.p.level) ? a.p.level : niv,
+                 pointId: a.p.id || null, pointUid: a.p.uid || null, label: a.p.nom || null };
+      };
+      const partiel = { zoneType: "roads", zoneRoadIds: traces[si] };
+      if (a) { partiel.entree = point(); partiel.sortie = point(); }
+      updateGroupe(sid, g.id, partiel);
+    });
+    const fmt = function(px) { return (typeof window.formatDistance === "function") ? window.formatDistance(px / pxParM, 1) : Math.round(px / pxParM) + " m"; };
+    const lg = D.secteurs.map(function(x) { return x.longueur; });
+    const lignes = [t("secours.secteurs.fait", { n: D.secteurs.length,
+      min: fmt(Math.min.apply(null, lg)), max: fmt(Math.max.apply(null, lg)) })];
+    const hors = D.horsReseau.reduce(function(tt, i) { return tt + P[i].len; }, 0);
+    if (hors > 0) lignes.push(t("secours.secteurs.horsReseau", { long: fmt(hors) }));
+    if (!acces.length) lignes.push(t("secours.secteurs.sansAcces"));
+    else if (acces.length === 1) lignes.push(t("secours.secteurs.unAcces"));
+    _toast(lignes.join("\n"), lignes.length > 1 ? "warn" : "info");
+    if (_modal) _switchView("edit");
+    if (_overlayLayer) renderOverlay(sid);
+  }
+
   // ─── ACCÈS SURFACE (test terrain 30/09) ───
   // Les entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
   // [{ pt, nom, equipes: [g], entree: bool, sortie: bool }].
@@ -9035,12 +9107,19 @@
         'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
         t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
       : '';
+    // C1 (15/10/2026) — découpage du réseau en secteurs (une équipe par secteur).
+    const decoupeBtn = (window.SecoursBalayage && window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
+                        window.Pathfinder.aDesTraces())
+      ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="decouper-secteurs" ' +
+        'title="' + _escAttr(t("secours.secteurs.btnTitle")) + '">' + t("secours.secteurs.btn") + '</button>'
+      : '';
     html += '<details class="kta-secours-section" open>' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
                   autoMLVLBtn +
+                  decoupeBtn +
                   (s.groupes.length > 1
                     ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-toutes-equipes">' +
                         (s.groupes.every(function(g) { return _estRepliee(g.id); })
@@ -10791,6 +10870,9 @@
           _toast(t("secours.toast.equipesCreees", { n: levels.length }), "info");
           _switchView("edit");
         });
+      });
+      corps.querySelectorAll('[data-action="decouper-secteurs"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { _decouperEnSecteurs(s.id); });
       });
       // 🆕 v1.29.0 C2 — Multi-phases : handlers add-phase / edit-phase / delete-phase.
       // Présents en vue Edit (section "📋 Phases") ET en vue Live Op (footer ➕).

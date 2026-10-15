@@ -231,7 +231,8 @@
   }
 
   // ---------- Découpage en N secteurs ----------
-  // opts = { n, depart?: {x, y} }. Croissance équilibrée SUR LE GRAPHE : à chaque
+  // opts = { n, depart?: {x, y}, departs?: [{x, y}] (accès : les germes s'en écartent ;
+  // chaque secteur reçoit `acces` = index du plus proche par les galeries) }. Croissance équilibrée SUR LE GRAPHE : à chaque
   // pas, le secteur le moins chargé prend la pièce libre la plus proche de son
   // germe (secteurs continus par les galeries). Germes écartés au maximum
   // (le plus loin du départ, puis le plus loin des germes déjà posés).
@@ -245,10 +246,12 @@
     const incid = [];
     for (let i = 0; i < N; i++) incid.push([]);
     P.forEach(function(p, i) { incid[p.a].push(i); incid[p.b].push(i); });
-    const depart = (opts.depart && typeof opts.depart.x === "number") ? _nodeLePlusProche(graph, opts.depart)
-      : (P.length ? P[0].a : -1);
-    if (depart < 0 || !P.length) return { secteurs: [], horsReseau: P.map(function(_, i) { return i; }), total: 0 };
-    const d0 = _dijkstra(graph, [depart]).dist;
+    const pDeparts = (Array.isArray(opts.departs) && opts.departs.length) ? opts.departs
+      : (opts.depart && typeof opts.depart.x === "number") ? [opts.depart] : [];
+    const nDeparts = pDeparts.map(function(p) { return _nodeLePlusProche(graph, p); }).filter(function(n) { return n >= 0; });
+    if (!nDeparts.length && P.length) nDeparts.push(P[0].a);
+    if (!nDeparts.length || !P.length) return { secteurs: [], horsReseau: P.map(function(_, i) { return i; }), total: 0 };
+    const d0 = _dijkstra(graph, nDeparts).dist;
     // Germes : nœuds porteurs de pièces, atteignables.
     let germes = [];
     let minD = d0.slice();
@@ -295,11 +298,22 @@
       germes = nouveaux;
     }
     const secteurs = meilleur.secteurs, proprio = meilleur.proprio;
+    // Accès de chaque secteur : le plus proche de son germe, par les galeries.
+    const accesDe = secteurs.map(function() { return -1; });
+    if (pDeparts.length) {
+      const best = secteurs.map(function() { return Infinity; });
+      pDeparts.forEach(function(p, ai) {
+        const n = _nodeLePlusProche(graph, p);
+        if (n < 0) return;
+        const d = _dijkstra(graph, [n]).dist;
+        secteurs.forEach(function(x, si) { if (d[x.germe] < best[si]) { best[si] = d[x.germe]; accesDe[si] = ai; } });
+      });
+    }
     const horsReseau = [];
     proprio.forEach(function(o, i) { if (o === -1) horsReseau.push(i); });
     const total = P.reduce(function(t, p) { return t + p.len; }, 0);
     return {
-      secteurs: secteurs.map(function(x) { return { pieces: x.pieces, longueur: x.charge, germe: x.germe }; }),
+      secteurs: secteurs.map(function(x, si) { return { pieces: x.pieces, longueur: x.charge, germe: x.germe, acces: accesDe[si] }; }),
       horsReseau: horsReseau, total: total
     };
   }
