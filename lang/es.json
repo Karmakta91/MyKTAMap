@@ -563,6 +563,8 @@
   "export.lanceur.gpx": "GPX",
   "export.solo.full": "💾 Exportación completa",
   "export.solo.advanced": "🎨 Exportación avanzada",
+  "export.solo.kmz": "🌍 Exportación KMZ",
+  "export.solo.gpx": "📍 Exportación GPX",
   "export.solo.extern": "🌍 Exportación externa",
   "export.solo.conversion": "🔄 Conversión",
   "tabledit.source.conv": "🔄 Convertir sesión ↔ capas",

@@ -59,6 +59,9 @@
     conversion: "export.solo.conversion", fusion: "tabledit.source.fusion"
   };
   let _onEchap = null; // écouteur Échap de la modale ouverte (retiré à toute fermeture)
+  // 15/10/2026 (KARMA) — format KMZ / GPX déjà choisi par la tuile du lanceur : la fenêtre ne le redemande pas
+  // (pas de sélecteur de format) et son titre le nomme.
+  let _formatImpose = null;
 
   // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
   // le même calibrage GPS 2 points). Persisté côté localStorage pour
@@ -562,6 +565,7 @@
     _activeTab = tab;
     _soloTab = !!solo || tab === "conversion" || tab === "fusion";
     const fmt = opts && opts.format;
+    _formatImpose = (_soloTab && tab === "extern" && (fmt === "kmz" || fmt === "gpx")) ? fmt : null;
     if (fmt === "kmz" || fmt === "gpx") _externFormat = fmt;
     _afficherModal();
   };
@@ -817,7 +821,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_soloTab ? t(_TITRES_SOLO[_activeTab]) : t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${_soloTab ? t(_formatImpose ? "export.solo." + _formatImpose : _TITRES_SOLO[_activeTab]) : t("export.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
 
@@ -3446,8 +3450,8 @@
       // ===== Calibrage GPS commun =====
       _renderCalibrageCommun() +
 
-      // ===== Sélecteur de format =====
-      '<div class="kta-kmz-section">' +
+      // ===== Sélecteur de format (absent quand la tuile du lanceur l'a déjà choisi) =====
+      '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +
         '<div class="kta-kmz-section-titre">' + t("export.extern.outputTitle") + '</div>' +
         '<div class="kta-ses-format-pills" role="tablist">' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
