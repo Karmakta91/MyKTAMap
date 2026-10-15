@@ -516,7 +516,19 @@
       .kta-ses-filtre { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #2a3144; border-radius: 8px; }
       .kta-ses-filtre-titre { font-weight: 700; color: #f4c542; margin-bottom: 6px; font-size: 0.92em; }
       .kta-ses-filtre-ligne { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.9em; }
-      .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select { margin-left: 4px; }
+      /* 15/10/2026 (capture iPhone) : « Du » / « au » en noir sur fond sombre, dates et bouton en blanc natif. */
+      .kta-ses-filtre-ligne label { display: flex; align-items: center; gap: 6px; color: #c8d0e0; min-width: 0; }
+      .kta-ses-filtre-ligne input, .kta-ses-filtre-ligne select {
+        background: #0a0d18; color: #e8eaf0; border: 1px solid rgba(140,180,255,0.35); border-radius: 6px;
+        padding: 4px 6px; font: inherit; color-scheme: dark; min-width: 0; max-width: 100%; min-height: 30px;
+      }
+      .kta-ses-filtre-ligne input[type="date"] { width: 10em; }
+      .kta-ses-filtre-ligne .kta-ses-btn { padding: 6px 12px; }
+      body.kta-theme-light .kta-ses-filtre-ligne label, html.kta-theme-light .kta-ses-filtre-ligne label { color: #3a4254; }
+      body.kta-theme-light .kta-ses-filtre-ligne input, html.kta-theme-light .kta-ses-filtre-ligne input,
+      body.kta-theme-light .kta-ses-filtre-ligne select, html.kta-theme-light .kta-ses-filtre-ligne select {
+        background: #fff; color: #1a1f2e; border-color: rgba(0,0,0,0.2); color-scheme: light;
+      }
       .kta-ses-filtre-bilan { margin-top: 6px; font-size: 0.82em; color: #8892a4; }
     `;
     document.head.appendChild(s);
@@ -600,7 +612,7 @@
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
           '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
           (parAuteur ? '<label>' + window.ktaEsc(t("export.filtre.auteur")) + ' <select id="ses_filtre_auteur">' + optAuteurs + '</select></label>' : '') +
-          (_filtreActif() ? '<button type="button" class="kta-ses-btn" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
+          (_filtreActif() ? '<button type="button" class="kta-ses-btn kta-ses-btn-secondary" id="ses_filtre_raz">' + window.ktaEsc(t("export.filtre.raz")) + '</button>' : '') +
         '</div>' +
         '<div class="kta-ses-filtre-bilan">' + window.ktaEsc(_filtreActif()
           ? t("export.filtre.retenus", { n: retenus, total: tous.length }) : "") + '</div>' +
