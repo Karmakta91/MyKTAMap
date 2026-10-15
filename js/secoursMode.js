@@ -947,6 +947,11 @@
     if ("pointsCles" in partial && Array.isArray(partial.pointsCles)) {
       s.pointsCles = partial.pointsCles.slice();
     }
+    // 15/10/2026 — types de POI exclus de « ✨ POI de la zone » (chaînes courtes, 100 au plus)
+    if ("tagsExclusPoiZone" in partial && Array.isArray(partial.tagsExclusPoiZone)) {
+      s.tagsExclusPoiZone = partial.tagsExclusPoiZone.filter(function(x) { return typeof x === "string"; })
+        .map(function(x) { return x.slice(0, 60); }).slice(0, 100);
+    }
     if ("reglagesDuree" in partial && partial.reglagesDuree && typeof partial.reglagesDuree === "object") {
       const r = partial.reglagesDuree;
       s.reglagesDuree = {
@@ -2830,6 +2835,62 @@
   // Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la fenêtre
   // de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
   const BRANCARD_COCHES = ["eau", "remblais"];
+  // 15/10/2026 — « ✨ POI de la zone » : les types (tags) à exclure des étapes, avec leur
+  // nombre. Un POI reste s'il a au moins un type gardé ; sans type = « Sans type ». Le
+  // choix est gardé dans le scénario (s.tagsExclusPoiZone) pour toutes les équipes. Un
+  // seul type présent : pas de question.
+  function _demanderTagsPoiZone(s, candidats, onChoix) {
+    const cleDe = function(c) { return (c.tags && c.tags.length) ? c.tags.map(function(x) { return String(x || "").trim().toLowerCase(); }) : [""]; };
+    const compte = {};
+    candidats.forEach(function(c) { cleDe(c).forEach(function(k) { compte[k] = (compte[k] || 0) + 1; }); });
+    const tags = Object.keys(compte).sort(function(a, b) { return compte[b] - compte[a]; });
+    const exclus = Array.isArray(s.tagsExclusPoiZone) ? s.tagsExclusPoiZone : [];
+    const filtrer = function(ex) {
+      return candidats.filter(function(c) { return cleDe(c).some(function(k) { return ex.indexOf(k) < 0; }); });
+    };
+    if (tags.length < 2) { onChoix(filtrer(exclus)); return; }
+    const libelle = function(k) {
+      if (!k) return t("secours.poiZone.sansType");
+      return (window.I18n && window.I18n.has && window.I18n.has("editor.tag." + k)) ? t("editor.tag." + k) : k;
+    };
+    const old = document.getElementById("kta-secours-tags-modal");
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-tags-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">' + _escHtml(t("secours.poiZone.titre")) + '</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-form-hint">' + _escHtml(t("secours.poiZone.intro", { n: candidats.length })) + '</div>' +
+          tags.map(function(k) {
+            return '<label class="kta-secours-brancard-ligne"><input type="checkbox" data-tag="' + _escAttr(k) + '"' +
+              (exclus.indexOf(k) < 0 ? " checked" : "") + '> ' + _escHtml(libelle(k)) +
+              ' <span class="kta-tx-muted">(' + compte[k] + ')</span></label>';
+          }).join("") +
+          '<div class="kta-secours-form-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + _escHtml(t("secours.btn.annuler")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + _escHtml(t("secours.poiZone.ajouter")) + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    function _close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
+    overlay.querySelector('[data-action="confirm"]').addEventListener("click", function() {
+      const ex = [].slice.call(overlay.querySelectorAll("input[data-tag]")).filter(function(i) { return !i.checked; })
+        .map(function(i) { return i.getAttribute("data-tag"); });
+      _close();
+      updateScenario(s.id, { tagsExclusPoiZone: ex });
+      onChoix(filtrer(ex));
+    });
+  }
+
   function _demanderOptionsBrancard(onChoix) {
     const types = typeof window.getAvoidableZoneTypes === "function" ? (window.getAvoidableZoneTypes() || []) : [];
     const nbInacc = [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
@@ -3388,6 +3449,9 @@
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : [],
+      tagsExclusPoiZone: Array.isArray(sc.tagsExclusPoiZone)
+        ? sc.tagsExclusPoiZone.filter(function(x) { return typeof x === "string"; }).map(function(x) { return x.slice(0, 60); }).slice(0, 100)
+        : [],
       reglagesDuree: (sc.reglagesDuree && typeof sc.reglagesDuree === "object") ? {
         vitesseKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseKmh) || DUREE_DEFAUT.vitesseKmh)),
         vitesseApprocheKmh: Math.max(0.2, Math.min(8, Number(sc.reglagesDuree.vitesseApprocheKmh) || DUREE_DEFAUT.vitesseApprocheKmh)),
@@ -4809,6 +4873,7 @@
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
     // C1 (15/10/2026) — "court" (défaut : plus court chemin par les étapes) | "complet" | "ossature"
+    if ("approcheM" in partial) g.approcheM = (typeof partial.approcheM === "number" && partial.approcheM >= 0) ? partial.approcheM : null;
     if ("parcoursMode" in partial) {
       g.parcoursMode = (partial.parcoursMode === "complet" || partial.parcoursMode === "ossature") ? partial.parcoursMode : null;
     }
@@ -5024,6 +5089,30 @@
     }
   }
 
+  // Enveloppe d'une zone « tracés » (SecoursBalayage.enveloppe), mémorisée par zone :
+  // cellule 5 m, galeries voisines réunies jusqu'à 40 m, 12 m de marge.
+  const _enveloppes = {};
+  function _enveloppeZone(g, traces) {
+    if (!window.SecoursBalayage || typeof window.SecoursBalayage.enveloppe !== "function" || !traces.length) return [];
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const cle = g.id + "|" + pxParM + "|" + traces.map(_cleTrace).join(",");
+    if (_enveloppes[g.id] && _enveloppes[g.id].cle === cle) return _enveloppes[g.id].anneaux;
+    const segs = [];
+    traces.forEach(function(r) { for (let i = 1; i < r.points.length; i++) segs.push([r.points[i - 1], r.points[i]]); });
+    const anneaux = window.SecoursBalayage.enveloppe(segs, { cellule: 5 * pxParM, fermeture: 40 * pxParM, marge: 12 * pxParM });
+    _enveloppes[g.id] = { cle: cle, anneaux: anneaux };
+    return anneaux;
+  }
+  // Teinte plus foncée d'une couleur #rrggbb (f = part de noir).
+  function _assombrir(hex, f) {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || ""));
+    if (!m) return hex;
+    return "#" + [m[1], m[2], m[3]].map(function(h) {
+      const v = Math.round(parseInt(h, 16) * (1 - f));
+      return (v < 16 ? "0" : "") + v.toString(16);
+    }).join("");
+  }
+
   function _renderGroupeOverlay(g, couleur, s) {
     // 🆕 hotfix3 — Param `s` optionnel pour récupérer les étapes execution
     // et afficher les ✓ verts sur les waypoints effectués. Si s absent
@@ -5042,21 +5131,25 @@
       poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
       poly.addTo(_overlayLayer);
     }
-    // Zone roads — repère chaque road sélectionnée avec halo couleur équipe
+    // Zone roads — 15/10/2026 (KARMA) : un POLYGONE sous tout le secteur (enveloppe des
+    // galeries, couleur de l'équipe en transparence) et les galeries de la zone dans une
+    // teinte plus foncée, en une seule ligne (avant : un halo épais par galerie).
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-      _tracesZone(g).forEach(function(road) {
-        if (!road || !Array.isArray(road.points)) return;
-        const latlngs = road.points.map(_planToLatLng);
-        const halo = L.polyline(latlngs, {
-          color:   couleur,
-          weight:  10,
-          opacity: 0.55,
-          lineCap: "round",
-          lineJoin: "round"
+      const traces = _tracesZone(g).filter(function(r) { return r && Array.isArray(r.points) && r.points.length >= 2; });
+      const env = _enveloppeZone(g, traces);
+      if (env.length) {
+        const poly = L.polygon(env.map(function(r) { return [r.map(_planToLatLng)]; }), {
+          color: couleur, weight: 2, opacity: 0.8, fillColor: couleur, fillOpacity: 0.18, interactive: true
         });
-        halo.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
-        halo.addTo(_overlayLayer);
-      });
+        poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+        poly.addTo(_overlayLayer);
+      }
+      if (traces.length) {
+        L.polyline(traces.map(function(r) { return r.points.map(_planToLatLng); }), {
+          color: _assombrir(couleur, 0.35), weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round",
+          interactive: !env.length
+        }).bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" }).addTo(_overlayLayer);
+      }
     }
     // Entrée — marker circle vert avec halo couleur équipe
     if (g.entree && typeof g.entree.x === "number" && typeof g.entree.y === "number") {
@@ -10353,6 +10446,11 @@
       }
       if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
     }
+    // C1 — balayage : le trajet HORS des galeries de la zone (approche depuis une entrée
+    // extérieure, retour, passages de liaison) est compté à la vitesse d'approche.
+    if (geo && typeof geo.approcheM === "number" && geo.approcheM >= 0) {
+      approcheM = Math.min(distM, geo.approcheM); fouilleM = distM - approcheM;
+    }
     let raccordsM = 0;
     ((geo && geo.raccords) || []).forEach(function(rc) {
       raccordsM += ((Number(rc && rc.distPx) || 0) / pxParM) * ((rc && rc.role === "etape") ? 2 : 1);
@@ -10361,7 +10459,8 @@
            Math.max(0, (nbWaypoints || 0) - 2) * r.pauseMin;
   }
   function _geoDuree(g) {
-    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords };
+    return { g: g, path: g && g.itineraireSuggere, raccords: g && g.guidage && g.guidage.raccords,
+             approcheM: (_estBalayage(g) && typeof g.approcheM === "number") ? g.approcheM : undefined };
   }
 
   // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
@@ -12775,8 +12874,22 @@
     const carrefours = (typeof window.Pathfinder.carrefoursSurChemin === "function")
       ? window.Pathfinder.carrefoursSurChemin(graph, path) : [];
     const distM = r.longueur / pxParM;
-    const duree = Math.round(_dureeEquipeMin(s, distM, inter.length + 2, { g: g, path: path, raccords: raccords }));
-    const partiel = { itineraireSuggere: path, distanceM: distM, dureeEstimeeMin: duree,
+    // Approche = pas du circuit qui ne suivent pas une galerie de la zone (entrée hors
+    // zone, retour, liaisons entre deux bouts du secteur).
+    const P = window.SecoursBalayage.pieces(graph), dansZone = new Set();
+    pieces.forEach(function(i) {
+      const A = graph.nodes[P[i].a], B = graph.nodes[P[i].b];
+      dansZone.add(A.x + "," + A.y + "|" + B.x + "," + B.y); dansZone.add(B.x + "," + B.y + "|" + A.x + "," + A.y);
+    });
+    let approchePx = 0;
+    for (let i = 1; i < path.length; i++) {
+      if (!dansZone.has(path[i - 1].x + "," + path[i - 1].y + "|" + path[i].x + "," + path[i].y)) {
+        approchePx += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+      }
+    }
+    const approcheM = approchePx / pxParM;
+    const duree = Math.round(_dureeEquipeMin(s, distM, inter.length + 2, { g: g, path: path, raccords: raccords, approcheM: approcheM }));
+    const partiel = { itineraireSuggere: path, distanceM: distM, dureeEstimeeMin: duree, approcheM: approcheM,
                       guidage: { carrefours: carrefours, raccords: raccords, n: path.length } };
     const avant = (g.intermediaires || []).map(function(w) { return w && w.wid; }).join("|");
     if (inter.map(function(w) { return w && w.wid; }).join("|") !== avant) partiel.intermediaires = inter;
@@ -12972,6 +13085,7 @@
           pointId: p.id || null,
           pointUid: p.uid || null,   // 🆔 v2.4.0
           label:   p.nom || p.id || null,
+          tags:    Array.isArray(p.tags) ? p.tags : (p.tag ? [p.tag] : []),
           _d:      distFromEntree
         });
       });
@@ -12986,6 +13100,10 @@
         _toast(t("secours.toast.aucunPoiZone"), "info");
         return;
       }
+      // 15/10/2026 (KARMA : un plan couvert de plaques = des centaines d'étapes) — les types
+      // de POI à ne PAS prendre comme étapes, au choix, gardés par scénario.
+      _demanderTagsPoiZone(s, candidats, function(candidats) {
+      if (!candidats.length) { _toast(t("secours.toast.aucunPoiZone"), "info"); return; }
       // 🩸 29/09/2026 (audit Secours) — le commentaire promettait « greedy nearest
       // neighbor », le code triait par distance à l'ENTRÉE : l'équipe faisait des
       // allers-retours (mesuré sur 6 secteurs réels : +8 à +84 % de marche, ~+38 %
@@ -13003,6 +13121,7 @@
       updateGroupe(scenarioId, groupeId, { intermediaires: newIntermediaires });
       _toast(t("secours.toast.poiAjoutes", { n: candidats.length }), "info");
       _switchView("edit");
+      });
     }).catch(function(e) {
       console.warn("[SecoursMode] _ajouterPoisDansZone échoué :", e);
       _toast(t("secours.toast.erreurGenerique", { message: (e.message || e) }), "error");

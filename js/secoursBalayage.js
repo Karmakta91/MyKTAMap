@@ -472,5 +472,126 @@
     return { path: path, longueur: longueur, couvert: couvert, aCouvrir: aCouvrir, nbPieces: req.length };
   }
 
-  window.SecoursBalayage = { pieces: pieces, decouper: decouper, parcours: parcours };
+  // ---------- Enveloppe d'un ensemble de galeries ----------
+  // 15/10/2026 (KARMA : « un polygone sous toute la zone, pas chaque galerie ») — un
+  // contour qui couvre tout un secteur, pour la carte. Sur une grille : galeries
+  // tracées, élargies de `fermeture` (les galeries voisines se rejoignent), trous
+  // bouchés, puis rétrécies jusqu'à garder `marge` autour des galeries ; contour des
+  // cellules pleines, angles adoucis (Chaikin). segs = [[{x, y}, {x, y}], …] (pixels
+  // plan) ; opts = { cellule, fermeture, marge } (pixels plan). Rend des anneaux
+  // [[{x, y}, …], …] — un par morceau séparé.
+  function enveloppe(segs, opts) {
+    opts = opts || {};
+    if (!Array.isArray(segs) || !segs.length) return [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    segs.forEach(function(s) { s.forEach(function(p) {
+      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+    }); });
+    let c = Math.max(1, opts.cellule || 10), R, M, W, H, pad;
+    for (;;) {   // grille bornée à ~2 M de cellules : au-delà, cellules plus grosses
+      R = Math.max(1, Math.round((opts.fermeture || 4 * c) / c));
+      M = Math.max(0, Math.min(R, Math.round((opts.marge || c) / c)));
+      pad = (R + 2) * c;
+      W = Math.ceil((maxX - minX + 2 * pad) / c) + 1;
+      H = Math.ceil((maxY - minY + 2 * pad) / c) + 1;
+      if (W * H <= 2e6) break;
+      c *= 1.5;
+    }
+    const ox = minX - pad, oy = minY - pad;
+    let g = new Uint8Array(W * H);
+    segs.forEach(function(s) {
+      const a = s[0], b = s[1], L = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.ceil(L / (c / 2)));
+      for (let k = 0; k <= n; k++) {
+        const x = a.x + (b.x - a.x) * k / n, y = a.y + (b.y - a.y) * k / n;
+        g[Math.floor((y - oy) / c) * W + Math.floor((x - ox) / c)] = 1;
+      }
+    });
+    // Dilatation carrée de rayon r (deux passes à fenêtre glissante).
+    const dilater = function(src, r) {
+      const tmp = new Uint8Array(W * H), out = new Uint8Array(W * H);
+      for (let j = 0; j < H; j++) {
+        let cpt = 0;
+        for (let i = -r; i < W; i++) {
+          const e = i + r; if (e < W && src[j * W + e]) cpt++;
+          const s0 = i - r - 1; if (s0 >= 0 && src[j * W + s0]) cpt--;
+          if (i >= 0) tmp[j * W + i] = cpt > 0 ? 1 : 0;
+        }
+      }
+      for (let i = 0; i < W; i++) {
+        let cpt = 0;
+        for (let j = -r; j < H; j++) {
+          const e = j + r; if (e < H && tmp[e * W + i]) cpt++;
+          const s0 = j - r - 1; if (s0 >= 0 && tmp[s0 * W + i]) cpt--;
+          if (j >= 0) out[j * W + i] = cpt > 0 ? 1 : 0;
+        }
+      }
+      return out;
+    };
+    g = dilater(g, R);
+    // Trous bouchés : tout vide non relié au bord devient plein.
+    const ext = new Uint8Array(W * H), file = [];
+    for (let i = 0; i < W; i++) { file.push(i, (H - 1) * W + i); }
+    for (let j = 0; j < H; j++) { file.push(j * W, j * W + W - 1); }
+    while (file.length) {
+      const k = file.pop();
+      if (ext[k] || g[k]) continue;
+      ext[k] = 1;
+      const i = k % W, j = (k - i) / W;
+      if (i > 0) file.push(k - 1); if (i < W - 1) file.push(k + 1);
+      if (j > 0) file.push(k - W); if (j < H - 1) file.push(k + W);
+    }
+    for (let k = 0; k < W * H; k++) g[k] = ext[k] ? 0 : 1;
+    // Érosion de R − M (= dilatation du vide) : il reste M cellules autour des galeries.
+    if (R - M > 0) {
+      const inv = new Uint8Array(W * H);
+      for (let k = 0; k < W * H; k++) inv[k] = g[k] ? 0 : 1;
+      const d = dilater(inv, R - M);
+      for (let k = 0; k < W * H; k++) g[k] = d[k] ? 0 : 1;
+    }
+    // Contour : arêtes des cellules pleines au bord d'une vide, orientées (plein à droite).
+    const plein = function(i, j) { return i >= 0 && j >= 0 && i < W && j < H && g[j * W + i] === 1; };
+    const V = function(i, j) { return j * (W + 1) + i; };
+    const suivants = new Map();
+    const arete = function(a, b) { let l = suivants.get(a); if (!l) suivants.set(a, l = []); l.push(b); };
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      if (!plein(i, j)) continue;
+      if (!plein(i, j - 1)) arete(V(i, j), V(i + 1, j));
+      if (!plein(i + 1, j)) arete(V(i + 1, j), V(i + 1, j + 1));
+      if (!plein(i, j + 1)) arete(V(i + 1, j + 1), V(i, j + 1));
+      if (!plein(i - 1, j)) arete(V(i, j + 1), V(i, j));
+    }
+    const pt = function(v) { const i = v % (W + 1); return { x: ox + i * c, y: oy + ((v - i) / (W + 1)) * c }; };
+    const anneaux = [];
+    suivants.forEach(function(l, depart) {
+      while (l.length) {
+        const sommets = [depart];
+        let v = l.pop();
+        while (v !== depart) {
+          sommets.push(v);
+          const n = suivants.get(v);
+          if (!n || !n.length) break;
+          v = n.pop();
+        }
+        if (sommets.length < 4) continue;
+        // Points alignés retirés, puis angles adoucis (deux passes de Chaikin).
+        let r = sommets.map(pt).filter(function(p, k, a) {
+          const A = a[(k - 1 + a.length) % a.length], B = a[(k + 1) % a.length];
+          return (p.x - A.x) * (B.y - p.y) - (p.y - A.y) * (B.x - p.x) !== 0;
+        });
+        for (let it = 0; it < 2 && r.length >= 3; it++) {
+          const nr = [];
+          r.forEach(function(p, k) {
+            const q = r[(k + 1) % r.length];
+            nr.push({ x: 0.75 * p.x + 0.25 * q.x, y: 0.75 * p.y + 0.25 * q.y });
+            nr.push({ x: 0.25 * p.x + 0.75 * q.x, y: 0.25 * p.y + 0.75 * q.y });
+          });
+          r = nr;
+        }
+        if (r.length >= 3) anneaux.push(r);
+      }
+    });
+    return anneaux;
+  }
+
+  window.SecoursBalayage = { pieces: pieces, decouper: decouper, parcours: parcours, enveloppe: enveloppe };
 })();

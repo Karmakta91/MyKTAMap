@@ -158,6 +158,26 @@ const S0 = D.secteurs[0];
 const RS = SB.parcours(graph, S0.pieces, { depart: depart, mode: "complet" });
 t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(RS, S0.pieces).length === 0);
 
+// ---------- 6 ter. Enveloppe d'un secteur (carte) ----------
+{
+  const dedans = (p, r) => {
+    let c = false;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      if ((r[i].y > p.y) !== (r[j].y > p.y) && p.x < (r[j].x - r[i].x) * (p.y - r[i].y) / (r[j].y - r[i].y) + r[i].x) c = !c;
+    }
+    return c;
+  };
+  const grille = roads.slice(0, 8).map((r) => [r.points[0], r.points[1]]);
+  const env = SB.enveloppe(grille, { cellule: 5, fermeture: 40, marge: 12 });
+  t("enveloppe : un seul polygone pour un réseau d'un seul tenant", env.length === 1, env.length);
+  t("enveloppe : couvre chaque galerie (milieux et extrémités dedans)", env.length === 1 && grille.every((s) =>
+    [s[0], s[1], { x: (s[0].x + s[1].x) / 2, y: (s[0].y + s[1].y) / 2 }].some((p) => dedans(p, env[0]))));
+  t("enveloppe : pas de trou au milieu d'une maille (polygone plein)", env.length === 1 && dedans({ x: 150, y: 150 }, env[0]));
+  t("enveloppe : ne déborde pas au loin (un point à 200 m est dehors)", env.length === 1 && !dedans({ x: 500, y: 150 }, env[0]));
+  const deux = SB.enveloppe(grille.concat([[{ x: 900, y: 900 }, { x: 1000, y: 900 }]]), { cellule: 5, fermeture: 40, marge: 12 });
+  t("enveloppe : un bout éloigné fait un second polygone", deux.length === 2, deux.length);
+}
+
 // ---------- 6 bis. Câblage dans l'app (décisions 3:a et 4:a) ----------
 {
   const SM = fs.readFileSync(path.join(ROOT, "js/secoursMode.js"), "utf8");
@@ -170,6 +190,15 @@ t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(
     /Array\.isArray\(sec\.balayage\)[\s\S]{0,2600}rj\.path\.concat\(B\.slice\(k \+ 1\)\)[\s\S]{0,1400}return;\s*\}\s*const result = await/.test(II));
   t("la progression sur le circuit est notée pendant la marche", SM.includes("if (pos) _avancerBalayage(road, pos);"));
   t("les étapes sont remises dans l'ordre du circuit", SM.includes("partiel.intermediaires = inter;"));
+  t("balayage : l'approche (hors galeries de la zone) compte à la vitesse d'approche, y compris au recalcul des durées",
+    SM.includes("{ g: g, path: path, raccords: raccords, approcheM: approcheM }") &&
+    /approcheM: \(_estBalayage\(g\) && typeof g\.approcheM === "number"\)/.test(SM) &&
+    /if \(geo && typeof geo\.approcheM === "number"/.test(SM));
+  t("zone « tracés » sur la carte : un polygone sous tout le secteur + galeries plus foncées",
+    SM.includes("const env = _enveloppeZone(g, traces);") && SM.includes("color: _assombrir(couleur, 0.35)"));
+  t("« ✨ POI de la zone » : types exclus demandés, gardés par scénario, relus à l'import",
+    SM.includes("_demanderTagsPoiZone(s, candidats, function(candidats) {") &&
+    SM.includes("updateScenario(s.id, { tagsExclusPoiZone: ex });") && SM.includes("tagsExclusPoiZone: Array.isArray(sc.tagsExclusPoiZone)"));
 }
 
 // ---------- 7. Tenue en charge ----------
