@@ -16,8 +16,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.15.1` (12/10/2026)
+## 📦 Version courante — `v2.16.0` (15/10/2026)
 
+> 🚑 **v2.16.0 — Secteurs de secours, KMZ sur téléphone** : Mode Secours, « 🧹 Découper en secteurs » (une équipe par secteur équilibré, accès le plus proche, zone dessinée en polygone) et parcours de balayage (chaque galerie de la zone, ossature sans culs-de-sac, guidage qui rejoint le circuit) ; « ✨ POI de la zone » avec types exclus ; KMZ « Grandes images » (mosaïque ≤ 4 096 px) lisible par Google Earth sur iPhone, tuiles nommées ; tuiles du tracker à trois états ; plan illisible du stockage iOS relu ; prises d'extension `alertes`, `profilJeu`, `profilStats`, `I18n.ajouter` ; splash sans « 2 ».
+>
 > 🗺️ **v2.15.1 — Vue OSM sur iPhone, ajout par dossier** : plans qui disparaissaient pendant le glissé de la carte sur iPhone (sous-calque des tuiles sans z-index négatif) ; menu « Ajouter un plan » rangé par dossier + « Ajouter tout le dossier » ; image déposée sur « Ajouter un plan » → Générateur sur l'étape Nom ; domaine de dev retiré du README et de l'audit ; smoke/checkups réparés et repli Edge ; porte Sonar (expressions à retour arrière, nettoyeur HTML de la prise aide).
 >
 > ✨ **v2.15.0 — Interface allégée** : ~60 % des paragraphes d'explication retirés des fenêtres (168 clés en moins par dico, détail dans le Guide) ; rubriques repliables dans ⚙️ Configuration de l'accueil ; « Précharger le ZIP » → « 💾 Mémoriser les plans dans l'app » ; espagnol harmonisé sur « mapa » ; photos (réimport qui fusionne, fiche du point dans le ZIP, limite de 5 au rattachement), analyse d'un plan sans charger son archive, export image d'un plan tuilé depuis ses tuiles ; noms réels neutralisés dans le dépôt public ; smoke et checkups réparés (CSP, repli Edge).
@@ -581,6 +583,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.16.0 (15/10/2026) — Secteurs de secours, KMZ sur téléphone (branche `Karma_dev`)
+
+Bump demandé par KARMA (« go bump »), après un merge `main` parti sans bump (code en prod sous l'étiquette v2.15.1, cache des téléphones non renouvelé, aucune release créée) : ce bump renouvelle le cache et crée la release.
+
+- **Mode Secours — secteurs et balayage (lot C1 de l'audit Secours)** (`fbbfd3c`, `3edb588`, `dc0284e`, `3179980`) : moteur `js/secoursBalayage.js` (pièces de galerie, découpage équilibré et d'un seul tenant, parcours en circuit eulérien, enveloppe de zone) ; « 🧹 Découper en secteurs » ; mode « Parcours » par équipe (plus court chemin, balayage complet, ossature) ; guidage qui rejoint le circuit après un écart (progression notée pendant la marche) ; zone « tracés » dessinée en polygone, galeries plus foncées ; « ✨ POI de la zone » avec types à exclure gardés par scénario ; approche comptée à sa vitesse. Garde-fou `check-secours-balayage.js`. Mesuré sur un plan réel : 100 % de chaque secteur parcouru, ≤ 1 s par parcours.
+- **Export KMZ** (`b9257ea`, `6e6e190`, `c087f77`, `8df3eee`) : `doc.kml` en premier, images non recompressées ; « Grandes images (Google Earth mobile) » : mosaïque d'images ≤ 4 096 px sans Region/Lod, netteté 1 / 4 / 16 images — les 2 177 tuiles du superoverlay ne s'affichaient pas sur iPhone ; tuiles nommées et rangées par niveau de détail.
+- **Extensions** (`8940a11`, `61469a6`, `0c259bf`, `75662df`, `4dbe96a`, `edeac2a`, `adc7eb3`) : prises `profilJeu`, `alertes`, `profilStats`, présences (repère et couleur par personne, masquer une personne), `I18n.ajouter`.
+- **Correctifs** : tuiles du tracker à trois états (`47226b3`) ; Générateur Simple / Avancé après « Charger un plan » (`bba32c0`) ; plan de l'installation via « Changer de plan » et les liaisons (`5bf82ea`, `3ef6560`) ; plan gardé illisible relu sur iOS (`1d9484b`) ; alerte arrivée pendant une autre (`1e5d151`) ; toast regroupé sans doublon (`3098c05`) ; vide sous « Prêt à déclencher » sur téléphone (`944da2e`) ; croix du plein écran OSM (`aa46031`).
+- **Qualité** : échappeur unique `window.ktaEsc` (`41d144b`), dettes CSS et garde-fou du guidage (`698e6cc`), alertes Sonar du code nouveau (`20882f3`, `c3851c6`) ; splash sans « 2 » (`11ccd60`), gate sans phrase de licence (`1a5ed4f`).
 
 #### v2.15.1 (12/10/2026) — Vue OSM sur iPhone, ajout par dossier (branche `Karma_dev`)
 

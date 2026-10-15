@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.16.0 (secteurs du Mode Secours, KMZ pour Google Earth mobile)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Le découpage en secteurs et les parcours de balayage du Mode Secours sont calculés sur l'appareil, à partir du plan déjà chargé. L'export KMZ « Grandes images » assemble ses images dans le navigateur et les range dans le fichier téléchargé, sans rien envoyer. Les nouvelles prises d'extension (alertes, statistiques du profil, dictionnaires) ne font rien sans extension installée.
+
 ### v2.15.1 (plans de la Vue OSM sur iPhone, ajout par dossier)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Affichage seulement : les plans de la Vue OSM ne disparaissent plus pendant qu'on déplace la carte sur iPhone, et le menu d'ajout de plans se range par dossier. Une image déposée sur « Ajouter un plan » ouvre le Générateur sur l'appareil, sans rien envoyer.
