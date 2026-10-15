@@ -1670,5 +1670,12 @@ circuit après un écart ; étapes saisies réordonnées, aucune étape automati
   (pénalité 0,02 × avance), plus court chemin jusqu'à lui, puis la suite du circuit.
 - **Mesuré** (plan réel, headless) : 6 secteurs de 12,6 à 17,1 km (écart 1,35), 100 % de chaque secteur
   parcouru, 24,6 à 29,3 km de marche par secteur, calcul ≤ 1 s par parcours.
+- **Carte** : une zone « tracés » est dessinée par `_enveloppeZone` (`SecoursBalayage.enveloppe` : grille de 5 m,
+  galeries réunies jusqu'à 40 m, trous bouchés, 12 m de marge, Chaikin ; mémo par zone) en polygone sous le secteur,
+  ses galeries en une ligne `_assombrir(couleur, 0.35)`.
+- **« ✨ POI de la zone »** : `_demanderTagsPoiZone` liste les types présents (un POI reste s'il garde au moins un
+  type) ; choix dans `s.tagsExclusPoiZone` (`updateScenario`, relu à l'import).
+- **Durée** : `g.approcheM` (pas du circuit hors des pièces de la zone) passe à `_dureeEquipeMin` (`geo.approcheM`),
+  aussi via `_geoDuree` pour les recalculs.
 - **Garde-fou** `scripts/check-secours-balayage.js` (pre-commit, CI) : vrai moteur sur un réseau fictif (boucles,
   culs-de-sac, puits, bout isolé) + câblage dans `secoursMode.js` / `interfaceItineraire.js`.

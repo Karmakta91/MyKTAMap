@@ -1,9 +1,9 @@
 {
-  "version": "v2.15.1",
-  "released": "2026-10-12",
+  "version": "v2.16.0",
+  "released": "2026-10-15",
   "notes": [
-    "🗺️ Vue OSM : sur iPhone, les plans ne disparaissent plus quand tu déplaces ou zoomes la carte, et tu peux afficher tous les plans d'un dossier d'un coup.",
-    "🖼️ Dépose une image (.jpg, .png) sur « Ajouter un plan » : le Générateur s'ouvre, il ne reste qu'à nommer le plan.",
-    "🌍 Export KMZ : un grand plan s'affiche enfin dans Google Earth sur téléphone (case « Grandes images », netteté au choix) ; sur ordinateur, les tuiles sont nommées et rangées par niveau de détail."
+    "🚑 Mode Secours : « Découper en secteurs » partage les galeries en secteurs équilibrés, une équipe chacun, et chaque équipe peut balayer toute sa zone, culs-de-sac compris ; si tu t'écartes, le guidage te ramène sur le circuit.",
+    "🌍 Export KMZ : un grand plan s'affiche enfin dans Google Earth sur téléphone (case « Grandes images », netteté au choix).",
+    "🧭 Et aussi : les boutons du tracker montrent leur état (vert en route, orange en pause, grisé si coupé), et un plan devenu illisible dans le stockage de l'iPhone s'ouvre quand même."
   ]
 }
