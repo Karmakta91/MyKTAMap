@@ -158,6 +158,20 @@ const S0 = D.secteurs[0];
 const RS = SB.parcours(graph, S0.pieces, { depart: depart, mode: "complet" });
 t("secteur : tout le secteur est parcouru, approche comprise", RS && couvreTout(RS, S0.pieces).length === 0);
 
+// ---------- 6 bis. Câblage dans l'app (décisions 3:a et 4:a) ----------
+{
+  const SM = fs.readFileSync(path.join(ROOT, "js/secoursMode.js"), "utf8");
+  const II = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
+  t("🩸 une équipe en balayage n'est pas recalculée en plus court chemin (sync et à l'export)",
+    SM.includes("if (_estBalayage(g)) return _appliquerBalayage(") &&
+    SM.includes("if (_estBalayage(g)) { resolve(!!_appliquerBalayage("));
+  t("« Suivre mon parcours » emporte le circuit pour le guidage", SM.includes("road.secours.balayage = points.map"));
+  t("🩸 après un écart, le guidage REJOINT le circuit et en garde la suite (pas de plus court chemin)",
+    /Array\.isArray\(sec\.balayage\)[\s\S]{0,2600}rj\.path\.concat\(B\.slice\(k \+ 1\)\)[\s\S]{0,1400}return;\s*\}\s*const result = await/.test(II));
+  t("la progression sur le circuit est notée pendant la marche", SM.includes("if (pos) _avancerBalayage(road, pos);"));
+  t("les étapes sont remises dans l'ordre du circuit", SM.includes("partiel.intermediaires = inter;"));
+}
+
 // ---------- 7. Tenue en charge ----------
 {
   const big = [];

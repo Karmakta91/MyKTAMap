@@ -1116,7 +1116,7 @@ window.itineraireActiverRoad = function(newRoad, opts) {
 
 window.itineraireReplanifierDepuis = function(px, py) {
   if (typeof px !== "number" || typeof py !== "number") return;
-  _replanifierDepuis(px, py);
+  return _replanifierDepuis(px, py);   // la promesse : un appelant peut attendre le nouveau tracé
 };
 
 async function _replanifierDepuis(px, py) {
@@ -1150,6 +1150,42 @@ async function _replanifierDepuis(px, py) {
     // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
     const sec = road.secours || null;
     const evC = road.evacuation && road.evacuation.contraintes;
+    // 🧹 15/10/2026 (Secours C1, décision KARMA 3:a) — un parcours de BALAYAGE n'est pas
+    // remplacé par un plus court chemin (qui sauterait boucles et culs-de-sac) : on
+    // rejoint le circuit plus loin, puis on le suit. Point visé : à partir de la progression
+    // notée pendant la marche (secoursMode > _avancerBalayage), le plus proche de la position,
+    // légèrement pénalisé par l'avance sur le circuit (à distance égale, le plus tôt).
+    if (sec && Array.isArray(sec.balayage) && sec.balayage.length > 1 && !evC) {
+      const B = sec.balayage;
+      const deb = Number.isInteger(sec.balayageIdx) ? Math.min(sec.balayageIdx, B.length - 1) : 0;
+      let k = deb, best = Infinity, cumul = 0;
+      for (let i = deb; i < B.length; i++) {
+        if (i > deb) cumul += Math.hypot(B[i].x - B[i - 1].x, B[i].y - B[i - 1].y);
+        const score = Math.hypot(B[i].x - px, B[i].y - py) + 0.02 * cumul;
+        if (score < best) { best = score; k = i; }
+      }
+      const rj = await _withItiComputeLoader(function() {
+        return window.Pathfinder.computeRoute([origin, { x: B[k].x, y: B[k].y, level: B[k].level }],
+          { avoidPoints: sec.avoidPoints || [], avoidRadius: sec.avoidRadius || 30 });
+      });
+      const chemin = rj.path.concat(B.slice(k + 1));
+      const graphe = window.Pathfinder.buildNetworkGraph({ includeZones: true });
+      const resB = { path: chemin, raccords: rj.raccords || [],
+        carrefours: window.Pathfinder.carrefoursSurChemin ? window.Pathfinder.carrefoursSurChemin(graphe, chemin) : [] };
+      const roadB = Object.assign({
+        type: "itinerary", points: chemin,
+        waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); })),
+        secours: Object.assign({}, sec, { balayageIdx: k })
+      }, _champsGuidage(resB));
+      const autres = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+      autres.push(roadB);
+      if (window.setRoads) window.setRoads(autres);
+      _itineraryWaypoints = roadB.waypoints.map(function(w) { return Object.assign({}, w); });
+      _redessinerWaypoints();
+      _majLabelDistanceItineraire();
+      console.log("[Itineraire] Balayage rejoint au point " + k + "/" + B.length);
+      return;
+    }
     const result = await _withItiComputeLoader(function() {
       if (evC) return window.Pathfinder.computeRoute([origin].concat(restantes), _optsEvitement(avoidPrefs, evC));
       return window.Pathfinder.computeRoute([origin].concat(restantes), {

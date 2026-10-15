@@ -2637,6 +2637,11 @@
       raccords: (gd && gd.raccords) || [], carrefours: (gd && gd.carrefours) || [],
       secours: { scenarioId: sid, equipeId: gid, avoidPoints: avoidPoints, avoidRadius: 30 }
     };
+    // C1 : parcours de balayage → le guidage le garde (un écart le fait rejoindre plus loin).
+    if (_estBalayage(g)) {
+      road.secours.balayage = points.map(function(p) { return { x: p.x, y: p.y, level: p.level }; });
+      road.secours.balayageIdx = 0;
+    }
     window.itineraireActiverRoad(road, { confirmer: true, onDone: function() {
       fermer();   // la carte, le bandeau de guidage — la zone reste affichée
       _toast(t("secours.suivre.lance"), "info");
@@ -2663,6 +2668,24 @@
     });
     if (change && typeof window.setRoads === "function") window.setRoads(window.getRoads());
   }
+  // C1 — progression sur un parcours de BALAYAGE : le point du circuit atteint (à 15 m
+  // près, dans les 400 m qui suivent ; à égalité, le plus tôt — un cul-de-sac repasse
+  // par les mêmes points à l'aller et au retour). Sert au recalcul après un écart, qui
+  // repart d'ici au lieu du début (interfaceItineraire > _replanifierDepuis).
+  function _avancerBalayage(road, pos) {
+    const sec = road && road.secours;
+    if (!sec || !Array.isArray(sec.balayage) || sec.balayage.length < 2) return;
+    const B = sec.balayage;
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const i0 = Number.isInteger(sec.balayageIdx) ? sec.balayageIdx : 0;
+    let cumul = 0, best = -1, bd = 15 * pxParM;
+    for (let i = i0; i < B.length && cumul <= 400 * pxParM; i++) {
+      if (i > i0) cumul += Math.hypot(B[i].x - B[i - 1].x, B[i].y - B[i - 1].y);
+      const d = Math.hypot(B[i].x - pos.x, B[i].y - pos.y);
+      if (d < bd - 2 * pxParM || (best < 0 && d <= bd)) { bd = d; best = i; }
+    }
+    if (best > i0) sec.balayageIdx = best;
+  }
   // 4:a — arrivée sur la prochaine étape : un toast, et la vue live s'ouvrira dessus.
   let _veilleArriveeId = null;
   const _arriveesNotifiees = {};
@@ -2676,6 +2699,7 @@
     if (!(typeof window.getTrackingActif === "function" && window.getTrackingActif())) return;
     const pos = window.getTrackingPosition && window.getTrackingPosition();
     const s = get(road.secours.scenarioId);
+    if (pos) _avancerBalayage(road, pos);
     if (!pos || !s || !_estExecutionActive(s)) return;
     const prochain = (road.waypoints || []).find(function(w) { return w.source === "secours" && !w.done; });
     if (!prochain || !prochain.wid || _arriveesNotifiees[prochain.wid]) return;
@@ -4784,6 +4808,10 @@
     if ("zoneType" in partial) g.zoneType = partial.zoneType;  // "polygon"|"roads"|null
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
+    // C1 (15/10/2026) — "court" (défaut : plus court chemin par les étapes) | "complet" | "ossature"
+    if ("parcoursMode" in partial) {
+      g.parcoursMode = (partial.parcoursMode === "complet" || partial.parcoursMode === "ossature") ? partial.parcoursMode : null;
+    }
     if ("itineraireSuggere" in partial) g.itineraireSuggere = partial.itineraireSuggere;
     if ("guidage" in partial) g.guidage = partial.guidage;   // B1 : carrefours / raccords du calcul
     if ("distanceM" in partial) g.distanceM = partial.distanceM;
@@ -6807,9 +6835,10 @@
         return { x: a.p.x, y: a.p.y, level: Number.isInteger(a.p.level) ? a.p.level : niv,
                  pointId: a.p.id || null, pointUid: a.p.uid || null, label: a.p.nom || null };
       };
-      const partiel = { zoneType: "roads", zoneRoadIds: traces[si] };
+      const partiel = { zoneType: "roads", zoneRoadIds: traces[si], parcoursMode: "complet" };
       if (a) { partiel.entree = point(); partiel.sortie = point(); }
       updateGroupe(sid, g.id, partiel);
+      if (a) _appliquerBalayage(sid, g.id, { silencieux: true });
     });
     const fmt = function(px) { return (typeof window.formatDistance === "function") ? window.formatDistance(px / pxParM, 1) : Math.round(px / pxParM) + " m"; };
     const lg = D.secteurs.map(function(x) { return x.longueur; });
@@ -9296,6 +9325,14 @@
                   _renderParcoursSection(g) +
                   _htmlInfoEquipeExt(scenario.id, g.id) +
                   _htmlActionsExt({ scenarioId: scenario.id, vue: "edition", equipeId: g.id }) +
+                  // C1 (15/10/2026) — mode de parcours : plus court chemin ou balayage de la zone.
+                  '<label class="kta-secours-parcours-mode">' + t("secours.balayage.label") + ' ' +
+                    '<select data-action="parcours-mode" data-gid="' + _escAttr(g.id) + '">' +
+                      ['court', 'complet', 'ossature'].map(function(m) {
+                        return '<option value="' + m + '"' + ((g.parcoursMode || "court") === m ? ' selected' : '') + '>' +
+                               t("secours.balayage.mode." + m) + '</option>';
+                      }).join('') +
+                    '</select></label>' +
                   '<div class="kta-secours-groupe-actions">' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
                     // 🆕 v1.22.0-fix4 (KARMA "on peut avoir un bouton tous les
@@ -11065,6 +11102,15 @@
           _ajouterPoisDansZone(s.id, btn.getAttribute("data-gid"));
         });
       });
+      // C1 — mode de parcours : on recalcule tout de suite si un parcours existait.
+      corps.querySelectorAll('[data-action="parcours-mode"]').forEach(function(sel) {
+        sel.addEventListener("change", function() {
+          const gid = sel.getAttribute("data-gid");
+          updateGroupe(s.id, gid, { parcoursMode: sel.value });
+          const g = (get(s.id).groupes || []).find(function(x) { return x.id === gid; });
+          if (g && g.entree && g.sortie && Array.isArray(g.itineraireSuggere)) _recalculerItineraireGroupe(s.id, gid);
+        });
+      });
       // Calc itinéraire (commit 4)
       corps.querySelectorAll('[data-action="calc-iti"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -12578,6 +12624,7 @@
       _toast(t("secours.toast.defEntreeSortie"), "warn");
       return null;
     }
+    if (_estBalayage(g)) return _appliquerBalayage(scenarioId, groupeId, {});
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
       _toast(t("secours.toast.pathfinderIndispo"), "error");
       return null;
@@ -12663,6 +12710,89 @@
       console.warn("[SecoursMode] Calcul itinéraire échoué (sync) :", e);
       _toast(t("secours.toast.erreurSync", { message: (e.message || e) }), "error");
     }
+  }
+
+  // ─── C1 (15/10/2026, QCM KARMA) — PARCOURS DE BALAYAGE ───
+  // Au lieu du plus court chemin par les étapes (qui saute les boucles : 62-72 % des
+  // galeries d'un secteur parcourues), un circuit qui passe sur CHAQUE galerie de la
+  // zone (« complet ») ou sur toutes sauf les culs-de-sac (« ossature », reconnaissance).
+  // Les étapes saisies restent, remises dans l'ordre où le circuit passe dessus (4:a).
+  // Le guidage garde le circuit : un écart le fait REJOINDRE plus loin (3:a,
+  // interfaceItineraire > _replanifierDepuis). Calcul : js/secoursBalayage.js.
+  function _estBalayage(g) {
+    return !!(g && (g.parcoursMode === "complet" || g.parcoursMode === "ossature") &&
+              (g.zoneType === "roads" || g.zoneType === "polygon") && window.SecoursBalayage);
+  }
+  // Pièces de galerie de la zone d'une équipe (index dans SecoursBalayage.pieces).
+  function _piecesZone(graph, g) {
+    const P = window.SecoursBalayage.pieces(graph);
+    const out = [];
+    if (g.zoneType === "roads") {
+      const cles = {};
+      (g.zoneRoadIds || []).forEach(function(k) { cles[k] = true; });
+      P.forEach(function(p, i) {
+        const r = graph.segments[p.seg].road;
+        if (r && ((r.id && cles[r.id]) || cles[_cleTrace(r)])) out.push(i);
+      });
+    } else if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+      P.forEach(function(p, i) {
+        const A = graph.nodes[p.a], B = graph.nodes[p.b], lvl = graph.segments[p.seg].level;
+        if (_dansZonePolygone(g, { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, Number.isInteger(lvl) ? lvl : 0)) out.push(i);
+      });
+    }
+    return out;
+  }
+  function _appliquerBalayage(scenarioId, groupeId, opts) {
+    opts = opts || {};
+    const s = get(scenarioId);
+    const g = s && (s.groupes || []).find(function(x) { return x.id === groupeId; });
+    if (!g || !g.entree || !g.sortie || !window.Pathfinder) return null;
+    const graph = window.Pathfinder.buildNetworkGraph({ includeZones: true });
+    const pieces = _piecesZone(graph, g);
+    if (!pieces.length) { if (!opts.silencieux) _toast(t("secours.balayage.zoneVide"), "warn"); return null; }
+    const r = window.SecoursBalayage.parcours(graph, pieces, {
+      depart: { x: g.entree.x, y: g.entree.y }, arrivee: { x: g.sortie.x, y: g.sortie.y }, mode: g.parcoursMode
+    });
+    if (!r || r.path.length < 2) { if (!opts.silencieux) _toast(t("secours.toast.aucunIti"), "warn"); return null; }
+    const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+    const path = _niveauxItineraire(r.path, g.entree.level);
+    // Étapes : remises dans l'ordre du premier passage du circuit (à 2 m près du plus proche).
+    const passage = function(w) {
+      let best = Infinity;
+      const d = path.map(function(p) { const v = Math.hypot(p.x - w.x, p.y - w.y); if (v < best) best = v; return v; });
+      const seuil = best + 2 * pxParM;
+      for (let i = 0; i < d.length; i++) if (d[i] <= seuil) return i;
+      return d.length;
+    };
+    const inter = (g.intermediaires || []).filter(function(w) { return w && typeof w.x === "number"; })
+      .map(function(w) { return { w: w, i: passage(w) }; })
+      .sort(function(a, b) { return a.i - b.i; }).map(function(x) { return x.w; });
+    const raccord = function(w, p, role, index) {
+      return { index: index, role: role, label: w.label || null, de: { x: w.x, y: w.y }, vers: { x: p.x, y: p.y },
+               distPx: Math.hypot(w.x - p.x, w.y - p.y) };
+    };
+    const raccords = [raccord(g.entree, path[0], "depart", 0), raccord(g.sortie, path[path.length - 1], "arrivee", inter.length + 1)];
+    const carrefours = (typeof window.Pathfinder.carrefoursSurChemin === "function")
+      ? window.Pathfinder.carrefoursSurChemin(graph, path) : [];
+    const distM = r.longueur / pxParM;
+    const duree = Math.round(_dureeEquipeMin(s, distM, inter.length + 2, { g: g, path: path, raccords: raccords }));
+    const partiel = { itineraireSuggere: path, distanceM: distM, dureeEstimeeMin: duree,
+                      guidage: { carrefours: carrefours, raccords: raccords, n: path.length } };
+    const avant = (g.intermediaires || []).map(function(w) { return w && w.wid; }).join("|");
+    if (inter.map(function(w) { return w && w.wid; }).join("|") !== avant) partiel.intermediaires = inter;
+    updateGroupe(scenarioId, groupeId, partiel);
+    if (!opts.silencieux) {
+      const fmt = function(m) { return (typeof window.formatDistance === "function") ? window.formatDistance(m, 1) : Math.round(m) + " m"; };
+      const lignes = [t("secours.balayage.calcule", { mode: t("secours.balayage.mode." + g.parcoursMode),
+        distance: fmt(distM), galeries: fmt(r.aCouvrir / pxParM), duree: duree })];
+      if (r.couvert < r.aCouvrir - pxParM) {
+        lignes.push(t("secours.balayage.horsAtteinte", { long: fmt((r.aCouvrir - r.couvert) / pxParM) }));
+      }
+      _toast(lignes.join("\n"), lignes.length > 1 ? "warn" : "info");
+    }
+    if (_modal) _switchView("edit");
+    if (_overlayLayer) renderOverlay(scenarioId);
+    return true;
   }
 
   // 🆕 v1.23.0 Phase 2 / Feature B — Collecte les waypoints des AUTRES
@@ -12921,6 +13051,7 @@
       if (!s) { resolve(false); return; }
       const g = s.groupes.find(function(x) { return x.id === groupeId; });
       if (!g || !g.entree || !g.sortie) { resolve(false); return; }
+      if (_estBalayage(g)) { resolve(!!_appliquerBalayage(scenarioId, groupeId, { silencieux: true })); return; }
       if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
         resolve(false); return;
       }
