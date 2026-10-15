@@ -2741,19 +2741,20 @@
     // Tracés
     // 🪜 v169 (Karma_dev) : ajout de "Jonction interniveau" (magenta) — type
     // de tracé spécifique au mode multi-niveau, bridge entre 2 niveaux pour
-    // le pathfinder. Visible dans la légende sans condition (si l'export ne
-    // contient pas de jonction, la ligne reste mais inerte — minor).
+    // le pathfinder. 15/10/2026 (KARMA) : seulement sur un plan multi-niveau — ailleurs la ligne
+    // « Jonction interniveau » n'a aucun sens.
     if (leg.contenu.traces) {
+      const mlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const lignes = LC
         ? LC.listEntries("traces")
-            .filter(function(e) { return e.visible; })
+            .filter(function(e) { return e.visible && (mlvl || e.key !== "jonction"); })
             .map(function(e) { return { label: e.label, lineColor: e.lineColor }; })
         : [
             { label: window.I18n.t("imgexport.legLabel.routePrincipale"), lineColor: "#00ff00" },
             { label: window.I18n.t("imgexport.legLabel.routeSecondaire"), lineColor: "#b000ff" },
             { label: window.I18n.t("imgexport.legLabel.chemin"),          lineColor: "#ffff00" },
             { label: window.I18n.t("imgexport.legLabel.jonction"),        lineColor: "#ff4ecb" }
-          ];
+          ].filter(function(e, i) { return mlvl || i !== 3; });
       // Ajout des customs traces
       if (LC) {
         LC.listCustomEntries("traces")

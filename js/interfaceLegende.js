@@ -271,7 +271,8 @@ function afficherLegende() {
   contenuTracés += _ligneTrace("principal");
   contenuTracés += _ligneTrace("secondaire");
   contenuTracés += _ligneTrace("chemin");
-  contenuTracés += _ligneTrace("jonction");
+  // 15/10/2026 (KARMA) : la jonction interniveau n'existe que sur un plan multi-niveau.
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) contenuTracés += _ligneTrace("jonction");
   // Customs traces (lineColor obligatoire)
   if (LC) {
     LC.listCustomEntries("traces")
@@ -540,7 +541,7 @@ function afficherLegende() {
     trx += _ligneTrace("principal");
     trx += _ligneTrace("secondaire");
     trx += _ligneTrace("chemin");
-    trx += _ligneTrace("jonction");
+    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) trx += _ligneTrace("jonction");
     if (LC) {
       LC.listCustomEntries("traces")
         .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
