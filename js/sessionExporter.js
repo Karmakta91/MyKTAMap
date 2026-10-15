@@ -3518,6 +3518,14 @@
           '<input type="range" id="kmz_img_opacity" min="0" max="100" step="5" value="60" class="kta-kmz-opacity-slider">' +
           '<span id="kmz_img_opacity_val" class="kta-kmz-opacity-val">60%</span>' +
         '</div>' +
+        // 15/10/2026 (KARMA, Google Earth sur iPhone : croix rouges sur les 2 177 tuiles d'un grand plan) —
+        // plan tuilé : une SEULE image réduite au lieu des tuiles, au choix, cochée par défaut.
+        (_tilingManifest() && _tilingManifest().version === 2
+          ? '<label class="kta-ses-cb-row" id="kmz_img_unique_wrap" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
+              '<input type="checkbox" id="kmz_img_unique" checked>' +
+              '<span>' + t("export.kmz.imageUnique") + ' <span style="color:#8892a4;">' + t("export.kmz.imageUniqueAide") + '</span></span>' +
+            '</label>'
+          : '') +
 
         // --- Points + sous-cases par tag ---
         row("kmz_inc_points", t("export.kmz.points"), stats.pointsTotal, true) +
@@ -3624,9 +3632,11 @@
     const cbImg = document.getElementById("kmz_inc_image");
     const opWrap = document.getElementById("kmz_opacity_wrap");
     if (cbImg && opWrap) {
+      const uniWrap = document.getElementById("kmz_img_unique_wrap");
       const _majOpState = function() {
         if (cbImg.checked) opWrap.classList.remove("disabled");
         else               opWrap.classList.add("disabled");
+        if (uniWrap) uniWrap.style.opacity = cbImg.checked ? "" : "0.4";
       };
       cbImg.addEventListener("change", _majOpState);
       _majOpState();
@@ -3991,6 +4001,49 @@
     return { tileSize: TILE, ext: ext, levels: levels };
   }
 
+  // 15/10/2026 — UNE image du plan entier, recomposée depuis la pyramide V2 (jamais l'image d'origine : un plan de
+  // 400 Mpx demanderait ~1,6 Go à décoder). On part du niveau le moins fin qui atteint CIBLE px de côté et on le
+  // dessine réduit dans un canvas ≤ CIBLE (16,7 Mpx = plafond d'un canvas sur iPhone). Même placement que
+  // _collecterPyramidePourSuperoverlay : k=1 = bande du BAS, tuile du haut collée en bas (padding au-dessus, hors
+  // canvas), padding à droite hors canvas. Rend { blob, w, h } ou null.
+  async function _composerImageDepuisTuiles(CIBLE) {
+    const tiling = _tilingManifest();
+    if (!tiling || tiling.version !== 2) return null;
+    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+    const TILE = tiling.tileSize || 512;
+    const ext = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
+    const zMin = Number.isInteger(tiling.minNativeZoom) ? tiling.minNativeZoom : -3;
+    const zMax = Number.isInteger(tiling.maxNativeZoom) ? tiling.maxNativeZoom : 0;
+    let z = zMin;
+    while (z < zMax && Math.max(W, H) / Math.pow(2, -z) < CIBLE) z++;
+    const scale = Math.pow(2, -z);
+    const lvlW = Math.ceil(W / scale), lvlH = Math.ceil(H / scale);
+    const f = Math.min(1, CIBLE / Math.max(lvlW, lvlH));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(lvlW * f); cv.height = Math.round(lvlH * f);
+    const ctx = cv.getContext("2d");
+    const cols = Math.ceil(lvlW / TILE), rows = Math.ceil(lvlH / TILE);
+    let posees = 0;
+    for (let k = 1; k <= rows; k++) {
+      for (let col = 0; col < cols; col++) {
+        const blob = await _blobTuile("data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext);
+        if (!blob) continue;   // tuile manquante : un trou plutôt qu'un échec
+        try {
+          const bmp = await createImageBitmap(blob);
+          ctx.drawImage(bmp, col * TILE * f, (lvlH - k * TILE) * f, TILE * f, TILE * f);
+          bmp.close();
+          posees++;
+        } catch (e) { /* tuile illisible : trou */ }
+      }
+    }
+    if (!posees) { cv.width = cv.height = 0; return null; }
+    const out = await new Promise(function(res) { cv.toBlob(res, "image/jpeg", 0.85); });
+    const w = cv.width, h = cv.height;
+    cv.width = cv.height = 0;
+    console.log("[KMZ] Image unique : niveau z" + z + ", " + posees + " tuiles → " + w + "×" + h);
+    return out ? { blob: out, w: w, h: h } : null;
+  }
+
   // 🌍 v1.76.4 — repli NON-V2 : downscale sous la limite de texture de
   // Google Earth (un plan V2 passe par le superoverlay ci-dessus).
   // Rend { blob, w, h, source } ou null (irréductible).
@@ -4117,7 +4170,17 @@
             // 🗼 v1.76.4 — plan V2 : SUPEROVERLAY (pleine résolution par
             // tuiles + Region/Lod, « comme en OSM ») au lieu d'une image
             // composée floue. L'image unique ne part plus dans le KMZ.
-            tilesOverlay = await _collecterPyramidePourSuperoverlay();
+            // 15/10/2026 — « Image unique » cochée : une seule image réduite, lisible par Google Earth sur mobile.
+            const uniqueVoulue = !!document.getElementById("kmz_img_unique")?.checked;
+            const unique = uniqueVoulue ? await _composerImageDepuisTuiles(4096) : null;
+            if (unique) {
+              imageBlob = unique.blob;
+              imageFilename = "plan_overlay.jpg";
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.unique", { w: unique.w, h: unique.h }), "info");
+              }
+            }
+            tilesOverlay = unique ? null : await _collecterPyramidePourSuperoverlay();
             if (tilesOverlay) {
               const nbT = tilesOverlay.levels.reduce(function(s, l) { return s + l.tiles.length; }, 0);
               imageBlob = null;
@@ -4126,7 +4189,7 @@
                 window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.superoverlay", { n: nbT }), "info");
               }
             }
-            const reduit = tilesOverlay ? null : await _reduireImagePourGoogleEarth(imageBlob, _dims);
+            const reduit = (tilesOverlay || unique) ? null : await _reduireImagePourGoogleEarth(imageBlob, _dims);
             if (reduit) {
               console.log("[KMZ] Overlay réduit pour Google Earth :", _dims.width + "×" + _dims.height,
                           "→", reduit.w + "×" + reduit.h, "(" + reduit.source + ")");
@@ -4135,7 +4198,7 @@
               if (window.OOMGuard && window.OOMGuard.showToast) {
                 window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.reduit", { w: reduit.w, h: reduit.h }), "info");
               }
-            } else if (!tilesOverlay) {
+            } else if (!tilesOverlay && !unique) {
               // Irréductible (image géante non-V2) : choix explicite, jamais
               // d'erreur silencieuse (règle KARMA).
               const continuer = await window.ktaConfirm(

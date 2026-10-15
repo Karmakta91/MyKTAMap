@@ -60,7 +60,11 @@ const kml = KE.genererKml({
 t("KML généré", typeof kml === "string" && kml.length > 0);
 const nOverlays = (kml.match(/<GroundOverlay>/g) || []).length;
 t("5 GroundOverlays (4 tuiles z0 + 1 tuile z-1)", nOverlays === 5);
-t("un dossier superoverlay", kml.indexOf("superoverlay") >= 0);
+t("un dossier pour les tuiles", kml.indexOf("<Folder><name>Test — plan (tuiles)</name>") >= 0);
+// Capture du 15/10/2026 (Google Earth sur iPhone) : 2 177 « Superposition sans titre » à plat.
+t("un sous-dossier par niveau de détail", kml.indexOf("<Folder><name>Détail 1 (1 tuiles)</name>") >= 0 &&
+  kml.indexOf("<Folder><name>Détail 2 (4 tuiles)</name>") >= 0);
+t("chaque tuile porte un nom", (kml.match(/<GroundOverlay><name>Détail \d — tuile \d+,\d+<\/name>/g) || []).length === 5);
 
 // Quads : extraire les coordinates des LatLonQuad
 const quads = [];

@@ -510,7 +510,7 @@
       const opPct2 = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
       const a255 = Math.round(Math.max(0, Math.min(100, opPct2)) * 2.55);
       const colorTag2 = '<color>' + (a255 < 16 ? "0" : "") + a255.toString(16) + 'ffffff</color>';
-      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + " — plan (superoverlay)") + '</name>'];
+      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + " — plan (tuiles)") + '</name>'];
       TO.levels.forEach(function(lvl) {
         const scale = Math.pow(2, -lvl.z);
         // Lod : un seul niveau visible à la fois (128→512 px écran par tuile),
@@ -526,6 +526,9 @@
         // NIVEAU convertis au natif, bornés à l'emprise.
         const lvlH = Math.ceil(opts.imageH / scale);
         const lvlW = Math.ceil(opts.imageW / scale);
+        // 15/10/2026 — un sous-dossier par niveau et des tuiles NOMMÉES : sans nom, Google Earth (mobile)
+        // listait 2 177 « Superposition sans titre » à plat.
+        morceaux.push('<Folder><name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " (" + lvl.tiles.length + " tuiles)") + '</name>');
         lvl.tiles.forEach(function(tu) {
           const x0 = tu.col * TO.tileSize * scale;
           const x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
@@ -537,6 +540,7 @@
           const lngs = [qTL.lng, qTR.lng, qBR.lng, qBL.lng];
           morceaux.push(
             '<GroundOverlay>' +
+              '<name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " — tuile " + (tu.col + 1) + "," + tu.k) + '</name>' +
               colorTag2 +
               '<drawOrder>' + (lvl.z - zMinP) + '</drawOrder>' +
               '<Icon><href>' + _xmlEsc(tu.kmzPath) + '</href></Icon>' +
@@ -554,6 +558,7 @@
               '</gx:LatLonQuad>' +
             '</GroundOverlay>');
         });
+        morceaux.push('</Folder>');
       });
       morceaux.push('</Folder>');
       groundOverlay = morceaux.join("");
