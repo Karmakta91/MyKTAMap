@@ -254,8 +254,14 @@ t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement 
     fs.readFileSync(r[0], "utf8").indexOf(r[1]) < 0);
 });
 
+// 🩸 Sur le CODE (UIC_CODE) : l'ancien critère, la chaîne « affichage read-only », n'existait que dans
+// un commentaire — la moitié positive ne vérifiait rien (audit commentaires 16/10/2026, QW1).
+// Lecture seule = le preset est AFFICHÉ (libellé rendu) et rien ne l'écrit : ni champ, ni affectation,
+// ni setteur du registre depuis l'écran de réglages du plan.
 t("🖼️ côté plan (⚙️ Réglages), le preset reste en LECTURE SEULE (aucun troisième point)",
-  UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
+  /\$\{presetMeta\.label\}/.test(UIC_CODE) && /_PRESET_LABELS\[c\.perfPreset\]/.test(UIC_CODE) &&
+  !/id="cfg_perfPreset"/.test(UIC_CODE) && !/\.perfPreset\s*=[^=]/.test(UIC_CODE) &&
+  !/setPerfPreset\s*\(/.test(UIC_CODE));
 
 console.log(ko === 0 ? "\n🎉 portée des réglages : le plan ne décide plus pour l'app"
                      : "\n⚠️ " + ko + " echec(s)");

@@ -19,6 +19,10 @@
 //
 // ON EXÉCUTE les helpers extraits du fichier réel (leçon v1.90.15).
 // Usage : node scripts/check-doc-recherche.js [racine]
+//
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE ou un marqueur explicite `// 🏷️ ancre:<nom>`
+// posé dans la source, jamais un commentaire libre (un nettoyage le retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -78,7 +82,10 @@ const DOCS = lire("js/interfaceDocs.js");
 // ---------- 3. Hub ❓ Aide : titre ET contenu ----------
 {
   t("🩸 hub : chaque ligne porte le contenu normalisé (data-aide-texte)", (DOCS.match(/r\.dataset\.aideTexte = window\.ktaDocNormaliser\(/g) || []).length >= 2);
-  const filtre = DOCS.slice(DOCS.indexOf("// Filtrage par recherche (titre + contenu"), DOCS.indexOf("empty.style.display = visibles"));
+  const iF = DOCS.indexOf("// 🏷️ ancre:hub-filtre-recherche");
+  const jF = iF >= 0 ? DOCS.indexOf("empty.style.display = visibles", iF) : -1;
+  const filtre = (iF >= 0 && jF > iF) ? DOCS.slice(iF, jF) : "";
+  t("hub : le filtre est extractible (repère `🏷️ ancre:hub-filtre-recherche`)", filtre.length > 0);
   t("🩸 hub : le filtre cherche dans le titre OU le contenu, requête normalisée", /window\.ktaDocNormaliser\(search\.value/.test(filtre) && /aideTexte/.test(filtre));
   t("hub : plus aucun toLowerCase() nu sur les titres", !/aideTitre = [^;]*\.toLowerCase\(\)/.test(DOCS));
 }

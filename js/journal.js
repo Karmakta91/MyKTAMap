@@ -1167,6 +1167,7 @@
     DB_NAME:      DB_NAME
   };
 
+  // 🏷️ ancre:balayage-demarrage
   // Balayage différé : le boot a mieux à faire que d'ouvrir une IDB. 4 s après
   // le load, l'app est stabilisée (plan chargé ou HOME affiché).
   //

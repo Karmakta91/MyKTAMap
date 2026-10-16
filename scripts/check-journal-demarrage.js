@@ -22,6 +22,10 @@
 //
 // ON EXÉCUTE la fonction extraite du fichier réel (leçon v1.90.15).
 // Usage : node scripts/check-journal-demarrage.js [racine]
+//
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE ou un marqueur explicite `// 🏷️ ancre:<nom>`
+// posé dans la source, jamais un commentaire libre (un nettoyage le retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -30,6 +34,16 @@ const ROOT = path.resolve(process.argv[2] || path.join(__dirname, ".."));
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 let echecs = 0;
 function t(msg, cond) { console.log((cond ? "✅ " : "❌ ") + msg); if (!cond) echecs++; }
+// Découpe [debut, fin[ ; fin === null : jusqu'au bout du fichier, VOULU. Repère absent → échec + "".
+function bloc(src, debut, fin) {
+  const i = src.indexOf(debut);
+  const j = (i >= 0 && fin !== null) ? src.indexOf(fin, i + debut.length) : -1;
+  if (i < 0 || (fin !== null && j < 0)) {
+    t("repère de découpe introuvable : « " + (i < 0 ? debut : fin).trim() + " »", false);
+    return "";
+  }
+  return src.slice(i, fin === null ? undefined : j);
+}
 
 const JRN = lire("js/journal.js");
 const RFI = lire("js/refonteInterface.js");
@@ -100,9 +114,10 @@ const RFI = lire("js/refonteInterface.js");
   })();
   t("🩸 l'ouverture AUTOMATIQUE reste conditionnée au carnet actif (décocher doit encore tout arrêter)",
     brancheOff !== null && !/_ouvrir\(/.test(brancheOff) && /_ouvrir\(planId, planName, "auto"\)/.test(opl));
-  const dem = JRN.slice(JRN.indexOf("  function demarrer() {"), JRN.indexOf("  function _ouvrir("));
-  t("🩸 …et le démarrage MANUEL ne le teste pas (sinon le bouton ne sert à rien là où il sert)", !/isEnabled\(\)/.test(dem));
-  const bas = JRN.slice(JRN.indexOf("// Balayage différé"));
+  const dem = bloc(JRN, "  function demarrer() {", "  function _ouvrir(");
+  t("🩸 …et le démarrage MANUEL ne le teste pas (sinon le bouton ne sert à rien là où il sert)",
+    dem.length > 0 && !/isEnabled\(\)/.test(dem));
+  const bas = bloc(JRN, "// 🏷️ ancre:balayage-demarrage", null);
   t("🩸 le balayage de démarrage régularise TOUJOURS (plus sous condition de carnet actif)",
     /setTimeout\(function\(\) \{ _balayerEnCours\(\);( _expirerSuspendues\(\);)? \}, 4000\);/.test(bas) &&
     !/if \(isEnabled\(\)\) \{\n\s*setTimeout/.test(bas));

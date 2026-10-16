@@ -25,6 +25,11 @@
 //
 // Usage : node scripts/check-filets-donnees.js [racine]  (racine = repo par
 // défaut ; un autre dossier sert à FALSIFIER le script sur une copie).
+//
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE (nom de fonction, instruction) ou un
+// marqueur explicite `// 🏷️ ancre:<nom>` posé dans la source, jamais un
+// commentaire libre ni un tag de version (un nettoyage les retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -38,9 +43,12 @@ function ko(msg)  { console.log("❌ " + msg); echecs++; }
 function verif(cond, msg) { (cond ? ok : ko)(msg); }
 function bloc(src, debut, fin) {
   const i = src.indexOf(debut);
-  if (i < 0) return "";
-  const j = fin ? src.indexOf(fin, i + debut.length) : -1;
-  return src.slice(i, j < 0 ? undefined : j);
+  const j = (i >= 0 && fin) ? src.indexOf(fin, i + debut.length) : -1;
+  if (i < 0 || (fin && j < 0)) {
+    ko("repère de découpe introuvable : « " + (i < 0 ? debut : fin).split("\n")[0] + " »");
+    return "";
+  }
+  return src.slice(i, fin ? j : undefined);
 }
 
 // ---------- B3 : import de session ----------
@@ -100,7 +108,7 @@ function bloc(src, debut, fin) {
         "🩸 résolution zone : ≥ 3 sommets → fermée + historisée, sinon abandon historisé");
   const st = lire("js/structures.js");
   verif(/function _resoudreStructureEnCours\(/.test(st), "structures : fonction de résolution");
-  const ts = bloc(st, "function toggleStructureMode(", "// v1.16.0 step 1d");
+  const ts = bloc(st, "function toggleStructureMode(", "// 🏷️ ancre:fin-toggle-structure");
   verif(ts.length > 0 && !ts.includes("splice("), "🩸 toggleStructureMode ne détruit plus rien directement");
   const rs = bloc(st, "function _resoudreStructureEnCours(", "function toggleStructureMode(");
   verif(rs.includes("struct.undo.close") && rs.includes("struct.undo.abandon"), "résolution structure : validation ou abandon, les deux historisés");
@@ -152,7 +160,7 @@ function bloc(src, debut, fin) {
   verif(/const _fermerPlanner = function/.test(s) && s.includes('"kta-planner-close").addEventListener("click", _fermerPlanner)') && s.includes('"kta-planner-annuler").addEventListener("click", _fermerPlanner)'),
         "🩸 générateur : ✕ et Annuler passent par _fermerPlanner (confirmation si un champ a bougé)");
   verif(s.includes("gen.confirm.abandon") && /const _formTouche = function/.test(s), "générateur : détection « champ touché »");
-  const apres = bloc(s, "const _fermerPlanner = function", "// 🧹 v1.29.0-fix3");
+  const apres = bloc(s, "const _fermerPlanner = function", "// 🏷️ ancre:fin-fermer-planner");
   verif(!apres.includes("if (e.target === modal) modal.remove()"), "🩸 générateur : le clic sur le fond ne ferme plus la modale");
 }
 
@@ -172,10 +180,10 @@ function bloc(src, debut, fin) {
   const lo = bloc(p, "function isLockedOut() {", "function getLockRemainingMs");
   verif(lo.includes("lockUntil") && !/>=\s*MAX_ATTEMPTS/.test(lo), "🩸 PIN : isLockedOut = échéance dans le futur, plus un compteur");
   verif(lo.includes("lockStart") , "PIN : horloge reculée sous le début du verrou → toujours verrouillé");
-  const fail = bloc(p, "// Tentative ratée", "return false;");
+  const fail = bloc(p, "// 🏷️ ancre:pin-tentative-ratee", "return false;");
   verif(fail.includes("state.lockUntil = state.lockStart + delai") && fail.includes("state.attempts  = 0"), "🩸 PIN : 5 échecs → échéance posée, palier +1, compteur remis à 0");
   verif((p.match(/_afficherLockoutUI\(onUnlock\)/g) || []).length >= 2, "🩸 PIN : l'écran de verrou reçoit le callback de déverrouillage (×2 appels)");
-  const lock = bloc(p, "function _afficherLockoutUI(onUnlock) {", "// ============================================================\n  // PROPOSITION D'ACTIVATION");
+  const lock = bloc(p, "function _afficherLockoutUI(onUnlock) {", "// 🏷️ ancre:pin-fin-lockout-ui");
   verif(lock.includes("setInterval(") && lock.includes("_afficherGateUI(onUnlock)"), "🩸 PIN : compte à rebours + retour automatique au pavé à l'expiration");
   verif(!lock.includes("pin.lockout.solReinstall"), "PIN : l'écran de verrou ne prêche plus « réinstalle l'app »");
   const okPin = bloc(p, "if (candidate === state.hashedPin) {", "return true;");
@@ -183,7 +191,7 @@ function bloc(src, debut, fin) {
 
   const g = lire("js/unlockGate.js");
   verif(/const LS_LOCK\s*=/.test(g) && /const LOCK_DELAYS_MS\s*=\s*\[/.test(g), "gate : LS_LOCK + paliers déclarés");
-  const glo = bloc(g, "function isLockedOut() {", "// ===");
+  const glo = bloc(g, "function isLockedOut() {", "// 🏷️ ancre:gate-fin-isLockedOut");
   verif(glo.includes(".until") && !/>=\s*MAX_ATTEMPTS/.test(glo), "🩸 gate : isLockedOut = échéance, plus un compteur");
   const gfail = bloc(g, "if (attempts >= MAX_ATTEMPTS) {", "} else {");
   verif(gfail.includes("_setLock({ until: now + delai") && gfail.includes("_setAttempts(0)"), "🩸 gate : 5 échecs → échéance posée, compteur remis à 0");

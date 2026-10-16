@@ -518,6 +518,7 @@ function toggleStructureMode(type) {
     currentStructure = null;
   }
 
+  // 🏷️ ancre:fin-toggle-structure
   // v1.16.0 step 1d : re-render TOUS les layers session + sync data layer
   // KMZ. Pourquoi tous : un mode actif doit retirer ghosts/popups des 3
   // types d'éléments pour ne pas intercepter les clics du tracé en cours.

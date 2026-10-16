@@ -160,7 +160,8 @@ function fonction(nom) {
   const src = fonction("_retirerPlanOsm");
   t("_retirerPlanOsm est extractible", src.length > 0);
   t("🩸 le retrait de la pile est VÉRIFIÉ après coup, quel que soit le chemin",
-    /const i = _stackOrder\.indexOf\(planId\);\n\s*if \(i !== -1\) _stackOrder\.splice\(i, 1\);\s*\/\/ ceinture/.test(src));
+    // Sur le CODE seul (le commentaire « ceinture » n'est plus exigé) : le retrait APRÈS le démontage.
+    /_demonterPlanOsm\(planId\)[\s\S]*const i = _stackOrder\.indexOf\(planId\);\n\s*if \(i !== -1\) _stackOrder\.splice\(i, 1\);/.test(src));
   t("🩸 …et le principal, lui, n'est jamais retiré par ce chemin",
     /const principal = \(planId === _selectedPlanId\);/.test(src) && /if \(!principal\) \{/.test(src));
   t("🩸 un rendu annexe qui jette ne laisse plus la ligne à l'écran",

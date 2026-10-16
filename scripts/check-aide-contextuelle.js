@@ -123,10 +123,17 @@ let table = {};
 {
   t("🩸 le bouton se pose à l'ouverture d'une modale (observateur), pas au cas par cas",
     /new MutationObserver\(/.test(DOCS) && /AIDE_PAR_MODALE\[n\.id\]/.test(DOCS));
-  const p = DOCS.slice(DOCS.indexOf("function _aidePoserBouton("), DOCS.indexOf("function ktaAideContextuelleRefresh("));
+  // 🩸 On lit le CODE, pas les commentaires : l'ancienne forme `head.insertBefore(b, croix)` (qui
+  // jetait un NotFoundError quand la croix est imbriquée) ne survit plus QUE dans le commentaire qui
+  // raconte ce bug — l'ancien contrôle était vert grâce à lui (audit commentaires 16/10/2026, QW1).
+  const sansCom = function (s) { return s.replace(/^[ \t]*\/\/.*$/gm, ""); };
+  const i3 = DOCS.indexOf("function _aidePoserBouton("), j3 = DOCS.indexOf("function ktaAideContextuelleRefresh(");
+  const p = (i3 >= 0 && j3 > i3) ? sansCom(DOCS.slice(i3, j3)) : "";
+  t("_aidePoserBouton est extractible", p.length > 0);
   t("🩸 rien n'est posé quand le réglage est coupé", /if \(!slug \|\| !ktaAideContextuelleActive\(\)\) return;/.test(p));
   t("le bouton n'est jamais posé deux fois", /head\.querySelector\("\.kta-aide-ctx-btn"\)/.test(p));
-  t("il se place avant la croix (même ordre dans toutes les modales)", /head\.insertBefore\(b, croix\)/.test(p));
+  t("il se place avant la croix (même ordre dans toutes les modales), dans le parent RÉEL de la croix",
+    /croix\.parentNode\.insertBefore\(b, croix\)/.test(p) && !/head\.insertBefore\(b, croix\)/.test(p));
   t("🩸 les DEUX familles d'en-tête sont acceptées (contenu et menu Tracker)",
     /kta-readme-modal-header, \.kta-tracker-modal-header/.test(p) && /kta-tracker-modal-close/.test(p));
   t("il ouvre la section visée", /ktaOuvrirAideSection\(slug\)/.test(p));

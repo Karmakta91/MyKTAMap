@@ -225,6 +225,7 @@
     return fallback || type;
   }
 
+  // 🏷️ ancre:fin-libelles-stats
   /**
    * Génère un camembert SVG inline + légende textuelle à droite.
    * @param {Object}  data              - {key: count, ...}

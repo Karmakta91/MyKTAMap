@@ -1003,6 +1003,7 @@ function _bindReglagesImmediats() {
   });
 }
 
+// 🏷️ ancre:fin-reglages-immediats
 // ── Fermeture : croix, bouton Fermer, clic hors modale, Échap ──
 let _cfgKeyHandler = null;
 function _cfgFermer() {

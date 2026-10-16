@@ -788,6 +788,7 @@
         }, 200);
       }
 
+      // 🏷️ ancre:verrous-calques-restaures
       // 🔄 v1.85.0 — VERROUS DES CALQUES RAPATRIES, une fois les objets la.
       // 🩸 Piege paye d avance : un verrou pose SANS sa copie donnerait un
       // plan vide et muet (cas reel : la sauvegarde a saute sur quota).

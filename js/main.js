@@ -1687,7 +1687,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     //   • un ZIP réimporté SANS tags retire ceux qu'un ZIP précédent avait
     //     proposés ("config"), et seulement ceux-là.
     // Absence du champ = rien ne change (rétro-compat totale).
-    // 🏷️ début-tags-config
+    // 🏷️ ancre:debut-tags-config
     try {
       const _cfgTags = rawConfig.plan.tags;
       const _reg = window.PlanRegistry.findById(id);
@@ -1699,7 +1699,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
         window.PlanRegistry.setTags(id, [], "config");
       }
     } catch (eTags) { console.warn("[Loader] tags du plan-config ignorés :", eTags); }
-    // 🏷️ fin-tags-config
+    // 🏷️ ancre:fin-tags-config
 
     // 🌐 v1.14.20 — Propagation du calibrage GPS embarqué dans le
     // plan-config.json vers KmzExport. Idempotent (skip si calibrage local

@@ -2367,6 +2367,7 @@
     // initialise donc AVANT, une fois pour tous les calques.
     _initVisibleLevels();
 
+    // 🏷️ ancre:osm-rendu-poi
     // 6) 🆕 v1.39.12 — Step 1 : POI session + data layers
     if (_poiVisible) _renderPoi();
 

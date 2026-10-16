@@ -404,6 +404,7 @@
         _unlocked = true;
         return true;
       }
+      // 🏷️ ancre:pin-tentative-ratee
       // Tentative ratée → incrémente compteur ; à MAX_ATTEMPTS, verrou
       // temporisé au palier suivant et compteur remis à zéro (M2).
       state.attempts = (state.attempts || 0) + 1;
@@ -823,6 +824,7 @@
     console.warn("[PinLock] Verrou temporisé actif — reste", _fmtDuree(getLockRemainingMs()));
   }
 
+  // 🏷️ ancre:pin-fin-lockout-ui
   // ============================================================
   // PROPOSITION D'ACTIVATION (v1.10.0 — post-update one-shot)
   // ============================================================

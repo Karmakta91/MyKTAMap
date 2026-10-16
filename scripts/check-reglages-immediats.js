@@ -17,6 +17,10 @@
 //   3. Le reset qui recommence à écrire `app_user_prefs` depuis un plan.
 //   4. Le géoref qui perd ses handlers (sous-modale rendue sans les poser).
 // Usage : node scripts/check-reglages-immediats.js [racine]
+//
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE ou un marqueur explicite `// 🏷️ ancre:<nom>`
+// posé dans la source, jamais un commentaire libre (un nettoyage le retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -63,8 +67,10 @@ const UIC = lire("js/interfaceConfig.js");
 {
   t("🩸 plus aucun bouton « Appliquer » dans le gabarit", !/onclick="appliquerConfig\(\)"/.test(UIC) && !/config\.actions\.apply/.test(UIC));
   t("🩸 appliquerConfig et _validerReglagesTracking n'existent plus", !/function appliquerConfig\(/.test(UIC) && !/function _validerReglagesTracking\(/.test(UIC) && !/window\.appliquerConfig = /.test(UIC));
-  const b = UIC.slice(UIC.indexOf("function _bindReglagesImmediats()"), UIC.indexOf("// ── Fermeture"));
-  t("_bindReglagesImmediats est trouvable", b.length > 0);
+  const iB = UIC.indexOf("function _bindReglagesImmediats()");
+  const jB = iB >= 0 ? UIC.indexOf("// 🏷️ ancre:fin-reglages-immediats", iB) : -1;
+  const b = (iB >= 0 && jB > iB) ? UIC.slice(iB, jB) : "";
+  t("_bindReglagesImmediats est trouvable (repère `🏷️ ancre:fin-reglages-immediats`)", b.length > 0);
   // 🩸 On vérifie la FORME du câblage (l'appel `on(…)` ou la liste passée au
   // forEach), pas la simple présence de l'id : `_cfgValider("cfg_scale", …)`
   // cite l'id même quand le champ n'est plus écouté (sabotage S2).

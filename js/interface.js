@@ -2156,6 +2156,7 @@ function initInterface() {
     _verrouFinTs = 0;
   }
 
+  // 🏷️ ancre:reset-modes-plan
   // 🐛 v1.57.2 (KARMA « le bouton ajouter point est actif quand j'ouvre le
   // plan ») : RESET des MODES au chargement d'un plan. Les flags window.modeX
   // n'étaient remis à false NULLE PART au plan switch → quitter un plan avec

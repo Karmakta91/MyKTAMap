@@ -1159,6 +1159,7 @@ function _aideRendreHub(corps) {
   empty.textContent = window.I18n ? window.I18n.t("aide.ui.empty") : "";
   corps.appendChild(empty);
 
+  // 🏷️ ancre:hub-filtre-recherche
   // Filtrage par recherche (titre + contenu, accents tolérés — D27)
   search.addEventListener("input", function() {
     const q = window.ktaDocNormaliser(search.value.trim());

@@ -513,8 +513,14 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     K2.register({ nom: "au2", apiVersion: 1, auteurObjet: () => { throw new Error("x"); } });
     t("🩸 extension en erreur → null, aucune exception", K2.auteurObjet("pt_a") === null);
     const SE = lire("js/sessionExporter.js");
+    // « À l'ouverture » = DANS window.ouvrirExportSessionModal, découpée sur du CODE (jamais sur le
+    // commentaire qui suit la remise à zéro). Repère absent → bloc vide → échec.
+    const iO = SE.indexOf("window.ouvrirExportSessionModal = function");
+    const jO = iO >= 0 ? SE.indexOf("_afficherModal();", iO) : -1;
+    const ouvrir = (iO >= 0 && jO > iO) ? SE.slice(iO, jO) : "";
     t("export : le filtre ne touche que les onglets Complet et Avancé, remis à zéro à l'ouverture",
-      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) && /_filtre = \{ du: "", au: "", auteur: "" \};\n\s*\/\/ initialTab/.test(SE));
+      /_activeTab === "full" \|\| _activeTab === "advanced"/.test(SE) &&
+      ouvrir.indexOf('_filtre = { du: "", au: "", auteur: "" };') >= 0);
   }
 
   // ═════════ 6 bis quinquies. GRADES ET HAUTS FAITS (prise profilJeu) ═════════

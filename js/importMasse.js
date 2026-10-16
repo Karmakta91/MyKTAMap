@@ -270,7 +270,7 @@
         // 🏷️ 16/09/2026 — le ZIP PROPOSE ses étiquettes, même règle que
         // `main > startImportedPlan` : jamais par-dessus des tags "user" ou
         // "index" ; un ZIP sans tags retire ceux qu'un précédent proposait.
-        // 🏷️ début-tags-config
+        // 🏷️ ancre:debut-tags-config
         try {
           const regTags = window.PlanRegistry.findById(ligne.id);
           const proposes = Array.isArray(ligne.info.tags) && ligne.info.tags.length > 0;
@@ -278,7 +278,7 @@
           if (proposes && !protege) window.PlanRegistry.setTags(ligne.id, ligne.info.tags, "config");
           else if (!proposes && regTags && regTags.tagsSrc === "config" && regTags.tags) window.PlanRegistry.setTags(ligne.id, [], "config");
         } catch (eTags) { console.warn("[ImportMasse] tags du plan-config ignorés :", eTags); }
-        // 🏷️ fin-tags-config
+        // 🏷️ ancre:fin-tags-config
         // 📁 marche 2 — rangement demandé pour le lot (geste de l'utilisateur)
         if (opts.dossier && window.PlanRegistry.setPlanFolder) {
           try { window.PlanRegistry.setPlanFolder(ligne.id, opts.dossier, "user"); } catch (eDos) {}

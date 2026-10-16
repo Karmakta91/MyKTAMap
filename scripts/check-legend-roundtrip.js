@@ -207,8 +207,11 @@ t("SIG : sans etat edite, les entrees par niveau partent quand meme",
 {
   const SG = fs.readFileSync("js/statsGlobales.js", "utf8");
   const d = SG.indexOf("let _labelsExternes = null;");
-  const f = SG.indexOf("  /**", d);
-  t("le résolveur de libellé est extractible de statsGlobales.js", d >= 0 && f > d);
+  // 🏷️ Fin de découpe = marqueur explicite posé dans la source (jamais un commentaire libre ni
+  // l'ouverture d'une JSDoc, qu'un nettoyage retirerait). Absent → échec, pas de découpe à la fin.
+  const f = d >= 0 ? SG.indexOf("// 🏷️ ancre:fin-libelles-stats", d) : -1;
+  t("le résolveur de libellé est extractible de statsGlobales.js (repère `🏷️ ancre:fin-libelles-stats`)",
+    d >= 0 && f > d);
 
   if (d >= 0 && f > d) {
     const sb = {

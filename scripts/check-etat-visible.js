@@ -14,6 +14,11 @@
 // qu'il gênait un test » — l'app marche toujours, l'utilisateur ne sait plus.
 //
 // Usage : node scripts/check-etat-visible.js [racine]
+//
+// 🏷️ REPÈRES DE DÉCOUPE : du CODE (nom de fonction, instruction) ou un
+// marqueur explicite `// 🏷️ ancre:<nom>` posé dans la source, jamais un
+// commentaire libre ni un tag de version (un nettoyage les retirerait).
+// Repère introuvable = ÉCHEC, jamais une découpe jusqu'à la fin du fichier.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -24,9 +29,13 @@ function ok(m)  { console.log("✅ " + m); }
 function ko(m)  { console.log("❌ " + m); echecs++; }
 function verif(c, m) { (c ? ok : ko)(m); }
 function bloc(src, debut, fin) {
-  const i = src.indexOf(debut); if (i < 0) return "";
-  const j = fin ? src.indexOf(fin, i + debut.length) : -1;
-  return src.slice(i, j < 0 ? undefined : j);
+  const i = src.indexOf(debut);
+  const j = (i >= 0 && fin) ? src.indexOf(fin, i + debut.length) : -1;
+  if (i < 0 || (fin && j < 0)) {
+    ko("repère de découpe introuvable : « " + (i < 0 ? debut : fin).split("\n")[0] + " »");
+    return "";
+  }
+  return src.slice(i, fin ? j : undefined);
 }
 
 // ---------- Q34 / Q35 : filtres ----------
@@ -62,7 +71,7 @@ function bloc(src, debut, fin) {
 // ---------- restauration : toast filtres + étapes d'itinéraire ----------
 {
   const s = lire("js/sessionPersist.js");
-  const rf = bloc(s, "restored.runtimeFilters = _active.length;", "// 🔄 v1.85.0");
+  const rf = bloc(s, "restored.runtimeFilters = _active.length;", "// 🏷️ ancre:verrous-calques-restaures");
   verif(rf.includes("session.toast.filtresRestaures") && rf.includes("FilterPanel.majBadge"), "🩸 filtres restaurés au rechargement → toast + pastille");
   const p2 = bloc(s, "window.setRoads(current.concat(phaseDifferee));", "}, 1500);");
   verif(p2.includes("itineraireRedessinerDepuisRoad"), "🩸 phase 2 : les étapes de l'itinéraire sont redessinées");
@@ -91,7 +100,7 @@ function bloc(src, debut, fin) {
   verif(susp.includes("tracker.verrou.toastSuspendu") && susp.includes("tracker.verrou.toastSuspenduInfini"), "🩸 suspendre le verrou → toast (durée / jusqu'à réactivation)");
   const react = bloc(s, "function _reactiverVerrou() {", "function _confirmerReactivationVerrou");
   verif(react.includes("tracker.verrou.toastReactive"), "🩸 réactivation du verrou → toast");
-  const init = bloc(s, "function initInterface() {", "// 🐛 v1.57.2");
+  const init = bloc(s, "function initInterface() {", "// 🏷️ ancre:reset-modes-plan");
   verif(init.includes("_verrouSuspendu = false;") && init.includes("_verrouFinTs = 0;"), "🩸 la suspension du verrou est oubliée au chargement d'un plan");
   const warn = bloc(s, "function _afficherAvertissementTracker(onConfirm) {", "document.documentElement.appendChild(overlay);");
   verif(warn.includes('id="kta-tracker-warn-wake"') && warn.includes("WakeLock.isSupported()") && warn.includes("!window.WakeLock.isEnabled()"), "🩸 modale de démarrage : case « garder l'écran allumé » (si supporté, pas déjà actif)");

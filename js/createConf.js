@@ -779,6 +779,7 @@ function afficherPlanner() {
   document.getElementById("kta-planner-annuler").addEventListener("click", _fermerPlanner);
   // Clic sur le fond : inerte (avant : fermeture immédiate, tout perdu).
 
+  // 🏷️ ancre:fin-fermer-planner
   // 🧹 v1.29.0-fix3 (KARMA "doublon") — Handlers des boutons KMZ/GPX
   // import RETIRÉS. La drop zone ZIP ouvre automatiquement la modale
   // appropriée via _routerFichierImport (extensions .kmz / .gpx).

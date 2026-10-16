@@ -21,6 +21,11 @@
 //
 // ON EXÉCUTE la normalisation et la règle d'application (extraites du code),
 // on ne se contente pas de grep. Usage : node scripts/check-plan-tags.js [racine]
+//
+// 🏷️ REPÈRES DE DÉCOUPE : marqueurs explicites `// 🏷️ ancre:debut-tags-config` /
+// `// 🏷️ ancre:fin-tags-config` posés dans la source (forme commune à tous les
+// garde-fous : `// 🏷️ ancre:<nom>`, jamais un commentaire libre ni un tag de
+// version). Repère introuvable = ÉCHEC.
 "use strict";
 const fs   = require("fs");
 const path = require("path");
@@ -71,7 +76,7 @@ function jouerRegle(src, vars, scenario) {
   return appels;
 }
 function extraire(S, nom) {
-  const i = S.indexOf("// 🏷️ début-tags-config"), j = S.indexOf("// 🏷️ fin-tags-config");
+  const i = S.indexOf("// 🏷️ ancre:debut-tags-config"), j = S.indexOf("// 🏷️ ancre:fin-tags-config");
   const src = (i >= 0 && j > i) ? S.slice(i, j) : "";
   t(nom + " : la règle d'application est extractible (repères début/fin présents)", src.length > 0);
   return src;

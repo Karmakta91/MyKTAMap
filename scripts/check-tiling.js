@@ -610,7 +610,7 @@ function _opaciteCalque() {
     /pane: PANE_TUILES/.test(OV) && /if \(pane\) \{ pane\.style\.opacity = String\(_opacity\); return; \}/.test(OV));
   t("🩸 Vue OSM : un rendu de niveau dépassé pendant l'extraction ne pose rien (jeton), jamais 2 overlays par tuile",
     /const jeton = \+\+_rendusLances;/.test(OV) && /if \(jeton !== _rendusLances \|\| z !== _currentLevel \|\| !_osmMap\) return;/.test(OV) &&
-    /if \(_tilesByPath\[t\.path\]\) continue;   \/\/ posée entre-temps/.test(OV));
+    /if \(_tilesByPath\[t\.path\]\) continue;/.test(OV));   // le CODE seul, sans le commentaire de fin de ligne
   t("🫥 accueil : vue d'ensemble ET tuiles nettes dans le même sous-calque opaque du plan, opacité sur le calque",
     /const pTuiles = _paneTuiles\(paneNom, opacite\);/.test(HP) && /opacity: pTuiles \? 1 : opacite/.test(HP) &&
     /const pT   = pn \? _paneTuiles\(pn\.nom, op\) : null;/.test(HP) && /opacity: pT \? 1 : op/.test(HP) &&

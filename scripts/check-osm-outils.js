@@ -139,8 +139,11 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   {
     const nCall = (VIEW.match(/_initVisibleLevels\(\);/g) || []).length;
     t("🏗️ Vue OSM : un seul appel à _initVisibleLevels()", nCall === 1);
-    const iStep6 = VIEW.indexOf("// 6) 🆕 v1.39.12 — Step 1 : POI session");
+    // 🏷️ Repère = marqueur explicite `// 🏷️ ancre:osm-rendu-poi` posé avant le rendu des POI (jamais un
+    // tag de version, qu'un nettoyage retirerait). Absent → échec dédié, pas un faux diagnostic.
+    const iStep6 = VIEW.indexOf("// 🏷️ ancre:osm-rendu-poi");
     const iInit  = VIEW.indexOf("_initVisibleLevels();");
+    t("🏗️ Vue OSM : repère `🏷️ ancre:osm-rendu-poi` présent", iStep6 > 0);
     t("🏗️ Vue OSM : les niveaux sont initialisés AVANT le rendu des POI/tracés " +
       "(sinon le niveau -1 manque à l'ouverture)",
       iStep6 > 0 && iInit > 0 && iInit < iStep6);
