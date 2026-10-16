@@ -1184,6 +1184,12 @@
   // ---------- ONGLET CONVERSION ----------
   // Wrapper : choisit l'UI selon le sens courant + ajoute le toggle de direction
   function _renderConversion() {
+    // 16/10/2026 (KARMA) — sans plan affiché (Éditeur de données ouvert depuis l'accueil), il n'y a pas de
+    // session : seul « data layer → session » a un sens. Ni choix du sens, ni écran session → data.
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) {
+      _convDirection = "data2ed";
+      return _renderConvData2Session();
+    }
     return `
       <div class="kta-conv-sens-wrap">
         <button class="kta-conv-sens-btn ${_convDirection === "ed2data" ? "active" : ""}" data-conv-dir="ed2data" type="button">
