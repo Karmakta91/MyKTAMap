@@ -1207,7 +1207,8 @@
         const cases = [
           ["loaderScaledMarkers",  "scaledMarkers",  true],   // défaut ON  → test `!== false`
           ["loaderPanneauxAncres", "panneauxAncres", false],  // défaut OFF → test `=== true`
-          ["loaderSnapDraw",       "snapDraw",       false]
+          ["loaderSnapDraw",       "snapDraw",       false],
+          ["loaderZoomBoutons",    "zoomBoutons",    false, "ktaBoutonsZoomPartout"]  // appliqué à chaud
         ];
         cases.forEach(function (row) {
           const el = document.getElementById(row[0]);
@@ -1223,6 +1224,7 @@
             if (typeof window.sauvegarderPrefsUtilisateur === "function") {
               window.sauvegarderPrefsUtilisateur();
             }
+            if (row[3] && typeof window[row[3]] === "function") window[row[3]]();
           });
         });
         const px = document.getElementById("loaderSnapDrawPx");

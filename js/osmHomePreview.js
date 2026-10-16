@@ -866,9 +866,10 @@
     _mapInstance = L.map(mapDiv, {
       worldCopyJump: false,
       attributionControl: false, // mention compacte via footer custom
-      zoomControl: true,
+      zoomControl: false,   // boutons +/− selon le réglage (ktaBoutonsZoom)
       preferCanvas: true
     }).setView([46.5, 2.5], 5);
+    if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_mapInstance);
 
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,

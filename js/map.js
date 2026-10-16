@@ -439,9 +439,11 @@ async function initMapFromConfig() {
     // pan/zoom instantanés au lieu d'animés → gain perceptible sur gros plans.
     zoomAnimation:        !_animOff,
     fadeAnimation:        !_animOff,
-    markerZoomAnimation:  !_animOff
+    markerZoomAnimation:  !_animOff,
+    zoomControl:          false   // boutons +/− selon le réglage (ktaBoutonsZoom)
   });
   map._renderer = _rendererVecteurs;
+  if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(map);
   // Fond sous le plan (réglage par plan, ou conseillé par le plan) — 07/10/2026.
   if (typeof window.ktaAppliquerFondPlan === "function") window.ktaAppliquerFondPlan();
   if (_animOff) console.log("[Map] 🚀 Animations Leaflet désactivées (PerfUltra.animOff)");

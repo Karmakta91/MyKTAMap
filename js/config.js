@@ -130,6 +130,10 @@ let DEFAULT_CONFIG = {
   // ajoute un type par niveau. Le réglage rend l ancrage à qui le préfère,
   // typiquement sur grand écran où la place ne manque pas.
   panneauxAncres: false,
+  // ➕ 16/10/2026 (KARMA) : boutons de zoom +/− sur les cartes (plan, widget OSM
+  // de l'accueil, Vue OSM). Défaut OFF : on zoome au doigt ou à la molette,
+  // les boutons ne servaient presque à personne et mangeaient le coin.
+  zoomBoutons: false,
   snapDrawPx: 14,   // rayon d'accrochage en pixels ÉCRAN (converti en unités
                     // plan au clic selon le zoom courant — « si c'est proche
                     // à l'œil, ça s'accroche », quel que soit le niveau de zoom)
@@ -246,6 +250,7 @@ try {
   // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF)
   if ("snapDraw" in saved) APP_CONFIG.snapDraw = !!saved.snapDraw;
   if ("panneauxAncres" in saved) APP_CONFIG.panneauxAncres = !!saved.panneauxAncres;
+  if ("zoomBoutons" in saved) APP_CONFIG.zoomBoutons = !!saved.zoomBoutons;
   if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
   // 👣 v1.96.0 — podomètre GLOBAL (taille de pas, seuil, cooldown) : la foulée
   // est celle de la personne, le seuil et le cooldown ceux du téléphone —
@@ -576,6 +581,7 @@ function buildAppConfigFromPlan(planConfig) {
     // le bloc de restauration au boot ET cette liste.
     if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
     if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
+    if ("zoomBoutons" in saved) cfg.zoomBoutons = !!saved.zoomBoutons;
     if ("batterieEnabled" in saved) cfg.batterieEnabled = !!saved.batterieEnabled;
     // 🐛 01/10/2026 — `vibrationEnabled` manquait ici (même piège que snapDraw
     // ci-dessus) : la vibration retombait OFF à chaque ouverture de plan, et la
@@ -602,6 +608,7 @@ function buildAppConfigFromPlan(planConfig) {
   if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
   if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
   if (cfg.panneauxAncres === undefined)        cfg.panneauxAncres        = DEFAULT_CONFIG.panneauxAncres === true;
+  if (cfg.zoomBoutons === undefined)           cfg.zoomBoutons           = DEFAULT_CONFIG.zoomBoutons === true;  // défaut OFF
   // 🧩 Fonctionnalités optionnelles : défaut OFF depuis le 01/10/2026 → `=== true`.
   if (cfg.batterieEnabled === undefined)       cfg.batterieEnabled       = DEFAULT_CONFIG.batterieEnabled === true;
   if (cfg.vibrationEnabled === undefined)      cfg.vibrationEnabled      = DEFAULT_CONFIG.vibrationEnabled === true;
@@ -951,6 +958,7 @@ function sauvegarderPrefsUtilisateur() {
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
     existing.snapDraw              = APP_CONFIG.snapDraw === true;
+    existing.zoomBoutons           = APP_CONFIG.zoomBoutons === true;           // ➕ 16/10/2026 : défaut OFF
     existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE
     existing.vibrationEnabled      = APP_CONFIG.vibrationEnabled === true;      // 📳 v1.85.2 : defaut OFF
     existing.batterieEnabled       = APP_CONFIG.batterieEnabled === true;       // 🧩 01/10/2026 : defaut OFF
@@ -1559,6 +1567,34 @@ window.loadAppConfig               = loadAppConfig;
 window.buildAppConfigFromPlan      = buildAppConfigFromPlan;
 window.sauvegarderPrefsUtilisateur = sauvegarderPrefsUtilisateur;
 window.setDebugMode                = setDebugMode;
+
+// ➕ 16/10/2026 — Boutons de zoom +/− selon la préférence `zoomBoutons` (défaut
+// OFF). Une carte créée avec `zoomControl: false` s'inscrit ici ; le réglage
+// changé à chaud repasse sur toutes les cartes encore en vie.
+const _cartesZoom = [];
+function ktaBoutonsZoom(carte) {
+  if (!carte || typeof L === "undefined" || !L.control || !L.control.zoom) return;
+  if (_cartesZoom.indexOf(carte) < 0) {
+    _cartesZoom.push(carte);
+    carte.once("unload", function () {
+      const i = _cartesZoom.indexOf(carte);
+      if (i >= 0) _cartesZoom.splice(i, 1);
+    });
+  }
+  const voulu = !!(window.APP_CONFIG && window.APP_CONFIG.zoomBoutons === true);
+  if (voulu && !carte._ktaZoomCtl) {
+    carte._ktaZoomCtl = L.control.zoom().addTo(carte);
+  } else if (!voulu && carte._ktaZoomCtl) {
+    carte.removeControl(carte._ktaZoomCtl);
+    carte._ktaZoomCtl = null;
+  }
+}
+window.ktaBoutonsZoom = ktaBoutonsZoom;
+window.ktaBoutonsZoomPartout = function () {
+  _cartesZoom.slice().forEach(function (c) {
+    try { ktaBoutonsZoom(c); } catch (e) { console.warn("[Config] Boutons de zoom :", e); }
+  });
+};
 // 🆕 v1.36.2 — helpers per-plan pour showRoadIntersections (option déplacée
 // de Configuration home → Réglages map mode, persistée par plan)
 window.getPlanShowsIntersections   = getPlanShowsIntersections;

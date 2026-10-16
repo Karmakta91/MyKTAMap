@@ -5548,6 +5548,7 @@
   "selm.rien": "Nada bajo el clic: apunta a la línea o al interior de la forma",
   "selm.refusOuvert": "⛔ Este es una LÍNEA y tu selección tiene superficies cerradas",
   "selm.refusFerme": "⛔ Este es una SUPERFICIE CERRADA y tu selección tiene líneas",
+  "config.zoomBoutons.label": "➕ Botones de zoom +/− en los mapas",
   "config.panneaux.label": "🪟 Anclar los paneles de herramientas a su botón",
   "journal.reprise.toast": "🔁 Salida reanudada: continúa en vez de crear una nueva",
   "journal.reprise.suiviTitre": "🔁 Tu salida se ha reanudado",

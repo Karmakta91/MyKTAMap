@@ -2283,13 +2283,14 @@
     _osmMap = L.map(mapDiv, {
       worldCopyJump: false,
       attributionControl: true,
-      zoomControl: true,
+      zoomControl: false,   // boutons +/− selon le réglage (ktaBoutonsZoom)
       // 🆕 v1.39.14 — preferCanvas pour rendre toutes les polylines (roads + iti
       // + tracé tracker) sur 1 seul canvas, pas N éléments SVG. Supporte des
       // milliers de polylines sans alourdir le DOM. Cohérent avec map.js
       // principale (cf §13 perf-memory). Les imageOverlay (tuiles) restent DOM.
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
+    if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
       attribution: OSM_ATTR,

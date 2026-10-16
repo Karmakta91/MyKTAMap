@@ -5548,6 +5548,7 @@
   "selm.rien": "Nothing under the click — aim at the line or inside the shape",
   "selm.refusOuvert": "⛔ This one is a LINE, your selection holds closed surfaces",
   "selm.refusFerme": "⛔ This one is a CLOSED SURFACE, your selection holds lines",
+  "config.zoomBoutons.label": "➕ Zoom +/− buttons on maps",
   "config.panneaux.label": "🪟 Anchor tool panels to their button",
   "journal.reprise.toast": "🔁 Outing resumed — it continues instead of starting a new one",
   "journal.reprise.suiviTitre": "🔁 Your outing has resumed",

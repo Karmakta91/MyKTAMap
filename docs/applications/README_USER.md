@@ -1092,6 +1092,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **📐 Adapter la taille des icônes au zoom** (activé au départ) ;
   - **❓ Bouton d'aide dans les fenêtres** (activé) : un ❓ dans le titre des fenêtres qui ont une page d'aide, qui ouvre directement la bonne page ;
   - **🔔 Notifications** : **Toutes**, **Essentielles** (au départ : plus de message pour confirmer un geste que tu viens de faire) ou **Silence** (seulement l'important : batterie faible, capteur refusé, erreurs). Les alertes du serveur et les fenêtres qui attendent une décision ne sont jamais coupées ;
+  - **➕ Boutons de zoom +/− sur les cartes** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM. Désactivé par défaut : on zoome au doigt (pincer) ou à la molette ;
   - **🪟 Ancrer les panneaux d'outils au bouton** : les panneaux Tracés, Zones et Structures s'ouvrent collés à leur bouton au lieu d'être centrés (confortable sur grand écran, déconseillé sur téléphone) ;
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;

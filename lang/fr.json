@@ -5548,6 +5548,7 @@
   "selm.rien": "Rien sous le clic — vise le trait ou l'intérieur de la forme",
   "selm.refusOuvert": "⛔ Celui-ci est une LIGNE, ta sélection est en surfaces fermées",
   "selm.refusFerme": "⛔ Celui-ci est une SURFACE FERMÉE, ta sélection est en lignes",
+  "config.zoomBoutons.label": "➕ Boutons de zoom +/− sur les cartes",
   "config.panneaux.label": "🪟 Ancrer les panneaux d'outils au bouton",
   "journal.reprise.toast": "🔁 Sortie reprise — elle continue au lieu d'en créer une nouvelle",
   "journal.reprise.suiviTitre": "🔁 Ta sortie a repris",
