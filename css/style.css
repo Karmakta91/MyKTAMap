@@ -766,6 +766,28 @@ html.kta-theme-light .kta-readme-modal-close:hover {
   color: #1a1f2e;
   background: rgba(0,0,0,0.06);
 }
+/* Convention : les cibles « au doigt » s'agrandissent sous @media (pointer: coarse), jamais par un seuil de largeur.
+   Croix de fermeture ≥ 40 px au toucher (audit ergonomie 16/10/2026, QW6) ; la marge négative garde la hauteur
+   de l'en-tête (la cible déborde sur son padding). Souris : inchangé. */
+@media (pointer: coarse) {
+  .kta-panneau-close,
+  .kta-readme-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 40px;
+    min-height: 40px;
+    margin-top: -8px;
+    margin-bottom: -8px;
+  }
+  .kta-group-flyout-close,
+  .kta-group-flyout.kta-flyout-centre .kta-group-flyout-close {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+  }
+}
 
 .kta-panneau-corps {
   padding: 12px 14px 14px;
@@ -947,6 +969,9 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   z-index: 99999;
   display: flex;
   align-items: center;
+  /* safe : une boîte plus haute que l'écran s'aligne en haut, le titre et la croix restent atteignables en
+     défilant (audit ergonomie, QW8 ; même correctif que .kta-readme-modal-overlay). */
+  align-items: safe center;
   justify-content: center;
   padding: 14px;
   background: rgba(6, 9, 18, 0.78);
@@ -958,6 +983,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   width: 100%;
   max-width: 460px;
   max-height: 92vh;
+  max-height: 92dvh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(160deg, #1a1f2e 0%, #0a0d18 100%);
@@ -4080,6 +4106,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 .kta-export-modal-boite {
   height: auto !important;
   max-height: 92vh !important;
+  max-height: 92dvh !important;   /* hauteur visible réelle (barre d'URL mobile) ; vh = repli (QW7) */
 }
 @media (min-width: 1024px) {
   .kta-export-modal-boite {
@@ -4107,6 +4134,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 .kta-pdf-modal-boite {
   height: auto !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;   /* idem .kta-export-modal-boite (QW7) */
 }
 @media (min-width: 1024px) {
   .kta-pdf-modal-boite {
@@ -12938,8 +12966,17 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
    tout l'écran (inset:0 + background rgba), mais la boîte centrée
    reste dans la zone padding-box → plus de débordement.
 
-   Concerne TOUTES les modales utilisant .kta-readme-modal-overlay :
-   Distance totale, Itinéraire, Configuration, Aide, Audit, etc. */
+   PORTÉE RÉELLE (audit ergonomie 16/10/2026, M4) : seuls les overlays
+   insérés dans <body> (sélecteur de plan, Secours, légende perso… ~8)
+   reçoivent cette réserve. Ceux insérés dans <html>
+   (documentElement.appendChild : exports, Filtres, Éditeur de données,
+   ktaAlerte/ktaConfirm… ~100) gardent 16 px et couvrent les barres :
+   c'est la règle, voulue. L'overlay (99999) passe de toute façon
+   au-dessus du header et du footer, et la boîte (88-92dvh) ne rétrécit
+   pas avec ce padding : étendue à <html>, la réserve pousserait le bas
+   de l'export image hors de l'écran en paysage (−15 px en 844×390,
+   −17 px en 640×360, bouton Télécharger compris). Ne pas l'étendre
+   sans plafonner la boîte. */
 body.kta-refonte-v1 .kta-readme-modal-overlay {
   padding-top:    calc(44px + env(safe-area-inset-top, 0px) + 16px);
   /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
@@ -15181,6 +15218,13 @@ body.kta-theme-light .kta-refonte-session-meta {
 }
 .kta-export-cb-row input:disabled { cursor: not-allowed; }
 .kta-export-cb-row input:disabled + span { color: #666; }
+/* Option d'export indisponible (posée par le JS) : visible mais éteinte. */
+.kta-export-radio-row.kta-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.kta-export-radio-row.kta-disabled:hover { background: transparent; }
+.kta-export-radio-row.kta-disabled input { cursor: not-allowed; }
 body.kta-theme-light .kta-export-cb-row,
 body.kta-theme-light .kta-export-sub-cb-row,
 body.kta-theme-light .kta-ses-cb-row {
