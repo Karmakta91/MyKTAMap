@@ -20,6 +20,7 @@
 //   G2. son DERNIER bouton, une fois scrollé, est bien sous le doigt
 //       (`elementFromPoint` = le bouton, pas le footer) ;
 //   G3. en mode centré, un fond est posé sous le panneau et la croix fait ≥ 36 px ;
+//       au toucher, la croix fait ≥ 40 px dans les deux modes ;
 //   G4. toucher la carte pour fermer n'ajoute AUCUN sommet au tracé armé,
 //       le toucher suivant en ajoute bien un ;
 //   G5. boutons de zoom (réglage activé) empilés + au-dessus de −.
@@ -145,6 +146,9 @@ async function controlerPanneau(page, f, mode, gid) {
     pb(etiquette + " : habillage centré incomplet (fond " + r.fond + ", croix " + r.croix + " px)");
   } else if (mode === "ancré" && r.fond) {
     pb(etiquette + " : fond posé en mode ancré");
+  } else if (f.touch && r.croix < 40) {
+    // 🩸 17/10/2026 : la règle « pointer: coarse » était placée AVANT les règles de base → sans effet (36/24 px).
+    pb(etiquette + " : croix de " + r.croix + " px au toucher (40 attendus)");
   } else {
     ok(etiquette + " : " + r.haut + "→" + r.bas + " dans " + limH + "→" + limB + ", dernier bouton atteint");
   }

@@ -781,12 +781,6 @@ html.kta-theme-light .kta-readme-modal-close:hover {
     margin-top: -8px;
     margin-bottom: -8px;
   }
-  .kta-group-flyout-close,
-  .kta-group-flyout.kta-flyout-centre .kta-group-flyout-close {
-    flex: 0 0 auto;
-    width: 40px;
-    height: 40px;
-  }
 }
 
 .kta-panneau-corps {
@@ -17379,6 +17373,16 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   height: 36px;
   font-size: 16px;
   border-radius: 10px;
+}
+/* Au doigt : 40 px, centré comme ancré. APRÈS les règles de base ci-dessus — un @media n'ajoute aucune
+   spécificité : placé plus haut dans le fichier, il perdait (constat de vérification du 17/10/2026). */
+@media (pointer: coarse) {
+  .kta-group-flyout-close,
+  .kta-group-flyout.kta-flyout-centre .kta-group-flyout-close {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+  }
 }
 
 .kta-group-flyout-grid {

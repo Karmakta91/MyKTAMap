@@ -2414,8 +2414,8 @@ function initInterface() {
   // l'export, décisions KARMA) : lanceur À TUILES sur le modèle du modal
   // Tracker. Trois sections (Image / Session / Export externe), chaque tuile
   // ouvre directement le bon écran : plus de fenêtre à onglets à parcourir.
-  // Le 2ᵉ argument `true` de ouvrirExportSessionModal = mode « solo » (sans
-  // barre d'onglets) ; le 3ᵉ `{ format }` présélectionne KMZ ou GPX.
+  // Le 2ᵉ argument de ouvrirExportSessionModal n'a plus d'effet (la barre
+  // d'onglets n'existe plus) ; le 3ᵉ `{ format }` présélectionne KMZ ou GPX.
   function _ouvrirExportSession(onglet, opts) {
     if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal(onglet, true, opts);
     else if (window.telechargerSessionJSON) window.telechargerSessionJSON();

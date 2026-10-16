@@ -1601,7 +1601,16 @@
       document.removeEventListener("keydown", onEchap);
     }
 
+    // Le floater peut être retiré par un autre chemin (retour à l'accueil, _ktaAnnulerModesClicCarte) : ses
+    // écouteurs ne doivent alors plus rien faire — sinon Échap rouvrait la modale d'export sur l'accueil.
+    function orphelin() {
+      if (banner.isConnected) return false;
+      nettoyer();
+      return true;
+    }
+
     function onClic(e) {
+      if (orphelin()) return;
       const x = Math.round(e.latlng.lng);
       const y = Math.round(APP_CONFIG.imageHeight - e.latlng.lat);
       nettoyer();
@@ -1620,7 +1629,8 @@
     }
 
     function onEchap(e) {
-      if (e.key === "Escape") annuler();
+      if (e.key !== "Escape" || orphelin()) return;
+      annuler();
     }
 
     btnAnnuler.addEventListener("click", annuler);
