@@ -1128,14 +1128,36 @@
     const rect = anchor.getBoundingClientRect();
     dd.style.left = rect.left + "px";
     dd.style.top  = (rect.bottom + 4) + "px";
-    // Si dépasse à droite, recaler
+    // Garder la liste DANS la zone visible : `visualViewport` (clavier, barres
+    // du navigateur mobile) sinon innerWidth/innerHeight. En paysage téléphone
+    // (360-390 px de haut), ni le dessous ni le dessus de l'ancre ne loge les
+    // 280 px de la liste : on prend le côté le plus spacieux, on borne la
+    // hauteur à l'espace dispo (défilement interne) et `top` ne passe jamais
+    // au-dessus de l'écran.
     setTimeout(function() {
+      const vv    = window.visualViewport || null;
+      const vTop  = vv ? vv.offsetTop : 0;
+      const vLeft = vv ? vv.offsetLeft : 0;
+      const vH    = vv ? vv.height : window.innerHeight;
+      const vW    = vv ? vv.width  : window.innerWidth;
+      const MARGE = 8;
       const ddRect = dd.getBoundingClientRect();
-      if (ddRect.right > window.innerWidth) {
-        dd.style.left = (window.innerWidth - ddRect.width - 8) + "px";
+      if (ddRect.right > vLeft + vW - MARGE) {
+        dd.style.left = Math.max(vLeft + MARGE, vLeft + vW - ddRect.width - MARGE) + "px";
       }
-      if (ddRect.bottom > window.innerHeight) {
-        dd.style.top = (rect.top - ddRect.height - 4) + "px";
+      if (ddRect.bottom > vTop + vH - MARGE) {
+        const placeDessous = (vTop + vH - MARGE) - (rect.bottom + 4);
+        const placeDessus  = (rect.top - 4) - (vTop + MARGE);
+        dd.style.boxSizing = "border-box";   // maxHeight = hauteur totale (padding + bordure compris)
+        if (placeDessus > placeDessous) {
+          const h = Math.min(ddRect.height, placeDessus);
+          dd.style.maxHeight = h + "px";
+          dd.style.top = Math.max(vTop + MARGE, rect.top - 4 - h) + "px";
+        } else {
+          const h = Math.min(ddRect.height, Math.max(80, placeDessous), vH - 2 * MARGE);
+          dd.style.maxHeight = h + "px";
+          dd.style.top = Math.max(vTop + MARGE, Math.min(rect.bottom + 4, vTop + vH - MARGE - h)) + "px";
+        }
       }
     }, 0);
 

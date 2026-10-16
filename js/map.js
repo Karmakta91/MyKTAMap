@@ -389,7 +389,10 @@ async function initMapFromConfig() {
   //
   // Mise a jour 10/05/2026 : desktop assoupli (-4/-3 au lieu de -2/-1)
   // sur demande utilisateur. Mobile inchange (calibre anti-crash).
-  const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  // « Mobile » = écran étroit OU appareil tactile (window.ktaAppareilTactile) :
+  // un téléphone en paysage (844 px) gardait sinon le plancher PC.
+  const _etroit = !!(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+  const _isMobile = _etroit || !!(window.ktaAppareilTactile && window.ktaAppareilTactile());
   const _maxImgDim = Math.max(config.plan.imageWidth || 0, config.plan.imageHeight || 0);
 
   // 🛡️ v173 : si PerfUltra.mobileZoomLimit est décoché (par défaut coché),

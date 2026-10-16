@@ -531,6 +531,17 @@ window.ktaEstIos = function() {
   } catch (e) { return false; }
 };
 
+// 📱 APPAREIL TACTILE : pointeur principal grossier (doigt), QUELLE QUE SOIT
+// l'orientation. Un téléphone en paysage dépasse 768 px de large ; un seuil de
+// largeur le prend pour un PC. Un PC à écran tactile garde la souris comme
+// pointeur principal → reste « PC ». Une tablette (même ≥ 1024 px) est tactile.
+// Seul consommateur aujourd'hui : le plancher de dézoom anti-crash (map.js).
+window.ktaAppareilTactile = function() {
+  try {
+    return !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  } catch (e) { return false; }
+};
+
 window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   if (!row) return;
   row.style.display = "";
