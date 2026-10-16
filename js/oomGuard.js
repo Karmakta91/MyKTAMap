@@ -51,6 +51,7 @@
   let _splashGone     = false;                       // passe à true quand _splashEnd a fini
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
   let _pendingKillInfo    = null;                    // payload kill détecté → modale après splash
+  let _v2CrashDetecte = false;   // un plantage de génération V2 a sa modale : pas la modale générique en plus
   let _pendingV2CrashInfo = null;                    // 🧱 v152 : payload kill V2 generation → modale spécifique
 
   // =========================
@@ -326,6 +327,48 @@
       return;
     }
 
+    // 16/10/2026 (KARMA, pro : fausse alerte en revenant de la page de gestion) — le témoin est PARTAGÉ par tous les
+    // onglets de l'app. Un onglet resté ouvert (la page de gestion s'ouvre dans un onglet à part ; l'onglet caché met
+    // son battement en pause sans effacer le témoin) le laisse « récent » : la nouvelle instance croyait à un arrêt
+    // brutal. On demande d'abord aux autres onglets s'ils vivent ; un seul qui répond = pas d'arrêt brutal.
+    _autreOngletVivant(function(vivant) {
+      if (vivant) {
+        console.log("[OOMGuard] Témoin tenu par un autre onglet encore ouvert : pas d'arrêt brutal");
+        return;   // le témoin appartient à l'onglet vivant : on n'y touche pas
+      }
+      if (_v2CrashDetecte) { _clearMarker(); return; }   // la modale V2 couvre déjà ce plantage
+      _signalerKill(info, age);
+    });
+  }
+
+  // Un autre onglet de l'app répond-il ? (BroadcastChannel : un message n'est jamais remis à l'émetteur.) Sans
+  // BroadcastChannel : « non », comme avant.
+  const CANAL_VIVANT = "myktamap-oomguard";
+  let _canalVivant = null;
+  try {
+    if (typeof BroadcastChannel === "function") {
+      _canalVivant = new BroadcastChannel(CANAL_VIVANT);
+      _canalVivant.addEventListener("message", function(e) {
+        if (e && e.data === "ping") { try { _canalVivant.postMessage("pong"); } catch (er) {} }
+      });
+    }
+  } catch (e) { _canalVivant = null; }
+  function _autreOngletVivant(cb) {
+    if (!_canalVivant) { cb(false); return; }
+    let fini = false;
+    const surMessage = function(e) {
+      if (fini || !e || e.data !== "pong") return;
+      fini = true; _canalVivant.removeEventListener("message", surMessage); cb(true);
+    };
+    _canalVivant.addEventListener("message", surMessage);
+    try { _canalVivant.postMessage("ping"); } catch (e) {}
+    setTimeout(function() {
+      if (fini) return;
+      fini = true; _canalVivant.removeEventListener("message", surMessage); cb(false);
+    }, 400);
+  }
+
+  function _signalerKill(info, age) {
     // Kill brutal probable : l'app était active et n'a pas atteint son
     // beforeunload. Sur smartphone (iOS Safari + Android Chrome agressif)
     // c'est très souvent un OOM. On stocke l'info et on l'affiche en modale
@@ -454,6 +497,7 @@
     if (ageMs > 3600000) return;
 
     // Differé après splash (pareil que la modale kill standard)
+    _v2CrashDetecte = true;
     _pendingV2CrashInfo = {
       planName:    info.planName  || "(sans nom)",
       imageSizeMB: info.imageSize  ? Math.round(info.imageSize / 1024 / 1024) : null,
