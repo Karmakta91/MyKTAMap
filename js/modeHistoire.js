@@ -19,7 +19,7 @@
 //   1. EMBARQUÉ : plan-config.json > plan.histoirePdf = "data/histoire.pdf"
 //      → résolu via RUNTIME_ASSETS (extraction eager dans whitelist 2-pass
 //        d'extraireZip v1.34.10+). Le bouton "Importer" est CACHÉ.
-//      📕 26/09/2026 (KARMA « si j'ai intégré un PDF dans un zip à la
+//      (KARMA « si j'ai intégré un PDF dans un zip à la
 //        génération, il ne remonte pas dans Mon Carnet > Récits ») : au
 //        chargement du plan, chaque document embarqué est COPIÉ dans l'IDB
 //        (`syncDocsEmbarques`). Il devient un document comme les autres —
@@ -57,7 +57,7 @@
   let _saveTimer = null;
   let _pdfBlobUrl = null;     // URL.createObjectURL du document AFFICHÉ (à revoke)
   let _sessionPdfMeta = null; // { id, name, size } du document affiché
-  // 📄 v1.69.0 — multi-documents : id du document sélectionné dans la liste.
+  // multi-documents : id du document sélectionné dans la liste.
   // EMBED_ID = pseudo-id du PDF livré dans le ZIP (non supprimable, pas en IDB).
   const EMBED_ID = "__embed__";
   let _docSelectionne = null;
@@ -168,7 +168,7 @@
     }).catch(function() { return null; });
   }
 
-  // 📕 26/09/2026 — COPIE D'UN DOCUMENT LIVRÉ AVEC LE PLAN.
+  // COPIE D'UN DOCUMENT LIVRÉ AVEC LE PLAN.
   // Id DÉTERMINISTE (`embed_<planId>_<rang>`) + `put` : le plan peut être
   // rechargé dix fois sans jamais créer de doublon, et une copie supprimée
   // par l'utilisateur revient à la prochaine ouverture du plan.
@@ -326,7 +326,7 @@
   }
 
   // ========== PDF EMBARQUÉS (plan-config.json) ==========
-  // 📄 v1.71.0 — MULTI : lit `plan.histoirePdfs[]` (générateur v1.71+), avec
+  // MULTI : lit `plan.histoirePdfs[]` (générateur v1.71+), avec
   // repli sur `plan.histoirePdf` (chaîne unique, plans antérieurs). ⚠️ Quand
   // les DEUX existent, histoirePdf est le 1er élément du tableau — ne JAMAIS
   // concaténer les deux sources (doublon garanti).
@@ -461,7 +461,7 @@
               '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-import">' + t("histoire.pdf.import") + '</button>' +
               '<button class="kta-btn kta-btn-danger" type="button" id="kta-histoire-pdf-remove" style="display:none;">' + t("histoire.pdf.remove") + '</button>' +
             '</div>' +
-            // 📄 v1.69.0 — liste des documents (N par plan). Le PDF embarqué dans
+            // liste des documents (N par plan). Le PDF embarqué dans
             // le ZIP y figure aussi, en lecture seule : il n'appartient pas à
             // l'utilisateur, seul le générateur peut le changer.
             '<div class="kta-histoire-pdf-docs" id="kta-histoire-pdf-docs" style="display:none;"></div>' +
@@ -726,7 +726,7 @@
   // et affiche celui qui est sélectionné.
   // opts.force=true → re-render même si déjà fait (après import/suppression).
   //
-  // ⚠️ v1.69.0 : l'embarqué ne MASQUE plus l'import. Avant, un plan livré avec
+  // ⚠️ l'embarqué ne MASQUE plus l'import. Avant, un plan livré avec
   // un PDF interdisait d'en ajouter (toolbar cachée) — l'user ne pouvait rien
   // joindre à ces plans-là. Il est maintenant une entrée de la liste parmi les
   // autres, simplement non supprimable.
@@ -757,7 +757,7 @@
 
     _docsImportes().then(function(docs) {
       const liste = [];
-      // 📕 26/09/2026 — un document embarqué DÉJÀ COPIÉ en base ne doit pas
+      // un document embarqué DÉJÀ COPIÉ en base ne doit pas
       // apparaître deux fois : la copie le représente, et c'est elle qui est
       // supprimable. L'entrée « embarquée » ci-dessous n'est plus qu'un REPLI,
       // pour le cas où la copie n'a pas pu se faire.
@@ -870,7 +870,7 @@
         '</div>'
       );
     } else {
-      // 🆕 v1.34.22 — En plus de l'iframe, on ajoute un petit bouton "Ouvrir"
+      // En plus de l'iframe, on ajoute un petit bouton "Ouvrir"
       // en sticky en haut du wrap. (1) Si l'iframe est bloquée par CSP
       // (frame-src absent côté serveur), le user a au moins le bouton pour
       // ouvrir le PDF dans un nouvel onglet. (2) Même quand l'iframe marche,
@@ -917,7 +917,7 @@
       const ta = document.getElementById("kta-histoire-note");
       if (ta) _saveNote(ta.value);
     }
-    // 🐛 v1.34.20 (Pack RAM Phase 4 lesson) — Clear iframe src AVANT remove
+    // (Pack RAM Phase 4 lesson) — Clear iframe src AVANT remove
     // pour libérer la bitmap PDF iOS. Sinon WebKit garde la texture pinned.
     const iframe = _modal.querySelector("iframe");
     if (iframe) {
@@ -944,7 +944,7 @@
     close();
   }
 
-  // 🆕 v1.34.29 — Helper d'import session (utilisé par interfaceImportExport.js
+  // Helper d'import session (utilisé par interfaceImportExport.js
   // pour restaurer le Mode Histoire embarqué dans un .mkmsession.zip).
   // Pose la note libre + (éventuellement) le PDF de session sur le plan
   // courant. Cohérent avec la sémantique d'import des autres champs : on
@@ -969,7 +969,7 @@
         console.warn("[ModeHistoire] importSessionData note échec :", e);
       }
       // PDF : AJOUTÉS aux documents du plan courant.
-      // 📄 v1.69.0 : c'était un `put` sur la clé du plan → réimporter une
+      // c'était un `put` sur la clé du plan → réimporter une
       // session écrasait le PDF déjà en place. Depuis le multi-documents, on
       // ajoute — l'import n'efface plus rien (cohérent avec « merge » ailleurs).
       if (liste.length === 0) { resolve(true); return; }
@@ -990,9 +990,9 @@
   MH.close              = close;
   MH.isOpen             = isOpen;
   MH._onPlanSwitch      = _onPlanSwitch;
-  MH.importSessionData  = importSessionData;  // 🆕 v1.34.29
+  MH.importSessionData  = importSessionData;
 
-  // 📕 26/09/2026 — appelée par `main.js` à la fin du chargement d'un plan.
+  // appelée par `main.js` à la fin du chargement d'un plan.
   MH.syncDocsEmbarques = syncDocsEmbarques;
 
   window.ModeHistoire = MH;

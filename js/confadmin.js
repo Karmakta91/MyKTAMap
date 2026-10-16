@@ -33,7 +33,7 @@
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
   }
-  // 🏷️ v1.90.1 — MÊMES RÈGLES QUE `PlanRegistry.setTags` (trim, 24 caractères,
+  // MÊMES RÈGLES QUE `PlanRegistry.setTags` (trim, 24 caractères,
   // dédup insensible à la casse, 12 max). 🩸 Si elles divergeaient, ConfAdmin
   // publierait des tags que l'app rognerait en silence : l'auteur du kiosque
   // verrait un filtre annoncé qui ne remonte pas. Le champ accepte des virgules
@@ -54,7 +54,7 @@
 
   // Même sanitisation que le moteur (main.js decouvrirPlansServeur)
   function _sanitId(s) { return String(s || "").replace(/[^a-z0-9_-]/gi, "_"); }
-  // 📦 07/10/2026 — même règle que l'app (main.js > decouvrirPlansServeur) : chemin relatif .zip,
+  // même règle que l'app (main.js > decouvrirPlansServeur) : chemin relatif .zip,
   // sans « .. » ni « / » initial. Une saisie refusée retombe sur data/<id>.zip.
   function _zipValide(z) { return /^[\w./-]+\.zip$/i.test(z || "") && z.indexOf("..") < 0 && z.charAt(0) !== "/"; }
   function _cheminZip(p) { return _zipValide(p.zip) ? p.zip : "data/" + p.id + ".zip"; }
@@ -334,7 +334,7 @@
     r.readAsText(f);
   });
 
-  // 🔑 v1.90.6 — SHA-256 du mot de passe d'instance. Recalculé à la volée,
+  // SHA-256 du mot de passe d'instance. Recalculé à la volée,
   // jamais stocké : `_accessHash` ne contient QUE le hash, et la valeur tapée
   // reste dans le champ, en RAM, le temps de l'onglet.
   // 🩸 `crypto.subtle` n'existe qu'en contexte SÛR (https ou localhost). Un

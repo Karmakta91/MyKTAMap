@@ -145,7 +145,7 @@ async function bandeau() {
   G.setPref("auto");
   actif = false; G.rafraichir();
   t("suivi arrêté : bandeau masqué", G.etat().visible === false);
-  // 01/10/2026 (KARMA 1:a) — sans suivi, une position CONFIRMÉE (« Je suis
+  // sans suivi, une position CONFIRMÉE (« Je suis
   // ici » sur une plaque) suffit ; la position du départ du plan, non.
   let confirmee = true;
   w.getTrackingPositionEtat = () => ({ confirmee: confirmee, suiviActif: actif });
@@ -155,7 +155,7 @@ async function bandeau() {
   t("sans suivi, position NON confirmée : bandeau masqué", G.etat().visible === false);
   delete w.getTrackingPositionEtat;
   actif = true;
-  // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »),
+  // la croix ÉTEINT le guidage (réglage « Jamais »),
   // la tuile 🪧 le rallume, sans recalculer l'itinéraire. (Itinéraire normal :
   // une sortie d'urgence, elle, reste affichée même sur « Jamais ».)
   iti = Object.assign({}, it.road);
@@ -597,7 +597,7 @@ async function evacuationBrancard() {
     t("inter-plans : plan cible sans profondeurs → jonction en 2D, jamais celles du plan ouvert",
       proche(vide.totalDistance, plat + 10));
 
-    // 🐛 10/10/2026 — jonction dessinée en PLUSIEURS segments : chaque segment
+    // jonction dessinée en PLUSIEURS segments : chaque segment
     // comptait le dénivelé complet (2 segments → 680 px au lieu de 520). Le
     // dénivelé est réparti au prorata de la longueur 2D de chaque segment :
     // même puits en 1 ou 3 segments → même poids, dans les deux sens.
@@ -655,7 +655,7 @@ async function evacuationBrancard() {
     const ii = fs.readFileSync(path.join(ROOT, "js/interfaceItineraire.js"), "utf8");
     t("câblage inter-plans : la suite survit à la coupe et à la replanification",
       (ii.match(/if \(road\.suite\) newRoad\.suite = road\.suite;/g) || []).length === 2);
-    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée : ouvrir
+    // la suite n'était jamais abandonnée : ouvrir
     // le plan suivant par le sélecteur y traçait l'étape (et l'enregistrait dans
     // sa session). Elle ne se poursuit que par une traversée PHYSIQUE, et part
     // avec l'itinéraire supprimé ou remplacé.

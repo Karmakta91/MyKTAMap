@@ -10,7 +10,7 @@
 // Préset "ULTRA" qui active 6 optims simultanément, OU toggles individuels
 // pour les power users qui veulent affiner.
 //
-// 🆕 v1.59.0 (KARMA « on n'active jamais cette option par défaut, c'est
+// (KARMA « on n'active jamais cette option par défaut, c'est
 // l'utilisateur qui coche ») : persistance PAR PLAN (`myktamap_perf_toggles_
 // v2_<planId>`). Avant : clé GLOBALE `myktamap_perf_toggles` → cocher ULTRA
 // une fois sur un gros plan l'appliquait silencieusement à TOUS les plans
@@ -43,7 +43,7 @@
 (function() {
   "use strict";
 
-  // 🆕 v1.59.0 : slot PAR PLAN. L'ancienne clé globale "myktamap_perf_toggles"
+  // slot PAR PLAN. L'ancienne clé globale "myktamap_perf_toggles"
   // n'est plus lue (péremption volontaire — cf. en-tête).
   const STORAGE_PREFIX = "myktamap_perf_toggles_v2_";
 
@@ -51,7 +51,7 @@
   // c'est un méta-toggle qui active/désactive les autres en bloc.
   const TOGGLES = ["decim", "animOff", "noIntersect", "noTooltips", "slowSave", "viewportCull", "mobileZoomLimit"];
 
-  // 🏗️ v1.82.1 — « Afficher tous les niveaux au lancement » (demande KARMA).
+  // « Afficher tous les niveaux au lancement » (demande KARMA).
   // Rangé ICI parce que c'est un réglage de CHARGE : sur un relevé importé à
   // six étages, tout afficher d'emblée multiplie ce que la carte doit peindre.
   //
@@ -83,7 +83,7 @@
     return o;
   }
 
-  // 🆕 v1.59.0 — État PAR PLAN, résolu au runtime. _resolve() détecte le
+  // État PAR PLAN, résolu au runtime. _resolve() détecte le
   // changement de plan courant (window._currentLoadedPlanId, posé AVANT
   // initMapFromConfig sur tous les chemins de chargement → animOff lu à
   // l'init de la map voit déjà le bon slot) et recharge le slot correspondant.
@@ -101,7 +101,7 @@
       TOGGLES.forEach(function(k) {
         if (typeof parsed[k] === "boolean") out[k] = parsed[k];
       });
-      // 🩸 v1.92.0 (Q60) : les toggles HORS ULTRA n'étaient jamais RELUS —
+      // 🩸 (Q60) : les toggles HORS ULTRA n'étaient jamais RELUS —
       // « tous les niveaux » repartait à true à chaque chargement.
       HORS_ULTRA.forEach(function(k) {
         if (typeof parsed[k] === "boolean") out[k] = parsed[k];

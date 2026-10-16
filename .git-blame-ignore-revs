@@ -1,0 +1,2 @@
+# Commits de pur nettoyage (commentaires, mise en forme) que `git blame` doit sauter — un SHA complet par ligne.
+# Activer une fois par clone : git config blame.ignoreRevsFile .git-blame-ignore-revs

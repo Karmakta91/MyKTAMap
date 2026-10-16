@@ -20,7 +20,7 @@
 //   4. Clic sur un résultat → carte centrée + popup + flash visuel
 //
 // Histoire :
-//   v1.7.x → recherche points uniquement
+//   → recherche points uniquement
 //   v1.10.3 (KARMA "1:b · 2:b · 3:a · 5:b · 6:a+b · 7:a · 8:a+b+c") →
 //   extension à roads/zones/structures + raccourci clavier + groupes.
 // =========================
@@ -39,7 +39,7 @@
   // Filtres actifs (réinitialisés à chaque ouverture de modale)
   let _filterLayers = new Set();    // Set<layerId> — vide = tous les calques
   let _filterTags   = new Set();    // Set<tag>     — vide = tous les tags
-  // 🆕 v1.10.3-search-unified : filtre par catégorie (kind). Set<"point"|"road"|"zone"|"structure">
+  // filtre par catégorie (kind). Set<"point"|"road"|"zone"|"structure">
   // Vide = toutes les catégories actives (comportement par défaut "tout voir").
   let _filterKinds  = new Set();
 
@@ -265,7 +265,7 @@
     _afficherModal();
   };
 
-  // 🆕 v1.10.3-search-unified : raccourci clavier global Ctrl/Cmd+K
+  // raccourci clavier global Ctrl/Cmd+K
   // Ouvre la modale de recherche sauf si l'user est en train de taper
   // dans un input/textarea/contenteditable (anti-vol de focus).
   document.addEventListener("keydown", function(e) {
@@ -351,7 +351,7 @@
   }
 
 
-  // 🆕 v1.10.3-search-unified : version unifiée pour les 4 catégories.
+  // version unifiée pour les 4 catégories.
   // - filterKinds (Set vide = tout) : filtre par "point"|"road"|"zone"|"structure"
   // - filterLayers : pour points uniquement (tracés/zones/structures n'ont pas de "layer" au sens calque)
   // - filterTags  : pour points uniquement (les autres n'ont pas de tags)
@@ -451,7 +451,7 @@
     }
     btnClose.addEventListener("click", fermer);
 
-    // 🌐 v1.58.0 — pont cross-plan : ferme cette modale et ouvre la recherche
+    // pont cross-plan : ferme cette modale et ouvre la recherche
     // multi-plans avec la saisie courante pré-remplie.
     (function _wireCrossPlanBridge() {
       const bridge = document.getElementById("kta-search-crossplan");
@@ -497,7 +497,7 @@
           if (_filterTags.has(value)) _filterTags.delete(value);
           else _filterTags.add(value);
         } else if (type === "kind") {
-          // 🆕 v1.10.3-search-unified : filtre catégorie
+          // filtre catégorie
           if (_filterKinds.has(value)) _filterKinds.delete(value);
           else _filterKinds.add(value);
         }
@@ -619,7 +619,7 @@
   // ========== 🆕 v1.10.3-search-unified : COLLECTEURS ROADS/ZONES/STRUCTURES ==========
   // Labels lisibles par type (cohérent UI app). Résolus via I18n AU RENDU
   // (fonctions, pas constantes) pour ne pas appeler t() au load du module.
-  // 🏷️ v1.78.0 (retour KARMA « le renommage doit prendre partout ») — un
+  // (retour KARMA « le renommage doit prendre partout ») — un
   // type RENOMMÉ dans la légende (session ou plan) s'affiche sous son nom
   // choisi dans les résultats ; sans renommage, libellé i18n historique
   // (getSource() ≠ "default" = même garde que la sidebar, zéro changement
@@ -651,7 +651,7 @@
   }
   function _structTypeLabel(type) {
     const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
-    return _lcOuI18n("structures", type, keys[type] || null); // 🏷️ v1.78.0
+    return _lcOuI18n("structures", type, keys[type] || null);
   }
 
   // Icônes emoji utilisés dans les résultats (pas d'image PNG dédiée pour
@@ -801,7 +801,7 @@
 
     let html = "";
 
-    // 🆕 v1.10.3-search-unified : filtres catégorie (4 chips)
+    // filtres catégorie (4 chips)
     // Affichés en premier car ils restructurent le plus la liste de résultats.
     // Compteurs live = nombre d'items par catégorie dans la session+data layers.
     const allItems  = _tousLesItems();
@@ -1025,9 +1025,9 @@
         if (it) _aller(it);
       });
     });
-    // 🆕 v1.23.2 Feature G — Bouton 📌 Assigner à équipe (clic indépendant
+    // Feature G — Bouton 📌 Assigner à équipe (clic indépendant
     // du _aller — stopPropagation pour pas pan/zoom le map)
-    // 🐛 v1.23.2-fix (audit UX P2 — z-index stack) : ferme la modale Recherche
+    // ferme la modale Recherche
     // AVANT d'ouvrir Assigner pour éviter le stack (Esc dans Assigner aurait
     // laissé la Recherche orpheline visible).
     resEl.querySelectorAll(".kta-search-result-assign").forEach(function(btn) {
@@ -1116,7 +1116,7 @@
 
     html += '</div>';  // end content
 
-    // 🆕 v1.23.2 Phase 2 Feature G (KARMA roadmap §65.12 "Recherche unifiée
+    // Phase 2 Feature G (KARMA roadmap §65.12 "Recherche unifiée
     // Ctrl+K → étend pour assigner un point à une équipe en 2 clics") :
     // bouton 📌 visible UNIQUEMENT si :
     //   • le résultat est un POINT (pas road/zone/structure pour MVP)
@@ -1191,7 +1191,7 @@
     // 2) Conversion GPS → plan (pattern §32.7 transform rebuild on-demand)
     let transform, planCoords;
     try {
-      transform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      transform = window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
       planCoords = window.KmzExport.gpsToPlan(transform, gps.lat, gps.lng);
     } catch (e) {
       _renderGpsCardErreur(resEl, gps, window.I18n.t("search.gps.errInvalidCalib", { msg: (e && e.message) || "" }));
@@ -1393,7 +1393,7 @@
     _ouvrirPopupEtFlash(compatItem, latlng);
   }
 
-  // 🆕 v1.10.3-search-unified : va vers une road / zone / structure.
+  // va vers une road / zone / structure.
   // Calcule le centroïde, centre la carte dessus, pose un overlay flash
   // (polyline jaune ou polygon jaune) + popup info.
   function _allerVersAnnotation(item) {

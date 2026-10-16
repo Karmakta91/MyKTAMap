@@ -363,15 +363,14 @@
   // Retourne Promise<dataURL> ou null si pas possible.
   // Cible : largeur max 800px (downscaled), pour intégration PDF.
   //
-  // 🩹 v1.33.0-fix1 — KARMA bug : "en pdf, la carte exposé n'affiche pas
+  // KARMA bug : "en pdf, la carte exposé n'affiche pas
   // l'image principal". Cause : la tentative custom de charger
   // "data/<planId>/<baseImage>" ne marchait pas pour les plans selfhost,
   // les plans ZIP-loaded, ou avec des chemins relatifs différents.
   // Fix : on utilise window.MyKTAMapExporterGenererCanvas (helper global
   // exposé par js/exporter.js depuis v1.10.3) qui gère DÉJÀ correctement
   // tous les cas : selfhost, server, ZIP, multi-layer, etc. C'est le même
-  // helper que Mode Secours utilise pour ses cartes miniatures PDF
-  // (cf js/secoursMode.js ligne 4208+).
+  // helper que Mode Secours utilise pour ses cartes miniatures PDF.
   // Stratégie :
   //   1. Préférence : exporter.generCanvas → canvas full résolution
   //      avec image + data layers, SANS annotations
@@ -506,7 +505,7 @@
       ctx.lineWidth = 1.5;
       data.roads.forEach(function(r) {
         if (!Array.isArray(r.points) || r.points.length < 2) return;
-        // 🎨 v1.76.0 — couleur résolue au lieu d'une 5e palette écrite à la
+        // couleur résolue au lieu d'une 5e palette écrite à la
         // main. Elle n'était ni documentée comme variante délibérée, ni
         // recensée nulle part : `principal` y sortait en #6ce28a alors que la
         // carte le dessine en #00ff00. Le rapport décrivait donc la session
@@ -532,7 +531,7 @@
       ctx.globalAlpha = 0.25;
       data.zones.forEach(function(z) {
         if (!Array.isArray(z.points) || z.points.length < 3) return;
-        // 🎨 v1.76.0 — idem : couleur de la carte (remplissage de la zone),
+        // idem : couleur de la carte (remplissage de la zone),
         // au lieu d'une palette locale. Le globalAlpha 0.25 du contexte reste
         // la signature visuelle du rapport.
         ctx.fillStyle = (typeof window.ktaSwatchColor === "function" &&

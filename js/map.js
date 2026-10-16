@@ -10,7 +10,7 @@
 
 let map, bounds, collisionCanvas, collisionCtx;
 
-// 🐛 v1.77.0 — Handler CAPTURE du mode « clic carte » (cf. bloc v1.28.0 dans
+// Handler CAPTURE du mode « clic carte » (cf. bloc v1.28.0 dans
 // initMapFromConfig). Fonction NOMMÉE de portée module : c'est ce qui rend le
 // removeEventListener possible (une closure anonyme re-créée à chaque
 // chargement de plan ne peut jamais être détachée — c'était le bug des
@@ -90,12 +90,12 @@ const TAGS_BUILTIN = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
-  // 🆕 v1.59.0 — Tag « portail » (liaisons inter-plan) : icône vortex dédiée.
+  // Tag « portail » (liaisons inter-plan) : icône vortex dédiée.
   // Choix UTILISATEUR : un point lié peut garder n'importe quel tag (aucun
   // marquage visuel), ou prendre ce tag pour signaler visuellement le
   // portail (l'ex-badge 🌀 overlay auto a été retiré en v1.59.0).
   portail:  "icon/portail.png",
-  // 🆕 v1.41.0 D — Tag spécial "Point d'entrée du plan" (Vue OSM × Mode Secours).
+  // D — Tag spécial "Point d'entrée du plan" (Vue OSM × Mode Secours).
   //    Icône inline SVG vectorielle (porte stylisée jaune charte) → pas besoin
   //    de fichier PNG. KARMA peut remplacer par "icon/entree.png" + ajouter au
   //    sw.js ASSETS_TO_CACHE plus tard si besoin d'un design custom.
@@ -152,7 +152,7 @@ function creerIcones(iconConfig) {
     if (_useScaled) {
       ic = L.divIcon({
         // L'<img> enfant reçoit le transform: scale(...) CSS (cf style.css)
-        // 🎨 26/09/2026 (audit icônes, étage 1) — `data-kta-tag` sert au REPLI
+        // `data-kta-tag` sert au REPLI
         // (cf `_installerRepliIcones` plus bas) : le filet posé en v1.76.0 ne
         // couvrait que ≡ Légende, alors que la carte, les filtres, les favoris
         // et la recherche lisent la même cascade et peuvent donc hériter du même
@@ -171,7 +171,7 @@ function creerIcones(iconConfig) {
     return ic;
   }
 
-  // 🎨 26/09/2026 — REPLI D'UNE ICÔNE MORTE, pour toute la carte.
+  // REPLI D'UNE ICÔNE MORTE, pour toute la carte.
   // Délégation en phase de CAPTURE sur le document : l'événement `error` d'une
   // <img> ne bulle pas, et les marqueurs sont créés/détruits en permanence par
   // Leaflet — un listener par image serait à la fois coûteux et fragile. Une
@@ -256,13 +256,13 @@ function creerIcones(iconConfig) {
     }
   });
   _installerRepliIcones();
-  // 🐛 v1.76.0 — URLs built-in exposées comme FILET DE SECOURS. Un plan peut
+  // URLs built-in exposées comme FILET DE SECOURS. Un plan peut
   // déclarer un de ces tags dans son plan-config.json > icons avec un chemin
   // mort ; comme PLAN_CONFIG.icons est lu EN PREMIER par toute la cascade,
   // l'URL cassée gagnait sur l'icône intégrée (ex. la porte SVG inline
   // d'entree_plan) et la légende affichait une image morte. Les consommateurs
   // (≡ Légende) se replient sur cette table quand leur <img> échoue.
-  // 🔁 v1.81.0 : l'affectation est REMONTÉE au top-level (cf. le bandeau
+  // l'affectation est REMONTÉE au top-level (cf. le bandeau
   // « CATALOGUE DES TAGS BUILT-IN » en tête de fichier). Ici, elle n'aurait
   // lieu qu'au chargement d'un plan — or le HOME s'affiche AVANT, et c'est
   // lui qui en avait besoin.
@@ -272,7 +272,7 @@ function creerIcones(iconConfig) {
     window._iconMap.default = iconeDefault;
   }
 
-  // 🐛 v1.76.0 (F10) — ICÔNES CUSTOM DE LA LÉGENDE.
+  // (F10) — ICÔNES CUSTOM DE LA LÉGENDE.
   // Une entrée custom de catégorie `icones` s'affichait dans ≡ Légende et dans
   // la légende du PNG… et c'était tout : aucun point ne pouvait la porter, car
   // son id n'existait pas dans `_iconMap` et l'éditeur de point ne la
@@ -457,7 +457,7 @@ async function initMapFromConfig() {
   window.map    = map;
   window.bounds = bounds;
 
-  // 🧭 v1.97.0 — Mode « plan orienté » (la carte tourne pendant le tracking).
+  // Mode « plan orienté » (la carte tourne pendant le tracking).
   // La carte est REMPLACÉE à chaque plan chargé : le pane de rotation et les
   // hooks se reposent donc ici, et la garde vit sur l'instance (jamais sur
   // `window`, cf scripts/check-map-listeners.js). Sans mode actif, `attachTo`
@@ -469,7 +469,7 @@ async function initMapFromConfig() {
     } catch(e) { console.warn("[Map] MapBearing :", e); }
   }
 
-  // 🐛 v1.28.0 : pas de popup d'annotation (point / tracé / zone / structure)
+  // pas de popup d'annotation (point / tracé / zone / structure)
   // quand un mode « clic carte » est actif (dessin, mesure, recalage, ou un
   // picker de position : itinéraire / géoréf / départ tracker / évitement /
   // KMZ). Leaflet ouvre la popup au clic sur le layer (bindPopup) ; on la
@@ -481,7 +481,7 @@ async function initMapFromConfig() {
     }
   });
 
-  // 🐛 v1.28.0 : en mode « clic carte » actif (picker de position : géoréf /
+  // en mode « clic carte » actif (picker de position : géoréf /
   // départ tracker / itinéraire / évitement / KMZ), un clic SUR un élément
   // interactif (marqueur, tracé, zone…) était « mangé » par cet élément → il
   // n'atteignait pas le handler map.on("click") du picker (« le clic ne prend
@@ -492,7 +492,7 @@ async function initMapFromConfig() {
   // intact. Les contrôles Leaflet (zoom…) et les floaters (hors conteneur) sont
   // épargnés. Sans mode actif : pass-through immédiat.
   //
-  // 🐛 v1.77.0 (KARMA « 6 points d'un coup, puis 11, 16… » en itinéraire) —
+  // (KARMA « 6 points d'un coup, puis 11, 16… » en itinéraire) —
   // ce listener était ANONYME et le div #map est PERSISTANT (index.html,
   // cleanupExistingMap ne vide que innerHTML) : chaque chargement de plan en
   // EMPILAIT un de plus, chacun ré-émettant map.fire("click") sur la map
@@ -590,7 +590,7 @@ async function initMapFromConfig() {
     const niveauVisible = !_mlActif || _visibles.indexOf(lvl) >= 0;
     const layerId = layerConfig.id || layerConfig.label;
 
-    // 🆕 v1.38.0 — Cascade calibration : LS prefs-plan > plan-config > null.
+    // Cascade calibration : LS prefs-plan > plan-config > null.
     // Si calibration présente ET le plugin Rotated chargé → on rend l'image en
     // parallélogramme via 3 coins calculés à partir des 2 ancres saisies par
     // l'user. Sinon → fallback bounds plan principal (= comportement v1.37.x).
@@ -619,7 +619,7 @@ async function initMapFromConfig() {
       if (layerConfig.visible && niveauVisible) overlay.addTo(map);
       overlays[layerConfig.label] = overlay;
       window._ktaImageOverlays.push({
-        // 🆕 v1.21.5 (FilterPanel) : id ajouté pour permettre le match
+        // (FilterPanel) : id ajouté pour permettre le match
         // par identifiant stable (le label peut contenir des espaces / accents).
         id:      layerId,
         overlay: overlay,
@@ -651,7 +651,7 @@ async function initMapFromConfig() {
     }
   });
 
-  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : on remplace le L.control.layers
+  // (KARMA "refonte filtre Leaflet") : on remplace le L.control.layers
   // natif par notre propre bouton ≡ qui ouvre la modale FilterPanel unifiée
   // (Images + Data + M-LVL + Tags + Types Road/Zone/Struct). On expose les
   // overlays globalement pour que FilterPanel puisse les toggler.

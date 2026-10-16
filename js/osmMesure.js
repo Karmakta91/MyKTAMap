@@ -163,7 +163,7 @@
       info.textContent = _t("osm_mes.poser");
       return;
     }
-    // 🐛 v1.85.1 (KARMA « on voit deux fois la règle ») : PAS de 📏 ici,
+    // (KARMA « on voit deux fois la règle ») : PAS de 📏 ici,
     // l'icône fixe du bandeau le dit déjà. Le ⬛ reste : la surface, elle,
     // n'a pas d'icône fixe, et c'est ce qui la distingue de la distance.
     let txt = _fmtD(_distanceTotale());

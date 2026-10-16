@@ -78,15 +78,15 @@
     "myktamap_loader_show_server_plans",
     "myktamap_perf_toggles",        // legacy — plus lue depuis v1.59.0 (per-plan), gardée pour compat vieux exports
     "myktamap_last_version_data",
-    "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
-    "myktamap_achievements_v1",     // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
-    "myktamap_home_footer_replie_v1", // 🔽 v1.71.0 : footer HOME replié (demande KARMA « sauvegardé dans le profil »)
-    "myktamap_journal_enabled",     // 📔 v1.74.0 : carnet activé/désactivé — voyage avec la section carnet
-    "myktamap_wallpaper_prefs_v1",  // 🖼️ v1.75.2 : réglages d'affichage du fond (voile, cadrage, mode).
+    "myktamap_total_time_ms",       // temps cumulé (rang/badge profil) — sinon perdu à migration device
+    "myktamap_achievements_v1",     // hauts faits débloqués (ids + dates)
+    "myktamap_home_footer_replie_v1", // footer HOME replié (demande KARMA « sauvegardé dans le profil »)
+    "myktamap_journal_enabled",     // carnet activé/désactivé — voyage avec la section carnet
+    "myktamap_wallpaper_prefs_v1",  // réglages d'affichage du fond (voile, cadrage, mode).
                                     // ⚠️ L'IMAGE elle-même ne voyage pas encore (elle vit en IDB avec
                                     // l'avatar) — ces réglages arrivent donc sans leur image tant que
                                     // ce point du backlog n'est pas traité.
-    // 🌀 v1.67.2 (KARMA « la db des liaisons est-elle exportée ? » → non) :
+    // (KARMA « la db des liaisons est-elle exportée ? » → non) :
     // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
     // sans lui, une migration d'appareil perdait tout le réseau de portails.
     // À l'import : cas spécial FUSION par id (cf _applyImport) au lieu d'un
@@ -96,7 +96,7 @@
     "myktamap_backbtn_mode"         // préférence bouton Retour réduit/complet (v1.61.0)
   ];
 
-  // 🆕 v1.39.15 — Préfixes localStorage per-plan inclus dans la section
+  // Préfixes localStorage per-plan inclus dans la section
   // "perPlanLs" (audit KARMA : la georef GPS, les calibrations de calques
   // image et la note libre Mode Histoire n'étaient pas sauvegardés dans le
   // profile exporté → perdus à reset/migration device).
@@ -109,7 +109,7 @@
     "myktamap_plan_prefs_",       // prefs cascade per-plan (calibrations image layers v1.38.0, Nord, etc.)
     "myktamap_route_avoid_",      // avoidances itinéraire Pathfinder
     "myktamap_note_libre_",       // note libre Mode Histoire (markdown user)
-    "myktamap_perf_toggles_v2_"   // 🆕 v1.59.0 : toggles Perf ULTRA PER-PLAN (ex-clé globale)
+    "myktamap_perf_toggles_v2_"   // toggles Perf ULTRA PER-PLAN (ex-clé globale)
   ];
 
   // ───────── HELPERS ─────────
@@ -287,7 +287,7 @@
         delete clone.fsHandleId;  // non portable
         return clone;
       });
-      // 📁 16/09/2026 — les dossiers et le mode voyagent avec le registre
+      // les dossiers et le mode voyagent avec le registre
       const out = { plans: plans, lastPlanId: parsed.lastPlanId || null };
       if (Array.isArray(parsed.folders) && parsed.folders.length) out.folders = parsed.folders.map(function(f) { return Object.assign({}, f); });
       if (parsed.plansView) out.plansView = parsed.plansView;
@@ -312,7 +312,7 @@
     return prefs;
   }
 
-  // 🆕 v1.39.15 — Scan localStorage pour tous les préfixes per-plan PER_PLAN_PREFIXES.
+  // Scan localStorage pour tous les préfixes per-plan PER_PLAN_PREFIXES.
   // Retourne un objet { "<full-ls-key>": <parsed-value-or-string> } prêt à être
   // re-injecté tel quel via setItem au moment de l'import.
   // Le format est PLATEAU et conserve la full key (préfixe + planId) pour
@@ -376,7 +376,7 @@
     return sessions;
   }
 
-  // 🆕 v1.74.0 — LE CARNET (IDB `myktamap_journal` > `sorties`).
+  // LE CARNET (IDB `myktamap_journal` > `sorties`).
   // Dette soldée : le carnet était la SEULE donnée user qui ne voyageait pas
   // avec le profil (changement d'appareil = historique de sorties perdu).
   // Volume : ~2-8 Ko par sortie, plafond 500 → ~4 Mo pire cas, aucune image
@@ -458,7 +458,7 @@
     }
   }
 
-  // 🆕 v1.81.0 — PDF du Mode Histoire (dette D1). L'onglet 📖 Récits arrivait
+  // PDF du Mode Histoire (dette D1). L'onglet 📖 Récits arrivait
   // sur un nouvel appareil avec ses notes libres mais SANS les documents : le
   // carnet voyageait depuis v1.74.0, pas eux. Même régime que les photos —
   // OPT-IN strict (`include.histoirePdfs === true`), car un plan peut porter
@@ -512,7 +512,7 @@
     }
   }
 
-  // v1.21.0 Karma_dev — section "user" (surnom + photo profil)
+  // Karma_dev — section "user" (surnom + photo profil)
   // Photo profil est petite (max 512px côté long, JPEG q88 ≈ 30-60 KB),
   // donc base64 inline = OK sans bascule ZIP obligatoire.
   async function _collectUser() {
@@ -579,16 +579,16 @@
     };
     if (include.registry !== false)    profile.sections.registry    = _collectRegistry();
     if (include.preferences !== false) profile.sections.preferences = _collectPreferences();
-    if (include.perPlanLs !== false)   profile.sections.perPlanLs   = _collectPerPlanLsKeys(); // 🆕 v1.39.15
+    if (include.perPlanLs !== false)   profile.sections.perPlanLs   = _collectPerPlanLsKeys();
     if (include.favoris !== false)     profile.sections.favoris     = _collectFavoris();
     if (include.sessions !== false)    profile.sections.sessions    = _collectSessions();
     if (include.tutorial !== false)    profile.sections.tutorial    = _collectTutorial();
     // Async sections
     if (include.user !== false)        profile.sections.user        = await _collectUser();
-    if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet(); // 🆕 v1.74.0
+    if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet();
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
     if (include.photos === true)       profile.sections.photos      = await _collectPhotos(estExt);
-    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(estExt); // 🆕 v1.81.0 (D1)
+    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(estExt); // (D1)
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
     if (estExt) profile.sections = _sansPlansExtension(profile.sections, estExt).sections;
     return profile;
@@ -620,7 +620,7 @@
       count: Object.keys(prefs).length,
       bytes: JSON.stringify(prefs).length
     };
-    // 🆕 v1.39.15 — perPlanLs (georef GPS + calibrations layers + avoidances iti + note Histoire)
+    // perPlanLs (georef GPS + calibrations layers + avoidances iti + note Histoire)
     const perPlan = filtrer("perPlanLs", _collectPerPlanLsKeys());
     sizes.perPlanLs = {
       count: Object.keys(perPlan).length,
@@ -699,7 +699,7 @@
     } else {
       sizes.photos = { count: 0, bytes: 0 };
     }
-    // 🆕 v1.81.0 — PDF du Mode Histoire (D1). Compte + poids depuis les
+    // PDF du Mode Histoire (D1). Compte + poids depuis les
     // MÉTADONNÉES seulement (`lister()` ne charge aucun blob) : lire les
     // documents pour estimer coûterait jusqu'à 100 Mo de RAM par plan, alors
     // que l'écran d'export doit s'afficher tout de suite. Même facteur
@@ -753,7 +753,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 📦 v1.79.0 — ARCHIVES DE PLANS DANS L'EXPORT (backlog §3, GO KARMA)
+  // ARCHIVES DE PLANS DANS L'EXPORT (backlog §3, GO KARMA)
   // ═══════════════════════════════════════════════════════════
   // Conteneur ZIP « profil complet » : profil.json (le profil actuel à
   // l'identique — parseProfile/applyProfile réutilisés tels quels) +
@@ -780,7 +780,7 @@
     if (!window.PlanRegistry) return [];
     return (window.PlanRegistry.getAll() || [])
       .filter(function(p) { return p && p.type === "local" && p.storedBlob === true; })
-      // 🧩 v2.7.0 (prise « filtre d'export ») : une extension peut refuser
+      // (prise « filtre d'export ») : une extension peut refuser
       // l'archive d'un plan (plan partagé dont on n'est pas propriétaire).
       // Une prise qui échoue REFUSE. ⚠️ Retirer le bouton n'empêche pas la
       // copie d'un plan qu'on peut lire (données sur l'appareil).
@@ -928,16 +928,16 @@
       user:        s.user        ? ((s.user.surnom ? 1 : 0) + (s.user.photoData ? 1 : 0)) : 0,
       registry:    s.registry    ? ((s.registry.plans || []).length) : 0,
       preferences: s.preferences ? Object.keys(s.preferences).length : 0,
-      perPlanLs:   s.perPlanLs   ? Object.keys(s.perPlanLs).length : 0, // 🆕 v1.39.15
+      perPlanLs:   s.perPlanLs   ? Object.keys(s.perPlanLs).length : 0,
       favoris:     s.favoris     ? Object.keys(s.favoris.byPlan || {}).reduce(function(acc, pid) {
                      return acc + (s.favoris.byPlan[pid] || []).length;
                    }, 0) : 0,
       sessions:    s.sessions    ? Object.keys(s.sessions).length : 0,
-      carnet:      s.carnet      ? (Array.isArray(s.carnet) ? s.carnet.length : 0) : 0, // 🆕 v1.74.0
+      carnet:      s.carnet      ? (Array.isArray(s.carnet) ? s.carnet.length : 0) : 0,
       backups:     s.backups     ? (Array.isArray(s.backups) ? s.backups.length : 0) : 0,
       tutorial:    s.tutorial    ? (s.tutorial.seen ? 1 : 0) : 0,
       photos:      (s.photos && Array.isArray(s.photos.photos)) ? s.photos.photos.length : 0,
-      histoirePdfs: (s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)) ? s.histoirePdfs.docs.length : 0, // 🆕 v1.81.0 (D1)
+      histoirePdfs: (s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)) ? s.histoirePdfs.docs.length : 0, // (D1)
       crashes:     s.crashes     ? (Array.isArray(s.crashes) ? s.crashes.length : 0) : 0,
       appVersion:  profile.appVersion || "?",
       exportedAt:  profile.exportedAt || "?"
@@ -1015,7 +1015,7 @@ photos: false, histoirePdfs: false, crashes: false
         const dossiersExtLocaux = estExt ? (store.folders || []).filter(function(f) {
           return f && _estIdFabriqueExtension(f.id);
         }) : [];
-        // 📁 16/09/2026 — DOSSIERS : fusion par nom (casse ignorée, l'id local
+        // DOSSIERS : fusion par nom (casse ignorée, l'id local
         // gagne) en mode Fusionner, remplacement en mode Remplacer ; le
         // folderId des plans qui ARRIVENT est traduit. Les plans déjà présents
         // ne sont pas touchés (règle anti-doublon ci-dessous) : leur rangement
@@ -1051,7 +1051,7 @@ photos: false, histoirePdfs: false, crashes: false
         }
         if (s.registry.lastPlanId && !store.lastPlanId) store.lastPlanId = s.registry.lastPlanId;
         localStorage.setItem("myktamap_plans", JSON.stringify(store));
-        // 🐛 v1.79.0 — resync la RAM de PlanRegistry : sans ça, findById ne
+        // resync la RAM de PlanRegistry : sans ça, findById ne
         // voyait pas les plans importés (liste invisible avant F5, et la
         // restauration d'archives les classait tous « orphelins »).
         if (window.PlanRegistry && typeof window.PlanRegistry.reload === "function") {
@@ -1082,7 +1082,7 @@ photos: false, histoirePdfs: false, crashes: false
             localStorage.setItem(key, JSON.stringify(merged));
           } else if (key === "myktamap_interplan_links_v1" && mode === "merge"
                      && window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
-            // 🌀 v1.67.2 : registre des liaisons → FUSION par id (jamais
+            // registre des liaisons → FUSION par id (jamais
             // d'écrasement en mode merge — les liaisons déjà créées sur
             // l'appareil cible sont préservées, dédup par link.id via l'API
             // existante v1.57). Mode replace → setItem direct (branche else).
@@ -1113,7 +1113,7 @@ photos: false, histoirePdfs: false, crashes: false
       }
     }
 
-    // 🆕 v1.39.15 — ─── Per-plan localStorage keys (georef + calibrations + avoidances + notes) ───
+    // ─── Per-plan localStorage keys (georef + calibrations + avoidances + notes) ───
     // Sémantique merge vs replace :
     //   - merge : skip une clé si déjà présente localement (= préserve les
     //     changements locaux faits depuis l'export, ex: user a re-saisi sa
@@ -1442,7 +1442,7 @@ photos: false, histoirePdfs: false, crashes: false
     html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
-    // 📦 v1.79.0 — ARCHIVES DE PLANS : sous-liste des plans mémorisés
+    // ARCHIVES DE PLANS : sous-liste des plans mémorisés
     // (storedBlob), décochés par défaut (sélection voulue, pas de gros
     // fichier surprise). Cocher au moins un → l'export bascule en conteneur
     // ZIP (profil.json + plans/). Tailles depuis le registre (fileSize).
@@ -1474,7 +1474,7 @@ photos: false, histoirePdfs: false, crashes: false
 
     corps.innerHTML = html;
 
-    // 📦 v1.79.0 — case « tout » + recalcul du total sur les archives
+    // case « tout » + recalcul du total sur les archives
     const cbAll = document.getElementById("kta-profile-arch-all");
     if (cbAll) {
       cbAll.addEventListener("change", function() {
@@ -1503,7 +1503,7 @@ photos: false, histoirePdfs: false, crashes: false
         corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
           include[cb.dataset.section] = cb.checked;
         });
-        // 📦 v1.79.0 — archives cochées → export CONTENEUR ZIP ; aucune →
+        // archives cochées → export CONTENEUR ZIP ; aucune →
         // JSON classique (comportement historique bit-à-bit).
         const planIds = [];
         let octetsArchives = 0;
@@ -1580,7 +1580,7 @@ photos: false, histoirePdfs: false, crashes: false
     });
     // overhead JSON wrapper (~200 bytes) + indent (~2x sur le total)
     totalBytes = Math.round(totalBytes * 1.1) + 200;
-    // 📦 v1.79.0 — archives (STORE : taille ≈ somme des ZIP, sans marge)
+    // archives (STORE : taille ≈ somme des ZIP, sans marge)
     let octetsArchives = 0;
     corps.querySelectorAll('input[data-plan-zip]:checked').forEach(function(cb) {
       octetsArchives += parseInt(cb.dataset.bytes, 10) || 0;
@@ -1607,7 +1607,7 @@ photos: false, histoirePdfs: false, crashes: false
   // ===========================================================
 
   async function ouvrirImportModale(file) {
-    // 🔒 v1.90.1 (bug KARMA) — REFUS EN KIOSQUE, AU GOULOT ET PAS SUR UN
+    // 🔒 REFUS EN KIOSQUE, AU GOULOT ET PAS SUR UN
     // BOUTON. Un import de profil restaure les ARCHIVES ZIP : sur une
     // instance `serverPlansOnly`, il remettait des plans locaux que le mode
     // interdit, et pouvait réécrire les préférences d'affichage des plans
@@ -1621,7 +1621,7 @@ photos: false, histoirePdfs: false, crashes: false
     if (!file) { window.ktaAlerte(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 
-    // 📦 v1.79.0 — détection CONTENEUR au contenu (signature ZIP « PK »),
+    // détection CONTENEUR au contenu (signature ZIP « PK »),
     // pas à l'extension : un conteneur renommé .json reste importable, un
     // JSON renommé .zip est refusé proprement par JSZip.
     let text;
@@ -1673,7 +1673,7 @@ photos: false, histoirePdfs: false, crashes: false
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-import-corps">' +
           _renderImportContent(profile, stats, isLegacy, file.name) +
-          // 📦 v1.79.0 — ligne archives si conteneur (case cochée par défaut :
+          // ligne archives si conteneur (case cochée par défaut :
           // c'est la raison d'être d'un profil complet)
           (nbArchives ? (
             '<label class="kta-profile-row" style="margin-top:8px;">' +
@@ -1717,7 +1717,7 @@ photos: false, histoirePdfs: false, crashes: false
             { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }), { type: "erreur" });
           return;
         }
-        // 📦 v1.79.0 — restauration des archives APRÈS le registre (le
+        // restauration des archives APRÈS le registre (le
         // rattachement par id exige les entrées importées). Séquentiel,
         // bilan intégré à la modale de fin.
         const cbArch = document.getElementById("kta-profile-import-archives");
@@ -1737,7 +1737,7 @@ photos: false, histoirePdfs: false, crashes: false
           });
         }, 800);
       }).catch(function(e) {
-        // 🐛 v1.79.0 — FILET : sans ce catch, toute exception dans la chaîne
+        // FILET : sans ce catch, toute exception dans la chaîne
         // (applyProfile ou restauration) laissait le bouton figé sur
         // « Import en cours » POUR TOUJOURS, sans un mot (unhandled
         // rejection visible qu'en console). L'user voit l'erreur, le bouton
@@ -1795,7 +1795,7 @@ photos: false, histoirePdfs: false, crashes: false
       user:        "👤 " + T("profileio.done_sec_user"),
       registry:    "🗂️ " + T("profileio.done_sec_registry"),
       preferences: "⚙️ " + T("profileio.done_sec_preferences"),
-      perPlanLs:   T("profileio.done_sec_perPlanLs"),  // 🐛 v1.79.0 : affichait « perPlanLs » brut
+      perPlanLs:   T("profileio.done_sec_perPlanLs"),  // affichait « perPlanLs » brut
       favoris:     "⭐ " + T("profileio.done_sec_favoris"),
       sessions:    "💾 " + T("profileio.done_sec_sessions"),
       carnet:      "📔 " + T("profileio.done_sec_carnet"),
@@ -1812,7 +1812,7 @@ photos: false, histoirePdfs: false, crashes: false
         parts.push('<li><strong>' + lbl + '</strong> : ' + res.applied[k] + '</li>');
       }
     });
-    // 📦 v1.79.0 — bilan des archives restaurées (si conteneur)
+    // bilan des archives restaurées (si conteneur)
     if (res.archives) {
       const a = res.archives;
       let lbl = T("profileio.arch_bilan", { n: a.restaures });
@@ -1923,7 +1923,7 @@ photos: false, histoirePdfs: false, crashes: false
     if (stats.user > 0)    html += _renderImportSection("user",     "👤", T("profileio.sec_user_label"),     stats.user);
     html += _renderImportSection("registry",    "🗂️", T("profileio.import_sec_registry"),  stats.registry);
     html += _renderImportSection("preferences", "⚙️", T("profileio.sec_preferences_label"), stats.preferences);
-    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", T("profileio.sec_perplan_label"), stats.perPlanLs); // 🆕 v1.39.15
+    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", T("profileio.sec_perplan_label"), stats.perPlanLs);
     html += _renderImportSection("favoris",     "⭐", T("profileio.sec_favoris_label"),     stats.favoris);
     html += _renderImportSection("sessions",    "💾", T("profileio.sec_sessions_label"),    stats.sessions);
     html += _renderImportSection("carnet",      "📔", T("profileio.import_sec_carnet"),     stats.carnet);
@@ -1981,8 +1981,8 @@ photos: false, histoirePdfs: false, crashes: false
     buildProfile:        buildProfile,
     computeSectionSizes: computeSectionSizes,
     exportToFile:        exportToFile,
-    buildProfileArchive: buildProfileArchive,  // 📦 v1.79.0
-    exportArchiveToFile: exportArchiveToFile,  // 📦 v1.79.0
+    buildProfileArchive: buildProfileArchive,
+    exportArchiveToFile: exportArchiveToFile,
     parseProfile:        parseProfile,
     computeImportStats:  computeImportStats,
     applyProfile:        applyProfile,

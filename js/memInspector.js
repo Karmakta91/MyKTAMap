@@ -25,7 +25,7 @@
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
+  // (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
   // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-meminspector.css", "kta-css-style-meminspector");
@@ -33,7 +33,7 @@
 
   const MODAL_ID = "kta-mem-inspector-modal";
 
-  // 🆕 v1.44.0 — Pilote ModalLifecycle : centralise timers + listeners +
+  // Pilote ModalLifecycle : centralise timers + listeners +
   // blob URLs de la modale principale (cleanup auto au close). Le helper est
   // chargé avant memInspector dans index.html, donc on peut compter sur lui.
   let _lc = null;
@@ -90,11 +90,11 @@
     // Sessions auto-sauvegardées (js/sessionStore.js, depuis le 10/10/2026)
     { name: "myktamap_sessions", stores: ["sessions", "migration"] },
     { name: "myktamap_photos",  stores: ["photos"] },
-    // 🆕 v1.20.0 — Crash Reports (cf js/crashReports.js)
+    // Crash Reports (cf js/crashReports.js)
     { name: "myktamap_crashes", stores: ["crashes"] },
-    // 🆕 v1.69.0 — Le Carnet : archive des sorties (cf js/journal.js)
+    // Le Carnet : archive des sorties (cf js/journal.js)
     { name: "myktamap_journal", stores: ["sorties"] },
-    // 🆕 v1.69.0 — Documents PDF du Mode Histoire (N par plan depuis v1.69.0).
+    // Documents PDF du Mode Histoire (N par plan depuis v1.69.0).
     // Absente de cette liste depuis v1.34.20 : les PDF pesaient sans apparaître.
     { name: "myktamap_histoire_pdfs", stores: ["pdfs"] }
   ];
@@ -258,16 +258,13 @@
     "KmzImport", "GpxIO", "GpxImport", "ThemeManager", "BatteryGuard",
     "HistoryManager", "MyKTAMapPinLock", "UnlockGate", "OOMGuard",
     "NetworkAudit", "UpdateChecker", "AlertChecker", "PerfUltra",
-    // 🐛 v1.79.3 (KARMA « 31/32, pourquoi ? ») — le module s'expose sous
+    // (KARMA « 31/32, pourquoi ? ») — le module s'expose sous
     // MyKTAMapTrackerReplay depuis toujours : « TrackerReplay » n'a JAMAIS
     // existé sur window, le compteur ne pouvait pas atteindre 32/32.
     "CompassWidget", "MyKTAMapTrackerReplay", "Pathfinder", "SearchPoints",
     "MyKTAMapPdfExport", "RefonteInterface", "MemInspector",
-    // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
-    // 🆕 v1.21.0
     "Tutorial",
-    // 🆕 v1.22.0
     "ProfileExportImport"
   ];
 
@@ -600,7 +597,7 @@
     }
     lines.push("");
 
-    // 🆕 v1.20.0 — Crash Reports
+    // Crash Reports
     const cr = rep.crashReports || { reports: [], error: null };
     lines.push(_t("report.crash"));
     lines.push("─────────────────────────────────────────");
@@ -913,7 +910,7 @@
   }
 
   // ───────── HANDLERS CRASH REPORTS (v1.20.0) ─────────
-  // 🆕 v1.44.0 — Refacto event delegation via _lc.delegate (UN listener par
+  // Refacto event delegation via _lc.delegate (UN listener par
   // type d'event au lieu de N listeners ré-attachés à chaque rafraîchissement).
   // Avant : à chaque _refreshAndRender(), forEach + addEventListener × ~30
   // boutons = accumulation transitoire de closures + zombies sur DOM ancien.
@@ -925,7 +922,7 @@
     const corps = document.getElementById("kta-mem-corps");
     if (!corps) return;
     _crashHandlersBound = true;
-    // 🧹 v1.79.3 — nettoyage des données orphelines (ktaConfirm, jamais
+    // nettoyage des données orphelines (ktaConfirm, jamais
     // silencieux : une session orpheline redevient utile si l'user
     // réimporte le ZIP — c'est LUI qui tranche).
     _lc.delegate(corps, "click", "#kta-mem-orph-clean", async function() {
@@ -988,7 +985,7 @@
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
-    // 🆕 v1.44.0 — Sous-lifecycle dédié pour cette sous-modale (au-dessus
+    // Sous-lifecycle dédié pour cette sous-modale (au-dessus
     // de la modale MemInspector principale). Cleanup auto au close().
     const subLc = window.ModalLifecycle.attach(overlay, { label: "MemCrashDetail" });
     const close = function() {
@@ -1010,7 +1007,7 @@
       if (!btn || !_lc || !_lc.alive) return;
       const orig = btn.textContent;
       btn.textContent = _t("btn.copied");
-      // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.8s.
+      // setTimeout tracked : cleared si modale fermée avant 1.8s.
       _lc.setTimeout(function() {
         if (btn.isConnected) btn.textContent = orig;
       }, 1800);
@@ -1026,17 +1023,17 @@
     if (!corps) return;
     corps.innerHTML = '<div class="kta-mem-loading">' + _t("loading") + '</div>';
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si la
+      // Pattern C via _lc.guard : throw ModalClosedError si la
       // modale a été fermée pendant l'await collecter() (200-800 ms typiques).
       // On catch silencieusement plus bas.
       const report = await (_lc ? _lc.guard(collecter()) : collecter());
       _lastReport = report;
       corps.innerHTML = _renderReport(_lastReport);
-      // 🆕 v1.20.0 — Bind handlers de la section Crash Reports (boutons
+      // Bind handlers de la section Crash Reports (boutons
       // dynamiques par crash). Re-bindé à chaque render (rafraîchir, suppr…).
       _bindCrashHandlers();
     } catch(e) {
-      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
+      // Modale fermée pendant l'await → silently return.
       if (e && e.name === "ModalClosedError") return;
       if (!corps.isConnected) return;
       corps.innerHTML = '<div class="kta-mem-warn">' + _t("collect.error", { detail: _escapeHtml(e.message || e) }) + '</div>';
@@ -1051,13 +1048,13 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // 🆕 v1.44.0 — ModalLifecycle attaché : remplace les addEventListener
+    // ModalLifecycle attaché : remplace les addEventListener
     // manuels, le _onEscape custom, et le setTimeout du bouton 📋 Copier.
     // Tous les listeners + timers seront cleared automatiquement au close().
     _lc = window.ModalLifecycle.attach(overlay, {
       label: "MemInspector",
       onClose: function() {
-        // 🆕 v1.43.26 — Libère le snapshot du dernier rapport (peut contenir
+        // Libère le snapshot du dernier rapport (peut contenir
         // crashReports avec stacks volumineuses + photos byteCount). Sinon
         // il survit jusqu'à la prochaine ouverture.
         _lastReport = null;
@@ -1077,7 +1074,7 @@
         if (!btn || !_lc || !_lc.alive) return;
         const orig = btn.textContent;
         btn.textContent = _t("btn.copied");
-        // 🆕 v1.44.0 — setTimeout tracked : si user ferme la modale dans les
+        // setTimeout tracked : si user ferme la modale dans les
         // 1.8s, le timer est cleared (plus de write dans bouton détaché).
         _lc.setTimeout(function() {
           if (btn.isConnected) btn.textContent = orig;

@@ -200,7 +200,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("…sauf une sonde (pour détecter le retour du serveur)", cfg.appelsFetch.length === 2);
     cfg.K.signaler("on");
     t("signaler(\"on\") → connectée", cfg.K.etat().etat === "on");
-    // 🔏 09/10/2026 — licence REFUSÉE par le serveur : état « licence » + sa raison, jamais « down ».
+    // licence REFUSÉE par le serveur : état « licence » + sa raison, jamais « down ».
     cfg.K.signaler("licence", "expiree");
     t("🩸 signaler(\"licence\", raison) → état « licence » avec la raison du serveur",
       cfg.K.etat().etat === "licence" && cfg.K.etat().raison === "expiree");
@@ -859,7 +859,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 boot : gate déléguée en échec → « Installation indisponible », JAMAIS la gate community",
       /catch \(e\) \{[\s\S]{0,400}await _ktaInstanceIndisponible\(_motifBlocage\(\)\);/.test(MAIN) &&
       /function _ktaInstanceIndisponible\(motif\) \{\s*return new Promise\(function\(\) \{/.test(MAIN));
-    // 🔏 09/10/2026 — installation pro sans licence valide : fermée AVANT les modules et la gate
+    // installation pro sans licence valide : fermée AVANT les modules et la gate
     // community (sinon : app ouverte en community sur les données du dernier utilisateur).
     const iBloc = MAIN.indexOf('if (_motifBlocage() === "licence") {');
     t("🩸 boot : licence pro absente/expirée/refusée → « Installation indisponible », AVANT modules et gate community",
@@ -895,7 +895,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       t("🩸 multi-comptes : l'historique d'annulation repart de zéro après une réception", /window\.HistoryManager\.reset\(\)/.test(EXT));
       t("lecture seule : prise lectureSeule, erreur = lecture seule, plan local jamais",
         /function lectureSeule\(registreId\)/.test(EXT) && /lecture seule :", e\); return true;/.test(EXT));
-      // 16/10/2026 (KARMA) : le verrou de l'installation ne garde que la SESSION ; KMZ, GPX, image, PDF, Secours et
+      // le verrou de l'installation ne garde que la SESSION ; KMZ, GPX, image, PDF, Secours et
       // ZIP de la fiche passent. Son message est important (il était tu en mode « Essentielles »).
       t("export : le goulot ktaExportPlanRefuse garde la session (complet, avancé, conversion) et rien d'autre",
         /if \(tab === "full" \|\| tab === "advanced" \|\| tab === "conversion"\) \{\r?\n\s*if \(typeof window\.ktaExportPlanRefuse/.test(lire("js/sessionExporter.js")) &&

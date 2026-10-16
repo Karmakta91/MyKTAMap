@@ -331,7 +331,7 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     return "";
   };
   const migr = fn(PH, "migrerPhotosPlan"), setP = fn(PH, "setPhotoPointId"), ref = fn(PH, "getPhotosForPointRef");
-  // 📸 10/10/2026 — setPhotoPointId, migrerPhotosPlan et rattacher partagent l'écriture _poserPointId
+  // setPhotoPointId, migrerPhotosPlan et rattacher partagent l'écriture _poserPointId
   // (une transaction pour plusieurs photos, fiche facultative) : c'est elle qu'on lit.
   const pose = fn(PH, "_poserPointId");
   t("photos : getPhotosForPointRef, setPhotoPointId, migrerPhotosPlan exposées",

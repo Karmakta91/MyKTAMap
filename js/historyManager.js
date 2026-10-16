@@ -80,7 +80,7 @@
     try { return JSON.parse(JSON.stringify(arr)); } catch(e) { return []; }
   }
 
-  // 🆕 v1.26.4 (P0-1 RAM) — Capture CIBLÉE par catégorie.
+  // (P0-1 RAM) — Capture CIBLÉE par catégorie.
   // `category` ∈ "editorPoints" | "roads" | "zones" | "structures" → ne clone
   // QUE cette catégorie (économie RAM ~4× sur les snapshots d'édition mono-
   // catégorie, qui sont les plus fréquents : chaque point/sommet dessiné =
@@ -117,7 +117,7 @@
   // Pour roads/zones/structures, on passe par reset() + set() pour
   // remplacer atomiquement le contenu (le `set` seul ajoute au lieu de
   // remplacer dans certaines implémentations).
-  // 🆕 v1.26.4 (P0-1 RAM) — Applique SEULEMENT les catégories PRÉSENTES dans
+  // (P0-1 RAM) — Applique SEULEMENT les catégories PRÉSENTES dans
   // le snapshot. Crucial : on conditionne resetRoads/resetZones/resetStructures
   // à la présence de la catégorie. Avant, resetRoads() était appelé
   // INCONDITIONNELLEMENT → un snapshot ciblé "zones" aurait vidé les roads
@@ -128,9 +128,9 @@
       if (window.setEditorPoints && Array.isArray(s.editorPoints)) {
         window.setEditorPoints(s.editorPoints);
       }
-      // 🐛 v1.37.2 — Préservation de window.modeRoad à travers undo/redo.
+      // Préservation de window.modeRoad à travers undo/redo.
       // KARMA bug "Ctrl+Z casse toujours la suite d'un tracé" :
-      // resetRoads() wipe window.modeRoad → null (cf road.js l.1046). Sans
+      // resetRoads() wipe window.modeRoad → null (cf road.js > resetRoads). Sans
       // restauration, le mousedown handler check `if (!window.modeRoad) return`
       // → le clic suivant après undo est avorté en silence → l'user voit son
       // tracé restauré mais ne peut pas le continuer ("lien suivant cassé"
@@ -141,7 +141,7 @@
       const _savedModeRoad = (Array.isArray(s.roads) && typeof s.currentRoadIndex === "number" && s.currentRoadIndex >= 0)
         ? window.modeRoad
         : null;
-      // 🆕 v1.90.17 — Même préservation pour zones et structures (parité KARMA
+      // Même préservation pour zones et structures (parité KARMA
       // « même principe pour zone et structure »). resetZones/resetStructures
       // wipent aussi modeZone/modeStructure → null ; sans restauration, un Ctrl+Z
       // en plein dessin tuait l'outil (clic suivant avorté par
@@ -166,7 +166,7 @@
         if (window.resetStructures) window.resetStructures();
         if (window.setStructures) window.setStructures(s.structures);
       }
-      // 🆕 v1.26.3-hotfix3 — Restaure le tracé en cours APRÈS setRoads
+      // Restaure le tracé en cours APRÈS setRoads
       // (qui a remis currentRoad = null). Uniquement si le snapshot contient
       // `roads` : un undo "zones"/"structures" ne doit PAS toucher au tracé
       // en cours de dessin.
@@ -174,7 +174,7 @@
           && typeof s.currentRoadIndex === "number") {
         window.setCurrentRoadByIndex(s.currentRoadIndex);
       }
-      // 🆕 v1.90.17 — idem zones/structures (APRÈS setZones/setStructures qui
+      // idem zones/structures (APRÈS setZones/setStructures qui
       // ont remis currentZone/currentStructure = null).
       if (Array.isArray(s.zones) && window.setCurrentZoneByIndex
           && typeof s.currentZoneIndex === "number") {
@@ -184,11 +184,11 @@
           && typeof s.currentStructureIndex === "number") {
         window.setCurrentStructureByIndex(s.currentStructureIndex);
       }
-      // 🐛 v1.37.2 — Restaure le mode road pour permettre la continuation
+      // Restaure le mode road pour permettre la continuation
       // du tracé après undo. Skip si on annulait la création même d'une
       // nouvelle road (currentRoadIndex == -1 ou pas de roads dans snap) :
       // dans ce cas garder modeRoad = null est cohérent (sortir du mode).
-      // 🆕 v1.90.17 — même restauration pour zones/structures.
+      // même restauration pour zones/structures.
       if (_savedModeRoad) {
         window.modeRoad = _savedModeRoad;
       }
@@ -204,7 +204,7 @@
   }
 
   // ============================================================
-  // 🆔 v2.2.0 — TRACES DE SUPPRESSION (ETUDE_UID lot B, décisions 8 et 9)
+  // TRACES DE SUPPRESSION (ETUDE_UID lot B, décisions 8 et 9)
   // ============================================================
   // Les traces sont tenues ICI, à un seul endroit, plutôt qu'à chacun des
   // ~15 sites de suppression (gomme, popup, tout effacer, conversion, tableur,

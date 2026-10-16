@@ -69,14 +69,14 @@ function _resumeSession() {
   const zones      = (window.getZones         && window.getZones())         || [];
   const structures = (window.getStructures    && window.getStructures())    || [];
   const measure     = (window.getMeasurePoints        && window.getMeasurePoints())        || [];
-  // 🆕 v1.12.0-fix : surface listée séparément dans le résumé
+  // surface listée séparément dans le résumé
   const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
   const trackPath   = (window.getTrackingPath         && window.getTrackingPath())         || [];
 
   if (editorPts.length  > 0) items.push(window.I18n.t(editorPts.length > 1 ? "ui.resume.points" : "ui.resume.point", { n: editorPts.length }));
   if (roads.length      > 0) items.push(window.I18n.t(roads.length > 1 ? "ui.resume.traces" : "ui.resume.trace", { n: roads.length }));
   if (zones.length      > 0) items.push(window.I18n.t(zones.length > 1 ? "ui.resume.zones" : "ui.resume.zone", { n: zones.length }));
-  // 🆕 v1.9.3-A1.a : structures dans le résumé session (avertissement
+  // structures dans le résumé session (avertissement
   // au changement de plan / retour loader).
   if (structures.length  > 0) items.push(window.I18n.t(structures.length > 1 ? "ui.resume.structures" : "ui.resume.structure", { n: structures.length }));
   if (measure.length     > 0) items.push(window.I18n.t("ui.resume.measureDist"));
@@ -248,7 +248,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
 }
 
 function _fermerPlanSwitcher() {
-  // 🆕 v1.8.1-refonte-15 : 2 modes — modale refonte (overlay parent) ou
+  // 2 modes — modale refonte (overlay parent) ou
   // dropdown legacy (panneau seul). On retire le parent le plus haut.
   const overlay = document.getElementById("kta-plan-switcher-overlay");
   if (overlay) {
@@ -306,7 +306,7 @@ function _confirmEtChargerPlan(planId) {
   }
 
   // Session active → modale d'avertissement
-  // 🐛 v1.16.0-fix (KARMA "les deux garde-fou — les données non exportées
+  // (KARMA "les deux garde-fou — les données non exportées
   // seront perdues — avec les autosaves et snap c'est plus totalement
   // vrai, il faut adapter") : reformulation pour refléter le filet de
   // sécurité SessionPersist (auto-save par plan) + SessionBackups (10
@@ -451,7 +451,7 @@ function escapeHtmlSwitcher(s) { return window.ktaEsc(s); }
 // HELPER — modale de choix de suppression (plusieurs options)
 // options = [{ label, icon, onClick, danger }]
 // =========================
-// 🆕 v1.9.3-A1.b.2.5-fix2 (KARMA "fait ce modal plus en cohérence de
+// (KARMA "fait ce modal plus en cohérence de
 // notre charte, pareille pour zone") : helper alert() charté.
 // Remplace les `alert()` natifs OS-styled (zones/structures) par une
 // modale charte (même pattern que _choixSuppression et popupChangerPlan).
@@ -638,7 +638,7 @@ function _fermerModeZone() {
   delete _modesActifs["zone"];
 }
 
-// 🆕 v1.9.3-A1.a : symétrique pour les structures (piliers + murs).
+// symétrique pour les structures (piliers + murs).
 // Appelée par les onClicks de suppression dans l'accordéon Structures
 // quand une action de purge a vidé la structure en cours.
 function _fermerModeStructure() {
@@ -657,7 +657,7 @@ window._fermerModeZone      = _fermerModeZone;
 window._fermerModeStructure = _fermerModeStructure;
 
 // =========================
-// 🐛 v1.73.1 — MODALE OUVERTE EN MODE MAP → COUPURE DES MODES SIDEBAR
+// MODALE OUVERTE EN MODE MAP → COUPURE DES MODES SIDEBAR
 // =========================
 // (KARMA « si j'ouvre une modale en mode map, ça doit couper toute icône en
 // cours (sauf tracker) — j'ai des bugs sinon, notamment en mesure ») :
@@ -712,7 +712,7 @@ window._fermerModeStructure = _fermerModeStructure;
 })();
 
 // =========================
-// 🆕 v1.48.0 — CURSEUR DE PRÉCISION (a11y)
+// CURSEUR DE PRÉCISION (a11y)
 // =========================
 // Sur un plan à FOND BLANC, le curseur crosshair (trait noir fin) / la main
 // "grab" sont peu visibles. Fix : un réticule contrasté (cf css/style.css,
@@ -772,7 +772,7 @@ function _afficherAvertissementTracker(onConfirm) {
       '<div class="kta-readme-modal-header kta-tracker-warn-header">' +
         '<span class="kta-readme-modal-titre">' + window.I18n.t("ui.trackerWarn.title") + '</span>' +
       '</div>' +
-      // 🔄 v1.76.4 (KARMA : « remets la modale, mais message moins fort —
+      // (KARMA : « remets la modale, mais message moins fort —
       // juste l'autorisation d'accès et un léger avertissement, bref ») :
       // l'ancien contenu (lead alarmiste + 2 listes ✅/❌ + note) est remplacé
       // par 2 phrases : permission capteurs + limites en une ligne.
@@ -837,7 +837,7 @@ function _afficherAvertissementTracker(onConfirm) {
 // + maintien forcé en ouvert si un mode est actif
 
 const _groupes = {}; // { groupeId: { container, btnPrincipal, subActions: [], modeActif: false } }
-// 🆕 v1.21.0 (U4) : expose pour le module js/shortcuts.js qui doit pouvoir
+// (U4) : expose pour le module js/shortcuts.js qui doit pouvoir
 // trigger un click sur btnPrincipal[id] depuis un raccourci clavier global.
 // Lecture uniquement côté consumers — les mutations restent locales à
 // _creerGroupeAccordeon. Pas de risque de casse car la référence reste
@@ -870,7 +870,7 @@ window._fermerGroupeOuvertSide = function(side) {
 };
 
 function _ouvrirGroupe(id) {
-  // 🆕 v1.9.3-A1.b.2.5 (KARMA "maintenant que on peut le fermer même en
+  // (KARMA "maintenant que on peut le fermer même en
   // play, je veux que si j'ouvre un menu tracé ou autre il se ferme,
   // même comportement que tous les autres menus") :
   // Fermer TOUS les autres groupes, y compris ceux en mode actif. Le
@@ -902,7 +902,7 @@ function _ouvrirGroupe(id) {
 
 function _toggleGroupe(id) {
   if (_groupeOuvert === id) {
-    // 🆕 v1.8.0 (suite KARMA) : autoriser la fermeture MÊME en mode actif.
+    // autoriser la fermeture MÊME en mode actif.
     //
     // Comportement avant : si un mode était actif (ex: tracker en Play),
     // on refusait de fermer le groupe pour éviter de "perdre" l'accès aux
@@ -936,7 +936,7 @@ function _setGroupeModeActif(id, actif, iconeReflet) {
       g.btnPrincipal.dataset.iconeOriginale = g.btnPrincipal.dataset.iconeOriginale || g.btnPrincipal.innerHTML;
       g.btnPrincipal.innerHTML = iconeReflet;
     }
-    // 🆕 v1.8.0 : classe CSS persistante sur le btnPrincipal quand un mode
+    // classe CSS persistante sur le btnPrincipal quand un mode
     // est actif. Permet à l'user de voir d'un coup d'œil que le mode tourne
     // même quand il a replié le groupe (fix v1.8.0 du toggle qui autorise
     // la fermeture en modeActif). Utile en particulier pour le tracker
@@ -945,7 +945,7 @@ function _setGroupeModeActif(id, actif, iconeReflet) {
     // classe, l'user n'aurait aucun feedback visuel que tracker tourne
     // une fois le groupe replié.
     if (g.btnPrincipal) g.btnPrincipal.classList.add("kta-group-mode-actif");
-    // 🆕 v1.16.0 step2-flyout : pas d'expansion accordéon pour les groupes
+    // pas d'expansion accordéon pour les groupes
     // en mode flyout (= traces/zones/structures). L'expansion est gérée
     // séparément par _ouvrirFlyout (panel latéral, pas cascade verticale).
     if (!g.useFlyout) {
@@ -1055,7 +1055,7 @@ function _creerGroupeAccordeon(config) {
         config.soloAction();
       });
     } else if (config.useFlyout === true) {
-      // 🆕 v1.16.0 step2-flyout : ne crée PAS les sub-actions dans le DOM
+      // ne crée PAS les sub-actions dans le DOM
       // de la sidebar. Elles sont rendues dans un PANEL latéral à
       // l'ouverture (cf _ouvrirFlyout). Avantage : pas de cascade
       // verticale qui déborde l'écran avec beaucoup de types + customs.
@@ -1064,7 +1064,7 @@ function _creerGroupeAccordeon(config) {
         _toggleFlyout(config.id);
       });
     } else if (config.useModal === true) {
-      // 🆕 v1.50.0 (KARMA "refondre le menu déroulé de tracker en modal full
+      // (KARMA "refondre le menu déroulé de tracker en modal full
       // screen plus ergonomique / mobile") : le groupe est rendu dans un
       // MODAL plein écran de grosses tuiles (cf _ouvrirTrackerModal) au lieu
       // du flyout latéral. Réutilise sousActionsConfig → zéro duplication des
@@ -1079,7 +1079,7 @@ function _creerGroupeAccordeon(config) {
       (config.sousActions || []).forEach(function(sub) {
         const extraCls = sub.cssClass ? (" " + sub.cssClass) : "";
         const btnSub = L.DomUtil.create("a", "kta-sub kta-hidden" + extraCls, div);
-        // 🎨 v1.76.0 — même résolution d'icône que le flyout (pastille de
+        // même résolution d'icône que le flyout (pastille de
         // couleur live pour les boutons de type). Sans ça, ce chemin de rendu
         // (accordéon) gardait l'émoji figé alors que le flyout suivait.
         btnSub.innerHTML = (typeof sub.dynamicIcon === "function")
@@ -1091,7 +1091,7 @@ function _creerGroupeAccordeon(config) {
                              ? (sub.dynamicTitre() || sub.titre || "")
                              : sub.titre;
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
-        // 🆕 v1.16.0 step2-drawable-fix : marqueur des boutons « type »
+        // marqueur des boutons « type »
         // (activent un mode de dessin). Les customs s'insèrent ENTRE les
         // types et les outils dans la sidebar (cf KARMA "on ajoute les
         // icônes avant Valider et Effacer").
@@ -1125,19 +1125,19 @@ function _creerGroupeAccordeon(config) {
       // ouvert dans SA sidebar avant de collapser. Lit la même config
       // que pour le L.control({position}).
       position:     pos,  // "topleft" ou "topright"
-      // 🆕 v1.16.0 step2-flyout : stocke la config pour le rendu du flyout
+      // stocke la config pour le rendu du flyout
       // (sousActionsConfig est la liste raw des sous-actions, lcCat est la
       // catégorie LegendCustomization pour pull des customs, customActivator
       // est le helper d'activation pour un id custom).
       useFlyout:        config.useFlyout === true,
       useModal:         config.useModal === true,
-      // 15/10/2026 : habillage du modal de tuiles (id, titre, sections, bande de
+      // habillage du modal de tuiles (id, titre, sections, bande de
       // statut). Absent → celui du Tracker (cf _MODAL_TRACKER).
       modal:            config.modal || null,
       sousActionsConfig: config.sousActions || [],
       lcCat:             config.lcCat || null,
       customActivator:   config.customActivator || null,
-      // 🆕 v1.16.0 step 3 : si fourni, override de sousActionsConfig au
+      // si fourni, override de sousActionsConfig au
       // moment de l'ouverture du flyout. Permet aux groupes qui ont une
       // liste de sub-actions dynamique (ex: ⭐ Favoris) de la recalculer
       // à chaque ouverture sans rebuild du groupe entier.
@@ -1152,7 +1152,7 @@ function _creerGroupeAccordeon(config) {
 }
 
 // =========================
-// 🆕 v1.50.0 — Modal plein écran « Tracker » (refonte du menu déroulé)
+// Modal plein écran « Tracker » (refonte du menu déroulé)
 // =========================
 //
 // KARMA : "refondre le menu déroulé de tracker par un modal full screen plus
@@ -1165,7 +1165,7 @@ function _creerGroupeAccordeon(config) {
 // retiré du DOM). Sections : "suivi" / "outils" (champ sub.section) + "urgence"
 // (auto-détecté via sub.cssClass === "kta-sous-action-urgence").
 //
-// 15/10/2026 (audit ergonomique de l'export) : le modal est PARAMÉTRABLE par
+// le modal est PARAMÉTRABLE par
 // groupe (`modal` de la config) — id, icône + clé du titre, sections, bande de
 // statut du suivi. Le groupe ⬆️ (id "save") s'en sert comme lanceur d'export.
 // Une section se remplit par `sub.section === cle`, ou par `sub.cssClass` si la
@@ -1215,7 +1215,7 @@ function _fermerTrackerModal() {
   _trackerModalEl = null;
 }
 
-// 🆕 v1.51.0 (Lot B) — Navigation clavier dans un panneau (flyout latéral OU
+// (Lot B) — Navigation clavier dans un panneau (flyout latéral OU
 // modal Tracker). À l'ouverture : focus auto la 1ʳᵉ action. TAB cycle dans le
 // panneau (piège de focus, dernier→premier), ↑↓←→ déplacent aussi, Entrée/
 // Espace = activation native du <button> focalisé. Échap ferme si
@@ -1266,7 +1266,7 @@ function _creerTuileTracker(sub) {
   if (typeof sub.isActive === "function") {
     try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
   }
-  // 13/10/2026 (KARMA) : une tuile à trois états dit aussi « en pause » (orange) et « coupé dans la
+  // une tuile à trois états dit aussi « en pause » (orange) et « coupé dans la
   // configuration » (grisée, toujours cliquable : le clic explique comment l'activer).
   if (typeof sub.etat === "function") {
     try {
@@ -1343,7 +1343,7 @@ function _creerStatutSuivi() {
   status.appendChild(etatWrap);
   // Distance + pas affichés seulement si le tracking a produit des données.
   let distM = 0, pas = 0;
-  // 📏 16/08/2026 — total exploitable (podomètre + tronçons estimés entre les
+  // total exploitable (podomètre + tronçons estimés entre les
   // « 📍 Je suis ici »). Sans ça, une sortie menée au recalage affichait 0 m
   // ici alors que l'user venait de traverser la carrière.
   let distEstM = 0;
@@ -1385,7 +1385,7 @@ function _ouvrirTrackerModal(groupId) {
   const grp = _groupes[groupId];
   if (!grp) return;
   const cfg = grp.modal || _MODAL_TRACKER;
-  // 🧩 01/10/2026 — une tuile marquée `optionnel: "<cléAPP_CONFIG>"` n'apparaît
+  // une tuile marquée `optionnel: "<cléAPP_CONFIG>"` n'apparaît
   // que si l'utilisateur a activé la fonctionnalité (⚙️ › Fonctionnalités
   // optionnelles). Filtré à chaque ouverture : la case agit sans recharger.
   const baseActions = ((typeof grp.dynamicSousActions === "function")
@@ -1405,7 +1405,7 @@ function _ouvrirTrackerModal(groupId) {
   box.className = "kta-tracker-modal-box";
 
   // --- Header ---
-  // 🏷️ 14/09/2026 — id posé pour l'aide contextuelle : sans lui, rien ne
+  // id posé pour l'aide contextuelle : sans lui, rien ne
   // pouvait désigner cette modale (elle est créée à la volée, sans identité).
   overlay.id = cfg.id;
   const header = document.createElement("div");
@@ -1454,7 +1454,7 @@ function _ouvrirTrackerModal(groupId) {
   document.body.appendChild(overlay);
   _trackerModalEl = overlay;
 
-  // 🆕 v1.51.0 (Lot B) : navigation clavier (focus 1ʳᵉ tuile, TAB cycle, flèches,
+  // (Lot B) : navigation clavier (focus 1ʳᵉ tuile, TAB cycle, flèches,
   // Entrée active). Échap reste géré par _trackerModalKeyHandler (niveau document).
   _installFocusNav(overlay, { firstSelector: ".kta-tracker-modal-tile" });
 
@@ -1466,7 +1466,7 @@ function _ouvrirTrackerModal(groupId) {
 }
 
 // =========================
-// 🆕 v1.16.0 step2-flyout : Flyout panel latéral
+// Flyout panel latéral
 // =========================
 //
 // Remplace la cascade verticale des sub-actions par un panneau ouvert à
@@ -1476,7 +1476,7 @@ function _ouvrirTrackerModal(groupId) {
 
 let _currentFlyout = null;
 
-// 🐛 v1.57.4 — Abonnements pub/sub ONE-SHOT (audit « fuites au plan switch ») :
+// Abonnements pub/sub ONE-SHOT (audit « fuites au plan switch ») :
 // initInterface est RE-EXÉCUTÉE à chaque switch (main.js remet
 // interfaceInitialized à false) mais HistoryManager / Favoris /
 // LegendCustomization sont des singletons qui SURVIVENT au switch → chaque
@@ -1610,7 +1610,7 @@ function _ouvrirFlyout(groupId) {
 
   // Construit la liste finale des actions : types built-in + customs
   // (insérés AVANT les outils, cf step2-drawable-fix) + outils.
-  // 🆕 v1.16.0 step 3 : si le groupe a un `dynamicSousActions` (cas du
+  // si le groupe a un `dynamicSousActions` (cas du
   // groupe ⭐ Favoris dont la liste varie à chaque ouverture), on l'appelle
   // pour obtenir la liste fraîche au lieu de relire sousActionsConfig.
   const baseActions = (typeof grp.dynamicSousActions === "function")
@@ -1618,7 +1618,7 @@ function _ouvrirFlyout(groupId) {
                         : (grp.sousActionsConfig || []).slice();
   const allActions  = baseActions.slice();
   if (window.LegendCustomization && grp.lcCat && typeof window.LegendCustomization.listCustomEntries === "function") {
-    // 🎨 v1.76.0 (F6) — le filtre `.filter(e => e.visible)` est retiré.
+    // (F6) — le filtre `.filter(e => e.visible)` est retiré.
     // La case de l'éditeur de légende ne masque QUE la boîte de légende ;
     // ici elle retirait en plus le bouton de la sidebar, donc on ne pouvait
     // plus dessiner ce type. Deux comportements différents sous la même case,
@@ -1643,7 +1643,7 @@ function _ouvrirFlyout(groupId) {
         }
         return {
           icone:        iconHtml,
-          // 🐛 v1.16.0 step2-flyout-fix (KARMA "pour les nouveaux ajouts en
+          // (KARMA "pour les nouveaux ajouts en
           // légende j'ai des étoiles en icône pour tous dans le menu normal") :
           // on retire le préfixe "✨ " du libellé — le swatch coloré (icône
           // de gauche) différencie déjà visuellement un custom d'un built-in,
@@ -1703,7 +1703,7 @@ function _ouvrirFlyout(groupId) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "kta-group-flyout-btn";
-    // 🆕 v1.21.2 (KARMA "met je suis perdu et urgence a la fin du menu tracker
+    // (KARMA "met je suis perdu et urgence a la fin du menu tracker
     // avec un fond rouge") : propage la cssClass de la sub-action sur le
     // bouton flyout, comme déjà fait dans la cascade verticale legacy
     // (cf bloc else "Créer les sous-actions" + extraCls). Avant, la classe
@@ -1715,7 +1715,7 @@ function _ouvrirFlyout(groupId) {
 
     const iconEl = document.createElement("span");
     iconEl.className = "kta-group-flyout-btn-icon";
-    // 🆕 v1.21.2 (KARMA tracker flyout) : support icône dynamique pour les
+    // support icône dynamique pour les
     // sous-actions dont l'apparence dépend d'un état runtime (ex: ▶️↔⏹️
     // pour Play/Stop du tracker). Sinon icône statique habituelle.
     iconEl.innerHTML = (typeof sub.dynamicIcon === "function")
@@ -1723,7 +1723,7 @@ function _ouvrirFlyout(groupId) {
                        : (sub.icone || "");
     const lblEl = document.createElement("span");
     lblEl.className = "kta-group-flyout-btn-label";
-    // 🏷️ v1.77.0 — libellé dynamique (miroir de dynamicIcon) : un type
+    // libellé dynamique (miroir de dynamicIcon) : un type
     // renommé dans la légende s'affiche sous son nom choisi au prochain
     // rendu du flyout, comme la couleur le faisait déjà.
     lblEl.textContent = (typeof sub.dynamicTitre === "function")
@@ -1774,7 +1774,7 @@ function _ouvrirFlyout(groupId) {
   _positionnerFlyout(fly, grp.btnPrincipal, grp.position);
   _currentFlyout = fly;
 
-  // 🆕 v1.51.0 (Lot B) : navigation clavier dans le flyout (focus 1ʳᵉ action,
+  // (Lot B) : navigation clavier dans le flyout (focus 1ʳᵉ action,
   // TAB cycle, ↑↓←→, Entrée active, Échap ferme).
   _installFocusNav(fly, { firstSelector: ".kta-group-flyout-btn", handleEscape: true, onClose: _fermerFlyout });
 
@@ -1827,7 +1827,7 @@ function _lireSafeAreaInsets() {
 function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   const rect    = btnPrincipal.getBoundingClientRect();
   const padding = 8;
-  // 🩸 v1.82.0 — `innerHeight` N'EST PAS CE QUE L'UTILISATEUR VOIT.
+  // 🩸 `innerHeight` N'EST PAS CE QUE L'UTILISATEUR VOIT.
   // Sur mobile il mesure le viewport de MISE EN PAGE, qui inclut la bande
   // occupée par la barre d'URL du navigateur. Un panneau dimensionné dessus
   // descend donc sous le bord visible de l'écran — et son scroll interne n'y
@@ -1868,7 +1868,7 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   if (rBas  && rBas.top - 6 < bas)      bas  = rBas.top - 6;
   if (bas - haut < 120) { haut = offY + safeMargin + insets.top; bas = offY + vpH - safeMargin - insets.bottom; }
 
-  // 🐛 v1.16.0 step2-flyout-fix (KARMA "le modal doit pouvoir se dérouler
+  // (KARMA "le modal doit pouvoir se dérouler
   // et ne pas sortir du cadre en horizontal") : on COMPUTE la max-height
   // en pixels réels (pas en vh) pour garantir que le panneau ne déborde
   // jamais du viewport — particulièrement en landscape mobile où 78vh peut
@@ -1916,7 +1916,7 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
     left = offX + vpW - flyWidth - safeMargin - insets.right;
   }
 
-  // 🪟 v1.85.1 (KARMA « les 3 modales tracé / zone / structure doivent être
+  // (KARMA « les 3 modales tracé / zone / structure doivent être
   // centrées comme tracker et filtres »). ANCRER AU BOUTON était le vrai
   // problème : le panneau part du haut du bouton, donc plus sa liste est
   // longue — un plan importé ajoute un type de structure PAR NIVEAU — plus
@@ -1972,7 +1972,7 @@ function _initLayersControlWatcher() {
 }
 
 // =========================
-// 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton custom ≡ qui remplace
+// (KARMA "refonte filtre Leaflet") : bouton custom ≡ qui remplace
 // le L.control.layers natif. Au clic, ouvre la modale FilterPanel unifiée
 // (Images + Data layers + M-LVL + Tags + Types Road/Zone/Struct).
 // =========================
@@ -1980,7 +1980,7 @@ L.control.ktaFilterControl = function() {
   const ctrl = L.control({ position: "topright" });
   ctrl.onAdd = function() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-filter-ctrl");
-    // 🐛 v1.21.5-fix2 (KARMA "en mode sombre, je fond de l'icone filtre est
+    // (KARMA "en mode sombre, je fond de l'icone filtre est
     // blanc au lieu du fond habituel en mode sombre") : on NE hardcode PAS
     // color/background en inline. Le styling vient de :
     //   • Leaflet base (.leaflet-bar a) — fond blanc + texte noir par défaut
@@ -2008,7 +2008,7 @@ L.control.ktaFilterControl = function() {
 };
 
 // =========================
-// 🆕 v1.49.0 — Tracker : « Ma position » (recentrage) + suspension temporaire
+// Tracker : « Ma position » (recentrage) + suspension temporaire
 // du verrou sur tracé (smartNav). Helpers module-scope appelés par les
 // sous-actions du flyout Tracker (cf. groupe "tracker" dans initInterface).
 // =========================
@@ -2188,7 +2188,7 @@ function initInterface() {
   }
 
   // 🏷️ ancre:reset-modes-plan
-  // 🐛 v1.57.2 (KARMA « le bouton ajouter point est actif quand j'ouvre le
+  // (KARMA « le bouton ajouter point est actif quand j'ouvre le
   // plan ») : RESET des MODES au chargement d'un plan. Les flags window.modeX
   // n'étaient remis à false NULLE PART au plan switch → quitter un plan avec
   // le mode édition armé (cas typique : créer un POI puis prendre un
@@ -2208,7 +2208,7 @@ function initInterface() {
 
   L.control.titleControl().addTo(window.map);
 
-  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton ≡ custom topright
+  // (KARMA "refonte filtre Leaflet") : bouton ≡ custom topright
   // qui ouvre la modale FilterPanel unifiée (remplace L.control.layers natif).
   L.control.ktaFilterControl().addTo(window.map);
 
@@ -2232,13 +2232,13 @@ function initInterface() {
       window._refonteInterfaceCreerBoutonReductionRight();
     }
     // Bouton Niveau (avant les groupes accordéon topleft)
-    // 🆕 v1.31.0 P3 Lot 9 : _initLevelFilterControl extraite vers
+    // P3 Lot 9 : _initLevelFilterControl extraite vers
     // js/interfaceConfig.js → fallback via window.X.
     if (typeof window._initLevelFilterControl === "function") {
       window._initLevelFilterControl();
     }
 
-    // 🆕 v1.16.0 step 3 (KARMA "met plutôt l'icône favoris dans le menu
+    // (KARMA "met plutôt l'icône favoris dans le menu
     // de gauche, juste après M-LVL") — Groupe ⭐ FAVORIS positionné en
     // topleft, AJOUTÉ APRÈS la pastille M-LVL → apparaît juste sous
     // elle dans la sidebar gauche. Pattern flyout (panel latéral, pas
@@ -2323,7 +2323,7 @@ function initInterface() {
     titre: window.I18n.t("ui.group.aide"),
     position: "topleft",
     sousActions: [
-      // 🆕 v1.31.0 P3 Lot 4 : afficherAide / afficherReadme extraites vers
+      // P3 Lot 4 : afficherAide / afficherReadme extraites vers
       // js/interfaceDocs.js et exposées via window.* — référence indirecte
       // via window.X car les identifiers locaux n'existent plus dans le
       // scope de interface.js après extraction.
@@ -2333,8 +2333,8 @@ function initInterface() {
       // l'en-tête de la 📖 Documentation, à côté du choix de langue — et
       // devient du même coup accessible depuis l'accueil.
       { icone: "🗺️", titre: window.I18n.t("ui.subaction.legende"),       onClick: afficherLegende }
-      // 🆕 v1.21.0 — Rejouer le tutoriel premier-lancement à tout moment.
-      // 🔄 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
+      // Rejouer le tutoriel premier-lancement à tout moment.
+      // (KARMA "le bouton Onboarding on peux le mettre tout en
       // haut de la doc README") : retiré de ce menu, désormais accessible
       // via le bouton 🎓 directement dans le header de la modale 📖
       // Documentation (afficherReadme). Markedasseen est toujours posé au
@@ -2343,7 +2343,7 @@ function initInterface() {
   });
 
   // 2. PARAMÈTRES (solo)
-  // 🔧 v1.14.2 (KARMA) : le toggle thème est retiré du mode map. Il a été
+  // le toggle thème est retiré du mode map. Il a été
   // déplacé exclusivement vers la modale Configuration home — et tout
   // changement de thème déclenche désormais un reload complet de l'app
   // (ThemeManager.setThemeAndReload) pour éviter les bugs résiduels de
@@ -2371,13 +2371,13 @@ function initInterface() {
   });
 
   // 3. CHARGER / IMPORT
-  // 🆕 v1.8.1-refonte-14 : retrait du sous-action "🗂️ Changer de plan"
+  // retrait du sous-action "🗂️ Changer de plan"
   // (KARMA feedback "enleve l'icone charger un plan du menu déroulant
   // import"). En mode refonte, le bouton rose des vents 🌟 du header
   // ouvre déjà la même modale via _retourLoaderAvecConfirm. En mode
   // legacy, le clic sur le titre du plan en haut centre fait le même
   // boulot (togglePlanSwitcher). Plus de doublon dans le menu Import.
-  // 🆕 v1.14.5 (KARMA UX) : les 2 sous-actions « 📥 Importer session » et
+  // les 2 sous-actions « 📥 Importer session » et
   // « 📤 Importer GPX » sont fusionnées en une seule « 📂 Importer » qui
   // ouvre une modale de choix (2 cards : session vs GPX). Avant, les
   // icônes 📥 / 📤 étaient trop proches → confusion à l'usage. Pattern
@@ -2388,10 +2388,10 @@ function initInterface() {
     titre: window.I18n.t("ui.group.charger"),
     position: "topleft",
     sousActions: [
-      // v1.14.7 : retour à l'icône 📥 (l'icône classique d'import) — KARMA :
+      // retour à l'icône 📥 (l'icône classique d'import) — KARMA :
       // « plus de soucis de doublon » maintenant qu'il n'y a qu'une seule
       // entrée dans le menu, l'icône folder neutre 📂 n'était plus nécessaire.
-      // 🆕 v1.31.0 P3 Lot 5 : ouvrirImportSession extraite vers
+      // P3 Lot 5 : ouvrirImportSession extraite vers
       // js/interfaceImportExport.js → fallback via window.X.
       { icone: "📥", titre: window.I18n.t("ui.subaction.importer"), onClick: function() {
           if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
@@ -2440,7 +2440,7 @@ function initInterface() {
             });
           }
         } },
-      // 🆕 v1.10.3 : Export PDF imprimable A4/A3 portrait/paysage (via jsPDF).
+      // Export PDF imprimable A4/A3 portrait/paysage (via jsPDF).
       // Réutilise le canvas généré par exporter.js pour cohérence visuelle.
       { icone: "🖨️", titreCle: "export.lanceur.pdf", section: "image", onClick: function() {
           if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
@@ -2464,7 +2464,7 @@ function initInterface() {
     ]
   });
 
-  // 🆕 v1.11.0 : 5'. HISTORIQUE (Undo / Redo) — groupe dédié, placé À LA
+  // 5'. HISTORIQUE (Undo / Redo) — groupe dédié, placé À LA
   // FIN de la sidebar GAUCHE (KARMA "met l'icône historique à gauche dans
   // la barre à la fin"). Position topleft + déclaré APRÈS save = dernier
   // groupe de la colonne gauche.
@@ -2509,11 +2509,11 @@ function initInterface() {
     ]
   });
 
-  // 🆕 v1.11.0 (KARMA "le grisage marche pas") : grisage des 2 boutons
+  // (KARMA "le grisage marche pas") : grisage des 2 boutons
   // selon canUndo/canRedo. v1 cherchait dans le DOM via data-groupe-id
   // qui n'existe pas → fix : on récupère directement les <a> sous-actions
-  // via _groupes["history"].subActions (array exposé par _creerGroupeAccordeon
-  // ligne ~3506) ; ordre conservé = [⏪ Undo, ⏩ Redo] (= ordre de déclaration
+  // via _groupes["history"].subActions (array exposé par _creerGroupeAccordeon)
+  // — ordre conservé = [⏪ Undo, ⏩ Redo] (= ordre de déclaration
   // dans sousActions ci-dessus).
   (function _wireHistoryUiState() {
     if (!window.HistoryManager) return;
@@ -2547,7 +2547,7 @@ function initInterface() {
       canUndo: window.HistoryManager.canUndo(),
       canRedo: window.HistoryManager.canRedo()
     });
-    // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie. Avant : onChange(_sync)
+    // abonnement ONE-SHOT + réf rafraîchie. Avant : onChange(_sync)
     // à CHAQUE init → N callbacks empilés après N switches, les N-1 anciens
     // grisant des boutons de sidebars détachées (fuite mémoire linéaire).
     // _syncHistoryUiRef repointe la closure fraîche (btnUndo/btnRedo de la
@@ -2557,7 +2557,7 @@ function initInterface() {
       _historyUiSubBound = true;
       window.HistoryManager.onChange(function(state) {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
-        // 🐛 v1.90.16→17 (bug KARMA) — Ctrl+Z jusqu'à VIDER une forme en cours
+        // →17 (bug KARMA) — Ctrl+Z jusqu'à VIDER une forme en cours
         // (tracé, zone OU structure) : `historyManager._applyState` remet alors
         // le mode correspondant à null (l'outil est mort côté état — clic carte
         // = rien), mais NE touche PAS au visuel du bouton → la pastille reste
@@ -2580,7 +2580,7 @@ function initInterface() {
   })();
 
   // 6. TRACKER
-  // 🆕 v1.21.2 (KARMA "on commence a voir bcp icone") : migration vers le
+  // (KARMA "on commence a voir bcp icone") : migration vers le
   // pattern flyout (panel latéral, cf §16 CLAUDE.md) car la cascade verticale
   // débordait avec ~7 sous-actions. Spécificités tracker vs traces/zones/
   // structures : (a) icône dynamique ▶️↔⏹️ selon état tracking →
@@ -2619,7 +2619,7 @@ function initInterface() {
     const _doStartSuite = function() {
       startTracking();
       if (btnSub) btnSub.innerHTML = "⏹️";
-      // 🆕 v1.8.0 (fix KARMA) : on garde l'icône principale 🧭
+      // on garde l'icône principale 🧭
       // pendant le Play (au lieu de la remplacer par ⏹️ comme avant).
       // Le ⏹️ est déjà visible en sous-action (btnSub ci-dessus),
       // donc le mettre aussi en principal était redondant et
@@ -2631,7 +2631,7 @@ function initInterface() {
       _setGroupeModeActif("tracker", true, null);
       isTracking = true;
     };
-    // 🔄 v1.76.4 (2e décision KARMA) — la modale est DE RETOUR mais
+    // la modale est DE RETOUR mais
     // allégée : autorisation capteurs + avertissement d'une ligne.
     // Toujours montrée une fois par session d'app (acknowledged).
     if (_trackerWarningAcknowledged) {
@@ -2665,7 +2665,7 @@ function initInterface() {
     id: "tracker",
     iconePrincipale: "🧭",
     titre: window.I18n.t("ui.group.tracker"),
-    // 🆕 v1.50.0 : rendu en MODAL plein écran de tuiles (cf _ouvrirTrackerModal)
+    // rendu en MODAL plein écran de tuiles (cf _ouvrirTrackerModal)
     // au lieu du flyout latéral. Les `section` ci-dessous rangent les tuiles.
     useModal: true,
     sousActions: [
@@ -2692,7 +2692,7 @@ function initInterface() {
         icone: "🧭",
         titre: window.I18n.t("ui.subaction.compass"),
         section: "outils",
-        // 🆕 v1.21.2 : actif si le widget compass est visible (sync au re-ouvert flyout)
+        // actif si le widget compass est visible (sync au re-ouvert flyout)
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
                     && window.CompassWidget.isVisible());
@@ -2710,7 +2710,7 @@ function initInterface() {
         }
       },
       {
-        // 🧭 v1.97.0 — Mode « plan orienté » : pendant le tracking, c'est la
+        // Mode « plan orienté » : pendant le tracking, c'est la
         // CARTE qui tourne pour que la marche pointe vers le haut de l'écran
         // (convention GPS auto), au lieu de l'icône qui pivote sur un plan
         // fixe. Réglage d'appareil, persisté, OFF par défaut. Le mode ne
@@ -2733,7 +2733,7 @@ function initInterface() {
         }
       },
       {
-        // 🪧 27/09/2026 — Guidage de l'itinéraire (décision KARMA 1:c) : le
+        // Guidage de l'itinéraire (décision KARMA 1:c) : le
         // bandeau s'affiche TOUT SEUL dès qu'un itinéraire coexiste avec le
         // suivi OU une position confirmée (« Je suis ici », 01/10/2026). Ce
         // réglage (Auto / Jamais, persisté) le coupe ; la croix du bandeau
@@ -2760,7 +2760,7 @@ function initInterface() {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
         section: "suivi",
-        // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
+        // actif si le mode recalage est en cours (sync au re-ouvert flyout)
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
           if (typeof window.modeRecalage === "undefined") return;
@@ -2768,14 +2768,14 @@ function initInterface() {
           _desactiverTousLesModes();
           if (dejaActif) {
             window.modeRecalage = false;
-            // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
+            // pas de reflet d'icône principale même si
 // tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
 _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           window.modeRecalage = true;
           btnSub.classList.add("kta-actif");
-          // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
+          // (KARMA "quand on a fini de l'utiliser, on doit
           // repartir sur la boussole") : helper exposé pour que tracking.js
           // puisse appeler la même fn de désactivation après le clic carte
           // (= retire .kta-actif + remet l'icône principale à 🧭).
@@ -2783,7 +2783,7 @@ _setGroupeModeActif("tracker", isTracking, null);
             window.modeRecalage = false;
             btnSub.classList.remove("kta-actif");
             delete _modesActifs["recalage"];
-            // 🆕 v1.11.3-fix2 (KARMA "fix marche pas quand on est en play") :
+            // (KARMA "fix marche pas quand on est en play") :
             // restore EXPLICITE de l'icône principale du groupe Tracker.
             // _setGroupeModeActif(actif=true, iconeReflet=null) ne touche
             // PAS à l'icône (= elle reste à 📍 set par l'activation), donc
@@ -2801,14 +2801,14 @@ _setGroupeModeActif("tracker", isTracking, null);
           _setGroupeModeActif("tracker", true, "📍");
         }
       },
-      // 🆕 v1.49.0 — 🎯 Recentre la carte sur la position courante du tracker.
+      // 🎯 Recentre la carte sur la position courante du tracker.
       {
         icone: "🎯",
         titre: window.I18n.t("ui.subaction.maPosition"),
         section: "suivi",
         onClick: function() { _centrerSurMaPosition(); }
       },
-      // 🆕 v1.49.0 — 🔓 Suspendre temporairement le verrou sur tracé (smartNav)
+      // 🔓 Suspendre temporairement le verrou sur tracé (smartNav)
       // sans passer par les Réglages (cas : sortie d'une galerie vers une cave
       // hors réseau). Durées 30s / 1min / 10min / jusqu'à réactivation.
       {
@@ -2834,7 +2834,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.11.3 V2.3 — 🎬 Replay du parcours tracker. Ouvre une modale
+      // V2.3 — 🎬 Replay du parcours tracker. Ouvre une modale
       // avec slider timeline + play/pause + sélecteur vitesse (0.5x → 10x)
       // + bouton export CSV. La timeline est cumulée depuis startTracking
       // (les recalages 📍 sont marqués comme anchors). Visible si tracker
@@ -2853,7 +2853,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🔥 v1.21.2 RÉACTIVÉ (KARMA "on reactive") — pertinent maintenant que
+      // RÉACTIVÉ (KARMA "on reactive") — pertinent maintenant que
       // la timeline tracker GPS est persistée dans SessionPersist /
       // SessionBackups (= cumul multi-session exploitable).
       {
@@ -2871,7 +2871,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.21.2 (KARMA "met je suis perdu et urgence a la fin du menu
+      // (KARMA "met je suis perdu et urgence a la fin du menu
       // tracker avec un fond rouge") : les 2 modes urgence sont placés EN
       // FIN du flyout pour les séparer visuellement des fonctions de
       // navigation/visualisation normales. cssClass = kta-sous-action-urgence
@@ -2889,7 +2889,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.10.1 — Affichage XL "panique" : différent du ⛑️ Je suis
+      // Affichage XL "panique" : différent du ⛑️ Je suis
       // perdu (qui calcule une zone de recherche). Ici c'est juste de
       // l'AFFICHAGE en grand des infos vitales (position + cap boussole),
       // désactive tout le superflu. Utile pour lire ses coordonnées et
@@ -2907,7 +2907,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // 🆕 v1.22.0 — 🚑 Mode Secours : outil opérationnel pour assigner
+      // 🚑 Mode Secours : outil opérationnel pour assigner
       // des équipes de recherche à des zones du plan. Multi-scénarios,
       // export PDF/KMZ. KARMA : "définir un plan de secours / lire un
       // plan de secours". Placé en FIN du flyout, fond rouge urgence.
@@ -2944,7 +2944,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     iconePrincipale: "📐",
     titre: window.I18n.t("ui.group.mesure"),
     sousActions: [
-      // 🔧 v1.12.0-fix (KARMA "le mode calcul de surface ne fonctionne pas
+      // (KARMA "le mode calcul de surface ne fonctionne pas
       // ... le mode utilisation n'est pas logique") : refonte des 2 boutons
       // mesure en 2 ACTIONS DISTINCTES exclusives au lieu d'un toggle séparé :
       //   - 📐 Distance (polyline) : active mode mesure + force _measureMode="distance"
@@ -3025,7 +3025,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         icone: "❌",
         titre: window.I18n.t("ui.subaction.mesureEffacer"),
         onClick: function() {
-          // 🆕 v1.12.0-fix : 2 mesures indépendantes possibles → choix
+          // 2 mesures indépendantes possibles → choix
           // granulaire. "Dernier point" cible la mesure du mode actif
           // (drive par window.getMeasureMode). Les boutons "Toute la X"
           // n'apparaissent que si la mesure correspondante a au moins
@@ -3075,7 +3075,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   });
 
   // 8. ÉDITION
-  // 🆕 v1.21.3 (KARMA "on garde le crayon, mais on enleve la poubelle […]
+  // (KARMA "on garde le crayon, mais on enleve la poubelle […]
   // c'est plus un menu déroulant juste le crayon") :
   //   • Avant : groupe accordéon avec 2 sous-actions [✏️ Ajouter, 🗑️ Effacer].
   //   • Maintenant : soloAction sur le bouton principal ✏️ qui toggle
@@ -3123,7 +3123,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     }
   });
 
-  // 🎨 v1.76.0 — pastille résolue pour les boutons de TYPE de la sidebar.
+  // pastille résolue pour les boutons de TYPE de la sidebar.
   // Les émojis (🟩 🟥 🟡…) gardaient leur couleur d'origine après un override
   // de légende : l'icône mentait sur la carte. Résolue à CHAQUE évaluation
   // (le flyout se re-rend à l'ouverture → couleur toujours à jour).
@@ -3137,7 +3137,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     return repli;
   }
 
-  // 🏷️ v1.77.0 (bug KARMA « renommé en légende mais la sidebar garde
+  // (bug KARMA « renommé en légende mais la sidebar garde
   // "galerie principale" ») — miroir de _iconeType pour le LIBELLÉ : si le
   // type porte un nom personnalisé (session ou plan), c'est lui qu'on
   // affiche ; sinon le libellé i18n historique de la sidebar (les défauts
@@ -3171,7 +3171,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     if (dejaActif) return;
 
     toggleRoadMode(type);
-    // 🔒 08/10/2026 — mode refusé (plan en lecture seule) : le bouton ne s'allume pas. Avant, il
+    // 🔒 mode refusé (plan en lecture seule) : le bouton ne s'allume pas. Avant, il
     // s'allumait quand même et rien ne se plaçait (retour KARMA, compte créateur sur un plan partagé).
     if (window.modeRoad !== type) return;
     btnCible.classList.add("kta-actif");
@@ -3222,7 +3222,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _fermerModeRoad();
           return;
         }
-        // 🆕 v1.31.0 P3 Lot 9 : _ouvrirCreationJonction extraite vers
+        // P3 Lot 9 : _ouvrirCreationJonction extraite vers
         // js/interfaceConfig.js → fallback via window.X.
         if (typeof window._ouvrirCreationJonction === "function") {
           window._ouvrirCreationJonction(btn);
@@ -3232,7 +3232,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
-    // 🆕 v1.16.0 step2-flyout-valider (KARMA "rajoute un bouton Valider
+    // (KARMA "rajoute un bouton Valider
     // dans tracé, qui fait la même chose que fermer le tracé en cours") :
     // bouton générique qui valide le tracé en cours quel que soit son
     // type (principal, secondaire, chemin, jonction, OU custom ✨). C'est
@@ -3282,7 +3282,7 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.trace.eraseLastPointDesc", { n: nbPts }),
                 onClick: function() {
-                  // 🐛 v1.46.x — si supprimer le dernier point vide le tracé en
+                  // si supprimer le dernier point vide le tracé en
                   // cours, fermer le mode (sinon bouton reste kta-actif mais clic
                   // map fait rien = icône "coupée"). Même garde que le bouton ✂️.
                   const before = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
@@ -3312,7 +3312,7 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
-                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  // Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetRoads) window.resetRoads();
                   // resetRoads vide tout y compris currentRoad ET coupe
@@ -3333,7 +3333,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     iconePrincipale: "🛣️",
     titre: window.I18n.t("ui.group.traces"),
     sousActions: _sousActionsTraces,
-    // 🆕 v1.16.0 step2-flyout : panel latéral au lieu de cascade verticale
+    // panel latéral au lieu de cascade verticale
     useFlyout: true,
     lcCat: "traces",
     customActivator: function(customId, btn) { _activerRoute(customId, btn, _iconeType("traces", customId, "✨")); }
@@ -3370,7 +3370,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     id: "zones",
     iconePrincipale: "⬛",
     titre: window.I18n.t("ui.group.zones"),
-    // 🆕 v1.16.0 step2-flyout : panel latéral
+    // panel latéral
     useFlyout: true,
     lcCat: "zones",
     customActivator: function(customId, btn) { _activerZone(customId, btn, _iconeType("zones", customId, "✨")); },
@@ -3437,14 +3437,14 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.zone.eraseLastPointDesc"),
                 onClick: function() {
-                  // 🐛 v1.46.x — voir commentaire road : vider la zone en cours
+                  // voir commentaire road : vider la zone en cours
                   // doit fermer le mode (sinon bouton kta-actif + clic map inerte).
                   const before = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
                   if (window.removeLastZonePoint) window.removeLastZonePoint();
                   const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
                   if (before && !after) _fermerModeZone();
                 } },
-              // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
+              // (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastZone priorise désormais currentZone si existe,
               // sinon la dernière fermée. Label adapté pour clarifier.
               { label: window.I18n.t("ui.zone.eraseLast"), icon: "✂️",
@@ -3468,7 +3468,7 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
-                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  // Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetZones) window.resetZones();
                   // resetZones reset currentZone + window.modeZone → on ferme
@@ -3485,7 +3485,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     ]
   });
 
-  // 🆕 v1.9.3-A1.a — 11. STRUCTURES (piliers + murs)
+  // 11. STRUCTURES (piliers + murs)
   // Calqué sur Zones (techniquement c'est des polygones aussi) mais
   // sémantique différente : représentent des éléments PHYSIQUES de la
   // carrière (piliers de 1ère/2e masse, murs). Bloqueront le pathfinder
@@ -3528,7 +3528,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     id: "structures",
     iconePrincipale: "🏛️",
     titre: window.I18n.t("ui.group.structures"),
-    // 🆕 v1.16.0 step2-flyout : panel latéral
+    // panel latéral
     useFlyout: true,
     lcCat: "structures",
     customActivator: function(customId, btn) { _activerStructure(customId, btn, _iconeType("structures", customId, "✨")); },
@@ -3550,7 +3550,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       // foncé pour distinguer visuellement).
       { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
-      // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
+      // fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
       // 'structure'". Couleurs INVERSÉES vs piliers : front-1 = orange
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
@@ -3582,9 +3582,9 @@ _setGroupeModeActif("tracker", isTracking, null);
               if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
             }
             if (!ok) {
-              // 🆕 v1.9.3-A1.b.2 + fix2 : message adapté au type (front
+              // message adapté au type (front
               // = polyline 2pts min, pilier/mur = polygon 3pts min).
-              // 🐛 v1.16.0 step2-flyout-valider : pour les CUSTOM structures,
+              // pour les CUSTOM structures,
               // window.isStructurePolylineType consulte LegendCustomization
               // pour distinguer polyline (front custom) vs polygon (pilier
               // custom). Avant : check hardcodé sur "front-1/front-2" qui
@@ -3625,14 +3625,14 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.struct.eraseLastPointDesc"),
                 onClick: function() {
-                  // 🐛 v1.46.x — voir commentaire road : vider la structure en
+                  // voir commentaire road : vider la structure en
                   // cours doit fermer le mode (sinon bouton kta-actif + clic inerte).
                   const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (window.removeLastStructurePoint) window.removeLastStructurePoint();
                   const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (before && !after) _fermerModeStructure();
                 } },
-              // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
+              // (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastStructure priorise désormais currentStructure si
               // existe, sinon la dernière fermée. Label adapté.
               { label: window.I18n.t("ui.struct.eraseLast"), icon: "✂️",
@@ -3643,7 +3643,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (before && !after) _fermerModeStructure();
                 } },
-              // 🆕 v1.9.4 (KARMA) : sélection au clic carte pour les structures,
+              // sélection au clic carte pour les structures,
               // pattern identique aux zones et tracés.
               { label: window.I18n.t("ui.struct.eraseSelect"), icon: "🎯",
                 desc: window.I18n.t("ui.struct.eraseSelectDesc", { n: nbSelectables }),
@@ -3655,7 +3655,7 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
                 desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
-                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  // Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetStructures) window.resetStructures();
                   _fermerModeStructure();
@@ -3670,7 +3670,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     ]
   });
 
-  // 🆕 v1.16.0 step2-drawable : injection des boutons des entrées CUSTOM
+  // injection des boutons des entrées CUSTOM
   // dans les groupes traces / zones / structures de la sidebar. Permet à
   // l'utilisateur de DESSINER directement les types qu'il a ajoutés via le
   // bouton ✏️ Modifier de la légende.
@@ -3699,7 +3699,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       const grp = _groupes[m.groupeId];
       if (!grp || !grp.container) return;
 
-      // 🆕 v1.16.0 step2-flyout : pour les groupes en mode FLYOUT, les
+      // pour les groupes en mode FLYOUT, les
       // customs sont pullés lazily à chaque _ouvrirFlyout. On ne touche
       // PAS au DOM de la sidebar (pas de cascade).
       if (grp.useFlyout) {
@@ -3733,14 +3733,14 @@ _setGroupeModeActif("tracker", isTracking, null);
         : grp.subActions.length;
 
       // 3) Construit les nouveaux boutons depuis LC.listCustomEntries.
-      // 🎨 v1.76.0 (F6) — plus de filtre sur `visible` : masquer un type le
+      // (F6) — plus de filtre sur `visible` : masquer un type le
       // retire de la BOÎTE de légende, jamais de la sidebar. Ce site est le
-      // jumeau dynamique de celui de `_construireFlyout` ; les deux DOIVENT
+      // jumeau dynamique de celui de `_ouvrirFlyout` ; les deux DOIVENT
       // rester d'accord, sinon la sidebar change de contenu entre sa
       // construction initiale et son premier rafraîchissement.
       const customs = LC.listCustomEntries(m.lcCat);
       customs.forEach(function(e, i) {
-        // 🐛 v1.16.0 step2-drawable-fix : geometry first pour le swatch.
+        // geometry first pour le swatch.
         const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
         // L.DomUtil.create sans parent → on attache via insertBefore
         const btn = L.DomUtil.create("a", "kta-sub kta-hidden");
@@ -3787,7 +3787,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   _injecterBoutonsCustomSidebar();
 
   // Refresh automatique sur tout changement (add / remove / update / reset)
-  // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie (même famille que le
+  // abonnement ONE-SHOT + réf rafraîchie (même famille que le
   // grisage history — l'ancien onChange s'empilait à chaque plan switch).
   _injecterBoutonsCustomRef = _injecterBoutonsCustomSidebar;
   if (!_legendCustomSubBound && window.LegendCustomization
@@ -3798,7 +3798,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     });
   }
 
-  // 🆕 v1.16.0 step 3 — Refresh du flyout Favoris quand la liste change
+  // Refresh du flyout Favoris quand la liste change
   // (ajout / retrait via popup ⭐). Si le flyout est ouvert pour favoris,
   // on le re-render en place. Sinon no-op (sera fresh au prochain open).
   //
@@ -3806,7 +3806,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   // _initLevelFilterControl, position topleft pour apparaître juste sous
   // la pastille M-LVL dans la sidebar gauche — cf KARMA "met plutôt
   // l'icône favoris dans le menu de gauche, juste après M-LVL").
-  // 🐛 v1.57.4 : abonnement ONE-SHOT (le callback ne référence que du
+  // abonnement ONE-SHOT (le callback ne référence que du
   // module-level _currentFlyout/_ouvrirFlyout, résolus au runtime → pas
   // besoin de réf rafraîchie ici). Avant : 1 callback de plus par switch.
   if (!_favorisSubBound && window.Favoris && typeof window.Favoris.onChange === "function") {
@@ -3907,7 +3907,7 @@ _setGroupeModeActif("tracker", isTracking, null);
 // =========================
 // GUARD POPUP — modes suppression au clic (tracé / zone / structure)
 // =========================
-// 🐛 v1.44.4 — Les éléments session (polylines, zones, structures) ont une
+// Les éléments session (polylines, zones, structures) ont une
 // popup d'annotation bindée via Leaflet bindPopup (cf utils.js >
 // attacherNotePopup). PROBLÈME DE FOND : quand on clique PILE sur l'élément,
 // le handler interne Leaflet `_openPopup` fait `DomEvent.stop(e)` AVANT
@@ -3996,7 +3996,7 @@ function _desactiverModeSuppressionTrace() {
     _suppTraceFloater.remove();
     _suppTraceFloater = null;
   }
-  _retirerSuppPopupGuard();  // 🐛 v1.44.3
+  _retirerSuppPopupGuard();
 }
 
 window.activerModeSuppressionTraceClic = function() {
@@ -4030,7 +4030,7 @@ window.activerModeSuppressionTraceClic = function() {
   document.getElementById("kta-supp-trace-annuler")
     .addEventListener("click", _desactiverModeSuppressionTrace);
 
-  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  // bloque l'ouverture des popups d'annotation pendant le mode
   _installerSuppPopupGuard();
 
   // Tolerance de selection en pixels image (pas screen). Plus la tolerance
@@ -4070,7 +4070,7 @@ window.activerModeSuppressionTraceClic = function() {
     const currentBefore = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
     const closeRoadMode = (currentBefore && currentBefore === closestRoad);
 
-    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    // Undo/Redo : snapshot before
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
 
     // Supprime la road
@@ -4131,7 +4131,7 @@ function _desactiverModeSuppressionZone() {
     _suppZoneFloater.remove();
     _suppZoneFloater = null;
   }
-  _retirerSuppPopupGuard();  // 🐛 v1.44.3
+  _retirerSuppPopupGuard();
 }
 
 window.activerModeSuppressionZoneClic = function() {
@@ -4161,7 +4161,7 @@ window.activerModeSuppressionZoneClic = function() {
   document.getElementById("kta-supp-zone-annuler")
     .addEventListener("click", _desactiverModeSuppressionZone);
 
-  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  // bloque l'ouverture des popups d'annotation pendant le mode
   _installerSuppPopupGuard();
 
   // Tolerance pour le fallback "click pres du bord" (zone de petit polygon
@@ -4215,7 +4215,7 @@ window.activerModeSuppressionZoneClic = function() {
     const currentBefore = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
     const closeZoneMode = (currentBefore && currentBefore === foundZone);
 
-    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    // Undo/Redo : snapshot before
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
 
     // Supprime la zone
@@ -4263,7 +4263,7 @@ function _desactiverModeSuppressionStructure() {
     _suppStructureFloater.remove();
     _suppStructureFloater = null;
   }
-  _retirerSuppPopupGuard();  // 🐛 v1.44.3
+  _retirerSuppPopupGuard();
 }
 
 window.activerModeSuppressionStructureClic = function() {
@@ -4298,7 +4298,7 @@ window.activerModeSuppressionStructureClic = function() {
   document.getElementById("kta-supp-structure-annuler")
     .addEventListener("click", _desactiverModeSuppressionStructure);
 
-  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  // bloque l'ouverture des popups d'annotation pendant le mode
   _installerSuppPopupGuard();
 
   const TOLERANCE_BORD_PX  = 20;  // polygon fallback bord
@@ -4367,7 +4367,7 @@ window.activerModeSuppressionStructureClic = function() {
 
     // Supprime la structure via le setter standard (anti désynchro avec
     // l'état interne du module).
-    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    // Undo/Redo : snapshot before
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
     const currentStructures = window.getStructures ? window.getStructures() : [];
     const filtered = currentStructures.filter(function(s) { return s !== foundStruct; });

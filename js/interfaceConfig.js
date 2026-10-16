@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE CONFIG — Modale Réglages + Perf ULTRA + Multi-niveau + Géoref
 // =========================
-// 🆕 v1.31.0 (P3 Lot 9 — découpe interface.js, DERNIER LOT) : module
+// (P3 Lot 9 — découpe interface.js, DERNIER LOT) : module
 // extrait de js/interface.js (4 plages contiguës avant extraction)
 // pour réduire le volume du fichier principal.
 //
@@ -137,7 +137,7 @@ function _bindPerfUltraToggles() {
 // =========================
 // 🌐 GÉORÉFÉRENCEMENT GPS — section de la modale ⚙️ Configuration
 // =========================
-// v1.14.19 (KARMA « rajoute la possibilité de faire le géo référencement
+// (KARMA « rajoute la possibilité de faire le géo référencement
 // depuis les paramètres en mode map, auto remplis ensuite si je retourne
 // dans exporter »).
 //
@@ -156,13 +156,13 @@ function _renderCfgGeorefSection() {
                   ? window.KmzExport.getCalibration(planId) : null;
   const pA = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
   const pB = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
-  const pC = (saved && saved.pointC) || { x: "", y: "", lat: "", lng: "" };   // 📐 v1.73.0 : optionnel
+  const pC = (saved && saved.pointC) || { x: "", y: "", lat: "", lng: "" };   // optionnel
 
   return '' +
     '<div class="kta-aide-section">' +
 
       // ===== Point A =====
-      // 🆕 v1.21.0-fix1 : ajout des 2 boutons d'aide à la saisie (parité
+      // ajout des 2 boutons d'aide à la saisie (parité
       // UX avec la modale 💾 Enregistrer > 📡 Export externe) :
       //   - 🔍 Chercher un point : autocomplete sur POI plan → fill x/y
       //   - 📍 Cliquer carte : mode pick → clic sur la carte fill x/y
@@ -203,7 +203,7 @@ function _renderCfgGeorefSection() {
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
-          // 🧭 v1.76.1 — B ESTIMÉ depuis A + échelle + orientation Nord
+          // B ESTIMÉ depuis A + échelle + orientation Nord
           // (northOffsetDeg per-plan, 0 par défaut = Nord en haut).
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
@@ -279,7 +279,7 @@ function _bindCfgGeorefHandlers() {
     );
   }
 
-  // 🧭 v1.76.1 — ESTIMER B depuis A + échelle + Nord calibré.
+  // ESTIMER B depuis A + échelle + Nord calibré.
   // `_bEstime` mémorise les valeurs posées : au save, si les inputs B sont
   // toujours EXACTEMENT celles-là, le flag `estimated:true` est persisté avec
   // la calibration (badge d'honnêteté). La moindre retouche manuelle des
@@ -370,7 +370,7 @@ function _bindCfgGeorefHandlers() {
     // → border rouge + message + abort silencieux (la combo bloque le save).
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
-    const coordsC = _readCoordsCombo("cfg_kmz_C_coords", "cfg_kmz_C_err");   // 📐 v1.73.0
+    const coordsC = _readCoordsCombo("cfg_kmz_C_coords", "cfg_kmz_C_err");
     if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid) || (coordsC && coordsC.invalid)) {
       _setStatus(window.I18n.t("config.georef.errInvalidGps"), "err");
       return;
@@ -383,7 +383,7 @@ function _bindCfgGeorefHandlers() {
                 lat: coordsB ? coordsB.lat : null,
                 lng: coordsB ? coordsB.lng : null }
     };
-    // 🧭 v1.76.1 — le B provient de l'estimation et n'a pas été retouché →
+    // le B provient de l'estimation et n'a pas été retouché →
     // le flag suit la calibration (badge d'honnêteté, relu à l'ouverture).
     if (_bEstime &&
         String(document.getElementById("cfg_kmz_B_x").value) === _bEstime.x &&
@@ -467,7 +467,7 @@ function _bindCfgGeorefHandlers() {
     _setStatus(window.I18n.t("config.georef.cleared"), null);
   }
 
-  // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
+  // boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
   // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
   // à sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic mais
   // sur les IDs `cfg_kmz_*` (au lieu de `kmz_*`).
@@ -705,7 +705,7 @@ function _cfgDesactiverModeClicStart() {
   if (fl) fl.remove();
 }
 
-// 🐛 v1.28.0 : annule TOUS les modes « cliquer sur la carte » en cours (géoréf,
+// annule TOUS les modes « cliquer sur la carte » en cours (géoréf,
 // départ tracker, itinéraire, + tout floater pick résiduel) et retire la modale
 // config si elle avait été masquée par un picker. Appelé par afficherLoader()
 // (retour home) — sinon le floater et/ou la modale masquée restaient « ouverts »
@@ -932,7 +932,7 @@ function _cfgSignalerChangement() {
 }
 // Les trois réglages de podomètre partent ENSEMBLE, depuis APP_CONFIG (validés un à un).
 function _cfgAppliquerPodometre() {
-  // 👣 v1.96.0 — GLOBAL : vaut pour tous les plans (décision KARMA 17/09/2026)
+  // GLOBAL : vaut pour tous les plans (décision KARMA 17/09/2026)
   if (typeof window.setGlobalPodometre !== "function") return;
   window.setGlobalPodometre({
     stepLength:    APP_CONFIG.stepLength,
@@ -954,7 +954,7 @@ function _cfgAppliquerDepart() {
     APP_CONFIG.startX = rx.v;
     APP_CONFIG.startY = ry.v;
     if (typeof window.setPlanTracking === "function") window.setPlanTracking(null, { startX: rx.v, startY: ry.v });
-    // 🐛 v1.28.0 conservé : le suivi n'est replacé QUE si le départ a changé.
+    // conservé : le suivi n'est replacé QUE si le départ a changé.
     if (typeof window.resetTrackingPosition === "function") window.resetTrackingPosition();
     _cfgToast(window.I18n.t("config.tracker.departToast"), "info");
   };
@@ -1460,7 +1460,7 @@ function afficherConfig() {
   _bindReglagesImmediats();
   _bindCfgGeorefLanceur();
 
-  // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
+  // Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
   if (typeof window.attacherBoutonCopierEchelleGps === "function") {
     window.attacherBoutonCopierEchelleGps(modal);
   }
@@ -1468,18 +1468,18 @@ function afficherConfig() {
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // 🌐 v1.14.19 (KARMA « rajoute la possibilité de faire le géo référencement
+  // (KARMA « rajoute la possibilité de faire le géo référencement
   // depuis les paramètres en mode map, auto remplis ensuite si je retourne
   // dans exporter ») : bind les handlers de la nouvelle section
   // 🌐 Géoréférencement GPS. Sauve via KmzExport.setCalibration(planId, c)
   // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
   // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
-  // (v1.92.0 : les handlers géoref sont posés à l'ouverture de la sous-modale)
+  // les handlers géoref sont posés à l'ouverture de la sous-modale)
 
   // 🧭 Position initiale du tracker : boutons 🔍 via un point / 📍 cliquer carte.
   _bindCfgTrackerStartHandlers();
 
-  // 🎬 v1.21.0-fix2 (KARMA mobile-friendly) : bouton "Activer le mode
+  // bouton "Activer le mode
   // présentation" dans la section 🔍 Affichage. Sur mobile, la touche F
   // est inaccessible faute de clavier physique → ce bouton est le seul
   // chemin pour entrer dans le mode. Sortie : touche F/Échap (PC) ou
@@ -1501,7 +1501,7 @@ function afficherConfig() {
     });
   }
 
-  // 🕵️ v1.31.8 F2 + 🆕 v1.31.9 — Bouton dynamique "Démarrer / Quitter
+  // F2 + 🆕 v1.31.9 — Bouton dynamique "Démarrer / Quitter
   // le mode incognito" selon l'état IncognitoMode.active.
   //   • Pas incognito → "Démarrer" → IncognitoMode.launch() ouvre nouvelle
   //     fenêtre ?incognito=1 (ne mute pas la fenêtre courante).
@@ -1520,7 +1520,7 @@ function afficherConfig() {
           if (ok) window.IncognitoMode.quit();
         });
       } else {
-        // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
+        // passe par confirmAndLaunch() qui affiche la
         // modale charte de garde-fou (description + risques + buttons).
         // L'user peut Annuler dans la modale → no launch.
         window.IncognitoMode.confirmAndLaunch();
@@ -1528,7 +1528,7 @@ function afficherConfig() {
     });
   }
 
-  // 🆕 v1.21.1+ (KARMA Wake Lock) : toggle "Garder l'écran allumé".
+  // toggle "Garder l'écran allumé".
   // Visible UNIQUEMENT si l'API navigator.wakeLock est supportée par le
   // browser (Chrome/Edge/Safari iOS 16.4+, PAS Firefox).
   // Sync UI ↔ state via window.WakeLock.isEnabled() + setEnabled().
@@ -1539,7 +1539,7 @@ function afficherConfig() {
       wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
       wlCb.checked = window.WakeLock.isEnabled();
       wlCb.addEventListener("change", function() {
-        // 🩸 v1.85.2 — ON ATTEND LE RESULTAT REEL avant de parler. L ancienne
+        // 🩸 ON ATTEND LE RESULTAT REEL avant de parler. L ancienne
         // version annonçait « ecran maintenu allume » sans jamais verifier que
         // le verrou avait ete pose : quand le navigateur refusait, l app
         // mentait, et on cherchait la panne du mauvais cote (constate sur
@@ -1564,7 +1564,7 @@ function afficherConfig() {
     }
   }
 
-  // 🆕 v1.36.2 : toggle "⚪ Afficher les ronds aux intersections (ce plan)".
+  // toggle "⚪ Afficher les ronds aux intersections (ce plan)".
   // L'option est PER-PLAN — déplacée de Configuration home suite feedback KARMA.
   // Lecture initiale via getPlanShowsIntersections() (fallback global → true).
   // Change handler : setPlanShowsIntersections() persiste LS per-plan + re-render.
@@ -1591,7 +1591,7 @@ function afficherConfig() {
     });
   }
 
-  // 🧭 v1.37.0 — Calibration Nord per-plan.
+  // Calibration Nord per-plan.
   // Trois entrées d'action :
   //   1. Champ angle numérique (saisie directe, blur → setPlanNorthOffset)
   //   2. Bouton "📐 Calibrer (2 clics)" → ferme la modale et lance le picker
@@ -1649,7 +1649,7 @@ function afficherConfig() {
         }
         return;
       }
-      // 🐛 v1.37.0 hotfix — Au lieu d'essayer de fermer la modale (pas de
+      // Au lieu d'essayer de fermer la modale (pas de
       // fonction publique), on suit le pattern existant du picker géoref
       // (cf l~520) : on CACHE la modale Réglages via display:none le temps
       // du picker, puis on la remontre à la fin. Sinon la modale (z>>map)
@@ -1682,7 +1682,7 @@ function afficherConfig() {
     window.addEventListener("kta:northOffsetChange", _refreshStatus);
   })();
 
-  // 🖼️ v1.38.2 — Le picker calibration calques image VIVE désormais
+  // Le picker calibration calques image VIVE désormais
   // EXCLUSIVEMENT dans le générateur avancé (feedback KARMA :
   // "on le fait que depuis générateur"). HTML cfg_imglayer_calib_block
   // + IIFE _initImageLayerCalibUI complètement retirés des Réglages map
@@ -1690,24 +1690,24 @@ function afficherConfig() {
   // restent dispos côté runtime (map.js lit toujours la cascade LS
   // legacy → plan-config.json pour rétrocompat des users v1.38.0).
 
-  // 📖 v1.37.0 — Pas de bouton d'import PDF Histoire dans Réglages : le
+  // Pas de bouton d'import PDF Histoire dans Réglages : le
   // mécanisme existant (modale Mode Histoire 📖 → onglet PDF → bouton import,
   // feature v1.34.20) reste l'entrée unique côté session. Éviter le doublon
   // UX. L'embarquement durable cross-utilisateurs se fait via le générateur
   // avancé (`plan-config.json > plan.histoirePdf`).
 
-  // 🆕 v1.34.26 : toggle "📳 Vibration haptique".
+  // toggle "📳 Vibration haptique".
   // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
   // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
   // + persistence app_user_prefs.
-  // ⚠️ v1.85.3 (audit KARMA) — LE CABLAGE DE QUATRE REGLAGES GLOBAUX A ETE
+  // ⚠️ LE CABLAGE DE QUATRE REGLAGES GLOBAUX A ETE
   // RETIRE D ICI avec leurs cases : taille des icones au zoom, ancrage des
   // panneaux, magnetisme au dessin et son rayon. Ils se reglent desormais dans
   // la ⚙️ Configuration de l ACCUEIL. Le laisser en place aurait ete inoffensif
   // (les `getElementById` rendent null) mais trompeur : du code qui a l air de
   // brancher une interface qui n existe plus.
 
-  // 🛰️ v1.85.2 — LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
+  // LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
   //
   // 🩸 AVANT, une option dont le capteur manquait était simplement MASQUÉE.
   // Sur iPhone, la vibration disparaissait donc de la modale : impossible pour
@@ -1767,7 +1767,7 @@ function afficherConfig() {
       });
     }
   }
-  // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
+  // E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
   // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
   // Note : reload requis après changement (le bouton mic flottant est
@@ -1798,7 +1798,7 @@ function afficherConfig() {
   // 🏗️ Multi-niveau : rien ici (activation par le générateur, cf. v1.7.3).
 }
 
-// ⚙️ v1.92.0 (L4) : `appliquerConfig` et son bouton n'existent plus — chaque
+// (L4) : `appliquerConfig` et son bouton n'existent plus — chaque
 // champ s'enregistre à la modification (cf. `_bindReglagesImmediats`).
 
 // 🚨 B6 (audit ergonomie 13/09/2026) : « Reset » agissait sans confirmation,
@@ -1834,7 +1834,7 @@ function _resetConfigExecuter() {
   if (typeof window.resetPlanNorthOffset === "function") window.resetPlanNorthOffset(null);
   try { localStorage.removeItem("myktamap_plan_prefs_" + pid); } catch (e) {}
   APP_CONFIG.scale         = usine("scale");
-  // 👣 v1.96.0 — le podomètre revient à l'USINE de l'app (jamais aux valeurs du
+  // le podomètre revient à l'USINE de l'app (jamais aux valeurs du
   // plan : le plan ne dit plus la foulée), et la pref globale est effacée.
   const U = window.KTA_TRACKING_USINE || {};
   APP_CONFIG.stepLength    = U.stepLength;
@@ -1927,7 +1927,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.niveaux.warn") +
         '</p>' +
-        // 📉 v1.83.0 — accès à la saisie des profondeurs. Rangé ici parce
+        // accès à la saisie des profondeurs. Rangé ici parce
         // qu'une profondeur EST une propriété du niveau : la chercher
         // ailleurs que dans l'écran des niveaux serait une devinette.
         '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-prof" type="button"' +
@@ -2053,11 +2053,11 @@ function _changerNiveauActif(newLevel) {
   // v155 fix : retire le check newLevel < 0 qui bloquait les niveaux negatifs
   // (reste de v148 quand availableLevels etait [0..3] strict). Depuis v154 on
   // supporte les sous-sols (-1, -2, …), donc tout entier est valide.
-  // 🆕 v1.74.0 : simple delegation — toute la logique vit dans le helper unique.
+  // simple delegation — toute la logique vit dans le helper unique.
   window.ktaSetActiveLevel(newLevel, { source: "modale-niveaux" });
 }
 
-// 🆕 v1.74.0 — SOURCE DE VÉRITÉ UNIQUE du niveau de travail.
+// SOURCE DE VÉRITÉ UNIQUE du niveau de travail.
 //
 // AVANT : 3 chemins concurrents écrivaient `APP_CONFIG.activeLevel` à la main
 // (modale Niveaux via _changerNiveauActif, modale ≡ Filtres ×2) et un seul
@@ -2140,7 +2140,7 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window.renderZones === "function") {
     try { window.renderZones(); } catch(e) {}
   }
-  // 🆕 v1.9.3-A1.a-fix5 : structures de session re-render aussi au
+  // structures de session re-render aussi au
   // changement de niveau (sinon les piliers/murs restaient figés à
   // la visibilité du niveau initial).
   if (typeof window.renderStructures === "function") {
@@ -2158,7 +2158,7 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window._applyLevelFilterToDataZones === "function") {
     try { window._applyLevelFilterToDataZones(); } catch(e) {}
   }
-  // 🆕 v1.9.3-A1.a-fix5 : structures embarquées dans les calques DATA
+  // structures embarquées dans les calques DATA
   // (json.structures[]). Sans cet appel, les piliers/murs data layer
   // restaient figés à la visibilité du niveau initial au boot et ne
   // re-filtraient pas au changement de niveau.
@@ -2179,20 +2179,20 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window._applyLevelFilterToImageLayers === "function") {
     try { window._applyLevelFilterToImageLayers(); } catch(e) {}
   }
-  // 🏗️ v1.67.0 (KARMA « logique de superposition ») : le plan PRINCIPAL est
+  // (KARMA « logique de superposition ») : le plan PRINCIPAL est
   // le niveau 0 — masqué net quand 0 est décoché (cf tiling.js).
   if (typeof window._applyLevelFilterToBasePlan === "function") {
     try { window._applyLevelFilterToBasePlan(); } catch(e) {}
   }
 
-  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : sync M-LVL bidirectionnel.
+  // (KARMA "refonte filtre Leaflet") : sync M-LVL bidirectionnel.
   // Quand visibleLevels change (via modale Niveaux), notifie FilterPanel pour
   // qu'il rafraîchisse la section M-LVL si la modale est ouverte.
   if (window.FilterPanel && typeof window.FilterPanel.onLevelChange === "function") {
     try { window.FilterPanel.onLevelChange(); } catch(e) {}
   }
 
-  // 🌀 v1.57.1 : badges des liaisons inter-plan re-rendus au changement de
+  // badges des liaisons inter-plan re-rendus au changement de
   // niveau (ils respectent visibleLevels comme les markers — sinon un badge
   // flottait sans son icône sur les niveaux masqués).
   if (window.InterPlanLinks && typeof window.InterPlanLinks.refreshBadges === "function") {
@@ -2200,7 +2200,7 @@ window.appliquerFiltreNiveau = function() {
   }
 };
 
-// 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : helper global qui cascade
+// (KARMA "refonte filtre Leaflet") : helper global qui cascade
 // le re-render après changement des filtres runtime (tags, types, etc.).
 // Alias de appliquerFiltreNiveau car les modules level-aware appliquent
 // aussi window._ktaRuntimeFilters dans la même passe de rendu.
@@ -2363,7 +2363,7 @@ function _initLevelFilterControl() {
 // EXPORTS WINDOW (v1.31.0 P3 Lot 9)
 // ==========================================
 // 3 fonctions publiques classiques (étaient dans le bloc EXPORT
-// GLOBAL de interface.js, lignes 3294-3296 avant ce lot) :
+// GLOBAL de interface.js) :
 window.afficherConfig  = afficherConfig;
 window.resetConfig     = resetConfig;
 

@@ -7,8 +7,8 @@
 // =========================
 // INTERFACE DISTANCE TOTALE — Panneau flottant + surlignage magenta
 // =========================
-// 🆕 v1.31.0 (P3 Lot 2 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 8551-8824 avant extraction) pour réduire le
+// (P3 Lot 2 — découpe interface.js) : module extrait de
+// js/interface.js pour réduire le
 // volume du fichier principal et améliorer la maintenabilité.
 //
 // Aucun changement de comportement runtime. Les 4 fonctions exposées
@@ -67,7 +67,7 @@
 
 const _RD_TYPES_BUILTIN = ["principal", "secondaire", "chemin"];
 
-// 🐛 v1.76.0 (F14) — les types CUSTOM comptent aussi.
+// (F14) — les types CUSTOM comptent aussi.
 // La liste était figée aux 3 built-in : un plan tracé entièrement en types
 // custom affichait 0 m — le panneau « Distance totale » niait l'existence du
 // réseau. La liste des types est désormais calculée sur les tracés PRÉSENTS
@@ -102,7 +102,7 @@ function _rdLabelType(type) {
   }
   return window.I18n.t("disttot.type." + type);
 }
-// 🎨 v1.76.0 — le magenta de surlignage est celui de la jonction (cohérence
+// le magenta de surlignage est celui de la jonction (cohérence
 // voulue de longue date, elle était jusqu'ici recopiée à la main).
 // Résolu à l'APPEL, pas au chargement : styleResolver.js est chargé avant ce
 // module, mais lire une couleur au load figerait la valeur avant qu'un futur

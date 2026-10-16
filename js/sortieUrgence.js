@@ -50,7 +50,7 @@
   let _lastResultats = null;       // résultats sortés du dernier calcul (cache)
 
   // ========== CONSTANTES ==========
-  // 🔧 v1.35.1 — Codes courts (pas libellés). KARMA a confirmé que les tags
+  // Codes courts (pas libellés). KARMA a confirmé que les tags
   // dans les POIs sont des codes : cao / peo / eso (et leurs équivalents
   // fermés caf / pef / esf qu'on EXCLUT car non-traversables).
   //   cao = Cavage Ouvert
@@ -107,10 +107,10 @@
 
   // Format distance pour UI (réutilise window.formatDistance si dispo,
   // sinon fallback simple en pixels).
-  // 🐛 v1.40.35 — KARMA bug "relevé réel : 4.63 km au lieu de 944,5 m" :
+  // KARMA bug "relevé réel : 4.63 km au lieu de 944,5 m" :
   // `distPx` est une somme de distances euclidiennes en **pixels plan**
-  // (cf _calculerDistPathfinder ligne ~135) mais `window.formatDistance`
-  // attend des **mètres** (cf utils.js ligne 131). On oubliait la conversion
+  // (cf _calculerDistPathfinder) mais `window.formatDistance`
+  // attend des **mètres** (cf utils.js > formatDistance). On oubliait la conversion
   // `/ APP_CONFIG.scale` (pixels par mètre) — du coup la distance affichée
   // était multipliée par le ratio scale (~4.9 sur un relevé réel).
   // Cohérent avec lostMode.js et measure.js qui font cette conversion.
@@ -342,7 +342,7 @@
       ? '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.fallback.label") + '</div>'
       : '';
     const tousFallback = resultats.every(function(r) { return r.fallback; });
-    // 🪧 27/09/2026 (décision KARMA) — plan SANS AUCUN TRACÉ : on le dit en
+    // plan SANS AUCUN TRACÉ : on le dit en
     // clair, avant tout. Le bandeau générique « aucun chemin vérifié » ne
     // disait pas pourquoi, ni que le guidage n'aurait rien à indiquer.
     const sansTrace = !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
@@ -506,7 +506,7 @@
         '<p>' + window.I18n.t("sortie.loader") + '</p>' +
       '</div>'
     );
-    // 🌀 v1.55.1 : yield-to-paint AVANT le batch de Pathfinder.computeRoute
+    // yield-to-paint AVANT le batch de Pathfinder.computeRoute
     // (jusqu'à 15 Dijkstra SYNC bloquants). Sans une frame peinte ici, le
     // spinner de la modale ne s'affiche pas et l'écran fige « sans rien
     // montrer » — même cause que l'overlay itinéraire (cf computeLoader.js).
@@ -555,7 +555,7 @@
 
   SU._fermer = function() { _fermerModale(); };
 
-  // 🪧 27/09/2026 — Guidage, décision G : en sortie d'urgence, un écart ne
+  // Guidage, décision G : en sortie d'urgence, un écart ne
   // relance pas le chemin vers la MÊME sortie mais vers la plus proche D'ICI
   // — quelqu'un qui a dévié est peut-être plus près d'une autre. Même modale
   // que le déclenchement : l'utilisateur confirme en touchant « Tracer ».

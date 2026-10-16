@@ -102,7 +102,7 @@ const RFI = lire("js/refonteInterface.js");
 {
   t("📔 demarrer est exposée dans l'API du module", /^\s*demarrer:\s*demarrer,/m.test(JRN));
   const opl = JRN.slice(JRN.indexOf("function onPlanLoaded("), JRN.indexOf("function demarrer()"));
-  // 🔀 28/09/2026 — la branche « carnet décoché » ne se réduit plus à
+  // la branche « carnet décoché » ne se réduit plus à
   // `return null;` : elle peut REPRENDRE une sortie démarrée à la main puis
   // suspendue par un changement de plan. La règle gardée est la même : elle
   // n'OUVRE jamais de sortie (aucun `_ouvrir`) et rend null.
@@ -149,7 +149,7 @@ const RFI = lire("js/refonteInterface.js");
     const d = JSON.parse(lire("lang/" + l + ".json"));
     t("🌍 " + l + " : les 7 textes du démarrage manuel existent", CLES.every(k => typeof d[k] === "string"));
     t("❓ " + l + " : l'aide du carnet explique le démarrage manuel", (d["aide.sec.carnet.html"] || "").includes(A[l]));
-    // ⚙️ 12/10/2026 — la case du carnet n'a plus de paragraphe d'explication
+    // la case du carnet n'a plus de paragraphe d'explication
     // (le libellé suffit) : le démarrage manuel est dit par l'aide (ci-dessus)
     // et par le Guide (ci-dessous), qui restent contrôlés.
     t("📖 " + l + " : le README documente le bouton", lire("docs/applications/" + F[l]).includes(H[l]));

@@ -25,8 +25,8 @@ const { execSync } = require("child_process");
 // Les natifs setTimeout/addEventListener/createObjectURL dans ces fichiers
 // déclenchent un WARN (à éviter, préférer lc.*).
 const MIGRATED_MODULES = [
-  "js/memInspector.js",       // ✅ v1.44.0 — migration complète (timers, listeners, delegation crash handlers)
-  "js/swInspector.js",        // ✅ v1.44.0 — migration complète (timers, listeners, lockButton, guard)
+  "js/memInspector.js",       // migration complète (timers, listeners, delegation crash handlers)
+  "js/swInspector.js",        // migration complète (timers, listeners, lockButton, guard)
   // Migration partielle (close + setTimeout du bouton copy) — listeners pas
   // encore tous migrés. À promouvoir dans la liste quand la migration complète
   // sera faite (v1.44.x). En attendant, le linter ne flag pas pour éviter le

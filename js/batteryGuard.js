@@ -74,7 +74,7 @@
   // INIT
   // ============================================================
   function _init() {
-    // 🔕 v1.85.2 (KARMA) — l'utilisateur peut refuser ce capteur. On sort
+    // l'utilisateur peut refuser ce capteur. On sort
     // AVANT `getBattery()` : couper seulement l'icône laisserait l'écoute en
     // place, et c'est justement l'écoute qu'on ne veut pas imposer.
     if (!window.APP_CONFIG || window.APP_CONFIG.batterieEnabled !== true) {
@@ -85,7 +85,7 @@
     if (typeof navigator === "undefined" || typeof navigator.getBattery !== "function") {
       _available = false;
       console.log("[BatteryGuard] navigator.getBattery indispo — fallback chip grisé '?' (KARMA option B v1.11.1).");
-      // 🆕 v1.11.1 (KARMA "option B debug") : on notifie quand même les
+      // (KARMA "option B debug") : on notifie quand même les
       // listeners pour qu'ils affichent un chip grisé avec '?' au lieu de
       // tout masquer. Permet de voir l'emplacement même sur Safari/FF.
       // Notify différé via setTimeout 0 pour laisser le module finir son
@@ -135,7 +135,7 @@
   // ============================================================
   function _state() {
     if (!_available || !_battery) {
-      // 🆕 v1.11.1 (KARMA option B) : retourne un state explicite "indispo"
+      // retourne un state explicite "indispo"
       // pour que l'UI puisse afficher un chip grisé avec '?' au lieu de
       // tout masquer. Le flag `available: false` permet à l'UI de
       // distinguer "API pas supportée" vs "pas encore résolue".
@@ -179,7 +179,7 @@
 
   function _formatLabel(lvl, chg) {
     if (lvl === null) return "";
-    // 🔧 v1.11.1-fix (KARMA "deux éclairs ?") : ne pas inclure ⚡ dans le
+    // (KARMA "deux éclairs ?") : ne pas inclure ⚡ dans le
     // label car l'emoji est déjà rendu en parallèle via _computeEmoji
     // ("⚡" si charge, "🔋" / "🪫" sinon). Avant : double éclair "⚡ ⚡ 92%".
     return lvl + "%";
@@ -250,7 +250,7 @@
   // ============================================================
   // UX : TOASTS + MODALES
   // ============================================================
-  // 🐛 v1.77.0 — COURSE AU BOOT : _init() tourne au chargement du module et
+  // COURSE AU BOOT : _init() tourne au chargement du module et
   // _notify() évalue tout de suite → sur un appareil déjà ≤20 %, le toast
   // partait AVANT l'arrivée du dico i18n (« Clé manquante : battery.toast.
   // info20 », attrapé par le smoke sur un laptop déchargé). Même famille que
@@ -294,7 +294,7 @@
   // qui mérite l'attention (en sous-sol, batterie faible = grosse perte
   // de temps si tu ne réagis pas).
   function _afficherModaleCritique(lvl) {
-    // 🐛 v1.77.0 — même barrière i18n que les toasts (cf _quandI18nPret).
+    // même barrière i18n que les toasts (cf _quandI18nPret).
     // Le garde anti-doublon vit dans _construireModaleCritique : valable
     // aussi après le détour par la barrière.
     _quandI18nPret(function() { _construireModaleCritique(lvl); });

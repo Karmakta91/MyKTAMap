@@ -25,7 +25,7 @@
 //   - niveauNotifs() / setNiveauNotifs(n) : réglage « all » | « essential » | « silent »
 //   - flushPendingToasts(): vide la file (appelée depuis _splashEnd)
 //
-// 🔕 17/09/2026 (KARMA : « beaucoup de popups d'information inutiles ») —
+// (KARMA : « beaucoup de popups d'information inutiles ») —
 // UN SEUL GOULOT pour tous les toasts de l'app, et une décision PURE
 // (_decisionToast, exécutée par scripts/check-notifs.js) :
 //   • « all »       : tout, vibration sur warn/error (comportement d'avant) ;
@@ -46,8 +46,8 @@
 
   let _heartbeatTimer = null;
   let _heartbeatStart = null;
-  let _heartbeatPaused        = false;               // 🆕 v1.31.1 (P7) — true quand l'onglet est en BG → tick pausé
-  let _visibilityHandlerBound = false;               // 🆕 v1.31.1 (P7) — idempotent : pas de double-listener si start() rappelé
+  let _heartbeatPaused        = false;               // (P7) — true quand l'onglet est en BG → tick pausé
+  let _visibilityHandlerBound = false;               // (P7) — idempotent : pas de double-listener si start() rappelé
   let _splashGone     = false;                       // passe à true quand _splashEnd a fini
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
   let _pendingKillInfo    = null;                    // payload kill détecté → modale après splash
@@ -135,7 +135,7 @@
       if (!items.length) return;
       let type2 = "info", important = false;
       items.forEach(function(it) { if (POIDS[it.type] > POIDS[type2]) type2 = it.type; if (it.opts && it.opts.important) important = true; });
-      // 14/10/2026 (capture KARMA : « Lecture seule… » ×7 dans un seul toast) : un message identique n'apparaît
+      // (capture KARMA : « Lecture seule… » ×7 dans un seul toast) : un message identique n'apparaît
       // qu'une fois — répéter le même geste refusé ne doit pas allonger le toast.
       const vus = {};
       const uniques = items.map(function(it) { return it.message; })
@@ -154,7 +154,7 @@
       return;
     }
     _renderToast(message, type);
-    // 🆕 v1.34.27 — Vibration haptique (warn / error) — depuis le 17/09 elle suit
+    // Vibration haptique (warn / error) — depuis le 17/09 elle suit
     // le réglage : en « Essentiel » un warn ne vibre plus. Pref + support : kta_vibrate.
     if (d.vibrer && window.kta_vibrate) window.kta_vibrate.error();
   }
@@ -327,7 +327,7 @@
       return;
     }
 
-    // 16/10/2026 (KARMA, pro : fausse alerte en revenant de la page de gestion) — le témoin est PARTAGÉ par tous les
+    // le témoin est PARTAGÉ par tous les
     // onglets de l'app. Un onglet resté ouvert (la page de gestion s'ouvre dans un onglet à part ; l'onglet caché met
     // son battement en pause sans effacer le témoin) le laisse « récent » : la nouvelle instance croyait à un arrêt
     // brutal. On demande d'abord aux autres onglets s'ils vivent ; un seul qui répond = pas d'arrêt brutal.
@@ -383,7 +383,7 @@
       userAgent: info.userAgent
     };
 
-    // 🆕 v1.20.0 — Archive automatique du crash en IDB via CrashReports.
+    // Archive automatique du crash en IDB via CrashReports.
     // L'appel est fire-and-forget (Promise non awaited) car _checkPreviousKill
     // est appelé synchrone au boot du module. Le crash report sera consultable
     // depuis Memory Inspector (⚙️ Configuration → 📊 Inspecteur) → section
@@ -401,7 +401,7 @@
   }
 
   // =========================
-  // 🆕 v1.31.1 (P7) — VISIBILITY-AWARE HEARTBEAT
+  // (P7) — VISIBILITY-AWARE HEARTBEAT
   // =========================
   // Le heartbeat 5s écrivait dans localStorage en continu, même onglet en
   // arrière-plan (mobile lockscreen, autre app au premier plan, etc.). Sur
@@ -459,7 +459,7 @@
     if (_heartbeatTimer) clearInterval(_heartbeatTimer);
     _heartbeatTimer = setInterval(_setMarker, HEARTBEAT_MS);
 
-    // 🆕 v1.31.1 (P7) — bind du handler visibilitychange + check immédiat
+    // (P7) — bind du handler visibilitychange + check immédiat
     // si l'onglet est DÉJÀ en BG au moment du démarrage (cas marginal mais
     // possible : user lance l'app puis bascule très vite sur une autre).
     _bindVisibilityHandlerOnce();

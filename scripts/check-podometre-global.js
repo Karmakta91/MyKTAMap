@@ -3,7 +3,7 @@
 // =====================================================================
 // 👣 check-podometre-global.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// v1.96.0 (KARMA, 17/09/2026) : taille de pas, seuil et cooldown ne sont
+// taille de pas, seuil et cooldown ne sont
 // PAS des propriétés du plan — la foulée est celle de la personne, le seuil
 // et le cooldown ceux du téléphone. Ils sont GLOBAUX à l'appareil
 // (`app_user_prefs`), réglés dans ⚙️ Réglages pour tous les plans.

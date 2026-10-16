@@ -129,15 +129,15 @@
   const OSM_TILE_URL  = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   const OSM_ATTR      = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
   const OSM_MAX_ZOOM  = 19;
-  // 🆕 v1.39.11 — Budgets viewport culling + niveau adaptatif
+  // Budgets viewport culling + niveau adaptatif
   const MAX_TILES_BASELINE = 20;   // budget RAM mobile ~20 MB décodé au boot
   const VIEWPORT_PADDING   = 0.1;  // 10% pad pour pré-charger les bords (anti-flash au pan)
 
   let _modalEl   = null;
   let _osmMap    = null;
   let _planLayer = null;       // L.featureGroup contenant les overlays rendus
-  let _opacity   = 0.5;        // 🆕 v1.42.4 — default 50% (KARMA, meilleur compromis lecture OSM + plan)
-  // 🆕 v1.39.11 — State niveau adaptatif + culling
+  let _opacity   = 0.5;        // default 50% (KARMA, meilleur compromis lecture OSM + plan)
+  // State niveau adaptatif + culling
   let _planBbox        = null; // L.latLngBounds des 4 coins du plan (immuable post-init)
   let _proj            = null; // résultat de _buildProjection() (mémo pour les handlers zoom/move)
   let _baselineOsmZoom = null; // zoom OSM où le plan tient au fit (calc 1 fois)
@@ -147,24 +147,24 @@
   const PANE_TUILES    = "ktaOsmTuiles";
   let _tilesByPath     = {};   // path → { overlay, tl, tr, bl } pour cull rapide
   let _moveEndHandler  = null; // ref pour cleanup au close()
-  // 🆕 v1.39.12 — Step 1 : POI session + data layers
+  // Step 1 : POI session + data layers
   let _poiLayer   = null;      // L.layerGroup contenant les markers POI
-  let _planTilesVisible = true; // 🆕 v1.40.12 — toggle "🖼️ Plan" tuiles V2
+  let _planTilesVisible = true; // toggle "🖼️ Plan" tuiles V2
   let _poiVisible = true;      // toggle "📍 POI" dans le bandeau (default ON)
-  // 🆕 v1.40.17 — Filtre tag LOCAL à la modale OSM (complète FilterPanel global).
+  // Filtre tag LOCAL à la modale OSM (complète FilterPanel global).
   // null = pas de filtre local, Set<string> non-vide = ne montre que ces tags.
   let _osmLocalTagFilter = null;
-  // 🆕 v1.40.18 — Bouton "📍 Moi" (position GPS device) : fix ponctuel à la demande,
+  // Bouton "📍 Moi" (position GPS device) : fix ponctuel à la demande,
   // 0 stockage, 0 watch continu (vs _trackerLayer qui suit la timeline session).
   let _myGpsMarker         = null; // L.circleMarker au point GPS
   let _myGpsAccuracyCircle = null; // L.circle d'incertitude si accuracy > seuil
-  // 🆕 v1.39.13 — Step 2 : tracker (position live + tracé)
+  // Step 2 : tracker (position live + tracé)
   let _trackerLayer     = null; // L.layerGroup contenant trace + marker + cap
   let _trackerTrace     = null; // L.polyline (timeline)
   let _trackerMarker    = null; // L.marker (dernière position + flèche cap)
   let _trackerVisible   = true; // toggle "📡 Tracker" (default ON)
   let _trackerPollTimer = null; // setInterval pour update live (1 s)
-  // 🆕 v1.39.14 — Step 3a : roads + itinéraire
+  // Step 3a : roads + itinéraire
   let _roadLayer    = null;     // L.layerGroup contenant les polylines roads
   let _itiLayer     = null;     // L.layerGroup contenant la polyline itinéraire
   let _roadVisible  = true;     // toggle "🛣️ Routes" (default ON)
@@ -174,14 +174,14 @@
   const ITI_COLOR     = "#00d4ff";
   const ITI_WEIGHT    = 5;       // 7 sur map principale, allégé pour OSM (zone +large)
   const ITI_DASHARRAY = "10 6";  // garde le pattern dashed pour distinguer iti des roads
-  // 🆕 v1.39.16 — Step 3b : zones + structures
+  // Step 3b : zones + structures
   let _zoneLayer    = null;     // L.layerGroup polygones zones
   let _structLayer  = null;     // L.layerGroup polylines + polygones structures
   let _zoneVisible  = true;
   let _structVisible = true;
-  // 🆕 v1.39.16 — Multi-LVL OSM (null = mono fallback activeLevel)
+  // Multi-LVL OSM (null = mono fallback activeLevel)
   let _visibleLevels = null;    // Set<number> ou null
-  // 🆕 v1.40.34 (Synergie A v2) — Layer Mode Secours :
+  // (Synergie A v2) — Layer Mode Secours :
   // zones d'intervention équipes + itinéraires suggérés par équipe (couleurs
   // distinctives via SecoursMode.PALETTE). Auto-affiché si scénario Mode
   // Secours actif au moment du open() de la modale Vue OSM. Toggle dans
@@ -194,7 +194,7 @@
   const SECOURS_ZONE_FILL_OPAC   = 0.18;    // semi-transparent pour ne pas masquer les POI
   const SECOURS_ZONE_STROKE_OPAC = 0.85;
 
-  // 🆕 v1.40.37 — Mappings couleurs natifs roads + zones pour résolution
+  // Mappings couleurs natifs roads + zones pour résolution
   // "comme sur la map principale". Aligné sur road.js > ROAD_STYLES et
   // zones.js > ZONE_STYLES (v1.0+). ⚠️ Sync requise si ces consts changent.
   // Choix : duplication locale plutôt qu'export global car (a) road.js et
@@ -230,7 +230,7 @@
   // =========================
   // CONFIG / OPT-IN
   // =========================
-  // 🌍 v1.90.2 — LE DÉFAUT BASCULE À « ACTIF » (décision KARMA : « dans 99 %
+  // LE DÉFAUT BASCULE À « ACTIF » (décision KARMA : « dans 99 %
   // des cas ce mode est utilisé »).
   //
   // 🩸 LA CLÉ EST TRI-ÉTAT, ET C'EST TOUT L'INTÉRÊT :
@@ -259,7 +259,7 @@
     try { window.dispatchEvent(new CustomEvent("kta:osmOptInChange", { detail: { optedIn: !!value } })); } catch(e) {}
   }
 
-  // 🐛 v1.39.2 (KARMA "je vois pas l'icone") — Cascade lecture georef :
+  // (KARMA "je vois pas l'icone") — Cascade lecture georef :
   //   1. PLAN_CONFIG.plan.georef (embarqué dans le ZIP via générateur)
   //   2. KmzExport.getCalibration(planId) (LS session via Réglages map mode)
   // Format identique : {pointA: {x, y, lat, lng}, pointB: {x, y, lat, lng}}.
@@ -299,7 +299,7 @@
     try { return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
     catch(e) { return false; }
   }
-  // 🐛 v1.39.4 (KARMA "j'affiche pas le bouton si on a pas internet") —
+  // (KARMA "j'affiche pas le bouton si on a pas internet") —
   // navigator.onLine est mis à false par le navigateur quand il détecte
   // qu'on est offline (Wi-Fi coupé, 4G perdue, mode avion). Sans internet
   // les tiles OSM ne se chargent pas, le bouton n'a aucun sens. Le polling
@@ -308,10 +308,10 @@
     return (typeof navigator === "undefined") || navigator.onLine !== false;
   }
 
-  // 🆕 v1.43.0 — Cache OSM offline (cf js/osmTilesCache.js).
+  // Cache OSM offline (cf js/osmTilesCache.js).
   // _planHasCachedTiles : boolean cache présent pour la bbox du plan
   //   courant (au moins quelques tuiles échantillonnées). Relaxé en
-  //   sync pour _isAvailable() (qui doit rester synchrone car appelé
+  //   sync pour _isOnlineOrCached() (qui doit rester synchrone car appelé
   //   par refonteInterface en polling 2s).
   // _recheckCachedForCurrentPlan : refresh async la flag, appelé au
   //   changement de plan + post-cacheVisibleTiles + au boot.
@@ -332,7 +332,7 @@
           // avant que PLAN_CONFIG ne soit prêt → bouton masqué à tort
           // pendant 1-2 ticks.
         } else {
-          // 🐛 v1.43.6 — Mode any-zoom : on ne passe PAS de zoom hardcodé →
+          // Mode any-zoom : on ne passe PAS de zoom hardcodé →
           // OsmTilesCache scanne 10→18 et retourne true dès qu'il trouve
           // une tuile cachée au centre du plan. Évite le faux-négatif
           // quand l'user a caché à un zoom ≠ 14 (= cas standard).
@@ -344,10 +344,10 @@
     } finally {
       _recheckInFlight = false;
     }
-    // 🆕 v1.43.2 — Si la flag a changé, dispatch event pour que
+    // Si la flag a changé, dispatch event pour que
     // refonteInterface refresh le bouton 🌍 OSM immédiatement (sans
     // attendre le polling 2s). `kta:osmOptInChange` est déjà écouté
-    // ligne 299 de refonteInterface.js pour exactement ce flow.
+    // par refonteInterface.js pour exactement ce flow.
     if (before !== _planHasCachedTiles) {
       try {
         window.dispatchEvent(new CustomEvent("kta:osmOptInChange", {
@@ -361,7 +361,7 @@
   function _isOnlineOrCached() {
     return _isOnline() || _planHasCachedTiles;
   }
-  // 🆕 v1.39.10 — Détecte si le plan courant est en mode V2 tuilé.
+  // Détecte si le plan courant est en mode V2 tuilé.
   // Vue OSM réservée aux plans V2 pour éviter le crash mobile (cf. header doc).
   function _isV2Plan() {
     const pc = window.PLAN_CONFIG;
@@ -371,7 +371,7 @@
   }
 
   function isAvailable() {
-    // 🆕 v1.43.0 — Si offline mais cache OSM présent pour la bbox du
+    // Si offline mais cache OSM présent pour la bbox du
     // plan, on autorise quand même l'ouverture (mode « cache offline »).
     // L'incognito reste bloquant (= choix volontaire user).
     // Fire-and-forget : à chaque appel (polling 2s refonteInterface) on
@@ -394,7 +394,7 @@
     if (typeof window.KmzExport !== "object" || typeof window.KmzExport.buildTransform !== "function") return null;
     let t;
     try {
-      t = window.KmzExport.buildTransformCalib(g);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      t = window.KmzExport.buildTransformCalib(g);   // pointC optionnel propagé (affine)
     } catch(err) {
       console.warn("[OsmView] buildTransform failed :", err);
       return null;
@@ -416,7 +416,7 @@
   //   (0,0)-(W,0)-(0,H). Sinon → 3 coins du parallélogramme calibré.
 
   // =========================
-  // 🆕 v1.39.12 — POI SUR OSM (Step 1)
+  // POI SUR OSM (Step 1)
   // =========================
 
   // Respecte le filtre tags actif côté FilterPanel (v1.21.5). Sémantique :
@@ -424,7 +424,7 @@
   // - state.tags === Set/Array d'allowed → check membership
   function _isTagAllowed(p) {
     const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
-    // 🆕 v1.40.17 — Filtre local modale OSM (prioritaire, AND avec FilterPanel)
+    // Filtre local modale OSM (prioritaire, AND avec FilterPanel)
     if (_osmLocalTagFilter && _osmLocalTagFilter.size > 0 && !_osmLocalTagFilter.has(t)) {
       return false;
     }
@@ -441,7 +441,7 @@
   }
 
 
-  // 🩸 v1.83.0 — LA VUE OSM APPLIQUE LA MÊME LOI QUE LE MODE PLAN.
+  // 🩸 LA VUE OSM APPLIQUE LA MÊME LOI QUE LE MODE PLAN.
   //
   // En v1.82.0, une première tentative posait une variable CSS que personne
   // ne lit (la Vue OSM est elle aussi en `preferCanvas`) : retirée. Le rendu
@@ -504,10 +504,10 @@
 
   // Agrège les POI session + data layers en un seul tableau.
   // Format unifié : { x, y, nom, tags, level, description, _source, _ref }
-  // 🐛 v1.40.40 — KARMA : « en mode HOME on a bien Titre/description/tag,
+  // « en mode HOME on a bien Titre/description/tag,
   // mais pas en mode MAP ». Cause racine : `description` n'était pas copié
   // dans les objets normalisés (oubli depuis v1.39.12 Step 1). Le popup
-  // construit en _renderPoi (ligne ~501) lisait `p.description` → undefined
+  // construit en _renderPoi lisait `p.description` → undefined
   // → fallback tag, jamais la description. Fix : ajout `description` aux 2
   // push. Le widget HOME (osmHomePreview.js) itère directement sur
   // layer.points sans copie filtrée, donc le bug n'existait pas là.
@@ -585,7 +585,7 @@
       const opts = icon ? { icon: icon, interactive: true } : { interactive: true };
       try {
         const marker = L.marker(latlng, opts);
-        // 🆕 v1.40.25 — Popup : description prééminente (KARMA "on affiche le tag
+        // Popup : description prééminente (KARMA "on affiche le tag
         // et non la description"). Si description vide, fallback tag.
         const tag  = (p.tags && p.tags[0]) || "default";
         const lvl  = (window.APP_CONFIG && window.APP_CONFIG.multiLevel)
@@ -600,7 +600,7 @@
             '</span>' +
             (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
           '</div>';
-        // 🆕 v1.40.22 — className "kta-osm-popup" pour appliquer style charte dark
+        // className "kta-osm-popup" pour appliquer style charte dark
         marker.bindPopup(html, {
           closeButton: true,
           autoClose: true,
@@ -613,15 +613,15 @@
       } catch(e) { console.warn("[OsmView] POI :", p.nom, e); }
     }
     console.log("[OsmView] POI : " + added + " marker(s) ajouté(s) (" + skipped + " skip projection invalide, sources : session+data)");
-    // 🆕 v1.40.17 — Refresh chips tags après chaque render POI (les tags disponibles
+    // Refresh chips tags après chaque render POI (les tags disponibles
     // dépendent du plan courant et du M-LVL actif).
     _renderOsmTagChips();
   }
 
-  // 🆕 v1.40.17 — Énumération de TOUS les tags présents dans les POI du plan.
-  // 🆕 v1.41.3 — Retiré le filtre `_isLevelAllowed` (chips perdaient l'accès
+  // Énumération de TOUS les tags présents dans les POI du plan.
+  // Retiré le filtre `_isLevelAllowed` (chips perdaient l'accès
   // aux tags d'autres niveaux M-LVL).
-  // 🆕 v1.41.4 — VRAI FIX (KARMA "il en manque toujours plein"). Le registre
+  // VRAI FIX (KARMA "il en manque toujours plein"). Le registre
   // `window._dataLayersByPlan` utilisé en v1.41.3 N'EXISTE PAS dans l'app
   // (jamais peuplé nulle part) → on ne comptait que `listePoints` (3 tags
   // visibles : pe, epure, vehicule = juste la session). Switch sur le VRAI
@@ -639,7 +639,7 @@
       }
     }
     // Data layers embarqués : utilise window.getAllEmbeddedPoints (= même
-    // source que _collectVisiblePoi ligne 450 qui rend les markers sur la
+    // source que _collectVisiblePoi qui rend les markers sur la
     // carte OSM). Cohérence parfaite chips ↔ rendu : tout tag listé dans
     // les chips correspond à des markers réellement rendables.
     if (typeof window.getAllEmbeddedPoints === "function") {
@@ -653,7 +653,7 @@
     return counts;
   }
 
-  // 🆕 v1.40.17 — Rendu chips tags (filtre local OSM) dans le bandeau modale.
+  // Rendu chips tags (filtre local OSM) dans le bandeau modale.
   function _renderOsmTagChips() {
     const cont = document.getElementById("kta-osm-tags-chips");
     const bar  = document.getElementById("kta-osm-tags-bar");
@@ -698,11 +698,11 @@
     });
   }
 
-  // 🆕 v1.40.21 — Calcule la bbox GPS du plan courant (englobante des 4 coins
+  // Calcule la bbox GPS du plan courant (englobante des 4 coins
   // projetés). Utilisée par le garde-fou "GPS hors champ du plan" pour le bouton
   // 📍. Retourne L.LatLngBounds ou null si impossible à calculer.
   function _getPlanGpsBbox() {
-    // 🆕 v1.41.2 — Lazy build : si _proj pas initialisé (modale Vue OSM
+    // Lazy build : si _proj pas initialisé (modale Vue OSM
     // jamais ouverte dans la session), on construit la projection à la
     // volée. _buildProjection() est pur (lit georef + KmzExport), pas
     // d'effet de bord. Permet à Briefing pompiers PDF de calculer la
@@ -727,7 +727,7 @@
     try { return L.latLngBounds(corners); } catch(e) { return null; }
   }
 
-  // 🆕 v1.40.21 — Distance Haversine (km) pour message UX.
+  // Distance Haversine (km) pour message UX.
   function _haversineKm(lat1, lng1, lat2, lng2) {
     const R = 6371; // rayon Terre km
     const toRad = function(d) { return d * Math.PI / 180; };
@@ -739,7 +739,7 @@
     return 2 * R * Math.asin(Math.sqrt(a));
   }
 
-  // 🆕 v1.40.18 — Fix GPS ponctuel + marker sur la map (1 clic = 1 fix).
+  // Fix GPS ponctuel + marker sur la map (1 clic = 1 fix).
   // Source : navigator.geolocation (API browser native). 0 réseau, 0 stockage.
   // Permission OS demandée à la demande user (pas au boot).
   // Garde runtime incognito : si l'user est passé en incognito PENDANT la
@@ -762,7 +762,7 @@
     if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
-        // 🆕 v1.43.26 — Guard : modale fermée pendant l'attente du fix GPS
+        // Guard : modale fermée pendant l'attente du fix GPS
         // (user a cliqué ✕ ou Escape avant que la geoloc réponde) → on ne
         // touche pas un DOM/state mort. Évite crash sur `_osmMap.setView(...)`
         // si la carte a été destroyed par close().
@@ -773,7 +773,7 @@
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const acc = pos.coords.accuracy || 0;
-        // 🆕 v1.40.21 — Garde-fou "hors champ du plan" : si fix GPS très loin
+        // Garde-fou "hors champ du plan" : si fix GPS très loin
         // du plan georef (>50% au-delà de la bbox plan), on REFUSE d'afficher
         // le marker (UX + privacy : pas de marker à des km du plan supposé).
         const bbox = _getPlanGpsBbox();
@@ -859,7 +859,7 @@
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // =========================
-  // 🆕 v1.39.13 — TRACKER SUR OSM (Step 2)
+  // TRACKER SUR OSM (Step 2)
   // =========================
 
   function _isTrackerActif() {
@@ -1040,7 +1040,7 @@
   }
 
   // =========================
-  // 🆕 v1.39.14 — ROADS + ITINÉRAIRE SUR OSM (Step 3a)
+  // ROADS + ITINÉRAIRE SUR OSM (Step 3a)
   // =========================
 
   // Check filtre type road actif côté FilterPanel (roadTypes Set/Array, null = pas de filtre).
@@ -1059,7 +1059,7 @@
     return true;
   }
 
-  // 🆕 v1.39.16 — Délègue à _isLevelAllowed unifié (cascade _visibleLevels OU activeLevel).
+  // Délègue à _isLevelAllowed unifié (cascade _visibleLevels OU activeLevel).
   // Sémantique road level = niveau de la route entière (champ road.level).
   function _isRoadLevelAllowed(road) {
     return _isLevelAllowed(road);
@@ -1104,7 +1104,7 @@
 
   // Rendu des roads (session + embedded, excluant iti).
   // Pattern idempotent : cleanup + re-render au prochain appel.
-  // 🆕 v1.40.37 — Résolution couleur road avec cascade :
+  // Résolution couleur road avec cascade :
   //   1. road.color explicite (si data layer/session a un override)
   //   2. ROAD_STYLES_OSM[road.type] (couleur built-in native par type)
   //   3. LegendCustomization custom (type "cust-*" défini par user)
@@ -1112,7 +1112,7 @@
   // Aligné comportementalement sur road.js > _resolveRoadStyle.
   function _resolveRoadColor(road) {
     if (road && typeof road.color === "string" && road.color) return road.color;
-    // 🎨 v1.77.0 (bug KARMA « galerie principale reste verte en OSM ») — le
+    // (bug KARMA « galerie principale reste verte en OSM ») — le
     // CANON d'abord : ktaResolveStyle applique l'override de couleur choisi
     // dans la légende (session > plan > défaut). La table locale passait
     // AVANT et court-circuitait l'override des types built-in. Défauts
@@ -1211,7 +1211,7 @@
   }
 
   // =========================
-  // 🆕 v1.39.16 — ZONES + STRUCTURES SUR OSM (Step 3b)
+  // ZONES + STRUCTURES SUR OSM (Step 3b)
   // =========================
 
   function _isZoneTypeAllowed(z) {
@@ -1278,7 +1278,7 @@
     return out;
   }
 
-  // 🆕 v1.40.37 — Résolution couleurs zone (stroke + fill) avec cascade
+  // Résolution couleurs zone (stroke + fill) avec cascade
   // identique à _resolveRoadColor (explicit → built-in → custom legend → fallback).
   function _resolveZoneColors(z) {
     if (z && (z.color || z.fillColor)) {
@@ -1287,7 +1287,7 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
-    // 🎨 v1.77.0 — canon d'abord (override légende), cf _resolveRoadColor.
+    // canon d'abord (override légende), cf _resolveRoadColor.
     if (z && z.type && typeof window.ktaResolveStyle === "function") {
       const s = window.ktaResolveStyle("zones", z.type, { flat: true });
       if (s) {
@@ -1355,7 +1355,7 @@
       const minPts = polyline ? 2 : 3;
       if (latlngs.length < minPts) { skipped++; continue; }
       const style = Object.assign({}, STRUCTURE_STYLES_OSM[s.type] || STRUCTURE_STYLES_OSM["mur"]);
-      // 🎨 v1.77.0 — couleurs du canon (override légende) par-dessus la
+      // couleurs du canon (override légende) par-dessus la
       // variante OSM locale (qui ne garde que weight/opacity allégés).
       if (s.type && typeof window.ktaResolveStyle === "function") {
         const cs = window.ktaResolveStyle("structures", s.type, { flat: true });
@@ -1371,7 +1371,7 @@
             weight:  style.weight,
             opacity: style.opacity || 1,
             interactive: false,
-            // 🔍 v1.82.0 — même classe qu'en mode plan : la largeur du trait
+            // même classe qu'en mode plan : la largeur du trait
             // est pilotée par la variable CSS `--kta-front-w`, recalculée au
             // zoom. Sans ça, un plan portant des milliers de fronts devient un
             // aplat dès qu'on s'éloigne.
@@ -1418,7 +1418,7 @@
   }
 
   // =========================
-  // 🆕 v1.40.34 (Synergie A v2) — LAYER MODE SECOURS
+  // (Synergie A v2) — LAYER MODE SECOURS
   // =========================
   // Rend les zones d'intervention par équipe + itinéraires suggérés par
   // équipe + markers entrée/sortie sur la map OSM. Couleurs distinctives
@@ -1446,7 +1446,7 @@
     if (!scenario || !Array.isArray(scenario.groupes)) return;
 
     // PALETTE exposée par SecoursMode = tableau d'OBJETS [{hex, nom}, ...]
-    // (cf secoursMode.js ligne 132). 🐛 v1.40.36 — Bug v1.40.34 : on passait
+    // (cf secoursMode.js > PALETTE). 🐛 v1.40.36 — Bug v1.40.34 : on passait
     // l'objet entier à Leaflet → "[object Object]" → couleurs cassées sur
     // toutes les équipes sauf la première (artefact). Fix : extraction
     // explicite du champ .hex avec fallback hex string si l'objet est mal
@@ -1495,7 +1495,7 @@
 
       // Itinéraire suggéré par équipe (polyline dashed, couleur équipe)
       if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
-        // 🩸 29/09/2026 (relecture Secours, R5) — l'itinéraire porte désormais le VRAI
+        // 🩸 (relecture Secours, R5) — l'itinéraire porte désormais le VRAI
         // niveau de chaque point. Filtrer puis relier les points restants tirait un
         // trait droit à travers la surface entre la descente au −1 et la remontée.
         // On découpe en TRONÇONS continus sur les niveaux visibles (multi-polyligne).
@@ -1590,7 +1590,7 @@
   }
 
   // =========================
-  // 🆕 v1.39.16 — MULTI-LVL OSM
+  // MULTI-LVL OSM
   // =========================
 
   // Init _visibleLevels au boot de la modale :
@@ -1601,7 +1601,7 @@
   function _initVisibleLevels() {
     const cfg = window.APP_CONFIG || {};
     if (!cfg.multiLevel) { _visibleLevels = null; return; }
-    // 🏗️ v1.82.1 — LA MODALE SUIT CE QUE LA CARTE MONTRE.
+    // LA MODALE SUIT CE QUE LA CARTE MONTRE.
     // Elle s'ouvrait sur le SEUL niveau actif, quand la carte du dessous en
     // affichait plusieurs : passer en Vue OSM faisait donc disparaître le
     // reste du relevé, sans que ce soit demandé. On reprend `visibleLevels`,
@@ -1630,7 +1630,7 @@
 
   // Re-render des 5 layers level-aware. Tracker exclu (sa timeline garde son
   // historique full quel que soit le niveau actif).
-  // 🆕 v1.40.34 — Layer Secours aussi level-aware (zones + iti par équipe).
+  // Layer Secours aussi level-aware (zones + iti par équipe).
   function _refreshLevelFilteredLayers() {
     if (_poiVisible)    _renderPoi();
     if (_roadVisible)   _renderRoads();
@@ -1644,7 +1644,7 @@
   }
 
   // =========================
-  // 🆕 v1.43.14 — TOGGLE "Réduire les contrôles" (carte plein écran)
+  // TOGGLE "Réduire les contrôles" (carte plein écran)
   // =========================
   // Sur mobile, le bandeau de la modale Vue OSM prend ~60% de l'écran
   // (opacité + actions + 8 toggles + niveaux M-LVL + tags). Le toggle
@@ -1685,12 +1685,12 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.display = "flex";
     overlay.innerHTML =
-      // 🆕 v1.40.22 — max-width 1200 → 1800 (était trop petit en WQHD 2560px / 4K)
+      // max-width 1200 → 1800 (était trop petit en WQHD 2560px / 4K)
       '<div class="kta-readme-modal-boite" style="max-width:1800px; width:96vw; height:92vh; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header">' +
           '<span class="kta-readme-modal-titre">' + window.I18n.t("osm.modal.title") + '</span>' +
           '<div style="display:flex; gap:6px; align-items:center;">' +
-            // 🆕 v1.43.14 — Toggle "Réduire contrôles" (carte plein écran).
+            // Toggle "Réduire contrôles" (carte plein écran).
             // Persisté en localStorage. Utile surtout sur mobile (bandeau
             // prend ~60% de la hauteur sinon → carte minuscule). Sur PC,
             // dispo aussi pour qui veut voir la carte en grand.
@@ -1698,12 +1698,12 @@
             '<button class="kta-panneau-close" type="button" id="kta-osm-close" aria-label="' + _escapeHtml(window.I18n.t("osm.modal.close")) + '">&times;</button>' +
           '</div>' +
         '</div>' +
-        // 🆕 v1.43.14 — Wrapper collapsible pour les 3 bandeaux de contrôles
+        // Wrapper collapsible pour les 3 bandeaux de contrôles
         // (opacité+actions+toggles, niveaux M-LVL, tags). Le bouton 🔼/🔽
         // toggle son display:none. La div #kta-osm-map en dessous prend
         // automatiquement toute la place via son flex:1 1 auto.
         '<div id="kta-osm-controls-wrapper">' +
-        // 🐛 v1.40.39 (KARMA "les filtres sortent de la fenêtre on les voit
+        // (KARMA "les filtres sortent de la fenêtre on les voit
         // apparaître un peu en horizontal") : ajout `flex-wrap: wrap` +
         // `row-gap` pour que le bandeau toggles wrap proprement quand il y
         // a beaucoup d'éléments (opacité + ~10 toggles + 🚑 Secours conditionnel).
@@ -1714,7 +1714,7 @@
           '<span id="kta-osm-opacity-val" style="width:38px; text-align:right;">' + Math.round(_opacity * 100) + '%</span>' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.I18n.t("osm.btn.centerPlan") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.I18n.t("osm.btn.centerTracker") + '</button>' +
-          // 🆕 v1.40.18 — Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage, 0 réseau)
+          // Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage, 0 réseau)
           // Disabled visuel si incognito au moment du build
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mygps" style="font-size:12px; padding:5px 10px;"' +
             (_isIncognitoOn() ? ' disabled' : '') +
@@ -1722,24 +1722,24 @@
               _escapeHtml(_isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
                 : window.I18n.t("osm.btn.mygps.title.default")) +
             '">' + window.I18n.t("osm.btn.mygps") + '</button>' +
-          // 📏 v1.85.0 — la mesure, jusqu'ici reservee a la Vue OSM du HOME.
+          // la mesure, jusqu'ici reservee a la Vue OSM du HOME.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mesure" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
             _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">📏</button>' +
-          // 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d'un point du
+          // relever les coordonnees GPS DE SURFACE d'un point du
           // releve. Trivial ici et penible en mode plan : la carte EST
           // geographique, `e.latlng` est deja la reponse.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
             _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
-          // 🆕 v1.43.4 — Bouton "Cacher pour offline" placé juste après 📍 Moi
+          // Bouton "Cacher pour offline" placé juste après 📍 Moi
           // (KARMA : groupé avec les actions, AVANT les toggles d'affichage).
           // Télécharge les tuiles visibles + zoom ±1 dans IDB pour consultation
           // hors-réseau. Cache GLOBAL partagé entre Vue OSM Plan / Home / Mode
           // Secours (store IDB myktamap_osm_tiles, indexé par z/x/y).
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.I18n.t("osm.cache.btn") + '</button>' +
           '<span id="kta-osm-cache-stats" style="color:#8892a4; font-size:11.5px;" title="' + _escapeHtml(window.I18n.t("osm.cache.stats.title")) + '">' + window.I18n.t("osm.cache.stats.loading") + '</span>' +
-          // 🆕 v1.40.12 — Toggle "🖼️ Plan" (masquer/afficher tuiles plan)
+          // Toggle "🖼️ Plan" (masquer/afficher tuiles plan)
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;" title="' + _escapeHtml(window.I18n.t("osm.toggle.plan.title")) + '">' +
             '<input type="checkbox" id="kta-osm-plan-toggle" ' + (_planTilesVisible ? "checked" : "") + ' style="margin:0;">' +
             window.I18n.t("osm.toggle.plan") +
@@ -1768,7 +1768,7 @@
             '<input type="checkbox" id="kta-osm-struct-toggle" ' + (_structVisible ? "checked" : "") + ' style="margin:0;">' +
             window.I18n.t("osm.toggle.struct") +
           '</label>' +
-          // 🆕 v1.40.34 (Synergie A v2) — Toggle Mode Secours, visible UNIQUEMENT
+          // (Synergie A v2) — Toggle Mode Secours, visible UNIQUEMENT
           // si un scénario Mode Secours est actif (sinon masqué pour ne pas
           // polluer le bandeau). Fond rouge léger pour signaler le contexte.
           (_hasActiveSecoursScenario()
@@ -1779,26 +1779,26 @@
             : '') +
           '<span style="flex:1 1 auto;"></span>' +
         '</div>' +
-        // 🆕 v1.39.16 — Ligne 2 du bandeau : chips multi-LVL (visible
+        // 2e ligne du bandeau : chips multi-LVL (visible
         // uniquement si plan multi-niveau actif, masqué autrement)
         '<div id="kta-osm-levels-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(244,197,66,0.04); border-bottom:1px solid rgba(244,197,66,0.18); font-size:12px; color:#c8d0e0; flex-wrap:wrap;">' +
           '<span>' + window.I18n.t("osm.levels.label") + '</span>' +
           '<span id="kta-osm-levels-chips" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></span>' +
           '<span style="color:#8892a4; font-size:11px; margin-left:auto;">' + window.I18n.t("osm.levels.hint") + '</span>' +
         '</div>' +
-        // 🆕 v1.40.17 — Ligne 3 du bandeau : chips filtre tag (Filter par tag local OSM)
+        // 3e ligne du bandeau : chips filtre tag (Filter par tag local OSM)
         '<div id="kta-osm-tags-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(140,180,255,0.04); border-bottom:1px solid rgba(140,180,255,0.16); font-size:12px; color:#c8d0e0; flex-wrap:wrap;">' +
           '<span title="' + _escapeHtml(window.I18n.t("osm.tags.label.title")) + '">' + window.I18n.t("osm.tags.label") + '</span>' +
           '<span id="kta-osm-tags-chips" style="display:inline-flex; gap:5px; flex-wrap:wrap;"></span>' +
           '<span style="color:#8892a4; font-size:11px; margin-left:auto;">' + window.I18n.t("osm.tags.hint") + '</span>' +
         '</div>' +
-        // 🆕 v1.43.14 — Fin du wrapper collapsible (ouvert juste après le header)
+        // Fin du wrapper collapsible (ouvert juste après le header)
         '</div>' +
         '<div id="kta-osm-map" style="flex:1 1 auto; background:#0a0d18;"></div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
     overlay.querySelector("#kta-osm-close").addEventListener("click", close);
-    // 🆕 v1.43.14 — Toggle "Réduire les contrôles" (= carte plein écran).
+    // Toggle "Réduire les contrôles" (= carte plein écran).
     // Sur mobile, les 3 bandeaux de contrôles prennent ~60% de la hauteur ;
     // sans toggle, la carte est riquiqui. État persisté en localStorage
     // pour que l'user n'ait pas à re-cacher à chaque ouverture.
@@ -1817,14 +1817,14 @@
       _applyOpacity();
     });
     overlay.querySelector("#kta-osm-center").addEventListener("click", _centerOnPlan);
-    // 🆕 v1.43.0 — Bouton "Cacher pour offline" + refresh des stats
+    // Bouton "Cacher pour offline" + refresh des stats
     const cacheBtn = overlay.querySelector("#kta-osm-cache-btn");
     if (cacheBtn) {
       cacheBtn.addEventListener("click", function() { _runCacheOsmTiles(cacheBtn); });
     }
     _refreshOsmCacheStats();
-    // 🆕 v1.39.12 — Toggle POI
-    // 🆕 v1.40.12 — Toggle "🖼️ Plan" : masquer/afficher les tuiles V2
+    // Toggle POI
+    // Toggle "🖼️ Plan" : masquer/afficher les tuiles V2
     const planCb = overlay.querySelector("#kta-osm-plan-toggle");
     if (planCb) {
       planCb.addEventListener("change", function(e) {
@@ -1837,7 +1837,7 @@
         _togglePoiVisible(!!e.target.checked);
       });
     }
-    // 🆕 v1.39.13 — Toggle Tracker + bouton recentrage
+    // Toggle Tracker + bouton recentrage
     const trackerCb = overlay.querySelector("#kta-osm-tracker-toggle");
     if (trackerCb) {
       trackerCb.addEventListener("change", function(e) {
@@ -1848,7 +1848,7 @@
     if (trackerBtn) {
       trackerBtn.addEventListener("click", _centerOnTracker);
     }
-    // 🆕 v1.40.18 — Bouton GPS ponctuel
+    // Bouton GPS ponctuel
     const mygpsBtn = overlay.querySelector("#kta-osm-mygps");
     if (mygpsBtn) {
       mygpsBtn.addEventListener("click", _showMyGpsPositionOsm);
@@ -1868,7 +1868,7 @@
         if (window.OsmCoords) window.OsmCoords.activer(_osmMap);
       });
     }
-    // 🆕 v1.39.14 — Toggles Roads + Iti
+    // Toggles Roads + Iti
     const roadCb = overlay.querySelector("#kta-osm-road-toggle");
     if (roadCb) {
       roadCb.addEventListener("change", function(e) {
@@ -1881,7 +1881,7 @@
         _toggleItiVisible(!!e.target.checked);
       });
     }
-    // 🆕 v1.39.16 — Toggles Zones + Structures
+    // Toggles Zones + Structures
     const zoneCb = overlay.querySelector("#kta-osm-zone-toggle");
     if (zoneCb) {
       zoneCb.addEventListener("change", function(e) {
@@ -1894,7 +1894,7 @@
         _toggleStructVisible(!!e.target.checked);
       });
     }
-    // 🆕 v1.40.34 (Synergie A v2) — Toggle Mode Secours (visible si scénario actif)
+    // (Synergie A v2) — Toggle Mode Secours (visible si scénario actif)
     const secoursCb = overlay.querySelector("#kta-osm-secours-toggle");
     if (secoursCb) {
       secoursCb.addEventListener("change", function(e) {
@@ -1904,7 +1904,7 @@
     return overlay;
   }
 
-  // 🆕 v1.39.16 — Construit la barre de chips multi-LVL si plan multi-niveau.
+  // Construit la barre de chips multi-LVL si plan multi-niveau.
   // Appelé depuis _renderMap après _initVisibleLevels. Chaque chip a un
   // état checked/unchecked synchro avec _visibleLevels.
   function _renderLevelsBar() {
@@ -1960,7 +1960,7 @@
   }
 
   // ============================================================
-  // 🆕 v1.43.0 — OSM TILES CACHE OFFLINE
+  // OSM TILES CACHE OFFLINE
   // ============================================================
   // Helpers pour le bouton « 💾 Cacher offline » du bandeau de la modale.
   // Délégué au module js/osmTilesCache.js (API OsmTilesCache). Le cache
@@ -2030,7 +2030,7 @@
     durationMs = durationMs || 3500;
     // 🔕 même réglage que le goulot central : un toast contextuel est une info
     if (window.OOMGuard && typeof window.OOMGuard.toastAutorise === "function" && !window.OOMGuard.toastAutorise("info")) return;
-    // 🐛 v1.77.0 (audit code mort → bug latent n°2) — ce toast visait
+    // ce toast visait
     // "kta-osm-modal", un id qui n'a JAMAIS existé (le vrai overlay est
     // kta-osm-view-overlay) : le toast contextuel de la modale OSM n'a
     // jamais fonctionné, repli silencieux sur showToast. Ressuscité.
@@ -2058,7 +2058,7 @@
   }
 
   function _centerOnPlan() {
-    // 🆕 v1.39.11 — Utilise _planBbox (4 coins du plan, immuable) au lieu de
+    // Utilise _planBbox (4 coins du plan, immuable) au lieu de
     // _planLayer.getBounds() — _planLayer peut être partiellement vide
     // à cause du viewport culling.
     if (!_osmMap || !_planBbox) return;
@@ -2069,7 +2069,7 @@
     } catch(e) { console.warn("[OsmView] center :", e); }
   }
 
-  // 🆕 v1.40.12 — Toggle visibilité des tuiles plan (image principale).
+  // Toggle visibilité des tuiles plan (image principale).
   // Add/removeLayer sur _planLayer qui contient TOUS les imageOverlay rotated
   // créés par _renderLevel. État conservé dans _planTilesVisible.
   function _togglePlanTilesVisible(visible) {
@@ -2083,7 +2083,7 @@
   }
 
   // =========================
-  // 🆕 v1.39.11 — NIVEAU ADAPTATIF + VIEWPORT CULLING
+  // NIVEAU ADAPTATIF + VIEWPORT CULLING
   // =========================
 
   // Calcule la bbox latlng des 4 coins du plan via la projection georef.
@@ -2163,7 +2163,7 @@
     const planH  = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.imageHeight;
     if (!tiling || !planW || !planH) return;
 
-    // 🩸 08/10/2026 — COURSE ENTRE DEUX RENDUS. _renderLevel attend l'extraction des tuiles (Phase 2) ;
+    // 🩸 COURSE ENTRE DEUX RENDUS. _renderLevel attend l'extraction des tuiles (Phase 2) ;
     // pendant ce temps un autre cran de zoom en lançait un second, qui nettoyait et posait SON niveau —
     // puis le premier reprenait et ajoutait ses tuiles PAR-DESSUS : deux niveaux à l'écran, jamais
     // nettoyés avant le changement suivant. Chaque rendu prend un jeton ; après l'attente, seul le
@@ -2185,7 +2185,7 @@
     // Phase 1 : identifier les tuiles visibles à ajouter (pas déjà dans _tilesByPath)
     const aAjouter = [];
     const aExtraire = [];
-    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    // extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
     for (let col = 0; col < cols; col++) {
       for (let k = 1; k <= rows; k++) {
@@ -2263,7 +2263,7 @@
   // Throttle implicite via Leaflet (events firés une fois par cran de zoom/pan).
   function _onMoveEnd() {
     if (!_osmMap) return;
-    // 📏 v1.83.0 — la largeur des fronts suit le zoom. AVANT le retour
+    // la largeur des fronts suit le zoom. AVANT le retour
     // anticipé ci-dessous : il ne concerne que le tuilage, et un plan non
     // tuilé a exactement le même besoin.
     _majLargeurFrontsOsm();
@@ -2284,7 +2284,7 @@
       worldCopyJump: false,
       attributionControl: true,
       zoomControl: false,   // boutons +/− selon le réglage (ktaBoutonsZoom)
-      // 🆕 v1.39.14 — preferCanvas pour rendre toutes les polylines (roads + iti
+      // preferCanvas pour rendre toutes les polylines (roads + iti
       // + tracé tracker) sur 1 seul canvas, pas N éléments SVG. Supporte des
       // milliers de polylines sans alourdir le DOM. Cohérent avec map.js
       // principale (cf §13 perf-memory). Les imageOverlay (tuiles) restent DOM.
@@ -2303,11 +2303,11 @@
       return;
     }
 
-    // 🐛 v1.39.3 — L.featureGroup au lieu de L.layerGroup : LayerGroup n'a
+    // L.featureGroup au lieu de L.layerGroup : LayerGroup n'a
     // pas de méthode getBounds(), seule FeatureGroup (et sous-classes) l'a.
     // Sans ça, _centerOnPlan crash avec "_planLayer.getBounds is not a function".
     _planLayer = L.featureGroup().addTo(_osmMap);
-    // 🫥 08/10/2026 — OPACITÉ SUR LE CALQUE, PAS SUR CHAQUE TUILE (retour KARMA : zone plus sombre au milieu
+    // OPACITÉ SUR LE CALQUE, PAS SUR CHAQUE TUILE (retour KARMA : zone plus sombre au milieu
     // du plan). À l'opacité de chaque tuile, deux tuiles qui se chevauchent (transition de niveau, liseré
     // d'un pixel entre voisines) s'additionnaient : 50 % + 50 % ≈ 75 %. Tuiles opaques dans un pane dédié,
     // opacité choisie posée sur le pane : un chevauchement ne se voit plus. Sous les tracés (canvas, 400).
@@ -2315,7 +2315,7 @@
     paneTuiles.style.zIndex = "350";
     paneTuiles.style.opacity = String(_opacity);
 
-    // 🆕 v1.39.10 — Rendu V2 tuiles (cf header doc § CRASH MOBILE)
+    // Rendu V2 tuiles (cf header doc § CRASH MOBILE)
     // open() a déjà gaté sur _isV2Plan() → ici on suppose V2 valide.
     // Si pas V2 (cas dégénéré : config changée pendant l'ouverture), on
     // log et on retourne sans crash.
@@ -2325,7 +2325,7 @@
       return;
     }
 
-    // 🆕 v1.39.11 — Init niveau adaptatif + viewport culling
+    // Init niveau adaptatif + viewport culling
     const tiling = window.PLAN_CONFIG.tiling;
     const planW  = window.PLAN_CONFIG.plan.imageWidth  || 1;
     const planH  = window.PLAN_CONFIG.plan.imageHeight || 1;
@@ -2355,7 +2355,7 @@
     _moveEndHandler = _onMoveEnd;
     _osmMap.on("zoomend moveend", _moveEndHandler);
 
-    // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX DOIT PRÉCÉDER TOUT RENDU
+    // L'INIT DES NIVEAUX DOIT PRÉCÉDER TOUT RENDU
     // LEVEL-AWARE. Symptôme : à l'ouverture, le niveau -1 n'apparaissait pas
     // alors qu'il était actif ; couper puis rallumer le toggle le faisait
     // surgir. Cause : `_initVisibleLevels()` vivait à l'étape 9, APRÈS le rendu
@@ -2405,7 +2405,7 @@
   // tiling.js → réutilise l'URL existante. Retourne null si tuile manquante.
   // ⚠️ asset.url est PARTAGÉ avec la map principale (tiling.js) — NE PAS
   // revoke à la fermeture de la modale OSM (casserait la map principale).
-  // 🩸 v1.97.6 — SUR UN PLAN SERVEUR, LE FOND N'ÉTAIT JAMAIS DESSINÉ.
+  // 🩸 SUR UN PLAN SERVEUR, LE FOND N'ÉTAIT JAMAIS DESSINÉ.
   // `RUNTIME_ASSETS` ne contient que les assets d'un plan importé en ZIP ;
   // servi en HTTP — le modèle de déploiement de la prod — il est VIDE.
   // Mesuré sur un relevé géoréférencé : 0 calque image, 0 requête de tuile,
@@ -2460,7 +2460,7 @@
       window.ktaAlerte(window.I18n.t("osm.open.noGeoref"));
       return;
     }
-    // 🆕 v1.39.10 — Gate V2 : Vue OSM réservée aux plans tuilés pour éviter
+    // Gate V2 : Vue OSM réservée aux plans tuilés pour éviter
     // le crash mobile (cf. header doc § CRASH MOBILE). Alert pédagogique
     // pour expliquer comment activer.
     if (!_isV2Plan()) {
@@ -2473,7 +2473,7 @@
       } else { window.ktaAlerte(window.I18n.t("osm.open.incognito.alert")); }
       return;
     }
-    // 🆕 v1.43.0 — Si offline mais cache OSM présent pour le plan, on
+    // Si offline mais cache OSM présent pour le plan, on
     // autorise l'ouverture en mode dégradé (les tuiles sont servies par
     // le Service Worker depuis IndexedDB).
     // ⚠️ Recheck JIT (await) avant de bloquer : la flag _planHasCachedTiles
@@ -2494,12 +2494,12 @@
       if (!yes) return;
       setOptedIn(true);
     }
-    // 🆕 v1.39.5 — Ping fiable AVANT ouverture modale (pattern aligné sur
+    // Ping fiable AVANT ouverture modale (pattern aligné sur
     // la mise à jour douce). navigator.onLine est rapide mais false-negative
     // possible (Wi-Fi connecté mais ISP down). Le ping fait un vrai fetch
     // HTTPS vers /ping.html same-origin avec timeout 5s → resultat fiable.
     // Si KO → toast + abort (évite d'ouvrir une modale OSM avec tiles vides).
-    // 🐛 v1.43.7 — Bypass ping si cache OSM présent pour le plan : le
+    // Bypass ping si cache OSM présent pour le plan : le
     // service worker servira les tuiles depuis IDB, on n'a pas besoin de
     // joindre le serveur. Sans ce bypass, le ping échoue en mode avion
     // → user voit « Internet ne répond pas » alors que le cache est là.
@@ -2530,10 +2530,10 @@
       ? pingFn()
       : Promise.resolve(navigator.onLine !== false);  // fallback si helper pas chargé
 
-    // 🆕 v1.43.26 — Cleanup waitOverlay centralisé via .finally() (au lieu
+    // Cleanup waitOverlay centralisé via .finally() (au lieu
     // de duplication then-catch). Garantit que l'overlay disparaît dans
     // TOUS les chemins de sortie, y compris exceptions non-attendues.
-    // 🐛 v1.43.27 — Hotfix : le commentaire ci-dessus promettait `.finally()`
+    // Hotfix : le commentaire ci-dessus promettait `.finally()`
     // mais l'implémentation v1.43.26 avait retiré les `waitOverlay.remove()`
     // du then-catch SANS ajouter le `.finally()` correspondant → overlay
     // jamais retiré du DOM. Audit V2 a flaggé. Fix : ajout effectif du
@@ -2572,7 +2572,7 @@
       if (typeof window.majLargeurFronts === "function") window.majLargeurFronts();
       else document.documentElement.style.removeProperty("--kta-front-w");
     } catch (e) {}
-    // 🆕 v1.39.11 — Cleanup state niveau adaptatif + culling
+    // Cleanup state niveau adaptatif + culling
     if (_osmMap && _moveEndHandler) {
       try { _osmMap.off("zoomend moveend", _moveEndHandler); } catch(e) {}
     }
@@ -2585,13 +2585,13 @@
     _baseLevel       = null;
     _currentLevel    = null;
 
-    // 🆕 v1.39.12 — Cleanup POI layer
+    // Cleanup POI layer
     if (_poiLayer) {
       try { _poiLayer.clearLayers(); } catch(e) {}
       _poiLayer = null;
     }
 
-    // 🆕 v1.39.13 — Cleanup tracker (polling + layers)
+    // Cleanup tracker (polling + layers)
     _stopTrackerPolling();
     if (_trackerLayer) {
       try { _trackerLayer.clearLayers(); } catch(e) {}
@@ -2600,19 +2600,19 @@
     _trackerTrace  = null;
     _trackerMarker = null;
 
-    // 🆕 v1.39.14 — Cleanup roads + iti
+    // Cleanup roads + iti
     if (_roadLayer) { try { _roadLayer.clearLayers(); } catch(e) {} _roadLayer = null; }
     if (_itiLayer)  { try { _itiLayer.clearLayers();  } catch(e) {} _itiLayer  = null; }
 
-    // 🆕 v1.39.16 — Cleanup zones + structures + reset multi-LVL state
+    // Cleanup zones + structures + reset multi-LVL state
     if (_zoneLayer)   { try { _zoneLayer.clearLayers();   } catch(e) {} _zoneLayer   = null; }
     if (_structLayer) { try { _structLayer.clearLayers(); } catch(e) {} _structLayer = null; }
-    // 🆕 v1.40.34 (Synergie A v2) — Cleanup layer Mode Secours
+    // (Synergie A v2) — Cleanup layer Mode Secours
     if (_secoursLayer) { try { _secoursLayer.clearLayers(); } catch(e) {} _secoursLayer = null; }
     _visibleLevels = null;
-    // 🆕 v1.40.17 — Reset filtre tag local au close (état non persistant entre ouvertures)
+    // Reset filtre tag local au close (état non persistant entre ouvertures)
     _osmLocalTagFilter = null;
-    // 🆕 v1.40.18 — Cleanup marker GPS + cercle accuracy (RAM only, mais on dispose)
+    // Cleanup marker GPS + cercle accuracy (RAM only, mais on dispose)
     if (_myGpsMarker)         { try { _myGpsMarker.remove();         } catch(e) {} _myGpsMarker = null; }
     if (_myGpsAccuracyCircle) { try { _myGpsAccuracyCircle.remove(); } catch(e) {} _myGpsAccuracyCircle = null; }
 
@@ -2630,18 +2630,18 @@
     isAvailable: isAvailable,
     isOptedIn: isOptedIn,
     setOptedIn: setOptedIn,
-    // 🆕 v1.41.0 B/C — Helper public pour Briefing pompiers PDF (secoursMode).
+    // B/C — Helper public pour Briefing pompiers PDF (secoursMode).
     // Retourne L.LatLngBounds | null (plan georef bbox). Nécessite Vue OSM
     // déjà ouverte au moins une fois (sinon _proj non initialisé → null).
     getPlanGpsBbox: _getPlanGpsBbox,
-    // 🆕 v1.43.0 — Refresh la flag _planHasCachedTiles (utilisée par
+    // Refresh la flag _planHasCachedTiles (utilisée par
     // isAvailable()) après un changement de plan ou un cacheVisibleTiles.
     // Appelé par : (a) main.js au boot, (b) osmHomePreview après cache,
     // (c) secoursMode si refresh nécessaire.
     recheckOfflineCache: _recheckCachedForCurrentPlan
   };
 
-  // 🆕 v1.43.0 — Init différée du recheck cache : on attend que
+  // Init différée du recheck cache : on attend que
   // OsmTilesCache + PLAN_CONFIG soient prêts (boot delay ~1s).
   setTimeout(function() {
     if (window.OsmTilesCache && typeof window.OsmTilesCache.init === "function") {

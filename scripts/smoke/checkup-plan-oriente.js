@@ -265,7 +265,7 @@ function inf(msg) { console.log("  •  " + msg); }
     else pb("la vue reste tournée (" + t5.apres.toFixed(1) + "°) sous le Mode perdu");
 
     // ── T7 — culling élargi (avant l'arrêt du tracking) ────────────────
-    // 🩸 v1.97.3 — ce test portait sur `padCull`, un facteur d'élargissement
+    // 🩸 ce test portait sur `padCull`, un facteur d'élargissement
     // scalaire. Il a été supprimé : une marge unique ne peut pas être juste à
     // tous les formats d'écran (cf T17). Ce qui compte n'est pas la valeur
     // d'un facteur, c'est que la zone retenue contienne VRAIMENT les quatre
@@ -697,7 +697,7 @@ function inf(msg) { console.log("  •  " + msg); }
     // composer tout ça en une couche et renonce à en peindre une partie.
     // Ce test fige la parade : pendant le mode, les tuiles hors viewport
     // quittent la carte.
-    // 🧱 29/09/2026 — le retrait est devenu PERMANENT (tiling.js >
+    // le retrait est devenu PERMANENT (tiling.js >
     // ktaCullerTuilesV2 : 864 tuiles posées pour 6 visibles, même sans
     // rotation). À l'arrêt, ne reviennent donc que les tuiles proches de
     // l'écran droit — plus « toutes ».
@@ -879,7 +879,7 @@ function inf(msg) { console.log("  •  " + msg); }
     else pb("le bouton « Recentrer » survit au changement de plan : " + JSON.stringify(t20));
 
     // ── T17 — LE FORMAT PORTRAIT, que le reste du checkup ne voit pas ──
-    // 🩸 v1.97.3. Les marges de culling devaient valoir (grand côté / petit
+    // 🩸 Les marges de culling devaient valoir (grand côté / petit
     // côté − 1)/2 : 0,19 au format de ce checkup (1100×800), mais **0,58**
     // sur un téléphone en portrait. Les constantes posées en v1.97.1 (0,35 et
     // 0,45) tenaient donc ici et pas en main — 17,2 % de l'écran jamais peint

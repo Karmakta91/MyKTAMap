@@ -119,7 +119,7 @@ const SW   = lire("sw.js");
   t("🩸 aucune référence disque : ni saveHandle ni showOpenFilePicker (un seul mécanisme, la copie)",
     !/saveHandle\s*\(/.test(sansCommentaires) && !/showOpenFilePicker/.test(sansCommentaires));
   t("le contrôle de blocage est appliqué par fichier", /PlanDenylist[\s\S]{0,120}isPlanDenied\(f\)/.test(M));
-  // 🩸 16/09/2026 — Chromium range un File PAR RÉFÉRENCE au disque : sans
+  // 🩸 Chromium range un File PAR RÉFÉRENCE au disque : sans
   // copie réelle, les plans importés meurent dès que leurs ZIP bougent.
   const PR = lire("js/planRegistry.js");
   t("🩸 PlanRegistry.saveBlob range une COPIE (File → arrayBuffer → Blob), jamais une référence disque",
@@ -218,7 +218,7 @@ async function section6() {
     /dataset\.fini === "1"\) \{ _fermer\(\); return; \}/.test(M));
   t("son libellé dit l'action, pas seulement l'état",
     /impmasse\.btn\.voir/.test(M) && /impmasse\.btn\.fermerRien/.test(M));
-  // 🐛 16/09/2026 (KARMA) : « Fermer » et « Voir mes plans » faisaient la même chose.
+  // « Fermer » et « Voir mes plans » faisaient la même chose.
   t("🩸 une fois l'import fini, UNE seule sortie en pied : le « Fermer » secondaire disparaît",
     /_zone\("kta-impm-fermer"\)[\s\S]{0,80}style\.display = "none"/.test(lan));
 }
@@ -226,7 +226,7 @@ async function section6() {
 // ---------- 6. Le bouton, le câblage, le chargement ----------
 {
   t("📦 le bouton existe au HOME", IDX.indexOf('id="loaderImportMasseBtn"') >= 0);
-  // 🧰 15/09/2026 — KARMA a déplacé le bouton : « mets ce bouton dans OUTILS
+  // KARMA a déplacé le bouton : « mets ce bouton dans OUTILS
   // (car pas forcément utilisé bcp) ». Il était au-dessus de l'accès permanent,
   // donc entre la zone de dépôt et « Charger ce plan » — deux gestes
   // quotidiens encadrant un outil occasionnel. La règle CHANGE avec la

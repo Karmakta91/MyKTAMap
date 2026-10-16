@@ -23,16 +23,16 @@ fi
 # Lance les checkers
 node scripts/check-no-pro-leak.js || exit $?
 
-# 🗺️ 12/10/2026 — Dépôt public : aucun nom réel lié aux relevés de terrain
+# Dépôt public : aucun nom réel lié aux relevés de terrain
 # (département des relevés, ses variantes). Comparaison par EMPREINTE sha256 :
 # le nom n'est pas écrit dans le contrôle. Fichiers indexés ; en CI (`CI`
 # posé), tous les fichiers suivis. BLOQUANT, sans dérogation.
 node scripts/check-noms-reels.js || exit $?
 
-# 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
+# Advisory linter ModalLifecycle (avertit mais ne bloque pas)
 node scripts/check-modal-lifecycle.js
 
-# 🆕 v1.74.0 — Surface d'API : CHARGE les modules IIFE et vérifie que chaque
+# Surface d'API : CHARGE les modules IIFE et vérifie que chaque
 # méthode annoncée existe. `node -c` ne valide QUE la syntaxe : un identifiant
 # supprimé mais encore référencé dans un bloc d'exports passe le check et
 # casse au chargement navigateur (ReferenceError vécu le 01/08 sur
@@ -42,20 +42,20 @@ node scripts/check-modal-lifecycle.js
 # mort au boot, jamais un faux positif.
 node scripts/check-api-surface.js || exit $?
 
-# 🆕 v1.75.0 — Prefs globales : APP_CONFIG est RECONSTRUIT a chaque chargement
+# Prefs globales : APP_CONFIG est RECONSTRUIT a chaque chargement
 # de plan. Une pref sauvegardee mais absente de la liste de relecture retombe
 # silencieusement sur son defaut (bug vecu le 03/08 : le magnetisme au dessin
 # repassait a OFF des l'ouverture d'un plan). BLOQUANT.
 node scripts/check-prefs-survival.js || exit $?
 
-# 🎨 v1.75.2 — Table canonique des styles : tant que des tables subsistent
+# Table canonique des styles : tant que des tables subsistent
 # (migration en cours), on verifie qu'elles ne DERIVENT pas de la reference.
 # Un oubli y est invisible : exporter.js avait perdu `inaccessible` et une zone
 # dangereuse sortait en gris remblais dans l'export PNG. BLOQUANT.
 node scripts/check-style-canon.js || exit $?
 node scripts/check-style-resolver.js || exit $?
 
-# 🌍 v1.76.0 — Sortie KML : le KMZ a ses PROPRES largeurs (unite different du
+# Sortie KML : le KMZ a ses PROPRES largeurs (unite different du
 # `weight` Leaflet, ajustee a l'echelle GPS) et ses propres alphas. Brancher
 # naivement le resolveur dessus changerait le rendu dans Google Earth sans que
 # personne le voie. Ce script fige les 14 styles built-in et verifie que les
@@ -63,24 +63,24 @@ node scripts/check-style-resolver.js || exit $?
 # perdue). BLOQUANT.
 node scripts/check-kml-styles.js || exit $?
 
-# 🔁 v1.76.0 — Round-trip de la legende : type custom -> calque de donnees ->
+# Round-trip de la legende : type custom -> calque de donnees ->
 # plan regenere. Avant, seul l'ID du type voyageait et les objets ressortaient
 # blancs/gris, sans aucune ligne de legende ni moyen de reparer. Verrouille
 # aussi l'idempotence du re-import et la regle de conflit (le plan gagne).
 # BLOQUANT.
 node scripts/check-legend-roundtrip.js || exit $?
 
-# 🧭 v1.76.1 — Math de l'estimation du point B de georef (A + echelle + Nord).
+# Math de l'estimation du point B de georef (A + echelle + Nord).
 # Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
 # son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
 node scripts/check-georef-estimation.js || exit $?
 
-# 🖼️ v1.76.1 — Parseur binaire de dimensions d'images du Generateur (bug JPG
+# Parseur binaire de dimensions d'images du Generateur (bug JPG
 # 32Kx32K « non decodable » : Chrome/Skia refuse un cote > 32767 px, on lit
 # l'en-tete sans decoder). Fixtures synthetiques PNG/GIF/WebP/JPEG. BLOQUANT.
 node scripts/check-image-header-dims.js || exit $?
 
-# 🔁 v1.76.2 — Convertisseur de resolution de l'editeur de donnees (migration
+# Convertisseur de resolution de l'editeur de donnees (migration
 # des donnees d'une carriere entre deux scans). Le champ coordonnee OUBLIE est
 # le bug classique : chaque tableau du format est eprouve + aller-retour. BLOQUANT.
 node scripts/check-resolution-convert.js || exit $?
@@ -90,26 +90,31 @@ node scripts/check-resolution-convert.js || exit $?
 # SHA-256, ConfAdmin et inspecteur SW rendus en mode actif seulement. BLOQUANT.
 node scripts/check-devmode-docs.js || exit $?
 
-# 📦 09/10/2026 (audit CD F1) — Livrables : de docs/, seul docs/applications/
+# Livrables : de docs/, seul docs/applications/
 # part (Dockerfile, ZIP de release.yml, .dockerignore), jamais le README.md
 # racine. BLOQUANT.
 node scripts/check-livrables-docs.js || exit $?
 
-# 📚 09/10/2026 — Librairies de lib/ : version de l'en-tête du fichier embarqué = lib/package.json (manifeste
+# Librairies de lib/ : version de l'en-tête du fichier embarqué = lib/package.json (manifeste
 # lu par Dependabot) = lib/VERSIONS.md. Une PR Dependabot (manifeste seul) échoue ici tant que le fichier
 # n'est pas réellement remplacé et testé. BLOQUANT.
 node scripts/check-libs.js || exit $?
 
-# 🖨️ 09/10/2026 — Textes des PDF : la police standard affiche les accents (on les retirait à tort) ;
+# Textes des PDF : la police standard affiche les accents (on les retirait à tort) ;
 # libellés PDF des dicos sans caractère hors police (→ ✓ ⚠ emoji), aucun normalize("NFD") dans les
 # modules PDF, texte libre filtré par window.ktaTextePdf. BLOQUANT.
 node scripts/check-pdf-texte.js || exit $?
 
-# 💬 09/10/2026 — Popups natives (alert/confirm/prompt) : migration par lots vers ktaAlerte / ktaConfirm /
+# Popups natives (alert/confirm/prompt) : migration par lots vers ktaAlerte / ktaConfirm /
 # toast. CLIQUET : le compte ne peut que baisser (abaisser PLAFOND dans le script). BLOQUANT.
 node scripts/check-popups-natives.js || exit $?
 
-# 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
+# Commentaires = etat actuel (convention CLAUDE.md) : aucun tag de version ni date en tete de commentaire,
+# aucun renvoi « ligne N », aucun renvoi vers un scripts/check-*.js absent. CLIQUET : les lignes de
+# commentaire qui citent une version ne peuvent que baisser (abaisser PLAFOND dans le script). BLOQUANT.
+node scripts/check-commentaires.js || exit $?
+
+# Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
 # inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
 node scripts/check-kmz-superoverlay.js || exit $?
@@ -222,7 +227,7 @@ node scripts/check-map-listeners.js || exit $?
 # fantome sur tout plan issu d'un import. BLOQUANT.
 node scripts/check-tracking-defaults.js || exit $?
 
-# 📐 26/09/2026 (retour KARMA) — des plans générés à l'époque où le
+# des plans générés à l'époque où le
 # générateur laissait régler le tracking portent des valeurs impossibles.
 # La règle « hors bornes → usine » ne couvrait que les trois réglages de
 # podomètre ; `scale`, les dimensions et le départ entraient sans contrôle
@@ -333,14 +338,14 @@ node scripts/check-journal-reprise.js || exit $?
 # rallumerait l option). BLOQUANT.
 node scripts/check-wakelock.js || exit $?
 
-# 🌍 v1.85.4 — i18n. Le script existait depuis la v1.45 mais n etait JAMAIS
+# i18n. Le script existait depuis la v1.45 mais n etait JAMAIS
 # lance automatiquement : outil manuel, donc filet absent au moment ou il
 # servait. Il verifie la parite fr/en/es, les cles appelees mais absentes, et
 # depuis la v1.85.4 qu aucune cle rendue en textContent (data-i18n) ne contient
 # de HTML — le bug vu par KARMA : « Niveau de batterie <em>(s applique a tous
 # tes plans)</em> » affiche balises comprises, parce que la meme cle passait en
 # innerHTML cote plan et en textContent cote accueil.
-# 🖼️ v1.86.0 — TUILAGE. Regle KARMA : « un plan V2 doit OBLIGATOIREMENT
+# TUILAGE. Regle KARMA : « un plan V2 doit OBLIGATOIREMENT
 # profiter du mode tuile ; le fichier complet reste pour le dezip manuel mais
 # en principe n est pas utilise ». L audit avait trouve trois choses : sur un
 # plan V2 les presets Qualite/Equilibre/Performance ne changeaient RIEN (la
@@ -351,7 +356,7 @@ node scripts/check-wakelock.js || exit $?
 # par les imports ZIP). Ce controle verifie que rien de tout ca ne revient.
 node scripts/check-tiling.js || exit $?
 
-# 💾 v1.87.0 — HORS-LIGNE D UN PLAN SERVEUR. Question KARMA : « une fois
+# HORS-LIGNE D UN PLAN SERVEUR. Question KARMA : « une fois
 # charge, il est en cache, offline ok ? » Non : le cache principal plafonne a
 # 800 entrees en FIFO (un plan V2 de 20000x12000 fait 1275 tuiles, dont 960
 # pour le seul niveau z=0 : il s evincait lui-meme), seules les tuiles
@@ -469,7 +474,7 @@ node scripts/check-osm-defaut.js || exit $?
 # chaines. On EXECUTE isUnlocked et revaliderInstance. 10 sabotages rougissent.
 node scripts/check-gate-instance.js || exit $?
 
-# 🎯 v1.90.16 (bug KARMA du 10/09 : « Ctrl+Z jusqu a tout effacer, la pastille
+# (bug KARMA du 10/09 : « Ctrl+Z jusqu a tout effacer, la pastille
 # du trace reste allumee mais l outil est mort »). Le raccourci clavier passe
 # par HistoryManager.undo -> _applyState (qui remet modeRoad a null au trace
 # vide) et NON par les boutons de suppression qui, eux, fermaient deja le mode.
@@ -574,7 +579,7 @@ node scripts/check-import-masse.js || exit $?
 # largeur en px sur la colonne Actions. 9 sabotages rougissent.
 node scripts/check-home-layout.js || exit $?
 
-# 🪧 27/09/2026 — Guidage de l'itinéraire (js/itiGuidage.js + raccords /
+# Guidage de l'itinéraire (js/itiGuidage.js + raccords /
 # carrefours de pathfinder.js). CHARGE les vrais modules sur des réseaux
 # FICTIFS et fige la logique « quand annoncer » de docs/ETUDE_GUIDAGE.md :
 # un croisement se dit même tout droit, le tremblement du dessin ne se dit
@@ -583,14 +588,14 @@ node scripts/check-home-layout.js || exit $?
 # ne part plus en arrière au départ (défaut du pathfinder révélé ici). BLOQUANT.
 node scripts/check-guidage.js || exit $?
 
-# 🧹 15/10/2026 — Lot C1 de l'audit Secours : découpage en secteurs et parcours de
+# Lot C1 de l'audit Secours : découpage en secteurs et parcours de
 # balayage (js/secoursBalayage.js) EXÉCUTÉS sur le vrai graphe de pathfinder.js
 # (réseau fictif) : chaque galerie parcourue, rien de compté deux fois aux
 # croisements, secteurs équilibrés et d'un seul tenant, entrée / sortie
 # respectées, ossature sans culs-de-sac. BLOQUANT.
 node scripts/check-secours-balayage.js || exit $?
 
-# 🌍 27/09/2026 — Parité des 3 guides utilisateur servis dans l'app
+# Parité des 3 guides utilisateur servis dans l'app
 # (README_USER .md / .en.md / .es.md). check-i18n garde les DICTIONNAIRES,
 # rien ne gardait les GUIDES : un audit y a trouvé une section entière absente
 # en ES, deux sections ES qui décrivaient un réglage supprimé, et une règle de
@@ -598,25 +603,25 @@ node scripts/check-secours-balayage.js || exit $?
 # traduite sous 70 % du FR. S'auto-teste sur des guides sabotés. BLOQUANT.
 node scripts/check-doc-langues.js || exit $?
 
-# ©️ 07/10/2026 — En-tête de licence (auteur + CC BY-NC-SA 4.0) sur tout script
+# En-tête de licence (auteur + CC BY-NC-SA 4.0) sur tout script
 # servi (js/*.js + sw.js). Posé en une fois le 09/05 puis plus exigé : 24
 # modules nés depuis n'en avaient jamais eu. S'auto-teste. BLOQUANT.
 node scripts/check-entete-licence.js || exit $?
 # CSP stricte (07/10/2026) : aucun script inline (onclick=, javascript:, <script> sans src) — killsw.html excepté.
 node scripts/check-csp-inline.js || exit $?
 
-# 💾 10/10/2026 — Sessions en IndexedDB (js/sessionStore.js) : aucun module ne relit
+# Sessions en IndexedDB (js/sessionStore.js) : aucun module ne relit
 # ni n'écrit localStorage["myktamap_session_v1_<planId>"] en direct (il lirait une
 # ancienne copie gardée 30 jours, ou écraserait la session à jour au démarrage
 # suivant) + câblage (chargement, précache, init attendue). BLOQUANT.
 node scripts/check-session-store.js || exit $?
 
-# 🔒 10/10/2026 — Pages d'audit réseau GÉNÉRÉES : NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html
+# 🔒 Pages d'audit réseau GÉNÉRÉES : NETWORK_AUDIT.html et NETWORK_AUDIT_HISTORIQUE.html
 # sont le rendu de leurs .md (scripts/audit-html.js). Refuse un .md modifié sans régénérer, ou un .html
 # retouché à la main (lu dans l'index) ; vérifie que audit.css / audit-pied.js sont précachés. BLOQUANT.
 node scripts/check-audit-html.js || exit $?
 
-# 📸 12/10/2026 — Photos : le réimport d'une session ZIP effaçait TOUTES les photos
+# Photos : le réimport d'une session ZIP effaçait TOUTES les photos
 # du plan (photos « sans point » comprises, sans confirmation) ; le rattachement de
 # la galerie ignorait la limite de 5 par point. Le VRAI photos.js tourne sur une
 # fausse IndexedDB (fusion siAbsente, places du point) + câblage import/galerie. BLOQUANT.

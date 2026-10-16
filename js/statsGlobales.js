@@ -33,7 +33,7 @@
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
+  // (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
   // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-stats-globales.css", "kta-css-style-stats-globales");
@@ -94,7 +94,7 @@
   // Palettes par catégorie alignées sur les rendus Leaflet (cf road.js,
   // zones.js, structures.js) + utils.js pour data layers.
 
-  // 🎨 v1.76.0 — les trois palettes par type sont supprimées : les couleurs
+  // les trois palettes par type sont supprimées : les couleurs
   // viennent de `window.ktaSwatchColor` (cf. js/styleResolver.js). Un polygone
   // est représenté par son remplissage, une ligne par son trait — c'est
   // exactement ce que ces palettes recopiaient à la main.
@@ -113,12 +113,12 @@
   }
 
   function _colorForKey(category, key) {
-    // 🐛 v1.21.4 (KARMA "même couler entre route principal et jonction de
+    // (KARMA "même couler entre route principal et jonction de
     // niveau") : accepte aussi les alias LegendCustomization ("traces"
     // alias de "roads", "icones" alias de "tags") pour résilience.
     // Avant : ma modale Profil envoyait "traces" → mismatch palette →
     // fallback hash → collision possible principal/jonction (même hash %10).
-    // 🎨 v1.76.0 — résolution via le styleResolver. Effet de bord VOULU : les
+    // résolution via le styleResolver. Effet de bord VOULU : les
     // types CUSTOM ont désormais leur VRAIE couleur. Avant, ils tombaient dans
     // le repli par hash ci-dessous et une part de camembert n'avait aucun
     // rapport avec la couleur du tracé sur la carte.
@@ -162,13 +162,13 @@
     return fallback || type;
   }
 
-  // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours prendre la
+  // (KARMA "en stat général, on doit toujours prendre la
   // valeur par default") : helper qui retourne le label par défaut UNIQUEMENT
   // (court-circuite la cascade session > plan > default de LegendCustomization).
   // Utilisé dans le rendu camemberts cross-plan home : l'user a pu renommer
   // "principal" → "route de surface" sur le plan A, mais sur la modale Profil
   // home on agrège plusieurs plans → afficher des labels génériques cohérents.
-  // 🐛 v1.90.3 (bug KARMA, capture des stats du profil) — LES TYPES
+  // LES TYPES
   // PERSONNALISÉS S'AFFICHAIENT EN CLAIR : « cust-sig-structures-l-nm2 »,
   // « cust-mrcevuxu-41f8 ». Illisible, et c'est justement là qu'on a le plus
   // besoin du nom : un type personnalisé n'a QUE son nom pour identité.
@@ -236,7 +236,7 @@
    * @returns {String} HTML <div> contenant SVG + légende
    */
   function _renderPieChart(data, category, size, useDefaultLabels, labelsExternes) {
-    // 🐛 v1.90.3 — dictionnaire de labels cross-plan (cf _defaultLabelStat).
+    // dictionnaire de labels cross-plan (cf _defaultLabelStat).
     // Posé le temps du rendu puis RETIRÉ : laisser un état global traînant
     // ferait fuiter les noms d'un agrégat dans la modale d'un plan.
     if (arguments.length >= 5) _setLabelsExternes(labelsExternes);
@@ -283,7 +283,7 @@
     }
 
     // Légende à droite : swatch + label + count + pct
-    // 🆕 v1.21.5-fix1 : si useDefaultLabels === true (cross-plan home),
+    // si useDefaultLabels === true (cross-plan home),
     // on bypass la cascade LC pour afficher les labels génériques cohérents
     // entre plans (sinon le renommage local d'un plan A polluerait l'agrégat).
     const _labelFn = useDefaultLabels ? _defaultLabelStat : _lcLabelStat;
@@ -481,11 +481,11 @@
         bytes: photosBytes
       },
       georef: georef,
-      // 🆕 v1.28.0 (KARMA "le tracé + stat") : récap tracker depuis la timeline
+      // (KARMA "le tracé + stat") : récap tracker depuis la timeline
       // persistée. distM = distance physique parcourue (skip téléportations de
       // recalage, cf getTrackingDistanceM) ; steps = nb de pas PDR appliqués.
       tracker: {
-        // 📏 16/08/2026 — distance EXPLOITABLE = podomètre + tronçons estimés
+        // distance EXPLOITABLE = podomètre + tronçons estimés
         // entre les « 📍 Je suis ici » (une sortie menée au recalage valait 0 m).
         // La part estimée est rendue à part, jamais fondue dans le total.
         distM: (typeof window.getTrackingDistanceTotaleM === "function")
@@ -570,7 +570,7 @@
               (sz ? '<div class="kta-stats-glob-card-sub">' + sz + '</div>' : '') +
               '</div>';
     }
-    // 🆕 v1.28.0 : carte tracker (distance parcourue + nb de pas) si historique présent.
+    // carte tracker (distance parcourue + nb de pas) si historique présent.
     if (rep.tracker && (rep.tracker.distM > 0 || rep.tracker.steps > 0)) {
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + _formatDist(rep.tracker.distM) + '</div>' +
               '<div class="kta-stats-glob-card-label">🧭 ' + window.I18n.t("stats.card.tracker.label") + '</div>' +
@@ -821,7 +821,7 @@
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 ' + window.I18n.t("stats.btn.rafraichir") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 ' + window.I18n.t("stats.btn.exportCsv") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 ' + window.I18n.t("stats.btn.exportPdf") + '</button>' +
-          // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" — ouvre la modale dédiée
+          // D1 : bouton "Rapport de sortie" — ouvre la modale dédiée
           // js/sessionReport.js (3 formats : PDF/JSON/Texte + période + 8 toggles
           // + note libre + carte miniature + heatmap zones explorées).
           // Naturellement placé ici car les stats sont la "vitrine" de la session.
@@ -836,7 +836,7 @@
     document.addEventListener("keydown", _onEscape);
     document.getElementById("kta-stats-glob-refresh").addEventListener("click", _refreshAndRender);
 
-    // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" → ouvre la modale dédiée
+    // D1 : bouton "Rapport de sortie" → ouvre la modale dédiée
     // de js/sessionReport.js. Pas de prérequis particulier sur _lastReport
     // car SessionReport collecte ses propres données via window.getEditorPoints
     // etc. — il duplique légèrement la collecte mais reste plus simple que
@@ -867,7 +867,7 @@
       });
     });
 
-    // 🆕 v1.21.0 — Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
+    // Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
     document.getElementById("kta-stats-glob-csv").addEventListener("click", function() {
       const btn = document.getElementById("kta-stats-glob-csv");
       const orig = btn ? btn.textContent : null;
@@ -883,7 +883,7 @@
       });
     });
 
-    // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
+    // Bouton Export PDF (A4 portrait, texte/tableaux seuls).
     document.getElementById("kta-stats-glob-pdf").addEventListener("click", function() {
       if (!_lastReport) {
         window.ktaAlerte(window.I18n.t("stats.feedback.aucuneDonnee"));
@@ -1389,9 +1389,8 @@
     compute:       compute,
     getReportText: getReportText,
     exportToCSV:   exportToCSV,
-    // 🆕 v1.21.0
     exportToPDF:   exportToPDF,
-    // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
+    // (KARMA "dans les stat, rajoute comme on voit sur chaque
     // plan stat détailé les graph et tout") : expose renderPieChart pour
     // la modale Profil > section "📊 Mes plans" → permet de réutiliser
     // l'algo camembert SVG + légende sans dupliquer le code.

@@ -75,7 +75,7 @@
   // ────────── HELPERS ──────────
 
   function isFirstLaunch() {
-    // 🕵️ v1.31.9-fix1 — Skip onboarding en mode incognito. Cohérent avec
+    // Skip onboarding en mode incognito. Cohérent avec
     // le pattern "no traces" : pas d'auto-trigger du tutoriel (l'user peut
     // toujours l'ouvrir manuellement via le menu Aide s'il veut). Sans ce
     // guard, le shim Storage retourne null → isFirstLaunch retourne true →
@@ -187,7 +187,7 @@
     }
   }
 
-  // 🌍 v1.79.4 : _toggleLang supprimée — la langue du tutoriel suit le
+  // _toggleLang supprimée — la langue du tutoriel suit le
   // choix global (gate / ⚙️ Config), plus de bascule interne.
 
 
@@ -205,7 +205,7 @@
 
   // ────────── API PUBLIQUE ──────────
 
-  // 🆕 v1.56.0 — Callback de fermeture (onClose) pour le séquenceur de premier
+  // Callback de fermeture (onClose) pour le séquenceur de premier
   // lancement (js/firstRunFlow.js). Appelé UNE FOIS à la fermeture du tutoriel
   // (✕ / Passer). Défini après le fermer() initial pour ne pas se déclencher à
   // tort à la ré-ouverture.
@@ -215,7 +215,7 @@
     fermer();
     _tutorialOnClose = (typeof onClose === "function") ? onClose : null;
     _currentIdx = 0;
-    // 🌍 v1.79.4 : plus de resync de langue locale — _cards()/_t() lisent
+    // plus de resync de langue locale — _cards()/_t() lisent
     // le dico I18n au rendu, la langue globale est toujours la bonne.
 
     const overlay = document.createElement("div");
@@ -224,7 +224,7 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // 🆕 v1.44.6 — Bind toggle langue
+    // Bind toggle langue
 
     document.getElementById("kta-tutorial-close").addEventListener("click", function() {
       // Fermeture explicite via ✕ = considère comme "skip" (marque seen pour ne pas re-popup)
@@ -252,7 +252,7 @@
     document.removeEventListener("keydown", _onKey);
     const ex = document.getElementById(MODAL_ID);
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
-    // 🆕 v1.56.0 — notifie le séquenceur (une seule fois)
+    // notifie le séquenceur (une seule fois)
     const cb = _tutorialOnClose;
     _tutorialOnClose = null;
     if (cb) { try { cb(); } catch(e) { console.warn("[Tutorial] onClose :", e); } }
@@ -266,6 +266,6 @@
     markAsSeen:     markAsSeen,
     // Pour Memory Inspector / debug
     _LS_KEY:        LS_KEY,
-    _CARDS_COUNT:   STRUCTURE.length  // 🌍 v1.79.4 : une seule structure, langues dans les dicos
+    _CARDS_COUNT:   STRUCTURE.length  // une seule structure, langues dans les dicos
   };
 })();

@@ -48,7 +48,7 @@
   // Phase 1 simplifiée : on ne supporte QUE les KMZ exportés par MyKTAMap
   // (kmzExport.js v170+). Pour détecter ça, on cherche la signature
   // "Export MyKTAMap" dans <Document><description> qui est posée par
-  // kmzExport.js > genererKml ligne 485.
+  // kmzExport.js > genererKml.
   //
   // Returns true si signature MyKTAMap détectée, false sinon.
   function estKmzMyktamap(kmlDoc) {
@@ -340,7 +340,7 @@
   //
   // Returns : { points: [...], roads: [...], zones: [...], structures: [...],
   //             stats: { total, kept, skipped, outOfBounds, multiGeometry } }
-  // 🆕 v1.9.3-A1.b.1 : ajout de `structures` (piliers + murs). Détection via
+  // ajout de `structures` (piliers + murs). Détection via
   // le styleUrl du Placemark : si commence par "#structure_<type>" on classe
   // le polygone comme structure (sinon zone, comportement legacy).
   function ingestPlacemarks(kmlDoc, transform, defaults) {
@@ -363,7 +363,7 @@
       stats.total++;
       const nom = (pm.getElementsByTagName("name")[0]?.textContent || "").trim();
       let desc = (pm.getElementsByTagName("description")[0]?.textContent || "").trim();
-      // v1.14.20-hotfix9 — l'export KMZ wrappe la description en CDATA et
+      // l'export KMZ wrappe la description en CDATA et
       // convertit \n en <br/> pour que Google Earth affiche correctement
       // les sauts de ligne dans le balloon. À l'import on inverse pour
       // préserver le format texte original : <br/>, <br>, <br /> → \n.
@@ -382,7 +382,7 @@
         }).filter(function(p) { return isFinite(p.lat) && isFinite(p.lng); });
       };
 
-      // 🆕 v1.21.1 (audit fix #14) : extraction des ExtendedData MyKTAMap
+      // extraction des ExtendedData MyKTAMap
       // (mkm:level, mkm:fromLevel, mkm:toLevel). Pattern symétrique au
       // _emitExtendedDataLevel de kmzExport.js. Préserve les niveaux M-LVL
       // au roundtrip MKM→KMZ→MKM. Si absent (KMZ tiers ou KMZ MKM < v1.21.1),
@@ -405,7 +405,7 @@
         return out;
       })();
 
-      // v1.14.20-hotfix8 (KARMA « pk l'export KMZ ne sauvegarde pas les
+      // (KARMA « pk l'export KMZ ne sauvegarde pas les
       // icônes comme on veut pour pouvoir re-importer ensuite ») :
       // détection du tag/type depuis le <styleUrl> du Placemark (encodé
       // par kmzExport.js sous la forme #point_<tag> / #road_<type> /
@@ -433,7 +433,7 @@
               x: Math.round(px.x), y: Math.round(px.y),
               tags: [tag]
             };
-            // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL si présent
+            // préserve level M-LVL si présent
             if (Number.isInteger(_mkmData.level)) _pt.level = _mkmData.level;
             out.points.push(_pt);
             stats.kept++;
@@ -453,13 +453,13 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // 🆕 v1.9.3-A1.b.2 + v1.14.20-hotfix8 : détection via styleUrl.
+          // détection via styleUrl.
           // Notre KMZ export utilise :
           //   #structure_front-1 / front-2 / cust-XYZ → structure polyline
           //   #road_principal / secondaire / chemin / jonction / itinerary / cust-XYZ → road
           // Sinon (KMZ tiers) → fallback defaults.roadType.
           //
-          // 🆕 v1.21.1 (audit fix #3) : regex élargie pour capturer aussi
+          // regex élargie pour capturer aussi
           // les types `cust-*` (entrées custom légende). Avant la regex stricte
           // `^#road_(principal|...)$` ne matchait pas → fallback roadType
           // perdait silencieusement le type custom au roundtrip MKM→KMZ→MKM.
@@ -473,7 +473,7 @@
               description: desc || undefined,
               type: stType, points: projected
             };
-            // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL
+            // préserve level M-LVL
             if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
             out.structures.push(_st);
           } else {
@@ -490,7 +490,7 @@
               description: desc || undefined,
               type: roadType, points: projected
             };
-            // 🆕 v1.21.1 (audit fix #14) : level + jonction fromLevel/toLevel
+            // level + jonction fromLevel/toLevel
             if (roadType === "jonction") {
               if (Number.isInteger(_mkmData.fromLevel)) _rd.fromLevel = _mkmData.fromLevel;
               if (Number.isInteger(_mkmData.toLevel))   _rd.toLevel   = _mkmData.toLevel;
@@ -519,7 +519,7 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // 🆕 v1.9.3-A1.b.1 + v1.14.20-hotfix8 + v1.21.1 audit fix #3 :
+          // audit fix #3 :
           // détection via styleUrl, élargie aux types `cust-*` (entrées
           // custom Légende dessinables) pour roundtrip MKM→KMZ→MKM complet.
           //   #structure_pilier-1 / pilier-2 / mur / cust-XYZ → structure polygone
@@ -534,7 +534,7 @@
               description: desc || undefined,
               type: stType, points: projected
             };
-            // 🆕 v1.21.1 (audit fix #14) : level M-LVL
+            // level M-LVL
             if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
             out.structures.push(_st);
           } else {
@@ -550,7 +550,7 @@
               description: desc || undefined,
               type: zoneType, points: projected
             };
-            // 🆕 v1.21.1 (audit fix #14) : level M-LVL
+            // level M-LVL
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             out.zones.push(_zn);
           }
@@ -596,7 +596,7 @@
 
     const zip = new JSZip();
 
-    // v1.14.20-hotfix12 (KARMA « depuis import KMZ, on doit pouvoir cocher
+    // (KARMA « depuis import KMZ, on doit pouvoir cocher
     // un mode V2 pour regénérer les tuiles. Pareil M-LVL ») : si l'option
     // tilingV2 est cochée ET que window.MyKTAMapTilingV2 est dispo (fourni
     // par createConf.js > _genererTuilesV2 exposé v1.14.20-hotfix12), on
@@ -628,19 +628,19 @@
     // (creerIcones lit iconConfig.track/default). Sans ces 2 valeurs au minimum,
     // map.js > initMapFromConfig throw → écran noir au chargement du plan.
     //
-    // v1.14.20-hotfix4 (KARMA « quand je renvois un KMZ de chez nous je perd
+    // (KARMA « quand je renvois un KMZ de chez nous je perd
     // les icônes ») : copie aussi les icônes embarquées dans le KMZ (path
-    // `files/icons/<tag>.png` posé par kmzExport.js ligne 622-642) vers le
+    // `files/icons/<tag>.png` posé par kmzExport.js > genererKmz) vers le
     // ZIP MyKTAMap sous `icon/<tag>.png`, et peuple planConfig.icons avec
     // le mapping tag → chemin. Le caller passe opts.assets (le dict complet
     // des fichiers du KMZ, déjà extrait par extraireKmz).
-    // v1.14.20-hotfix12 — dimensions post-V2 si re-tilage (l'auto-crop
+    // dimensions post-V2 si re-tilage (l'auto-crop
     // peut avoir réduit la zone effectivement tuilée par rapport à
     // l'image source).
     const finalW = v2Dims ? v2Dims.width  : opts.imageW;
     const finalH = v2Dims ? v2Dims.height : opts.imageH;
 
-    // 🐛 v1.21.1 (audit fix #9) : V2 auto-crop produisait des coords
+    // V2 auto-crop produisait des coords
     // décalées. L'auto-crop de _genererTuilesV2 détecte les marges blanches
     // et retire les pixels [0, cropX] × [0, cropY] → les annotations
     // (ingested.points/roads/zones/structures), projetées AVANT le crop
@@ -677,7 +677,7 @@
       _translate(opts.imported.structures);
     }
 
-    // 🆕 v1.21.0-fix6 + v1.21.1 audit fix #9 : embed `plan.georef` à partir
+    // audit fix #9 : embed `plan.georef` à partir
     // des coins GPS du GroundOverlay KML, ajusté pour le crop V2 si applicable.
     // Convention plan MyKTAMap (cf convertCoord = [imgH - y, x]) :
     //   - coin SW visuel = (x=0, y=H)        → corners.sw GPS
@@ -733,7 +733,7 @@
         author: opts.planAuthor || window.I18n.t("kmz.import.authorDefault"),
         imageWidth: finalW,
         imageHeight: finalH,
-        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // 🩸 PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
         // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
         // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
         // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
@@ -742,10 +742,10 @@
         // ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en
         // v1.21.0-fix5 — jamais pour son `baseImage`.
         baseImage: "data/" + baseFilename,
-        // v1.21.0-fix6 : georef si dispo (pattern aligné gpxImport)
+        // georef si dispo (pattern aligné gpxImport)
         ...(_georef ? { georef: _georef } : {})
       },
-      // 🆕 v1.21.0-fix5 (KARMA : "l'icone du tracker est toujours perdu et
+      // (KARMA : "l'icone du tracker est toujours perdu et
       // commence en 0, 0 (pas 50% comme en générateur habituel)") : ajout
       // d'une section `tracking` avec startX/startY centrés sur le plan,
       // cohérent avec createConf.js > _genererZip qui met W/2 × H/2 quand
@@ -755,7 +755,7 @@
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
         scale:         50,    // default raisonnable px/m (modifiable Réglages)
-        // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown ici : ces
+        // plus de stepLength / stepThreshold / stepCooldown ici : ces
         // réglages sont ceux de la personne, globaux à l'appareil (⚙️ Réglages).
       },
       icons: {
@@ -765,15 +765,15 @@
       imageLayers: [],
       dataLayers: []
     };
-    // v1.14.20-hotfix12 — flags optionnels (cohérent createConf.js > _genererZip)
+    // flags optionnels (cohérent createConf.js > _genererZip)
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
-    // 🏷️ 16/09/2026 — étiquettes proposées par le Générateur (déjà normalisées
+    // étiquettes proposées par le Générateur (déjà normalisées
     // par PlanRegistry.normaliserTags). Absentes = champ absent, JSON inchangé.
     if (Array.isArray(opts.tags) && opts.tags.length) planConfig.plan.tags = opts.tags.slice(0, 12);
     if (tilingManifest)           planConfig.plan.tiledV2    = true;
     if (tilingManifest)           planConfig.tiling          = tilingManifest;
 
-    // 🆕 v1.18.0 — Roundtrip légende plan-level (cf §58.2 CLAUDE.md +
+    // Roundtrip légende plan-level (cf §58.2 CLAUDE.md +
     // kmzExport.js > genererKmz). Si le KMZ source contient `myktamap-extras.json`
     // (= généré par une autre instance MyKTAMap v1.18.0+), on extrait son
     // champ `customLegend` et on l'injecte dans `planConfig.plan.customLegend`
@@ -827,7 +827,7 @@
       }
     }
 
-    // v1.14.20-hotfix10 (KARMA « perte de l'icône tracker, on doit repartir
+    // (KARMA « perte de l'icône tracker, on doit repartir
     // en default pour le tracker si non c'est bien ») : si le KMZ source
     // n'embarquait PAS d'icône `track` (cas où aucun point n'avait ce tag
     // — typique d'un KMZ V2 sans tracker), on tente de fetcher l'icône
@@ -866,7 +866,7 @@
     }
 
     // Data layer "imported" qui groupe tous les éléments importés.
-    // 🆕 v1.9.3-A1.b.1 : ajout des structures (piliers + murs). Si le KMZ
+    // ajout des structures (piliers + murs). Si le KMZ
     // exporté venait de MyKTAMap v1.9.3+ avec des structures, elles sont
     // détectées via styleUrl="#structure_*" et préservées avec leur
     // sous-type d'origine. Rétrocompat KMZ legacy : pas de structures →
@@ -882,7 +882,7 @@
         // ⚠️ i18n « figé à la langue d'import » : label de dataLayer écrit comme
         // donnée (affiché dans le FilterPanel). Non re-traduit après import.
         label: window.I18n.t("kmz.import.layerLabel"),
-        // 🐛 v1.21.0-fix5 (KARMA : "bug en reimport KMZ, les tracés bien que
+        // (KARMA : "bug en reimport KMZ, les tracés bien que
         // visible ne sont plus pris en compte par itinéraire") : avant on
         // mettait `file: "imported.json"` (sans préfixe data/). Au load, la
         // résolution `getRuntimeAssetUrl("imported.json")` échouait silencieux
@@ -903,7 +903,7 @@
         zones:      imported.zones      || [],
         structures: imported.structures || []
       };
-      // 🆔 v2.1.0 — un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
+      // un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
       if (window.KtaUid) { const _vus = new Set(); ["data", "roads", "zones", "structures"].forEach(function (k) { window.KtaUid.ensureAll(payload[k], k === "data" ? "pt" : k === "roads" ? "rd" : k === "zones" ? "zn" : "st", undefined, _vus); }); }
       zip.file("data/imported.json", JSON.stringify(payload, null, 2));
     }

@@ -61,7 +61,7 @@ let table = {};
     const JS = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js"); })
       .map(function (f) { return lire("js/" + f); }).join("\n").split(src).join("");
 
-    // 🩸 14/09/2026 — L'EXISTENCE DE L'ID NE SUFFIT PAS. Une modale sans
+    // 🩸 L'EXISTENCE DE L'ID NE SUFFIT PAS. Une modale sans
     // en-tête reconnu n'aurait jamais reçu son ❓, sans un mot : c'est arrivé
     // avec le menu Tracker, qui n'avait même pas d'id. On exige donc que le
     // fichier qui crée la modale porte AUSSI une des deux familles d'en-tête.

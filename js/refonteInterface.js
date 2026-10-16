@@ -60,7 +60,7 @@
   // ============================================================
   // CONFIGURATION
   // ============================================================
-  // 🆕 v1.8.1-refonte-8 : INVERSION sémantique du flag (KARMA).
+  // INVERSION sémantique du flag (KARMA).
   // Avant : `myktamap_refonte_v1 = "1"` → nouvelle interface ON (opt-in)
   // Maintenant : nouvelle interface est le DÉFAUT. L'user peut cocher
   // "Utiliser l'ancienne interface (classique)" pour revenir à v1.8.x.
@@ -81,7 +81,7 @@
   // ============================================================
   // LECTURE FLAG (au chargement du module)
   // ============================================================
-  // v1.14.19 (KARMA « supprime la possibilité d'utiliser l'ancienne
+  // (KARMA « supprime la possibilité d'utiliser l'ancienne
   // interface ») : le flag legacy est désactivé. La nouvelle interface
   // est désormais imposée pour tout le monde. On nettoie aussi le
   // localStorage des anciens users qui auraient le flag legacy actif,
@@ -149,7 +149,7 @@
         '</button>' +
       '</div>' +
       '<button class="kta-refonte-header-btn kta-refonte-header-counters" id="kta-refonte-counters-btn" title="' + window.I18n.t("ui.refonte.btn_summary_title") + '" aria-label="' + window.I18n.t("ui.refonte.btn_summary_aria") + '">' +
-        // 🆕 v1.11.1 V2 (KARMA "trop d\'icônes sur mobile") : chip résumé
+        // V2 (KARMA "trop d\'icônes sur mobile") : chip résumé
         // unique 📊 visible UNIQUEMENT en mobile portrait. Sur desktop +
         // tablette + mobile landscape, les 5 chips individuels (points,
         // tracés, zones, structures, photos) + 🪫 batterie restent
@@ -166,26 +166,26 @@
         '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="' + window.I18n.t("ui.refonte.counter_zones_title") + '">' +
           '<span class="kta-refonte-counter-icon">⬛</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
-        // 🆕 v1.9.3-A1.a : 4e compteur pour les structures (piliers + murs).
+        // 4e compteur pour les structures (piliers + murs).
         // Si trop chargé visuellement en landscape phone, on pourra masquer
         // ce compteur sur petits écrans via CSS plus tard.
         '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="' + window.I18n.t("ui.refonte.counter_structures_title") + '">' +
           '<span class="kta-refonte-counter-icon">🏛️</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
-        // 🆕 v1.9.3-B1d+ : 5e compteur pour les photos. Lecture async IDB
+        // 5e compteur pour les photos. Lecture async IDB
         // dans updateCompteurs. Masqué via kta-refonte-counter-empty si 0
         // (cohérent avec les autres compteurs à 0).
         '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="' + window.I18n.t("ui.refonte.counter_photos_title") + '">' +
           '<span class="kta-refonte-counter-icon">📸</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
       '</button>' +
-      // 🆕 v1.11.1-fix3 (KARMA "l'icône batterie est exclue de la surbrillance
+      // (KARMA "l'icône batterie est exclue de la surbrillance
       // de session") : chip batterie SORTI du bouton compteurs pour être un
       // sibling — il n'hérite plus du hover/focus surbrillance du groupe
       // compteurs de session. Masqué par défaut (display:none) jusqu'à ce
       // que BatteryGuard confirme que l'API est dispo (cf 8:a). La couleur
       // dynamique est appliquée via inline style depuis _refreshBatteryUi.
-      // 🆕 v1.34.19 (positionné v1.34.21 — à GAUCHE de la batterie selon
+      // (positionné v1.34.21 — à GAUCHE de la batterie selon
       // demande KARMA) — Bouton 📖 Mode Histoire. Click ouvre la modale
       // 2 onglets (📝 Note libre + 📚 PDF embarqué/session). Toujours
       // visible (pas de gating sur API support comme la batterie).
@@ -193,16 +193,16 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="' + window.I18n.t("ui.refonte.counter_histoire_title") + '" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
-      // 🆕 v1.39.0 — Bouton 🌍 Vue OSM. Visible UNIQUEMENT si le plan a un
+      // Bouton 🌍 Vue OSM. Visible UNIQUEMENT si le plan a un
       // georef GPS valide ET que l'user a opt-in dans Configuration home.
       // Cliquer ouvre la modale OSM (plan calibré projeté sur OpenStreetMap).
-      // 🎨 v1.39.8 — Emoji change de 🗺️ vers 🌍 pour éviter le conflit visuel
+      // Emoji change de 🗺️ vers 🌍 pour éviter le conflit visuel
       // avec les boutons Légende (sidebar gauche) et Itinéraire (groupe Iti)
       // qui utilisent déjà 🗺️. Le globe 🌍 colle bien à OSM (surface monde).
       '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="' + window.I18n.t("ui.refonte.counter_osm_title") + '" role="button" tabindex="0" style="display:none;">' +
         '<span class="kta-refonte-counter-icon">🌍</span>' +
       '</span>' +
-      // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
+      // Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
       // qui identifie la sortie la plus proche (pathfinder + tags
       // Puits/Escalier/Cavage ouvert ou tag "entrée"). Cf js/sortieUrgence.js.
       '<span class="kta-refonte-counter kta-refonte-counter-sortie" id="kta-refonte-counter-sortie" title="' + window.I18n.t("ui.refonte.counter_sortie_title") + '" role="button" tabindex="0">' +
@@ -244,7 +244,7 @@
       });
     }
 
-    // 🆕 v1.34.19 — Bouton 📖 Mode Histoire : click ouvre la modale.
+    // Bouton 📖 Mode Histoire : click ouvre la modale.
     // Support clavier (Enter/Space) pour accessibilité car le span a
     // role="button" tabindex="0".
     const histoireBtn = document.getElementById("kta-refonte-counter-histoire");
@@ -265,10 +265,10 @@
       });
     }
 
-    // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM : visible UNIQUEMENT si plan georef
+    // Bouton 🗺️ Vue OSM : visible UNIQUEMENT si plan georef
     // ET user opt-in dans Configuration home. Click ouvre la modale (carte
     // EPSG:3857 + tile OSM + plan projeté). Cf js/osmView.js.
-    // 🐛 v1.39.0-fix1 (KARMA "pas icone en haut") : remplace les 2 setTimeout
+    // (KARMA "pas icone en haut") : remplace les 2 setTimeout
     // ponctuels par un polling permanent 2s (le check isAvailable est très
     // léger ~0.3ms). Cause racine : `kta:planConfigReady` que j'écoutais
     // n'est PAS dispatché par MyKTAMap (event fantôme). Sur mobile / gros
@@ -300,7 +300,7 @@
       setInterval(_refreshOsmVisibility, 2000);
     }
 
-    // 🆕 v1.35.0 — Bouton 🚨 Sortie d'urgence : click déclenche la recherche
+    // Bouton 🚨 Sortie d'urgence : click déclenche la recherche
     // de la sortie la plus proche via pathfinder.
     const sortieBtn = document.getElementById("kta-refonte-counter-sortie");
     if (sortieBtn) {
@@ -332,7 +332,7 @@
         // listant tous les éléments (points, tracés, zones, mesure,
         // itinéraire, tracker) avec leurs infos détaillées.
         updateCompteurs();  // refresh des valeurs avant ouverture
-        // 🆕 v1.8.1-refonte-10 : check défensif. La fonction est déclarée
+        // check défensif. La fonction est déclarée
         // plus bas DANS LE MÊME IIFE → le hoisting JS doit la rendre
         // accessible ici. Si jamais un cas d'erreur apparaît (deploy
         // partiel via FTP, cache SW stale qui sert une moitié de fichier,
@@ -354,7 +354,7 @@
     // Update initial des compteurs + valeurs
     updateCompteurs();
 
-    // 🆕 v1.9.3-B1d-fix5 : resize/orientationchange listeners pour le
+    // resize/orientationchange listeners pour le
     // debordement du titre. Sans ça, l'user qui rotate ou resize la
     // fenêtre verrait la version stale (cachée alors qu'il y a la place,
     // ou visible alors qu'elle déborde) jusqu'au prochain polling 2s.
@@ -393,7 +393,6 @@
     const nPoints     = (window.getEditorPoints && window.getEditorPoints() || []).length;
     const nRoads      = (window.getRoads        && window.getRoads()        || []).length;
     const nZones      = (window.getZones        && window.getZones()        || []).length;
-    // 🆕 v1.9.3-A1.a
     const nStructures = (window.getStructures   && window.getStructures()   || []).length;
 
     _setCounterVal("kta-refonte-counter-points",     nPoints);
@@ -401,7 +400,7 @@
     _setCounterVal("kta-refonte-counter-zones",      nZones);
     _setCounterVal("kta-refonte-counter-structures", nStructures);
 
-    // 🆕 v1.11.1 (KARMA mobile compact) : chip résumé unique 📊 visible
+    // chip résumé unique 📊 visible
     // en mobile portrait. Valeur = somme totale des éléments de session
     // (sans photos pour ne pas alourdir le calcul async — l'icône fait
     // déjà comprendre "regroupé"). Si total = 0 → on affiche "·"
@@ -413,7 +412,7 @@
       _summaryEl.textContent = _totalSession > 0 ? String(_totalSession) : "·";
     }
 
-    // 🆕 v1.9.3-B1d+ : compteur photos (async IDB). Lecture rapide via
+    // compteur photos (async IDB). Lecture rapide via
     // index `by_plan`. Pas de await dans le sync updateCompteurs : on lance
     // et on swap quand prêt. Si MyKTAMapPhotos indispo → reste à 0.
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.countPhotosForPlan === "function") {
@@ -427,14 +426,14 @@
       _setCounterVal("kta-refonte-counter-photos", 0);
     }
 
-    // 🆕 v1.9.3-B1d-fix5 : ajuste le débordement du titre après que le
+    // ajuste le débordement du titre après que le
     // nom/version aient été posés. Utilise rAF pour laisser le browser
     // peindre avant la mesure, sinon scrollWidth/clientWidth peuvent
     // retourner des valeurs stale (= du frame précédent).
     requestAnimationFrame(_ajusterDebordementTitre);
   }
 
-  // 🆕 v1.9.3-B1d-fix5 : graceful degradation 2 niveaux quand le titre
+  // graceful degradation 2 niveaux quand le titre
   // déborde sur les compteurs. Étapes :
   //   1. Reset : on AFFICHE d'abord la version (cas user resize +
   //      → larger : on veut retrouver la version).
@@ -512,14 +511,14 @@
         '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-dist-totale">' +
           '<span class="kta-refonte-stat-icon">📏</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        // 🆕 v1.8.1-refonte-14 : la stat itinéraire est désormais cliquable —
+        // la stat itinéraire est désormais cliquable —
         // au clic on rouvre la modale itinéraire (équivalent ancien comportement
         // du label .kta-iti-distance en bottom-left qui était cliquable et qu'on
         // a masqué en mode refonte). Cursor pointer + title via CSS.
         '<span class="kta-refonte-stat kta-refonte-stat-empty kta-refonte-stat-clickable" id="kta-refonte-stat-iti" title="' + window.I18n.t("ui.refonte.stat_iti_title") + '">' +
           '<span class="kta-refonte-stat-icon">🗺️</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        // 🆕 v1.8.1-refonte-14 : tracker passé en icône BOUSSOLE 🧭 (au lieu
+        // tracker passé en icône BOUSSOLE 🧭 (au lieu
         // de 🚶 qui se confondait visuellement avec le 🚶 du badge "mode
         // marche" de la stat itinéraire). Affiche ON (vert) ou OFF (rouge)
         // selon que le tracking GPS est actif ou non. Feedback KARMA :
@@ -529,14 +528,14 @@
         '<span class="kta-refonte-stat kta-refonte-stat-tracker-off kta-refonte-stat-clickable" id="kta-refonte-stat-tracker">' +
           '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
-        // 🆕 v1.49.0 — Compte-à-rebours « verrou sur tracé suspendu » (à côté du
+        // Compte-à-rebours « verrou sur tracé suspendu » (à côté du
         // ON/OFF tracker, feedback KARMA). Caché par défaut ; piloté par
         // interface.js (_afficherBadgeVerrou/_majBadgeVerrou/_reactiverVerrou).
         // Cliquable → réactive le verrou immédiatement.
         '<span class="kta-refonte-stat kta-refonte-stat-clickable" id="kta-refonte-stat-verrou" style="display:none; color:#f4c542;" title="' + window.I18n.t("tracker.verrou.statTitle") + '">' +
           '<span class="kta-refonte-stat-icon">🔓</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        // 🚫 v1.12.0-fix (KARMA "la batterie est affichée en bas et en top,
+        // (KARMA "la batterie est affichée en bas et en top,
         // on l'affiche que en haut") : retiré du footer. La chip batterie
         // du header (kta-refonte-counter-battery, à côté des compteurs session)
         // reste l'unique point d'affichage permanent. Le mode urgence 🚨 a
@@ -554,7 +553,7 @@
       toggleBtn.addEventListener("click", _toggleStatusBar);
     }
 
-    // 🆕 v1.8.1-refonte-14 : clic sur la stat ITI du footer → ouvre la modale
+    // clic sur la stat ITI du footer → ouvre la modale
     // itinéraire (équivalent à l'ancien label `.kta-iti-distance` cliquable
     // en bottom-left qui faisait pareil avant la refonte). On ne déclenche
     // que si la stat n'est pas vide (= itinéraire actif), pour éviter
@@ -582,7 +581,7 @@
 
     refreshStatusBar();
 
-    // 🆕 v1.8.1-refonte-10 : ResizeObserver sur le status bar pour synchroniser
+    // ResizeObserver sur le status bar pour synchroniser
     // la variable CSS `--kta-statusbar-h` avec la hauteur RÉELLE de la barre.
     // Cas qui nécessite ce calcul dynamique :
     //   - Petit écran + 4 stats actives (mesure + dist totale + iti + tracker)
@@ -606,7 +605,7 @@
   // ResizeObserver helper — séparé pour pouvoir nettoyer/relancer si besoin.
   let _statusBarRO = null;
 
-  // 🔧 v1.9.3-B1d-fix3 (KARMA "cant find variable _syncH ligne 429") :
+  // (KARMA "cant find variable _syncH") :
   // Avant, `_syncH` était une fonction LOCALE à _setupStatusBarResizeObserver().
   // Elle n'était donc pas visible depuis _onOrientationChange() (function
   // statement au scope du module). Quand l'event orientationchange se
@@ -656,7 +655,7 @@
     });
   }
 
-  // 🆕 v1.9.2 (approche fresh) — bug iOS PWA "status bar disparaît après
+  // (approche fresh) — bug iOS PWA "status bar disparaît après
   // rotation landscape → portrait". Diagnostic : iOS Safari standalone
   // hide auto le status bar (heure, batterie) en landscape sur iPhone
   // pour donner du fullscreen, mais REFUSE de le restaurer au retour
@@ -721,11 +720,11 @@
     if (!_statusBarEl) return;
 
     // ── 📐 Mesure (distance et/ou surface) ──
-    // 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois, une
+    // (KARMA "en footer, on peux afficher a la fois, une
     // mesure de surface, et une comme avant de distance") : les 2 mesures
     // coexistent maintenant. Le footer a une icône statique 📐 + un val.
     //
-    // 🔧 v1.12.0-fix2 (KARMA "petit bug en footer on a deux équaire") : on
+    // (KARMA "petit bug en footer on a deux équaire") : on
     // pilote l'icône statique pour ne pas avoir un doublon 📐 dans le val.
     //   - Distance seule → icône 📐, val = "143 m"
     //   - Surface seule  → icône ⬛, val = "4433 m²"
@@ -766,7 +765,7 @@
     }
 
     // ── 📏 Distance totale ──
-    // 🆕 v1.8.1 (fix KARMA) : on utilise désormais l'API publique
+    // on utilise désormais l'API publique
     // window.getDistanceTotaleStatus() qui lit l'état du surlignage
     // magenta (_rdHighlightLayer), pas le DOM de la modale.
     // Avant : on lisait .kta-rd-total-value qui disparaissait à la
@@ -801,7 +800,7 @@
     }
 
     // ── 🧭 Tracker (boussole GPS — ON vert / OFF rouge) ──
-    // 🆕 v1.8.1-refonte-14 : ce stat utilise un toggle visuel binaire ON/OFF
+    // ce stat utilise un toggle visuel binaire ON/OFF
     // au lieu du pattern "vide ↔ valeur". Toggle CSS via 2 classes :
     //   - kta-refonte-stat-tracker-on  → texte "ON" sur fond vert
     //   - kta-refonte-stat-tracker-off → texte "OFF" sur fond rouge
@@ -857,19 +856,19 @@
   }
 
   // ============================================================
-  // 🆕 v1.11.1 V2 — UI BATTERIE (KARMA 2:d)
+  // V2 — UI BATTERIE (KARMA 2:d)
   // ============================================================
   // Appliqué à chaque event Battery API (level / charging change) +
   // un appel initial via forceCheck() au boot des panneaux.
   // Si l'API n'est pas dispo (Safari iOS) → les 2 éléments restent
   // masqués (display:none de leur HTML inline).
   function _refreshBatteryUi(state) {
-    // 🆕 v1.11.1-fix3 (KARMA "enleve le fait de voir l'icône batterie si
+    // (KARMA "enleve le fait de voir l'icône batterie si
     // l'API pas dispo, cas iOS") : retour au choix 8:a original (cacher
     // complètement). L'option B fallback `?` grisé a servi pour le debug
     // initial mais n'a pas d'intérêt en prod — sur Safari iOS / Firefox
     // l'user n'a rien à faire de ce chip.
-    // 🧹 v1.77.0 (audit code mort → bug latent n°1, arbitrage KARMA) — le
+    // le
     // bloc « Status bar stat » batterie ciblait un id jamais créé
     // (kta-refonte-stat-battery) : cette 2e jauge n'a JAMAIS existé à
     // l'écran. Le chip du HEADER (celui que KARMA voit sur PC/Android) est
@@ -888,7 +887,7 @@
     // Header chip (à droite du compteur 📸)
     const chip = document.getElementById("kta-refonte-counter-battery");
     if (chip) {
-      // 🔧 v1.11.1-fix2 : removeProperty + explicit "flex" pour bypass
+      // removeProperty + explicit "flex" pour bypass
       // l'inline style="display:none;" initial du HTML. style.display = ""
       // ne suffisait pas dans tous les browsers (race avec inline style).
       chip.style.removeProperty("display");
@@ -915,7 +914,7 @@
     }
     _batteryHooked = true;
     window.BatteryGuard.onChange(_refreshBatteryUi);
-    // 🔧 v1.11.1-fix2 (KARMA "forceCheck manuel marche mais pas auto") :
+    // (KARMA "forceCheck manuel marche mais pas auto") :
     // 3 tentatives de sync initial pour bypass les races potentielles
     // entre l'init async de BatteryGuard et le moment où on accroche le
     // listener. À chaque tick, on appelle DIRECTEMENT _refreshBatteryUi
@@ -989,7 +988,7 @@
   //   - Itinéraire actif (waypoints, distance, temps estimé)
   //   - Tracker (statut, position, distance parcourue)
   //
-  // 🆕 v1.11.2 V2.2 : bloc "📊 Stats agrégées" en TÊTE de la modale avec
+  // V2.2 : bloc "📊 Stats agrégées" en TÊTE de la modale avec
   // résumé chiffré + barres CSS + boutons Copier/Exporter TXT.
   //
   // Pattern .kta-readme-modal-overlay pour cohérence charte projet.
@@ -1034,7 +1033,7 @@
       structures: { total: structures.length, byType: {}, fronts_totalM: 0 },
       photos: { total: 0, sizeMo: 0 },   // hydraté async
       tracker:    { active: false, distM: 0 },
-      // 🔧 v1.12.0-fix : mesure = { distance (polyline), surface (polygone) }
+      // mesure = { distance (polyline), surface (polygone) }
       mesure:     { distance: { points: 0, distM: 0 }, surface: { points: 0, areaM2: 0 } },
       session:    { durationMs: 0 },
       // 🏗️ Multi-niveau breakdown (rempli plus bas si MLVL)
@@ -1104,7 +1103,7 @@
       }
     });
 
-    // 🔧 v1.12.0-fix : 2 mesures indépendantes (distance + surface).
+    // 2 mesures indépendantes (distance + surface).
     // L'ancien paramètre `mesure` = polyline distance (rétrocompat),
     // on lit en plus window.getMeasurePointsSurface() pour le polygone.
     if (mesure.length >= 2) {
@@ -1201,7 +1200,7 @@
     h += '<span class="kta-refonte-stats-val">' + _formatDurationStats(stats.session.durationMs) + '</span>';
     h += '</div>';
 
-    // 🎨 v1.76.0 — couleur des barres résolue via le styleResolver, au lieu de
+    // couleur des barres résolue via le styleResolver, au lieu de
     // deux tables recopiées à la main. Effet de bord VOULU : les types CUSTOM
     // avaient leur barre en gris `#888` faute d'entrée dans ces tables ; ils
     // prennent maintenant leur vraie couleur, celle de la carte.
@@ -1404,7 +1403,7 @@
       lines.push(window.I18n.t("ui.refonte.stats_tracker_active", { dist: _fdistStats(stats.tracker.distM) }));
       lines.push("");
     }
-    // 🆕 v1.12.0-fix : 2 mesures indépendantes — sortie séparée
+    // 2 mesures indépendantes — sortie séparée
     if (stats.mesure.distance.points >= 2) {
       lines.push("## 📐 " + window.I18n.t("ui.refonte.export_mesure_distance_titre"));
       lines.push(window.I18n.t("ui.refonte.export_mesure_distance", { dist: _fdistStats(stats.mesure.distance.distM), n: stats.mesure.distance.points }));
@@ -1498,7 +1497,7 @@
     const points     = (window.getEditorPoints  && window.getEditorPoints()  || []);
     const roads      = (window.getRoads         && window.getRoads()         || []);
     const zones      = (window.getZones         && window.getZones()         || []);
-    // 🆕 v1.9.3-A1.a : structures pour la modale détail session
+    // structures pour la modale détail session
     const structures = (window.getStructures    && window.getStructures()    || []);
     const mesure     = (window.getMeasurePoints && window.getMeasurePoints() || []);
     const scale   = (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
@@ -1535,7 +1534,7 @@
     const _stats = _calculerStatsAggregees(points, roads, zones, structures, mesure, scale);
     let html = _genererStatsAggregeesHTML(_stats, multiLevel);
 
-    // 🆕 v1.20.0 — CTA vers la modale Stats globales du plan (qui couvre
+    // CTA vers la modale Stats globales du plan (qui couvre
     // session + data layers embedded, vs cette modale qui couvre session
     // uniquement). Pour bien différencier les 2 vues à l'user.
     html += '<div class="kta-refonte-session-cta-stats-glob">' +
@@ -1557,7 +1556,7 @@
       html += '<ul class="kta-refonte-session-list">';
       points.forEach(function(p) {
         const rawTag = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : "";
-        // 🆕 v1.20.0-fix1+ : LC.getLabel("icones", tag) respecte cascade
+        // LC.getLabel("icones", tag) respecte cascade
         // session>plan>default. Si l'user a renommé "Puits A" → "Puits N",
         // affichage à jour ici aussi. Fallback = tag brut si LC indispo OU
         // si tag inconnu. Si pas de tag → "—" pour la lisibilité.
@@ -1593,7 +1592,7 @@
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(byType).forEach(function(t) {
         const stats = byType[t];
-        // 🆕 v1.20.0-fix1+ : LC.getLabel("traces", t) respecte cascade session>plan>default
+        // LC.getLabel("traces", t) respecte cascade session>plan>default
         const fallback = t === "principal" ? window.I18n.t("ui.refonte.label_road_principal") :
                          t === "secondaire" ? window.I18n.t("ui.refonte.label_road_secondaire") :
                          t === "chemin" ? window.I18n.t("ui.refonte.label_road_chemin") :
@@ -1623,7 +1622,7 @@
       });
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(zByType).forEach(function(t) {
-        // 🆕 v1.20.0-fix1+ : LC.getLabel("zones", t) respecte la cascade.
+        // LC.getLabel("zones", t) respecte la cascade.
         // Emoji conservé en suffixe pour cohérence visuelle (LC.getLabel
         // ne renvoie que le label texte sans emoji décoratif).
         const fallbackTxt = t === "eau" ? window.I18n.t("ui.refonte.label_zone_eau") :
@@ -1658,7 +1657,7 @@
       });
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(sByType).forEach(function(t) {
-        // 🆕 v1.20.0-fix1+ : LC.getLabel("structures", t) respecte cascade.
+        // LC.getLabel("structures", t) respecte cascade.
         // Emoji conservé en suffixe (LC.getLabel = label texte sans emoji).
         const fallbackTxt = t === "pilier-1" ? window.I18n.t("ui.refonte.label_struct_pilier1") :
                             t === "pilier-2" ? window.I18n.t("ui.refonte.label_struct_pilier2") :
@@ -1691,7 +1690,7 @@
 
     // 📐 Mesure simple (distance) + ⬛ Mesure de surface + 🗺️ Itinéraire + 🚶 Tracker
     const tFoo = !!(window.getTrackingPosition && window.getTrackingPosition());
-    // 🆕 v1.12.0-fix : récupère la mesure de surface séparément (les 2 mesures coexistent)
+    // récupère la mesure de surface séparément (les 2 mesures coexistent)
     const mesureSurfDetail = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
     const hasMesureDist = mesure.length >= 2;
     const hasMesureSurf = mesureSurfDetail.length >= 3;
@@ -1780,7 +1779,7 @@
                     ? window.I18n.t("jrn.section.encours", {
                         duree: duree, dist: window.formatDistance(cur.distM || 0, 0), n: nbAj })
                     : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj }));
-        // 📏 16/08/2026 — la part ESTIMÉE est annoncée, jamais noyée dans le
+        // la part ESTIMÉE est annoncée, jamais noyée dans le
         // total : elle vient des « 📍 Je suis ici » (chemin réseau ou vol
         // d'oiseau), pas du podomètre. L'user doit savoir ce que vaut le chiffre.
         if (terrain && (cur.distEstimeeM || 0) > 0) {
@@ -1808,7 +1807,7 @@
                     : '') +
                 '</div>';
       } else {
-        // 📔 14/09/2026 (KARMA) : sans sortie en cours, on DIT comment en ouvrir
+        // sans sortie en cours, on DIT comment en ouvrir
         // une. Avant, cette branche annonçait « aucune sortie » sans aucune
         // action — le carnet décoché, il n'existait plus aucun moyen d'en
         // enregistrer une, même volontairement.
@@ -1926,7 +1925,7 @@
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
 
-    // 📔 v1.69.0 — Wire-up des CTA du Carnet (clôture manuelle + ouverture).
+    // Wire-up des CTA du Carnet (clôture manuelle + ouverture).
     const _btnCarnetClot = document.getElementById("kta-refonte-session-carnet-cloture");
     if (_btnCarnetClot) {
       _btnCarnetClot.addEventListener("click", function() {
@@ -1936,7 +1935,7 @@
         }
       });
     }
-    // 📔 14/09/2026 — Démarrage manuel. Le refus vient du module (source de
+    // Démarrage manuel. Le refus vient du module (source de
     // vérité sur `_cur`), pas de l'état du bouton : la modale peut être
     // ouverte depuis une minute et une sortie avoir démarré entre-temps.
     const _btnCarnetDemarrer = document.getElementById("kta-refonte-session-carnet-demarrer");
@@ -1970,7 +1969,7 @@
       });
     }
 
-    // 🧭 17/08/2026 — « Affiner le tracé » : rejoue les tronçons estimés à vol
+    // « Affiner le tracé » : rejoue les tronçons estimés à vol
     // d'oiseau en suivant les galeries. On tente D'ABORD sans forcer : si le
     // plan dépasse le budget de sommets, l'appel revient immédiatement avec
     // `skipped: "trop-gros"` (aucun calcul gaspillé) et on demande alors à
@@ -2044,7 +2043,7 @@
       });
     })();
 
-    // 🆕 v1.20.0 — CTA Stats globales du plan (modale dédiée)
+    // CTA Stats globales du plan (modale dédiée)
     const _btnStatsGlob = document.getElementById("kta-refonte-session-open-stats-glob");
     if (_btnStatsGlob) {
       _btnStatsGlob.addEventListener("click", function() {
@@ -2058,7 +2057,7 @@
       });
     }
 
-    // 🆕 v1.11.2 V2.2 : wire-up boutons Copier + Exporter du bloc Stats agrégées
+    // V2.2 : wire-up boutons Copier + Exporter du bloc Stats agrégées
     const _btnCopier = document.getElementById("kta-stats-copier");
     const _btnExport = document.getElementById("kta-stats-exporter");
     if (_btnCopier) {
@@ -2093,7 +2092,7 @@
       });
     }
 
-    // 🆕 v1.16.0 step 4 : hydrate la section 📦 Backups récents — listAll
+    // hydrate la section 📦 Backups récents — listAll
     // IDB async puis injecte la liste + wire les boutons restore / remove.
     function _renderBackupsSection() {
       const listEl  = document.getElementById("kta-refonte-session-backups-list");
@@ -2105,13 +2104,13 @@
         return;
       }
       window.SessionBackups.listAll().then(function(arrAll) {
-        // 🐛 v1.16.0-fix (KARMA "dans la liste des snap, je dois voir que
+        // (KARMA "dans la liste des snap, je dois voir que
         // la liste des snap de ce plan, pas les autres") : filtre sur
         // window._currentLoadedPlanId. Les snapshots d'autres plans restent
         // en IDB (utiles pour le retour à un autre plan) mais ne sont pas
         // affichés dans la liste de CE plan.
         const currentPlanId = window._currentLoadedPlanId || null;
-        // 10/10/2026 (retour testeur en prod) : un plan réimporté (« Garder les deux ») ou renommé change
+        // un plan réimporté (« Garder les deux ») ou renommé change
         // d'identifiant — ses copies, rangées sous l'ANCIEN, n'apparaissaient plus. Même nom (comparaison
         // tolérante, cf. SessionPersist.normNomPlan) = « autre version de ce plan », restaurable ici.
         const nomPlan = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
@@ -2166,7 +2165,7 @@
           if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
           return parts.length ? parts.join(" ") : window.I18n.t("ui.refonte.label_empty");
         }
-        // 🐛 v1.16.0-fix (KARMA "entre chaque snap, il y a bcp espace vide
+        // (KARMA "entre chaque snap, il y a bcp espace vide
         // inutile") : la classe .kta-refonte-session-list applique
         // padding:7px 0 + display:flex column + gap:2px sur chaque li,
         // pensé pour les listes verticales (points/tracés où strong est sur
@@ -2176,7 +2175,7 @@
         // layout horizontal serré (padding 4px, items en ligne).
         let h = '<ul class="kta-refonte-session-list kta-backups-list">';
         arr.forEach(function(b) {
-          // 🐛 v1.16.0-fix : on n'affiche plus le planName dans le meta
+          // on n'affiche plus le planName dans le meta
           // puisque la liste est filtrée sur le plan courant (= tous les
           // snapshots affichés sont du même plan, l'info serait redondante).
           h += '<li>' +
@@ -2278,7 +2277,7 @@
       });
     }
 
-    // 🆕 v1.20.0 — Section ⭐ Favoris : export/import JSON
+    // Section ⭐ Favoris : export/import JSON
     _hydrateFavorisBadge();
     const _btnFavExportCur = document.getElementById("kta-refonte-session-favoris-export-current");
     const _btnFavExportAll = document.getElementById("kta-refonte-session-favoris-export-all");
@@ -2361,7 +2360,7 @@
       });
     }
 
-    // 🆕 v1.20.0 — Hydrate le badge ⭐ Favoris (compteur plan courant + total).
+    // Hydrate le badge ⭐ Favoris (compteur plan courant + total).
     // Fonction declaration (hoisted) : l'appel au début du bloc favoris
     // (`_hydrateFavorisBadge()` ligne plus haut) fonctionne grâce au hoisting.
     function _hydrateFavorisBadge() {
@@ -2385,7 +2384,7 @@
       }
     }
 
-    // 🆕 v1.11.2 V2.2 : hydrate la ligne 📸 Photos du bloc Stats agrégées
+    // V2.2 : hydrate la ligne 📸 Photos du bloc Stats agrégées
     // (compteur + taille totale via IDB async, indépendant de la section
     // détaillée hydratée plus bas)
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.getAllPhotosForPlan === "function") {
@@ -2408,7 +2407,7 @@
       }).catch(function() { /* silent */ });
     }
 
-    // 🆕 v1.9.3-B1d+ : hydrate la section 📸 Photos en async (lecture IDB).
+    // hydrate la section 📸 Photos en async (lecture IDB).
     // Format affiché : badge "N" + breakdown par point ("Puits du chêne · 3 photos").
     // Points sans photo ne sont pas listés (sinon trop verbeux pour des plans riches).
     _hydraterPhotosModaleSession(points);
@@ -2450,7 +2449,7 @@
       (points || []).forEach(function(p) {
         const lib = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
         nomByPid[String(p.id || "")] = lib;
-        if (p.uid) nomByPid[String(p.uid)] = lib;   // 🆔 v2.3.0 : photos rangées sous l'uid
+        if (p.uid) nomByPid[String(p.uid)] = lib;   // photos rangées sous l'uid
       });
       // Format taille via le helper sessionExporter (déjà exposé)
       const fmt = window._kta_formatBytes || function(n) {
@@ -2492,7 +2491,7 @@
       _creerHeaderBar();
       _creerStatusBar();
       _startPolling();
-      // 🆕 v1.11.1 V2 : abonnement BatteryGuard une fois les chips DOM
+      // V2 : abonnement BatteryGuard une fois les chips DOM
       // créés (header + status bar). No-op silencieux si BatteryGuard
       // n'est pas dispo (Safari iOS).
       _setupBatteryHook();
@@ -2582,7 +2581,7 @@
 
   // Et au cas où on est chargé après lancerApplication (cas rare mais
   // safe), on tente direct si window.map existe.
-  // 🐛 v1.68.1 (audit clés manquantes) : window.map existe AVANT tout plan
+  // window.map existe AVANT tout plan
   // (Leaflet init tôt) → ce fallback construisait header + statusbar au
   // DOMContentLoaded, AVANT la fin du fetch des dicos i18n. Résultat :
   // 22 tooltips gravés en « humanisé » (« Btn home title »…) à vie, car
@@ -2617,7 +2616,7 @@
   // ============================================================
   // API PUBLIQUE
   // ============================================================
-  // 🆕 v1.9.2-fix4 (KARMA "le modal qui apparaît doit respecter la
+  // (KARMA "le modal qui apparaît doit respecter la
   // charte graphique") : remplacement du `confirm()` natif OS (modale
   // grise iOS/Android) par une modale custom .kta-readme-modal-boite
   // avec accent doré (changement d'interface = action UI).
@@ -2647,7 +2646,7 @@
   // ✕ / backdrop / Échap / "Annuler" → résout false ; clic "Valider"
   // → résout true.
   //
-  // 🆕 v1.9.2-fix5 (KARMA "le recharger maintenant n'a pas de sens,
+  // (KARMA "le recharger maintenant n'a pas de sens,
   // ca rechargera de base ; on met valider ou annuler, et enlève la
   // phrase L'app doit être rechargée. Et on adapte le modal dans le
   // cas où on passe à l'ancienne interface") :
@@ -2740,7 +2739,7 @@
     refreshStatusBar: refreshStatusBar
   };
 
-  // 🐛 v1.34.14 — Retrait demande KARMA du banner console "Refonte UI v1
+  // Retrait demande KARMA du banner console "Refonte UI v1
   // Nouvelle interface active...". La refonte est active depuis v1.8.1, plus
   // besoin de le rappeler en console à chaque boot.
 

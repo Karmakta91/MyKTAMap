@@ -24,7 +24,7 @@
   let _previewBusy  = false;
 
   // =========================
-  // 🎨 v1.76.0 — STYLES : plus aucune table locale
+  // STYLES : plus aucune table locale
   // =========================
   // Toutes les couleurs viennent de `js/styleResolver.js` (table canonique).
   // Ce fichier en portait 5 copies : c'est comme ca qu'une zone INACCESSIBLE
@@ -38,7 +38,7 @@
   //
   // `repli` est le type utilise quand `type` est introuvable — un custom
   // supprime de la legende, par exemple. Passer `null` pour ne rien dessiner.
-  // 🎨 v1.76.0 (suite N2) — libellé de formulaire avec pastille RÉSOLUE.
+  // (suite N2) — libellé de formulaire avec pastille RÉSOLUE.
   // Les libellés i18n des cases à cocher portent leur émoji en dur
   // (« 🟩 Principaux ») : après un override de couleur, le formulaire montrait
   // l'ancienne couleur alors que l'export sortait la nouvelle.
@@ -154,7 +154,7 @@
       return;
     }
 
-    // 🩸 v1.82.0 — MÊME PIÈGE QUE DANS LA MODALE PDF : `row()` désactive la case
+    // 🩸 MÊME PIÈGE QUE DANS LA MODALE PDF : `row()` désactive la case
     // quand le compteur est nul. Comptés sur la seule session, points, tracés et
     // zones d'un plan importé étaient donc INEXPORTABLES — la case grisée, sans
     // que rien n'explique pourquoi.
@@ -162,7 +162,7 @@
     const nbRoads   = _sessionEtEmbarques("roads").length;
     const nbZones   = _sessionEtEmbarques("zones").length;
     const nbMesure  = window.getMeasurePoints        ? window.getMeasurePoints().length        : 0;
-    // 🆕 v1.12.0-fix : surface comptée séparément pour l'affichage de la modale export
+    // surface comptée séparément pour l'affichage de la modale export
     const nbMesureSurf = window.getMeasurePointsSurface ? window.getMeasurePointsSurface().length : 0;
     const nbTrackerPath = window.getTrackingPath ? window.getTrackingPath().length : 0;
     const trackerOk = window.getTrackingPosition && window.getTrackingPosition() !== null;
@@ -434,9 +434,9 @@
     _peuplerCalquesData(config, dataLayersVisibles);
     _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath);
     _peuplerNiveaux();
-    // 🆕 v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
+    // peupler le panneau « Personnaliser les libellés »
     _peuplerLegendCustom();
-    // 🖼️ 29/09/2026 — la résolution pré-cochée n'est plus « Originale » d'office
+    // la résolution pré-cochée n'est plus « Originale » d'office
     // (AVANT la restauration : un choix déjà fait par l'utilisateur gagne).
     _preparerResolutions(config);
 
@@ -567,7 +567,7 @@
         roads  = Array.isArray(j.roads) ? j.roads : [];
         zones  = Array.isArray(j.zones) ? j.zones : [];
       } catch(e) {
-        // 🩸 v1.82.0 — un plan importé n'a pas de fichier servi par le site :
+        // 🩸 un plan importé n'a pas de fichier servi par le site :
         // ses données vivent en mémoire (cf. le repli du même nom plus bas).
         // Sans ce repli, la modale n'affichait aucun sous-filtre pour ce calque.
         const duCalque = function (arr) {
@@ -848,7 +848,7 @@
     // Compter les routes et zones par type
     const roads = _sessionEtEmbarques("roads");
     const zones = _sessionEtEmbarques("zones");
-    // 🆕 v1.9.3-A1.b.2 : structures session (piliers + murs)
+    // structures session (piliers + murs)
     const structures = _sessionEtEmbarques("structures");
     const nbStructures = structures.length;
     const roadsByType = {
@@ -856,7 +856,7 @@
       secondaire: roads.filter(function(r) { return r.type === "secondaire"; }).length,
       chemin:     roads.filter(function(r) { return r.type === "chemin";     }).length
     };
-    // 🆕 v1.9.3-A1.b.2-fix : ajout du compteur `inaccessible` qui manquait
+    // ajout du compteur `inaccessible` qui manquait
     // (causait "⛔ Inaccessible (undefined)" dans la modale annotations
     // session — bug remonté KARMA après A1.b.1).
     const zonesByType = {
@@ -865,7 +865,7 @@
       effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length,
       inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length
     };
-    // 🆕 v1.9.3-A1.b.2 : compteur sous-types structures pour la modale
+    // compteur sous-types structures pour la modale
     // annotations session (parallèle à zonesByType). Inclut les fronts.
     // Compte les types RÉELLEMENT présents et distingue les personnalisés, dont
     // le nom brut (`cust-sig-…`) doit céder la place au libellé de la légende.
@@ -893,7 +893,7 @@
       return { par: par, custom: custom };
     }
 
-    // 🩸 v1.82.0 — LES SOUS-TYPES ÉTAIENT LISTÉS EN DUR. La modale n'affichait
+    // 🩸 LES SOUS-TYPES ÉTAIENT LISTÉS EN DUR. La modale n'affichait
     // que les types intégrés : un plan importé, dont toutes les annotations
     // portent des types PERSONNALISÉS, voyait donc son total juste (20 664
     // structures) et TOUS ses sous-types à zéro. Signalé par KARMA.
@@ -955,7 +955,7 @@
         return rowSub("zones_" + c.type, c.label, c.n, true);
       }).join("") +
 
-      // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
+      // structures (piliers + murs + fronts) dans les
       // annotations session de l'export image. Calqué sur le bloc zones.
       row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
       rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
@@ -983,7 +983,7 @@
         .concat(roadTypesCustom.map(function (c) { return "ann_roads_" + c.type; })));
       _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]
         .concat(zoneTypesCustom.map(function (c) { return "ann_zones_" + c.type; })));
-      // 🆕 v1.9.3-A1.b.2 : sync parent↔enfants pour les structures (5 sous-types)
+      // sync parent↔enfants pour les structures (5 sous-types)
       // Les sous-types custom sont ajoutés à la volée : la liste ne peut pas
       // être écrite en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
@@ -1021,7 +1021,7 @@
   }
 
   // =========================
-  // 🏷️ v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
+  // peupler le panneau « Personnaliser les libellés »
   // =========================
   //
   // Pour chaque catégorie (icones, traces, zones, structures), liste les
@@ -1062,7 +1062,7 @@
         try { iconUrl = _iconePourTag(e.key); } catch(err) { iconUrl = null; }
       }
       // Visual cue (swatch couleur / icône à gauche du libellé pour repérage)
-      // 🐛 v1.16.0 step2-drawable-fix : geometry first (cf legendCustomization.js)
+      // geometry first (cf legendCustomization.js)
       let swatch = '';
       if (iconUrl) {
         swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
@@ -1127,7 +1127,7 @@
     cont.innerHTML = html;
   }
 
-  // 🧹 v1.76.0 (F19) — la dialog « ajouter une entrée custom » vivait ici EN
+  // (F19) — la dialog « ajouter une entrée custom » vivait ici EN
   // DOUBLE, clone intégral de celle de legendCustomization.js (~200 lignes).
   // Chaque bug devait être corrigé deux fois — le contour vert fantôme (F9)
   // l'a prouvé. On délègue désormais à l'original, dont le z-index (100100)
@@ -1229,7 +1229,7 @@
     xInput.addEventListener("input", _planifierApercu);
     yInput.addEventListener("input", _planifierApercu);
 
-    // 🆕 v1.16.0 step 2 : listeners du panneau « Personnaliser les libellés ».
+    // listeners du panneau « Personnaliser les libellés ».
     // Délégation sur le conteneur pour gérer les rows ajoutées dynamiquement
     // (entrées custom ajoutées via ➕). Tout change/input recalcule l'aperçu.
     const legendCustomBody = document.getElementById("kta-legend-custom-body");
@@ -1277,7 +1277,7 @@
       });
     }
 
-    // 🆕 v1.9.3-A1.b.3 : sélecteur fond — toggle banner info + grise
+    // sélecteur fond — toggle banner info + grise
     // visuellement la section "Calques d'image" quand fond custom.
     function _majBgState() {
       const bgVal = _radioVal("export_bg") || "image";
@@ -1372,7 +1372,7 @@
       legende:     null,
       format:      _radioVal("format"),
       resol:       _radioVal("resol"),
-      // 🆕 v1.9.3-A1.b.3 : choix de fond sauvegardé pour restauration
+      // choix de fond sauvegardé pour restauration
       // d'état (cas du Sélectionner sur la carte → réouverture modale).
       bg:          _radioVal("export_bg") || "image"
     };
@@ -1382,7 +1382,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       etat.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    // 🆕 v1.9.3-A1.b.2 : structures dans les annotations exportables
+    // structures dans les annotations exportables
     ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
@@ -1396,7 +1396,7 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    // 🆕 v1.9.3-A1.b.2 : sous-types structures sauvegardés dans l'état
+    // sous-types structures sauvegardés dans l'état
     ["pilier-1","pilier-2","mur","front-1","front-2"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
@@ -1531,7 +1531,7 @@
     });
     if (etat.format) _setRadio("format", etat.format);
     if (etat.resol)  _setRadio("resol",  etat.resol);
-    // 🆕 v1.9.3-A1.b.3 : restauration du choix de fond
+    // restauration du choix de fond
     if (etat.bg)     _setRadio("export_bg", etat.bg);
 
     if (etat.legende) {
@@ -1696,7 +1696,7 @@
       legende:     null,
       format:      _radioVal("format") || "png",
       resol:       parseFloat(_radioVal("resol") || "1"),
-      // 🆕 v1.9.3-A1.b.3 (KARMA "fond transparent / blanc / noir / image") :
+      // (KARMA "fond transparent / blanc / noir / image") :
       // sélecteur de fond. Valeurs : "image" (défaut), "white", "black",
       // "transparent". Pour les 3 valeurs non-image, les calques d'image
       // sont automatiquement ignorés au render canvas.
@@ -1708,7 +1708,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       opts.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    // 🆕 v1.9.3-A1.b.2 : ajout de "structures" dans la liste des
+    // ajout de "structures" dans la liste des
     // catégories d'annotations exportables.
     ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
@@ -1726,7 +1726,7 @@
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("ann_zones_inaccessible")?.checked ?? true
     };
-    // 🆕 v1.9.3-A1.b.2 : sous-types structures (5 sous-cases incl. fronts)
+    // sous-types structures (5 sous-cases incl. fronts)
     opts.ann.structuresTypes = {
       "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
@@ -1844,7 +1844,7 @@
     }
   }
 
-  // 🩸 v1.82.0 — LES COMPTEURS DE LA MODALE NE VOYAIENT QUE LA SESSION.
+  // 🩸 LES COMPTEURS DE LA MODALE NE VOYAIENT QUE LA SESSION.
   // `getRoads()`, `getZones()` et `getStructures()` ne retournent que les
   // objets DESSINÉS À LA MAIN. Sur un plan IMPORTÉ, où tout le relevé vit
   // dans un data layer, la modale annonçait donc « (0) » partout — et le PDF
@@ -1871,7 +1871,7 @@
 
     // Pour l'aperçu : taille modeste pour rapidité
     const scale = isApercu ? Math.min(800 / baseW, 1) : opts.resol;
-    // 🖨️ 07/10/2026 — `opts.region` ({ x, y, w, h }, unités plan) : seul ce rectangle est
+    // `opts.region` ({ x, y, w, h }, unités plan) : seul ce rectangle est
     // rendu, à l'échelle `scale` (cartes PDF du Mode Secours). Le fond vient des tuiles V2
     // si le plan en a (ktaDessinerRegionTuiles), sinon d'un sous-rectangle de l'image de
     // base ; tout le reste se dessine en coordonnées plan, décalées par une translation.
@@ -1888,12 +1888,12 @@
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
-    // 🆕 v1.9.3-A1.b.3 : pour le fond transparent, on doit créer le
+    // pour le fond transparent, on doit créer le
     // context avec alpha: true (= default, mais on l'explicite). Le PNG
     // sortant contiendra alors un canal alpha exploitable.
     const ctx = canvas.getContext("2d", { alpha: true });
 
-    // 🆕 v1.9.3-A1.b.3 : fond d'export selon opts.bg
+    // fond d'export selon opts.bg
     //   - "image"       → fillRect blanc (sera couvert par l'image plan
     //                     juste après, mais utile si baseImage échoue à
     //                     charger pour avoir un fond propre au lieu de
@@ -1918,7 +1918,7 @@
     // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
     const sc = function(v) { return v * scale; };
 
-    // 🩸 v1.82.0 — L'EXPORT REPRODUISAIT LE PÂTÉ DU DÉZOOM.
+    // 🩸 L'EXPORT REPRODUISAIT LE PÂTÉ DU DÉZOOM.
     // Un front de taille était peint à `style.weight × scale`, soit une largeur
     // décidée par la légende et non par le terrain. Sur un relevé réel — des
     // milliers de galeries espacées de quelques mètres — 10 px de plan valent
@@ -1979,7 +1979,7 @@
     }
 
     // ---------- image principale ----------
-    // 🆕 v1.9.3-A1.b.3 : skip si fond custom (white/black/transparent).
+    // skip si fond custom (white/black/transparent).
     // L'utilisateur a explicitement demandé à NE PAS afficher l'image
     // du plan — on respecte ça en sautant le baseImage drawImage.
     if (!skipBaseImage) {
@@ -1988,7 +1988,7 @@
         try { fondFait = !!(await window.ktaDessinerRegionTuiles(ctx, config, region, scale)).ok; }
         catch(e) { console.warn("[Export] région depuis les tuiles :", e); }
       }
-      // 🖼️ 12/10/2026 — Plan ENTIER (export et aperçu) d'un plan tuilé V2 : si TOUTES les tuiles
+      // Plan ENTIER (export et aperçu) d'un plan tuilé V2 : si TOUTES les tuiles
       // du niveau utile sont déjà sur l'appareil (archive du plan, ou Cache Storage d'un plan
       // serveur), le fond est composé depuis elles — l'image de base (42 Mo mesurés sur un relevé
       // lourd) n'est plus retéléchargée. Même niveau de détail (z = 0 dès l'échelle 0,5 ; aucun
@@ -2023,7 +2023,7 @@
     if (region) { ctx.save(); ctx.translate(-region.x * scale, -region.y * scale); }
 
     // ---------- calques d'image cochés ----------
-    // 🆕 v1.9.3-A1.b.3 : idem pour les image layers (calques tuiles V2,
+    // idem pour les image layers (calques tuiles V2,
     // overlays multi-niveau, etc.). Skip global si fond custom — l'user
     // veut UNIQUEMENT ses annotations sur le fond choisi.
     if (!skipBaseImage) {
@@ -2034,7 +2034,7 @@
         if (!opts.imageLayers[layerCfg.id]) continue;
         try {
           const img = await loadImage(layerCfg.file);
-          // 🆕 v1.38.3 — Si l'image layer a une calibration 2 ancres (embed
+          // Si l'image layer a une calibration 2 ancres (embed
           // plan-config.json depuis v1.38.1), on la dessine avec la transform
           // affine équivalente (rotation + scale + translation) via canvas
           // ctx.transform → l'export reflète exactement ce que l'user voit
@@ -2079,7 +2079,7 @@
       function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
-          // 🩸 v1.82.0 — un type personnalisé passait TOUJOURS, faute d'avoir sa
+          // 🩸 un type personnalisé passait TOUJOURS, faute d'avoir sa
           // case dans la modale. Il en a une maintenant : elle doit compter.
           // `!== false` suffit — une clé absente reste permissive.
           return filtreZ[z.type] !== false;
@@ -2119,7 +2119,7 @@
       const structures = window.getStructures();
       // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
       // converti via `scale` au canvas final.
-      // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
+      // nouvel ordre Z mur < pilier-2 < pilier-1 <
       // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.
       // Cohérent avec structures.js > renderStructures et utils.js.
       const ordreS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
@@ -2220,7 +2220,7 @@
       ctx.restore();
     }
 
-    // 🐛 v1.76.0 — CORRECTION DU BUG HISTORIQUE. Ces deux tables etaient
+    // CORRECTION DU BUG HISTORIQUE. Ces deux tables etaient
     // ecrites a la main et INCOMPLETES : `ZS_EMBED` n'avait pas `inaccessible`,
     // donc le repli `|| ZS_EMBED.remblais` faisait sortir une zone DANGEREUSE
     // en gris remblais. Exactement le meme oubli avait deja frappe `jonction`
@@ -2246,10 +2246,10 @@
       let pts = [];
       let embeddedRoads = [];
       let embeddedZones = [];
-      // 🆕 v1.10.3-structures-embed-fix (KARMA "structures bien incluses ?") :
+      // (KARMA "structures bien incluses ?") :
       // les piliers/murs/fronts définis dans un data layer (data/<plan>/structure.json
       // ou même inline dans un autre .json) étaient lus pour le runtime
-      // Leaflet (utils.js > ajouterPointsDepuisJSON ligne 645) mais PAS
+      // Leaflet (utils.js > ajouterPointsDepuisJSON) mais PAS
       // pour l'export canvas. Bug oublié à l'ajout des structures v1.9.3.
       let embeddedStructures = [];
 
@@ -2270,7 +2270,7 @@
         }
       }
 
-      // 🩸 v1.82.0 — UN PLAN IMPORTÉ N'A PAS DE FICHIER À ALLER CHERCHER.
+      // 🩸 UN PLAN IMPORTÉ N'A PAS DE FICHIER À ALLER CHERCHER.
       // Le fetch ci-dessus suppose que `layerCfg.file` est servi par le site.
       // C'est vrai des plans livrés avec l'app, faux de tout plan généré par
       // l'import SIG : son `sig.json` vit en IndexedDB, jamais sur le serveur.
@@ -2359,9 +2359,9 @@
         _diagAdv.embZones++;
       });
 
-      // 🆕 v1.10.3-structures-embed-fix : structures embarquées (piliers,
+      // structures embarquées (piliers,
       // mur, fronts). Couleurs + tri Z cohérents avec le bloc structures
-      // SESSION (ligne ~1574 dans ce fichier) + utils.js > telechargerPlan
+      // SESSION (plus haut dans ce fichier) + utils.js > telechargerPlan
       // futur. Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
       // (fronts au-dessus, hotfix v1.10.0-hotfix1).
       // Filtre par opts.ann.structures + opts.ann.structuresTypes (les
@@ -2480,10 +2480,10 @@
         if (!r.points || r.points.length === 0) continue;
         // Jonctions toujours autorisees si multiLevel ON (pas dans le filtreR
         // qui ne liste que principal/secondaire/chemin). Sinon respect filtreR.
-        // 🆕 v1.16.0 step2-drawable : les customs (cust-XXX) sont toujours
+        // les customs (cust-XXX) sont toujours
         // exportés (pas filtrés par roadsTypes qui ne liste que les
         // built-in). KARMA peut les masquer via le toggle visibilité.
-        // 🩸 v1.82.0 — idem : le filtre s'applique désormais aussi aux types
+        // 🩸 idem : le filtre s'applique désormais aussi aux types
         // personnalisés, qui ont leur case. Les jonctions restent hors filtre
         // (elles ne sont pas listées dans la modale).
         if (r.type !== "jonction" && filtreR[r.type] === false) continue;
@@ -2672,7 +2672,7 @@
         titrePrincipal: "#c0c8d8",
         meta:         "#7a8298"
       },
-      // 🆕 v1.10.3-pdf-v3 (KARMA "pas en theme sombre, un truc plus pro
+      // (KARMA "pas en theme sombre, un truc plus pro
       // mais même principe") : style print/impression — fond blanc opaque,
       // texte foncé, accent bleu saturé. Adapté aux PDF/print, lisible à
       // l'œil sur papier sans inverser la palette dark-on-screen.
@@ -2705,7 +2705,7 @@
       metaLignes = [titre + ver + auteur, dd + "/" + mm + "/" + aaaa];
     }
 
-    // 🆕 v1.16.0 step 2 : pour les 4 catégories (icones, traces, zones,
+    // pour les 4 catégories (icones, traces, zones,
     // structures), on délègue à window.LegendCustomization qui applique la
     // cascade session > plan > default. Les libellés peuvent être renommés
     // et certaines entrées peuvent être cachées par l'utilisateur (UI
@@ -2723,7 +2723,7 @@
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
         { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
-        // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
+        // D — Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
       ];
       const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
@@ -2792,7 +2792,7 @@
       });
       if (lignesAutres.length > 0) entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: lignesAutres });
 
-      // 🆕 v1.16.0 step 2 : entrées custom catégorie "icones" ajoutées par
+      // entrées custom catégorie "icones" ajoutées par
       // l'user (cascade plan + session). Visible si isVisible et si iconUrl.
       if (LC) {
         const customsIcones = LC.listCustomEntries("icones")
@@ -2857,7 +2857,7 @@
       if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.zones"), lignes: lignes });
     }
 
-    // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : section
+    // (KARMA "structures pas dans la légende") : section
     // Structures. Polygones (piliers + mur) avec stroke noir + fill couleur ;
     // polylines (fronts) avec lineColor uni. Couleurs cohérentes avec
     // STRUCTURE_STYLES (structures.js) et les helpers d'export PNG/KMZ
@@ -2881,7 +2881,7 @@
             { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
           ];
       if (LC) {
-        // 🐛 v1.16.0 step2-drawable-fix : geometry first comme discriminator
+        // geometry first comme discriminator
         LC.listCustomEntries("structures")
           .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
           .forEach(function(e) {
@@ -3149,14 +3149,14 @@
       await _dessinerSections(colDroite, xColDroite, cyColStart);
     }
 
-    // 🆕 v1.10.3-pdf-v3 (KARMA "générer une image de la légende") :
+    // (KARMA "générer une image de la légende") :
     // retourne les dimensions effectivement dessinées pour permettre à
     // pdfExport.js d'extraire la boîte légende et la coller dans le PDF.
     return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by };
   }
 
   // =========================
-  // 🆕 v1.10.3 (PDF) : API PUBLIQUE — exposé pour pdfExport.js
+  // (PDF) : API PUBLIQUE — exposé pour pdfExport.js
   // =========================
   // Wrapper qui prend les opts simplifiées de pdfExport.js et construit le
   // dict complet attendu par _genererCanvasExport. Évite de réimplémenter
@@ -3220,7 +3220,7 @@
       fullOpts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
     }
 
-    // 15/10/2026 (KARMA : « le générateur PDF ne marche pas » sur un plan de 23 434 × 17 457) — « standard » =
+    // (KARMA : « le générateur PDF ne marche pas » sur un plan de 23 434 × 17 457) — « standard » =
     // résolution native = 409 Mpx : le navigateur refuse le canvas, le PDF partait avec une image 0 × 0, sans
     // message. Même garde-fou que l'export image : au plus SEUIL_PX_EXPORT (iPhone : IOS_MAX_PX_CANVAS). Un PDF
     // n'a de toute façon pas besoin de plus (A0 à 300 dpi ≈ 140 Mpx).
@@ -3244,7 +3244,7 @@
   window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
 
   // =========================
-  // 🆕 v1.10.3-pdf-v3 : Génère un canvas standalone de la LÉGENDE seule
+  // Génère un canvas standalone de la LÉGENDE seule
   // =========================
   // Approche KARMA "comme l'export PNG, on génère une image de la légende
   // que l'on colle dans le PDF". Évite tous les problèmes de font/emoji de

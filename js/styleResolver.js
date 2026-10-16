@@ -148,7 +148,7 @@
     let c = null, b = null;
     try {
       c = LC.getColor(categorie, cle);
-      // 🎨 v1.76.1 — bordure INDÉPENDANTE (zones + piliers/mur). Sans elle :
+      // bordure INDÉPENDANTE (zones + piliers/mur). Sans elle :
       // comportement v1.76.0 inchangé (dérivée / noire).
       if (typeof LC.getBorderColor === "function") b = LC.getBorderColor(categorie, cle);
     } catch(e) { return s; }
@@ -337,7 +337,7 @@
 
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
-  // 🎨 26/09/2026 — exposee pour les DEUX écrans qui gardent délibérément
+  // exposee pour les DEUX écrans qui gardent délibérément
   // leur propre palette (`emergencyMode.js`, `osmView.js`) : sans ça, une
   // couleur choisie par l'utilisateur ne les atteignait pas, et la seule
   // façon de la respecter aurait été de RECOPIER ici la règle « ce qu'une
@@ -348,7 +348,7 @@
     try { return _appliquerOverride(categorie, cle, style); }
     catch(e) { return style; }
   };
-  // 🎨 v1.77.0 — dérivation bordure↔remplissage du canon, exposée pour que
+  // dérivation bordure↔remplissage du canon, exposée pour que
   // le widget OSM HOME (qui résout ses overrides PAR PLAN depuis les slots
   // SessionPersist, hors état live) garde la même relation visuelle.
   window.ktaAssombrir       = _assombrir;

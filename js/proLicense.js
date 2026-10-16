@@ -13,7 +13,7 @@
 // UNE seule source : le SERVEUR — un fichier `/Licence-pro.json` à la racine du
 // site (le déployeur active le mode pro pour tous les visiteurs de l'installation).
 //
-// 🗑️ 09/10/2026 — L'IMPORT D'UNE LICENCE PAR L'UTILISATEUR (source « locale », depuis
+// L'IMPORT D'UNE LICENCE PAR L'UTILISATEUR (source « locale », depuis
 // la gate ou le profil) EST RETIRÉ : il n'activait aucune fonction pro (règle E : les
 // modules exigent une licence SERVEUR) et servait seulement à passer la gate
 // community. Une licence locale déjà importée est purgée au démarrage.
@@ -71,7 +71,7 @@
 
   var FETCH_PATH = "/Licence-pro.json";
 
-  // 🔏 04/10/2026 — LICENCES SIGNÉES. Une licence n'est acceptée que si :
+  // LICENCES SIGNÉES. Une licence n'est acceptée que si :
   //   - sa `signature` (ECDSA P-256 / SHA-256, brute r||s en base64) est valide pour
   //     la clé publique ci-dessous (la clé privée ne quitte jamais KARMA) ;
   //   - elle n'est pas expirée (`valid_until`) ;
@@ -111,7 +111,7 @@
       if (!raw) return null;
       var data = JSON.parse(raw);
       if (data && data.instance === "pro") {
-        // 🔏 09/10/2026 — Une licence en cache qui a EXPIRÉ n'est plus une licence, même hors
+        // Une licence en cache qui a EXPIRÉ n'est plus une licence, même hors
         // ligne (sans réseau, le serveur ne peut pas la refuser à notre place) : purgée ici, elle
         // fait passer l'installation pro en « licence » → app fermée (main.js), jamais en
         // community sur les données de l'appareil.

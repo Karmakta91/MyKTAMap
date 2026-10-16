@@ -154,7 +154,7 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
 }
 
 // ═════════ 5 bis. LA GARDE INCOGNITO, EXÉCUTÉE ═════════
-// 🩸 03/10/2026 — le contrôle ci-dessus cherchait un TEXTE : il est resté vert
+// 🩸 le contrôle ci-dessus cherchait un TEXTE : il est resté vert
 // pendant que `_isIncognitoOn()` appelait `IncognitoMode.isActive()`, une
 // fonction qui n'existait pas. L'incognito ne coupait donc pas la Vue OSM.
 // On charge le VRAI module incognito, on extrait la VRAIE garde des deux

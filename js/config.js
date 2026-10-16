@@ -43,7 +43,7 @@
   }
 })();
 
-// 🧩 01/10/2026 (décision KARMA) — la batterie devient une fonctionnalité
+// la batterie devient une fonctionnalité
 // optionnelle, OFF pour TOUS. `sauvegarderPrefsUtilisateur` réécrivant toutes
 // les clés, les installations existantes ont la batterie stockée à `true` :
 // changer le défaut ne les toucherait pas. On l'éteint donc UNE fois, marqueur
@@ -91,14 +91,14 @@ let DEFAULT_CONFIG = {
   // dans initMapFromConfig → reload du plan requis pour changement.
   scaledMarkers: true,
 
-  // 🆕 v1.9.2 : afficher les cercles aux intersections de tracés (default true).
+  // afficher les cercles aux intersections de tracés (default true).
   // Quand 2 roads se croisent, un cercle plein est dessiné au point
   // d'intersection (cf. road.js > renderRoads). Sur des plans très denses,
   // ça peut surcharger visuellement → l'user peut désactiver via toggle
   // dans ⚙️ Réglages (map mode) ou ⚙️ Configuration (loader/home).
   // Pas de reload requis : un appel à renderRoads() après toggle suffit
   // pour faire disparaître / réapparaître les cercles à chaud.
-  // ⚠️ v1.74.0 — DÉFAUT BASCULÉ À false (décision KARMA). Les cercles ne
+  // ⚠️ DÉFAUT BASCULÉ À false (décision KARMA). Les cercles ne
   // signalent PAS un contact réel : `road.js > _calculerIntersectionsRoads`
   // pose aussi un cercle quand une EXTRÉMITÉ passe à moins de
   // ROAD_PROXIMITY_TOLERANCE (8 px plan) d'un segment voisin. Deux tracés qui
@@ -114,8 +114,8 @@ let DEFAULT_CONFIG = {
   // Lue à chaud par tracking.js > avancer(). Sans effet si le plan n'a pas de
   // réseau (garde-fou runtime via RoadGraph.isReady()).
   smartNav: false,
-  smartNavRadiusM:       6,    // 🆕 v1.49.0 — tolérance latérale du verrou sur tracé (m), réglable ⚙️
-  smartNavHeadingWeight: 0.7,  // 🆕 v1.49.0 — poids du cap aux croisements (px/°), réglable ⚙️
+  smartNavRadiusM:       6,    // tolérance latérale du verrou sur tracé (m), réglable ⚙️
+  smartNavHeadingWeight: 0.7,  // poids du cap aux croisements (px/°), réglable ⚙️
 
   // 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME (accrochage au dessin).
   // Pref GLOBALE, défaut OFF (le geste de dessin historique reste le défaut —
@@ -124,13 +124,13 @@ let DEFAULT_CONFIG = {
   // ⚙️ Réglages : le magnétisme améliore la qualité du GRAPHE, donc il sert
   // aussi au Pathfinder (itinéraires) même si la nav intelligente est OFF.
   snapDraw:   false,
-  // 🪟 v1.85.1 (KARMA) : les panneaux d outils (Tracés / Zones / Structures)
+  // les panneaux d outils (Tracés / Zones / Structures)
   // s ouvrent CENTRÉS par défaut. Ancrés au bouton, ils passaient sous le
   // footer sur téléphone dès que leur liste s allongeait — un plan importé
   // ajoute un type par niveau. Le réglage rend l ancrage à qui le préfère,
   // typiquement sur grand écran où la place ne manque pas.
   panneauxAncres: false,
-  // ➕ 16/10/2026 (KARMA) : boutons de zoom +/− sur les cartes (plan, widget OSM
+  // boutons de zoom +/− sur les cartes (plan, widget OSM
   // de l'accueil, Vue OSM). Défaut OFF : on zoome au doigt ou à la molette,
   // les boutons ne servaient presque à personne et mangeaient le coin.
   zoomBoutons: false,
@@ -138,7 +138,7 @@ let DEFAULT_CONFIG = {
                     // plan au clic selon le zoom courant — « si c'est proche
                     // à l'œil, ça s'accroche », quel que soit le niveau de zoom)
 
-  // 🧭 v1.37.0 — Orientation du Nord (offset en degrés vs haut du plan).
+  // Orientation du Nord (offset en degrés vs haut du plan).
   // Default 0 = haut du plan = Nord (comportement historique strict).
   // Quand l'image du plan n'est pas orientée Nord-haut (photo aérienne avec
   // cadrage arbitraire, plan cataphile sans rosace, etc.), on calibre cet
@@ -152,7 +152,7 @@ let DEFAULT_CONFIG = {
   // boussole d'orientation et rose des vents du header.
   northOffsetDeg: 0,
 
-  // 🆕 v1.34.26 — Vibration haptique (Web Vibration API).
+  // Vibration haptique (Web Vibration API).
   // Pref GLOBALE, défaut ON. Lue à chaud par window.kta_vibrate(pattern) qui
   // est le point d'entrée unique pour tous les modules qui veulent vibrer
   // (waypoint atteint Mode Itinéraire, confirmation Mode Secours, etc.).
@@ -162,7 +162,7 @@ let DEFAULT_CONFIG = {
   // L'user reste maître : même sur device supporté, peut décocher s'il
   // ne veut pas de vibration sous terre (anti-bruit pour méditation /
   // discrétion en cavité avec d'autres personnes).
-  // 🔕 v1.85.2 (KARMA « je le vois coché par défaut ») : OFF par défaut. Une
+  // (KARMA « je le vois coché par défaut ») : OFF par défaut. Une
   // app qui vibre sans qu'on l'ait demandé surprend, et sous terre chaque
   // vibration est de la batterie en moins.
   // ⚠️ Passer ce défaut à false NE SUFFIT PAS : tout test en `!== false` rend
@@ -201,7 +201,7 @@ let DEFAULT_CONFIG = {
                                      // hors range (ex: level: 4 → ajout du 3 et 4).
 };
 
-// 🩸 v1.82.0 — LES RÉGLAGES DE PODOMÈTRE, FIGÉS À LEUR VALEUR D'USINE.
+// 🩸 LES RÉGLAGES DE PODOMÈTRE, FIGÉS À LEUR VALEUR D'USINE.
 //
 // `DEFAULT_CONFIG` porte mal son nom : il est RÉÉCRIT à chaque chargement de
 // plan (`Object.assign(DEFAULT_CONFIG, cfg)`) pour que `resetConfig()` rende
@@ -233,18 +233,18 @@ let APP_CONFIG = { ...DEFAULT_CONFIG };
 try {
   const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
   if ("debugMode" in saved) APP_CONFIG.debugMode = !!saved.debugMode;
-  // 🆕 v1.34.26 — Restaure la pref vibration au boot
+  // Restaure la pref vibration au boot
   if ("vibrationEnabled" in saved) APP_CONFIG.vibrationEnabled = !!saved.vibrationEnabled;
   if ("batterieEnabled" in saved) APP_CONFIG.batterieEnabled = !!saved.batterieEnabled;
   if ("replayEnabled" in saved) APP_CONFIG.replayEnabled = !!saved.replayEnabled;
   if ("heatmapEnabled" in saved) APP_CONFIG.heatmapEnabled = !!saved.heatmapEnabled;
   // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
-  // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne
+  // restaurer showRoadIntersections avant que renderRoads tourne
   if ("showRoadIntersections" in saved) APP_CONFIG.showRoadIntersections = !!saved.showRoadIntersections;
   // 🧭 Nav Intelligente (C2) : restaurer smartNav (pref globale, défaut OFF)
   if ("smartNav" in saved) APP_CONFIG.smartNav = !!saved.smartNav;
-  // 🆕 v1.49.0 — tolérances réglables du verrou sur tracé (override des défauts)
+  // tolérances réglables du verrou sur tracé (override des défauts)
   if (Number.isFinite(saved.smartNavRadiusM))       APP_CONFIG.smartNavRadiusM       = saved.smartNavRadiusM;
   if (Number.isFinite(saved.smartNavHeadingWeight)) APP_CONFIG.smartNavHeadingWeight = saved.smartNavHeadingWeight;
   // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF)
@@ -252,7 +252,7 @@ try {
   if ("panneauxAncres" in saved) APP_CONFIG.panneauxAncres = !!saved.panneauxAncres;
   if ("zoomBoutons" in saved) APP_CONFIG.zoomBoutons = !!saved.zoomBoutons;
   if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
-  // 👣 v1.96.0 — podomètre GLOBAL (taille de pas, seuil, cooldown) : la foulée
+  // podomètre GLOBAL (taille de pas, seuil, cooldown) : la foulée
   // est celle de la personne, le seuil et le cooldown ceux du téléphone —
   // jamais une propriété du plan (décision KARMA 17/09/2026).
   _appliquerPodometreGlobal(APP_CONFIG, saved);
@@ -289,7 +289,7 @@ function resetRuntimeAssets() {
   });
   window.RUNTIME_ASSETS  = {};
   window.PLAN_CONFIG     = null;
-  // 🐛 v1.34.11 (Pack RAM Phase 2) — Libère la référence au ZIP source du
+  // (Pack RAM Phase 2) — Libère la référence au ZIP source du
   // plan précédent. Sans ça, le JSZip + ses entrées compressées resteraient
   // en RAM jusqu'à la fin de la session. Sur un plan V2 avec 100 Mo de
   // tuiles, c'est 100 Mo qui ne sont JAMAIS libérés au plan switch.
@@ -314,7 +314,7 @@ function findMatchingFile(logicalPath, files) {
 
 async function registerAsset(logicalPath, file, opts) {
   const normalized = normalizePath(logicalPath);
-  // 🐛 v1.34.11 (Pack RAM Phase 2) — Support pour stubs lazy tile (objet plain
+  // (Pack RAM Phase 2) — Support pour stubs lazy tile (objet plain
   // avec `_lazyTile: true`, pas un File). Émis par extraireZip pour les tuiles
   // hors whitelist. Le blob n'est PAS extrait au boot, économie RAM importante.
   // Le blob sera extrait à la demande par _extractLazyAsset(path) au moment du
@@ -349,7 +349,7 @@ async function registerAsset(logicalPath, file, opts) {
   }
 }
 
-// 🐛 v1.34.11 (Pack RAM Phase 2) — Extrait à la demande une tuile depuis
+// (Pack RAM Phase 2) — Extrait à la demande une tuile depuis
 // window._lazyZipRef. Appelée par tiling.js > _renderNiveau (avant le render
 // loop, en pré-extract Promise.all parallèle sur toutes les tuiles du niveau).
 // Met à jour RUNTIME_ASSETS[path].file = <new File>. Idempotent : si déjà
@@ -393,13 +393,13 @@ function cloneAndResolvePlanConfig(rawConfig) {
     resolved.plan.baseImage = getRuntimeAssetUrl(resolved.plan.baseImage) || resolved.plan.baseImage;
   if (resolved.plan?.collisionImage)
     resolved.plan.collisionImage = getRuntimeAssetUrl(resolved.plan.collisionImage) || resolved.plan.collisionImage;
-  // 🆕 v1.34.19 — Champ optionnel `plan.histoirePdf` : chemin relatif vers
+  // Champ optionnel `plan.histoirePdf` : chemin relatif vers
   // un PDF embarqué dans le ZIP (ex: "data/histoire.pdf"). Résolu en blob
   // URL via RUNTIME_ASSETS pour l'affichage iframe dans la modale Mode
   // Histoire (cf js/modeHistoire.js). Pas d'erreur si absent.
   if (resolved.plan?.histoirePdf)
     resolved.plan.histoirePdf = getRuntimeAssetUrl(resolved.plan.histoirePdf) || resolved.plan.histoirePdf;
-  // 📄 v1.71.0 — multi-PDF Histoire : résolution de chaque entrée du tableau
+  // multi-PDF Histoire : résolution de chaque entrée du tableau
   if (Array.isArray(resolved.plan?.histoirePdfs))
     resolved.plan.histoirePdfs = resolved.plan.histoirePdfs.map(function(p) {
       return getRuntimeAssetUrl(p) || p;
@@ -438,7 +438,7 @@ function _normalizeAngleDeg(v) {
   return a;
 }
 
-// 🩸 v1.97.5 — AUCUNE VALEUR NUMÉRIQUE D'UN PLAN-CONFIG N'ENTRE HORS BORNES.
+// 🩸 AUCUNE VALEUR NUMÉRIQUE D'UN PLAN-CONFIG N'ENTRE HORS BORNES.
 //
 // Retour KARMA : « j'ai pu générer des plans avec des valeurs délirantes à
 // l'époque où le générateur laissait régler le tracking — sensibilité à 1,2
@@ -486,7 +486,7 @@ function buildAppConfigFromPlan(planConfig) {
   const cfg = {
     imageHeight:   _lireNombrePlan(plan.imageHeight, DEFAULT_CONFIG.imageHeight, { positif: true }, "imageHeight"),
     imageWidth:    _lireNombrePlan(plan.imageWidth,  DEFAULT_CONFIG.imageWidth,  { positif: true }, "imageWidth"),
-    // 🎯 v1.76.1 — l'override d'échelle per-plan n'est PAS appliqué ici :
+    // l'override d'échelle per-plan n'est PAS appliqué ici :
     // buildAppConfigFromPlan tourne AVANT que _currentLoadedPlanId soit posé
     // (main.js:1079 vs :1104) — lire la pref ici prendrait celle du plan
     // PRÉCÉDENT (fuite inter-plans). Il est appliqué par
@@ -495,7 +495,7 @@ function buildAppConfigFromPlan(planConfig) {
     // (`strict: true`). Une échelle nulle ferait valoir l'infini à toute
     // distance, une échelle non numérique les ferait valoir NaN.
     scale:         _lireNombrePlan(tracking.scale, DEFAULT_CONFIG.scale, { positif: true }, "scale"),
-    // 👣 v1.96.0 — LE PLAN NE DIT PLUS LA FOULÉE. `tracking.stepLength`,
+    // LE PLAN NE DIT PLUS LA FOULÉE. `tracking.stepLength`,
     // `stepThreshold` et `stepCooldown` d'un plan-config sont IGNORÉS, même
     // présents (anciens plans, générateurs d'avant) : ce sont des réglages de
     // la personne et de son téléphone, globaux à l'appareil (`app_user_prefs`,
@@ -504,7 +504,7 @@ function buildAppConfigFromPlan(planConfig) {
     stepLength:    TRACKING_USINE.stepLength,
     startX:        _lireNombrePlan(tracking.startX, DEFAULT_CONFIG.startX, { min: 0 }, "startX"),
     startY:        _lireNombrePlan(tracking.startY, DEFAULT_CONFIG.startY, { min: 0 }, "startY"),
-    // 🩸 v1.82.0 — RÉPARATION D'UN RÉGLAGE STRUCTURELLEMENT IMPOSSIBLE.
+    // 🩸 RÉPARATION D'UN RÉGLAGE STRUCTURELLEMENT IMPOSSIBLE.
     //
     // Trois générateurs (SIG, GPX, KMZ) ont écrit pendant des mois
     // `stepThreshold: 1.2` et `stepCooldown: 280` dans les plans qu'ils
@@ -539,7 +539,7 @@ function buildAppConfigFromPlan(planConfig) {
     visibleLevels:    [0],
     availableLevels:  [-2, -1, 0, 1, 2],
 
-    // 🧭 v1.37.0 — Mapping plan-config.json > plan.northOffsetDeg vers APP_CONFIG.
+    // Mapping plan-config.json > plan.northOffsetDeg vers APP_CONFIG.
     // Sécurisation : clamp [0, 360[ + normalisation. Default 0 si absent
     // (rétrocompat stricte : tout plan v1.36.x → 0 → comportement actuel).
     northOffsetDeg:   _normalizeAngleDeg(plan.northOffsetDeg)
@@ -559,7 +559,7 @@ function buildAppConfigFromPlan(planConfig) {
 
   // Restaurer les préférences GLOBALES depuis localStorage
   // (perfPreset est désormais par plan — résolu côté loader/main.js)
-  // 🆕 v1.9.2 : on lit aussi scaledMarkers et showRoadIntersections ici
+  // on lit aussi scaledMarkers et showRoadIntersections ici
   // pour qu'ils survivent au plan switch (APP_CONFIG = { ...cfg } écrase
   // sinon ces flags entre 2 plans).
   try {
@@ -570,7 +570,7 @@ function buildAppConfigFromPlan(planConfig) {
     if ("smartNav"              in saved) cfg.smartNav              = !!saved.smartNav;
     if (Number.isFinite(saved.smartNavRadiusM))       cfg.smartNavRadiusM       = saved.smartNavRadiusM;
     if (Number.isFinite(saved.smartNavHeadingWeight)) cfg.smartNavHeadingWeight = saved.smartNavHeadingWeight;
-    // 🐛 v1.75.0 (repro KARMA « je n'ai pas le flash doré ») — `snapDraw`
+    // (repro KARMA « je n'ai pas le flash doré ») — `snapDraw`
     // MANQUAIT ici. Il était bien sauvegardé et restauré au BOOT (bloc
     // app_user_prefs plus haut), mais APP_CONFIG est RECONSTRUIT à chaque
     // chargement de plan par cette fonction : toute pref absente de cette
@@ -583,7 +583,7 @@ function buildAppConfigFromPlan(planConfig) {
     if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
     if ("zoomBoutons" in saved) cfg.zoomBoutons = !!saved.zoomBoutons;
     if ("batterieEnabled" in saved) cfg.batterieEnabled = !!saved.batterieEnabled;
-    // 🐛 01/10/2026 — `vibrationEnabled` manquait ici (même piège que snapDraw
+    // `vibrationEnabled` manquait ici (même piège que snapDraw
     // ci-dessus) : la vibration retombait OFF à chaque ouverture de plan, et la
     // première sauvegarde de réglage écrasait le choix de l'utilisateur.
     if ("vibrationEnabled" in saved) cfg.vibrationEnabled = !!saved.vibrationEnabled;
@@ -593,7 +593,7 @@ function buildAppConfigFromPlan(planConfig) {
     // La valeur globale reste lue plus bas comme REPLI de migration, via
     // `getPlanSmartNav`, appelé au chargement du plan.
     if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
-    _appliquerPodometreGlobal(cfg, saved);   // 👣 v1.96.0
+    _appliquerPodometreGlobal(cfg, saved);
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -601,7 +601,7 @@ function buildAppConfigFromPlan(planConfig) {
   // champ resterait undefined et la check `!== false` le traiterait comme
   // truthy — fonctionnel mais moins explicite.
   if (cfg.scaledMarkers === undefined)         cfg.scaledMarkers         = DEFAULT_CONFIG.scaledMarkers !== false;
-  // ⚠️ v1.74.0 : passé de `!== false` à `=== true` — le défaut est désormais
+  // ⚠️ passé de `!== false` à `=== true` — le défaut est désormais
   // OFF, l'idiome `!== false` aurait continué à rendre true sur undefined.
   if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections === true;
   if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
@@ -637,7 +637,7 @@ function resolveServerPath(p, baseDir) {
   if (p.charAt(0) === "/") return p;
   const base = String(baseDir || "").replace(/\/$/, "");
 
-  // 🩸 v1.86.1 — UN CHEMIN `data/…` EST RELATIF AU ZIP, PAS À LA RACINE DU SITE.
+  // 🩸 UN CHEMIN `data/…` EST RELATIF AU ZIP, PAS À LA RACINE DU SITE.
   // Le générateur écrit `data/MonPlan.png` dans le plan-config parce que c'est
   // la mise en page DU ZIP. Jusqu'ici ce chemin était rendu tel quel : déployé
   // dans `data/toto/`, le fichier réel est à `data/toto/data/MonPlan.png` mais
@@ -654,7 +654,7 @@ function resolveServerPath(p, baseDir) {
     return (base && base !== "data" && p.indexOf(base + "/") !== 0) ? base + "/" + p : p;
   }
 
-  // 🎨 v1.87.2 — `icon/…` RESTE À LA RACINE DU SITE, toujours.
+  // `icon/…` RESTE À LA RACINE DU SITE, toujours.
   //
   // 🩸 CE QUE LA v1.86.2 AVAIT TENTÉ, ET POURQUOI C'ÉTAIT FAUX. On préfixait
   // par le dossier du plan toute icône ABSENTE du catalogue `TAGS_BUILTIN`,
@@ -672,7 +672,7 @@ function resolveServerPath(p, baseDir) {
   // qui SONDE réellement le serveur. Ici, on ne touche à rien.
   if (p.indexOf("icon/") === 0) return p;
 
-  // 🩸 v1.86.2 — DOSSIERS DE L'APPLICATION, jamais relatifs à un plan.
+  // 🩸 DOSSIERS DE L'APPLICATION, jamais relatifs à un plan.
   // Trouvé en écrivant le correctif ci-dessus : `icons.default` vaut
   // `lib/leaflet/images/marker-icon.png`. Tant que `resolveServerPaths` ne
   // touchait pas à `icons`, ce chemin passait au travers ; dès qu'on le traite,
@@ -680,7 +680,7 @@ function resolveServerPath(p, baseDir) {
   // l'icône par défaut de TOUS les points sans tag.
   if (/^(lib|css|js|docs|assets)\//.test(p)) return p;
 
-  // 🩸 v1.88.4 — RÉTRO-COMPAT : UN NOM DE FICHIER NU VIENT DU DOSSIER `data/`.
+  // 🩸 RÉTRO-COMPAT : UN NOM DE FICHIER NU VIENT DU DOSSIER `data/`.
   // Les importateurs SIG / GPX / KMZ écrivaient le fichier dans `data/` du ZIP
   // mais le déclaraient SANS le préfixe dans le plan-config (corrigé à la
   // source en v1.88.4). En import LOCAL ça passait — `findMatchingFile`
@@ -700,7 +700,7 @@ function resolveServerPath(p, baseDir) {
   return base + "/" + p;
 }
 
-// 🎨 26/09/2026 (audit icônes, étage 1) — UNE VALEUR D'ICÔNE QUI N'EST PAS
+// UNE VALEUR D'ICÔNE QUI N'EST PAS
 // UN CHEMIN N'EN DEVIENT PAS UN.
 //
 // 🚨 Mesuré : un plan généré depuis le 13/06/2026 écrit dans son
@@ -720,7 +720,7 @@ function resolveServerPath(p, baseDir) {
 // le catalogue built-in reprend alors la main tout seul.
 // ⚠️ On ne touche PAS au fichier du plan : seule la config en mémoire est
 // nettoyée, et le warn dit lequel régénérer.
-// 🔒 05/10/2026 (audit XSS) : une valeur d'icône finit dans `src="…"` (repères, légende, filtres,
+// 🔒 une valeur d'icône finit dans `src="…"` (repères, légende, filtres,
 // favoris, exports). Les caractères qui sortent d'un attribut ou d'une URL (" < > ` \, contrôles)
 // la rendent impossible, et un data-URI doit être une IMAGE.
 function ktaCheminIconePlausible(v) {
@@ -734,7 +734,7 @@ function ktaCheminIconePlausible(v) {
 }
 window.ktaCheminIconePlausible = ktaCheminIconePlausible;
 
-// 🔒 05/10/2026 (audit XSS) — un plan-config ou une session viennent d'un fichier PARTAGÉ : leurs
+// 🔒 un plan-config ou une session viennent d'un fichier PARTAGÉ : leurs
 // couleurs et libellés finissent dans du HTML (pastilles `style="background:…"`, titres, listes).
 // Couleur : #hex, rgb()/rgba()/hsl()/hsla() numériques, ou un nom simple — sinon null (le canon
 // reprend la main). Texte : sans < > " ` (rien qui ouvre une balise ou sorte d'un attribut).
@@ -802,14 +802,14 @@ function resolveServerPaths(config, baseDir) {
   if (config.plan?.collisionImage) config.plan.collisionImage = resolveServerPath(config.plan.collisionImage, baseDir);
   (config.imageLayers || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
   (config.dataLayers  || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
-  // 🎨 v1.86.2 — LES ICÔNES SONT ENFIN TRAITÉES.
+  // LES ICÔNES SONT ENFIN TRAITÉES.
   // 🩸 L'ancien commentaire ici disait « icons.* déjà gérés par
   // resolveServerPath » — c'était FAUX : `resolveServerPaths` ne les
   // parcourait pas du tout. Elles fonctionnaient donc par ABSENCE de
   // traitement (chemin laissé tel quel → racine du site), ce qui marchait
   // pour les icônes de l'app et condamnait les icônes personnalisées.
   if (config.icons && typeof config.icons === "object") {
-    // 🎨 26/09/2026 : d'abord jeter ce qui n'est pas un chemin, sinon on
+    // d'abord jeter ce qui n'est pas un chemin, sinon on
     // fabrique une URL bien formée vers un fichier qui n'existera jamais.
     nettoyerIconesConfig(config, "plan serveur " + baseDir);
     Object.keys(config.icons).forEach(function(k) {
@@ -823,7 +823,7 @@ function resolveServerPaths(config, baseDir) {
 
 
 // =====================================================================
-// 🎨 v1.87.2 — ICÔNES PERSONNALISÉES D'UN PLAN SERVEUR : ON SONDE
+// ICÔNES PERSONNALISÉES D'UN PLAN SERVEUR : ON SONDE
 // =====================================================================
 // Le préfixe `icon/` est ambigu : il désigne les icônes livrées avec l'app
 // (à la racine du site) ET celles ajoutées dans le générateur, qui vivent
@@ -848,7 +848,7 @@ async function resoudreIconesPlanServeur(config, baseDir) {
   });
   if (!cles.length) return config;
 
-  // 🟢 26/09/2026 (audit icônes, étage 1) — 21 SONDES 404 PAR OUVERTURE.
+  // 21 SONDES 404 PAR OUVERTURE.
   //
   // Mesuré sur un relevé réel : le `plan-config` déclare 21 icônes en `icon/…`
   // et le dossier `icon/` livré dans le ZIP est **vide** — le générateur n'y
@@ -912,12 +912,12 @@ async function loadAppConfig(planPath) {
     // Résoudre les chemins relatifs au dossier du plan
     config = resolveServerPaths(config, baseDir);
 
-    // 🎨 v1.87.2 — les icônes PERSO du plan, sondées pour de vrai (cf.
+    // les icônes PERSO du plan, sondées pour de vrai (cf.
     // resoudreIconesPlanServeur). Await : le rendu des marqueurs lit
     // config.icons juste après, une résolution tardive arriverait trop tard.
     config = await resoudreIconesPlanServeur(config, baseDir);
 
-    // 🩸 v1.88.3 — le DOSSIER DU PLAN, retenu sur la config. Le tuilage en a
+    // 🩸 le DOSSIER DU PLAN, retenu sur la config. Le tuilage en a
     // besoin : le generateur ecrit toujours les tuiles dans `<plan>/data/tiles`,
     // alors que l emplacement de l image, lui, depend de la recette de
     // deploiement. Deriver la racine des tuiles du seul baseImage se trompait
@@ -953,17 +953,17 @@ function sauvegarderPrefsUtilisateur() {
     const existing = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
     existing.debugMode             = !!APP_CONFIG.debugMode;
     existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
-    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections === true;   // ⚠️ v1.74.0 : default FALSE
+    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections === true;   // ⚠️ default FALSE
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
-    if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
-    if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
+    if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;
+    if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight;
     existing.snapDraw              = APP_CONFIG.snapDraw === true;
-    existing.zoomBoutons           = APP_CONFIG.zoomBoutons === true;           // ➕ 16/10/2026 : défaut OFF
-    existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE
-    existing.vibrationEnabled      = APP_CONFIG.vibrationEnabled === true;      // 📳 v1.85.2 : defaut OFF
-    existing.batterieEnabled       = APP_CONFIG.batterieEnabled === true;       // 🧩 01/10/2026 : defaut OFF
-    existing.replayEnabled         = APP_CONFIG.replayEnabled === true;         // 🧩 01/10/2026 : defaut OFF
-    existing.heatmapEnabled        = APP_CONFIG.heatmapEnabled === true;        // 🧩 01/10/2026 : defaut OFF
+    existing.zoomBoutons           = APP_CONFIG.zoomBoutons === true;           // défaut OFF
+    existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // defaut CENTRE
+    existing.vibrationEnabled      = APP_CONFIG.vibrationEnabled === true;      // defaut OFF
+    existing.batterieEnabled       = APP_CONFIG.batterieEnabled === true;       // defaut OFF
+    existing.replayEnabled         = APP_CONFIG.replayEnabled === true;         // defaut OFF
+    existing.heatmapEnabled        = APP_CONFIG.heatmapEnabled === true;        // defaut OFF
     if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
@@ -1038,7 +1038,7 @@ function getPlanShowsIntersections(planId) {
   if (window.APP_CONFIG && typeof window.APP_CONFIG.showRoadIntersections === "boolean") {
     return window.APP_CONFIG.showRoadIntersections;
   }
-  return false; // ⚠️ v1.74.0 : default OFF (était true)
+  return false; // ⚠️ default OFF (était true)
 }
 
 // Setter per-plan + re-render à chaud. Appelé par le toggle dans Réglages
@@ -1216,7 +1216,7 @@ function resetPlanNorthOffset(planId) {
 }
 
 // =========================
-// 🎯 v1.76.1 — ÉCHELLE PER-PLAN (bug remonté par KARMA le 06/08)
+// ÉCHELLE PER-PLAN (bug remonté par KARMA le 06/08)
 // =========================
 // L'échelle modifiée dans ⚙️ Réglages n'était persistée NULLE PART :
 // `appliquerConfig` écrivait APP_CONFIG.scale en mémoire, mais
@@ -1261,7 +1261,7 @@ window.setPlanScale = setPlanScale;
 window.appliquerScalePerPlan = appliquerScalePerPlan;
 
 // =========================
-// 👣 v1.82.0 — RÉGLAGES DE PODOMÈTRE PERSISTÉS PER-PLAN
+// RÉGLAGES DE PODOMÈTRE PERSISTÉS PER-PLAN
 // =========================
 // TROISIÈME OCCURRENCE DU MÊME DÉFAUT. Un réglage modifié dans ⚙️ Réglages
 // était écrit dans APP_CONFIG *en mémoire*, que `sauvegarderPrefsUtilisateur`
@@ -1289,7 +1289,7 @@ const PODO_BORNES = {
   startY:        { min: 0,   max: Infinity }
 };
 
-// 👣 v1.96.0 — les trois réglages de podomètre sont GLOBAUX (`app_user_prefs`).
+// les trois réglages de podomètre sont GLOBAUX (`app_user_prefs`).
 // Un seul écrivain (l'écran ⚙️ Réglages) et un seul lecteur (ci-dessous),
 // bornes de l'écran, refus sec hors bornes comme setPlanTracking.
 const PODO_CLES = ["stepLength", "stepThreshold", "stepCooldown"];
@@ -1381,9 +1381,9 @@ function appliquerTrackingPerPlan() {
 }
 window.setPlanTracking         = setPlanTracking;
 window.appliquerTrackingPerPlan = appliquerTrackingPerPlan;
-window.setGlobalPodometre      = setGlobalPodometre;   // 👣 v1.96.0
+window.setGlobalPodometre      = setGlobalPodometre;
 
-// 🧭 v1.85.3 — la nav intelligente suit la MEME contrainte : appliquee une fois
+// la nav intelligente suit la MEME contrainte : appliquee une fois
 // l id du plan connu, JAMAIS depuis buildAppConfigFromPlan ou l on lirait les
 // prefs du plan PRECEDENT.
 function appliquerSmartNavPerPlan() {
@@ -1397,7 +1397,7 @@ function appliquerSmartNavPerPlan() {
 window.appliquerSmartNavPerPlan = appliquerSmartNavPerPlan;
 
 // =========================
-// 📉 v1.83.0 — PROFONDEUR DES NIVEAUX
+// PROFONDEUR DES NIVEAUX
 // =========================
 // Jusqu'ici un niveau était un ENTIER NU : -1, 0, +1. Aucune altitude nulle
 // part dans le projet (vérifié : `kmzExport.js` écrit même `alt = 0` en dur,
@@ -1489,7 +1489,7 @@ window.getProfondeurNiveau  = getProfondeurNiveau;
 window.proposerProfondeurs  = proposerProfondeurs;
 
 // =========================
-// 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
+// ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
 // =========================
 // Cas d'usage : on connaît le GPS d'UN seul point (A, ex. l'entrée), mais le
 // plan a une ÉCHELLE fiable (px/m) et son orientation Nord est calibrée
@@ -1568,7 +1568,7 @@ window.buildAppConfigFromPlan      = buildAppConfigFromPlan;
 window.sauvegarderPrefsUtilisateur = sauvegarderPrefsUtilisateur;
 window.setDebugMode                = setDebugMode;
 
-// ➕ 16/10/2026 — Boutons de zoom +/− selon la préférence `zoomBoutons` (défaut
+// Boutons de zoom +/− selon la préférence `zoomBoutons` (défaut
 // OFF). Une carte créée avec `zoomControl: false` s'inscrit ici ; le réglage
 // changé à chaud repasse sur toutes les cartes encore en vie.
 const _cartesZoom = [];
@@ -1595,7 +1595,7 @@ window.ktaBoutonsZoomPartout = function () {
     try { ktaBoutonsZoom(c); } catch (e) { console.warn("[Config] Boutons de zoom :", e); }
   });
 };
-// 🆕 v1.36.2 — helpers per-plan pour showRoadIntersections (option déplacée
+// helpers per-plan pour showRoadIntersections (option déplacée
 // de Configuration home → Réglages map mode, persistée par plan)
 window.getPlanShowsIntersections   = getPlanShowsIntersections;
 window.getPlanFond                 = getPlanFond;
@@ -1605,9 +1605,9 @@ window.setPlanFond                 = setPlanFond;
 window.ktaAppliquerFondPlan        = ktaAppliquerFondPlan;
 window.ktaCouleurFondPlan          = ktaCouleurFondPlan;
 window.setPlanShowsIntersections   = setPlanShowsIntersections;
-window.getPlanSmartNav             = getPlanSmartNav;    // 🧭 v1.85.3 — par plan
+window.getPlanSmartNav             = getPlanSmartNav;    // par plan
 window.setPlanSmartNav             = setPlanSmartNav;
-// 🧭 v1.37.0 — helpers per-plan pour northOffsetDeg (calibration Nord du
+// helpers per-plan pour northOffsetDeg (calibration Nord du
 // plan — appliquée au tracker, à la boussole et à la rose des vents header)
 window.getPlanNorthOffset          = getPlanNorthOffset;
 window.setPlanNorthOffset          = setPlanNorthOffset;

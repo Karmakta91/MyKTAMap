@@ -69,7 +69,7 @@
   // Callbacks abonnés au changement de langue (re-render des modales ouvertes).
   const _onChangeCbs = [];
   let _initialized = false;
-  // 🆕 v1.68.1 (audit clés manquantes) : promesse d'init MÉMOÏSÉE. Avant,
+  // promesse d'init MÉMOÏSÉE. Avant,
   // deux appels concurrents à init() (main.js + osmHomePreview au boot)
   // relançaient chacun le Promise.all → DOUBLE fetch des dicos. Et surtout,
   // init() devient une barrière gratuite : tout module qui rend du texte
@@ -83,7 +83,7 @@
     return AVAILABLE_LANGS.some(function(l) { return l.code === code; });
   }
 
-  // 🆕 v1.46.4 (audit M2) : mémoïsation de la langue active. getLang() est
+  // mémoïsation de la langue active. getLang() est
   // appelé à CHAQUE t() (= des milliers de fois au rendu d'un gros plan) et
   // relisait localStorage à chaque appel. La langue ne change QU'AU setLang
   // (seul écrivain de LANG_STORAGE_KEY) → on cache le résultat et on l'invalide
@@ -104,7 +104,7 @@
     return _cachedLang;
   }
 
-  // 🧩 14/10/2026 — Dictionnaires fournis par une EXTENSION (I18n.ajouter) : gardés à part et refusionnés à
+  // Dictionnaires fournis par une EXTENSION (I18n.ajouter) : gardés à part et refusionnés à
   // chaque chargement du dico de la langue (chargement paresseux, reload). Une clé de l'app n'est JAMAIS
   // écrasée : l'extension n'ajoute que des clés qui n'existent pas (préfixe propre recommandé, ex. « pro. »).
   const _ajouts = {};          // code → { clé: texte }
@@ -134,7 +134,7 @@
   // une langue manquante doit dégrader vers le fallback, pas casser l'app).
   function _loadDict(code) {
     if (_dicts[code]) return Promise.resolve(_dicts[code]);
-    // 🆕 v1.46.6 — CACHE-BUSTER PAR VERSION DE BUILD. Règle DÉFINITIVEMENT les
+    // CACHE-BUSTER PAR VERSION DE BUILD. Règle DÉFINITIVEMENT les
     // « clés brutes/humanisées après mise à jour » : l'URL `?v=<build>` change à
     // CHAQUE release → contourne TOUTES les couches de cache (HTTP navigateur,
     // précache SW, cache serveur/CDN) qui servaient un vieux dico au boot. Le SW
@@ -143,7 +143,7 @@
     // charge avant) : URL nue = comportement d'avant.
     var _build = (window.__MKM__ && window.__MKM__.build) ? window.__MKM__.build : "";
     var _url = "lang/" + code + ".json" + (_build ? "?v=" + encodeURIComponent(_build) : "");
-    // 🆕 v1.47.0 — `cache: "reload"` (et non "no-cache") : force un GET réseau qui
+    // `cache: "reload"` (et non "no-cache") : force un GET réseau qui
     // IGNORE le cache HTTP du navigateur, au lieu de simplement le revalider.
     // Sans SW (ex. après killsw), "no-cache" pouvait recevoir un 304 et ressservir
     // un `fr.json?v=<build>` PÉRIMÉ tant que le build ne changeait pas (clés i18n
@@ -244,7 +244,7 @@
   function setLang(code) {
     if (!_isKnownLang(code)) return Promise.resolve();
     try { localStorage.setItem(LANG_STORAGE_KEY, code); } catch(e) {}
-    _cachedLang = code; // 🆕 v1.46.4 (M2) : invalide/rafraîchit le cache getLang.
+    _cachedLang = code; // (M2) : invalide/rafraîchit le cache getLang.
     return ensureLang(code).then(function() {
       _onChangeCbs.forEach(function(cb) {
         try { cb(code); } catch(e) { console.warn("[I18n] onChange cb failed :", e); }
@@ -261,7 +261,7 @@
     };
   }
 
-  // 🆕 v1.47.0 — Recharge les dicos (langue active + fallback) DEPUIS LE RÉSEAU :
+  // Recharge les dicos (langue active + fallback) DEPUIS LE RÉSEAU :
   // vide le cache mémoire → _loadDict refetch en `cache: "reload"` (frais garanti),
   // puis notifie les abonnés (onChange). Sert au lissage du swap SW passif : si le
   // 1er boot a chargé un dico périmé (clés humanisées), on rafraîchit + re-render à

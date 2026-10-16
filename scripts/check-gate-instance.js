@@ -62,7 +62,7 @@ const VRAI = "a".repeat(64);          // faux « hash communautaire », forme va
 const KIOSK = "b".repeat(64);         // hash d'instance
 
 // ═════════ 1. isUnlocked, EXÉCUTÉ SUR TOUTE LA MATRICE ═════════
-// 🔓 04/10/2026 : plus de code communautaire. Accès libre (« Continuer sans
+// plus de code communautaire. Accès libre (« Continuer sans
 // licence » / licence pro), mot de passe d'instance mémorisé, ou ancien code
 // hérité (converti en accès libre, jamais comparé à une saisie).
 {
@@ -181,7 +181,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /if \(!RE_HASH\.test\(propre\)\) \{/.test(GATE));
   t("…et un accessHash fautif est signalé, pas avalé en silence",
     /console\.warn\("\[UnlockGate\] config\.accessHash ignoré/.test(GATE));
-  // 🏛️ v2.6.0 (chantier 2) — la gate ne relit plus l'index : elle lit la
+  // (chantier 2) — la gate ne relit plus l'index : elle lit la
   // config d'instance chargée UNE fois avant les gates (js/ktaInstance.js).
   t("le hash vient de la config d'instance partagée (config.accessHash), lue une seule fois",
     /const st = await window\.KtaInstance\.charger\(\);\s*cfg = st \? st\.config : null;/.test(GATE) &&
@@ -256,7 +256,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /if \(_instanceBoot && _instanceBoot\.repondu && window\.UnlockGate &&[\s\S]{0,120}window\.UnlockGate\.revaliderInstance\(_instanceBoot\.config \? _instanceBoot\.config\.accessHash : null, true\);/.test(MAIN));
   const iCharge = MAIN.indexOf("await window.KtaInstance.charger() : null;");
   const iRev = MAIN.indexOf("window.UnlockGate.revaliderInstance(");
-  const iGate = MAIN.indexOf("window.UnlockGate && !window.UnlockGate.isUnlocked())");   // v2.7.0 : précédé de !_gateDelegueeOk
+  const iGate = MAIN.indexOf("window.UnlockGate && !window.UnlockGate.isUnlocked())");   // précédé de !_gateDelegueeOk
   t("🔑 ordre du boot : config d'instance → revalidation → gate (rotation à effet immédiat)",
     iCharge > 0 && iRev > iCharge && iGate > iRev);
   t("la licence n'est attendue avant la gate que si l'instance déclare « on » (myktamap.fr non ralenti)",
@@ -349,7 +349,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
       jouer(false, "local", true) === false && jouer(false, "server", false) === false);
   }
 
-  // 🗑️ 09/10/2026 — L'IMPORT DE LICENCE PAR L'UTILISATEUR EST RETIRÉ (gate et profil) : il
+  // L'IMPORT DE LICENCE PAR L'UTILISATEUR EST RETIRÉ (gate et profil) : il
   // n'activait aucune fonction pro (règle E : licence SERVEUR exigée) et ne servait qu'à passer
   // la gate. Il ne doit pas revenir : ni bloc d'import dans la gate, ni importFile exposé.
   const PL = fs.readFileSync("js/proLicense.js", "utf8");
@@ -364,7 +364,7 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   t("le prédicat instanceRequiertMotDePasse est exposé",
     /instanceRequiertMotDePasse: instanceRequiertMotDePasse/.test(GATE) &&
     /async function instanceRequiertMotDePasse\(\)/.test(GATE));
-  // 🩸 v1.90.9 — LE BLOCAGE NE DÉPEND PLUS DE LA SOURCE. Il ne reste AUCUN test
+  // 🩸 LE BLOCAGE NE DÉPEND PLUS DE LA SOURCE. Il ne reste AUCUN test
   // `getSource() === "local"` dans la décision de bypass : le laisser aurait
   // épargné la licence serveur, exactement le trou que KARMA a fait fermer.
   t("🩸 la décision de bypass ne discrimine plus par source (plus de test \"local\")",

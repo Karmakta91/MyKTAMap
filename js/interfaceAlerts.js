@@ -7,8 +7,8 @@
 // =========================
 // INTERFACE ALERTS — Modales d'alertes publiques + mise à jour
 // =========================
-// 🆕 v1.31.0 (P3 Lot 1 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 9324-9701 avant extraction) pour réduire le
+// (P3 Lot 1 — découpe interface.js) : module extrait de
+// js/interface.js pour réduire le
 // volume du fichier principal et améliorer la maintenabilité.
 //
 // Aucun changement de comportement runtime. Les 4 fonctions exposées
@@ -91,7 +91,7 @@ window.afficherModaleAlerteAbsente = function(status) {
     title = window.I18n.t("alerts.absent.uptodate.title");
     const installed = (window.__MKM__ && window.__MKM__.build) || (lastVersionData && lastVersionData.version) || "?";
     msg = window.I18n.t("alerts.absent.uptodate.msg", { version: _esc(installed) });
-    // 🐛 v1.34.25 — On affiche les notes UNIQUEMENT si la version cachée
+    // On affiche les notes UNIQUEMENT si la version cachée
     // dans localStorage correspond exactement à la version installée. Sinon
     // le cache est stale (cas typique : update douce v1.34.X → v1.35.0 →
     // rollback v1.34.4 — le LS gardait les notes de v1.35.0 alors que
@@ -160,7 +160,7 @@ window.afficherModaleAlerteAbsente = function(status) {
 // `opts.fromBoot` : si true (boot post-splash), bypass-acquittement check
 //                   (= filtre sur non-acquittées seulement). Si false (click
 //                   bouton 🚨), affiche TOUTES les alertes même acquittées.
-// 🧩 13/10/2026 — Source d'une alerte : celle que fournit une extension (« 🏢 Organisation… ») ; une alerte du
+// Source d'une alerte : celle que fournit une extension (« 🏢 Organisation… ») ; une alerte du
 // fichier alert.json n'est étiquetée « plateforme » que si une extension fournit aussi des alertes (sinon rien
 // ne change à l'écran). Texte échappé par l'appelant.
 function _ktaSourceAlerte(a) {
@@ -371,13 +371,13 @@ window.afficherModaleUpdateDispo = function(opts) {
           notesHtml +
         '</div>' +
 
-        // 13/10/2026 (KARMA) : un seul mode de mise à jour depuis le retrait du reset d'ici — plus de rubrique
+        // un seul mode de mise à jour depuis le retrait du reset d'ici — plus de rubrique
         // « deux modes » : une ligne dit ce qui est rafraîchi et ce qui est gardé.
         '<div class="kta-aide-section">' +
           '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55; margin-bottom:8px;">' +
             window.I18n.t("alerts.update.softDesc") +
           '</div>' +
-          // 10/10/2026 (retour testeur en prod) : le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
+          // le « 💥 Reset complet » était proposé ICI, à côté du bouton de mise
           // à jour — il efface tout (sessions, photos, backups) sans recours. Il ne vit plus que dans 🆘 Dépannage.
           '<div style="color:#8892a4; font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +

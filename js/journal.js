@@ -123,7 +123,7 @@
   // Delta de temps ignoré (veille machine / onglet suspendu) — cf homeProfile.
   const MAX_TICK_MS = 5 * 60 * 1000;
 
-  // 🩸 v1.85.2 (KARMA, sortie terrain) — REPRISE D UNE SORTIE INTERROMPUE.
+  // 🩸 REPRISE D UNE SORTIE INTERROMPUE.
   // Quitter la PWA pour une autre appli (changer de musique, prendre un appel)
   // la fait DECHARGER par iOS. Au retour, l app reboote et `onPlanLoaded`
   // ouvrait systematiquement une NOUVELLE sortie : une seule vraie sortie
@@ -137,7 +137,7 @@
   // Le delai n est qu une borne de bon sens par-dessus.
   const REPRISE_MS = 45 * 60 * 1000;
 
-  // 🔀 28/09/2026 (KARMA, 1:a 2:b 3:a) — SUSPENSION AU CHANGEMENT DE PLAN.
+  // SUSPENSION AU CHANGEMENT DE PLAN.
   // « Durant ma sortie je vais sur un autre plan pour le montrer ; quand je
   // reviens dans la carrière où je suis réellement, la sortie ne reprend
   // pas. » Le changement de plan CLÔTURAIT la sortie (`closedBy: "auto"`,
@@ -262,7 +262,7 @@
       .catch(function(e) { console.warn("[Journal] remove() échec :", e); return false; });
   }
 
-  // 🐛 v1.74.0 (repro KARMA : « la liste affiche ma note, mais la fiche est
+  // (repro KARMA : « la liste affiche ma note, mais la fiche est
   // vide et je ne peux que la réécrire ») — CAUSE RACINE : setNote écrivait
   // en IDB SANS toucher `_cur`, l'objet RAM de la sortie EN COURS. Or `flush()`
   // ré-écrit `_snapshot()` (= `_cur`) toutes les 30 s et à la fermeture du
@@ -407,7 +407,7 @@
   // Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à
   // dessiner assis, comme parcourir 2 km sans rien annoter).
   //
-  // 16/08/2026 — deux corrections :
+  // deux corrections :
   //   • un « 📍 Je suis ici » validé bascule en terrain À LUI SEUL : l'user
   //     affirme être physiquement passé par un point précis, c'est le geste
   //     terrain le moins ambigu de l'app (et il ne produit AUCUN pas PDR).
@@ -658,7 +658,7 @@
     _lastTick = (document.visibilityState === "hidden") ? null : _now();
     _startTimer();
     console.log("[Journal] 🔁 Sortie reprise :", rec.id, "· reprise n°" + _cur.reprises + (detail ? " · " + detail : ""));
-    // ▶️ 28/09/2026 (KARMA, « b ») — la SORTIE reprend, mais pas le SUIVI :
+    // (KARMA, « b ») — la SORTIE reprend, mais pas le SUIVI :
     // tout chargement de plan le coupe (tracking.js > initTracking), et un
     // redémarrage de l'app aussi. Sur une sortie terrain, on propose de le
     // relancer d'un geste. Pas de relance automatique : sur iOS l'accès aux
@@ -723,7 +723,7 @@
   //   • critère bureau : ≥ 10 min actives ET ≥ 1 ajout (une vraie séance de
   //     travail, pas un plan ouvert puis refermé).
   //
-  // ⚠️ 16/08/2026 — les deux critères sont désormais un OU, plus un AIGUILLAGE
+  // ⚠️ les deux critères sont désormais un OU, plus un AIGUILLAGE
   // sur le type. L'ancienne version ne testait QUE la branche correspondant au
   // classement : une session basculée « terrain » par un seul pas PDR n'était
   // plus jugée que sur ses 50 m, et 3 h de travail avec 20 ajouts partaient à
@@ -802,7 +802,7 @@
     // ⚠️ L'affinage passe AVANT le test de pertinence : 30 m à vol d'oiseau
     // peuvent valoir 200 m de galeries. Juger la sortie sur la ligne droite puis
     // la jeter reproduirait EXACTEMENT le défaut que ce lot corrige.
-    // 🩸 v1.85.2 — `force` sur une CLOTURE MANUELLE. Le budget de sommets
+    // 🩸 `force` sur une CLOTURE MANUELLE. Le budget de sommets
     // (20 000, cf. tracking.js) protege l archivage AUTOMATIQUE, qui doit
     // rester invisible : au-dela, l affinage reseau est saute et le vol
     // d oiseau conserve, SANS un mot. Sur un releve importe, c est
@@ -836,7 +836,7 @@
 
   // Appelé par main.js > _libererRessourcesPlanPrecedent (après
   // SessionPersist.onPlanUnload, avant le teardown qui vide la timeline).
-  // 🔀 28/09/2026 — le changement de plan SUSPEND la sortie au lieu de la
+  // le changement de plan SUSPEND la sortie au lieu de la
   // finaliser (cf SUSPENSION_MS). Pas de filtre de pertinence ni d'affinage
   // ici : c'est une pause, pas une fin. La finalisation viendra au retour
   // (sortie reprise puis clôturée plus tard) ou à l'expiration du délai.
@@ -905,7 +905,7 @@
     const t = (type === TYPE_TERRAIN) ? TYPE_TERRAIN : TYPE_BUREAU;
     const estCourante = !!(_cur && String(_cur.id) === String(id));
     return get(id).then(function(rec) {
-      // ⚠️ 16/08/2026 — la sortie EN COURS n'est écrite en IDB qu'au premier
+      // ⚠️ la sortie EN COURS n'est écrite en IDB qu'au premier
       // flush (30 s). Avant ce délai, `get` rendait null et le reclassement
       // partait en SILENCE : invisible tant que le seul point d'entrée était
       // la fiche d'une sortie archivée, mais le bouton 🚶/🖥️ de la modale
@@ -1154,9 +1154,9 @@
     remove:       remove,
     setNote:      setNote,
     setType:      setType,
-    fusionner:    fusionner,     // 🔗 v1.85.2 — recoller des sorties hachees
-    dureeMs:      dureeMs,       // ⏱️ v1.85.2 — LA regle, une seule fois
-    setFin:       setFin,        // ✏️ v1.85.2 — corriger la fin oubliee
+    fusionner:    fusionner,     // recoller des sorties hachees
+    dureeMs:      dureeMs,       // LA regle, une seule fois
+    setFin:       setFin,        // corriger la fin oubliee
     REPRISE_MS:   REPRISE_MS,
     affinerEnCours: affinerEnCours,
     stats:        stats,
@@ -1171,7 +1171,7 @@
   // Balayage différé : le boot a mieux à faire que d'ouvrir une IDB. 4 s après
   // le load, l'app est stabilisée (plan chargé ou HOME affiché).
   //
-  // 🩸 14/09/2026 : il ne tourne PLUS sous condition de `isEnabled()`. Il ne
+  // 🩸 il ne tourne PLUS sous condition de `isEnabled()`. Il ne
   // crée rien — il régularise ce qui traîne. Sous l'ancienne garde, une sortie
   // interrompue par un crash puis le carnet décoché restait « en cours » à
   // jamais, et le démarrage manuel (qui marche carnet décoché) créait le même

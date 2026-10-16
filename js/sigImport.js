@@ -82,7 +82,7 @@
   const LAT_MAX = 90;
   const LNG_MAX = 180;
 
-  // 🎚️ v1.82.0 — DEUX SEUILS, plus un refus sec à 20 000.
+  // DEUX SEUILS, plus un refus sec à 20 000.
   //
   // Le seuil unique venait d'une crainte raisonnable — « un fichier SIG de
   // cette taille ferait fondre le navigateur au rendu Leaflet » — mais il n'a
@@ -154,7 +154,7 @@
     // encore). S'il annonce autre chose que CRS84/4326, c'est un refus net.
     if (obj.crs && obj.crs.properties && obj.crs.properties.name) {
       const nom = String(obj.crs.properties.name).toUpperCase();
-      // 📐 v1.82.0 — un `crs` annonçant Lambert 93 n'est plus un refus :
+      // un `crs` annonçant Lambert 93 n'est plus un refus :
       // les coordonnées seront reconnues et la conversion proposée. On
       // laisse simplement passer, `validerCrs` tranchera sur les CHIFFRES
       // (plus fiables qu'une étiquette : QGIS écrit parfois un `crs` qui ne
@@ -471,7 +471,7 @@
   // 🎯 TESTABLE SANS TABLE DE RÉFÉRENCE, comme le Lambert 93 : l'équateur tombe
   // exactement sur y = 0, le méridien de Greenwich sur x = 0, un tour complet
   // de longitude fait exactement 2πR, et la projection est conforme (échelle
-  // identique dans toutes les directions). `scripts/check-webmercator.js`
+  // identique dans toutes les directions). `scripts/check-geotiff.js`
   // vérifie ces propriétés — l'aller-retour seul ne prouverait rien.
   const WEBMERC = (function () {
     const R = 6378137.0;            // rayon de la sphère EPSG:3857
@@ -560,7 +560,7 @@
       if (la > LAT_MAX || ln > LNG_MAX) horsBornes++;
     }
     if (horsBornes > 0) {
-      // 📐 v1.82.0 — avant de refuser, on regarde si c'est du Lambert 93.
+      // avant de refuser, on regarde si c'est du Lambert 93.
       // Si oui, ce n'est plus une erreur mais une CONVERSION À PROPOSER :
       // l'appelant décide, l'utilisateur est prévenu. La règle du module
       // (« jamais de correction silencieuse ») tient toujours — on ne
@@ -679,11 +679,11 @@
       chemin: "chemin", sentier: "chemin", passage: "chemin",
       jonction: "jonction", puits: "jonction", escalier: "jonction"
     },
-    // 🏛️ v1.82.0 — structures. Les valeurs viennent de relevés réels : un
+    // structures. Les valeurs viennent de relevés réels : un
     // export SIG écrit « pilier », « PILIER_1 », « mur »… Le préfixe `struct:`
     // dit à `ingest` de ranger l'objet dans les structures et non les zones.
     structures: {
-      // 🎯 v1.82.0 — DÉFAUTS CALÉS SUR LE TERRAIN (arbitrage KARMA, 03/09).
+      // DÉFAUTS CALÉS SUR LE TERRAIN (arbitrage KARMA, 03/09).
       // Dans un relevé SIG de carrière, ce qui est nommé « galerie » ou
       // « pilier » n'est pas un cheminement ni un volume : c'est le CONTOUR
       // relevé au décamètre, donc un FRONT DE TAILLE. KARMA les mappait déjà
@@ -755,7 +755,7 @@
     return out;
   }
 
-  // 🎨 v1.82.0 — UNE COULEUR PAR NIVEAU (retour KARMA : « je ne peux pas créer
+  // UNE COULEUR PAR NIVEAU (retour KARMA : « je ne peux pas créer
   // de légende custom depuis Convertir SIG, du coup je peux pas créer des
   // couleurs pour les N niveaux et les N zones »).
   //
@@ -793,7 +793,7 @@
   // il est lu par celle des lignes comme par celle des polygones, et un const
   // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
   // premier tracé — vécu au premier essai sur le relevé réel).
-  // 🔀 v1.82.0 — ROUTAGE LIBRE (retour KARMA : « des zones peuvent aussi
+  // ROUTAGE LIBRE (retour KARMA : « des zones peuvent aussi
   // être des fronts de taille — quelqu'un qui aurait fait un polygone via un
   // front de taille »). Exact, et la règle vaut dans tous les sens : la
   // GÉOMÉTRIE du fichier SIG ne dit pas ce que l'objet EST. Un polygone peut
@@ -813,7 +813,7 @@
     return { famille: familleNaturelle, type: s };
   }
 
-  // 🏷️ v1.82.0 — PRÉVISUALISER les entrées de légende AVANT de générer.
+  // PRÉVISUALISER les entrées de légende AVANT de générer.
   // L'écran SIG en a besoin pour les proposer à l'édition : au moment où
   // l'utilisateur veut les renommer, la génération n'a pas encore eu lieu et
   // les entrées n'existent donc pas encore.
@@ -823,7 +823,7 @@
     opts = opts || {};
     if (opts.couleurParNiveau !== true || !opts.cleNiveau) return [];
 
-    // 🩸 v1.82.0 (retour KARMA : « il me crée des tracés et zones alors que
+    // 🩸 (retour KARMA : « il me crée des tracés et zones alors que
     // j'ai demandé que des structures »). La première version déduisait la
     // famille de la GÉOMÉTRIE (ligne → tracé, polygone → zone) en ignorant le
     // mapping. Elle annonçait donc autre chose que ce que `ingest` allait
@@ -905,7 +905,7 @@
     const mapTraces   = opts.mapTraces || {};
     const mapZones    = opts.mapZones  || {};
     const mapTags     = opts.mapTags   || {};
-    // 🏔️ v1.82.0 — LE NIVEAU SE LIT PAR OBJET (retour KARMA du 03/09 sur le
+    // LE NIVEAU SE LIT PAR OBJET (retour KARMA du 03/09 sur le
     // relevé de Citon_Graves_RD, qui porte SIX niveaux).
     // AVANT : `opts.level` était un entier UNIQUE appliqué à tout l'import —
     // un relevé multi-niveaux arrivait donc entièrement à plat, pendant que la
@@ -948,7 +948,7 @@
 
     // 🎨 Types par niveau : opt-in. Sans lui, rien ne change.
     const couleurParNiveau = opts.couleurParNiveau === true;
-    // 🏷️ v1.82.0 — entrées de légende PRÉ-ÉDITÉES par l'utilisateur (libellé,
+    // entrées de légende PRÉ-ÉDITÉES par l'utilisateur (libellé,
     // couleur). Fournies, elles sont utilisées TELLES QUELLES : c'est ce qui
     // permet de renommer « Galerie -3 » en son vrai nom depuis l'écran SIG,
     // sans repasser par le générateur de plans.
@@ -969,7 +969,7 @@
     // Remplace le type d'un objet par un type custom propre à son niveau.
     // Retourne le type à utiliser — inchangé si l'option est off, si l'objet
     // n'a pas de niveau, ou si la famille n'est pas colorable.
-    // 🩸 v1.82.0 (bug remonté par KARMA : « j'ai bien pris front-1 et pourtant
+    // 🩸 (bug remonté par KARMA : « j'ai bien pris front-1 et pourtant
     // il me fait encore des zones »). La cause était ICI.
     // Pour un type CUSTOM, `structures.js > _isPolylineType` ne peut pas deviner
     // la forme depuis le nom : il lit `entry.geometry === "polyline"` dans la
@@ -1056,7 +1056,7 @@
       ({ structures: structures, zones: zones, roads: roads }[rL.famille] || roads).push(o);
     });
 
-    // 🏛️ v1.82.0 — LES STRUCTURES, 4e famille (retour KARMA du 03/09 sur un
+    // LES STRUCTURES, 4e famille (retour KARMA du 03/09 sur un
     // vrai relevé) : « mes zones ne peuvent pas être des structures, or c'est
     // justement ça (pilier) ». L'import ne connaissait que points / tracés /
     // zones, alors qu'un polygone SIG est très souvent un PILIER — l'objet le
@@ -1109,7 +1109,7 @@
     };
   }
 
-  // 📐 v1.82.0 — DIMENSIONS FINALES DU CANVAS : la largeur demandée, la hauteur
+  // DIMENSIONS FINALES DU CANVAS : la largeur demandée, la hauteur
   // déduite du terrain, puis un plafond de SURFACE appliqué aux deux à la fois.
   //
   // Le plafond répond à deux problèmes distincts qui ont la même cause :
@@ -1139,7 +1139,7 @@
     return { w: W, h: H, mpx: mpx, alerte: alerte };
   }
 
-  // 📐 v1.82.0 — HAUTEUR DU CANVAS, DÉDUITE DE LA FORME DU TERRAIN.
+  // HAUTEUR DU CANVAS, DÉDUITE DE LA FORME DU TERRAIN.
   // Exposée : le générateur l'utilise pour de vrai, et l'écran d'import s'en
   // sert pour AFFICHER la valeur avant de générer. Une seule implémentation —
   // deux calculs séparés finiraient par diverger, et l'utilisateur verrait
@@ -1182,7 +1182,7 @@
   // =========================================================================
   // LÉGENDE DU PLAN — assemblage de ce qui part dans plan-config.json
   // =========================================================================
-  // 🏷️ v1.83.1 — TOUT l'état édité voyage, plus seulement les entrées par niveau.
+  // TOUT l'état édité voyage, plus seulement les entrées par niveau.
   //
   // 🩸 LE BUG (KARMA, 04/09 : « j'avais modifié ma légende, elle n'a pas été
   // emportée dans l'export ») : `plan.customLegend` était assemblé ICI avec
@@ -1252,7 +1252,7 @@
       throw new Error("sig.err.gpxImportMissing");
     }
 
-    // 📐 v1.82.0 — LA HAUTEUR EST DÉDUITE, PLUS SAISIE (retour KARMA du 03/09 :
+    // LA HAUTEUR EST DÉDUITE, PLUS SAISIE (retour KARMA du 03/09 :
     // « si mon plan est plus grand, il sort du canvas »).
     //
     // 🩸 LA CAUSE : `buildTransform` à 2 points est une SIMILITUDE — rotation
@@ -1299,7 +1299,7 @@
     const zip = new JSZip();
     zip.file("data/baseImage.png", baseBlob);
 
-    // 🧱 v1.82.0 — TUILAGE V2 (retour KARMA : « le plan n'est pas généré en V2,
+    // TUILAGE V2 (retour KARMA : « le plan n'est pas généré en V2,
     // donc inutilisable en OSM »). Exact, et le blocage est franc : la Vue OSM
     // du MODE PLAN (`osmView.js`) refuse tout plan non tuilé — pas par confort
     // mais pour une raison documentée, le CRASH MOBILE : avant la v1.39.10 elle
@@ -1319,7 +1319,7 @@
     let tilingManifest = null;
     try {
       if (typeof _genererTuilesV2 === "function") {
-        // 📊 v1.82.0 — le 3ᵉ paramètre du tuileur est un callback de PROGRESSION,
+        // le 3ᵉ paramètre du tuileur est un callback de PROGRESSION,
         // et il n'était pas passé. Le tuilage d'un canvas 10000×11680 prend une
         // dizaine de secondes : sans retour à l'écran, l'utilisateur regarde un
         // label figé et croit que ça a planté. Le jumeau GPX affiche une barre
@@ -1348,7 +1348,7 @@
         author:      opts.planAuthor  || "",
         imageWidth:  W,
         imageHeight: H,
-        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // 🩸 PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
         // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
         // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
         // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
@@ -1364,7 +1364,7 @@
       },
       tracking: {
         startX: Math.round(W / 2), startY: Math.round(H / 2),
-        // 📏 v1.82.0 — L ECHELLE ETAIT EN DUR A 50 px/m, et donc FAUSSE de
+        // L ECHELLE ETAIT EN DUR A 50 px/m, et donc FAUSSE de
         // plusieurs centaines de pour cent sur tout plan SIG (KARMA : « meme
         // si je prends celle calculee par le georef c est completement faux »).
         // Sur Citon : 4000 px pour 1199 m de terrain = 3,34 px/m reels,
@@ -1375,7 +1375,7 @@
         scale: (transform && transform.metresParPixel > 0)
                ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
                : 50,
-        // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown ici : ces
+        // plus de stepLength / stepThreshold / stepCooldown ici : ces
         // réglages sont ceux de la personne, globaux à l'appareil (⚙️ Réglages).
       },
       icons: { default: "icon/iconetrack.png", track: "icon/iconetrack.png" },
@@ -1383,10 +1383,10 @@
       dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "data/sig.json", visible: true }]
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
-    // 🏷️ 16/09/2026 — étiquettes proposées par le Générateur (déjà normalisées
+    // étiquettes proposées par le Générateur (déjà normalisées
     // par PlanRegistry.normaliserTags). Absentes = champ absent, JSON inchangé.
     if (Array.isArray(opts.tags) && opts.tags.length) planConfig.plan.tags = opts.tags.slice(0, 12);
-    // 📉 v1.83.0 — profondeurs proposées d'office sur un plan importé, avec
+    // profondeurs proposées d'office sur un plan importé, avec
     // les mêmes défauts que le Générateur (niveau 0 à -25 m, pas de 5 m).
     //
     // 🩸 SAUF le niveau qui porte le TOPO HISTORIQUE : ce n'est pas un étage
@@ -1412,11 +1412,11 @@
     // 🧱 Les DEUX marqueurs sont nécessaires : le drapeau `plan.tiledV2` et la
     // section `tiling`. `osmView._isV2Plan()` vérifie les deux, plus la présence
     // de `minNativeZoom` et `tileSize` — un drapeau seul ne suffirait pas.
-    // 🎨 v1.82.0 — LÉGENDE CUSTOM embarquée dans le plan-config, au format
+    // LÉGENDE CUSTOM embarquée dans le plan-config, au format
     // exact de LegendCustomization.getSessionState(). C est ce qui donne une
     // couleur propre à chaque niveau : sans elle, les six niveaux sortaient
     // tous de la même teinte et le multi-niveau perdait son intérêt visuel.
-    // 🏷️ v1.83.1 — et DÉSORMAIS tout le reste de l'état édité (cf.
+    // et DÉSORMAIS tout le reste de l'état édité (cf.
     // `assemblerLegendePlan`), qui partait à la poubelle.
     const legendePlan = assemblerLegendePlan(
       (opts.mapping && opts.mapping.planLegend) || opts.planLegend || null,
@@ -1429,7 +1429,7 @@
       planConfig.tiling = tilingManifest;
     }
 
-    // 🆔 v2.1.0 — un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
+    // un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
     if (window.KtaUid) {
       const _vus = new Set();
       window.KtaUid.ensureAll(ingested.points, "pt", undefined, _vus);
@@ -1441,9 +1441,9 @@
       points: ingested.points,
       roads:  ingested.roads,
       zones:  ingested.zones,
-      // 🏛️ v1.82.0 — 4e famille. `structures.js` lit cette clé comme les autres.
+      // 4e famille. `structures.js` lit cette clé comme les autres.
       structures: ingested.structures || []
-    }));   // 📦 v1.82.0 : plus de pretty-print — x2,7 en taille pour un
+    }));   // plus de pretty-print — x2,7 en taille pour un
                 //    fichier que personne ne lit à la main, et tout ce poids
                 //    repasse ensuite dans le DEFLATE en JS pur.
     zip.file("plan-config.json", JSON.stringify(planConfig, null, 2));
@@ -1458,7 +1458,7 @@
       }
     } catch(e) {}
 
-    // 📦 v1.82.0 — DEFLATE niveau 3 au lieu du 6 par défaut. Le contenu est
+    // DEFLATE niveau 3 au lieu du 6 par défaut. Le contenu est
     // déjà pour l essentiel des JPEG (incompressibles) ; seul le JSON gagne
     // à être compressé, et le niveau 3 en récupère la quasi-totalité pour
     // une fraction du temps. Le jumeau GPX, lui, écrit carrément en STORE.
@@ -1474,7 +1474,7 @@
     parseKml:           parseKml,
     parseFichier:       parseFichier,
     validerCrs:         validerCrs,
-    // 📐 v1.82.0 — Lambert 93. `L93` est exposé pour le garde-fou
+    // Lambert 93. `L93` est exposé pour le garde-fou
     // `scripts/check-lambert93.js`, qui vérifie les propriétés
     // définitoires de la projection (origine exacte, échelle 1 aux
     // parallèles standard, conformité) sans aucune table de référence.
@@ -1482,7 +1482,7 @@
     reprojeterLambert93: reprojeterLambert93,
     L93:                L93,
     // 🌐 Web Mercator — exposé pour `js/tiffGeoref.js` (GeoTIFF calés en 3857)
-    // et pour `scripts/check-webmercator.js`. Aucune autre implémentation de
+    // et pour `scripts/check-geotiff.js`. Aucune autre implémentation de
     // cette projection ne doit apparaître dans le projet.
     WEBMERC:            WEBMERC,
     calculerBounds:     calculerBounds,

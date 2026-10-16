@@ -118,7 +118,7 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   // Option B : N L.imageOverlay par niveau de zoom, swap on zoomend.
   // Cf createConf.js > _genererTuilesV2 pour la génération côté planner.
   //
-  // 🩸 v1.86.0 (décision KARMA) — UN PLAN V2 TUILE TOUJOURS. Le contournement
+  // 🩸 UN PLAN V2 TUILE TOUJOURS. Le contournement
   // `perfPreset === "off"` de la v151, qui rechargeait le baseImage entier en
   // un seul L.imageOverlay, est SUPPRIMÉ : c'était exactement le cas de crash
   // Safari iOS qu'on cherche à éviter, offert en un clic, sans avertissement.
@@ -126,7 +126,7 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   // d'erreur ci-dessous — mais il n'est plus un MODE proposé à l'utilisateur.
   // `off` ne concerne donc plus que les plans V1.
   //
-  // 🏗️ v1.67.0 : registre des overlays du plan PRINCIPAL en rendu direct
+  // registre des overlays du plan PRINCIPAL en rendu direct
   // (non tuilé) — sans référence, le filtre multi-niveau ne pourrait pas le
   // masquer. Reset à chaque chargement (un seul plan à la fois).
   window._ktaBaseLayers = [];
@@ -143,7 +143,7 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
     const _racine = await ktaResoudreRacineTuiles(pc);
     return _chargerImageV2OptionB(url, bounds, map, pc.tiling, _racine);
   }
-  // ⚠️ v1.86.0 — « Désactivé » sur un plan V1 TROP GRAND : c'est exactement le
+  // ⚠️ « Désactivé » sur un plan V1 TROP GRAND : c'est exactement le
   // cas de crash Safari iOS (une seule texture > limite GPU). On ne l'interdit
   // pas — c'est un choix explicite, utile sur PC pour la qualité native — mais
   // on le DIT, ce qui n'était fait nulle part.
@@ -172,7 +172,7 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
 }
 
 // =========================
-// 🏗️ v1.67.0 — LE PLAN PRINCIPAL EST LE NIVEAU 0 (décision KARMA)
+// LE PLAN PRINCIPAL EST LE NIVEAU 0 (décision KARMA)
 // =========================
 // Le filtre multi-niveau masquait les CALQUES image par niveau mais jamais le
 // plan principal — impossible de regarder le niveau -1/+1 seul (le fond
@@ -307,7 +307,7 @@ window.ktaCullerTuilesV2Throttle = function() {
 // blanche (corrigé v1.86.0). Les chemins d'un plan serveur sont ABSOLUS depuis
 // la racine du site, alors que le manifest V2 code des chemins relatifs au ZIP.
 //
-// 🩸 v1.87.0 — CES DEUX FONCTIONS SONT EXPOSÉES parce que le PRÉ-CACHE HORS-LIGNE
+// 🩸 CES DEUX FONCTIONS SONT EXPOSÉES parce que le PRÉ-CACHE HORS-LIGNE
 // (`planOffline.js`) doit énumérer EXACTEMENT les mêmes URLs que le rendu. Deux
 // dérivations séparées auraient divergé au premier changement de mise en page du
 // générateur, et le symptôme aurait été un plan « téléchargé » mais troué.
@@ -366,7 +366,7 @@ function ktaRacineTuilesServeur(pc) {
   return c.length ? c[0] : null;
 }
 
-// 🩸 v1.88.3 — L'EMPLACEMENT DES TUILES EST INDÉPENDANT DE CELUI DE L'IMAGE.
+// 🩸 L'EMPLACEMENT DES TUILES EST INDÉPENDANT DE CELUI DE L'IMAGE.
 // La v1.86.0 dérivait la racine du dossier du `baseImage`. Ça marche pour deux
 // mises en page sur trois :
 //   dézip brut          data/<plan>/data/img.png  → data/<plan>/data/tiles  ✅
@@ -439,7 +439,7 @@ async function ktaResoudreRacineTuiles(pc) {
 // cols/rows par division entière supérieure. Le générateur utilise scale = 2^L
 // avec z = -L : c'est la même chose.
 function ktaTuilesV2Urls(pc, racineDejaResolue) {
-  // 🩸 v1.88.3 — la racine peut etre passee : le pre-cache hors-ligne la
+  // 🩸 la racine peut etre passee : le pre-cache hors-ligne la
   // resout en ASYNCHRONE (sonde) et doit lister EXACTEMENT les memes URLs
   // que le rendu. Sans ce parametre, il retomberait sur l hypothese
   // synchrone et pourrait telecharger des URLs 404.
@@ -620,7 +620,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   const TILE_SIZE = tilingManifest.tileSize || 512;
   const MIN_NATIVE = (Number.isInteger(tilingManifest.minNativeZoom)) ? tilingManifest.minNativeZoom : -3;
   const MAX_NATIVE = (Number.isInteger(tilingManifest.maxNativeZoom)) ? tilingManifest.maxNativeZoom : 0;
-  // 🫥 v1.62.0 : extension d'après le manifest (webp/png = tuiles avec alpha,
+  // extension d'après le manifest (webp/png = tuiles avec alpha,
   // jpg = plans V2 historiques — rétrocompat totale via ktaTileExt)
   const TILE_EXT = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tilingManifest) : "jpg";
 
@@ -629,7 +629,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     currentLevel: null,        // z courant
     activeOverlays: [],        // [L.imageOverlay] actuellement affichés
     blobUrlsCreated: [],       // [string] pour revoke au cleanup global (plan switch)
-    // 🆕 v1.26.4 (P0-2 RAM) — LRU des tuiles décodées PAR NIVEAU de zoom.
+    // (P0-2 RAM) — LRU des tuiles décodées PAR NIVEAU de zoom.
     // Avant, chaque niveau visité gardait ses bitmaps décodés vivants toute
     // la session (asset.url jamais révoqué intra-session) → la RAM croissait
     // au fil de la navigation zoom/pan. On ne garde plus que les MAX_CACHED
@@ -637,7 +637,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     // à re-décoder au retour (coût CPU acceptable vs fuite RAM).
     blobAssetsByLevel: {},     // { z: [asset, ...] } — assets décodés par niveau
     levelLRU: [],              // ordre d'accès des niveaux (MRU en fin de tableau)
-    repliFait: false,          // 🩸 v1.86.0 — repli baseImage déjà posé (une seule fois)
+    repliFait: false,          // 🩸 repli baseImage déjà posé (une seule fois)
     erreursPremier: 0,         // tuiles du PREMIER rendu qui ont échoué à charger
     attendusPremier: 0         // tuiles du PREMIER rendu qu'on a demandées
   };
@@ -645,7 +645,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
 
   // Racine des tuiles serveur — dérivation PARTAGÉE avec le pré-cache hors-ligne
   // (`ktaRacineTuilesServeur` ci-dessus). Deux copies auraient divergé.
-  // 🩸 v1.88.3 — racine SONDEE, passee par chargerImage. La deriver ici
+  // 🩸 racine SONDEE, passee par chargerImage. La deriver ici
   // du seul baseImage se trompait des que le deploiement avait deplace
   // l image sans deplacer les tuiles (cas KARMA : l app cherchait
   // `<plan>/tiles/` alors que le generateur les ecrit dans `<plan>/data/tiles/`).
@@ -661,7 +661,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   const _lowMem = (typeof navigator !== "undefined"
                    && ((navigator.deviceMemory && navigator.deviceMemory < 6)
                        || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "")));
-  // 🩸 29/09/2026 — desktop était à 4 : le générateur produit EXACTEMENT 4
+  // 🩸 desktop était à 4 : le générateur produit EXACTEMENT 4
   // niveaux (-3…0), la condition d'éviction ne pouvait donc jamais être vraie
   // et les fichiers extraits de tous les niveaux restaient en mémoire. À 3,
   // le niveau le moins récent est libéré dès qu'on a visité les quatre.
@@ -676,7 +676,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     const path = _cheminTuileZip(z, col, k);
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
     if (!asset) {
-      // 🌐 v1.86.0 — pas d'asset en mémoire : plan SERVEUR, on lit en HTTP.
+      // pas d'asset en mémoire : plan SERVEUR, on lit en HTTP.
       // (null seulement si on n'est pas en mode serveur : vraie tuile manquante)
       return RACINE_SRV
         ? RACINE_SRV + "/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT
@@ -691,9 +691,9 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     return asset.url || path;  // fallback path (mode serveur HTTP, futur)
   }
 
-  // 🆕 v1.26.4 (P0-2 RAM) — Marque z comme niveau le plus récent et révoque
+  // (P0-2 RAM) — Marque z comme niveau le plus récent et révoque
   // les bitmaps des niveaux au-delà du cap LRU (libère la RAM décodée).
-  // 🐛 v1.34.11 (Pack RAM Phase 2) — Libère AUSSI asset.file pour les assets
+  // (Pack RAM Phase 2) — Libère AUSSI asset.file pour les assets
   // qui ont un _zipPath (= stubs lazy). Au prochain accès, _extractLazyAsset
   // re-créera le File depuis window._lazyZipRef. C'est ce nullify-of-file qui
   // apporte le vrai gain RAM (sinon, le File JPEG restait pinned éternellement).
@@ -714,7 +714,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
           a.url = null;  // force re-création lazy au prochain accès → bitmap GC
           urlsLib++;
         }
-        // 🐛 v1.34.11 — Libère le File si l'asset peut être re-extrait via _zipPath.
+        // Libère le File si l'asset peut être re-extrait via _zipPath.
         if (a && a.file && a._zipPath) {
           a.file = null;
           filesLib++;
@@ -728,7 +728,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   // Helper : choix du niveau z à afficher selon le zoom courant de la map.
   // Clamp aux niveaux générés (min/maxNativeZoom). round() pour un comportement
   // équilibré entre netteté (z élevé) et perf (z bas = moins de tuiles).
-  // 🩸 29/09/2026 — rend `null` tant que la carte n'a pas de vue. Le tuilage
+  // 🩸 rend `null` tant que la carte n'a pas de vue. Le tuilage
   // s'initialise AVANT le fitBounds (map.js crée la carte sans centre ni zoom) :
   // `Math.round(undefined)` donnait NaN, un rendu fantôme « z=NaN » consommait
   // le drapeau « premier rendu », et le repli v1.86.0 (« toutes les tuiles du
@@ -741,7 +741,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   }
 
   // Helper : génère les overlays d'un niveau z donné.
-  // 🐛 v1.34.11 (Pack RAM Phase 2) — Devient ASYNC. Pré-extract Promise.all
+  // (Pack RAM Phase 2) — Devient ASYNC. Pré-extract Promise.all
   // sur toutes les tuiles du niveau AVANT le render loop. Pour les tuiles
   // déjà extraites (asset.file présent), no-op. Pour les stubs lazy ou les
   // tuiles évincées par LRU (file = null + _zipPath), _extractLazyAsset les
@@ -750,7 +750,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
   // invalide le rendu en cours (avoid wasted work + ne pas afficher un niveau
   // obsolète après un zoom plus récent).
   async function _renderNiveau(z) {
-    // 🐛 v1.34.11 — Token monotone pour level guard.
+    // Token monotone pour level guard.
     state.renderToken = (state.renderToken || 0) + 1;
     const myToken = state.renderToken;
 
@@ -760,7 +760,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     const cols  = Math.ceil(lvlW / TILE_SIZE);
     const rows  = Math.ceil(lvlH / TILE_SIZE);
 
-    // 🐛 v1.34.11 — Pré-extract async des tuiles lazy du niveau AVANT le cleanup
+    // Pré-extract async des tuiles lazy du niveau AVANT le cleanup
     // des anciens overlays. Tant que le pre-extract est en cours, les anciens
     // overlays restent affichés (Leaflet auto-rescale visuellement) → pas de
     // flash blanc à l'utilisateur. On collecte tous les paths, filtre ceux qui
@@ -788,7 +788,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
       }
     }
 
-    // 🐛 v1.34.11 — Level guard : si un autre _renderNiveau a été lancé pendant
+    // Level guard : si un autre _renderNiveau a été lancé pendant
     // notre pre-extract (zoom rapide user), on abandonne pour éviter d'afficher
     // un niveau obsolète après un zoom plus récent.
     if (myToken !== state.renderToken) {
@@ -803,7 +803,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     let added = 0, missing = 0, differees = 0;
     // Capturé AVANT la boucle : state.currentLevel sera réaffecté juste après.
     const premierRendu = (state.currentLevel === null);
-    // 🧱 29/09/2026 — seules les tuiles proches de l'écran sont posées (et donc
+    // seules les tuiles proches de l'écran sont posées (et donc
     // demandées) ; les autres attendent, marquées, que la vue vienne à elles.
     const zoneVue = _zoneTuilesV2(map);
     for (let k = 1; k <= rows; k++) {
@@ -829,10 +829,10 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
           pane: "tilePane"
         });
         ktaRognerTuile(overlay, ktaRemplissageTuile(W, H, TILE_SIZE, scale, col, k));   // remplissage des bords masqué
-        // 🏗️ v1.67.0 : le plan principal EST le niveau 0 — si le filtre
+        // le plan principal EST le niveau 0 — si le filtre
         // multi-niveau le masque, les tuiles du swap zoom restent hors map
         // (mais tracées dans activeOverlays pour le ré-affichage).
-        // 🌐 v1.86.0 — DÉTECTION D'UN DÉPLOIEMENT SERVEUR RATÉ. En mode
+        // DÉTECTION D'UN DÉPLOIEMENT SERVEUR RATÉ. En mode
         // serveur les URLs sont des chemins HTTP : elles « résolvent »
         // toujours, même si le fichier n'existe pas. `added` ne dit donc plus
         // rien — c'est l'événement `error` de Leaflet qui parle. Si TOUTES les
@@ -863,14 +863,14 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     // Le repli d'erreur compte les tuiles réellement DEMANDÉES au premier rendu.
     if (premierRendu) state.attendusPremier = added;
     state.currentLevel = z;
-    // 🆕 v1.26.4 (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
+    // (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
     // niveaux les moins récents au-delà du cap (libère la RAM décodée).
     _trimLevelsLRU(z);
     console.log("[Tiling V2] Niveau z=" + z + " — " + added + " tuiles affichées" +
                 (differees > 0 ? ", " + differees + " hors écran en attente" : "") +
                 (missing > 0 ? " (" + missing + " manquantes)" : ""));
 
-    // 🩸 v1.86.0 — REPLI D'ERREUR (pas un mode : une récupération).
+    // 🩸 REPLI D'ERREUR (pas un mode : une récupération).
     // Un plan V2 tuile TOUJOURS (décision KARMA) — mais si les tuiles sont
     // réellement inatteignables, mieux vaut l'image entière qu'une carte
     // blanche muette. Deux déclencheurs :
@@ -915,7 +915,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
     if (z !== state.currentLevel) _renderNiveau(z);
   }
   map.on("zoomend", _onZoom);
-  // 🧱 29/09/2026 — à chaque déplacement / zoom sans changement de niveau, les
+  // à chaque déplacement / zoom sans changement de niveau, les
   // tuiles qui entrent dans l'écran sont posées, celles qui en sortent retirées.
   map.on("moveend zoomend", window.ktaCullerTuilesV2Throttle);
 
@@ -961,7 +961,7 @@ window._libererTuilesV2 = function() {
     try { URL.revokeObjectURL(u); } catch(e) {}
   });
   state.blobUrlsCreated = [];
-  // 🆕 v1.26.4 (P0-2 RAM) — reset des structures LRU (les URLs déjà révoquées
+  // (P0-2 RAM) — reset des structures LRU (les URLs déjà révoquées
   // ci-dessus, double-revoke inoffensif ; on vide juste les buckets).
   state.blobAssetsByLevel = {};
   state.levelLRU = [];
@@ -1059,7 +1059,7 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
         canvas.height = workH;
         const ctx = canvas.getContext('2d');
 
-        // 🫥 v1.62.0 — Détection d'alpha AVANT de peindre : une source
+        // Détection d'alpha AVANT de peindre : une source
         // transparente garde son canal alpha de bout en bout (pas de fond).
         const hasAlpha = (typeof window.ktaDetecterAlpha === "function")
           ? window.ktaDetecterAlpha(img)
@@ -1083,7 +1083,7 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
         ctx.drawImage(img, 0, 0, workW, workH);
 
         // Détection canvas noir — drawImage JPEG échoué silencieusement.
-        // 🫥 v1.62.0 : le pixel doit être OPAQUE (a=255) pour compter comme
+        // le pixel doit être OPAQUE (a=255) pour compter comme
         // « noir suspect » — un pixel transparent (0,0,0,0) est légitime.
         let estNoir = false;
         try {
@@ -1151,7 +1151,7 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map, params) {
   const nbX    = Math.ceil(W / tileSize);
   const nbY    = Math.ceil(H / tileSize);
 
-  // 🫥 v1.62.0 — Canvas de travail avec alpha (flag posé par
+  // Canvas de travail avec alpha (flag posé par
   // _imageVersCanvasReduit) : tuiles SANS fond, encodées avec transparence
   // (WebP si encodable, sinon PNG). Sinon : JPEG + fond charte historiques.
   const hasAlpha = !!srcCanvas._ktaHasAlpha;
@@ -1242,7 +1242,7 @@ function _pause() {
 function libererTuiles(overlays, map) {
   if (!Array.isArray(overlays)) return;
   overlays.forEach(function(t) {
-    // 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #B) — Clear img.src AVANT
+    // (Pack RAM Phase 4 — Fix #B) — Clear img.src AVANT
     // removeLayer pour FORCER iOS Safari à libérer la bitmap décodée.
     // Sans ce clear, removeLayer détache le DOM mais WebKit garde le
     // bitmap décodé pinned en cache GPU/mémoire native — invisible à
@@ -1273,7 +1273,7 @@ window.PERF_AUTO_TILE_THRESHOLD = PERF_AUTO_TILE_THRESHOLD;
 
 // Conservé pour rétro-compat (alias de PERF_AUTO_TILE_THRESHOLD)
 window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
-// 🌐 v1.87.0 — exposés pour le pré-cache hors-ligne (planOffline.js) : il doit
+// exposés pour le pré-cache hors-ligne (planOffline.js) : il doit
 // énumérer EXACTEMENT les mêmes URLs que le rendu, pas une seconde dérivation.
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;

@@ -63,7 +63,7 @@
     return false;
   }
 
-  // 🆕 v1.21.0-fix2 : bouton flottant ✕ pour sortir sur mobile (touche F
+  // bouton flottant ✕ pour sortir sur mobile (touche F
   // et Échap inaccessibles sans clavier physique). Petit, semi-transparent
   // en haut-droite. Position safe-area-aware iOS PWA.
   function _createExitButton() {

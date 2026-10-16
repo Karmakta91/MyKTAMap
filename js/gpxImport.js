@@ -135,7 +135,7 @@
           black: "#1a1a1a",
           sepia: "#d9c9a8"
         };
-        if (color !== "transparent") {      // 🫥 07/10/2026 : transparent = aucun remplissage
+        if (color !== "transparent") {      // transparent = aucun remplissage
           ctx.fillStyle = fills[color] || fills.sepia;
           ctx.fillRect(0, 0, width, height);
         }
@@ -186,7 +186,7 @@
     });
 
     // === Tracks → roads ===
-    // 🆕 v1.21.1 (audit fix #4) : ajout du préfixe `cust-` comme type valide
+    // ajout du préfixe `cust-` comme type valide
     // pour préserver les entrées custom Légende (dessinables, cf §31.6
     // CLAUDE.md) au roundtrip MKM→GPX→MKM. Avant, `validTypes.indexOf` strict
     // → tout type `cust-XYZ` revenait à `opts.roadType` (typiquement "chemin")
@@ -318,7 +318,7 @@
         author:      opts.planAuthor  || window.I18n.t("gpx.import.authorDefault"),
         imageWidth:  finalW,
         imageHeight: finalH,
-        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // 🩸 PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
         // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
         // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
         // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
@@ -335,13 +335,13 @@
           pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng }
         }
       },
-      // 🆕 v1.21.0-fix5 (symétrique kmzImport) : section `tracking` centrée
+      // (symétrique kmzImport) : section `tracking` centrée
       // sur le plan (W/2 × H/2) au lieu de défaut 0/0 qui place le tracker
       // au coin haut-gauche. Cohérent avec createConf.js > _genererZip.
       tracking: {
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
-        // 📏 v1.82.0 — MÊME DÉFAUT QUE L'IMPORT SIG, corrigé au même endroit :
+        // MÊME DÉFAUT QUE L'IMPORT SIG, corrigé au même endroit :
         // l'échelle était figée à 50 px/m alors qu'elle dépend entièrement du
         // canvas et de l'étendue GPS. Sur un tracé d'un kilomètre rendu sur
         // 4000 px, la vraie valeur est de l'ordre de 4 px/m — soit un facteur
@@ -354,7 +354,7 @@
         scale:         (transform && transform.metresParPixel > 0)
                          ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
                          : 50,
-        // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown ici : ces
+        // plus de stepLength / stepThreshold / stepCooldown ici : ces
         // réglages sont ceux de la personne, globaux à l'appareil (⚙️ Réglages).
       },
       icons: {
@@ -365,13 +365,13 @@
       dataLayers: []
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
-    // 🏷️ 16/09/2026 — étiquettes proposées par le Générateur (déjà normalisées
+    // étiquettes proposées par le Générateur (déjà normalisées
     // par PlanRegistry.normaliserTags). Absentes = champ absent, JSON inchangé.
     if (Array.isArray(opts.tags) && opts.tags.length) planConfig.plan.tags = opts.tags.slice(0, 12);
     if (tilingManifest)           planConfig.plan.tiledV2    = true;
     if (tilingManifest)           planConfig.tiling          = tilingManifest;
 
-    // 🆕 v1.18.1 — Roundtrip légende plan-level via GPX (symétrique
+    // Roundtrip légende plan-level via GPX (symétrique
     // kmzImport.js + §59 CLAUDE.md). Le parser gpxIO.js extrait l'éventuelle
     // balise <extensions><myktamap:customLegend> sous <metadata> et la pose
     // dans `parsed.metadata.customLegend`. On l'injecte ici dans
@@ -422,7 +422,7 @@
         // ⚠️ i18n « figé à la langue d'import » : label de dataLayer écrit comme
         // donnée (affiché dans le FilterPanel). Non re-traduit après import.
         label:   window.I18n.t("gpx.import.layerLabel"),
-        // 🐛 v1.21.0-fix5 (symétrique kmzImport) : file = "data/imported.json"
+        // (symétrique kmzImport) : file = "data/imported.json"
         // pour matcher la clé d'enregistrement de l'asset (sinon resolution
         // RUNTIME_ASSETS échoue silencieusement → fetch URL relative → 404
         // → roads jamais chargées → Pathfinder ne voit aucun réseau).
@@ -435,7 +435,7 @@
         zones:      [],
         structures: []
       };
-      // 🆔 v2.1.0 — un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
+      // un plan fabriqué ici porte un uid sur chaque objet (ETUDE_UID déc. 5).
       if (window.KtaUid) { const _vus = new Set(); ["data", "roads", "zones", "structures"].forEach(function (k) { window.KtaUid.ensureAll(payload[k], k === "data" ? "pt" : k === "roads" ? "rd" : k === "zones" ? "zn" : "st", undefined, _vus); }); }
       zip.file("data/imported.json", JSON.stringify(payload, null, 2));
     }

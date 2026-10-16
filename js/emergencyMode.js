@@ -52,12 +52,12 @@
   let _pollTimer    = null;
   let _theme        = "dark";   // "dark" | "light"
   let _lastHeadingShown = null; // throttle DOM update
-  // 🆕 v1.11.2-fix : listener orientationchange/resize pour invalidateSize
+  // listener orientationchange/resize pour invalidateSize
   // de la minimap. Posé à l'activer(), retiré au desactiver(). Géré au scope
   // module pour pouvoir l'ajouter ET le retirer proprement.
   let _orientationListener = null;
 
-  // 🔧 v1.13.0 (KARMA "on réactive itinéraire sans le menu cocher comme
+  // (KARMA "on réactive itinéraire sans le menu cocher comme
   // avant, on le voyait bien si ca crashait pas") : la toggle conditionnelle
   // est retirée. L'itinéraire est désormais toujours affiché dans la minimap
   // (avec décimation + halo blanc + cyan vif pour visibilité). La cause
@@ -66,7 +66,7 @@
   // Note : l'ancienne clé localStorage "myktamap_emergency_show_iti_v1" reste
   // sans effet, sera nettoyée automatiquement au prochain reset complet.
 
-  // 🔧 v1.10.2-fix1 (KARMA "comportement de saut comme on avait avant car
+  // (KARMA "comportement de saut comme on avait avant car
   // il peut pas faire plus que un tour complet") : pattern rotation
   // unwrapped — même fix que tracking.js > _trackerRotationUnwrapped
   // (v1.9.2-fix10). La CSS transition rotate(deg) interprète les valeurs
@@ -76,21 +76,21 @@
   // identique mais le CSS anime toujours par le chemin court).
   let _compassUnwrapped = null;
   let _compassLastRaw   = null;
-  // 🩸 v1.97.6 — vrai seulement quand les rotors de la boussole ont été
+  // 🩸 vrai seulement quand les rotors de la boussole ont été
   // RÉELLEMENT posés (la minimap naît 100 ms après le premier tick).
   let _rotorsPoses      = false;
 
-  // 🆕 v1.10.2 (KARMA "afficher dans le carré de la boussole derrière,
+  // (KARMA "afficher dans le carré de la boussole derrière,
   // l'endroit où on est localisé sur la carte en zoom max et auto focus") :
   // mini L.map secondaire dans le carré compass qui partage les image
   // layers du plan principal + un marker tracker au centre.
   let _miniMap         = null;
   let _miniTrackerMark = null;
-  // 🆕 v1.10.2-fix4 (KARMA "affiche les roads, c'est utile pour trouver
+  // (KARMA "affiche les roads, c'est utile pour trouver
   // son chemin en mode urgence") : layers polylines roads + itinéraire
   // rendus sur le minimap. Stockés pour cleanup au destroy.
   let _miniRoadLayers      = [];
-  // 🩸 v2.7.5 (KARMA : « en XL, l'itinéraire ne se met pas à jour quand on fait
+  // 🩸 (KARMA : « en XL, l'itinéraire ne se met pas à jour quand on fait
   // des Je suis ici ») — les tracés n'étaient dessinés qu'à l'ouverture. Le
   // recalage (`_couperDerriere`), un recalcul ou un effacement REMPLACENT
   // l'objet itinéraire dans `getRoads()` sans émettre d'événement : le tick
@@ -98,17 +98,17 @@
   // encore dessiné ; `null` = dessiné sans itinéraire.
   let _miniItiRef          = undefined;
   let _miniItiLen          = 0;
-  // 🆕 v1.10.2-fix5 (KARMA "pareil pour zone et structure") : layers
+  // (KARMA "pareil pour zone et structure") : layers
   // zones (polygons) + structures (polygons + polylines fronts).
   let _miniZoneLayers      = [];
   let _miniStructureLayers = [];
-  // 📍 03/10/2026 : marqueurs des points (plan + utilisateur) du niveau
+  // marqueurs des points (plan + utilisateur) du niveau
   // affiché. Posés UNE fois, reposés seulement si la signature des niveaux
   // visibles change (cf `_signatureNiveaux`) — jamais à chaque tick.
   let _miniPoiLayers       = [];
   let _miniPoiSig          = null;
 
-  // 🖐️ 03/10/2026 (KARMA) — MINI-CARTE INTERACTIVE.
+  // MINI-CARTE INTERACTIVE.
   // `_suiviPause` : l'utilisateur a bougé la carte → plus de recentrage
   // automatique, bouton 🎯 visible, rotation « plan orienté » retirée.
   // `_vueAuto` : compteur > 0 pendant NOS changements de vue (setView,
@@ -126,7 +126,7 @@
   // ============================================================
   // 🌍 Transform de calibrage KMZ du plan courant, ou null.
   //
-  // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
+  // avant on cherchait
   // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
   // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
   // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
@@ -135,7 +135,7 @@
   // Fix : construire le transform à la demande via KmzExport.buildTransform
   // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
   //
-  // 📋 03/10/2026 : c'est aussi ce qui décide si l'icône 📋 de la ligne
+  // c'est aussi ce qui décide si l'icône 📋 de la ligne
   // d'état existe — pas de géoréférencement, pas d'icône.
   function _transformCalib() {
     const planId = window._currentLoadedPlanId || "default";
@@ -148,7 +148,7 @@
     if (!(_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
           && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng))) return null;
     try {
-      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      return window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
     } catch(e) {
       // Calibrage présent mais dégénéré (points colinéaires, etc.)
       return null;
@@ -184,7 +184,7 @@
     };
   }
 
-  // 📋 26/09/2026 (KARMA : « on devrait avoir la possibilité de copier les
+  // (KARMA : « on devrait avoir la possibilité de copier les
   // coordonnées GPS de notre position, pour les envoyer si on trouve un point
   // de réseau ») — CE QU'ON MET DANS LE PRESSE-PAPIER.
   //
@@ -196,7 +196,7 @@
   // Le doute sur la position (« jamais confirmée ») reste À L'ÉCRAN, dans la
   // bulle : il se dit à la personne, il ne se colle pas dans le message.
   //
-  // 📋 03/10/2026 (KARMA) : plan NON géoréférencé → plus rien à copier ni à
+  // plan NON géoréférencé → plus rien à copier ni à
   // afficher (l'icône 📋 n'existe pas) : son X/Y ne servait à personne
   // d'autre qu'à soi.
   function _texteACopier() {
@@ -253,7 +253,7 @@
     overlay.className = "kta-emergency-overlay kta-emergency-" + _theme;
     overlay.innerHTML =
       '<div class="kta-emergency-box">' +
-        // 🧹 26/09/2026 (KARMA) — LE HEADER PORTE CE QUI ÉTAIT EN BAS.
+        // LE HEADER PORTE CE QUI ÉTAIT EN BAS.
         //
         // Le bloc « ÉCHELLE / PLAN / ÉTAT » occupait une pleine largeur de
         // grille en bas de l'écran pour trois lignes qu'on ne lit qu'une
@@ -261,10 +261,10 @@
         // devient le sous-titre. Place rendue à la minimap, qui est la
         // seule chose qu'on regarde vraiment quand on est perdu.
         //
-        // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif est
+        // toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif est
         // toujours affiché dans la minimap (anti-crash JPG géré séparément
         // par _resolveMiniMapImageSource depuis v1.12.0).
-        // 🧹 26/09/2026 : le bouton clair/sombre aussi — il datait de
+        // le bouton clair/sombre aussi — il datait de
         // l'époque où seul cet écran savait s'éclairer. `activer()` lit
         // `ThemeManager.isLight()` depuis la v1.23.0 : le mode urgence suit
         // le thème de l'app, il n'y a plus de second réglage à comprendre.
@@ -273,12 +273,12 @@
             '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
             '<span class="kta-emergency-plan-nom" id="kta-em-plan">—</span>' +
           '</div>' +
-          // 🧹 27/09/2026 (KARMA « enlève aussi px/m du mode XL ») — l'échelle
+          // (KARMA « enlève aussi px/m du mode XL ») — l'échelle
           // est partie : c'est un chiffre de CALIBRAGE, il se lit une fois dans
           // ⚙️ Réglages et ne sert à rien quand on cherche où l'on est. Les
           // distances de l'app en dépendent déjà sans qu'on ait à les convertir
           // à la main. Il ne reste que l'état du matériel, celui qui change.
-          // 📋 03/10/2026 (KARMA) — l'icône des coordonnées vit ici, à côté de
+          // l'icône des coordonnées vit ici, à côté de
           // l'état : visible SEULEMENT sur un plan géoréférencé (cf `_tick`).
           '<div class="kta-emergency-etats">' +
             '<span class="kta-emergency-chip" id="kta-em-etat">—</span>' +
@@ -289,7 +289,7 @@
           '</div>' +
         '</div>' +
 
-        // 🪧 27/09/2026 — GUIDAGE (décision KARMA A). Cet écran RECOUVRE la
+        // GUIDAGE (décision KARMA A). Cet écran RECOUVRE la
         // carte, donc le bandeau « dans X m, tourner à gauche » : la
         // prochaine consigne est reprise ici, en gros. Hors de la grille pour
         // ne rien changer à sa disposition ; masqué quand il n'y a rien à dire.
@@ -308,7 +308,7 @@
           '</button>' +
         '</div>' +
 
-        // 📍 03/10/2026 (KARMA « aller à l'essentiel, gagner de la place ») —
+        // (KARMA « aller à l'essentiel, gagner de la place ») —
         // le bloc POSITION permanent est RETIRÉ : ni X/Y du plan, ni GPS en
         // continu. Les coordonnées ne servent qu'à être dictées ou envoyées :
         // elles passent dans la bulle 📋 de la ligne d'état. Toute la grille
@@ -316,10 +316,10 @@
         '<div class="kta-emergency-grid">' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
-            // 🆕 v1.10.2-fix3 (KARMA "le minimap doit prendre tout le
+            // (KARMA "le minimap doit prendre tout le
             // rectangle cap") : minimap Leaflet en background du bloc
             // entier (rectangle full width), pas juste le rond compass.
-            // 🔧 v1.12.0-fix (KARMA "on mais le centre de la bousole
+            // (KARMA "on mais le centre de la bousole
             // triangle rouge a ma position, et le rond rouge sur le cercle
             // jaune bouge pour indiquer le nord") : le gros compass widget
             // centré sur la minimap est RETIRÉ. La boussole devient un
@@ -328,7 +328,7 @@
             // garde uniquement le label CAP + degrés + cardinal en overlay
             // texte (les chiffres restent lisibles en grand).
             '<div class="kta-emergency-mini-map" id="kta-em-mini-map"></div>' +
-            // 🔧 v1.12.0-fix (KARMA "met le SE/S/N en dessous de CAP plus
+            // (KARMA "met le SE/S/N en dessous de CAP plus
             // logique, et descend encore un peu les degrés vu qu'on a
             // gagné de la place en bas") : layout final
             //   - TOP    : 🧭 CAP (gras orange) + cardinal (SE/S/...)
@@ -350,7 +350,7 @@
 
         '</div>' +
 
-        // 🧹 26/09/2026 (KARMA) — l'encart rouge « ce mode désactive
+        // l'encart rouge « ce mode désactive
         // l'interface principale… » est RETIRÉ : quatre lignes de conseils
         // généraux au-dessus du seul bouton de sortie, sur un écran qu'on
         // ouvre quand on est perdu. Ce qu'il faut faire quand on est perdu
@@ -448,7 +448,7 @@
     const btnChoix = document.getElementById("kta-em-guid-choix");
     if (btnChoix) btnChoix.addEventListener("click", desactiver);
 
-    // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
+    // handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
     // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
     // via _addRoadsToMiniMap (avec décimation + halo blanc).
 
@@ -576,7 +576,7 @@
     }
 
     if (pos) {
-      // 🆕 v1.10.2 : auto-focus du minimap sur la position (en pause si
+      // auto-focus du minimap sur la position (en pause si
       // l'utilisateur explore la carte — cf `_updateMiniMap`)
       _updateMiniMap(pos);
     }
@@ -584,7 +584,7 @@
     _majRoadsSiChange();
 
     // 🧭 Heading (boussole)
-    // 🧭 v1.37.0 — Bascule de getCurrentHeading() (Nord vrai) vers
+    // Bascule de getCurrentHeading() (Nord vrai) vers
     // getPlanRelHeading() (Nord plan = avec offset calibré). KARMA feedback
     // "fonctionne en map mais pas appliqué en mode urgence" : sans ce switch
     // le rotor + triangle restaient orientés Nord vrai, donc incohérents avec
@@ -601,7 +601,7 @@
     if (typeof heading === "number" && !isNaN(heading)) {
       // Throttle DOM update à 1° près (sinon ça flicker au moindre mouvement)
       const rounded = Math.round(heading);
-      // 🩸 v1.97.6 — LA BOUSSOLE CONTREDISAIT SON PROPRE TEXTE.
+      // 🩸 LA BOUSSOLE CONTREDISAIT SON PROPRE TEXTE.
       // Ce garde anti-scintillement s'armait au tout premier tick, alors que
       // la minimap (créée 100 ms plus tard) n'existait pas encore : les
       // rotors sortaient sur `if (!iconEl) return` et on ne repassait plus
@@ -617,7 +617,7 @@
         const cardEl = document.getElementById("kta-em-heading-card");
         if (numEl)  numEl.textContent  = fmt.num;
         if (cardEl) cardEl.textContent = fmt.card;
-        // 🔧 v1.10.2-fix1 : rotation unwrapped (cumul des deltas courts)
+        // rotation unwrapped (cumul des deltas courts)
         // pour que le passage 350° → 10° = +20° au lieu de -340° (tour
         // arrière). Même pattern que tracking.js _trackerRotationUnwrapped.
         if (_compassLastRaw === null) {
@@ -629,7 +629,7 @@
           _compassUnwrapped += delta;
         }
         _compassLastRaw = heading;
-        // 🔧 v1.12.0-fix (KARMA "le rond rouge sur le cercle jaune bouge
+        // (KARMA "le rond rouge sur le cercle jaune bouge
         // pour indiquer le nord") : on tourne le rotor qui porte le point
         // Nord à -heading. Carte North-up → quand l'user fait face au N,
         // le point reste au sommet (12h). Face à l'Est, le N est à GAUCHE
@@ -641,7 +641,7 @@
         // le point Nord reprend sa contre-rotation.
         const okNord = _updateTrackerNorthRotor(
           _minimapTourneeActive() ? 0 : -_compassUnwrapped);
-        // 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la
+        // (KARMA "le triangle ne tourne plus dans la
         // direction où on va, comme icône tracker") : rotation +heading
         // pour que la pointe du triangle pointe la direction de marche
         // (même convention que l'icône tracker map principale).
@@ -662,7 +662,7 @@
     // 🪧 Guidage — la consigne du bandeau, reprise en gros
     _majGuidage();
 
-    // 🧹 27/09/2026 : plus d'échelle ici (cf le gabarit). Les clés
+    // plus d'échelle ici (cf le gabarit). Les clés
     // `emergency.echelle.*` ont été retirées des trois dicos avec elle.
 
     // 🗂️ Plan
@@ -677,14 +677,14 @@
     const etatEl = document.getElementById("kta-em-etat");
     if (etatEl) {
       const partsEtat = [];
-      // 🔋 v1.97.6 — le bloc s'appelle « ÉTAT » et son commentaire promettait
+      // le bloc s'appelle « ÉTAT » et son commentaire promettait
       // « batterie si dispo » depuis toujours : elle n'y a jamais été. Sur
       // l'écran qu'on ouvre précisément quand la batterie lâche, c'était
       // l'information manquante la plus criante — et la fonction qui la
       // formate existe déjà. ⚠️ « si dispo » se vérifie avec `isAvailable()`,
       // pas avec la véracité du libellé (cf le pavé ci-dessous).
       try {
-        // 🚨 26/09/2026 (KARMA « enlève aussi l'indicateur batterie si capteur
+        // (KARMA « enlève aussi l'indicateur batterie si capteur
         // désactivé ou non disponible ») — `isAvailable()` D'ABORD.
         //
         // `formatLabel()` ne rend PAS une chaîne vide quand la batterie est
@@ -725,7 +725,7 @@
     }
   }
 
-  // 🪧 27/09/2026 — lit l'état du bandeau de guidage (js/itiGuidage.js), qui
+  // lit l'état du bandeau de guidage (js/itiGuidage.js), qui
   // continue de se calculer sous cet écran (pas du tracker + battement 1 s).
   // On n'affiche que ce que le bandeau afficherait : mêmes règles, mêmes mots.
   function _majGuidage() {
@@ -758,7 +758,7 @@
   function activer() {
     if (_overlay) return;  // déjà actif
 
-    // 🆕 v1.13.0 : sync thème initial avec ThemeManager global. Si l'user
+    // sync thème initial avec ThemeManager global. Si l'user
     // est en mode clair partout dans l'app, le mode urgence s'ouvre aussi
     // en clair. Il garde son toggle 🔆/🌑 local pour basculer ponctuellement
     // (ex: lampe d'appoint en sous-sol) sans changer le réglage global.
@@ -766,7 +766,7 @@
       _theme = window.ThemeManager.isLight() ? "light" : "dark";
     }
 
-    // 🔧 v1.10.2-fix2 (KARMA "si les accès aux capteurs non pas déjà
+    // (KARMA "si les accès aux capteurs non pas déjà
     // été validés, on doit nous le demander sinon boussole marche pas") :
     // appel à window.requestPermission() qui fait le flow complet :
     //   - iOS : DeviceMotionEvent.requestPermission() → si granted, attache
@@ -791,7 +791,7 @@
     document.documentElement.appendChild(_overlay);
     _bindOverlay();
 
-    // 🆕 v1.10.2 : init du minimap (Leaflet secondaire) — délai 100ms
+    // init du minimap (Leaflet secondaire) — délai 100ms
     // pour que le browser ait calculé le layout (sinon Leaflet voit un
     // container 0×0 et fitBounds échoue silencieusement).
     setTimeout(_initMiniMap, 100);
@@ -803,7 +803,7 @@
     // Empêcher l'écran de s'éteindre sur mobile (Wake Lock API si dispo)
     _acquireWakeLock();
 
-    // 🆕 v1.11.2-fix (KARMA "petit bug de décalage quand on passe en
+    // (KARMA "petit bug de décalage quand on passe en
     // horizontal en mode urgence") : à la rotation device, la minimap
     // Leaflet ne se redimensionne pas seule → tuiles décalées, marker
     // tracker hors zone visible. Solution : écouter orientationchange +
@@ -848,14 +848,14 @@
       _pollTimer = null;
     }
     document.removeEventListener("keydown", _onKey);
-    // 🆕 v1.11.2-fix : cleanup des listeners orientation/resize pour ne
+    // cleanup des listeners orientation/resize pour ne
     // pas garder des appels invalidateSize zombies après fermeture.
     if (_orientationListener) {
       window.removeEventListener("orientationchange", _orientationListener);
       window.removeEventListener("resize",            _orientationListener);
       _orientationListener = null;
     }
-    // 🆕 v1.10.2 : destroy minimap pour libérer les ressources Leaflet
+    // destroy minimap pour libérer les ressources Leaflet
     _fermerBulle();
     _destroyMiniMap();
     try { _overlay.remove(); } catch(e) {}
@@ -888,7 +888,7 @@
     _theme = theme;
     if (_overlay) {
       _overlay.classList.remove("kta-emergency-dark", "kta-emergency-light");
-      // 🧹 26/09/2026 : plus de bouton clair/sombre à rafraîchir — seule
+      // plus de bouton clair/sombre à rafraîchir — seule
       // la classe de thème change.
       _overlay.classList.add("kta-emergency-" + theme);
     }
@@ -909,15 +909,15 @@
   //
   // Zoom : `MINIMAP_ZOOM_OFFSET` au-dessus du `fitBounds` qui ferait
   // afficher tout le plan. Donne une vue rapprochée autour du tracker.
-  // 🔧 v1.10.2-fix7 (KARMA "moins zoomé")          : 4 → 2 (trop loin)
-  // 🔧 v1.10.3-fix1 (KARMA "re zoom à fond")        : 2 → maxZ (bug)
-  // 🔧 v1.10.3-fix2 (KARMA "dezoom un peu, ça bug") : maxZ → 5 (équilibre)
+  // (KARMA "moins zoomé")          : 4 → 2 (trop loin)
+  // (KARMA "re zoom à fond")        : 2 → maxZ (bug)
+  // (KARMA "dezoom un peu, ça bug") : maxZ → 5 (équilibre)
   // Compromis : ~20-50m d'horizon, assez serré pour repérer
   // l'environnement immédiat sans pousser Leaflet aux limites d'échelle
   // qui causent les artefacts de rendu sur image L.CRS.Simple.
   const MINIMAP_ZOOM_OFFSET = 5;
 
-  // 🔧 v1.12.0-fix (KARMA "tjr des crash en mode urgence ... il charge au
+  // (KARMA "tjr des crash en mode urgence ... il charge au
   // début tout les JPG si volumineux, crash") : seuils de sécurité pour
   // décider si l'image de fond est chargée ou si on prévient l'user.
   //
@@ -941,7 +941,7 @@
       return { type: "none", reason: "dimensions plan invalides" };
     }
 
-    // 🔧 v1.12.0-fix2 (KARMA "en mode V2 sur le mode urgence, l'image
+    // (KARMA "en mode V2 sur le mode urgence, l'image
     // chargée est flou complétement illisible") : refonte en loading
     // VIEWPORT-AWARE. Avant : on chargeait les tuiles au niveau le plus
     // dézoomé (minNativeZoom) pour économiser la mémoire, mais le minimap
@@ -1037,7 +1037,7 @@
     modal.id = "kta-emergency-bigimg-modal";
     modal.className = "kta-readme-modal-overlay";
     modal.style.zIndex = "100050";  // au-dessus de kta-emergency-overlay
-    // 🔧 v1.12.0-fix (KARMA "bug du modal Image volumineuse sur PC bcp trop
+    // (KARMA "bug du modal Image volumineuse sur PC bcp trop
     // long, on a déjà eu le cas sur d'autre") : override le height: 88vh
     // hérité de .kta-readme-modal-boite. Cette modale a un contenu court
     // (~6 lignes texte + 2 boutons), 88vh laisse la moitié vide sur PC.
@@ -1087,7 +1087,7 @@
     document.getElementById("kta-em-bigimg-load").addEventListener("click", function() { _finish("load"); });
   }
 
-  // 🆕 v1.12.0-fix2 : état du loader viewport-aware V2 — exposé au scope
+  // état du loader viewport-aware V2 — exposé au scope
   // module pour cleanup au _destroyMiniMap (retirer le listener moveend
   // + remove les overlays).
   let _miniV2State = null;
@@ -1107,7 +1107,7 @@
     }
   }
 
-  // 🆕 v1.12.0-fix2 : loader de tuiles V2 viewport-aware pour la minimap.
+  // loader de tuiles V2 viewport-aware pour la minimap.
   //
   // Stratégie :
   //   1. À chaque zoomend/moveend, on choisit le niveau z optimal
@@ -1137,9 +1137,9 @@
       currentLevel: null
     };
 
-    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    // extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(manifest) : "jpg";
-    // 🩸 v1.97.6 — LA MINIMAP N'AVAIT AUCUN FOND SUR UN PLAN SERVEUR.
+    // 🩸 LA MINIMAP N'AVAIT AUCUN FOND SUR UN PLAN SERVEUR.
     // `RUNTIME_ASSETS` ne contient que les assets d'un plan importé en ZIP ;
     // sur un plan servi en HTTP — le modèle de déploiement de la prod — il
     // est VIDE. Mesuré sur un relevé tuilé : 0 tuile, 0 requête réseau, un
@@ -1157,7 +1157,7 @@
           ? (_racineSrv + "/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt)
           : null;
       }
-      // 🩸 03/10/2026 — SUR UN PLAN IMPORTÉ EN ZIP, DES TUILES MANQUAIENT (vu
+      // 🩸 SUR UN PLAN IMPORTÉ EN ZIP, DES TUILES MANQUAIENT (vu
       // sur mobile). La minimap partageait `asset.url` avec la carte
       // principale ; celle-ci, pour tenir en mémoire, révoque l'URL des
       // niveaux qu'elle quitte et libère même le fichier des ZIP lus à la
@@ -1286,7 +1286,7 @@
       return;
     }
 
-    // 🔧 v1.12.0-fix (KARMA "tjr des crash en mode urgence ... il charge
+    // (KARMA "tjr des crash en mode urgence ... il charge
     // au début tout les JPG si volumineux") : résolution intelligente de
     // l'image de fond avec garde-fou. 3 cas possibles :
     //   1. Plan V2 tuilé → tuiles minNativeZoom (toujours safe)
@@ -1341,7 +1341,7 @@
   // a choisi "continuer sans image").
   function _initMiniMapAvecSource(container, source, imgW, imgH) {
     try {
-      // 🖐️ 03/10/2026 (KARMA) : déplacement et zoom au doigt / à la souris.
+      // déplacement et zoom au doigt / à la souris.
       // `keyboard` reste coupé (Échap et les flèches appartiennent à l'écran),
       // `trackResize` aussi : le redimensionnement passe par
       // `_orientationListener`, qui marque SES changements de vue comme
@@ -1369,7 +1369,7 @@
         if (_vueAuto === 0) _pauseSuivi();
       });
       const bounds = [[0, 0], [imgH, imgW]];
-      // 🔧 v1.12.0-fix : pose des imageOverlays selon le type de source
+      // pose des imageOverlays selon le type de source
       // (tuiles V2 multiples, baseImage V1 unique, ou rien si user a choisi
       // "continuer sans image" sur une image volumineuse).
       _poserImageOverlayMinimap(source, bounds);
@@ -1380,7 +1380,7 @@
       }
       _vueAutomatique(function () { _miniMap.fitBounds(bounds); });
 
-      // 🆕 v1.10.2-fix4/5 : ajoute zones (eau / remblais / effondrement /
+      // ajoute zones (eau / remblais / effondrement /
       // inaccessible) + structures (piliers + murs + fronts) + roads sur
       // le minimap pour aider à trouver son chemin en mode urgence.
       // Ordre Z (du fond vers l'avant-plan, comme dans la carte principale) :
@@ -1389,10 +1389,10 @@
       _addZonesToMiniMap(imgH);
       _addStructuresToMiniMap(imgH);
       _addRoadsToMiniMap(imgH);
-      // 📍 03/10/2026 : les points par-dessus tout (volet marqueurs Leaflet).
+      // les points par-dessus tout (volet marqueurs Leaflet).
       _addPointsToMiniMap(imgH);
 
-      // 🔧 v1.10.2-fix3 : multiple invalidateSize en cascade pour gérer
+      // multiple invalidateSize en cascade pour gérer
       // le cas où le container avait des dims 0×0 au moment du L.map().
       // Leaflet calcule les bounds avec les dims actuelles → si elles
       // étaient 0 au boot, fitBounds donne un zoom incohérent.
@@ -1419,7 +1419,7 @@
         }
       }, 200);
 
-      // 🔧 v1.12.0-fix (KARMA "on mais le centre de la bousole triangle
+      // (KARMA "on mais le centre de la bousole triangle
       // rouge a ma position, et le rond rouge sur le cercle jaune bouge
       // pour indiquer le nord") : nouveau marker tracker = boussole stylisée
       // L.divIcon composite :
@@ -1432,7 +1432,7 @@
       _miniTrackerMark = L.marker([0, 0], {
         icon: L.divIcon({
           className: "kta-em-mini-tracker-wrap",
-          // 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la
+          // (KARMA "le triangle ne tourne plus dans la
           // direction où on va comme icône tracker") : 2 rotors séparés
           //   - .kta-em-mini-tracker-triangle-rotor : tourne avec +heading
           //     pour pointer la direction de marche (= cône GPS bleu de la
@@ -1463,7 +1463,7 @@
     }
   }
 
-  // 🎨 26/09/2026 (KARMA : « en mode XL je vois qu'on ne récupère pas les
+  // (KARMA : « en mode XL je vois qu'on ne récupère pas les
   // couleurs définies en légende personnalisée ») — RÉSOLVEUR DE STYLE DU MINI.
   //
   // Cet écran garde sa palette vive : c'est une variante DÉLIBÉRÉE, relevée et
@@ -1501,7 +1501,7 @@
     return s;
   }
 
-  // 🆕 v1.10.2-fix5 : ajoute les zones (eau / remblais / effondrement /
+  // ajoute les zones (eau / remblais / effondrement /
   // inaccessible) sur le minimap. Session + embedded. Couleurs cohérentes
   // avec zones.js > ZONE_STYLES, opacité bumpée pour rester lisible sur
   // minimap (image base désaturée).
@@ -1544,7 +1544,7 @@
     if (added > 0) console.log("[Emergency] minimap : " + added + " zone(s) affichée(s)");
   }
 
-  // 🆕 v1.10.2-fix5 : ajoute les structures (piliers + murs polygons,
+  // ajoute les structures (piliers + murs polygons,
   // fronts polylines). Couleurs cohérentes avec structures.js >
   // STRUCTURE_STYLES (post-hotfix2 : front-1 jaune, front-2 orange).
   function _addStructuresToMiniMap(imgH) {
@@ -1614,7 +1614,7 @@
     if (added > 0) console.log("[Emergency] minimap : " + added + " structure(s) affichée(s)");
   }
 
-  // 🆕 v1.10.2-fix4 : ajoute les routes (session + embedded) sur le minimap.
+  // ajoute les routes (session + embedded) sur le minimap.
   // Styles cohérents avec road.js (vert / violet / jaune / cyan / magenta)
   // mais épaisseur réduite et opacité bumpée pour rester lisible par-dessus
   // l'image base désaturée.
@@ -1662,7 +1662,7 @@
       secondaire: { color: "#a78cf4", weight: 2.5, opacity: 0.95 },
       chemin:     { color: "#f4c542", weight: 2, opacity: 0.95 },
       jonction:   { color: "#ff4ecb", weight: 3, opacity: 1, dashArray: "6 4" },
-      // 🔧 v1.11.4-fix (KARMA "toujours pas itinéraire en mode urgence") :
+      // (KARMA "toujours pas itinéraire en mode urgence") :
       // l'itinéraire ÉTAIT dessiné mais quasi invisible (weight 3 dashed
       // sur fond minimap zoomé serré + désaturé). Refonte du style :
       //   - weight 6 (vs 3) = trait épais visible même à zoom élevé
@@ -1673,7 +1673,7 @@
       itinerary:  { color: "#00d4ff", weight: 6, opacity: 1 }
     };
 
-    // 🔧 v1.11.2-fix (KARMA "mode urgence crash sur gros plan avec
+    // (KARMA "mode urgence crash sur gros plan avec
     // itinéraire") : guards anti-crash pour limiter la charge GPU/CPU
     // lors du rendu de la minimap sur des plans denses.
     //
@@ -1703,7 +1703,7 @@
 
       // Spécial itinéraire : peut être TRÈS long, on décime plus fort
       // ou on skip complètement si très volumineux.
-      // 🔧 v1.13.0 : itinéraire désormais TOUJOURS rendu (toggle retirée).
+      // itinéraire désormais TOUJOURS rendu (toggle retirée).
       // La décimation + cap conservés pour anti-OOM, le rendu cyan + halo
       // blanc reste pour visibilité.
       let pts = road.points;
@@ -1743,7 +1743,7 @@
                     || STYLES.chemin;
       const latlngs = pts.map(function(p) { return [imgH - p.y, p.x]; });
       try {
-        // 🔧 v1.11.4-fix2 (KARMA "toujours pas itinéraire en mode urgence") :
+        // (KARMA "toujours pas itinéraire en mode urgence") :
         // halo blanc derrière l'itinéraire pour le rendre VISIBLE sur le fond
         // minimap zoomé serré + désaturé. 2 polylines superposées :
         //   1. underlay blanc épais (weight + 4) en premier → effet halo
@@ -1787,7 +1787,7 @@
     }
   }
 
-  // 📍 03/10/2026 (KARMA) — LES POINTS SUR LA MINI-CARTE.
+  // LES POINTS SUR LA MINI-CARTE.
   // Points de l'utilisateur (`getEditorPoints`) + points du plan
   // (`getAllEmbeddedPoints`), même filtre de niveau que zones/structures/
   // tracés ci-dessus (`passeFiltreNiveau`). Les filtres ≡ par type ne
@@ -1888,7 +1888,7 @@
     _retirerPointsMiniMap();
     _miniPoiSig = null;
 
-    // 🆕 v1.12.0-fix2 : cleanup du loader V2 viewport-aware
+    // cleanup du loader V2 viewport-aware
     if (_miniV2State) {
       // Retire le listener moveend/zoomend
       if (_miniV2State.listenerRef) {
@@ -1916,7 +1916,7 @@
     _miniTrackerMark = null;
   }
 
-  // 🆕 v1.12.0-fix : tourne le rotor du marker tracker pour positionner le
+  // tourne le rotor du marker tracker pour positionner le
   // point rouge "Nord" sur le cercle jaune. Le rotor est un élément du
   // divIcon donc on le retrouve via _miniTrackerMark.getElement() puis
   // querySelector. Si le marker n'est pas encore monté (pas de tracker
@@ -1935,7 +1935,7 @@
     return true;
   }
 
-  // 🆕 v1.12.0-fix : tourne le rotor du triangle dans la direction de
+  // tourne le rotor du triangle dans la direction de
   // marche (+heading). Cohérent avec l'icône tracker GPS de la map
   // principale (cône bleu qui tourne aussi avec le heading).
   function _updateTrackerTriangleRotor(angleDeg) {
@@ -1948,7 +1948,7 @@
     return true;
   }
 
-  // 🧭 v1.97.6 — LA MINIMAP S'ORIENTE, comme la carte principale.
+  // LA MINIMAP S'ORIENTE, comme la carte principale.
   //
   // On ne passe PAS par `mapBearing` : il est câblé sur `window.map` d'un
   // bout à l'autre, et c'est le module où une erreur n'affiche rien
@@ -1957,7 +1957,7 @@
   // **le centre de rotation coïncide toujours avec l'utilisateur**. Une
   // rotation du CONTENEUR suffit donc, sans toucher à la géométrie Leaflet.
   //
-  // 🖐️ 03/10/2026 — la minimap est devenue interactive, et une rotation CSS
+  // la minimap est devenue interactive, et une rotation CSS
   // que Leaflet ignore fausse ses gestes (le doigt part à droite, la carte
   // part en biais). Décision KARMA : PENDANT L'EXPLORATION (suivi en pause)
   // la carte revient Nord en haut ; 🎯 Recentrer relance la rotation. Le
@@ -2050,14 +2050,14 @@
     // 🖐️ Suivi en pause (l'utilisateur explore) : on ne touche PAS à la vue,
     // seul le marqueur de position avance.
     if (!_suiviPause) {
-      // 🔧 v1.10.3-fix2 (KARMA "dezoom un peu, ça bug à fond") : on
+      // (KARMA "dezoom un peu, ça bug à fond") : on
       // retombe sur la formule baseZ + offset clamped à maxZoom. À
       // maxZoom=10 sur image L.CRS.Simple, Leaflet bug visuellement
       // (image étirée bien au-delà de sa résolution native).
       const maxZ  = _miniMap.getMaxZoom();
       const baseZ = _miniMap.getBoundsZoom([[0, 0], [imgH, imgW]], true) || 0;
       const targetZ = Math.min(maxZ, baseZ + MINIMAP_ZOOM_OFFSET);
-      // 🔋 29/09/2026 — ce tick tourne 4 fois par seconde, et recentrait la
+      // ce tick tourne 4 fois par seconde, et recentrait la
       // minimap à CHAQUE fois, même immobile : 40 setView en 10 s, chacun
       // relançant un parcours de toute la grille de tuiles (~35 000 itérations
       // pour rien), sur l'écran qu'on ouvre justement quand la batterie baisse.
@@ -2078,7 +2078,7 @@
       }
       _miniTrackerMark.setLatLng(latlng);
     }
-    // 🔧 v1.10.2-fix3 : invalidateSize retiré du tick (était appelé toutes
+    // invalidateSize retiré du tick (était appelé toutes
     // les 250ms inutilement — coût perf). Il est suffisant de l'appeler
     // à l'init (déjà fait dans _initMiniMap cascade) + sur orientationchange
     // si on veut vraiment couvrir le rotation device.

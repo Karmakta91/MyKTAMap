@@ -45,7 +45,7 @@
   "use strict";
 
   const MAX_CANDIDATS = 5;
-  // 🌀 v1.64.0 — MULTI-HOP (décisions KARMA : 1:a 2:a 3:a 4:a, 5 = opt-in à
+  // MULTI-HOP (décisions KARMA : 1:a 2:a 3:a 4:a, 5 = opt-in à
   // cocher dans la recherche multi-plans). Itinéraire via plusieurs plans
   // (A→B→C…) par Dijkstra sur le GRAPHE DE PORTAILS (nœuds = position,
   // côtés de portail, destination ; arêtes intra-plan = coût Dijkstra réel
@@ -121,7 +121,7 @@
   }
 
   // ---------------------------------------------------------------
-  // 🌀 v1.64.0 — MOTEUR MULTI-HOP (graphe de portails, arêtes paresseuses)
+  // MOTEUR MULTI-HOP (graphe de portails, arêtes paresseuses)
   // ---------------------------------------------------------------
   // Nœuds : @start (ma position) + chaque CÔTÉ de portail + @dest.
   // Arêtes : intra-plan (coût = Dijkstra réel en mètres, calculé
@@ -207,7 +207,7 @@
   }
 
   // Un trajet intra-plan entre 2 points (coût en MÈTRES via l'échelle du plan).
-  // 🌀 v1.64.0 : `via` optionnel = points de passage OBLIGATOIRES intercalés
+  // `via` optionnel = points de passage OBLIGATOIRES intercalés
   // (étapes du plan A posées dans la modale Itinéraire, ordre planifié).
   function _viaWps(via) {
     return (via || []).map(function(v) {
@@ -328,7 +328,7 @@
         const nv = nodes[v];
         if (nv.planId !== nu.planId) continue;
         if (budgetDepasse) continue;
-        // 🌀 v1.64.0 : les arêtes PARTANT du départ passent par les étapes
+        // les arêtes PARTANT du départ passent par les étapes
         // `via` du plan A (points de passage obligatoires, ordre planifié)
         const depuisStart = (u === "@start");
         const key = (depuisStart ? "@start|" : "") + nu.planId + "|" +
@@ -426,7 +426,7 @@
       legs.push(curLeg);
     }
     legs.forEach(function(l) {
-      // 🌀 v1.64.0 : le 1er leg (départ tracker) intercale les étapes `via`
+      // le 1er leg (départ tracker) intercale les étapes `via`
       // dans ses waypoints → l'itinéraire vivant peut les valider une à une.
       const inter = (l.fromWp.source === "tracker") ? _viaWps(via) : [];
       l.waypoints = [l.fromWp].concat(inter).concat([l.toWp]);
@@ -454,7 +454,7 @@
       throw _err("NO_POS", _t("iti.err.trackerPos"));
     }
 
-    // 🌀 v1.64.0 — préférence multi-hop cochée → le moteur graphe de portails
+    // préférence multi-hop cochée → le moteur graphe de portails
     // remplace ENTIÈREMENT le single-hop (il couvre aussi le cas direct, en
     // optimal global toutes combinaisons de portails).
     if (_multiHopEnabled()) {
@@ -477,7 +477,7 @@
       if (chemin && chemin.length > 2) {
         const viaId = chemin[1];
         const viaPlan = window.PlanRegistry ? window.PlanRegistry.findById(viaId) : null;
-        // 🌀 v1.64.0 : le calcul multi-hop existe désormais — on indique la
+        // le calcul multi-hop existe désormais — on indique la
         // case à cocher (recherche multi-plans) au lieu d'un simple constat.
         throw _err("NO_DIRECT_LINK", _t("ipr.err.noDirectLink", {
           plan: dest.planName || dest.planId,
@@ -538,7 +538,7 @@
       const nomPortail = c.sortieA.pointNom || c.sortieA.pointId || (c.sortieA.x + "," + c.sortieA.y);
       let legA = null, legB = null;
       try {
-        // 🌀 v1.64.0 : étapes `via` du plan A intercalées (ordre planifié)
+        // étapes `via` du plan A intercalées (ordre planifié)
         legA = await window.Pathfinder.computeRoute(
           [{ x: pos.x, y: pos.y, source: "tracker", label: _t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) }) }]
             .concat(_viaWps(via))
@@ -595,7 +595,7 @@
   // portalOut = { nom, entree: {planId, planName, x, y, level, tag, pointNom} }
   // (null sur le dernier leg = destination atteinte).
   let _pendingChain = null;
-  // 🌀 v1.64.0 (KARMA « prendre le portail n'a pas de sens, on n'est pas à
+  // (KARMA « prendre le portail n'a pas de sens, on n'est pas à
   // côté ») : le portail de SORTIE du plan courant, armé par « C'est parti »
   // et à chaque arrivée intermédiaire. Sert à re-proposer la traversée quand
   // l'user est physiquement au portail (« 📍 Je suis ici » sur le point).
@@ -615,7 +615,7 @@
     return n;
   }
 
-  // 🪧 01/10/2026 — `leg` porte aussi `raccords` / `carrefours` : le guidage
+  // `leg` porte aussi `raccords` / `carrefours` : le guidage
   // annonce les croisements, le pointillé jusqu'au tracé est dessiné et compté.
   // `suivants` = étapes des plans d'après : résumées sur la road (`suite`) pour
   // que la feuille de route dise ce qui attend après le portail.
@@ -641,7 +641,7 @@
 
   // Adapte le résultat single-hop historique (préférence multi-hop OFF) au
   // format chaîne — UN SEUL renderer/consommateur pour les deux moteurs.
-  // 🌀 v1.64.0 : `via` = étapes du plan A, intercalées dans les waypoints du
+  // `via` = étapes du plan A, intercalées dans les waypoints du
   // leg 0 (→ validation d'étapes par l'itinéraire vivant).
   function _chainDepuisSingleHop(res, via) {
     const planA = window._currentLoadedPlanId;
@@ -703,10 +703,10 @@
       level: portalOut.entree.level, tag: portalOut.entree.tag,
       planName: portalOut.entree.planName,
       label: portalOut.entree.pointNom || ""
-    }, { confirm: false, recalerTracker: true });   // 🆕 v1.61.0 : traversée physique → tracker recalé
+    }, { confirm: false, recalerTracker: true });   // traversée physique → tracker recalé
   }
 
-  // 🌀 v1.64.0 (3:a) — invite flottante « Portail suivant » après chaque
+  // (3:a) — invite flottante « Portail suivant » après chaque
   // arrivée intermédiaire (au-dessus du bouton ↩️ Retour, pas de timer :
   // une navigation est en cours, l'invite reste jusqu'au clic ou ✕).
   function _afficherProchainPortail(portalOut, distNextM) {
@@ -774,7 +774,7 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
     document.getElementById("kta-ipr-take").addEventListener("click", function() {
       overlay.remove();
-      // 🌀 v1.64.0 (KARMA) : PLUS de téléportation au calcul — le leg A est
+      // PLUS de téléportation au calcul — le leg A est
       // tracé, la file est armée, et l'user MARCHE. La traversée se fait
       // quand il est au portail : invite flottante « 🌀 Portail suivant »
       // (persistante, fermable), bouton ➜ du popup du point-portail, ou
@@ -788,7 +788,7 @@
   // sortent en modale d'information claire (exigence KARMA).
   async function computeEtAfficher(dest, opts) {
     opts = opts || {};
-    // 🌀 v1.64.0 : étapes du plan A à visiter AVANT le portail (modale Itinéraire)
+    // étapes du plan A à visiter AVANT le portail (modale Itinéraire)
     const via = Array.isArray(opts.viaWaypoints) ? opts.viaWaypoints : [];
     let res;
     try {
@@ -800,7 +800,7 @@
       _afficherErreur(e);
       return;
     }
-    // 🌀 v1.64.0 : format unique « chaîne de legs » (le single-hop est adapté)
+    // format unique « chaîne de legs » (le single-hop est adapté)
     const chain = res.legs ? res : _chainDepuisSingleHop(res, via);
     _pendingChain = null;          // reset d'une éventuelle navigation précédente
     _currentPortalOut = null;
@@ -872,7 +872,7 @@
     }, 3000);
   }
 
-  // 🌀 v1.64.0 (2:a) — « 📍 Je suis ici » sur le point-portail de sortie du
+  // (2:a) — « 📍 Je suis ici » sur le point-portail de sortie du
   // plan courant → re-propose la traversée (l'invite a pu être fermée).
   // Appelé par tracking.js > _notifierRecalage, après le hook itinéraire.
   function onTrackerRecale(x, y, source) {
@@ -884,7 +884,7 @@
     }
   }
 
-  // 🧹 v1.68.0 (audit « fermetures à la sortie du plan ») — purge de l'invite
+  // (audit « fermetures à la sortie du plan ») — purge de l'invite
   // « Portail suivant ». contexte :
   //   "home"   : sortie vers le HOME → invite retirée + CHAÎNE abandonnée
   //              (_pendingChain/_currentPortalOut) — partir au home rompt la
@@ -898,7 +898,7 @@
     _retirerProchainPortail();
     _currentPortalOut = null;
     if (contexte === "home") { _pendingChain = null; return; }
-    // 🐛 01/10/2026 (retour KARMA) — la suite n'était jamais abandonnée sur un
+    // la suite n'était jamais abandonnée sur un
     // switch : ouvrir le plan suivant par le sélecteur (sans prendre le
     // portail) y traçait l'étape, écrasait l'itinéraire de ce plan et
     // l'enregistrait dans sa session. On ne la poursuit plus que si :
@@ -934,8 +934,8 @@
     computeEtAfficher:   computeEtAfficher,
     onPlanLoaded:        onPlanLoaded,
     onTrackerRecale:     onTrackerRecale,
-    onPlanExit:          onPlanExit,   // 🧹 v1.68.0 : purge invite sortie/switch
-    // 🌀 v1.64.0 — préférence multi-hop (case à cocher recherche multi-plans)
+    onPlanExit:          onPlanExit,   // purge invite sortie/switch
+    // préférence multi-hop (case à cocher recherche multi-plans)
     isMultiHopEnabled:   _multiHopEnabled,
     setMultiHopEnabled:  _setMultiHopEnabled
   };

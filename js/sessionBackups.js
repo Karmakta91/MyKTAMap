@@ -47,7 +47,7 @@
 // API d'intégration externe (à câbler dans les flows existants) :
 //   - sessionPersist.js > clear() / _viderEtatCourant() : appel snapshot
 //     AVANT le wipe pour pouvoir revenir en arrière
-//   - main.js > startApp : appel snapshot après restore si session non vide
+//   - main.js > lancerApplication : appel snapshot après restore si session non vide
 //   - Plan switcher : appel snapshot avant load nouveau plan
 //   - Boutons reset (interface.js > _confResetSession, _bouton purge all) :
 //     idem appel snapshot avant la purge
@@ -188,7 +188,7 @@ window.SessionBackups = (function() {
   }
 
   // Rotation FIFO : si on dépasse MAX, supprime les plus anciens.
-  // 📦 v1.79.3 (décision KARMA — reco 1:a) — FIFO PAR PLAN et non plus
+  // FIFO PAR PLAN et non plus
   // global : avant, 10 snapshots TOUS PLANS CONFONDUS — un plan très
   // utilisé purgeait l'historique des autres. Désormais chaque plan garde
   // ses 10 derniers (les backups sans planId — legacy — tournent entre eux).
@@ -210,7 +210,7 @@ window.SessionBackups = (function() {
     });
   }
 
-  // 🧹 v1.79.3 — supprime TOUS les backups d'un plan (purge à la suppression
+  // supprime TOUS les backups d'un plan (purge à la suppression
   // du plan depuis la modale ℹ️ Infos, + nettoyeur d'orphelins).
   function deleteForPlan(planId) {
     if (!planId) return Promise.resolve(0);
@@ -261,7 +261,7 @@ window.SessionBackups = (function() {
     const est = !payload.structures     || payload.structures.length     === 0;
     const emt = !payload.measure        || payload.measure.length        === 0;
     const ems = !payload.measureSurface || payload.measureSurface.length === 0;
-    // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking") :
+    // (KARMA "on active dans la sauvegarde auto le tracking") :
     // la timeline tracker GPS compte comme contenu — un user qui a fait
     // une session de tracking sans annoter génère quand même un backup
     // utile (la heatmap multi-sessions le consommera).
@@ -285,7 +285,7 @@ window.SessionBackups = (function() {
       return Promise.resolve(null);
     }
 
-    // 🆕 v1.20.0 — Skip aussi si le hash matche le DERNIER SNAPSHOT IDB
+    // Skip aussi si le hash matche le DERNIER SNAPSHOT IDB
     // du même plan. Cas typique : boot-pre-restore après un reload sans
     // modif → `_hashLastSnapshot` est null (in-memory reset au load) MAIS
     // le snapshot IDB le plus récent du même plan a le même hash que la
@@ -349,7 +349,7 @@ window.SessionBackups = (function() {
     });
   }
 
-  // 🆕 v1.20.0 — Récupère le snapshot le plus récent (= id le plus grand)
+  // Récupère le snapshot le plus récent (= id le plus grand)
   // pour un planId donné. Utilisé par snapshot() pour skip-if-identical.
   // Retourne `null` si aucun snapshot pour ce plan ou si planId vide.
   function _getLastSnapshotForPlan(planId) {
@@ -376,7 +376,7 @@ window.SessionBackups = (function() {
   // l'utilisateur de recharger la page. SessionPersist se charge de
   // restaurer au prochain boot.
   //
-  // 🆕 v1.16.1 — Bonus : si le backup vient d'un AUTRE plan que celui
+  // Bonus : si le backup vient d'un AUTRE plan que celui
   // actuellement chargé, on force `PlanRegistry.lastPlanId` au planId
   // du backup pour que l'app boote sur le bon plan au reload. Sinon
   // l'app rouvrait le plan courant et ignorait le slot du plan du
@@ -422,7 +422,7 @@ window.SessionBackups = (function() {
       const targetPlanId = entry.payload.planId || entry.planId;
       // Session remplacée par une ancienne : une installation reliée relira tout (no-op sinon).
       try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: targetPlanId, restauration: true } })); } catch(e) {}
-      // 🆕 v1.16.1 : force PlanRegistry.lastPlanId pour que l'app
+      // force PlanRegistry.lastPlanId pour que l'app
       // rouvre le bon plan au reload. Si le backup vient du plan
       // actuellement chargé → no-op (déjà à la bonne valeur).
       if (window.PlanRegistry && typeof window.PlanRegistry.setLastPlanId === "function") {
@@ -483,7 +483,7 @@ window.SessionBackups = (function() {
     listAll:     listAll,
     restore:     restore,
     remove:      remove,
-    deleteForPlan: deleteForPlan,  // 🧹 v1.79.3 — purge tous les backups d'un plan
+    deleteForPlan: deleteForPlan,  // purge tous les backups d'un plan
     clearAll:    clearAll,
     onChange:    onChange,
     // Constantes exposées pour debug

@@ -478,7 +478,7 @@
   }
 
   // ---------- Enveloppe d'un ensemble de galeries ----------
-  // 15/10/2026 (KARMA : « un polygone sous toute la zone, pas chaque galerie ») — un
+  // (KARMA : « un polygone sous toute la zone, pas chaque galerie ») — un
   // contour qui couvre tout un secteur, pour la carte. Sur une grille : galeries
   // tracées, élargies de `fermeture` (les galeries voisines se rejoignent), trous
   // bouchés, puis rétrécies jusqu'à garder `marge` autour des galeries ; contour des

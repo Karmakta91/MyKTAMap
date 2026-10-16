@@ -84,6 +84,6 @@ window.addEventListener("load", function () {
   });
 
   // ── Pont B7 : lu par homeLoader.js (déjà appelé via window.* avec
-  // garde typeof dans le code d'origine — ex-lignes 1874/2391/…).
+  // garde typeof).
   window.getLoaderPerfPreset = getLoaderPerfPreset;
 });

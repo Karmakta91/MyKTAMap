@@ -234,7 +234,7 @@ t("la pastille et le bloc d'état existent dans index.html",
 t("le module est précaché (sw.js > ASSETS_TO_CACHE)", /"\.\/js\/ktaExtensions\.js"/.test(SW));
 t("🩸 la mémoire de l'instance ne part PAS dans l'export de profil",
   PROF.indexOf("myktamap_server_connection_v1") < 0);
-// v2.7.0 (chantier 3) : le module porte le GARDE des requêtes d'extension.
+// (chantier 3) : le module porte le GARDE des requêtes d'extension.
 // Règle : un seul fetch, dans requete() ; jamais de XHR/beacon/socket ; le
 // module ne contacte JAMAIS le serveur de lui-même (seule une extension
 // l'appelle), et en OFF requete refuse avant tout envoi (cf check-extensions).

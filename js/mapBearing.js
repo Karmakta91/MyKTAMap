@@ -94,7 +94,7 @@
   const SEUIL_ARRET  = 15;    // ° — à l'arrêt, il faut une vraie intention
   const MARCHE_MS    = 2500;  // ms depuis le dernier pas → on se dit « en marche »
 
-  // 🩸 v1.97.3 — TROIS marges cohabitaient ici pour « le viewport tourné
+  // 🩸 TROIS marges cohabitaient ici pour « le viewport tourné
   // déborde son rectangle », et DEUX étaient fausses (0,45 pour les tracés,
   // 0,35 pour les tuiles). La bonne valeur dépend du FORMAT de l'écran :
   // (grand côté / petit côté − 1)/2 — soit 0,19 sur le 1100×800 du harnais,
@@ -203,7 +203,7 @@
     _rafId = requestAnimationFrame(_boucle);
   }
 
-  // 🩸 v1.97.6 — `prefers-reduced-motion` AGIT, au lieu d'être promis.
+  // 🩸 `prefers-reduced-motion` AGIT, au lieu d'être promis.
   // Le bloc CSS qui prétendait prendre en charge le mal des transports ne
   // posait qu'un `transition: none` sur un bouton qui n'en déclarait aucune :
   // un no-op, pendant que la carte, elle, s'animait quoi qu'il arrive.
@@ -250,7 +250,7 @@
     const cont0 = map.getContainer();
     if (cont0) cont0.classList.add("kta-bearing-lock");
     _majPaddingRenderer(map, true);
-    // 🩸 v1.97.4 — ces trois options valaient `"center"` : par prudence, je
+    // 🩸 ces trois options valaient `"center"` : par prudence, je
     // forçais le zoom sur le centre de l'écran, de peur que le point visé
     // soit mal converti sous rotation. La peur n'avait plus lieu d'être une
     // fois `mouseEventToContainerPoint` patché — et le prix était lourd :
@@ -344,7 +344,7 @@
     cont.addEventListener("pointerdown", function(e) {
       doigts.add(e.pointerId);
       if (doigts.size > 1) {
-        // 🩸 v1.97.4 — UN PINCH COMMENCE, et il commence toujours mal : entre
+        // 🩸 UN PINCH COMMENCE, et il commence toujours mal : entre
         // la pose du premier doigt et celle du second, le premier bouge de
         // quelques pixels. Mon pan s'engageait (seuil 6 px) et déplaçait la
         // carte AVANT que Leaflet ne voie le geste à deux doigts — mesuré :
@@ -410,7 +410,7 @@
   // l'applique QUE pendant le mode : le canvas grandit d'autant (×1,8 à ×3,5
   // en surface), ce n'est pas un coût à faire porter à tout le monde.
   //
-  // 🩸 27/09/2026 (KARMA « le tracé du chemin avance au dézoom en mode
+  // 🩸 (KARMA « le tracé du chemin avance au dézoom en mode
   // guidé ») — seul le renderer PAR DÉFAUT était élargi. L'itinéraire, lui,
   // vit dans un renderer SVG À PART (halo néon, impossible sur canvas) : resté
   // cadré sur le rectangle NON tourné, il coupait le trajet dans les coins, et
@@ -477,7 +477,7 @@
   // croisent pas le viewport élargi. On ne remet QUE celles qu'on a retirées
   // (drapeau `_ktaCulled`) — sans ça on rendrait visibles des tuiles que le
   // filtre multi-niveau avait volontairement masquées.
-  // 🧱 29/09/2026 — le retrait des tuiles hors écran n'est plus propre à ce
+  // le retrait des tuiles hors écran n'est plus propre à ce
   // mode : le tuilage l'applique TOUT LE TEMPS (tiling.js > ktaCullerTuilesV2,
   // mesuré : 864 tuiles posées pour 6 visibles sans rotation). Une seule
   // implémentation ; ce mode se contente de la redemander pendant que la vue
@@ -510,7 +510,7 @@
   // KARMA sur le bouton Retour.
   // On ne fige donc aucune hauteur : on mesure ce qui est là et on se place
   // au-dessus. Ajouter un flottant à cette liste suffira pour le suivant.
-  // 🐛 30/09/2026 (capture KARMA) : la BARRE D'ÉTAT elle-même manquait — elle grandit
+  // la BARRE D'ÉTAT elle-même manquait — elle grandit
   // quand un plan de secours tourne (pastille « 🚑 Secours ») et recouvrait le bouton,
   // resté à sa hauteur CSS fixe. Sa taille change sans ajout de nœud à <html> : elle
   // est aussi suivie par un ResizeObserver (cf _observerFloaters).

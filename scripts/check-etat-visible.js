@@ -44,7 +44,7 @@ function bloc(src, debut, fin) {
   verif(/function majBadge\(\)/.test(s) && /function _nbFiltresActifs\(\)/.test(s) && /function _niveauxFiltres\(\)/.test(s), "filtres : pastille (majBadge / nbActifs / niveaux) définie");
   const notify = bloc(s, "function _notify() {", "function _scheduleApply");
   verif(notify.includes("majBadge()"), "🩸 chaque changement de filtre met la pastille à jour (_notify)");
-  // 🔵 14/09/2026 (KARMA) : le chiffre est devenu un POINT. Il comptait les
+  // le chiffre est devenu un POINT. Il comptait les
   // catégories filtrées, pas les objets masqués — il mesurait autre chose que
   // ce qu'on lisait. On vérifie la classe, le marqueur, et qu'AUCUN compte
   // n'est réécrit dans le DOM.

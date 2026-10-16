@@ -279,7 +279,7 @@
   // ============================================================
   // Utilisé par le gate _isOnline() de Vue OSM : si offline mais cache
   // présent pour la bbox du plan, autoriser ouverture en mode cache.
-  // 🐛 v1.43.6 — Bug v1.43.2 (KARMA "mode avion → icône OSM disparaît") :
+  // Bug v1.43.2 (KARMA "mode avion → icône OSM disparaît") :
   // l'ancienne version testait UNIQUEMENT au zoom hardcoded `14`. Or
   // cacheVisibleTiles cache à [curZ-1, curZ, curZ+1] avec curZ = zoom
   // courant de la map au moment du clic 💾. Si l'user clic 💾 à zoom 16,

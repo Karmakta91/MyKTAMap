@@ -7,8 +7,8 @@
 // =========================
 // INTERFACE LÉGENDE — Modale plein écran avec sections groupées
 // =========================
-// 🆕 v1.31.0 (P3 Lot 3 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 8561-9009 avant extraction) pour réduire
+// (P3 Lot 3 — découpe interface.js) : module extrait de
+// js/interface.js pour réduire
 // le volume du fichier principal.
 //
 // Aucun changement de comportement runtime. La fonction `afficherLegende`
@@ -62,11 +62,11 @@ const LEGENDE_LABELS = {
   passage:  "Passage",
   danger:   "Danger",
   plaque:   "Plaque indication",
-  // 🆕 v1.59.0 — Portail (liaison inter-plan)
+  // Portail (liaison inter-plan)
   portail:  "Portail (liaison inter-plan)",
   track:    "Position du tracker",
   default:  "Point sans tag (défaut)",
-  // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  // D — Point d'entrée du plan (Vue OSM × Mode Secours).
   entree_plan: "Point d'entrée du plan"
 };
 
@@ -83,7 +83,7 @@ function afficherLegende() {
   modal.id = "kta-legende-modal";
   modal.className = "kta-readme-modal-overlay";
 
-  // 🆕 v1.16.0 step 2 : libellé résolu via LegendCustomization si dispo.
+  // libellé résolu via LegendCustomization si dispo.
   // Cascade session > plan > LEGENDE_LABELS (fallback hardcodé historique).
   function _label(cat, key) {
     if (LC) return LC.getLabel(cat, key);
@@ -99,7 +99,7 @@ function afficherLegende() {
     return true;
   }
 
-  // 🧹 v1.76.0 (F23) — bandeau « types orphelins » : des objets dessinés
+  // (F23) — bandeau « types orphelins » : des objets dessinés
   // référencent un type custom qui n'existe dans aucune légende (entrée
   // supprimée, calque importé sans sa définition…). Avant, ces objets
   // sortaient blancs/gris SANS aucune ligne ici — le problème était
@@ -111,7 +111,7 @@ function afficherLegende() {
     try { orphelins = LC.listOrphanTypes(); } catch(e) { return ""; }
     if (!orphelins || !orphelins.length) return "";
     const totalObjets = orphelins.reduce(function(s, o) { return s + o.nb; }, 0);
-    // 🧷 v1.76.1 — chaque type orphelin porte un bouton « ➕ Lier » qui ouvre
+    // chaque type orphelin porte un bouton « ➕ Lier » qui ouvre
     // la dialog d'ajout PRÉ-REMPLIE avec l'id EXACT du type (catégorie
     // verrouillée). C'est LE chemin de réparation qui manquait : recréer
     // l'entrée à la main générait un id neuf qui ne se liait jamais (vécu
@@ -141,7 +141,7 @@ function afficherLegende() {
   // Helper pour générer une ligne d'icône
   function ligneIcone(cle, url) {
     const label = _label("icones", cle);
-    // 🐛 v1.76.0 — plus de onerror inline : la gestion d'échec est déléguée
+    // plus de onerror inline : la gestion d'échec est déléguée
     // (capture) au niveau de la modale, avec repli sur l'icône BUILT-IN
     // intégrée quand le plan déclarait une URL morte (cf. _brancherRepliIcones).
     return `<div class="kta-legende-ligne">
@@ -157,7 +157,7 @@ function afficherLegende() {
       { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
       { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
       { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
-      // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
+      // D — Catégorie Secours (Vue OSM × Mode Secours).
       { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
     ];
 
@@ -228,7 +228,7 @@ function afficherLegende() {
       contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
     }
 
-    // 🆕 v1.16.0 step 2 : entrées custom catégorie « icones » ajoutées par
+    // entrées custom catégorie « icones » ajoutées par
     // l'user (cascade plan + session). Affichées si visibles et iconUrl set.
     if (LC) {
       const customsIcones = LC.listCustomEntries("icones")
@@ -248,8 +248,8 @@ function afficherLegende() {
   // 🪜 v169 (Karma_dev) : ajout de Jonction interniveau (magenta) — type
   // conditionnel multi-niveau, présenté dans la légende même sans multiLevel
   // car cohérence avec la légende exportée PNG.
-  // 🆕 v1.16.0 step 2 : libellés via LegendCustomization + filtre isVisible.
-  // 🎨 v1.76.0 — les pastilles ne portent plus leurs couleurs en dur : elles
+  // libellés via LegendCustomization + filtre isVisible.
+  // les pastilles ne portent plus leurs couleurs en dur : elles
   // les demandent au styleResolver. C'était LE risque structurel de ce module —
   // cette légende décrivait la carte avec sa propre table, indépendante de
   // celle du rendu. Elles coïncidaient par chance ; le jour où l'une bougeait,
@@ -271,7 +271,7 @@ function afficherLegende() {
   contenuTracés += _ligneTrace("principal");
   contenuTracés += _ligneTrace("secondaire");
   contenuTracés += _ligneTrace("chemin");
-  // 15/10/2026 (KARMA) : la jonction interniveau n'existe que sur un plan multi-niveau.
+  // la jonction interniveau n'existe que sur un plan multi-niveau.
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) contenuTracés += _ligneTrace("jonction");
   // Customs traces (lineColor obligatoire)
   if (LC) {
@@ -310,7 +310,7 @@ function afficherLegende() {
   }
   contenuZones += `</div>`;
 
-  // 🏛️ v1.10.3 — Structures. Polygones (fillColor + borderColor) + polylines (lineColor).
+  // Structures. Polygones (fillColor + borderColor) + polylines (lineColor).
   function _ligneStructPoly(key) {
     if (!_visible("structures", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurFond("structures", key)}; opacity:0.85; height:14px; border:2px solid ${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
@@ -326,7 +326,7 @@ function afficherLegende() {
   contenuStructures += _ligneStructLine("front-1");
   contenuStructures += _ligneStructLine("front-2");
   // Customs structures
-  // 🐛 v1.16.0 step2-drawable-fix : utilise GEOMETRY comme discriminator
+  // utilise GEOMETRY comme discriminator
   // (au lieu de "lineColor first") — sinon une entrée polygon avec
   // lineColor stocké en accident apparaissait comme trait dans la légende
   // EN PLUS du polygone sur la carte → KARMA voyait les deux représentations.
@@ -347,7 +347,7 @@ function afficherLegende() {
   }
   contenuStructures += `</div>`;
 
-  // 🆕 v1.16.0 step 2 : bouton « ✏️ Modifier » dans le header (à gauche du
+  // bouton « ✏️ Modifier » dans le header (à gauche du
   // close). Ouvre LegendCustomization.ouvrirEditeur — au clic terminé,
   // l'éditeur appelle onChange qui re-render la modale Légende pour que
   // les renommages/visibilités/customs apparaissent immédiatement.
@@ -356,7 +356,7 @@ function afficherLegende() {
     ? '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legende-modifier" type="button" style="margin-right:8px;" title="' + window.I18n.t("legendui.edit.title") + '">' + window.I18n.t("legendui.edit.btn") + '</button>'
     : '';
 
-  // 🆕 v1.9.2-fix13 : retrait du style inline `max-width:480px` qui
+  // retrait du style inline `max-width:480px` qui
   // bloquait l'agrandissement PC. La modale utilise désormais les tailles
   // standard de .kta-readme-modal-boite (mobile : min(960px, 96vw),
   // PC : 1400px / 1700px / 2000px selon le palier — cf. style.css).
@@ -383,7 +383,7 @@ function afficherLegende() {
 
   document.documentElement.appendChild(modal);
 
-  // 🐛 v1.76.0 — REPLI D'ICÔNE À L'ÉCHEC DE CHARGEMENT (bug « entree_plan »).
+  // REPLI D'ICÔNE À L'ÉCHEC DE CHARGEMENT (bug « entree_plan »).
   // Si un plan déclare un tag built-in avec un chemin mort dans son
   // plan-config.json > icons, cette URL cassée gagne sur l'icône intégrée
   // (PLAN_CONFIG.icons est lu en premier). On rattrape à l'erreur : bascule
@@ -408,7 +408,7 @@ function afficherLegende() {
   document.getElementById("kta-legende-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 
-  // 🧷 v1.76.1 — bouton « ➕ Lier » du bandeau orphelins (délégué : le corps
+  // bouton « ➕ Lier » du bandeau orphelins (délégué : le corps
   // est re-rendu par innerHTML à chaque édition de légende).
   modal.addEventListener("click", async function (e) {
     const btn = e.target.closest ? e.target.closest(".kta-orphan-link") : null;
@@ -416,7 +416,7 @@ function afficherLegende() {
     if (!LC || typeof LC.ouvrirAddDialog !== "function") return;
     const type = btn.getAttribute("data-otype");
     const cat  = btn.getAttribute("data-ocat");
-    // 🧷 v1.76.1 — garde anti-doublon de LABEL : si une entrée du même nom
+    // garde anti-doublon de LABEL : si une entrée du même nom
     // existe déjà dans la catégorie (ex. créée au Générateur ou à la main,
     // avec un id différent donc NON liée à ce type), on prévient — sinon
     // l'utilisateur se retrouve avec deux lignes « Bas » identiques sans
@@ -432,7 +432,7 @@ function afficherLegende() {
     }, { id: type, category: cat, label: type });
   });
 
-  // 🆕 v1.16.0 step 2 : bouton « ✏️ Modifier » → ouvre l'éditeur. À chaque
+  // bouton « ✏️ Modifier » → ouvre l'éditeur. À chaque
   // change dans l'éditeur, on rafraîchit UNIQUEMENT le contenu (.kta-legende-corps)
   // sans recréer la modale entière — sinon l'éditeur ouvert par-dessus
   // pointerait vers un ancien DOM, et le bouton Modifier de la nouvelle
@@ -475,7 +475,7 @@ function afficherLegende() {
         { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
         { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
-        // 🆕 v1.41.0 D — Catégorie Secours.
+        // D — Catégorie Secours.
         { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
       ];
       const clesGroupees2 = GROUPES2.flatMap(function(g) { return g.cles; });
@@ -582,7 +582,7 @@ function afficherLegende() {
     sx += _ligneStructLine("front-1");
     sx += _ligneStructLine("front-2");
     if (LC) {
-      // 🐛 v1.16.0 step2-drawable-fix : geometry first
+      // geometry first
       LC.listCustomEntries("structures")
         .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
         .forEach(function(e) {

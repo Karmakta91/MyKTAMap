@@ -7,8 +7,8 @@
 // =========================
 // INTERFACE MAINTENANCE — Calibrage + Reset + Mise à jour douce
 // =========================
-// 🆕 v1.31.0 (P3 Lot 7 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 1671-2326 avant extraction) pour réduire le
+// (P3 Lot 7 — découpe interface.js) : module extrait de
+// js/interface.js pour réduire le
 // volume du fichier principal.
 //
 // Aucun changement de comportement runtime. Les 3 fonctions publiques
@@ -160,7 +160,7 @@ function ouvrirCalibrageEchelle() {
     }
     if (champScale) {
       champScale.value = nouveauScale.toFixed(3);
-      // v1.92.0 (L4) : plus de bouton Appliquer dans Réglages — la valeur
+      // (L4) : plus de bouton Appliquer dans Réglages — la valeur
       // s'enregistre comme une saisie (change → setPlanScale).
       champScale.dispatchEvent(new Event("change", { bubbles: true }));
     }
@@ -173,11 +173,11 @@ function ouvrirCalibrageEchelle() {
 // =========================
 // VIDER LE CACHE APPLICATIF
 // =========================
-// 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être vers
+// (KARMA "on modifie le test internet, doit être vers
 // origin/ping.html, plus aucun appel externe vers Google. On assure le
 // serveur dispo, SSL, Nginx avant Force update. On attend retour 'OK'").
 //
-// 🆕 v1.9.3-B-side-fix (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
+// (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
 // mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
 // PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
 //   - Prod (myktamap.fr) → https://myktamap.fr/ping.html
@@ -283,7 +283,7 @@ window._pingInternetUrl = PING_URL;
 //
 // Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
 // sessionStorage, cookies, données utilisateur.
-// 🐛 v1.37.1 — La fonction _getCacheNameFromSW (hotfix21) a été RETIRÉE.
+// La fonction _getCacheNameFromSW (hotfix21) a été RETIRÉE.
 // Elle interrogeait le SW COURANT (= l'ancien avant update) → on récupérait
 // le nom du cache de l'ANCIENNE version → la purge filtrait `k !== currentName`
 // → on PRÉSERVAIT EXPLICITEMENT l'ancien cache → l'ancien SW continuait de
@@ -318,7 +318,7 @@ async function mettreAJourCodeSeul() {
       return;
     }
 
-    // 🐛 v1.37.1 — RETRAIT du hotfix21 _getCacheNameFromSW. Cause racine du
+    // RETRAIT du hotfix21 _getCacheNameFromSW. Cause racine du
     // bug "badge footer ancienne→nouvelle persiste après reload" :
     //   - hotfix21 interrogeait le SW COURANT (= l'ancien) AVANT reg.update()
     //   - Récupérait son CACHE_NAME → croyait être le "courant"
@@ -342,7 +342,7 @@ async function mettreAJourCodeSeul() {
     // fait pendant que l'user voit "Préparation…" + "Rechargement…", et
     // au reload le nouveau SW est déjà prêt avec son cache populé.
     //
-    // 🐛 v1.34.9 — Polling reg.waiting (max 5s) avant le reload. Sans ça,
+    // Polling reg.waiting (max 5s) avant le reload. Sans ça,
     // race condition : reload 200ms après reg.update() = nouveau SW pas
     // encore installed → reg.waiting = null → SKIP_WAITING jamais envoyé
     // → ancien SW sert encore l'ancien copyright.js au reload →
@@ -368,7 +368,7 @@ async function mettreAJourCodeSeul() {
           reg.update().catch(function(e) {
             console.warn("[Soft update] reg.update() :", e);
           });
-          // 🐛 v1.34.9 — Polling actif sur reg.waiting (max 5s).
+          // Polling actif sur reg.waiting (max 5s).
           const DEADLINE_MS = Date.now() + 5000;
           let nouveauSwActive = false;
           while (Date.now() < DEADLINE_MS) {
@@ -446,7 +446,7 @@ async function mettreAJourCodeSeul() {
 }
 
 // Avertissement spécifique offline pour la mise à jour douce.
-// 🆕 v1.9.3-B-side (KARMA "rend le modal plus jolie pour l'erreur") :
+// (KARMA "rend le modal plus jolie pour l'erreur") :
 // upgrade visuel — passage du style basique kta-modal (icône + titre + texte
 // + un bouton OK) au style élaboré kta-oom-modal-boite (header big avec
 // ⚠️ qui pulsent, sections 🔍 Causes / ⛔ Conséquence / ✅ Recommandation),
@@ -532,7 +532,7 @@ function viderCacheAppli() {
 // rouge (style cohérent avec la modale OOM), puis bascule sur le flow de
 // double confirmation classique si l'utilisateur veut quand même continuer.
 //
-// 🆕 v1.9.3-B-side (KARMA "ca fonctionne en mise jours mais pas en mode tout
+// (KARMA "ca fonctionne en mise jours mais pas en mode tout
 // reset, il devrait nous dire serveur indispo ou pas internet") : message
 // aligné avec _softUpdateOfflineWarning car le ping cible désormais le serveur
 // MyKTAMap (<origin>/ping.html), pas Google. Un échec peut signifier "pas
@@ -597,7 +597,7 @@ function _resetFlowOfflineWarning() {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
-// 🔓 04/10/2026 — plus de mot de passe communautaire (ni hash, ni valeur en
+// plus de mot de passe communautaire (ni hash, ni valeur en
 // clair). Seule une instance qui publie SON mot de passe (index.json >
 // config.accessHash) le redemande après reset : on PRÉVIENT, sans jamais
 // l'afficher. Config d'instance lue en mémoire (KtaInstance, chargée au boot).
@@ -685,7 +685,7 @@ function _resetFlowConfirmation() {
 
     document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
-      // 🆕 v1.43.26 (Pattern D) — Disable IMMÉDIAT du bouton avant tout async
+      // (Pattern D) — Disable IMMÉDIAT du bouton avant tout async
       // (reset complet : SW unregister + caches.delete + localStorage.clear +
       // IDB wipe). Sans ça, l'user qui re-clique pendant le wipe peut
       // déclencher un 2e flow concurrent qui collide avec le 1er (en
@@ -743,7 +743,7 @@ function _resetFlowConfirmation() {
             }));
           } else {
             // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues.
-            // 🐛 v1.69.0 : la liste s'était arrêtée à `handles` — sur Safari, « tout
+            // la liste s'était arrêtée à `handles` — sur Safari, « tout
             // effacer » laissait donc en place photos, backups, profil, crashes (et
             // maintenant le carnet). Liste alignée sur memInspector.KNOWN_IDB_DBS.
             const knownDbs = [
@@ -778,8 +778,8 @@ function _resetFlowConfirmation() {
 // EXPORTS WINDOW (v1.31.0 P3 Lot 7)
 // ==========================================
 // ouvrirCalibrageEchelle, viderCacheAppli, mettreAJourCodeSeul
-// étaient exposés depuis interface.js > EXPORT GLOBAL (lignes 5364-5366
-// avant ce lot). Post-extraction : on les expose ici.
+// étaient exposés depuis interface.js > EXPORT GLOBAL.
+// Post-extraction : on les expose ici.
 window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
 window.viderCacheAppli        = viderCacheAppli;
 window.mettreAJourCodeSeul    = mettreAJourCodeSeul;

@@ -32,8 +32,8 @@ const PLANNER_DEFAULT_ICONS = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
-  portail:  "icon/portail.png",   // 🆕 v1.59.0 — liaison inter-plan
-  // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  portail:  "icon/portail.png",   // liaison inter-plan
+  // D — Point d'entrée du plan (Vue OSM × Mode Secours).
   //    SVG inline → pas de fichier PNG nécessaire (cf js/map.js TAGS_BUILTIN).
   entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
@@ -52,7 +52,7 @@ let _imageLayerCount   = 0;
 let _dataLayerCount    = 0;
 let _iconRowCount      = 0;
 let _plannerOrigAssets = {};
-// 📄 v1.71.0 — PDF Histoire MULTIPLES du générateur (cf section 📖 du form)
+// PDF Histoire MULTIPLES du générateur (cf section 📖 du form)
 let _plannerHistPdfs = [];
 
 function _renderHistPdfListe() {
@@ -79,7 +79,7 @@ function _renderHistPdfListe() {
     });
   });
 }
-// 🆕 v1.9.3-B1d.γ.2 : photos extraites d'un datalayer ZIP importé via le
+// photos extraites d'un datalayer ZIP importé via le
 // bouton "📦 Importer ZIP" (mode Nouveau ou Modifier). Format identique à
 // ce qu'on trouve dans _convUploadedPhotos de sessionExporter.js :
 // [{id, pointId, mime, size, blob}]. Lu au moment du _genererZip pour
@@ -87,7 +87,7 @@ function _renderHistPdfListe() {
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
 
-// 🆕 v1.17.0 — État de la légende plan-level (= source de vérité pour
+// État de la légende plan-level (= source de vérité pour
 // `plan.customLegend` du plan-config.json généré). null = pas de
 // personnalisation (cascade défaut MKM). Sinon : objet sérialisable au
 // format `LegendCustomization.getSessionState()` :
@@ -98,24 +98,24 @@ let _plannerMode       = "nouveau";
 // `config.plan.customLegend` du ZIP source.
 let _plannerPlanLegend = null;
 
-// 🏷️ v1.82.0 — état de légende propre à l'écran « Convertir depuis SIG ».
+// état de légende propre à l'écran « Convertir depuis SIG ».
 // Séparé de `_plannerPlanLegend` : les deux écrans peuvent être utilisés dans
 // la même session, mélanger leurs états ferait fuiter les entrées de l'un
 // dans le plan de l'autre.
 let _sigPlanLegend = null;
-// 🏷️ v1.83.1 — une invalidation de légende à signaler jusqu'à la prochaine
+// une invalidation de légende à signaler jusqu'à la prochaine
 // édition. Un booléen plutôt qu'un texte posé dans le DOM : `_sigImpMajEtat
 // Legende` est rappelée par plusieurs chemins (changement de niveau, de
 // colonne, de routage) et écrasait le message aussitôt affiché — d'où l'ordre
 // d'attachement des listeners dont dépendait l'ancienne version.
 let _sigLegendeReset = false;
 
-// 🆕 v1.17.0 — Clé localStorage pour la persistance sticky du mode Simple/
+// Clé localStorage pour la persistance sticky du mode Simple/
 // Avancé du Générateur. Valeurs : "simple" (default) | "avance". Lu au boot
 // de la modale via _lirePlannerMode. Forcé à "avance" en mode Modifier
 // (impossible de simplifier l'édition d'un plan existant sans risquer de
 // perdre customs / dataLayers / imageLayers / icons custom).
-// 🏷️ 16/09/2026 — lit un champ d'étiquettes (virgules) et le normalise par
+// lit un champ d'étiquettes (virgules) et le normalise par
 // LA fonction de l'app (`PlanRegistry.normaliserTags` : trim, dédoublonnage
 // insensible à la casse, 12 max, 24 caractères). Utilisé par le Générateur
 // et ses trois convertisseurs KMZ / GPX / SIG : un seul chemin de sortie.
@@ -142,7 +142,7 @@ function _ecrirePlannerMode(mode) {
   try { localStorage.setItem(PLANNER_MODE_LS_KEY, mode); } catch(e) {}
 }
 
-// 🧹 v1.29.0-fix3 (KARMA "doublon") — Feature flag KTA_KMZ_IMPORT_UI_ENABLED
+// (KARMA "doublon") — Feature flag KTA_KMZ_IMPORT_UI_ENABLED
 // retiré. Les boutons « Importer KMZ » / « Importer GPX » du planner
 // faisaient doublon avec la drop zone ZIP qui accepte déjà ces extensions
 // via _routerFichierImport. Les modales sous-jacentes (_afficherImporterKmz
@@ -666,7 +666,7 @@ function afficherPlanner() {
     );
   }
 
-  // 🧭 v1.76.1 — B ESTIMÉ au Générateur : A + échelle (#pl_scale) + Nord
+  // B ESTIMÉ au Générateur : A + échelle (#pl_scale) + Nord
   // (#pl_northOffset, 0 par défaut) + dimensions de l'image chargée
   // (#pl_width/#pl_height). Mêmes règles que côté ⚙️ Réglages : refus
   // explicites, récap de confirmation, badge « estimé » informatif.
@@ -717,11 +717,11 @@ function afficherPlanner() {
   _plannerOrigAssets = {};
   _plannerHistPdfs = [];
   setTimeout(_renderHistPdfListe, 0);
-  _plannerPhotosFromZip = [];  // 🆕 v1.9.3-B1d.γ.2 : reset buffer photos ZIP
+  _plannerPhotosFromZip = [];  // reset buffer photos ZIP
   _plannerMode       = "nouveau";
-  _plannerPlanLegend = null;   // 🆕 v1.17.0 : reset état légende plan-level
+  _plannerPlanLegend = null;   // reset état légende plan-level
 
-  // 🆕 v1.17.0 — Initialisation du mode Simple/Avancé. Lecture sticky
+  // Initialisation du mode Simple/Avancé. Lecture sticky
   // localStorage, default "simple" au tout premier launch. _appliquerPlannerMode
   // fait la mise à jour DOM (toggle bouton actif + attribut data sur corps).
   _appliquerPlannerMode(_lirePlannerMode());
@@ -730,7 +730,7 @@ function afficherPlanner() {
     btn.addEventListener("click", function() {
       _appliquerPlannerMode(btn.dataset.mode);
       _ecrirePlannerMode(btn.dataset.mode);
-      // 🧙 v1.72.1 : le jeu de pages dépend du mode → reconstruire
+      // le jeu de pages dépend du mode → reconstruire
       // On reste sur la page courante si le nouveau mode l'a aussi (arrivée directe sur « Nom »).
       if (_wizActif) {
         const courante = _wizPages[_wizIdx] ? _wizPages[_wizIdx].def.id : "accueil";
@@ -741,7 +741,7 @@ function afficherPlanner() {
     });
   });
 
-  // 🧙 v1.72.1 — Assistant (wizard) : injecté APRÈS tous les binds du form
+  // Assistant (wizard) : injecté APRÈS tous les binds du form
   _wizInit();
 
   // 🚨 Q59 (audit ergonomie 13/09/2026) : un assistant qui peut compter 11
@@ -780,11 +780,11 @@ function afficherPlanner() {
   // Clic sur le fond : inerte (avant : fermeture immédiate, tout perdu).
 
   // 🏷️ ancre:fin-fermer-planner
-  // 🧹 v1.29.0-fix3 (KARMA "doublon") — Handlers des boutons KMZ/GPX
+  // (KARMA "doublon") — Handlers des boutons KMZ/GPX
   // import RETIRÉS. La drop zone ZIP ouvre automatiquement la modale
   // appropriée via _routerFichierImport (extensions .kmz / .gpx).
 
-  // 📥 v1.7.3 : bouton "Conf exemple" déplacé depuis la home loader.
+  // bouton "Conf exemple" déplacé depuis la home loader.
   // Télécharge `data/myktamap.zip` (ZIP d'exemple inclus dans le repo)
   // pour servir de base de travail à un nouveau plan.
   const btnConfEx = document.getElementById("kta-planner-conf-exemple-btn");
@@ -878,7 +878,7 @@ function afficherPlanner() {
         // plan précédent ne ferait qu'introduire une déformation — on le vide.
         ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
 
-        // 🐛 14/09/2026 (KARMA : « ça m'ouvre juste le générateur, sans
+        // (KARMA : « ça m'ouvre juste le générateur, sans
         // préremplir ») — TOUT ÉTAIT REMPLI, RIEN N'ÉTAIT VISIBLE. Les six
         // champs du géoréf ET l'échelle vivent dans des blocs
         // `data-planner-advanced="1"`, que le CSS masque tant que le corps
@@ -928,9 +928,9 @@ function afficherPlanner() {
 
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
-  // 📖 v1.37.0 — PDF Histoire (générateur avancé). Sync nom uploaded +
+  // PDF Histoire (générateur avancé). Sync nom uploaded +
   // bouton "🗑 Retirer" qui marque l'intention de retirer (data-retire=1)
-  // 📄 v1.71.0 — MULTI-PDF Histoire : liste vivante {name, file|null, fromZip}.
+  // MULTI-PDF Histoire : liste vivante {name, file|null, fromZip}.
   // file = File uploadé ; fromZip = ré-embarqué depuis _plannerOrigAssets[name]
   // (mode Modifier). Retirer une ligne = ne pas l'embarquer, simplement.
   _bindUploadLabel("pl_histoirePdf", "pl_histoirePdf_nom");
@@ -957,7 +957,7 @@ function afficherPlanner() {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     _lireImageDimensions(file).then(function(dims) {
-      // 🐛 v1.76.1 — refus FRANC au-delà de la limite physique des décodeurs
+      // refus FRANC au-delà de la limite physique des décodeurs
       // (Chrome/Skia : 32 767 px par côté). Avant, on échouait plus loin avec
       // un « non décodable » cryptique (PC) ou un crash mémoire (mobile).
       if (dims.width > MAX_COTE_IMAGE_PX || dims.height > MAX_COTE_IMAGE_PX) {
@@ -981,7 +981,7 @@ function afficherPlanner() {
   // l'etat de la case pl_multiLevel. Cache si plan single-level (pas pertinent),
   // affiche si plan multi-niveau (l'user peut tagger chaque image layer).
   const mlCbBind = document.getElementById("pl_multiLevel");
-  // 📉 v1.83.0 — les champs de profondeur suivent la case multi-niveau.
+  // les champs de profondeur suivent la case multi-niveau.
   const _majProfRow = function () {
     const row = document.getElementById("pl_prof_row");
     if (row) row.style.display = (mlCbBind && mlCbBind.checked) ? "" : "none";
@@ -1007,14 +1007,14 @@ function afficherPlanner() {
     });
   }
 
-  // 🆕 v1.9.3-B1d.γ : visibilité section "📸 Inclure les photos" + compteur
+  // visibilité section "📸 Inclure les photos" + compteur
   // async. Section visible UNIQUEMENT en mode Modifier (sinon pas de plan
   // courant chargé, donc pas de photos IDB à embarquer). Le compteur est
   // peuplé après render avec lecture IDB.
   _majVisibiliteCheckboxPhotos();
   _majCompteurPhotosPlanner();
 
-  // 🆕 v1.9.3-A2 : toggle mode image (upload / vierge) + handler de
+  // toggle mode image (upload / vierge) + handler de
   // génération du canvas vide. Cf. handlers _onImageModeChange et
   // _genererImageVierge plus bas dans le fichier.
   document.querySelectorAll('input[name="pl_image_mode"]').forEach(function(r) {
@@ -1026,7 +1026,7 @@ function afficherPlanner() {
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
 
-  // 🆕 v1.9.3-B1d.γ.2 (KARMA 4:b "un datalayer en zip") : bouton pour
+  // (KARMA 4:b "un datalayer en zip") : bouton pour
   // importer un datalayer ZIP (data + photos) exporté depuis l'app via
   // Conversion session→data avec case "📸 Inclure les photos" cochée.
   // Permet de pré-remplir les data layers + embed les photos en 1 clic.
@@ -1062,7 +1062,7 @@ function afficherPlanner() {
     zipInput.value = "";
   });
 
-  // v1.14.20-hotfix4 / v1.15.0 — route 3 extensions vers leur pipeline :
+  // route 3 extensions vers leur pipeline :
   //   .zip → _chargerZipModifier (flow classique modification)
   //   .kmz → _afficherImporterKmz (parse + reconstruction ZIP avec icônes)
   //   .gpx → _afficherImporterGpx (canvas vierge auto-calibré + annotations)
@@ -1086,7 +1086,7 @@ function afficherPlanner() {
         _plannerZipStatus(window.I18n.t("gen.router.gpxIndispo"), true);
       }
     } else if (lower.endsWith(".geojson") || lower.endsWith(".json") || lower.endsWith(".kml")) {
-      // 🗺️ v1.74.0 — Import SIG. ⚠️ `.json` est AMBIGU (config, session,
+      // Import SIG. ⚠️ `.json` est AMBIGU (config, session,
       // calque de données…) : on route quand même vers le panneau SIG, c'est
       // le parser qui tranchera au contenu et refusera proprement si ce n'est
       // pas du GeoJSON (message `sig.err.pasDuGeojson`).
@@ -1143,7 +1143,7 @@ function afficherPlanner() {
     _routerFichierImport(e.dataTransfer.files[0]);
   });
 
-  // 🆕 v1.17.0 — Légende plan-level : 2 boutons (✏️ Modifier + 🔄 Reset).
+  // Légende plan-level : 2 boutons (✏️ Modifier + 🔄 Reset).
   // L'éditeur LegendCustomization.ouvrirEditeur écrit dans la session.
   // On swap temporairement session ↔ _plannerPlanLegend pour permettre
   // l'édition, et on restore la session vraie au close.
@@ -1173,7 +1173,7 @@ function afficherPlanner() {
 }
 
 // =========================
-// 🆕 v1.17.0 — MODE SIMPLE / AVANCÉ
+// MODE SIMPLE / AVANCÉ
 // =========================
 // Applique le mode au DOM : data-planner-mode sur le corps + toggle des
 // boutons actifs + hint texte. Auto-charge les icônes built-in en mode
@@ -1215,7 +1215,7 @@ function _appliquerPlannerMode(mode) {
 }
 
 // =========================
-// 🧙 v1.72.1 — ASSISTANT DE CRÉATION (wizard, topo KARMA « installeur
+// ASSISTANT DE CRÉATION (wizard, topo KARMA « installeur
 // style Windows » — décisions 1:a 2:a 3:a)
 // =========================
 // COUCHE DE PRÉSENTATION pure au-dessus du formulaire existant : les
@@ -1553,7 +1553,7 @@ function _wizInit() {
 //   4. Au close : capture session courante → _plannerPlanLegend
 //   5. Restore la session originelle
 //   6. Refresh le status display
-// 🏷️ v1.82.0 — `etat` optionnel : { get, set }. Sans lui, la fonction opère
+// `etat` optionnel : { get, set }. Sans lui, la fonction opère
 // sur `_plannerPlanLegend` comme avant (générateur de plans). Avec, elle
 // travaille sur l'état de l'appelant — c'est ce qui permet à l'écran
 // « Convertir depuis SIG » de rouvrir CE MÊME éditeur sur SES entrées.
@@ -1573,7 +1573,7 @@ function _ouvrirEditeurLegendePlan(etat) {
   if (typeof LC.getSessionState === "function") {
     try { savedSession = LC.getSessionState(); } catch(e) { savedSession = null; }
   }
-  // 🐛 v1.76.1 (annexe 6, audit 06/08) — SUSPENDRE la persistance pendant le
+  // SUSPENDRE la persistance pendant le
   // swap : sans ça, chaque mutation dans l'éditeur écrivait la légende du
   // PLAN dans le slot de SESSION du plan couramment chargé (entrées cust-…
   // fantômes retrouvées en session par KARMA).
@@ -1604,7 +1604,7 @@ function _ouvrirEditeurLegendePlan(etat) {
           console.warn("[Planner] Restore session échec :", e);
         }
       }
-      // 🐛 v1.76.1 (annexe 6) — réactive la persistance APRÈS le restore de
+      // (annexe 6) — réactive la persistance APRÈS le restore de
       // la vraie session (dans un finally implicite : ce onClose est le seul
       // chemin de sortie de l'éditeur).
       if (typeof LC.suspendPersist === "function") LC.suspendPersist(false);
@@ -1617,7 +1617,7 @@ function _ouvrirEditeurLegendePlan(etat) {
 // Normalise un state : retourne null si vide (zéro override), sinon objet
 // sérialisable propre. Évite d'écrire un customLegend tout vide dans le
 // plan-config.json (pollution inutile + cache PWA bumpé pour rien).
-// 🐛 v1.76.0 (F3) — Absorbe la légende embarquée dans un calque de données
+// (F3) — Absorbe la légende embarquée dans un calque de données
 // importé, dans la légende du plan en cours de génération.
 //
 // RÈGLE DE CONFLIT : l'existant GAGNE, toujours. Une entrée déjà définie dans
@@ -1675,7 +1675,7 @@ function _plannerLegendStateNormalize(state) {
   const labels  = state.labels        || {};
   const hidden  = state.hidden        || {};
   const customs = state.customEntries || [];
-  // 🎨 v1.76.0 — `colors` (override de couleur des types built-in) compte
+  // `colors` (override de couleur des types built-in) compte
   // comme une personnalisation à part entière. Sans cette ligne, un plan dont
   // la SEULE personnalisation serait des couleurs choisies se ferait
   // normaliser à `null` et n'emporterait rien dans son plan-config.
@@ -1683,7 +1683,7 @@ function _plannerLegendStateNormalize(state) {
   const hasLabels  = Object.keys(labels).length  > 0;
   const hasHidden  = (Array.isArray(hidden) ? hidden.length : Object.keys(hidden).length) > 0;
   const hasColors  = Object.keys(colors).length  > 0;
-  const hasBorders = Object.keys(state.borders || {}).length > 0;   // 🎨 v1.76.1
+  const hasBorders = Object.keys(state.borders || {}).length > 0;
   const hasCustoms = Array.isArray(customs) && customs.length > 0;
   if (!hasLabels && !hasHidden && !hasColors && !hasBorders && !hasCustoms) return null;
   return state;
@@ -1718,7 +1718,7 @@ async function _chargerZipModifier(file) {
   try {
     if (typeof JSZip === "undefined") throw new Error(window.I18n.t("gen.err.jszipManquant"));
 
-    // 🆕 v1.42.1 — Kill-switch anti-fuite aussi côté générateur. Si l'attaquant
+    // Kill-switch anti-fuite aussi côté générateur. Si l'attaquant
     // tente de modifier un ZIP révoqué via le générateur (= changer 1 truc + ré-exporter
     // pour propager une version dérivée), on bloque dès l'import. L'attaquant devra
     // décompresser le ZIP manuellement + tout refaire à la main pour rester actif.
@@ -1784,22 +1784,22 @@ function _preRemplirFormulaire(config) {
   sv("pl_name",    plan.name        || "");
   sv("pl_version", plan.version     || "");
   sv("pl_author",  plan.author      || "");
-  sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");   // 🏷️ 16/09/2026
-  sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");   // 🎨 07/10/2026
+  sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");
+  sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
-  // 07/10/2026 (KARMA) : un ZIP rechargé donne aussi ses dimensions au plan vierge (pour régénérer un fond aux mêmes
+  // un ZIP rechargé donne aussi ses dimensions au plan vierge (pour régénérer un fond aux mêmes
   // dimensions — sinon 4000 × 4000 par défaut et tout se décalait).
   if (plan.imageWidth)  sv("pl_vierge_w", plan.imageWidth);
   if (plan.imageHeight) sv("pl_vierge_h", plan.imageHeight);
   sv("pl_startX",  t.startX        ?? 0);
   sv("pl_startY",  t.startY        ?? 0);
   sv("pl_scale",   t.scale         ?? 4.9);
-  // 🧭 v1.37.0 — Pré-remplissage Nord depuis plan.northOffsetDeg (default 0
+  // Pré-remplissage Nord depuis plan.northOffsetDeg (default 0
   // si champ absent → rétrocompat stricte plans v1.36.x).
   sv("pl_northOffset", (plan.northOffsetDeg != null && Number.isFinite(Number(plan.northOffsetDeg))) ? plan.northOffsetDeg : 0);
 
-  // 📄 v1.71.0 — Pré-remplissage MULTI depuis plan.histoirePdfs (tableau)
+  // Pré-remplissage MULTI depuis plan.histoirePdfs (tableau)
   // avec repli sur plan.histoirePdf (chaîne unique, plans anciens). Chaque
   // entrée = ré-embarquée depuis _plannerOrigAssets sauf si retirée.
   _plannerHistPdfs = [];
@@ -1817,7 +1817,7 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
-  // 📉 v1.83.0 — relire les profondeurs d'un plan qu'on rouvre pour le
+  // relire les profondeurs d'un plan qu'on rouvre pour le
   // modifier : on deduit le niveau 0 et le pas de la table enregistree,
   // sinon le formulaire proposerait les defauts et ecraserait la saisie.
   const _tblProf = plan.niveauxProfondeur;
@@ -1834,7 +1834,7 @@ function _preRemplirFormulaire(config) {
     }
   }
 
-  // 🆕 v1.17.0 — Légende plan-level : pre-fill depuis plan.customLegend si
+  // Légende plan-level : pre-fill depuis plan.customLegend si
   // présent dans le ZIP source. Sinon null (= cascade défaut MKM). Refresh
   // status display + bascule en Avancé (mode Modifier le force déjà mais
   // on appelle _appliquerPlannerMode pour sync l'UI + masquer le switcher).
@@ -1843,7 +1843,7 @@ function _preRemplirFormulaire(config) {
                         : null;
   if (typeof _plannerLegendStatus === "function") _plannerLegendStatus();
   if (typeof _appliquerPlannerMode === "function") _appliquerPlannerMode("avance");
-  // 🧙 v1.72.1 — ZIP importé → wizard reconstruit en Avancé (pages toutes
+  // ZIP importé → wizard reconstruit en Avancé (pages toutes
   // pré-remplies), atterrissage sur l'Identité : l'user ne fait que RÉVISER.
   if (_wizActif) {
     _wizConstruirePages();
@@ -1852,7 +1852,7 @@ function _preRemplirFormulaire(config) {
     _wizAfficherPage(1);
   }
 
-  // 🌐 v1.14.20 — Géoréférencement GPS : si le plan-config.json importé
+  // Géoréférencement GPS : si le plan-config.json importé
   // contient `plan.georef = { pointA, pointB }`, on pré-remplit les inputs.
   // Sinon les inputs restent vides (le champ est optionnel).
   // 🆕 hotfix21 — Stockage interne reste FLAT {x, y, lat, lng} mais affichage
@@ -1872,7 +1872,7 @@ function _preRemplirFormulaire(config) {
                 : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
     sv("pl_geo_A_coords", fmt(gA.lat, gA.lng));
     sv("pl_geo_B_coords", fmt(gB.lat, gB.lng));
-    // 📐 v1.73.0 : pointC optionnel
+    // pointC optionnel
     const gC = plan.georef.pointC || null;
     sv("pl_geo_C_x", gC && gC.x != null ? gC.x : "");
     sv("pl_geo_C_y", gC && gC.y != null ? gC.y : "");
@@ -1954,7 +1954,7 @@ function _bindUploadLabel(inputId, nomId) {
 }
 
 // =========================
-// 🆕 v1.9.3-A2 : MODE IMAGE VIERGE (créateur de plan)
+// MODE IMAGE VIERGE (créateur de plan)
 // =========================
 // Handler du sélecteur radio "Depuis une image" / "Image vierge".
 // Affiche le bloc correspondant et reset l'état de l'autre pour éviter
@@ -2010,7 +2010,7 @@ function _genererImageVierge() {
   document.getElementById("pl_vierge_w").value = w;
   document.getElementById("pl_vierge_h").value = h;
 
-  // 📱 07/10/2026 — Safari iOS refuse tout canvas de plus de 16 777 216 px (≈ 4096 × 4096) : toBlob rend null, sans
+  // Safari iOS refuse tout canvas de plus de 16 777 216 px (≈ 4096 × 4096) : toBlob rend null, sans
   // autre signe. Avant, 4000 × 4000 par défaut passait juste ; depuis qu'un ZIP rechargé préremplit les dimensions du
   // plan (un import SIG/KML fait souvent 8 000 à 12 000 px), ça casse. On le dit AVANT d'essayer, avec la voie qui
   // marche (un ordinateur va jusqu'à 12 000 × 12 000) — plutôt que « mémoire ? » après coup.
@@ -2029,7 +2029,7 @@ function _genererImageVierge() {
     gray:  "#e8e8e8",
     black: "#000000",
     sepia: "#f4e4bc",
-    transparent: null      // 🫥 07/10/2026 : aucun remplissage — PNG entièrement transparent
+    transparent: null      // aucun remplissage — PNG entièrement transparent
   };
   const fillColor = (colorChoice in PALETTE) ? PALETTE[colorChoice] : PALETTE.white;
   // Un plan vierge transparent sans fond conseillé : on propose le blanc (lisible en mode carte), modifiable.
@@ -2124,7 +2124,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
   const row  = document.createElement("div");
   row.className    = "kta-planner-icon-row";
   row.dataset.rowId = id;
-  // 🎨 26/09/2026 (audit icônes, étage 1) — LE CHEMIN NE VOYAGE PLUS DANS
+  // LE CHEMIN NE VOYAGE PLUS DANS
   // UN LIBELLÉ D'AFFICHAGE.
   //
   // 🚨 La génération relisait `pathSpan.title` comme chemin de l'icône. Or
@@ -2149,7 +2149,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
                  JSON.stringify(defaultPath) + ") — la ligne repart du catalogue de l'app.");
   }
 
-  // 🐛 v1.44.5 — Les icônes built-in SVG inline (ex: entree_plan, cf
+  // Les icônes built-in SVG inline (ex: entree_plan, cf
   // PLANNER_DEFAULT_ICONS) ont un `defaultPath` = data:image/svg+xml;...
   // de plusieurs centaines de caractères. Affichée telle quelle dans le
   // pathSpan, cette data URL (white-space:nowrap, sans min-width:0 sur le
@@ -2195,12 +2195,12 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     const f = fileInput.files[0];
     if (!f) return;
     row._customFile = f;
-    row.dataset.ktaPath = "icon/" + f.name;   // 🎨 26/09/2026 : la source de vérité
+    row.dataset.ktaPath = "icon/" + f.name;   // la source de vérité
     label.textContent = "✅ " + f.name;
     pathSpan.textContent = f.name;
     pathSpan.title = f.name;
     const url = URL.createObjectURL(f);
-    // 🆕 v1.43.26 — revoke aussi sur onerror (image corrompue / format inconnu),
+    // revoke aussi sur onerror (image corrompue / format inconnu),
     // sinon fuite Blob URL si l'user charge un fichier non-décodable.
     img.onload  = function() { URL.revokeObjectURL(url); };
     img.onerror = function() { URL.revokeObjectURL(url); };
@@ -2295,7 +2295,7 @@ function _ajouterImageLayer(prefill) {
       list.innerHTML = '<p class="kta-planner-empty">' + window.I18n.t("gen.imgLayers.vide") + '</p>';
   });
 
-  // 🆕 v1.38.1 — Calibration state stocké sur l'item DOM
+  // Calibration state stocké sur l'item DOM
   item._calibration = p.calibration || null;
 
   const hintEl   = item.querySelector("#" + id + "_calib_hint");
@@ -2556,7 +2556,7 @@ function _importerDatalayerZip(zipFile) {
         }
       });
     })).then(function(parsedArr) {
-      // 🆔 v2.2.0 — même fusion PAR UID que la fusion de sessions
+      // même fusion PAR UID que la fusion de sessions
       // (KtaUid.fusionnerCalques) : un objet présent dans deux calques n'est
       // plus doublé. La boucle ci-dessous ne sert alors plus qu'à la légende.
       const _fusionUid = (window.KtaUid && typeof window.KtaUid.fusionnerCalques === "function")
@@ -2577,7 +2577,7 @@ function _importerDatalayerZip(zipFile) {
         if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
         if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
         if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
-        // 🐛 v1.76.0 (F3) — la légende embarquée dans le calque est ENFIN lue.
+        // (F3) — la légende embarquée dans le calque est ENFIN lue.
         // Sans ça, même un fichier qui la portait la voyait jetée ici, et les
         // objets custom du calque devenaient des orphelins sans nom ni couleur
         // dans le plan régénéré.
@@ -2625,7 +2625,7 @@ function _importerDatalayerZip(zipFile) {
 
       return photosPromise.then(function(photos) {
         // Étape 3 : créer les data layers UI
-        // 🔧 v1.9.4 (KARMA "si on modifie un plan, importe un zip alors que
+        // (KARMA "si on modifie un plan, importe un zip alors que
         // d'autre datalayer était chargé il nous les supprime") :
         //   - Mode NOUVEAU → on wipe la liste (vide au départ de toute façon)
         //   - Mode MODIFIER → on PRÉSERVE les calques existants du plan source,
@@ -2832,7 +2832,7 @@ function _majCompteurPhotosPlanner() {
 //   - mode Nouveau + image → visible (File source via input pl_baseImage)
 //   - mode Nouveau sans img → cachee (pas de File a tuiler)
 function _majVisibiliteCheckboxV2() {
-  // 🧙 v1.72.1 (KARMA) : le wrap V2 est TOUJOURS visible désormais — en
+  // le wrap V2 est TOUJOURS visible désormais — en
   // wizard, le masquer jusqu'au chargement de l'image faisait rater l'option
   // (on pouvait passer à la page suivante avant qu'elle n'apparaisse). La
   // fonction reste (call-sites conservés) mais ne masque plus jamais.
@@ -2866,7 +2866,7 @@ function _afficherErreurV2(titre, message) {
             '<li>' + window.I18n.t("gen.v2err.consPC") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consReduire") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consJpeg") + '</li>' +
-            // 🖼️ v1.76.1 — limite physique des décodeurs (cf. refus au drop)
+            // limite physique des décodeurs (cf. refus au drop)
             '<li>' + window.I18n.t("gen.v2err.consLimite32k") + '</li>' +
           '</ul>' +
         '</div>' +
@@ -2939,12 +2939,12 @@ function _afficherAvertissementV2(checkbox) {
 // =========================
 // LECTURE FICHIER
 // =========================
-// 🆔 v2.1.0 — Un plan qui sort du Générateur porte un uid sur chaque objet de
+// Un plan qui sort du Générateur porte un uid sur chaque objet de
 // ses calques de données (ETUDE_UID décision 5) : les uid existants sont
 // gardés, les manquants posés. Le fichier arrive en ArrayBuffer ; s'il n'est
 // pas un JSON UTF-8 exploitable, il part tel quel (jamais de calque perdu pour
 // une identité).
-// 🆔 v2.5.0 (lot C3) — points ({uid, id}) d'un calque écrit (texte ou buffer).
+// (lot C3) — points ({uid, id}) d'un calque écrit (texte ou buffer).
 function _collecterPointsCalque(contenu, acc) {
   try {
     const texte = (typeof contenu === "string") ? contenu : new TextDecoder("utf-8").decode(contenu);
@@ -2992,7 +2992,7 @@ function _lireFichier(file) {
 // =========================
 // AUTO-DÉTECTION DIMENSIONS DU PLAN (depuis l'image principale)
 // =========================
-// 🐛 v1.76.1 (bug KARMA : JPG 32K×32K « non décodable » sur PC) — l'ancienne
+// (bug KARMA : JPG 32K×32K « non décodable » sur PC) — l'ancienne
 // méthode (blob URL + Image + onload) prétendait « lire juste le header » :
 // FAUX. `onload` exige un décodage complet, et le décodeur de Chrome desktop
 // (Skia) refuse toute image dont un côté dépasse 32 767 px → onerror sec,
@@ -3055,7 +3055,7 @@ function _lireDimensionsEntete(buf) {
   return null;
 }
 
-// 🔁 v1.76.2 — exposé : l'éditeur de données (tableEditor > Convertir la
+// exposé : l'éditeur de données (tableEditor > Convertir la
 // résolution) lit les dimensions des images source/destination par le même
 // parseur, sans décodage (une image 32K passe).
 window.ktaLireDimensionsEntete = _lireDimensionsEntete;
@@ -3241,7 +3241,7 @@ function _getFile(inputId, logicalPath) {
 const TILING_V2_TILE_SIZE  = 512;
 const TILING_V2_FORMAT     = "jpeg";
 const TILING_V2_JPEG_Q     = 0.88;
-// 🫥 v1.62.0 — Source avec canal alpha : tuiles encodées AVEC transparence
+// Source avec canal alpha : tuiles encodées AVEC transparence
 // (WebP si le navigateur sait encoder, sinon PNG — cf utils.js >
 // ktaProbeAlphaTileFormat). Qualité WebP : 0.90 (alpha lossless, RGB lossy).
 const TILING_V2_WEBP_Q     = 0.90;
@@ -3358,7 +3358,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   let _tuileUnieBuf = null;
   // Decode initial de l'image source (HTMLImageElement, pas de canvas)
   const imgUrl = URL.createObjectURL(imageFile);
-  // 🆕 v1.43.26 — try/finally garantit que le blob URL est TOUJOURS revoké,
+  // try/finally garantit que le blob URL est TOUJOURS revoké,
   // même si une exception saute pendant le tilage (drawImage tainted, toBlob
   // null, ajout ZIP OOM…). Avant : l'imgUrl restait référencée jusqu'à la
   // fin de vie de l'onglet → MB en RAM pour rien sur les retries.
@@ -3377,7 +3377,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
 
   try {
 
-  // 🫥 v1.62.0 — Détection d'alpha : source transparente → tuiles encodées
+  // Détection d'alpha : source transparente → tuiles encodées
   // AVEC le canal alpha (pas de fond aplati), format WebP ou PNG selon
   // capacité d'encodage du navigateur. Source opaque → JPEG historique.
   const hasAlpha = (typeof window.ktaDetecterAlpha === "function")
@@ -3393,14 +3393,14 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
 
   // Auto-crop : si l'image a beaucoup de marges blanches, on tuile depuis la
   // zone utile uniquement. Sinon (bbox > 90% du canvas), on prend tout.
-  // 🐛 v1.62.0 (KARMA « tout est décalé ») : JAMAIS d'auto-crop sur une source
+  // (KARMA « tout est décalé ») : JAMAIS d'auto-crop sur une source
   // TRANSPARENTE — le crop change imageWidth/Height et l'origine, or les
   // datalayers/georef/calibrations existants restent en coords d'origine →
   // tout se décale (double décalage en Y via le flip imageHeight - y). Les
   // marges transparentes sont invisibles au rendu et se compressent à ~0 en
   // WebP/PNG : le crop n'apporte rien ici. Inchangé pour les scans opaques
   // à marges blanches (comportement historique v149).
-  // 🧱 v1.82.0 — sur une source UNIE, l auto-crop est du travail toujours jeté :
+  // sur une source UNIE, l auto-crop est du travail toujours jeté :
   // il downscale l image entière puis parcourt 1,4 M de pixels pour conclure
   // que « tout est du contenu » (un aplat n a pas de marge vide), et la bbox
   // est rejetée. On saute.
@@ -3466,7 +3466,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
         const sourceHeightOrig = sliceHeightLvl * scale;
 
         // Fond noir pour les bordures de la tuile haute partielle
-        // 🫥 v1.62.0 : source transparente → PAS de fond (clearRect seul,
+        // source transparente → PAS de fond (clearRect seul,
         // bordures partielles transparentes aussi)
         try {
           tileCtx.clearRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
@@ -3547,7 +3547,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
     manifest: {
       version:        TILING_V2_VERSION,
       tileSize:       TILING_V2_TILE_SIZE,
-      // 🫥 v1.62.0 : format réel des tuiles ("jpeg" | "webp" | "png") — lu au
+      // format réel des tuiles ("jpeg" | "webp" | "png") — lu au
       // runtime via window.ktaTileExt pour résoudre l'extension des fichiers.
       format:         fmt.name,
       alpha:          hasAlpha,
@@ -3558,7 +3558,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   };
 
   } finally {
-    // 🆕 v1.43.26 — Revoke garanti même si une tuile throw au milieu du tilage.
+    // Revoke garanti même si une tuile throw au milieu du tilage.
     URL.revokeObjectURL(imgUrl);
   }
 }
@@ -3572,7 +3572,7 @@ async function _genererZip() {
   const name    = document.getElementById("pl_name").value.trim();
   const version = document.getElementById("pl_version").value.trim() || "V1";
   const author  = document.getElementById("pl_author").value.trim();
-  const tags    = _lireTagsChamp("pl_tags");   // 🏷️ 16/09/2026
+  const tags    = _lireTagsChamp("pl_tags");
   const width   = parseInt(document.getElementById("pl_width").value,  10);
   const height  = parseInt(document.getElementById("pl_height").value, 10);
   // 🏗️ Multi-niveau (depuis v148) : opt-in via checkbox dans le planner.
@@ -3638,7 +3638,7 @@ async function _genererZip() {
 
     // ── Calques image ──
     const imageLayers = [];
-    const _alphaWarnChecks = [];   // 🫥 v1.67.0 : calques de niveau à vérifier (alpha)
+    const _alphaWarnChecks = [];   // calques de niveau à vérifier (alpha)
     for (const item of document.querySelectorAll("#pl_imageLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const ilId    = document.getElementById(lid + "_id").value.trim();
@@ -3680,7 +3680,7 @@ async function _genererZip() {
       }
 
       const imageLayerObj = { id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel };
-      // 🆕 v1.38.1 — Embed la calibration 2 ancres dans plan-config.json si présente.
+      // Embed la calibration 2 ancres dans plan-config.json si présente.
       // Stockée sur le DOM element par _ajouterImageLayer (item._calibration), saisie via picker.
       // Rétro-compat absolue : champ absent si pas calibré → comportement v1.37.x.
       if (item._calibration && item._calibration.sourceA && item._calibration.targetA
@@ -3688,14 +3688,14 @@ async function _genererZip() {
         imageLayerObj.calibration = item._calibration;
       }
       imageLayers.push(imageLayerObj);
-      // 🫥 v1.67.0 : candidat au garde-fou transparence (calques de NIVEAU
+      // candidat au garde-fou transparence (calques de NIVEAU
       // uniquement — un calque niveau 0 opaque type légende est légitime)
       if (ilLevel !== 0) {
         _alphaWarnChecks.push({ label: ilLabel, file: ilFile || _plannerOrigAssets[nomTxt] || null });
       }
     }
 
-    // 🫥 v1.67.0 (KARMA « logique de superposition », reco 3:a) — GARDE-FOU
+    // (KARMA « logique de superposition », reco 3:a) — GARDE-FOU
     // TRANSPARENCE : un calque de niveau (≠ 0) sans canal alpha est un
     // rectangle opaque qui masque tout ce qui est dessous → la superposition
     // multi-niveau perd son sens. Détection par CONTENU (ktaDetecterAlpha,
@@ -3730,7 +3730,7 @@ async function _genererZip() {
 
     // ── Calques données ──
     const dataLayers = [];
-    // 🆔 v2.5.0 (lot C3) — points des calques écrits, pour que l'index des
+    // (lot C3) — points des calques écrits, pour que l'index des
     // photos désigne chaque point par son uid (cf. plus bas).
     const _pointsGeneres = [];
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
@@ -3757,7 +3757,7 @@ async function _genererZip() {
     dataFolder.file("editor.json", PLANNER_EDITOR_JSON);
     dataLayers.push({ id: "editor", label: window.I18n.t("gen.gen.editorLabel"), file: "data/editor.json", visible: true });
 
-    // 🆕 v1.9.3-B1d.γ : embed des photos dans data/photos/<photoId>.<ext>
+    // embed des photos dans data/photos/<photoId>.<ext>
     // + data/photos/_index.json. Source : combinaison de
     //
     //   - Mode Modifier + case "Inclure les photos" cochée → photos IDB du
@@ -3766,7 +3766,7 @@ async function _genererZip() {
     //     ZIP via le bouton "📦 Importer ZIP" (cf. B1.d.γ.2, stockées
     //     dans _plannerPhotosFromZip).
     //
-    // 🔧 v1.9.4 (KARMA "ca casse tout") : MERGE des 2 sources en mode
+    // (KARMA "ca casse tout") : MERGE des 2 sources en mode
     // Modifier. Avant on prenait juste le ZIP importé en priorité → les
     // photos IDB du plan source disparaissaient. Maintenant on combine :
     //   - Toutes les photos IDB (si checkbox cochée + mode Modifier)
@@ -3847,7 +3847,7 @@ async function _genererZip() {
           const name = rec.id + "." + ext;
           photosFolder.file(name, rec.blob);
           idx[rec.id] = {
-            pointId: _clePhotoIndex(rec.pointId, _pointsGeneres),   // 🆔 v2.5.0 : l'uid si le nom est sans ambiguïté
+            pointId: _clePhotoIndex(rec.pointId, _pointsGeneres),   // l'uid si le nom est sans ambiguïté
             mime:    rec.mime || "image/jpeg",
             size:    rec.size || (rec.blob && rec.blob.size) || 0,
             file:    name
@@ -3869,12 +3869,12 @@ async function _genererZip() {
       startX:        parseInt(document.getElementById("pl_startX").value,        10) || 0,
       startY:        parseInt(document.getElementById("pl_startY").value,        10) || 0,
       scale:         parseFloat(document.getElementById("pl_scale").value)           || 4.9
-      // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown : le plan
+      // plus de stepLength / stepThreshold / stepCooldown : le plan
       // ne dit pas la foulée. Le JSON produit n'a plus ces trois clés.
     };
 
     // ── Icônes ──
-    // 🎨 26/09/2026 (audit icônes, étage 1) : le chemin vient de
+    // le chemin vient de
     // `row.dataset.ktaPath`, pas du `title` d'affichage — cf le commentaire de
     // `_ajouterIconRow`. Et on TIENT LA LISTE de ce qu'on met vraiment dans le
     // ZIP (`iconsEmbarquees`) : sans elle, l'app doit sonder le serveur pour
@@ -4017,13 +4017,13 @@ async function _genererZip() {
       baseImage: baseImageName, collisionImage: collisionName
     };
     if (multiLevel)     planObj.multiLevel = true;
-    // 🏷️ 16/09/2026 — étiquettes proposées : écrites SEULEMENT si saisies,
+    // étiquettes proposées : écrites SEULEMENT si saisies,
     // sinon le champ est absent et le JSON reste identique à avant.
     if (tags.length)    planObj.tags = tags;
-    // 🎨 07/10/2026 — fond conseillé, écrit SEULEMENT s'il est choisi (absent = JSON identique à avant).
+    // fond conseillé, écrit SEULEMENT s'il est choisi (absent = JSON identique à avant).
     const _fond = (document.getElementById("pl_fond") || {}).value || "";
     if (["noir", "blanc", "gris"].indexOf(_fond) >= 0) planObj.fondConseille = _fond;
-    // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
+    // table des profondeurs, construite depuis le niveau 0 et le
     // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
     // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un
     // JSON identique a celui des generateurs precedents.
@@ -4037,7 +4037,7 @@ async function _genererZip() {
     }
     if (tilingManifest) planObj.tiledV2    = true;
 
-    // 🧭 v1.37.0 — Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat
+    // Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat
     // stricte : plans v1.36.x sans champ continuent de produire un JSON
     // équivalent). Normalisation [0, 360[ + parse robust (NaN → skip).
     const _northRaw = parseFloat(document.getElementById("pl_northOffset")?.value || "0");
@@ -4046,7 +4046,7 @@ async function _genererZip() {
       if (_northNorm !== 0) planObj.northOffsetDeg = _northNorm;
     }
 
-    // 📄 v1.71.0 — PDF Histoire MULTIPLES (KARMA). Chaque entrée de
+    // PDF Histoire MULTIPLES (KARMA). Chaque entrée de
     // _plannerHistPdfs est embarquée sous data/<nom-safe> (dédoublonné) :
     //   - file présent  → upload neuf
     //   - fromZip       → ré-embarqué depuis _plannerOrigAssets[name]
@@ -4072,7 +4072,7 @@ async function _genererZip() {
       planObj.histoirePdfs = _histChemins;
     }
 
-    // 🆕 v1.17.0 — Légende plan-level : si l'utilisateur a personnalisé
+    // Légende plan-level : si l'utilisateur a personnalisé
     // la légende dans le Générateur (section "🏷️ Légende du plan" en mode
     // Avancé), embed l'état dans `planObj.customLegend`. Rétro-compat
     // absolue : champ totalement absent si rien à personnaliser (les
@@ -4082,7 +4082,7 @@ async function _genererZip() {
     // l'éditeur sans rien modifier).
     if (_plannerPlanLegend) planObj.customLegend = _plannerPlanLegend;
 
-    // 🌐 v1.14.20 — Géoréférencement GPS optionnel. Si TOUS les champs sont
+    // Géoréférencement GPS optionnel. Si TOUS les champs sont
     // remplis ET que le calibrage est valide (transform construisible), on
     // embarque `plan.georef = { pointA, pointB }`. Sinon : champ totalement
     // absent → rétro-compat absolue (les vieilles versions ignorent un champ
@@ -4100,7 +4100,7 @@ async function _genererZip() {
     function _readGeoCoords(id, errId, label) {
       const el = document.getElementById(id);
       if (!el) return { empty: true, lat: null, lng: null };
-      // 🆕 v1.44.0 — Clear le mark d'erreur précédent avant nouvelle validation
+      // Clear le mark d'erreur précédent avant nouvelle validation
       // (sinon la classe reste sticky après une 1ère erreur, même si l'user a
       // corrigé sa saisie). Audit V2 quick win #4.
       el.classList.remove("kta-gps-invalid");
@@ -4125,7 +4125,7 @@ async function _genererZip() {
     }
     const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", window.I18n.t("gen.geo.labelA"));
     const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", window.I18n.t("gen.geo.labelB"));
-    const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));   // 📐 v1.73.0
+    const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));
     const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
                     lat: _coordsA.lat, lng: _coordsA.lng };
     const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
@@ -4134,7 +4134,7 @@ async function _genererZip() {
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
     if (_allGeoFilled) {
-      // 📐 v1.73.0 — Point C optionnel mais TOUT-OU-RIEN (C partiel = oubli)
+      // Point C optionnel mais TOUT-OU-RIEN (C partiel = oubli)
       const _geoC = { x: _readGeo("pl_geo_C_x"), y: _readGeo("pl_geo_C_y"),
                       lat: _coordsC.lat, lng: _coordsC.lng };
       const _cRempli = _geoC.x != null || _geoC.y != null || _geoC.lat != null;
@@ -4170,7 +4170,7 @@ async function _genererZip() {
       tracking,
       icons
     };
-    // 🎨 26/09/2026 — CE QUE CE ZIP EMBARQUE VRAIMENT sous `icon/`.
+    // CE QUE CE ZIP EMBARQUE VRAIMENT sous `icon/`.
     // Le champ est écrit **même vide** : c'est sa PRÉSENCE qui dit à l'app
     // « inutile de sonder le serveur ». Un tableau vide = « aucune icône
     // propre au plan », ce qui est le cas de la grande majorité des plans et
@@ -4183,7 +4183,7 @@ async function _genererZip() {
     // ── Génération ──
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
     const url  = URL.createObjectURL(blob);
-    // 🆕 v1.44.0 — try/finally garantit que le blob URL est TOUJOURS revoké,
+    // try/finally garantit que le blob URL est TOUJOURS revoké,
     // même si a.click() throw (browser strict, sandbox). Avant : si a.click()
     // crashait, l'URL restait référencée jusqu'à la fin de vie de l'onglet.
     try {
@@ -4196,7 +4196,7 @@ async function _genererZip() {
       URL.revokeObjectURL(url);
     }
 
-    // 🧩 v2.7.0 (prise « publication ») — si une extension sait publier, le
+    // (prise « publication ») — si une extension sait publier, le
     // Créateur peut envoyer le plan généré au serveur de l'instance (brouillon
     // local → « Publier »). Sans extension : rien ne change.
     if (window.KtaExtensions && window.KtaExtensions.aPrise("publierPlan") && typeof window.ktaConfirm === "function") {
@@ -4241,13 +4241,13 @@ async function _genererZip() {
 }
 
 window.afficherPlanner = afficherPlanner;
-// v1.14.20-hotfix6 : expose la modale Import KMZ pour qu'elle soit
+// expose la modale Import KMZ pour qu'elle soit
 // utilisable depuis index.html (drop zone home qui route un KMZ direct
 // vers la conversion KMZ → ZIP MyKTAMap, sans passer par la modale
 // Planner). Accepte un fichier pré-fourni qui déclenche directement
 // l'analyse.
 window.afficherImporterKmz = _afficherImporterKmz;
-// v1.14.20-hotfix12 (KARMA « depuis import KMZ, on doit pouvoir cocher
+// (KARMA « depuis import KMZ, on doit pouvoir cocher
 // un mode V2 pour regénérer les tuiles. Pareil M-LVL ») : expose la
 // fonction de tuilage V2 pour qu'elle soit utilisable depuis kmzImport
 // .js > genererZipMyktamap (re-tilage de l'image plate du KMZ vers un
@@ -4411,7 +4411,7 @@ function _afficherImporterKmz(prefilledFile) {
     await _kmzImpAnalyserFichier(file);
   });
 
-  // v1.14.20-hotfix4 — si un fichier KMZ a été pré-fourni (cas où l'user
+  // si un fichier KMZ a été pré-fourni (cas où l'user
   // a glissé un .kmz dans le drop zone principal du générateur), on
   // lance directement l'analyse sans demander de re-sélectionner.
   if (prefilledFile) {
@@ -4423,7 +4423,7 @@ function _afficherImporterKmz(prefilledFile) {
 
   // Generate button
   document.getElementById("kta-kmz-imp-generer").addEventListener("click", async function() {
-    // 🆕 v1.43.26 (Pattern D) — Disable bouton pendant la génération (lourd :
+    // (Pattern D) — Disable bouton pendant la génération (lourd :
     // parse KMZ + extraction assets + écriture ZIP). Sans ça, l'user qui
     // double-clique nerveusement lance N générations parallèles → corruption
     // de l'état + plusieurs ZIP empilés en download.
@@ -4464,12 +4464,12 @@ async function _kmzImpAnalyserFichier(file) {
 
     // 🔒 v173 simplifié : on ne supporte QUE les KMZ exportés par MyKTAMap.
     // Détection via la signature "Export MyKTAMap" dans <Document><description>
-    // (posée par kmzExport.js ligne 485) + fallbacks (name, styles).
+    // (posée par kmzExport.js > genererKml) + fallbacks (name, styles).
     // Si le KMZ est tiers (Google Earth, OsmAnd, IGN scan…) → refus net.
     if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
       status.textContent = window.I18n.t("gen.kmz.nonCompatible");
       status.style.color = "#ff8c8c";
-      _kmzImpAfficherModaleNonCompatible(file);   // 🗺️ v1.75.2 : propose la conversion SIG
+      _kmzImpAfficherModaleNonCompatible(file);   // propose la conversion SIG
       return;
     }
 
@@ -4523,7 +4523,7 @@ async function _kmzImpAnalyserFichier(file) {
     const mgWarn = mgCount > 0
       ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">${window.I18n.t("gen.kmz.mgWarn", { n: mgCount })}</div>` : "";
 
-    // 🆕 v1.18.1 — Détection de la légende plan-level embarquée dans le KMZ
+    // Détection de la légende plan-level embarquée dans le KMZ
     // (cf §59 CLAUDE.md). Cherche `myktamap-extras.json` dans les assets,
     // parse son champ `customLegend` et affiche un résumé dans le preview
     // pour rassurer l'user : « ✅ Légende personnalisée détectée — sera
@@ -4599,7 +4599,7 @@ async function _kmzImpAnalyserFichier(file) {
 
 // Modale d'erreur "KMZ non compatible" (v173 simplifié — round-trip MyKTAMap only).
 // Affichée quand `estKmzMyktamap` retourne false (KMZ tiers).
-// 🗺️ v1.75.2 (demande KARMA « il faut rebrancher : une erreur précise +
+// (demande KARMA « il faut rebrancher : une erreur précise +
 // redirection avec un timer de 3 s ») — `fichier` optionnel : quand il est
 // fourni, on propose la CONVERSION SIG au lieu d'un cul-de-sac.
 // Pourquoi ici : un export QGIS en .kmz est un KMZ *vectoriel*, il n'a pas la
@@ -4714,7 +4714,7 @@ async function _kmzImpGenerer() {
   const pointTag = document.getElementById("kta-kmz-imp-point-tag").value;
   const roadType = document.getElementById("kta-kmz-imp-road-type").value;
   const zoneType = document.getElementById("kta-kmz-imp-zone-type").value;
-  // v1.14.20-hotfix12 — options optionnelles du flow KMZ
+  // options optionnelles du flow KMZ
   const tilingV2On = !!document.getElementById("kta-kmz-imp-v2")?.checked;
   const multiLevelOn = !!document.getElementById("kta-kmz-imp-mlvl")?.checked;
 
@@ -4744,7 +4744,7 @@ async function _kmzImpGenerer() {
     else if (/webp/i.test(mime)) ext = "webp";
     const baseImageFilename = "baseImage." + ext;
 
-    // v1.14.20-hotfix12 — overlay de progression V2 (réutilise le pattern
+    // overlay de progression V2 (réutilise le pattern
     // du générateur classique). Affiché uniquement si tilingV2On.
     let v2Overlay = null;
     if (tilingV2On) {
@@ -4783,22 +4783,22 @@ async function _kmzImpGenerer() {
         planName:          name,
         planVersion:       version,
         planAuthor:        author,
-        tags:              _lireTagsChamp("kta-kmz-imp-tags"),   // 🏷️ 16/09/2026
+        tags:              _lireTagsChamp("kta-kmz-imp-tags"),
         baseImage:         state.overlay.hrefBlob,
         baseImageFilename: baseImageFilename,
         imageW:            state.imageW,
         imageH:            state.imageH,
-        // 🆕 v1.21.0-fix6 : pass des 4 coins GPS du GroundOverlay KMZ pour
+        // pass des 4 coins GPS du GroundOverlay KMZ pour
         // que genererZipMyktamap puisse embed `plan.georef` (calibrage 2
         // points SW↔NE). Sans ça, le KMZ ré-importé perdait son calibrage
         // GPS et l'user devait re-saisir les 8 champs dans Réglages.
         overlayCorners:    state.overlay.corners,
-        // v1.14.20-hotfix4 — on passe TOUS les assets extraits du KMZ pour que
+        // on passe TOUS les assets extraits du KMZ pour que
         // genererZipMyktamap puisse récupérer les icônes embarquées (files/
         // icons/<tag>.png posé par kmzExport.js) et les remettre dans le ZIP
         // MyKTAMap sous icon/<tag>.png avec mapping planConfig.icons.
         assets:            state.assets,
-        // v1.14.20-hotfix12 — options optionnelles : V2 re-tile l'image
+        // options optionnelles : V2 re-tile l'image
         // plate du KMZ, M-LVL ajoute plan.multiLevel=true au plan-config.
         tilingV2:          tilingV2On,
         multiLevel:        multiLevelOn,
@@ -4807,7 +4807,7 @@ async function _kmzImpGenerer() {
           points:     ingested.points,
           roads:      ingested.roads,
           zones:      ingested.zones,
-          // 🆕 v1.9.3-A1.b.1 : passage des structures détectées via
+          // passage des structures détectées via
           // styleUrl="#structure_*" dans le KMZ. Si KMZ legacy sans
           // structures → ingested.structures = [] → no-op silencieux.
           structures: ingested.structures || []
@@ -5065,7 +5065,7 @@ async function _gpxImpAnalyserFichier(file) {
     const dLat = bounds.latMax - bounds.latMin;
     const dLng = bounds.lngMax - bounds.lngMin;
 
-    // 🆕 v1.18.1 — Détection légende plan-level embarquée via
+    // Détection légende plan-level embarquée via
     // <extensions><myktamap:customLegend>...</myktamap:customLegend></extensions>
     // sous <metadata> (cf §59 CLAUDE.md + gpxIO.js > parser). Affiche un
     // résumé dans le preview pour rassurer l'user : « ✅ Légende personnalisée
@@ -5180,7 +5180,7 @@ async function _gpxImpGenerer() {
       planName:         name,
       planVersion:      version,
       planAuthor:       author,
-      tags:             _lireTagsChamp("kta-gpx-imp-tags"),   // 🏷️ 16/09/2026
+      tags:             _lireTagsChamp("kta-gpx-imp-tags"),
       parsed:           state.parsed,
       bounds:           state.bounds,
       canvasWidth:      w,
@@ -5389,7 +5389,7 @@ function _afficherImporterSig(prefilledFile) {
   }
 }
 
-// 🩸 v1.82.0 — LES ENTRÉES DE LÉGENDE SONT LIÉES AU FICHIER *ET* AU MAPPING.
+// 🩸 LES ENTRÉES DE LÉGENDE SONT LIÉES AU FICHIER *ET* AU MAPPING.
 // Leur id encode la catégorie et le niveau (`_idNiveau`), donc tout ce qui
 // change l'un ou l'autre les périme. Elles n'étaient remises à zéro qu'à
 // l'ouverture de la modale et au changement d'un select de routage — pas au
@@ -5412,7 +5412,7 @@ function _sigImpInvaliderLegende(avecMessage) {
   _sigImpMajEtatLegende();
 }
 
-// 🏷️ v1.83.1 — L ETAT DE LA LEGENDE, DIT EN COULEUR ET A DEUX ENDROITS.
+// L ETAT DE LA LEGENDE, DIT EN COULEUR ET A DEUX ENDROITS.
 //
 // On ne DEVINE pas ce que l utilisateur voulait garder : remapper les entrees
 // sur les nouveaux ids apres un changement de routage reviendrait a leur
@@ -5483,7 +5483,7 @@ async function _sigImpAnalyserFichier(file) {
     // ── Refus CRS : message ACTIONNABLE, pas un simple « erreur ». ──
     const crs = window.SigImport.validerCrs(data);
 
-    // 📐 v1.82.0 — LAMBERT 93 : on convertit au lieu de renvoyer l'utilisateur
+    // LAMBERT 93 : on convertit au lieu de renvoyer l'utilisateur
     // dans QGIS. La conversion est ANNONCÉE (jamais silencieuse) et le compte
     // de coordonnées reprojetées reste affiché dans le résumé : une
     // reprojection déplace TOUT le fichier, ça ne se fait pas sans le dire.
@@ -5526,7 +5526,7 @@ async function _sigImpAnalyserFichier(file) {
              + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
              + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
              + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
-    // ⚠️ v1.82.0 — au-dela du seuil d alerte, on PREVIENT au lieu de refuser.
+    // ⚠️ au-dela du seuil d alerte, on PREVIENT au lieu de refuser.
     // Le refus sec a 20 000 bloquait un releve reel pour 3 % de depassement.
     // Ce qui reste non mesure, c est le RENDU du plan une fois importe : on le
     // dit franchement plutot que de decider a la place de l utilisateur.
@@ -5574,7 +5574,7 @@ async function _sigImpAnalyserFichier(file) {
     // 🏷️ Le bouton n'a de sens que si des entrées vont réellement être créées
     // (colonne de niveau choisie ET couleurs par niveau cochées). Sinon il
     // ouvrirait un éditeur vide.
-    // 🏷️ v1.83.1 — l'affichage de l'état vit maintenant dans
+    // l'affichage de l'état vit maintenant dans
     // `_sigImpMajEtatLegende` (module-level) : `_sigImpInvaliderLegende` doit
     // pouvoir le rafraîchir, et le drapeau `_sigLegendeReset` a supprimé la
     // dépendance à l'ORDRE d'attachement des listeners qu'avait l'ancienne
@@ -5612,7 +5612,7 @@ async function _sigImpAnalyserFichier(file) {
     });
     majBtnLegende();
 
-    // 📐 v1.82.0 — la hauteur du canvas n est plus saisie : elle decoule des
+    // la hauteur du canvas n est plus saisie : elle decoule des
     // proportions du terrain. On l affiche pour que l utilisateur sache ce
     // qu il va obtenir, et on la recalcule des qu il change la largeur.
     const majH = function () {
@@ -5666,7 +5666,7 @@ async function _sigImpAnalyserFichier(file) {
   }
 }
 
-// 🏛️ v1.82.0 (retour KARMA sur un vrai relevé) — un polygone SIG n'est pas
+// un polygone SIG n'est pas
 // forcément une zone : dans une carrière, c'est très souvent un PILIER, donc
 // une STRUCTURE. Les deux familles sont proposées dans le même select, en
 // deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où ranger
@@ -5678,7 +5678,7 @@ const _SIG_TYPES = {
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };
 // Structures proposées EN PLUS, par famille de géométrie.
-// 🔀 v1.82.0 — CHAQUE GÉOMÉTRIE PEUT VISER TOUTES LES FAMILLES. La géométrie
+// CHAQUE GÉOMÉTRIE PEUT VISER TOUTES LES FAMILLES. La géométrie
 // du fichier SIG ne dit pas ce que l'objet EST : un polygone peut être une
 // zone, un pilier, un mur — ou un FRONT DE TAILLE, si son auteur l'a dessiné
 // fermé (cas remonté par KARMA sur un relevé réel). Réciproquement une
@@ -5696,7 +5696,7 @@ const _SIG_TYPES_SUP = {
 };
 const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
 
-// 🏔️ v1.82.0 — APERÇU DE LA RÉPARTITION PAR ÉTAGE, avant de générer.
+// APERÇU DE LA RÉPARTITION PAR ÉTAGE, avant de générer.
 // Un import multi-niveaux qui retombe à plat ne se voyait qu'une fois le plan
 // ouvert, trop tard. Ici le compte par niveau s'affiche dès le choix de la
 // colonne — et la case « Plan multi-niveau » se coche toute seule, parce que
@@ -5794,7 +5794,7 @@ function _sigImpRendreTables() {
 function _escHtmlSig(s) { return window.ktaEsc(s); }
 function _escAttrSig(s) { return window.ktaEsc(s); }
 
-// 🏷️ v1.82.0 — LECTURE DU MAPPING, extraite pour être partagée.
+// LECTURE DU MAPPING, extraite pour être partagée.
 // La génération n'est plus seule à en avoir besoin : la prévisualisation des
 // entrées de légende doit rejouer EXACTEMENT le même routage, sinon elle
 // annonce des tracés et des zones là où l'utilisateur a demandé des
@@ -5839,7 +5839,7 @@ async function _sigImpGenerer() {
   // portee et la popup restait a l ecran.
   let v2Overlay = null;
   try {
-    // 📊 v1.82.0 — barre de progression du tuilage, calquée sur celle de
+    // barre de progression du tuilage, calquée sur celle de
     // l'import GPX (même overlay, mêmes clés i18n). Sans elle, la génération
     // d'un gros plan est une attente muette de plusieurs secondes.
     v2Overlay = document.createElement("div");
@@ -5872,9 +5872,9 @@ async function _sigImpGenerer() {
       planName:     name,
       planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
       planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
-      tags:         _lireTagsChamp("kta-sig-imp-tags"),   // 🏷️ 16/09/2026
+      tags:         _lireTagsChamp("kta-sig-imp-tags"),
       canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
-      // 🧹 v1.82.0 — `canvasHeight` RETIRÉ : `genererZipMyktamap` ne le lit plus
+      // `canvasHeight` RETIRÉ : `genererZipMyktamap` ne le lit plus
       // depuis que la hauteur est déduite du terrain. Le passer entretenait
       // l'illusion qu'il servait encore.
       onProgress:   onTilingProgress,
@@ -5882,14 +5882,14 @@ async function _sigImpGenerer() {
       multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
       layerLabel:   name,
       mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones,
-                 // 🏔️ v1.82.0 — la colonne du niveau voyage avec le reste du mapping.
+                 // la colonne du niveau voyage avec le reste du mapping.
                  cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
-                 // 🎨 v1.82.0 — types de legende par etage (case cochee par defaut).
+                 // types de legende par etage (case cochee par defaut).
                  couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked,
                  // 🏷️ Entrées renommées/recolorées par l'utilisateur, s'il
                  // a ouvert l'éditeur. Sinon `ingest` les fabrique lui-même.
                  customEntries: (_sigPlanLegend && _sigPlanLegend.customEntries) || null,
-                 // 🏷️ v1.83.1 — et l'état COMPLET, pour ce que `ingest` ne
+                 // et l'état COMPLET, pour ce que `ingest` ne
                  // regarde pas : libellés des types built-in, masquages,
                  // couleurs, entrées ajoutées à la main. `customEntries`
                  // ci-dessus reste : c'est par lui qu'`ingest` retrouve le
@@ -5916,7 +5916,7 @@ async function _sigImpGenerer() {
       ? T(cleErr)
       : T("gen.sig.err.generique", { err: cleErr });
   } finally {
-    // 🩸 v1.82.0 — RETRAIT DE L OVERLAY DE PROGRESSION. Il etait cree mais
+    // 🩸 RETRAIT DE L OVERLAY DE PROGRESSION. Il etait cree mais
     // jamais retire : le ZIP se telechargeait bien, et la popup "tuiles V2 en
     // cours" restait figee a l ecran, donnant l impression que la generation
     // n avait pas abouti. Dans le finally, donc retire aussi quand la

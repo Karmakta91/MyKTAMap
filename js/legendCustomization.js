@@ -76,13 +76,13 @@ window.LegendCustomization = (function() {
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
       plaque: "Plaque indication",
-      portail: "Portail (liaison inter-plan)",  // 🆕 v1.59.0
-      // 🐛 v1.76.0 — trois tags built-in MANQUAIENT ici depuis leur création :
+      portail: "Portail (liaison inter-plan)",
+      // trois tags built-in MANQUAIENT ici depuis leur création :
       // dès que la légende passait par getLabel (LC présent = toujours), ils
       // s'affichaient en clé brute (« entree_plan » au lieu de « Point
       // d'entrée du plan »). Le fallback historique LEGENDE_LABELS
       // d'interfaceLegende.js les avait, mais il n'est lu que SANS LC.
-      entree_plan: "Point d'entrée du plan",    // v1.41.0 D
+      entree_plan: "Point d'entrée du plan",    // D
       track: "Position du tracker",
       "default": "Point sans tag (défaut)"
     },
@@ -107,7 +107,7 @@ window.LegendCustomization = (function() {
     }
   };
 
-  // 🎨 v1.76.0 — la table DEFAULT_RENDERS est supprimée.
+  // la table DEFAULT_RENDERS est supprimée.
   // C'était LA plus dangereuse des ~25 tables : elle décrivait les pastilles
   // de l'éditeur de légende et était TOTALEMENT INDÉPENDANTE de celle du rendu
   // carte. Les deux coïncidaient par chance ; le jour où l'une bougeait, la
@@ -144,12 +144,12 @@ window.LegendCustomization = (function() {
   // ─────────────────────────────────────────────
   // États session + plan (cascade)
   // ─────────────────────────────────────────────
-  // 🎨 v1.76.1 — `borders` : couleur de BORDURE choisie pour un type built-in
+  // `borders` : couleur de BORDURE choisie pour un type built-in
   // polygone (zones, piliers/mur), map séparée de `colors` et non un objet
   // {fond, bordure} : une session v1.76.0 qui n'a que `colors` reste valide
   // telle quelle, zéro migration de format. Absente → bordure dérivée (zones)
   // ou noire (structures), comme avant.
-  // 🪦 v1.77.0 — removedPlan : TOMBSTONES des entrées PLAN-LEVEL supprimées
+  // removedPlan : TOMBSTONES des entrées PLAN-LEVEL supprimées
   // par l'utilisateur (bug KARMA : un « Bas » embarqué dans le plan-config
   // d'un ZIP régénéré revenait à chaque chargement, insupprimable côté
   // session depuis la résurrection de la légende plan-level — fix C4).
@@ -162,14 +162,14 @@ window.LegendCustomization = (function() {
   let _sessionState = _emptyState();
   let _planState    = _emptyState();
 
-  // 🎨 v1.76.0 — `colors` : couleur choisie par l'utilisateur pour un type
+  // `colors` : couleur choisie par l'utilisateur pour un type
   // BUILT-IN, indexée comme `labels` et `hidden` (clé "<catégorie>.<type>").
   // UNE seule couleur par type — cf. `_appliquerOverride` dans styleResolver.js
   // pour la façon dont elle est appliquée selon la géométrie.
   // Les types CUSTOM ne passent pas par là : leurs couleurs sont déjà dans
   // l'entrée elle-même, éditables via la dialog de modification.
   //
-  // 🧹 v1.76.0 (F22) — `hidden` existe dans la nature sous DEUX formes : objet
+  // (F22) — `hidden` existe dans la nature sous DEUX formes : objet
   // ({ "traces.principal": true }) et TABLEAU de clés (["traces.principal"]) —
   // createConf teste `Array.isArray(cl.hidden)` à 3 endroits, preuve que la
   // forme tableau a réellement circulé. Or un tableau passait le test
@@ -194,7 +194,7 @@ window.LegendCustomization = (function() {
     // NI de sidebar au boot. Trouvé par le checkup destructif M3 (05/08),
     // avant qu'un utilisateur ne le trouve.
     const s = (state && typeof state === "object") ? state : {};
-    // 🔒 05/10/2026 (audit XSS) : libellés, couleurs et icônes finissent dans du HTML (pastilles,
+    // 🔒 libellés, couleurs et icônes finissent dans du HTML (pastilles,
     // légende, filtres) ; un plan ou une session partagés ne sont pas crus sur parole.
     const texte = function(v) { return typeof window.ktaTexteSur === "function" ? window.ktaTexteSur(v, 120) : String(v).replace(/[<>"`]/g, ""); };
     const couleur = function(v) {
@@ -262,7 +262,7 @@ window.LegendCustomization = (function() {
 
   function loadPlanState() {
     const config = window.PLAN_CONFIG;
-    // 🐛 v1.76.1 — LA LIGNE QUI A TUÉ LA LÉGENDE PLAN-LEVEL DEPUIS SON
+    // LA LIGNE QUI A TUÉ LA LÉGENDE PLAN-LEVEL DEPUIS SON
     // INTRODUCTION (24/05, commit 613517b8). Ce lecteur cherchait
     // `PLAN_CONFIG.customLegend` (racine) alors que TOUS les producteurs
     // (createConf, kmzImport, gpxImport) écrivent `plan.customLegend`
@@ -321,7 +321,7 @@ window.LegendCustomization = (function() {
     return "default";
   }
 
-  // 🎨 v1.76.0 — couleur choisie pour un type BUILT-IN. Même cascade que les
+  // couleur choisie pour un type BUILT-IN. Même cascade que les
   // libellés : session > plan > aucune (auquel cas le style canonique
   // s'applique tel quel). Rend `null` s'il n'y a pas d'override.
   // ⚠️ Lecture PURE : appelée depuis `ktaResolveStyle`, qui est lui-même
@@ -344,14 +344,14 @@ window.LegendCustomization = (function() {
     _repeindreCarte();
   }
 
-  // 🎨 v1.76.0 — REPEINDRE APRÈS UN CHANGEMENT DE COULEUR.
+  // REPEINDRE APRÈS UN CHANGEMENT DE COULEUR.
   // Sans ça la feature ne « marche » pas : le style est bien résolu à la
   // nouvelle couleur, mais les objets Leaflet déjà dessinés gardent l'ancienne
   // jusqu'au prochain rendu — l'utilisateur choisirait une couleur et ne
   // verrait rien changer avant de recharger le plan.
   // Le listener `onCustomEntriesChange` existant ne suffit PAS : son unique
   // abonné (interface.js) ne rafraîchit que les boutons de la sidebar.
-  // 🎨 v1.76.0 (N1) — les CALQUES DE DONNÉES sont désormais repeints eux
+  // (N1) — les CALQUES DE DONNÉES sont désormais repeints eux
   // aussi (window._ktaRestyleDataLayers, cf. utils.js) : la limite « recharge
   // le plan pour voir les couleurs sur les calques » est levée.
   function _repeindreCarte() {
@@ -366,7 +366,7 @@ window.LegendCustomization = (function() {
     return getColor(category, key) !== null || getBorderColor(category, key) !== null;
   }
 
-  // 🎨 v1.76.1 — bordure indépendante du remplissage (décision KARMA : « une
+  // bordure indépendante du remplissage (décision KARMA : « une
   // zone ou une structure pouvait avoir un contour et un remplissage
   // différents, on garde »). Même cascade que getColor. Null = pas d'override
   // → bordure dérivée (zones) ou noire (structures), comme avant.
@@ -402,7 +402,7 @@ window.LegendCustomization = (function() {
         planLabel:    _planState.labels[_key(category, key)] || null,
         visible:      isVisible(category, key),
         source:       getSource(category, key),
-        // 🎨 v1.76.0 — vrai si l'utilisateur (ou le plan) a choisi une couleur.
+        // vrai si l'utilisateur (ou le plan) a choisi une couleur.
         // Sert à n'afficher le bouton « remettre la couleur d'origine » que
         // lorsqu'il a un sens.
         hasColor:     hasColorOverride(category, key),
@@ -417,7 +417,7 @@ window.LegendCustomization = (function() {
 
   function listCustomEntries(category) {
     // Custom entries provenant des 2 niveaux (plan + session).
-    // 🧹 v1.76.0 (F21) — DÉDUPLICATION par id, session prioritaire. Les ids
+    // (F21) — DÉDUPLICATION par id, session prioritaire. Les ids
     // `cust-<ts36>-<rnd36>` sont probabilistes, pas structurellement uniques :
     // si un plan et une session déclarent le même id (collision, ou plan
     // regénéré depuis la session — cas courant depuis F2/F3), on affichait
@@ -464,7 +464,7 @@ window.LegendCustomization = (function() {
   // ─────────────────────────────────────────────
   // Setters (session uniquement, le plan n'est éditable que dans createConf)
   // ─────────────────────────────────────────────
-  // 🐛 v1.76.1 (annexe 6, audit 06/08) — le Générateur édite la légende du
+  // le Générateur édite la légende du
   // PLAN en la « swappant » temporairement dans _sessionState. Chaque mutation
   // déclenchait alors _persistSession → la légende du plan s'écrivait dans le
   // slot de SESSION du plan courant (fuite : entrées cust-… fantômes en
@@ -559,7 +559,7 @@ window.LegendCustomization = (function() {
     });
   }
 
-  // 🐛 v1.76.0 (F8) — COMPTE LES OBJETS QUI UTILISENT UN TYPE.
+  // (F8) — COMPTE LES OBJETS QUI UTILISENT UN TYPE.
   // Supprimer une entrée custom la retirait sans un mot, et tous les objets
   // dessinés de ce type basculaient instantanément en repli : blanc pour un
   // tracé, gris remblais pour une zone, bleu mur pour une structure — et un
@@ -588,7 +588,7 @@ window.LegendCustomization = (function() {
     return { session: session, calques: calques, total: session + calques };
   }
 
-  // 🧹 v1.76.0 (F23) — TYPES ORPHELINS : objets dessinés dont le type `cust-…`
+  // (F23) — TYPES ORPHELINS : objets dessinés dont le type `cust-…`
   // n'existe dans AUCUNE légende (entrée supprimée, calque importé sans sa
   // définition avant F2/F3…). C'était la cause racine commune des symptômes
   // « objets blancs/gris sans ligne de légende » : le problème existait mais
@@ -606,7 +606,7 @@ window.LegendCustomization = (function() {
         try { liste = window[fn]() || []; } catch(e) { return; }
         liste.forEach(function(o) {
           if (!o || typeof o.type !== "string" || !o.type) return;
-          // 🐛 v1.76.1 — le filtre `cust-` d'origine rendait INVISIBLES les
+          // le filtre `cust-` d'origine rendait INVISIBLES les
           // types bruts hérités d'anciennes versions ou écrits à la main
           // (« Bas ») : renommer un cust- orphelin en type brut faisait TAIRE
           // le bandeau sans rien résoudre (vécu par KARMA le 05/08). Règle
@@ -659,7 +659,7 @@ window.LegendCustomization = (function() {
     if (!entry || !entry.category) return null;
     if (CATEGORIES.indexOf(entry.category) < 0) return null;
     const id = entry.id || _newId();
-    // 🧷 v1.76.1 — un id EXPLICITE déjà présent en session (double-clic sur le
+    // un id EXPLICITE déjà présent en session (double-clic sur le
     // bouton du bandeau orphelins, re-liaison) REMPLACE l'entrée au lieu d'en
     // empiler une seconde du même id.
     if (entry.id) {
@@ -667,7 +667,7 @@ window.LegendCustomization = (function() {
       if (dejaIdx >= 0) _sessionState.customEntries.splice(dejaIdx, 1);
     }
     const geom = _defaultGeometry(entry.category, entry.geometry);
-    // 🐛 v1.16.0 step2-drawable-fix (KARMA "il me fait les deux, le polygone
+    // (KARMA "il me fait les deux, le polygone
     // et un trait en plus") : on NORMALISE les champs de couleur en fonction
     // de la géométrie pour éviter qu'une entrée polygone stocke aussi un
     // lineColor (qui était ensuite rendu comme TRAIT dans la légende, en
@@ -694,7 +694,7 @@ window.LegendCustomization = (function() {
     const clean = {
       id:          id,
       category:    entry.category,
-      // 🆕 v1.16.0 step2-drawable : geometry pour rendre les entrées custom
+      // geometry pour rendre les entrées custom
       // DESSINABLES (toggleXMode + render appliquent le bon style selon la
       // géométrie). Si non fourni, on déduit du category.
       geometry:    geom,
@@ -708,7 +708,7 @@ window.LegendCustomization = (function() {
     _sessionState.customEntries.push(clean);
     _persistSession();
     _fireCustomChange();
-    // 🐛 v1.76.1 (C1 audit 06/08) — LE chaînon manquant de l'intermittence :
+    // LE chaînon manquant de l'intermittence :
     // toutes les autres mutations repeignaient, PAS l'ajout. Lier un type
     // depuis le bandeau ⚠️ colorait (rattrapage manuel dans interfaceLegende),
     // créer la même entrée depuis ✏️ Modifier → ➕ ne colorait RIEN jusqu'à la
@@ -722,7 +722,7 @@ window.LegendCustomization = (function() {
     let touche = false;
     const idx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
     if (idx >= 0) { _sessionState.customEntries.splice(idx, 1); touche = true; }
-    // 🪦 v1.77.0 — l'entrée existe AUSSI (ou seulement) au niveau PLAN : la
+    // l'entrée existe AUSSI (ou seulement) au niveau PLAN : la
     // retirer de la session ne suffit pas, elle reviendrait du plan-config à
     // chaque chargement (vécu KARMA avec son « Bas » embarqué dans un ZIP
     // régénéré). On pose une pierre tombale en session : l'entrée plan est
@@ -752,7 +752,7 @@ window.LegendCustomization = (function() {
     return false;
   }
 
-  // 🩸 v1.82.0 — RENOMMER OU RECOLORER UNE ENTRÉE DU *PLAN* NE FAISAIT RIEN.
+  // 🩸 RENOMMER OU RECOLORER UNE ENTRÉE DU *PLAN* NE FAISAIT RIEN.
   // Cette fonction ne cherchait que dans `_sessionState.customEntries` et
   // sortait sur `return false` sans rien dire. Or les entrées d'un plan
   // IMPORTÉ vivent dans `_planState` : celles que l'import SIG fabrique par
@@ -797,7 +797,7 @@ window.LegendCustomization = (function() {
     _sessionState = _emptyState();
     _persistSession();
     _fireCustomChange();
-    // 🐛 v1.76.0 — sans repeinture, les couleurs override restaient affichées
+    // sans repeinture, les couleurs override restaient affichées
     // jusqu'au redémarrage : le reset vidait bien l'état, mais les objets
     // Leaflet déjà dessinés gardaient leur style (bug remonté par KARMA).
     _repeindreCarte();
@@ -852,7 +852,7 @@ window.LegendCustomization = (function() {
           '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
-          // 🎨 v1.76.0 (F6) — lève l'ambiguïté historique de la case à cocher.
+          // (F6) — lève l'ambiguïté historique de la case à cocher.
           // Elle n'a JAMAIS masqué quoi que ce soit de la carte : elle ne
           // retire l'entrée que de la BOÎTE de légende. Le masquage carte
           // existe déjà, dans 🔍 Filtres — étendre celle-ci au rendu aurait
@@ -903,7 +903,7 @@ window.LegendCustomization = (function() {
         }
       }
 
-      // 🐛 v1.16.0 step2-drawable-fix : utilise GEOMETRY comme discriminator
+      // utilise GEOMETRY comme discriminator
       // primaire pour le swatch (au lieu de "lineColor first"). Évite qu'un
       // polygon avec lineColor stocké en accident soit affiché en trait.
       let swatch = '';
@@ -933,13 +933,13 @@ window.LegendCustomization = (function() {
         ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>🗑️</button>'
         : '';
 
-      // 🎨 v1.76.0 — sélecteur de couleur sur les types BUILT-IN dessinables.
+      // sélecteur de couleur sur les types BUILT-IN dessinables.
       // Les entrées CUSTOM ont déjà leurs couleurs dans l'entrée elle-même, et
       // les ICÔNES sont des images : ni l'une ni l'autre n'a de couleur à
       // choisir ici. Pour ces deux familles on garde la pastille statique.
       // La couleur affichée vient de `listEntries`, donc du style RÉEL — elle
       // reflète déjà l'override, sans calcul en double.
-      // 🎨 v1.76.1 (S3 audit 06/08) — les entrées CUSTOM sont éditables comme
+      // les entrées CUSTOM sont éditables comme
       // les built-in (« iso », demande KARMA) : mêmes carrés de couleur, à
       // chaud. Avant, leurs couleurs n'étaient choisies qu'à la CRÉATION —
       // pastille statique ensuite, deux principes de fonctionnement pour deux
@@ -1033,7 +1033,7 @@ window.LegendCustomization = (function() {
       if (opts.onChange) opts.onChange();
     }
 
-    // 🐛 v1.77.0 — insertion ciblée du bouton ↺ après un changement de
+    // insertion ciblée du bouton ↺ après un changement de
     // couleur (remplace le _render destructeur, cf. handler change). Les
     // customs n'ont pas de ↺ (pas de couleur « d'origine »).
     function _majBoutonReset(input) {
@@ -1056,7 +1056,7 @@ window.LegendCustomization = (function() {
     if (body) {
       body.addEventListener("change", function(e) {
         if (e.target.matches(".kta-legend-vis-cb")) _applyFromUI(e.target);
-        // 🎨 v1.76.0 — la couleur est appliquée sur `change`, PAS sur `input`.
+        // la couleur est appliquée sur `change`, PAS sur `input`.
         // WebKit émet un `input` à CHAQUE mouvement du curseur dans le
         // sélecteur natif : sur `input` on écrirait la session des dizaines de
         // fois par glissement. C'est exactement le mécanisme qui avait rendu
@@ -1064,7 +1064,7 @@ window.LegendCustomization = (function() {
         // module. `change` ne tire qu'à la validation.
         if (e.target.matches(".kta-legend-color") || e.target.matches(".kta-legend-border")) {
           _applyFromUI(e.target);
-          // 🐛 v1.77.0 (bug KARMA PC : « le picker ne sauvegarde rien ») —
+          // (bug KARMA PC : « le picker ne sauvegarde rien ») —
           // NE JAMAIS _render() ici : sur desktop le sélecteur natif reste
           // OUVERT après chaque `change` (panneau persistant, contrairement à
           // la feuille modale iOS qui ferme) ; le re-render détruisait
@@ -1082,7 +1082,7 @@ window.LegendCustomization = (function() {
         if (e.target.matches(".kta-legend-rm")) {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
-            // 🐛 v1.76.0 (F8) — on prévient AVANT, avec le décompte réel.
+            // (F8) — on prévient AVANT, avec le décompte réel.
             // Un type supprimé laisse ses objets orphelins, sans retour arrière.
             const u = countUsages(id);
             if (u.total > 0) {
@@ -1103,7 +1103,7 @@ window.LegendCustomization = (function() {
           const k = e.target.getAttribute("data-key");
           if (c && k) {
             setColor(c, k, null);        // null = retour à la couleur d'origine
-            setBorderColor(c, k, null);  // 🎨 v1.76.1 — ↺ remet AUSSI la bordure
+            setBorderColor(c, k, null);  // ↺ remet AUSSI la bordure
             _render();
             if (opts.onChange) opts.onChange();
           }
@@ -1138,7 +1138,7 @@ window.LegendCustomization = (function() {
   // Mini-modale « Ajouter une entrée custom » — utilisée par ouvrirEditeur.
   // Reprend la même structure que la version inline d'exporter.js mais en
   // version standalone (= peut être appelée hors contexte Export PNG).
-  // 🧷 v1.76.1 — `prefill` optionnel { id, category, label } : mode « lier un
+  // `prefill` optionnel { id, category, label } : mode « lier un
   // type existant ». Utilisé par le bandeau orphelins de ≡ Légende : l'entrée
   // créée porte l'ID EXACT du type déjà présent dans les données (`Bas`,
   // `cust-perdu`, …) au lieu d'un id neuf qui ne se lierait jamais — c'était
@@ -1168,7 +1168,7 @@ window.LegendCustomization = (function() {
             '<option value="icones">' + window.I18n.t("legend.add.catIcones") + '</option>' +
           '</select>' +
         '</div>' +
-        // 🆕 v1.16.0 step2-drawable : pour les STRUCTURES uniquement, ajout
+        // pour les STRUCTURES uniquement, ajout
         // d'un choix de géométrie polyline/polygon pour différencier "front
         // de taille" (= polyline, comme front-1/front-2 built-in) de
         // "pilier/mur" (= polygon, comme pilier-1/pilier-2/mur built-in).
@@ -1207,7 +1207,7 @@ window.LegendCustomization = (function() {
             '<span>' + window.I18n.t("legend.add.fillToggle") + '</span>' +
           '</label>' +
         '</div>' +
-        // 🎨 v1.76.1 — bordure INDÉPENDANTE du remplissage (zones + piliers/mur).
+        // bordure INDÉPENDANTE du remplissage (zones + piliers/mur).
         // Décochée = comportement historique (bordure = fond). Le sélecteur
         // « trait » de v1.16 avait été caché pour les polygones avec la note
         // « un éditeur plus tard » — c'est ce bloc, 60 versions après.
@@ -1278,18 +1278,18 @@ window.LegendCustomization = (function() {
           lineWrap.style.display = "none";
           fillWrap.style.display = "block";
           document.getElementById("kta-lc-add-fill-on").checked = true;
-          // 🐛 v1.76.0 — DÉCOCHER le trait, pas seulement le masquer. La case
+          // DÉCOCHER le trait, pas seulement le masquer. La case
           // est `checked` dans le HTML ; la cacher ne la décoche pas, donc
           // `lineOn` restait vrai et `lineColor` prenait la valeur par défaut
           // du color picker jamais affiché (#00ff00). `addCustomEntry` la
           // promouvait ensuite en `borderColor` → TOUTE zone custom naissait
           // avec un contour VERT FLUO que l'utilisateur n'avait pas choisi.
           document.getElementById("kta-lc-add-line-on").checked = false;
-          borderWrap.style.display = "block";   // 🎨 v1.76.1 bordure optionnelle
+          borderWrap.style.display = "block";   // bordure optionnelle
         } else {
           // structures → afficher le sélecteur de géométrie + ajuster
           // les champs de couleur selon le choix.
-          // 🐛 v1.16.0 step2-drawable-fix : pour POLYGONE, on cache le
+          // pour POLYGONE, on cache le
           // selecteur "trait" pour éviter que l'utilisateur saisisse une
           // couleur de trait par méprise (qui sera ensuite ignorée par le
           // resolver et l'addCustomEntry normalise — mais autant nettoyer
@@ -1309,11 +1309,11 @@ window.LegendCustomization = (function() {
             lineWrap.style.display = "none";
             fillWrap.style.display = "block";
             document.getElementById("kta-lc-add-fill-on").checked = true;
-            // 🐛 v1.76.0 — même correctif que pour les zones : sans ce
+            // même correctif que pour les zones : sans ce
             // décochage, un pilier/mur custom naissait avec une bordure verte
             // fluo au lieu du noir des piliers built-in.
             document.getElementById("kta-lc-add-line-on").checked = false;
-            borderWrap.style.display = "block";   // 🎨 v1.76.1 bordure optionnelle
+            borderWrap.style.display = "block";   // bordure optionnelle
           }
         }
       }
@@ -1334,7 +1334,7 @@ window.LegendCustomization = (function() {
       // dessinés — c'est toute la liaison (addCustomEntry accepte entry.id).
       if (prefill && prefill.id) entry.id = prefill.id;
 
-      // 🆕 v1.16.0 step2-drawable : géométrie. Pour structures = choix user,
+      // géométrie. Pour structures = choix user,
       // sinon implicite via category.
       if (cat === "structures") {
         entry.geometry = _getStructGeometry();
@@ -1356,7 +1356,7 @@ window.LegendCustomization = (function() {
         if (lineOn) entry.lineColor = document.getElementById("kta-lc-add-line").value;
         if (fillOn) {
           entry.fillColor = document.getElementById("kta-lc-add-fill").value;
-          // 🎨 v1.76.1 — bordure EXPLICITE si cochée ; sinon comportement
+          // bordure EXPLICITE si cochée ; sinon comportement
           // historique (bordure = fond).
           const bordOn = document.getElementById("kta-lc-add-border-on").checked;
           if (bordOn && (cat === "zones" || (cat === "structures" && entry.geometry === "polygon"))) {
@@ -1411,12 +1411,12 @@ window.LegendCustomization = (function() {
     isVisible:             isVisible,
     getSource:             getSource,
     getDefaultLabel:       getDefaultLabel,
-    // 🎨 v1.76.0 — override de couleur des types built-in.
+    // override de couleur des types built-in.
     // `getColor` est appelée par window.ktaResolveStyle : lecture PURE,
     // ne jamais y rappeler le résolveur (réentrance).
     getColor:              getColor,
     hasColorOverride:      hasColorOverride,
-    // 🎨 v1.76.1 — bordure indépendante (getBorderColor est appelée par
+    // bordure indépendante (getBorderColor est appelée par
     // window.ktaResolveStyle : lecture PURE, jamais de rappel au résolveur).
     getBorderColor:        getBorderColor,
     setBorderColor:        setBorderColor,
@@ -1435,12 +1435,12 @@ window.LegendCustomization = (function() {
     resetSession:          resetSession,
     findCustomEntry:       findCustomEntry,
     countUsages:           countUsages,
-    // 🧹 v1.76.0 (F19) — dialog « ajouter une entrée » exposée : exporter.js
+    // (F19) — dialog « ajouter une entrée » exposée : exporter.js
     // en avait un clone intégral, supprimé au profit de cette API.
     ouvrirAddDialog:       _ouvrirAddDialog,
-    // 🐛 v1.76.1 (annexe 6) — pour le swap du Générateur uniquement.
+    // (annexe 6) — pour le swap du Générateur uniquement.
     suspendPersist:        suspendPersist,
-    // 🧹 v1.76.0 (F23) — diagnostic des types orphelins, lu par ≡ Légende.
+    // (F23) — diagnostic des types orphelins, lu par ≡ Légende.
     listOrphanTypes:       listOrphanTypes,
 
     // Hook listener (sidebar dynamique, invalidation styles, etc.)

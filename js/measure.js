@@ -6,7 +6,7 @@
 
 // =========================
 // MESURE — Distance (polyline) + Surface (polygone)
-// 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois, une mesure
+// (KARMA "en footer, on peux afficher a la fois, une mesure
 // de surface, et une comme avant de distance") : refonte des 2 modes en
 // 2 mesures INDÉPENDANTES qui coexistent simultanément.
 // =========================
@@ -27,8 +27,8 @@
 // =========================
 
 window.modeMesure = false;
-let _pointsDistance = [];   // 🆕 v1.12.0-fix : points polyline distance
-let _pointsSurface  = [];   // 🆕 v1.12.0-fix : points polygone surface
+let _pointsDistance = [];   // points polyline distance
+let _pointsSurface  = [];   // points polygone surface
 let polylineMesure  = null;
 let polygonMesure   = null;
 let _measureClickHandler = null;
@@ -38,7 +38,7 @@ let _activeMode = "distance";  // mode du bouton actif → cible les clics
 let _segmentLabels = [];
 let _angleLabels   = [];
 
-// 🐛 v1.56.2 — Points consécutifs COÏNCIDENTS (doublons [A,A,B,B,…] hérités de
+// Points consécutifs COÏNCIDENTS (doublons [A,A,B,B,…] hérités de
 // l'ancien bug de handlers empilés, re-restaurés par SessionPersist, ou d'un
 // double événement click) : segments de 0 px → label « 0.0 m » posé SUR le
 // sommet + angles avalés (len < 1e-6 → skip). Helper de déduplication : ne
@@ -88,10 +88,10 @@ function initMeasure() {
     const x = lng;
     const y = APP_CONFIG.imageHeight - lat;
 
-    // 🆕 v1.12.0-fix : route le clic vers le tableau du mode actif.
+    // route le clic vers le tableau du mode actif.
     // Les 2 mesures coexistent — clic en mode "surface" n'efface pas la
     // distance existante (et vice-versa).
-    // 🐛 v1.56.2 : ignore un point coïncident avec le DERNIER du tableau
+    // ignore un point coïncident avec le DERNIER du tableau
     // (double event click / tap fantôme) — un segment de 0 px n'a aucun sens
     // en mesure et casse l'affichage des angles.
     const arr = (_activeMode === "surface") ? _pointsSurface : _pointsDistance;
@@ -131,7 +131,7 @@ function _updateSegmentLabels() {
   _segmentLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _segmentLabels = [];
 
-  // 🐛 v1.56.2 : labels calculés sur la géométrie DÉDUPLIQUÉE — une session
+  // labels calculés sur la géométrie DÉDUPLIQUÉE — une session
   // restaurée avec des doublons [A,A,B,B,…] posait un « 0.0 m » sur chaque
   // sommet. Le tableau source n'est pas modifié (SessionPersist inchangé).
   const pts = _dedupPointsConsecutifs(_pointsDistance);
@@ -174,7 +174,7 @@ function _updateAngleLabels() {
   _angleLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _angleLabels = [];
 
-  // 🐛 v1.56.2 : angles calculés sur la géométrie DÉDUPLIQUÉE — avec des
+  // angles calculés sur la géométrie DÉDUPLIQUÉE — avec des
   // doublons [A,A,B,B,…], chaque sommet avait un vecteur adjacent de longueur
   // nulle → TOUS les angles étaient skippés (len < 1e-6). Sur la géométrie
   // réelle, l'angle réapparaît à chaque sommet intermédiaire.
@@ -260,7 +260,7 @@ function resetMesure() {
   _afficherMesureValeur();
 }
 
-// 🆕 v1.12.0-fix : reset granulaire — "distance" | "surface" | "all"
+// reset granulaire — "distance" | "surface" | "all"
 function resetMesureMode(mode) {
   if (mode === "distance") {
     _pointsDistance = [];
@@ -280,7 +280,7 @@ function resetMesureMode(mode) {
   _afficherMesureValeur();
 }
 
-// 🆕 v1.12.0-fix : "dernier point" cible le mode actif uniquement.
+// "dernier point" cible le mode actif uniquement.
 // Le bouton ❌ → "dernier point" retire le dernier point de la mesure en
 // cours d'édition (selon _activeMode), pas l'autre.
 function removeLastMeasurePoint() {
@@ -313,7 +313,7 @@ function _afficherMesureValeur() {
   const label = document.getElementById("measureLabel");
   if (!label) return;
 
-  // 🆕 v1.12.0-fix : 2 lignes affichées simultanément si les 2 mesures
+  // 2 lignes affichées simultanément si les 2 mesures
   // ont au moins 1 point. Chaque ligne masquée si son array est vide.
   // Le mode actif est marqué visuellement par une bordure gauche colorée
   // (CSS .kta-measure-active-line) pour montrer où va le prochain clic.
@@ -366,10 +366,10 @@ function afficherDistance(d) {
 // EXPORT GLOBAL
 window.initMeasure              = initMeasure;
 window.resetMesure              = resetMesure;
-window.resetMesureMode          = resetMesureMode;   // 🆕 v1.12.0-fix
+window.resetMesureMode          = resetMesureMode;
 window.removeLastMeasurePoint   = removeLastMeasurePoint;
 
-// 🆕 v1.12.0-fix : 2 mesures coexistantes. L'API legacy continue de
+// 2 mesures coexistantes. L'API legacy continue de
 // fonctionner pour la rétrocompat SessionPersist :
 //   - getMeasurePoints() / setMeasurePoints() ciblent la DISTANCE
 //     (comportement v1 avant introduction du mode surface)
@@ -380,7 +380,7 @@ window.getMeasurePoints = function() {
 };
 
 window.setMeasurePoints = function(points) {
-  // 🐛 v1.56.2 : déduplique au restore — les sessions sauvées à l'époque du
+  // déduplique au restore — les sessions sauvées à l'époque du
   // bug de handlers empilés contiennent des points doublés ; on répare la
   // donnée au chargement (SessionPersist re-sauvera la version propre).
   _pointsDistance = _dedupPointsConsecutifs(points || []);
@@ -392,7 +392,7 @@ window.getMeasurePointsSurface = function() {
 };
 
 window.setMeasurePointsSurface = function(points) {
-  _pointsSurface = _dedupPointsConsecutifs(points || []);  // 🐛 v1.56.2 idem distance
+  _pointsSurface = _dedupPointsConsecutifs(points || []);  // idem distance
   updateMesure();
 };
 

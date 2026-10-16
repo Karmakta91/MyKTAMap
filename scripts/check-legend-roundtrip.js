@@ -59,7 +59,7 @@ winE.LegendCustomization = {
         { id: "cust-aaa", category: "traces", geometry: "polyline", label: "Boyau", lineColor: "#ff00aa" },
         { id: "cust-bbb", category: "zones",  geometry: "polygon",  label: "Argile", fillColor: "#00ffaa" },
         { id: "cust-zzz", category: "traces", geometry: "polyline", label: "Jamais dessine", lineColor: "#000000" },
-        // 🧷 v1.76.1 — entree liee a un ID TECHNIQUE brut (pas de prefixe cust-)
+        // entree liee a un ID TECHNIQUE brut (pas de prefixe cust-)
         { id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" }
       ]
     };
@@ -83,7 +83,7 @@ t("le masquage d'un type absent ne part pas", leg.hidden["structures.mur"] === u
 t("calque sans perso -> pas de champ legende",
   winE._legendePourPayload({ data: [], roads: [{ type: "secondaire" }] }) === null);
 
-// 🧷 v1.76.1 — un type BRUT (id technique « Bas », sans prefixe cust-) voyage
+// un type BRUT (id technique « Bas », sans prefixe cust-) voyage
 // lui aussi : c'etait le mur rencontre par KARMA.
 const legBas = winE._legendePourPayload({ data: [], zones: [ { type: "Bas" }, { type: "eau" } ] });
 t("l'entree a id technique part avec le calque", !!legBas && legBas.customEntries.some(e => e.id === "Bas"));
@@ -131,7 +131,7 @@ t("legende vide -> rien n'est cree", winI._absorber({ labels:{}, hidden:{}, colo
 t("legende absente -> rien n'est cree", winI._absorber(null) === null);
 
 // ───────── cote GENERATEUR SIG (sigImport.js > assemblerLegendePlan) ─────────
-// 🩸 v1.83.1 (bug KARMA, 04/09 : « j'avais modifie ma legende, elle n'a pas ete
+// 🩸 (bug KARMA, 04/09 : « j'avais modifie ma legende, elle n'a pas ete
 // emportee dans l'export »). L'ecran « Convertir depuis SIG » ouvre le MEME
 // editeur de legende que le Generateur, mais la generation du ZIP assemblait
 // `plan.customLegend` avec `labels: {}` et `hidden: {}` ECRITS EN DUR, sans

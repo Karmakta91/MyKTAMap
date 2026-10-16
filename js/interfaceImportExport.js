@@ -7,8 +7,8 @@
 // =========================
 // INTERFACE IMPORT / EXPORT SESSION — JSON + GPX
 // =========================
-// 🆕 v1.31.0 (P3 Lot 5 — découpe interface.js) : module extrait de
-// js/interface.js (lignes 515-1184 avant extraction) pour réduire le
+// (P3 Lot 5 — découpe interface.js) : module extrait de
+// js/interface.js pour réduire le
 // volume du fichier principal.
 //
 // Aucun changement de comportement runtime. Les 4 fonctions exposées
@@ -48,7 +48,7 @@
 // =========================
 // EXPORT SESSION JSON
 // =========================
-// 🆔 v2.2.0 — Import par REMPLACEMENT d'une session (ETUDE_UID décision 7) :
+// Import par REMPLACEMENT d'une session (ETUDE_UID décision 7) :
 // les objets d'un fichier ancien reçoivent un uid (repli updatedAt = date
 // d'export du fichier), un uid en double dans le fichier est régénéré, et les
 // traces de suppression du fichier REMPLACENT celles du plan (c'est un
@@ -74,11 +74,11 @@ function telechargerSessionJSON() {
     editorPoints: window.getEditorPoints ? window.getEditorPoints() : [],
     roads:        window.getRoads        ? window.getRoads()        : [],
     zones:        window.getZones        ? window.getZones()        : [],
-    // 🆕 v1.9.3-A1.a : structures aussi dans le fallback JSON. Reste
+    // structures aussi dans le fallback JSON. Reste
     // rétro-compatible — les anciens imports sans 'structures' tomberont
     // sur l'array vide via `dataParsee.structures || []` côté import.
     structures:   window.getStructures   ? window.getStructures()   : [],
-    // 🆔 v2.2.0 — traces de suppression (un réimport ne ressuscite rien)
+    // traces de suppression (un réimport ne ressuscite rien)
     tombstones:   window.KtaUid ? window.KtaUid.getTombstones() : []
   };
 
@@ -110,20 +110,20 @@ function importerSessionJSON(file) {
         return;
       }
 
-      _preparerIdentitesImport(data);   // 🆔 v2.2.0
+      _preparerIdentitesImport(data);
       if (window.setEditorPoints) window.setEditorPoints(data.editorPoints || []);
       if (window.renderEditorPoints) window.renderEditorPoints();
       if (window.resetMesure) window.resetMesure();
       if (window.setMeasurePoints) {
         window.setMeasurePoints(data.measure && data.measure.points ? data.measure.points : []);
       }
-      // 🆕 v1.12.0-fix : restore aussi le polygone surface si présent dans le fichier importé
+      // restore aussi le polygone surface si présent dans le fichier importé
       if (window.setMeasurePointsSurface) {
         window.setMeasurePointsSurface(data.measureSurface && data.measureSurface.points ? data.measureSurface.points : []);
       }
       if (window.resetRoads) window.resetRoads();
       if (window.setRoads) window.setRoads(data.roads || []);
-      // 🌀 v1.57.0 : liaisons inter-plan (fusion par id dans le registre)
+      // liaisons inter-plan (fusion par id dans le registre)
       if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
         window.InterPlanLinks.importLinks(data.interPlanLinks || []);
       }
@@ -393,11 +393,11 @@ function ouvrirImportSession(fichierInitial) {
     erreurEl.style.display = msg ? "block" : "none";
   }
 
-  // 🆕 v1.9.3-B1d : ZIP avec photos (session.json + photos/) en plus du JSON pur.
+  // ZIP avec photos (session.json + photos/) en plus du JSON pur.
   // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
   // et la validation. Format : [{id, pointId, mime, size, blob, fiche}, ...]
   let _pendingPhotosToRestore = null;
-  // 🆕 v1.34.29 — PDF Mode Histoire embarqué dans le ZIP (chemin
+  // PDF Mode Histoire embarqué dans le ZIP (chemin
   // `mode-histoire/<name>`). Format : { blob, name } ou null si absent.
   let _pendingHistoirePdfToRestore = null;
 
@@ -406,16 +406,16 @@ function ouvrirImportSession(fichierInitial) {
     const nbMesure     = (data.measure && data.measure.points) ? data.measure.points.length : 0;
     const nbTraces     = (data.roads || []).length;
     const nbZones      = (data.zones || []).length;
-    // 🆕 v1.9.3-A1.a-fix5 : structures dans l'aperçu d'import session
+    // structures dans l'aperçu d'import session
     // (sinon KARMA voyait l'import accepté sans confirmation visuelle
     // que les structures étaient bien dans le fichier).
     const nbStructures = (data.structures || []).length;
-    // 🆕 v1.9.3-B1d : photos
+    // photos
     const nbPhotos     = (_pendingPhotosToRestore && _pendingPhotosToRestore.length) || 0;
     const photosBadge  = nbPhotos > 0
       ? '<span>' + window.I18n.t("impexp.session.apercuPhotos", { n: nbPhotos }) + '</span>'
       : '';
-    // 🆕 v1.21.2 : tracker (path/timeline) si présent dans la session
+    // tracker (path/timeline) si présent dans la session
     const _trk     = data.tracker || null;
     const trkPathN = _trk && Array.isArray(_trk.path) ? _trk.path.length : 0;
     const trkTimeN = _trk && Array.isArray(_trk.timeline) ? _trk.timeline.length : 0;
@@ -423,7 +423,7 @@ function ouvrirImportSession(fichierInitial) {
       ? '<span>' + window.I18n.t("impexp.session.apercuTracker", { pts: trkPathN, evts: trkTimeN }) + '</span>'
       : '';
 
-    // 🆕 v1.34.29 : Mode Histoire (note libre + PDF de session)
+    // Mode Histoire (note libre + PDF de session)
     const hasNoteLibre = typeof data.noteLibre === "string" && data.noteLibre.length > 0;
     const hasHistPdf   = !!(_pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.blob);
     let histoireBadge = "";
@@ -472,12 +472,12 @@ function ouvrirImportSession(fichierInitial) {
       if (!sessionFile) throw new Error(window.I18n.t("impexp.session.errZipNoSession"));
       return sessionFile.async("string").then(function(jsonText) {
         const data = _parseSessionJson(jsonText);
-        // 🆕 v1.34.29 — Extraction PDF Mode Histoire si présent. Le payload
+        // Extraction PDF Mode Histoire si présent. Le payload
         // session.json référence le fichier via `historeSessionPdf.file`
         // (ex. "mode-histoire/histoire.pdf"). On stocke le blob en pending
         // pour restauration au moment du clic Valider. Si le fichier référencé
         // est absent dans le ZIP → log warn, on ignore (pas d'erreur fatale).
-        // 📄 v1.69.0 — le Mode Histoire accepte N documents : on lit d'abord
+        // le Mode Histoire accepte N documents : on lit d'abord
         // `historeSessionPdfs` (tableau), et on retombe sur l'ancien champ
         // unique `historeSessionPdf` pour les sessions exportées avant.
         _pendingHistoirePdfToRestore = null;
@@ -510,7 +510,7 @@ function ouvrirImportSession(fichierInitial) {
         const indexFile = zip.file("photos/_index.json");
         if (!indexFile) {
           _pendingPhotosToRestore = [];
-          // 🆕 v1.34.29 — Si l'on attend juste le PDF Histoire (pas de photos),
+          // Si l'on attend juste le PDF Histoire (pas de photos),
           // on attend sa résolution avant de retourner les données.
           if (data._pendingHistPromise) {
             return data._pendingHistPromise.then(function() {
@@ -528,9 +528,9 @@ function ouvrirImportSession(fichierInitial) {
           const photoIds = Object.keys(idxMap);
           if (photoIds.length === 0) {
             _pendingPhotosToRestore = [];
-            // 🆕 v1.34.29 — Attendre le PDF Histoire si en cours (cas où
+            // Attendre le PDF Histoire si en cours (cas où
             // l'index photos existe mais vide, et il n'y a qu'un PDF Histoire).
-            // 🆕 v1.34.29 — Attend la promise PDF Mode Histoire si présente
+            // Attend la promise PDF Mode Histoire si présente
             if (data._pendingHistPromise) {
               return data._pendingHistPromise.then(function() {
                 delete data._pendingHistPromise;
@@ -555,16 +555,16 @@ function ouvrirImportSession(fichierInitial) {
                 mime:    info.mime || blob.type || "image/jpeg",
                 size:    info.size || blob.size,
                 blob:    blob,
-                fiche:   info.fiche || null   // 📸 12/10/2026 — absente des anciens ZIP
+                fiche:   info.fiche || null   // absente des anciens ZIP
               };
             });
           });
           return Promise.all(promises).then(function(arr) {
             _pendingPhotosToRestore = arr.filter(function(p) { return p !== null; });
-            // 🆕 v1.34.29 — Si une promesse PDF Histoire est en cours, attend-la
+            // Si une promesse PDF Histoire est en cours, attend-la
             // aussi pour synchroniser le _pendingHistoirePdfToRestore avant de
             // rendre le preview.
-            // 🆕 v1.34.29 — Attend la promise PDF Mode Histoire si présente
+            // Attend la promise PDF Mode Histoire si présente
             if (data._pendingHistPromise) {
               return data._pendingHistPromise.then(function() {
                 delete data._pendingHistPromise;
@@ -583,13 +583,13 @@ function ouvrirImportSession(fichierInitial) {
     dropLabel.textContent = window.I18n.t("impexp.session.fileLoaded", { name: file.name });
     setErr("");
     _pendingPhotosToRestore = null;
-    _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
+    _pendingHistoirePdfToRestore = null;
 
     const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip"
                   || file.type === "application/x-zip-compressed";
 
     if (isZip) {
-      // 🆕 v1.9.3-B1d : ZIP avec photos
+      // ZIP avec photos
       _parseSessionZip(file).then(function(data) {
         dataParsee = data;
         _renderApercu(data);
@@ -598,7 +598,7 @@ function ouvrirImportSession(fichierInitial) {
         setErr(window.I18n.t("impexp.session.errZipPrefix", { msg: err.message || err }));
         dataParsee = null;
         _pendingPhotosToRestore = null;
-        _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
+        _pendingHistoirePdfToRestore = null;
         apercuWrap.style.display = "none";
         warnEl.style.display = "none";
         btnValider.disabled = true;
@@ -636,7 +636,7 @@ function ouvrirImportSession(fichierInitial) {
   dropZone.addEventListener("drop", function(e) {
     e.preventDefault(); dropZone.classList.remove("dragover");
     const f = e.dataTransfer.files[0];
-    // 🆕 v1.9.3-B1d : accepte aussi les .zip (session avec photos)
+    // accepte aussi les .zip (session avec photos)
     const okExt = f && (/\.(json|zip)$/i).test(f.name);
     if (okExt) chargerFichier(f);
     else if (f && /\.gpx$/i.test(f.name)) { fermer(); window.ouvrirImportFichier(f); }
@@ -651,9 +651,9 @@ function ouvrirImportSession(fichierInitial) {
   btnValider.addEventListener("click", function() {
     if (!dataParsee) return;
 
-    // 🆕 v1.9.3-B1d : restauration des photos en IDB AVANT de pousser
+    // restauration des photos en IDB AVANT de pousser
     // editorPoints (= avant que la grille puisse interroger IDB).
-    // 📸 12/10/2026 — FUSION, plus de purge. Avant : toutes les photos du plan
+    // FUSION, plus de purge. Avant : toutes les photos du plan
     // étaient effacées puis remplacées par celles du ZIP — y compris les photos
     // « sans point » gardées pour récupération, sans confirmation (règle
     // produit : une photo n'est jamais effacée sans confirmation). Désormais
@@ -706,9 +706,9 @@ function ouvrirImportSession(fichierInitial) {
       return _restorerPhotos();
     }).then(function(bilanPhotos) {
       try {
-        _preparerIdentitesImport(dataParsee);   // 🆔 v2.2.0
+        _preparerIdentitesImport(dataParsee);
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
-        // 🆕 v1.48.0 (KARMA) : restaure la LÉGENDE CUSTOM de la session (labels +
+        // restaure la LÉGENDE CUSTOM de la session (labels +
         // entrées custom : zones/tracés/tags/structures inventés par l'user) AVANT
         // les re-renders → les types custom retrouvent label+couleur+icône, même
         // sur un ZIP vierge. Stratégie : REMPLACE l'état légende session (miroir
@@ -716,7 +716,7 @@ function ouvrirImportSession(fichierInitial) {
         if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
           window.LegendCustomization.loadSessionState(dataParsee.customLegend || null);
         }
-        // 🌀 v1.57.0 : réinjecte les liaisons inter-plan de la session importée
+        // réinjecte les liaisons inter-plan de la session importée
         // dans le registre central (fusion par id — les liaisons déjà connues
         // localement ne sont pas dupliquées). Rétro-compat : champ absent → 0.
         if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
@@ -727,7 +727,7 @@ function ouvrirImportSession(fichierInitial) {
         if (window.setMeasurePoints) {
           window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
         }
-        // 🆕 v1.12.0-fix : restore aussi le polygone surface si présent
+        // restore aussi le polygone surface si présent
         if (window.setMeasurePointsSurface) {
           window.setMeasurePointsSurface(dataParsee.measureSurface && dataParsee.measureSurface.points ? dataParsee.measureSurface.points : []);
         }
@@ -735,7 +735,7 @@ function ouvrirImportSession(fichierInitial) {
         if (window.setRoads)           window.setRoads(dataParsee.roads || []);
         if (window.resetZones)         window.resetZones();
         if (window.setZones)           window.setZones(dataParsee.zones || []);
-        // 🆕 v1.9.3-A1.a : restauration des structures depuis l'import
+        // restauration des structures depuis l'import
         // session JSON. Rétrocompat : si l'import est antérieur à v1.9.3,
         // dataParsee.structures sera undefined → array vide via `|| []`.
         if (window.resetStructures)    window.resetStructures();
@@ -751,7 +751,7 @@ function ouvrirImportSession(fichierInitial) {
           catch(e) { console.warn("[Import session] resynchronisation des calques :", e); }
         }
 
-        // 🆕 v1.21.2 : restore timeline + startTs du tracker si présent dans
+        // restore timeline + startTs du tracker si présent dans
         // le fichier session. Format : session.tracker = {position, path,
         // timeline, startTs}. On ne restaure QUE la timeline + startTs : le
         // path (polyline) et la position sont des artefacts runtime liés à
@@ -771,14 +771,14 @@ function ouvrirImportSession(fichierInitial) {
           }
         }
 
-        // 🆕 v1.34.29 — Restauration Mode Histoire (note libre + PDF session).
+        // Restauration Mode Histoire (note libre + PDF session).
         // - noteLibre est inline dans le payload (string) → écrit localStorage.
         // - PDF session a été extrait dans `_pendingHistoirePdfToRestore` au
         //   parse (blob). On délègue à ModeHistoire.importSessionData() pour
         //   centraliser la logique IDB et garantir la cohérence du schéma.
         // Rétrocompat : si dataParsee.noteLibre et historeSessionPdf absents
         // (anciens exports), on ne touche RIEN — la note du plan courant reste.
-        // 📄 v1.69.0 : `_pendingHistoirePdfToRestore` est désormais un TABLEAU
+        // `_pendingHistoirePdfToRestore` est désormais un TABLEAU
         // de documents (il pouvait être un objet unique avant — géré ici pour
         // ne pas dépendre de l'ordre des mises à jour).
         const _noteToImport = (typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
@@ -801,7 +801,7 @@ function ouvrirImportSession(fichierInitial) {
         }
 
         _pendingPhotosToRestore = null;  // cleanup
-        _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
+        _pendingHistoirePdfToRestore = null;
         fermer();
         if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");

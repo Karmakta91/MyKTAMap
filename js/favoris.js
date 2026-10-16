@@ -135,7 +135,7 @@ window.Favoris = (function() {
     return _currentList().slice();
   }
 
-  // 🆔 v2.4.0 (ETUDE_UID lot C2) — un favori est rattaché à l'uid de son point
+  // (ETUDE_UID lot C2) — un favori est rattaché à l'uid de son point
   // (`pointUid` : le champ `uid` d'un favori est déjà SON identifiant, fav-…).
   // Lecture : l'uid d'abord ; un favori ancien sans pointUid se reconnaît
   // encore à son nom (double lecture, comme les photos).
@@ -156,7 +156,7 @@ window.Favoris = (function() {
     return !!findByPointId(pointId, pointUid);
   }
 
-  // 🆔 v2.4.0 — Migration douce des favoris du plan courant (ETUDE_UID déc. 12) :
+  // Migration douce des favoris du plan courant (ETUDE_UID déc. 12) :
   // un favori sans pointUid reçoit l'uid du point SI on peut le désigner sans
   // deviner — un seul point de ce nom ; sinon parmi les homonymes, celui du
   // même calque à la même position (tolérance 0,5 px). Ambigu : inchangé (il
@@ -196,7 +196,7 @@ window.Favoris = (function() {
     const entry = {
       uid:        _newUid(),
       pointId:    String(snapshot.pointId),
-      pointUid:   snapshot.pointUid ? String(snapshot.pointUid) : undefined,   // 🆔 v2.4.0
+      pointUid:   snapshot.pointUid ? String(snapshot.pointUid) : undefined,
       nom:        String(snapshot.nom || "(sans nom)"),
       x:          Number(snapshot.x) || 0,
       y:          Number(snapshot.y) || 0,
@@ -246,7 +246,7 @@ window.Favoris = (function() {
   }
 
   // ─────────────────────────────────────────────
-  // 🆕 v1.20.0 — Export / Import JSON (partage cross-appareil)
+  // Export / Import JSON (partage cross-appareil)
   // ─────────────────────────────────────────────
   // Use case : un cataphile veut envoyer sa liste de POI favoris (entrée
   // carrière, point de RDV, lieux d'intérêt) à un autre cataphile qui
@@ -439,13 +439,13 @@ window.Favoris = (function() {
     };
   }
 
-  // Lecture immédiate au boot — main.js > startApp appellera loadPlan(planId)
+  // Lecture immédiate au boot — main.js > initDataFromConfig appellera loadPlan(planId)
   // pour pointer sur le bon plan après load de PLAN_CONFIG.
   _load();
 
   return {
     loadPlan:        loadPlan,
-    migrerVersUid:   migrerVersUid,   // 🆔 v2.4.0
+    migrerVersUid:   migrerVersUid,
     transfererPlan:  transfererPlan,
     getAll:          getAll,
     isFav:           isFav,
@@ -454,7 +454,7 @@ window.Favoris = (function() {
     remove:          remove,
     toggle:          toggle,
     onChange:        onChange,
-    // 🆕 v1.20.0 — Export/Import JSON pour partage cross-appareil
+    // Export/Import JSON pour partage cross-appareil
     exportToJson:    exportToJson,
     exportToFile:    exportToFile,
     importFromJson:  importFromJson,

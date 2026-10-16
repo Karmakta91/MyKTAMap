@@ -43,7 +43,7 @@ for (const p of ecrites) {
 
 
 // ─────────────────────────────────────────────────────────────────────
-// 👣 v1.82.0 — LES PREFS PER-PLAN AUSSI, et pour la MÊME raison.
+// LES PREFS PER-PLAN AUSSI, et pour la MÊME raison.
 //
 // Le défaut ci-dessus a maintenant TROIS occurrences :
 //   • v1.75.0 magnétisme  → pref globale, corrigée
@@ -80,7 +80,7 @@ PER_PLAN.forEach(function (p) {
 
 // Et le cas concret qui a mordu : les trois réglages de podomètre doivent
 // être écrits par l'écran de réglages. Sans ça, « Appliquer » ne persiste rien.
-// 👣 v1.96.0 (KARMA) : ils sont GLOBAUX — l'écrivain est setGlobalPodometre,
+// ils sont GLOBAUX — l'écrivain est setGlobalPodometre,
 // plus setPlanTracking (cf. scripts/check-podometre-global.js pour le reste).
 ["stepLength", "stepThreshold", "stepCooldown"].forEach(function (k) {
   const bloc = iface.slice(iface.indexOf("window.setGlobalPodometre({"));

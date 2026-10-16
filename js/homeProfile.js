@@ -17,7 +17,7 @@
 // des listeners (homeLoader → homeProfile → homeConfig → résiduel inline)
 // reproduit l'ordre d'exécution du bloc d'origine. Ne pas réordonner.
     window.addEventListener("load", function () {
-      // 🧩 13/10/2026 — Statistiques fournies par une extension (prise profilStats, KtaExtensions) : texte seulement,
+      // Statistiques fournies par une extension (prise profilStats, KtaExtensions) : texte seulement,
       // modale « Détails du profil » + choix du bandeau (clé « ext:<cle> »). Vide sans extension.
       let _statsExt = [];
       function _echapStat(s) { return window.ktaEsc(s); }
@@ -33,7 +33,7 @@
         const bar = document.getElementById("kta-loader-profile-bar");
         if (!bar || !window.UserProfile) return;
         try { await window.UserProfile.init(); } catch(e) {}
-        // 🆕 v1.21.3 : construit les slots stats selon les prefs user AVANT
+        // construit les slots stats selon les prefs user AVANT
         // de hydrater (sinon les querySelectorAll dans _hydrateProfileBarStats
         // tombent sur un container vide).
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
@@ -45,13 +45,13 @@
           _refreshLoaderProfileBar();
           _appliquerFondEcran();
         });
-        // 🌍 v1.45.0 — Re-render au changement de langue (greeting + placeholder
+        // Re-render au changement de langue (greeting + placeholder
         // "Mon profil" viennent du dico ; le pseudo reste inchangé). Couvre la
         // bascule live via le sélecteur du HOME.
         if (window.I18n && window.I18n.onChange) {
           window.I18n.onChange(function() { _refreshLoaderProfileBar(); });
         }
-        // 🧩 v2.7.4 — compte d'une installation reliée (KtaExtensions.compte) :
+        // compte d'une installation reliée (KtaExtensions.compte) :
         // la carte se redessine quand l'extension annonce un changement.
         window.addEventListener("mktm:compte-changed", function() { _refreshLoaderProfileBar(); });
         // Une extension arrive APRÈS le 1er dessin : elle peut couper grades et hauts faits (profilJeu) — les cases
@@ -60,7 +60,7 @@
           _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
           _refreshLoaderProfileBar();
         });
-        // 🆕 v1.21.1 : bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
+        // bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
         // Click anywhere → ouvre la modale Détails.
         bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
         // Accessibilité clavier (Enter/Espace sur bandeau focusable)
@@ -72,7 +72,7 @@
         });
       }
 
-      // 🖼️ v1.74.0 — FOND D'ÉCRAN DU HOME (demande KARMA « un peu comme Windows »).
+      // FOND D'ÉCRAN DU HOME (demande KARMA « un peu comme Windows »).
       // On pose 2 variables CSS sur #planLoaderBox : l'image et l'alpha du voile.
       // La COULEUR du voile est définie côté CSS par thème (sombre / clair), donc
       // basculer le thème réajuste automatiquement le voile sans repasser ici.
@@ -80,7 +80,7 @@
       // ⚠️ La Blob URL précédente DOIT être révoquée : sans ça, chaque
       // notification de profil (renommage, avatar, réglage du voile…) en créerait
       // une nouvelle et l'image resterait en mémoire à chaque fois.
-      // 🐛 v1.75.0 (repro KARMA : « je perds ma photo de profil ET le fond
+      // (repro KARMA : « je perds ma photo de profil ET le fond
       // d'écran en fermant la modale, ça revient au restart ») — JETON
       // ANTI-COURSE. Chaque réglage du fond (voile, cadrage X, cadrage Y)
       // déclenche un `_notify()`, donc plusieurs `_appliquerFondEcran()` et
@@ -97,7 +97,7 @@
       async function _appliquerFondEcran() {
         const box = document.getElementById("planLoaderBox");
         if (!box || !window.UserProfile) return;
-        // ⚠️ v1.75.0 — L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX.
+        // ⚠️ L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX.
         // La box est le CONTENU DÉFILÉ (hauteur = hauteur du contenu, 2000-3000 px
         // en portrait) ; l'overlay est `position:fixed; inset:0` + le scroller,
         // donc sa boîte de fond EST le viewport et ne bouge pas au défilement.
@@ -147,7 +147,7 @@
           fond.style.setProperty("--kta-wall-img", 'url("' + url + '")');
           fond.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
           fond.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
-          // 🖼️ v1.75.0 — mode d'affichage. `contain` = image entière, l'espace
+          // mode d'affichage. `contain` = image entière, l'espace
           // restant prend la couleur du thème (le voile joue déjà cette
           // couleur, donc ça se lit comme une image posée sur le fond de
           // l'app, pas comme un rendu raté).
@@ -161,10 +161,10 @@
       }
 
       let _profileBarObjectUrl = null;  // tracker pour révoquer au refresh
-      let _barJeton = 0;                // 🐛 v1.75.0 — anti-course (cf. _appliquerFondEcran)
+      let _barJeton = 0;                // anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
-        // 🧩 v2.7.4 — Installation reliée à une base de données : le compte
+        // Installation reliée à une base de données : le compte
         // connecté (pseudo + rôle, fournis par l'extension) prend la place du
         // surnom et du rang. Rien n'est écrit dans le profil local : il revient
         // tel quel à la déconnexion. Sans extension (myktamap.fr) : null.
@@ -180,7 +180,7 @@
         // légitime déjà en vol. `_appliquerFondEcran` avait déjà le bon ordre.
         const monJetonBar = ++_barJeton;
 
-        // 🆕 v1.52.0 : anneau de rang (sur le wrap → survit au remplacement du innerHTML)
+        // anneau de rang (sur le wrap → survit au remplacement du innerHTML)
         // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
         const _rank = _appliquerRangAvatar(avatarWrap);
         if (!_rank) {
@@ -214,11 +214,11 @@
           if (rankLabelEl) { rankLabelEl.textContent = _compte.libelle; rankLabelEl.removeAttribute("data-kta-rank"); }
         }
 
-        // 🆕 v1.53.0 : hauts faits — toast si de nouveaux succès sont débloqués
+        // hauts faits — toast si de nouveaux succès sont débloqués
         // (au retour sur le home). 1er calcul = accord rétroactif silencieux.
         _evalAchievements();
 
-        // 🐛 v1.21.1-fix1 (KARMA "j'ai que un —") : hydrate les stats AVANT
+        // (KARMA "j'ai que un —") : hydrate les stats AVANT
         // toute autre opération (et hors await) pour garantir que les valeurs
         // s'affichent même si le bloc photo plus bas fait un early return
         // (cas user avec photo de profil) ou throw silencieusement.
@@ -227,7 +227,7 @@
         _hydrateProfileBarStats();
 
         // Surnom display
-        // 🌍 v1.45.0 — greeting + placeholder viennent du dico (I18n.t) ; le
+        // greeting + placeholder viennent du dico (I18n.t) ; le
         // pseudo (snap.surnom) reste tel quel (donnée user, pas traduite).
         const _tGreeting = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.greeting") : "Bienvenue";
         const _tPlaceholder = (window.I18n && window.I18n.t) ? window.I18n.t("home.profile.placeholder") : "Mon profil";
@@ -242,7 +242,7 @@
           if (greetingEl) greetingEl.textContent = _tGreeting;
         }
         // Avatar : photo si dispo, sinon initiale colorée
-        // 🐛 v1.75.0 (repro KARMA : « quand je charge un fond d'écran, la
+        // (repro KARMA : « quand je charge un fond d'écran, la
         // miniature de ma photo de profil devient un ? ») — l'ancienne URL
         // était révoquée AVANT l'await : entre les deux, le <img> affiché
         // pointait sur une URL morte → image cassée (le « ? » du navigateur).
@@ -295,7 +295,7 @@
         }
       }
 
-      // 🆕 v1.21.1-fix2 (KARMA "temps session en cours pas général") :
+      // (KARMA "temps session en cours pas général") :
       // tracking temps app CUMULÉ (toutes sessions). Stocké dans
       // `localStorage["myktamap_total_time_ms"]`.
       //
@@ -355,13 +355,13 @@
         return remM > 0 ? h + "h " + remM + "min" : h + "h";
       }
 
-      // 🆕 v1.52.0 — Gamification du profil : rang/badge selon temps + plans + km.
+      // Gamification du profil : rang/badge selon temps + plans + km.
       // Métriques lues depuis les compteurs EXISTANTS (toutes locales) ; le calcul
       // de rang vit dans js/profileGamification.js (module pur). km = galeries
       // cartographiées (somme des distM en cache par plan).
       function _collectGamifMetrics() {
         let plans = 0, km = 0, pois = 0, roads = 0, zones = 0, structures = 0, plansGeoref = 0, list = [];
-        let hasTracked = false, maxLevels = 0, maxTrackerH = 0;  // 🆕 v1.54.0 (spéciaux)
+        let hasTracked = false, maxLevels = 0, maxTrackerH = 0;  // (spéciaux)
         try { if (window.PlanRegistry && window.PlanRegistry.getAll) list = window.PlanRegistry.getAll() || []; } catch(e) {}
         try {
           const opened = list.filter(function(p){ return p && p.lastOpened; });
@@ -370,7 +370,7 @@
         try {
           list.forEach(function(p){
             if (!p || !p.id) return;
-            // 🆕 v1.53.0 : plan géoréférencé = calibration GPS présente (hauts faits Géomètre)
+            // plan géoréférencé = calibration GPS présente (hauts faits Géomètre)
             try { if (localStorage.getItem("myktamap_kmz_calib_" + p.id)) plansGeoref++; } catch(e) {}
             try {
               const raw = localStorage.getItem("myktamap_plan_stats_v1_" + p.id);
@@ -385,7 +385,7 @@
                 }
               }
             } catch(e) {}
-            // 🆕 v1.54.0 : scan session pour les spéciaux (tracker + niveaux annotés)
+            // scan session pour les spéciaux (tracker + niveaux annotés)
             try {
               const sraw = window.KtaSessionStore.lire(p.id);
               if (sraw) {
@@ -425,7 +425,7 @@
         };
       }
 
-      // 🆕 v1.53.0 — Hauts faits (succès one-shot). Détection des nouveaux
+      // Hauts faits (succès one-shot). Détection des nouveaux
       // débloqués + persistance + toast. Catalogue/éval dans js/profileAchievements.js.
       const _ACH_LS_KEY = "myktamap_achievements_v1";
       function _readUnlockedAch() {
@@ -502,7 +502,7 @@
                   '</div>';
         });
         html += '</div>';
-        // 🆕 v1.54.0 : section Spéciaux (hauts faits one-shot)
+        // section Spéciaux (hauts faits one-shot)
         const specials = all.filter(function(a){ return a.group === "special"; });
         if (specials.length) {
           html += '<div class="kta-feats-sptitle">🎉 ' + tt("feat.specials") + '</div>' +
@@ -580,7 +580,7 @@
         box.innerHTML = html;
       }
 
-      // 🆕 v1.21.3 (KARMA "on doit pouvoir choisir dans profile les 2 ou 3
+      // (KARMA "on doit pouvoir choisir dans profile les 2 ou 3
       // stats du bandeau accueil") : système dynamique de stats configurables.
       //
       // - PROFILE_BAR_STATS = pool de stats disponibles (3 actuellement,
@@ -604,7 +604,7 @@
           icon:  "🗺️",
           titleKey: "home.profile.stats.plansTitle"
         },
-        // 🆕 v1.53.0 : score (gamification) + nb de hauts faits débloqués.
+        // score (gamification) + nb de hauts faits débloqués.
         score: {
           icon:  "⭐",
           titleKey: "home.profile.stats.scoreTitle"
@@ -678,7 +678,7 @@
         return (num / (1024 * 1024 * 1024)).toFixed(2) + " GB";
       }
 
-      // 🐛 v1.21.3-fix (KARMA "valeur sauvegarde dans profil varie bizarement") :
+      // (KARMA "valeur sauvegarde dans profil varie bizarement") :
       // L'ancien code utilisait navigator.storage.estimate() qui retourne TOUTE
       // la consommation de l'origine, y compris le Cache PWA volatile (eviction
       // LRU v1.21.3 → fluctuation visible). Le tooltip annonçait pourtant
@@ -705,10 +705,10 @@
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
         { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
-        // 🆕 v1.69.0 — Le Carnet (js/journal.js) : sans cette ligne, l'espace
+        // Le Carnet (js/journal.js) : sans cette ligne, l'espace
         // occupé par les sorties archivées serait invisible dans « Stockage ».
         { db: "myktamap_journal", store: "sorties", blobFields: [] },
-        // 🆕 v1.69.0 — Documents PDF du Mode Histoire : jamais comptés jusqu'ici
+        // Documents PDF du Mode Histoire : jamais comptés jusqu'ici
         // (un PDF de 40 Mo était invisible dans « Stockage »).
         { db: "myktamap_histoire_pdfs", store: "pdfs", blobFields: ["blob"] }
       ];
@@ -739,7 +739,7 @@
       }
 
       // Itère un store IDB et accumule les bytes (Blobs + JSON metadata)
-      // 🐛 v1.21.3-fix2 (KARMA "valeur sauvegarde pas bonne, j'ai 150 Mo de
+      // (KARMA "valeur sauvegarde pas bonne, j'ai 150 Mo de
       // plans en mémoire") : le helper ratait les stores qui mettent la
       // valeur Blob/Handle DIRECTEMENT comme `store.put(blob, id)` (cas de
       // myktamap_handles.handles + myktamap_handles.blobs). Mon code
@@ -898,7 +898,7 @@
       function _storageExtBytes() { return (_storageCalcCache && _storageCalcCache.extBytes) || 0; }
 
       // Hydrate les stats compactes du bandeau profil — refactor dynamique
-      // 🆕 v1.21.3 : itère les slots PRÉSENTS dans le DOM (data-stat-key)
+      // itère les slots PRÉSENTS dans le DOM (data-stat-key)
       // au lieu de hardcoder time/storage. Permet d'ajouter de nouvelles
       // stats au pool PROFILE_BAR_STATS sans toucher à cette fonction.
       async function _hydrateProfileBarStats() {
@@ -914,7 +914,7 @@
           } else if (key === "storage") {
             try {
               const bytes = await _getStorageMyktamapCached();
-              // 10/10/2026 : la mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le
+              // la mémoire des SESSIONS (localStorage, ~5 Mo par site) peut être pleine alors que le
               // total reste modeste — on le signale ici (⚠️ + infobulle), le détail est dans 📊 Détails de la session.
               const S = window.ktaStockageLocal;
               const mem = S ? S.mesurer() : null;
@@ -937,7 +937,7 @@
               let arr = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
                         ? (window.PlanRegistry.getAll() || [])
                         : [];
-              // 🆕 v1.21.3 : si pref skipServer active, exclut les plans
+              // si pref skipServer active, exclut les plans
               // serveur du count (cohérent avec "ne pas fausser les stats").
               if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
                 arr = arr.filter(function(p) { return p.type !== "server"; });
@@ -1011,10 +1011,10 @@
                 '</div>' +
               '</div>' +
 
-              // 🆕 v1.52.0 — Rang / badge (gamification, hydraté par _hydrateProfileRank)
+              // Rang / badge (gamification, hydraté par _hydrateProfileRank)
               '<div class="kta-profile-details-rank" id="kta-profile-details-rank"></div>' +
 
-              // 🆕 v1.53.0 — Hauts faits (succès, hydraté par _hydrateProfileFeats)
+              // Hauts faits (succès, hydraté par _hydrateProfileFeats)
               '<div class="kta-profile-details-feats" id="kta-profile-details-feats"></div>' +
 
               // — Stats compactes —
@@ -1022,7 +1022,7 @@
                 '<div class="kta-profile-details-stats-loading">' + _t("home.profile.statsLoading") + '</div>' +
               '</div>' +
 
-              // 🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
+              // (KARMA "on doit dans ce cas pouvoir choisir dans
               // profile les 2 ou 3 stats du bandeau") : section toggle pour
               // configurer quelles stats apparaissent dans le bandeau home.
               // Cap dur 3 (cf PROFILE_BAR_STATS_MAX) pour rester lisible
@@ -1057,7 +1057,7 @@
                 '</div>' +
               '</div>' +
 
-              // 🖼️ v1.74.0 — Fond d'écran du HOME. Placé JUSTE AVANT les actions
+              // Fond d'écran du HOME. Placé JUSTE AVANT les actions
               // (retour KARMA : « mal intégré, mets-le plus vers la fin ») —
               // c'est de la déco, elle ne doit pas s'intercaler entre l'identité
               // et les stats/rang qui, eux, se lisent d'affilée.
@@ -1099,7 +1099,7 @@
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
-                // 🔒 v1.90.1 — en kiosque `serverPlansOnly`, l'import est refusé
+                // 🔒 en kiosque `serverPlansOnly`, l'import est refusé
                 // (cf profileExportImport) : on ne l'affiche pas non plus. L'EXPORT
                 // reste — sauvegarder son carnet n'a jamais gêné personne.
                 ((typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul())
@@ -1117,14 +1117,14 @@
 
         // Render avatar initial dans la modale (gros format)
         _refreshProfileDetailsAvatar(snap);
-        _hydrateProfileRank();  // 🆕 v1.52.0 : bloc rang (puce + métriques + progression)
+        _hydrateProfileRank();  // bloc rang (puce + métriques + progression)
         _evalAchievements();
-        _hydrateProfileFeats();  // 🆕 v1.53.0 : grille des hauts faits
+        _hydrateProfileFeats();  // grille des hauts faits
 
         // Calcul stats async
         _refreshProfileDetailsStats();
 
-        // 🆕 v1.28.4 : Render initial + bind handlers de la section Édition pro.
+        // Render initial + bind handlers de la section Édition pro.
         _refreshProfileProSection();
 
         // Fermeture
@@ -1132,7 +1132,7 @@
           const m = document.getElementById("kta-profile-details-modal");
           if (m) m.parentNode.removeChild(m);
           document.removeEventListener("keydown", escFn);
-          // 🐛 v1.75.0 — RESYNCHRONISATION du HOME à la fermeture. Le jeton
+          // RESYNCHRONISATION du HOME à la fermeture. Le jeton
           // anti-course règle les chevauchements, mais on ne veut pas dépendre
           // du timing pour que l'accueil soit juste : après avoir édité son
           // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
@@ -1147,7 +1147,7 @@
         overlay.addEventListener("click", function(e) { if (e.target === overlay) closeFn(); });
         document.addEventListener("keydown", escFn);
 
-        // 🆕 v1.21.3 : bind des checkboxes "Stats du bandeau d'accueil".
+        // bind des checkboxes "Stats du bandeau d'accueil".
         // Cap dur PROFILE_BAR_STATS_MAX (3). Au moins 1 stat requise.
         // À chaque change : sauve + re-render bandeau + re-hydrate les valeurs.
         (function() {
@@ -1189,7 +1189,7 @@
         // Bind handlers édition surnom (live + save button)
         const surnomInput = document.getElementById("kta-profile-details-surnom");
         const saveBtn     = document.getElementById("kta-profile-details-save-name");
-        // 🧩 v2.7.4 — compte connecté : le pseudo vient du compte, pas modifiable ici.
+        // compte connecté : le pseudo vient du compte, pas modifiable ici.
         const _compteModale = (window.KtaExtensions && typeof window.KtaExtensions.compte === "function")
           ? window.KtaExtensions.compte() : null;
         if (_compteModale) {
@@ -1288,7 +1288,7 @@
           });
         }
 
-        // 🖼️ v1.74.0 — FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
+        // FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
         // exactement comme le vrai fond : sans ça on choisirait une image qui
         // rend bien nue mais illisible une fois voilée.
         const wallPreview = document.getElementById("kta-wall-preview");
@@ -1411,7 +1411,7 @@
           catch(e) { console.warn("[Profile] voile non enregistré :", e); }
         });
 
-        // 🖼️ v1.75.0 — mode d'affichage. Pas de `input`/`change` séparés ici :
+        // mode d'affichage. Pas de `input`/`change` séparés ici :
         // un <select> ne se « glisse » pas, un seul événement suffit.
         // ⚠️ Les curseurs de cadrage restent ACTIFS en mode Entière : quand
         // l'image ne remplit pas l'écran, ils ne choisissent plus ce qui est
@@ -1443,7 +1443,7 @@
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
             _refreshProfileDetailsAvatar(snap2);
-            // 🖼️ v1.74.0 : `clear()` efface l'entrée entière, fond compris —
+            // `clear()` efface l'entrée entière, fond compris —
             // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
             await _rafraichirApercuFond();
           } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
@@ -1522,7 +1522,7 @@
       async function _refreshProfileDetailsAvatar(snap) {
         const avatarEl = document.getElementById("kta-profile-details-avatar");
         if (!avatarEl || !window.UserProfile) return;
-        // 🆕 v1.52.0 : anneau de rang + 🆕 médaille de coin (parité avec le home)
+        // anneau de rang + 🆕 médaille de coin (parité avec le home)
         const _dRank = _appliquerRangAvatar(avatarEl);
         const _dBadge = document.getElementById("kta-profile-details-badge");
         if (_dBadge && !_dRank) { _dBadge.textContent = ""; _dBadge.style.display = "none"; }
@@ -1536,7 +1536,7 @@
             _dBadge.style.display = "none";  // Touriste : pas de médaille
           }
         }
-        // 🐛 v1.75.0 — même correctif que le bandeau : révoquer AVANT l'await
+        // même correctif que le bandeau : révoquer AVANT l'await
         // laissait le <img> sur une URL morte le temps de la lecture IDB.
         // C'est l'avatar de CETTE modale que KARMA voyait passer en « ? »,
         // puisque c'est là qu'on charge un fond d'écran.
@@ -1573,7 +1573,7 @@
       }
 
       // ============================================================
-      // 🆕 v1.28.4 — Section "💼 Édition pro" dans la modale profil
+      // Section "💼 Édition pro" dans la modale profil
       // ============================================================
       // Permet à un user d'importer un fichier Licence-pro.json reçu
       // par mail/canal privé pour activer le mode pro localement
@@ -1624,14 +1624,14 @@
         // Statistiques de l'extension relues à l'ouverture : la liste des plans ☁️ arrive souvent APRÈS le dernier
         // événement (vu au scénario du 13/10/2026 : « 0 plans de l'organisation » pour 1 plan ☁️ listé).
         await _relireStatsExt();
-        // 🆕 v1.29.0-fix2 (KARMA "si je relance, mes plans srv disparaissent
+        // (KARMA "si je relance, mes plans srv disparaissent
         // mais ils restent dans les stats profil — 2 plans en trop") :
         // helper qui retourne la liste des plans filtrée selon la pref
         // skipServerPlans. Utilisé pour les 2 compteurs ci-dessous (nbPlans
         // + boucle photos POI) qui lisaient le localStorage brut sans
         // appliquer le filtre — divergence avec _hydrateProfileBarStats et
         // la table détaillée plus bas qui filtraient déjà.
-        // 13/10/2026 : même source que le bandeau (PlanRegistry.getAll, plus le JSON brut) ; les plans ☁️ d'une
+        // même source que le bandeau (PlanRegistry.getAll, plus le JSON brut) ; les plans ☁️ d'une
         // extension sont comptés À PART (_plansExtCount) — leur contenu vient de plusieurs auteurs.
         let _plansExtCount = [];
         function _getPlansFiltered() {
@@ -1685,7 +1685,7 @@
           if (n < 1024*1024) return (n/1024).toFixed(1) + " KB";
           return (n/1048576).toFixed(1) + " MB";
         }
-        // 🆕 v1.21.3 (KARMA "il manque le sauvegarde (la taille)") : 6e cell
+        // (KARMA "il manque le sauvegarde (la taille)") : 6e cell
         // dans la grid stats — taille totale MyKTAMap (= même valeur que la
         // stat 💾 du bandeau home, calcul ciblé LS + IDB).
         let storageTotalBytes = 0;
@@ -1715,7 +1715,7 @@
                 '</div>' +
               '</div>'
             : '') +
-          // 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les
+          // (KARMA "récuperer les stat global de chaque plan pour les
           // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
           // section enrichie avec calcul SÉQUENTIEL plan par plan (anti-crash :
           // KARMA "si on fait tout les plan d'un coup ca crash a 100%, il faut
@@ -1747,7 +1747,7 @@
         _calculerStatsPlansAggregees();
       }
 
-      // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+      // (KARMA "les stat de plan ne comprenne que les session") :
       // helper de calcul "stats complètes d'un plan" qui agrège session
       // (localStorage) + data layers embedded (registries en mémoire).
       // À utiliser pour le plan COURANT (chargé) — il a besoin que les
@@ -1776,7 +1776,7 @@
         return total;
       }
 
-      // 🆕 v1.21.3 (KARMA "rajoute comme on voit sur chaque plan stat détailé
+      // (KARMA "rajoute comme on voit sur chaque plan stat détailé
       // les graph et tout") : breakdowns par catégorie pour camemberts.
       // Helper qui produit { key: count } depuis un array d'items typés.
       function _countBy(items, accessor) {
@@ -1826,7 +1826,7 @@
         // aussi distM en mètres → cohérent cross-plan dans la modale Profil
         // (les autres plans lisent distM via leur cache, persisté avec leur
         // propre scale au moment du load).
-        // 🐛 v1.21.4 (KARMA "il m'affiche KM pour le dernier plan charger,
+        // (KARMA "il m'affiche KM pour le dernier plan charger,
         // sinon en px") : avant on retournait juste distPx → impossible de
         // convertir pour les autres plans (scale inconnue). Maintenant on
         // persiste distM dans le cache aussi → conversion universelle.
@@ -1850,7 +1850,7 @@
             zonesByType:   zonesByType,
             structsByType: structsByType
           },
-          // 🐛 v1.90.3 (bug KARMA) — LE NOM DES TYPES PERSONNALISÉS, MÉMORISÉ
+          // LE NOM DES TYPES PERSONNALISÉS, MÉMORISÉ
           // ICI PARCE QUE C'EST LE SEUL MOMENT OÙ ON LE CONNAÎT. Sur l'accueil
           // aucun plan n'est chargé : `LegendCustomization` ne peut rien
           // résoudre, et le nom d'un type né d'un import SIG vit dans le
@@ -1863,7 +1863,7 @@
         };
       }
 
-      // 🐛 v1.90.3 — Récolte le libellé des types `cust-…` PRÉSENTS dans les
+      // Récolte le libellé des types `cust-…` PRÉSENTS dans les
       // décomptes du plan courant. On n'en garde QUE les personnalisés : un
       // type built-in doit rester au libellé par défaut dans un agrégat
       // cross-plan (règle v1.21.5-fix1), sinon le renommage d'un plan A
@@ -1899,7 +1899,7 @@
         try {
           const stats = _computePlanStatsLive();
           localStorage.setItem("myktamap_plan_stats_v1_" + planId, JSON.stringify(stats));
-          // 🏷️ v1.90.5 — Et dans le dictionnaire DURABLE : le cache de stats est
+          // Et dans le dictionnaire DURABLE : le cache de stats est
           // réécrit à chaque ouverture, mais il est aussi purgé et versionné.
           // Les noms, eux, doivent survivre — ils ne dépendent d'aucune version.
           // Plan ☁️ : ses noms de types restent dans SON cache (effacé avec lui), jamais dans le dictionnaire
@@ -1921,7 +1921,7 @@
         }, 2000);
       });
 
-      // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
+      // Calcul SÉQUENTIEL plan par plan des stats agrégées.
       // Itère le PlanRegistry, pour chaque plan lit sa session (KtaSessionStore,
       // lecture instantanée depuis la mémoire), compte
       // editorPoints + roads et somme la longueur cumulée des tracés en
@@ -1936,7 +1936,7 @@
         const tfootEl  = document.getElementById("kta-profile-plansstats-tfoot");
         if (!tbodyEl || !tfootEl) return;
 
-        // 🐛 v1.21.3-fix2 (KARMA "il voit aucun plan enrengistrer alors que
+        // (KARMA "il voit aucun plan enrengistrer alors que
         // j'en ai 3") : l'API PlanRegistry est `.getAll()`, pas `.list()`
         // (que j'avais inventé). Mon code retournait undefined → "aucun
         // plan enregistré" alors que le registre était plein.
@@ -1944,7 +1944,7 @@
         if (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
           try { plans = window.PlanRegistry.getAll() || []; } catch(e) {}
         }
-        // 🆕 v1.21.3 (KARMA "peut en plus fausser nos statistique") : si la
+        // (KARMA "peut en plus fausser nos statistique") : si la
         // pref `skipServerPlans` est active, on exclut les plans `type ===
         // "server"` des stats (gonflerait artificiellement le count Plans
         // pour les users qui ne veulent pas les voir).
@@ -1958,22 +1958,22 @@
 
         // Totaux cumulés (mis à jour à chaque plan)
         let totalPois = 0, totalRoads = 0;
-        // 🐛 v1.21.4 : cumul séparé pour les distM convertibles vs distPx
+        // cumul séparé pour les distM convertibles vs distPx
         // orphelins (= plans sans scale connue). On affiche le total en m/km
         // avec un suffix "+N plan(s) en px" si certains sont orphelins.
         let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
         let nbExt = 0, extPois = 0, extRoads = 0, extDistM = 0;   // plans ☁️ (13/10/2026)
-        // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
-        // 🐛 v1.90.3 — dictionnaire cross-plan des noms de types personnalisés.
+        // agrégation des breakdowns cross-plan pour les camemberts
+        // dictionnaire cross-plan des noms de types personnalisés.
         // Premier arrivé, premier servi : deux plans peuvent avoir forgé la même
         // clé `cust-<ts36>-<rnd36>` (le module la dit lui-même « probabiliste,
         // pas structurellement unique »). Afficher un nom plutôt qu'une clé
         // reste le bon choix même dans ce cas rare.
-        // 🏷️ v1.90.5 — On PART du dictionnaire persistant : il porte tout ce qui
+        // On PART du dictionnaire persistant : il porte tout ce qui
         // a déjà été retrouvé, une fois pour toutes.
         const aggLabels = _nomsPersistes();
-        // 🏷️ v1.90.4 — détail par plan (id, étiquettes, décomptes), conservé
+        // détail par plan (id, étiquettes, décomptes), conservé
         // pour le filtre par étiquette. Vidé à chaque recalcul complet.
         _statsParPlan.length = 0;
         const aggBreakdowns = {
@@ -1983,14 +1983,14 @@
           structsByType: {}
         };
         // ID du plan courant (pour marqueur ● dans la table)
-        // 🐛 v1.21.4 : la variable _currentScale a été retirée — chaque plan
+        // la variable _currentScale a été retirée — chaque plan
         // a désormais sa propre `scale` dans son cache (via `_computePlanStatsLive`
         // qui la persiste au load du plan). Plus besoin de hack "scale courant
         // pour tous les plans" → conversion m/km précise par plan.
         const _currentId = window._currentLoadedPlanId || null;
 
         // Format distance pour une row (m/km si distM connu, sinon pixels).
-        // 🐛 v1.21.4 (KARMA "il m'affiche KM pour le dernier plan charger,
+        // (KARMA "il m'affiche KM pour le dernier plan charger,
         // sinon en px") : avant on convertissait UNIQUEMENT le plan courant
         // via _currentScale → tous les autres plans en pixels. Maintenant
         // chaque plan stocke sa propre scale dans le cache → distM précis
@@ -2006,7 +2006,7 @@
           return (distPx / 1000).toFixed(1) + "k px";
         }
 
-        // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+        // (KARMA "les stat de plan ne comprenne que les session") :
         // 3 sources de stats avec fallback en cascade par plan :
         //   1. Plan COURANT → calcul live via _computePlanStatsLive (registries
         //      en mémoire = session + data layers embedded chargés)
@@ -2033,7 +2033,7 @@
           //   • v1.21.4+ : cache contient distM + scale (= mètres convertibles)
           //   • v1.21.3  : cache contient juste distPx (= pixels seulement)
           //                → traité comme partial (réopen plan pour upgrade)
-          // 🐛 v1.21.5-fix1 (KARMA "les route secondaire ou taguer lvl -1 ne
+          // (KARMA "les route secondaire ou taguer lvl -1 ne
           // semble pas pris en compte en stat general plan") : si le cache
           // existe mais N'A PAS de breakdowns (cache antérieur à v1.21.3, ou
           // entry corrompue), on NE retourne PAS breakdowns:null (qui ferait
@@ -2055,7 +2055,7 @@
                   distM:  hasDistM ? cached.distM : null,
                   scale:  cached.scale || null,
                   breakdowns: cached.breakdowns,
-                  source: hasDistM ? "cache" : "cache-legacy"   // v1.21.3 → marqueur ⚠️
+                  source: hasDistM ? "cache" : "cache-legacy"   // → marqueur ⚠️
                 };
               }
             }
@@ -2063,7 +2063,7 @@
           // Cas 3 : fallback session-only (partial — pas de scale, pas
           // d'embedded data layers : on ne lit QUE le payload SessionPersist
           // du plan, jamais les data/*.json embedded qui demandent un fetch).
-          // 🆕 v1.21.5-fix1 (KARMA "les route secondaire ou taguer lvl -1 ne
+          // (KARMA "les route secondaire ou taguer lvl -1 ne
           // semble pas pris en compte") : on étend désormais zones + structures
           // du payload session (rétrocompat v1.9.3-A1.a+ qui les a ajoutées).
           // Les niveaux M-LVL et tous les types (secondaire, chemin, jonction)
@@ -2120,7 +2120,7 @@
           const roads = stats.roads;
           const distPx = stats.distPx;
           const distM  = stats.distM;
-          // 🐛 v1.21.4 : "partial" inclut désormais aussi "cache-legacy"
+          // "partial" inclut désormais aussi "cache-legacy"
           // (cache v1.21.3 sans distM/scale). L'user doit re-ouvrir le plan
           // pour upgrader son cache au format v1.21.4 avec mètres.
           const isPartial = (stats.source === "session-only" || stats.source === "cache-legacy");
@@ -2145,7 +2145,7 @@
             nbPxOrphan++;
           }
 
-          // 🆕 v1.21.3 : merge des breakdowns dans l'agrégat cross-plan
+          // merge des breakdowns dans l'agrégat cross-plan
           if (stats.breakdowns) {
             _mergeBreakdown(aggBreakdowns.pointsByTag,   stats.breakdowns.pointsByTag);
             _mergeBreakdown(aggBreakdowns.roadsByType,   stats.breakdowns.roadsByType);
@@ -2156,7 +2156,7 @@
                 if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
               });
             }
-            // 🏷️ v1.90.5 — La SESSION du plan porte aussi ses renommages, et
+            // La SESSION du plan porte aussi ses renommages, et
             // elle est déjà en mémoire (KtaSessionStore) : c'est gratuit, on la lit toujours.
             // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
             // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
@@ -2169,7 +2169,7 @@
                 });
               }
             } catch (e) {}
-            // 🏷️ v1.90.4 — On GARDE le détail par plan, avec ses étiquettes.
+            // On GARDE le détail par plan, avec ses étiquettes.
             // 🩸 Sans ça, chaque clic sur une chip de filtre relirait le
             // localStorage de tous les plans — la boucle ci-dessus a un `await`
             // par plan justement parce qu'elle est trop lourde pour le thread UI.
@@ -2192,7 +2192,7 @@
           const safeLabel = window.ktaEsc(planName);
           const versionTag = plan.version ? ' <span class="kta-pps-version">' + window.ktaEsc(plan.version) + '</span>' : '';
           const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé (stats live + data layers)">●</span>' : '';
-          // 🆕 v1.21.3 : marqueur ⚠️ si stats partielles (session-only, data
+          // marqueur ⚠️ si stats partielles (session-only, data
           // layers absents car plan jamais ouvert dans cette release)
           const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">⚠️</span>' : '';
           const extTag = _estPlanExt(plan) ? ' <span class="kta-pps-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">☁️</span>' : '';
@@ -2206,7 +2206,7 @@
           tbodyEl.appendChild(row);
 
           // Mise à jour live du footer (totaux cumulés).
-          // 🐛 v1.21.4 : cumul intelligent en 3 cas :
+          // cumul intelligent en 3 cas :
           //   • Tout en distM → "12.5 km"
           //   • Mix distM + px orphan → "12.5 km (+ N en px)"
           //   • Tout en px → "X k px" (= cas tous plans jamais ouverts)
@@ -2247,7 +2247,7 @@
           headerEl.innerHTML = _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
         }
 
-        // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
+        // (KARMA "dans les stat, rajoute comme on voit sur chaque
         // plan stat détailé les graph et tout") : section camemberts SVG
         // agrégés cross-plan, après la table. Réutilise renderPieChart
         // exposé par window.StatsGlobales (= même rendu que la modale Stats
@@ -2255,7 +2255,7 @@
         _renderProfilePies(aggBreakdowns, aggLabels);
       }
 
-      // 🏷️ v1.90.4 (demande KARMA : « rajoute un graph de ce genre via les tags
+      // (demande KARMA : « rajoute un graph de ce genre via les tags
       // des plans, possibilité de filtrer et exclure »).
       //
       // Trois états par étiquette, et c'est ce qui rend « exclure » utile :
@@ -2270,7 +2270,7 @@
       // ⚠️ RAM uniquement, aucune clé de stockage : un filtre de consultation
       // qui survivrait à la fermeture de la modale ferait croire, au retour,
       // que des plans ont disparu.
-      // 🏷️ v1.90.5 — DICTIONNAIRE PERSISTANT DES NOMS DE TYPES PERSONNALISÉS.
+      // DICTIONNAIRE PERSISTANT DES NOMS DE TYPES PERSONNALISÉS.
       // 🩸 VÉCU (KARMA) : la v1.90.3 mémorisait le nom au chargement du plan, ce
       // qui ne réparait RIEN pour les plans déjà ouverts AVANT elle — leur cache
       // de stats date d'avant et ne contient pas de `labels`. Le message disait
@@ -2342,7 +2342,7 @@
         return out;
       }
 
-      // 🆕 v1.21.3 — Rend la section camemberts dans la modale Profil.
+      // Rend la section camemberts dans la modale Profil.
       // Construit ou met à jour le DOM #kta-profile-pies (après la table
       // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
       // chaque camembert n'apparaît QUE si sa catégorie a des données.
@@ -2361,7 +2361,7 @@
 
         const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
 
-        // 🏷️ v1.90.4 — Les décomptes viennent désormais du FILTRE, pas de
+        // Les décomptes viennent désormais du FILTRE, pas de
         // l'agrégat brut : sans filtre actif, `_agregerFiltre()` rend
         // exactement le même total. On garde `breakdowns` en repli pour le cas
         // où le détail par plan n'aurait pas été collecté (ancien chemin).
@@ -2379,7 +2379,7 @@
           const data = breakdowns[s.key] || {};
           return Object.keys(data).length > 0;
         });
-        // 🩸 v1.90.4 — L IMPASSE A EVITER : si le filtre exclut TOUT, les cinq
+        // 🩸 L IMPASSE A EVITER : si le filtre exclut TOUT, les cinq
         // sections sont vides. Sortir ici retirerait aussi les chips -- donc le
         // seul moyen de revenir en arriere. L utilisateur se retrouverait devant
         // un bloc disparu, persuade d avoir casse quelque chose. Meme piege que
@@ -2387,7 +2387,7 @@
         const filtreActif = Object.keys(_filtreTags).length > 0;
         if (activeSections.length === 0 && !filtreActif) return;  // rien a dessiner
 
-        // 🩸 v1.90.3 — QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
+        // 🩸 QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
         // personnalisé n'est mémorisé qu'au chargement du plan : pour un plan
         // jamais ouvert depuis cette version, la clé brute reste le seul
         // affichage possible. Sans cette note, l'utilisateur croit à un bug
@@ -2425,7 +2425,7 @@
           return '<div class="kta-profile-pies-note">' + txt + bouton + '</div>';
         }
 
-        // 🏷️ v1.90.5 — RETROUVER LES NOMS SANS OUVRIR LES PLANS.
+        // RETROUVER LES NOMS SANS OUVRIR LES PLANS.
         // 🩸 VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 ne
         // réparait que les plans rouverts APRÈS elle — pour 20 plans déjà
         // ouverts avant, il fallait les rouvrir un par un. Le message était
@@ -2488,7 +2488,7 @@
           if (n) _renderProfilePies(breakdowns, Object.assign({}, labels, trouves));
         }
 
-        // 🏷️ v1.90.4 — La rangée de chips. Trois états, un clic pour passer au
+        // La rangée de chips. Trois états, un clic pour passer au
         // suivant : neutre → inclure → exclure → neutre. 🩸 Le libellé de chaque
         // état est PORTÉ PAR LA CHIP (✓ / ✕), pas seulement par une couleur :
         // un filtre qui ne se lit qu'à la teinte est illisible pour qui
@@ -2556,7 +2556,7 @@
           }
           html += '<div class="kta-profile-pies-card">' +
                     '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
-                    // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours
+                    // (KARMA "en stat général, on doit toujours
                     // prendre la valeur par default") : 4e arg true = bypass la
                     // cascade LegendCustomization (qui appliquerait le renommage
                     // local du plan A à l'agrégat cross-plan home). Cross-plan =
@@ -2569,7 +2569,7 @@
         piesContainer.innerHTML = html;
         wrap.appendChild(piesContainer);
 
-        // 🏷️ v1.90.4 — Un clic fait tourner l'état de l'étiquette, puis on
+        // Un clic fait tourner l'état de l'étiquette, puis on
         // re-rend TOUT le bloc : les quatre autres camemberts se recalculent
         // sur les plans retenus. C'est le sens de la demande — « exclure »
         // n'a d'intérêt que s'il change les totaux qu'on regarde.

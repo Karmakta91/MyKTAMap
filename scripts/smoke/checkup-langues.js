@@ -96,7 +96,7 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       else if (TEMOIN_EN.test(txt)) pb("Documentation en ANGLAIS — la résolution de langue ne prend pas 'es'");
       else pb("Documentation dans une langue non identifiée (aucun mot-témoin) — début : " + txt.slice(0, 90).replace(/\s+/g, " "));
 
-      // 🧩 01/10/2026 — les drapeaux sont devenus un menu déroulant, suivi du bouton 🤖 Aide IA.
+      // les drapeaux sont devenus un menu déroulant, suivi du bouton 🤖 Aide IA.
       const drapeaux = await page.locator("#kta-readme-modal #kta-readme-lang-select option").count();
       if (drapeaux === 3) ok("Documentation : 3 langues proposées dans le menu (fr/en/es)");
       else pb("Documentation : " + drapeaux + " langue(s) dans le menu au lieu de 3");

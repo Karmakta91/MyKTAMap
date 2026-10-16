@@ -19,13 +19,13 @@ if ! command -v node >/dev/null 2>&1; then
   exit 0
 fi
 
-# 🚦 16/08/2026 — Un bump de version.json exige que les 3 sources de version
+# Un bump de version.json exige que les 3 sources de version
 # concordent (noyau, jamais dérogeable) et que README / Audit réseau /
 # AI_CONTEXT suivent (dérogeable via une ligne `Docs-deroge:`). Sans ce
 # garde-fou, la règle des 4 axes de CLAUDE.md n'était vérifiée par RIEN :
 # AI_CONTEXT.md a raté la v1.73.0 entière. Un commit sans bump sort en
 # silence. BLOQUANT.
-# 🗺️ 26/09/2026 (consigne KARMA) — `data/` reçoit des relevés RÉELS de
+# `data/` reçoit des relevés RÉELS de
 # terrain : ils ne partent jamais sur le dépôt public. La règle existait côté
 # ÉCRITURE (permission `deny` sur data/**) mais pas côté COMMIT — et c'est par
 # là que ça passait : `data/index.json` est suivi, il suffisait d'un `git
@@ -34,6 +34,6 @@ node scripts/check-data-hors-git.js "$1" || exit $?
 
 node scripts/check-release-docs.js "$1" || exit $?
 
-# 🗺️ 12/10/2026 — Le message de commit est public lui aussi : aucun nom réel
+# Le message de commit est public lui aussi : aucun nom réel
 # lié aux relevés (cf scripts/check-noms-reels.js). BLOQUANT.
 node scripts/check-noms-reels.js --message "$1" || exit $?

@@ -64,11 +64,11 @@
   // -----------------------------------------------------------------------
   window.IncognitoMode = {
     active: ACTIVE,
-    // 🩸 03/10/2026 — la Vue OSM, son widget, le Mode Secours et la réparation
+    // 🩸 la Vue OSM, son widget, le Mode Secours et la réparation
     // du cache appelaient `isActive()`, qui n'existait pas : l'incognito ne les
     // coupait PAS, contrairement à la doc. La fonction rend l'état du boot.
     isActive: function() { return ACTIVE; },
-    // 07/10/2026 (KARMA) — Sur une INSTALLATION RELIÉE (connexion serveur configurée), l'incognito n'a pas de sens :
+    // Sur une INSTALLATION RELIÉE (connexion serveur configurée), l'incognito n'a pas de sens :
     // ce qu'on fait est synchronisé et noté par le serveur (annotations, position partagée, connexion), et le
     // coffre chiffré / les plans gardés hors ligne ont besoin d'IndexedDB, que ce mode bloque. Rend vrai dès que
     // l'état de connexion n'est ni « off » ni « invalide ». Lu à l'appel (ktaExtensions se charge après ce module).
@@ -81,7 +81,7 @@
     // Ouvre une nouvelle fenêtre dans le même origin avec ?incognito=1.
     // Conserve les autres params (ex: ?selfhost=…) pour le workflow combiné.
     //
-    // 🩹 v1.31.8-fix1 : flush SessionPersist AVANT le launch pour que la
+    // flush SessionPersist AVANT le launch pour que la
     // session courante de la fenêtre principale soit garantie persistée
     // sur disque. Cas piégeux : l'user travaille, clique "Démarrer
     // incognito", la fenêtre principale crash/se ferme avant le prochain
@@ -107,7 +107,7 @@
         window.open(window.location.pathname + window.location.search + sep + URL_PARAM + "=1", "_blank", "noopener");
       }
     },
-    // 🆕 v1.31.10 : garde-fou de confirmation AVANT launch. Affiche une
+    // garde-fou de confirmation AVANT launch. Affiche une
     // modale charte (pattern modale "Mise à jour disponible") avec
     // description + risques + boutons Annuler/Activer. Si confirmé →
     // appelle launch() (qui flush SessionPersist + ouvre nouvelle fenêtre).
@@ -203,7 +203,7 @@
       });
     },
 
-    // 🆕 v1.31.9 : quitter le mode incognito DEPUIS UN ONGLET INCOGNITO.
+    // quitter le mode incognito DEPUIS UN ONGLET INCOGNITO.
     // Stratégie en cascade :
     //   1. window.close() — marche uniquement si l'onglet a été ouvert par
     //      script (launch() ci-dessus). Le browser BLOQUE silencieusement
@@ -276,7 +276,7 @@
       key:        Storage.prototype.key
     };
 
-    // 🆕 v1.46.4 (KARMA) — whitelist d'ÉCRITURE disque (write-through). La langue
+    // whitelist d'ÉCRITURE disque (write-through). La langue
     // d'interface n'est PAS une trace d'activité privée mais une préférence
     // d'affichage → KARMA veut qu'elle survive au relancement incognito. On
     // l'écrit donc AUSSI sur le vrai disque (en plus du shim mémoire). À garder
@@ -295,7 +295,7 @@
       }
     };
 
-    // 🩹 v1.31.8-fix1 : whitelist clés autorisées en READ disque (writes
+    // whitelist clés autorisées en READ disque (writes
     // restent shimés en in-memory). Pour KARMA : on veut que la barrière
     // UnlockGate community continue de "valider quand même le mdp" sans
     // forcer l'user à re-saisir à chaque ouverture incognito. Le compteur
@@ -303,7 +303,7 @@
     // l'anti-bruteforce cross-fenêtre (sinon attaque par boucle de tabs).
     var READ_DISK_WHITELIST = {
       "myktamap_unlock_v1":          1, // UnlockGate — hash mdp community validé
-      // 🔑 v1.90.14 (bug KARMA) — MÉMOIRE DU DÉVERROUILLAGE PAR MOT DE PASSE
+      // MÉMOIRE DU DÉVERROUILLAGE PAR MOT DE PASSE
       // D'INSTANCE (v1.90.6). Sans elle en lecture disque, `isUnlocked()` en
       // incognito lit bien le hash accepté (`myktamap_unlock_v1`, whitelisté)
       // mais PAS cette mémoire → son test `v && k && v === k` échoue → la gate
@@ -311,7 +311,7 @@
       // Parité exacte avec le déverrouillage communautaire déjà hérité ci-dessus.
       "myktamap_unlock_instance_v1": 1, // UnlockGate — hash mdp d'instance validé
       "myktamap_unlock_attempts": 1, // UnlockGate — compteur tentatives échouées
-      "myktamap_app_lang":        1  // 🆕 v1.46.4 (KARMA) — langue d'interface :
+      "myktamap_app_lang":        1  // langue d'interface :
       // persiste en incognito (lue au boot + write-through ci-dessus). Préférence
       // d'affichage non-sensible, pas une trace d'activité. Le thème, lui, reste
       // oublié (pas whitelisté) — seule la langue est l'exception demandée.
@@ -426,7 +426,7 @@
   //    Préfixe aussi le <title> du tab pour que l'onglet reflète l'état
   //    même quand l'user est sur la carte (où aucun titre app n'est visible).
   //
-  //    🩹 v1.31.8-fix1 : avant on appendait le badge au #splashTitle et
+  //    avant on appendait le badge au #splashTitle et
   //    .loader-titre-nom (inline) → débordait du cadre sur mobile (badge =
   //    +90px de largeur en plus du nom MyKTAMap). Maintenant on inject
   //    APRÈS le subtitle/tagline dans le parent, sur sa propre ligne.

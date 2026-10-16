@@ -168,7 +168,7 @@
   // API : ÉTAT
   // ============================================================
   function isEnabled() {
-    // 🕵️ v1.31.9-fix1 — Skip PIN/biométrie en mode incognito. KARMA :
+    // Skip PIN/biométrie en mode incognito. KARMA :
     // "en mode incognito, on ne doit pas avoir la popup auth renforcé".
     // Cohérent avec le pattern : la session incognito est éphémère,
     // pas de hash PIN écrit en disque possible → le re-saisir à chaque
@@ -538,7 +538,7 @@
     const overlay = document.createElement("div");
     overlay.id        = "kta-pin-gate-overlay";
     overlay.className = "kta-pin-gate-overlay";
-    // 🆕 v1.10.0-hotfix3 (KARMA "je n'ai plus le bouton valider quand je
+    // (KARMA "je n'ai plus le bouton valider quand je
     // saisis le code") : restructure du keypad. Avant : 3×4 avec bio + 0
     // + ⌫ en dernière rangée → pas de bouton ✓ Valider tactile, l'user
     // qui saisit 4-5 chiffres n'avait que la touche Enter clavier (KO mobile).
@@ -567,7 +567,7 @@
           _keypadKey("0") +
           '<button class="kta-pin-gate-key kta-pin-gate-key-validate" id="kta-pin-validate" title="' + t("pin.gate.validateTitle") + '" disabled>✓</button>' +
         '</div>' +
-        // 🆕 v1.28.1 — Accès doc utilisateur depuis l'écran PIN. Cas d'usage :
+        // Accès doc utilisateur depuis l'écran PIN. Cas d'usage :
         // un user qui hésite à activer le PIN, l'a activé puis oublié à quoi
         // ça sert, ou qui veut se renseigner avant de saisir. L'onboarding
         // (🎓) est masqué côté modale doc — sans accès à l'app, pas de sens.
@@ -601,7 +601,7 @@
         }
       }
       dotsEl.innerHTML = html;
-      // 🆕 v1.10.0-hotfix3 : enable/disable du bouton ✓ Valider selon buffer
+      // enable/disable du bouton ✓ Valider selon buffer
       const validateBtn = document.getElementById("kta-pin-validate");
       if (validateBtn) {
         validateBtn.disabled = (buffer.length < PIN_MIN);
@@ -711,10 +711,10 @@
     if (eraseBtn) eraseBtn.addEventListener("click", _onErase);
     const bioBtn = document.getElementById("kta-pin-bio");
     if (bioBtn) bioBtn.addEventListener("click", _onBio);
-    // 🆕 v1.10.0-hotfix3 : bouton ✓ Valider explicite (activé dès PIN_MIN chiffres)
+    // bouton ✓ Valider explicite (activé dès PIN_MIN chiffres)
     const validateBtn = document.getElementById("kta-pin-validate");
     if (validateBtn) validateBtn.addEventListener("click", _tryUnlock);
-    // 🆕 v1.28.1 : bouton 📖 Documentation. Ouvre la modale Doc README
+    // bouton 📖 Documentation. Ouvre la modale Doc README
     // (sans bouton Tutoriel — incohérent en contexte verrouillé) au-dessus
     // de la gate via z-index 100200 (cf css kta-readme-over-locker).
     const docBtn = document.getElementById("kta-pin-readme-btn");
@@ -791,7 +791,7 @@
           '<div class="kta-pin-gate-countdown" id="kta-pin-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
           t("pin.lockout.escalade") + '</p>' +
-          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout. Aide l'user
+          // Accès doc utilisateur même en lockout. Aide l'user
           // perdu à comprendre ce qu'est l'app avant de réinstaller / contacter.
           // Ouverture par-dessus le lockeur via z-index 100200 (cf css
           // .kta-readme-over-locker). Ne change rien au verrouillage.
@@ -854,12 +854,12 @@
   }
 
   function proposerActivation(onClose) {
-    // 🆕 v1.56.0 — onClose : signal de fin pour le séquenceur de premier
+    // onClose : signal de fin pour le séquenceur de premier
     // lancement (js/firstRunFlow.js). Appelé dans TOUS les cas (skip inclus)
     // pour que la file continue. Le délai interne de 800 ms est supprimé : le
     // séquenceur garantit qu'aucune autre modale n'est ouverte à ce moment.
     const _done = (typeof onClose === "function") ? onClose : function() {};
-    // 🕵️ v1.31.10-fix1 — Skip aussi la PROPOSITION d'activation en
+    // Skip aussi la PROPOSITION d'activation en
     // incognito (modale "🔐 Authentification renforcée disponible").
     // KARMA bug : "J'ai toujours la popup authentification renforcé au
     // chargement de incognito". L'écran que KARMA voyait n'était pas le
@@ -923,7 +923,7 @@
     let _closed = false;
     function _close() {
       try { overlay.remove(); } catch(e) {}
-      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }  // 🆕 v1.56.0 : notifie le séquenceur
+      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }  // notifie le séquenceur
     }
 
     document.getElementById("kta-pin-proposal-non").addEventListener("click", function() {
@@ -935,7 +935,7 @@
     document.getElementById("kta-pin-proposal-oui").addEventListener("click", function() {
       markProposalDone();
       _close();
-      // 🆕 v1.10.0-hotfix1 (KARMA "si on clique sur activer maintenant, ca
+      // (KARMA "si on clique sur activer maintenant, ca
       // ferme juste le modal mais ouvre pas le formulaire") : on ouvre la
       // modale Configuration via window._ouvrirLoaderConfig (exposée par
       // index.html depuis cette version). Si on est in-app (plan chargé,
@@ -991,7 +991,7 @@
     changePin:              changePin,
     reset:                  reset,
     ouvrirGate:             ouvrirGate,
-    // 🆕 v1.10.0 : proposition one-shot d'activation au 1er lancement
+    // proposition one-shot d'activation au 1er lancement
     proposerActivation:     proposerActivation,
     isProposalDone:         isProposalDone,
     markProposalDone:       markProposalDone,

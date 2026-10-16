@@ -248,7 +248,7 @@
     return out;
   }
 
-  // 🆕 v1.48.0 — ÉVITEMENT DE ZONES NOMMÉES (contrainte SOUPLE)
+  // ÉVITEMENT DE ZONES NOMMÉES (contrainte SOUPLE)
   // Label user-facing d'un TYPE de zone (comme les autres filtres) :
   //  - type custom (cust-…) → label de l'entrée legend ("galerie basse") via
   //    findCustomEntry (getLabel ne consulte PAS customEntries) ;
@@ -430,7 +430,7 @@
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
     avoidRadius = avoidRadius || 0;
-    avoidZones  = avoidZones  || [];   // 🆕 v1.48.0 : zones à éviter (souple), même test géométrique que les inaccessibles
+    avoidZones  = avoidZones  || [];   // zones à éviter (souple), même test géométrique que les inaccessibles
     const graph = _newGraph();
 
     for (let r = 0; r < roads.length; r++) {
@@ -486,7 +486,7 @@
         if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
             !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius) &&
             !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // 🆕 zones à éviter (souple)
-          // 🩸 v1.83.0 — UNE JONCTION EST UN PUITS, PAS UN TRAIT.
+          // 🩸 UNE JONCTION EST UN PUITS, PAS UN TRAIT.
           // Son coût était sa longueur DANS LE PLAN : un puits dessiné sur
           // 3 px entre deux étages distants de 12 m comptait pour 3 px. Les
           // distances d'itinéraire multi-niveaux étaient donc sous-comptées,
@@ -562,7 +562,7 @@
     return !!(nodeSet && nodeSet.has(segLevel));
   }
 
-  // ⚡ 29/09/2026 — GRILLE SPATIALE pour l'enrichissement. Les trois passes
+  // GRILLE SPATIALE pour l'enrichissement. Les trois passes
   // ci-dessous comparaient chaque segment à TOUS les autres (O(S²)) : ~40 s
   // par itinéraire mesurés sur un relevé de 912 tracés / ~9 000 sommets.
   // Or chaque test n'aboutit que si les deux objets sont PROCHES (bbox qui se
@@ -815,7 +815,7 @@
   // Trouve le segment le plus proche, projette le point dessus, INSÈRE un
   // nœud virtuel à la projection (split du segment original) pour que
   // Dijkstra puisse partir/arriver exactement à ce point.
-  // 🩸 29/09/2026 (audit Secours, 4.2) — LE CALAGE IGNORAIT LE NIVEAU DU POINT : le
+  // 🩸 LE CALAGE IGNORAIT LE NIVEAU DU POINT : le
   // segment le plus proche en 2D gagnait, quel que soit son étage (mesuré : 7,8 %
   // des clics à ~2 m d'une galerie du −1 accrochés à un autre niveau). Si le point
   // porte un niveau (plan multi-niveau), le segment le plus proche DE CE NIVEAU est
@@ -883,7 +883,7 @@
     _addEdge(graph, newIdx, seg.a, dToA);
     _addEdge(graph, newIdx, seg.b, dToB);
 
-    // 🩸 27/09/2026 (révélé par le guidage) — LE CHEMIN PARTAIT EN ARRIÈRE.
+    // 🩸 (révélé par le guidage) — LE CHEMIN PARTAIT EN ARRIÈRE.
     // Le nœud virtuel n'était relié qu'aux DEUX EXTRÉMITÉS du segment. Or
     // l'enrichissement a pu poser des nœuds de croisement ENTRE elles (sur
     // l'arête d'origine, gardée). Départ à 20 px d'une extrémité, croisement
@@ -923,7 +923,7 @@
   // =========================
   // DIJKSTRA
   // =========================
-  // ⚡ 29/09/2026 — TAS BINAIRE au lieu d'un balayage de tous les nœuds à
+  // TAS BINAIRE au lieu d'un balayage de tous les nœuds à
   // chaque extraction (O(V²) → O(E log V)). « OK pour < 10k nœuds » était
   // faux en pratique : ~40 s sur un relevé réel, dont une large part ici.
   // 🩸 Même ordre d'extraction qu'avant, donc mêmes chemins : l'ancien
@@ -1061,7 +1061,7 @@
         e.i18nParams = { a: (i + 1), b: (i + 2) };
         throw e;
       }
-      // 🩸 v1.83.0 — LE NIVEAU VOYAGE AVEC LE CHEMIN.
+      // 🩸 LE NIVEAU VOYAGE AVEC LE CHEMIN.
       // Il était JETÉ : les nœuds du graphe le portent (`levels: Set`), mais
       // le retour était un `{x, y}` plat. Aucun profil en long n'était donc
       // calculable, faute de savoir à quelle profondeur passe chaque point.
@@ -1397,7 +1397,7 @@
     }
 
     // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).
-    // 🆕 v1.82.0 — DÉBRAYABLE (demande KARMA). C'est la SEULE contrainte dure du
+    // DÉBRAYABLE (demande KARMA). C'est la SEULE contrainte dure du
     // moteur : jamais relâchée, même en passe 2. Sur un relevé importé encore
     // incomplet, un polygone typé « inaccessible » par erreur ferme donc un
     // passage qui existe, sans recours. La case de la modale itinéraire permet
@@ -1424,7 +1424,7 @@
     const allAvoidPts      = explicitAvoid.concat(expandedFromTags);
     const avoidRadius      = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0)
                               ? opts.avoidRadius : 100;
-    // 🆕 v1.48.0 : zones a eviter (souple) — resolues depuis opts.avoidZones (ids derives).
+    // zones a eviter (souple) — resolues depuis opts.avoidZones (ids derives).
     const avoidZones       = _collecterZonesAEviter(Array.isArray(opts.avoidZones) ? opts.avoidZones : []);
     if (avoidZones.length > 0) {
       console.log("[Pathfinder] " + avoidZones.length + " zone(s) a eviter — contrainte souple");
@@ -1480,7 +1480,7 @@
   }
 
   // ============================================================
-  // 🆕 v1.60.0 (A6 — itinéraire inter-plan) — computeRouteOnRoads
+  // (A6 — itinéraire inter-plan) — computeRouteOnRoads
   // ============================================================
   // Dijkstra sur des ROADS FOURNIES EN PARAMÈTRE (plan NON chargé — lues à
   // distance par InterPlanLinks.collectRoutingDataForPlan). Contrairement à
@@ -1743,7 +1743,7 @@
     const dist = new Array(N).fill(Infinity);
     const fait = new Uint8Array(N);
     dist[start] = 0;
-    // ⚡ 29/09/2026 — même tas (distance, indice) que `_dijkstra` : même ordre
+    // même tas (distance, indice) que `_dijkstra` : même ordre
     // d'extraction que l'ancien balayage O(V²), donc mêmes distances rendues.
     const tas = [];
     _tasPousser(tas, 0, start);
@@ -1853,13 +1853,13 @@
   window.Pathfinder = {
     aDesTraces:        aDesTraces,
     computeRoute:      computeRoute,
-    computeRouteOnRoads: computeRouteOnRoads,   // 🆕 v1.60.0 (A6) — roads fournies (plan non chargé)
+    computeRouteOnRoads: computeRouteOnRoads,   // (A6) — roads fournies (plan non chargé)
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
     // 🆕 Nav Intelligente C1 — graphe réseau réutilisable (cf js/roadGraph.js)
     buildNetworkGraph: buildNetworkGraph,
     snapPointToGraph:  snapPointToGraph,
-    // 🧹 15/10/2026 (Secours C1) — carrefours d'un chemin calculé ailleurs (parcours de
+    // (Secours C1) — carrefours d'un chemin calculé ailleurs (parcours de
     // balayage) : mêmes règles que ceux de computeRoute, pour le même guidage.
     carrefoursSurChemin: function(graph, path, echelle) { return _carrefoursSurChemin(graph, path, echelle); }
   };

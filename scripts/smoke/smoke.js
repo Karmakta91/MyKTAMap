@@ -25,7 +25,7 @@ const attendre = require("./attendre.js");   // pas de waitForFunction : refusé
 const PORT = 8123;
 const BASE = "http://127.0.0.1:" + PORT;
 
-// 🗺️ 26/09/2026 — LE SMOKE NE CHERCHE PLUS UN PLAN PAR SON NOM.
+// LE SMOKE NE CHERCHE PLUS UN PLAN PAR SON NOM.
 // `data/` reçoit des relevés réels et ne part jamais sur le dépôt : dès que
 // KARMA y met un vrai plan, « Relevé fictif de test » n'est plus dans
 // `data/index.json` et le smoke était ROUGE pour cette seule raison — deux
@@ -74,7 +74,7 @@ const BRUIT_TOLERE = [
 ];
 function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test(txt); }); }
 
-// 🎨 26/09/2026 — LE SONDAGE DES ICÔNES D'UN PLAN N'EST PAS UN DÉFAUT
+// LE SONDAGE DES ICÔNES D'UN PLAN N'EST PAS UN DÉFAUT
 // D'ASSET. `config.js > resoudreIconesPlanServeur` demande au serveur si
 // chaque icône `icon/…` vit dans le dossier du plan ; pour un plan généré
 // AVANT la v1.97.9 (qui déclare `iconsEmbarquees`), la réponse est 404 et le
@@ -209,14 +209,14 @@ const sondesIcones = [];
     // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
     console.log("— 4. Chargement du plan " + PLAN.nom + " —");
     await page.getByText(PLAN.nom, { exact: false }).first().click();
-    // 🩸 12/10/2026 — attendre() et non page.waitForFunction, refusé par la CSP de l'app (cf attendre.js) :
+    // 🩸 attendre() et non page.waitForFunction, refusé par la CSP de l'app (cf attendre.js) :
     // l'erreur tombait dans le catch → faux « pas chargé ».
     await attendre(page, function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, 15000)
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
     await page.waitForTimeout(2500);   // rendu calques + restore session
 
-    // 🩸 29/09/2026 — le premier rendu du tuilage doit COMPTER ses tuiles. Il
+    // 🩸 le premier rendu du tuilage doit COMPTER ses tuiles. Il
     // était consommé par un rendu fantôme « z=NaN » (carte encore sans vue) :
     // `attendusPremier` restait à 0 et le repli « toutes les tuiles du premier
     // rendu ont échoué → image entière » était désarmé, en silence.
@@ -237,7 +237,7 @@ const sondesIcones = [];
     });
     if (ouvert) {
       await modaleVisible("⚙️ Réglages", "#kta-cfg-modal");
-      // v1.92.0 (L4) : application immédiate — l'échelle saisie est persistée
+      // (L4) : application immédiate — l'échelle saisie est persistée
       // SANS bouton Appliquer (puis remise à sa valeur d'origine).
       const persiste = await page.evaluate(function () {
         const el = document.getElementById("cfg_scale"); if (!el) return "champ absent";
@@ -250,7 +250,7 @@ const sondesIcones = [];
       });
       if (persiste === "ok") ok("réglage immédiat : l'échelle est persistée à la saisie (sans Appliquer)");
       else pb("reglages", "échelle non persistée à la saisie (" + persiste + ")");
-      // v1.92.0 (L4) : le géoréférencement vit dans SA sous-modale — on l'ouvre.
+      // (L4) : le géoréférencement vit dans SA sous-modale — on l'ouvre.
       if (await page.locator("#cfg_georef_open").count() > 0) {
         await page.locator("#cfg_georef_open").click();
         await page.waitForTimeout(300);

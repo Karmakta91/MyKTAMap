@@ -127,7 +127,7 @@
   // Classification automatique pour l'affichage UI (label coloré)
   function _classify(url) {
     if (!url) return "unknown";
-    // 🆕 v1.9.3-B-side + fix : ping santé serveur MyKTAMap = same-origin
+    // ping santé serveur MyKTAMap = same-origin
     // /ping.html (chemin <origin>/ping.html). Garde le label "ping" pour
     // distinction visuelle dans le journal réseau.
     try {

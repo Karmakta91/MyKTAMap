@@ -142,7 +142,7 @@ function bloc(src, debut, fin) {
   verif(reset.includes("ktaConfirm(") && reset.includes("config.confirm.reset"), "🩸 Reset des Réglages demande confirmation (parcours du suivi effacé)");
   verif(/function _resetConfigExecuter\(\) \{[\s\S]*?resetTrackingPosition/.test(s), "Reset : l'exécution reste dans _resetConfigExecuter");
   verif(s.includes("config.georef.confirmClear") && /function _executerClear\(/.test(s), "🩸 effacer un géoréférencement persisté demande confirmation");
-  // 📔 v1.92.0 (décision KARMA) : l'interrupteur du carnet a quitté le mode
+  // l'interrupteur du carnet a quitté le mode
   // plan pour ⚙️ Configuration de l'ACCUEIL — il est global, et le carnet
   // s'ouvre depuis l'accueil. Le contrôle suit : il vérifie qu'il EXISTE et
   // qu'il est câblé LÀ-BAS, pas qu'il a disparu du projet.

@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE ITINÉRAIRE — Pathfinder UI + Évitements + Presets vitesse
 // =========================
-// 🆕 v1.31.0 (P3 Lot 6 — découpe interface.js) : module extrait de
+// (P3 Lot 6 — découpe interface.js) : module extrait de
 // js/interface.js (2 plages : 4913-5105 + 5516-6846 avant extraction)
 // pour réduire le volume du fichier principal. Lot 6 + Lot 8 du plan
 // initial ont été fusionnés ici car l'itinéraire et les évitements
@@ -90,7 +90,7 @@ function _texteAlerteRaccord(road) {
 }
 
 // =========================
-// 🆕 v1.46.4 — OVERLAY DE CALCUL D'ITINÉRAIRE
+// OVERLAY DE CALCUL D'ITINÉRAIRE
 // =========================
 // Sur un réseau de tracés DENSE, le Dijkstra prend 1-3 s. On affiche un loader
 // chartré (spinner du chargement de plan + message) le temps du pathfinding,
@@ -239,7 +239,7 @@ function _optsEvitement(avoidPrefs, evC) {
     avoidPoints: avoidPrefs.points || [],
     avoidTags:   avoidPrefs.tags   || [],
     avoidZones:  avoidPrefs.zones  || [],
-    // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+    // la seule contrainte DURE du moteur suit la case de la modale.
     respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
     avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
   };
@@ -386,7 +386,7 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
 
 
 // ==========================================
-// 🆕 v1.31.0 P3 Lot 6 — coupure plage 5106-5515 (SUPPRESSION clic)
+// P3 Lot 6 — coupure plage 5106-5515 (SUPPRESSION clic)
 //      reste dans interface.js — pas de dep partagée avec l'itinéraire
 // ==========================================
 
@@ -416,7 +416,7 @@ function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint");
 const DEFAULT_ITI_SPEED       = "normale";
 const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
 
-// 🆕 v1.23.0 (KARMA "rajoute dans le modal itineraire un temps de pause
+// (KARMA "rajoute dans le modal itineraire un temps de pause
 // définissable entre chaque point en minutes") : la pause par arrêt
 // intermédiaire est désormais CONFIGURABLE :
 //   • Checkbox "Inclure pause entre arrêts" (default ON = comportement v1.22.x)
@@ -453,7 +453,7 @@ function _setItiPauseMinutes(min) {
 // s'applique aussi au calcul des durées Mode Secours).
 window.getItiPauseEnabled = _getItiPauseEnabled;
 window.getItiPauseMinutes = _getItiPauseMinutes;
-// 🆕 v1.23.6 — Setters exposés pour permettre à Mode Secours (et autres
+// Setters exposés pour permettre à Mode Secours (et autres
 // modules futurs) de modifier la pause depuis leur propre UI. Persistance
 // localStorage immédiate via _setItiPauseEnabled/_setItiPauseMinutes.
 // Pas de side-effect global au set (pas de re-render auto) — le caller
@@ -465,7 +465,7 @@ window.setItiPauseMinutes = _setItiPauseMinutes;
 function _getItiSpeedPreset() {
   try {
     let stored = localStorage.getItem(ITI_SPEED_STORAGE_KEY);
-    // 🆕 v1.26.3 — Micro-migration : ancien preset "bourre" renommé "blesse"
+    // Micro-migration : ancien preset "bourre" renommé "blesse"
     // (professionnalisation). Réécrit la valeur pour garder le réglage user.
     if (stored === "bourre") {
       stored = "blesse";
@@ -492,7 +492,7 @@ function _vitesseMarcheKmh() {
 }
 
 // Retourne le temps total estime en minutes : marche + pauses intermediaires.
-// 🆕 v1.23.0 : pause configurable via _getItiPauseEnabled + _getItiPauseMinutes
+// pause configurable via _getItiPauseEnabled + _getItiPauseMinutes
 function _tempsItineraireMinutes(distanceM, nbWaypoints) {
   if (typeof distanceM !== "number" || distanceM <= 0) return 0;
   const tempsMarcheMin = distanceM / (_vitesseMarcheKmh() * 1000 / 60);  // m / (m/min)
@@ -560,7 +560,7 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
         preset.icon + ' ' + presetLabel +
       '</span>';
     // Tooltip detaille pour la breakdown (vitesse + nb pauses)
-    // 🆕 v1.23.0 : pause configurable → lit la valeur dynamique
+    // pause configurable → lit la valeur dynamique
     const pauseActive = _getItiPauseEnabled();
     const pauseMin    = _getItiPauseMinutes();
     const pausePart   = (nbPausesInter > 0 && pauseActive && pauseMin > 0)
@@ -607,7 +607,7 @@ function _majLabelDistanceItineraire() {
   const itineraryRoad = window.getRoads().find(function(r) { return r.type === "itinerary"; });
   if (itineraryRoad) {
     const distM = _distanceItineraireMeters(itineraryRoad);
-    // 🆕 v1.61.0 : les étapes validées (done) ne comptent plus dans les pauses
+    // les étapes validées (done) ne comptent plus dans les pauses
     const nbWp  = Array.isArray(itineraryRoad.waypoints)
       ? itineraryRoad.waypoints.filter(function(w) { return !w.done; }).length : 2;
     _afficherLabelDistanceItineraire(distM, nbWp);
@@ -623,11 +623,11 @@ let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers num
 let _itineraryClickActive = false;
 // Handler à RÉFÉRENCE STABLE (cf _itineraryMapClick) : on/off idempotents.
 
-// 🆕 v1.34.27 — Expose les waypoints de l'iti actif en lecture seule pour que
+// Expose les waypoints de l'iti actif en lecture seule pour que
 // tracking.js puisse détecter quand l'user arrive à proximité (vibration
 // haptique de proximité 100px, cf tracking.js _checkWaypointProximity).
 // Retourne une COPIE pour empêcher la mutation côté caller.
-// 🆕 v1.61.0 : filtre les étapes validées (done) ET le point 0 tracker —
+// filtre les étapes validées (done) ET le point 0 tracker —
 // vibrer « waypoint atteint » sur sa propre origine ou sur une étape déjà
 // validée est du bruit (et chaque replanification crée une nouvelle origine).
 window.getItineraireWaypoints = function() {
@@ -645,7 +645,7 @@ function _ajouterWaypointVisuel(p, num) {
   if (!_itineraryMarkerLayer || !_itineraryMarkerLayer._map) {
     _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
   }
-  // 🆕 v1.61.0 : étape validée (« je suis ici » dessus) → ✓ vert au lieu du numéro
+  // étape validée (« je suis ici » dessus) → ✓ vert au lieu du numéro
   const done = !!p.done;
   const icon = L.divIcon({
     className: "kta-itinerary-waypoint" + (done ? " kta-iti-wp-done" : ""),
@@ -653,7 +653,7 @@ function _ajouterWaypointVisuel(p, num) {
     iconSize:  [28, 28],
     iconAnchor: [14, 14]
   });
-  // 🐛 v1.73.0 (KARMA « un point de passage fait au clic ne peut pas être
+  // (KARMA « un point de passage fait au clic ne peut pas être
   // validé ») : un waypoint-POI se valide via la popup du POI sous-jacent,
   // mais un waypoint posé AU CLIC n'a AUCUN objet cliquable — son marker
   // numéroté était interactive:false. Ce false reste VOULU pour les
@@ -732,7 +732,7 @@ function _rafraichirListeWaypointsModale() {
       sourceTitle = window.I18n.t("iti.wp.srcClick");
       sourceClass = "";
     }
-    // 🆕 v1.61.0 : étape validée → ligne rayée + ✓ (elle reste listée pour
+    // étape validée → ligne rayée + ✓ (elle reste listée pour
     // montrer la progression, exclue du calcul)
     const done = !!p.done;
     return '<div class="kta-iti-wp-row' + (done ? " kta-iti-wp-row-done" : "") + '">' +
@@ -780,7 +780,7 @@ function _itineraryMapClick(e) {
   const x = e.latlng.lng;
   const y = APP_CONFIG.imageHeight - e.latlng.lat;
   _itineraryWaypoints.push({ x: x, y: y, source: "click" });
-  // v1.73.0 : passer l'objet POUSSÉ (avec source) — sinon le marker frais
+  // passer l'objet POUSSÉ (avec source) — sinon le marker frais
   // n'est pas cliquable avant le premier _redessinerWaypoints.
   _ajouterWaypointVisuel(_itineraryWaypoints[_itineraryWaypoints.length - 1], _itineraryWaypoints.length);
   _rafraichirListeWaypointsModale();
@@ -867,7 +867,7 @@ function _majPanneauFloaterCount() {
 }
 
 // =========================
-// 🆕 v1.61.0 — REPLANIFICATION AU RECALAGE + VALIDATION D'ÉTAPES
+// REPLANIFICATION AU RECALAGE + VALIDATION D'ÉTAPES
 // =========================
 // Scénario KARMA (sortie multi-étapes en carrière) : le tracker dérive ou le
 // téléphone est verrouillé → l'user recale souvent sa position. À chaque
@@ -897,7 +897,7 @@ function _toastIti(msg, type) {
   }
 }
 
-// ✂️ 01/10/2026 (KARMA 3:a / 4:a) — « Je suis ici » sur un point qui est SUR
+// « Je suis ici » sur un point qui est SUR
 // l'itinéraire (≤ COUPE_SEUIL_M du trajet) : on n'a rien à recalculer, on
 // COUPE ce qui est derrière. Le Dijkstra (et sa question) ne sert plus qu'au
 // point hors trajet. Guidage actif ou non : la coupe dépend de l'itinéraire.
@@ -1066,7 +1066,7 @@ window._onTrackerRecale = function(x, y, source, opts) {
   if (_replanTimer) clearTimeout(_replanTimer);
   _replanTimer = setTimeout(function() {
     _replanTimer = null;
-    // 🆕 v1.76.2 (demande KARMA) — DEMANDER avant de recalculer : sur les
+    // DEMANDER avant de recalculer : sur les
     // grands plans, le Dijkstra peut prendre plusieurs dizaines de secondes,
     // parfois pour rien (simple recalage sans besoin de nouvel itinéraire).
     // Sûr ici : ce hook n'est déclenché QUE par un geste utilisateur (clic
@@ -1086,7 +1086,7 @@ window._onTrackerRecale = function(x, y, source, opts) {
         titre: window.I18n.t("iti.replan.confirmTitre"),
         okLabel: window.I18n.t("iti.replan.confirmOk"),
         cancelLabel: window.I18n.t("iti.replan.confirmNon"),
-        // 🗑️ 01/10/2026 (KARMA) — 3e choix : on n'en veut plus du tout.
+        // 3e choix : on n'en veut plus du tout.
         autre: { label: window.I18n.t("iti.replan.confirmSupprimer"), valeur: "supprimer" }
       });
       demander.then(function(ok) {
@@ -1165,7 +1165,7 @@ async function _replanifierDepuis(px, py) {
     // autres équipes), pas les préférences de l'itinéraire classique (B1, 30/09/2026).
     const sec = road.secours || null;
     const evC = road.evacuation && road.evacuation.contraintes;
-    // 🧹 15/10/2026 (Secours C1, décision KARMA 3:a) — un parcours de BALAYAGE n'est pas
+    // un parcours de BALAYAGE n'est pas
     // remplacé par un plus court chemin (qui sauterait boucles et culs-de-sac) : on
     // rejoint le circuit plus loin, puis on le suit. Point visé : à partir de la progression
     // notée pendant la marche (secoursMode > _avancerBalayage), le plus proche de la position,
@@ -1207,7 +1207,7 @@ async function _replanifierDepuis(px, py) {
         avoidPoints: sec ? (sec.avoidPoints || []) : (avoidPrefs.points || []),
         avoidTags:   sec ? [] : (avoidPrefs.tags   || []),
         avoidZones:  sec ? [] : (avoidPrefs.zones  || []),
-        // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+        // la seule contrainte DURE du moteur suit la case de la modale.
         respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
         avoidRadius: sec ? (sec.avoidRadius || 30) : (avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS)
       });
@@ -1270,9 +1270,9 @@ function _getItiAvoidPrefs() {
     return {
       points: Array.isArray(obj.points) ? obj.points : [],
       tags:   Array.isArray(obj.tags)   ? obj.tags   : [],
-      zones:  Array.isArray(obj.zones)  ? obj.zones  : [],   // 🆕 v1.48.0 : ids dérivés des zones à éviter
+      zones:  Array.isArray(obj.zones)  ? obj.zones  : [],   // ids dérivés des zones à éviter
       radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS,
-      // 🆕 v1.82.0 — seule contrainte DURE du moteur, desormais debrayable.
+      // seule contrainte DURE du moteur, desormais debrayable.
       // `!== false` : une pref enregistree avant cette version n'a pas le
       // champ, et doit garder le comportement historique (= respecter).
       respecterInaccessibles: obj.respecterInaccessibles !== false
@@ -1289,7 +1289,7 @@ function _setItiAvoidPrefs(prefs) {
   } catch(e) {}
 }
 
-// 🆕 v1.48.0 — Rendu des TYPES de zones à éviter (1 checkbox par type, comme
+// Rendu des TYPES de zones à éviter (1 checkbox par type, comme
 // les autres filtres). Source : window.getAvoidableZoneTypes() (pathfinder :
 // types distincts des zones session + embarquées, sauf "inaccessible", label
 // résolu legend/custom). Coché = type présent dans prefs.zones. Persiste à
@@ -1305,7 +1305,7 @@ function _rafraichirListeAvoidZones() {
     return;
   }
   const prefs = _getItiAvoidPrefs();
-  // 🔒 05/10/2026 : guillemets compris (le type part dans data-ztype="…").
+  // 🔒 guillemets compris (le type part dans data-ztype="…").
   const _esc = window.ktaEsc;
   el.innerHTML = types.map(function(z) {
     const checked = prefs.zones.indexOf(z.type) >= 0;
@@ -1617,7 +1617,7 @@ function _bindAvoidSectionHandlers() {
                  '</div>';
         }).join("");
         searchRes.style.display = "block";
-        // 🆕 v1.44.0 — Event delegation sur searchRes (conteneur stable) au
+        // Event delegation sur searchRes (conteneur stable) au
         // lieu de N listeners individuels par row (re-créés à chaque keypress).
         // Évite l'accumulation transitoire de closures.
         // On stocke `results` au scope du handler ; chaque row a son data-idx.
@@ -1625,7 +1625,7 @@ function _bindAvoidSectionHandlers() {
       }, 150);
     });
 
-    // 🆕 v1.44.0 — Listener délégué attaché UNE FOIS au build de la modale
+    // Listener délégué attaché UNE FOIS au build de la modale
     // (pas à chaque input). data-idx référence l'index dans `_lastResults`.
     if (!searchRes._delegateBound) {
       searchRes._delegateBound = true;
@@ -1710,7 +1710,7 @@ function _bindAvoidSectionHandlers() {
   }
 
   // 4. Reset complet
-  // 🆕 v1.82.0 — persiste immédiatement, comme les autres réglages de la
+  // persiste immédiatement, comme les autres réglages de la
   // section : la modale peut être fermée par le calcul lui-même.
   const inaccCb = document.getElementById("kta-iti-respect-inacc");
   if (inaccCb) {
@@ -1824,7 +1824,7 @@ window.ouvrirItinerairModal = function() {
   let statusActuel = '';
   if (modeNavigation) {
     const distActMeters = _distanceItineraireMeters(existingItinerary);
-    // 🆕 v1.61.0 : étapes validées exclues du compte de pauses
+    // étapes validées exclues du compte de pauses
     const nbWpAct       = Array.isArray(existingItinerary.waypoints)
       ? existingItinerary.waypoints.filter(function(w) { return !w.done; }).length : 2;
     const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
@@ -1837,7 +1837,7 @@ window.ouvrirItinerairModal = function() {
           '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
-        // 📉 v1.83.0 — accès au profil en long. Le chemin est DÉJÀ là :
+        // accès au profil en long. Le chemin est DÉJÀ là :
         // `existingItinerary.points` porte le niveau de chaque point depuis
         // que `computeRoute` cesse de le jeter. Aucune plomberie en plus.
         '<button id="kta-iti-profil" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
@@ -1920,7 +1920,7 @@ window.ouvrirItinerairModal = function() {
       '</div>' +
     '</div>';
 
-  // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable entre chaque
+  // (KARMA "rajoute un temps de pause définissable entre chaque
   // point en minutes... avec un par default auto cocher [système actuel]") :
   // section dédiée Pause configurable. Default = case cochée + 15 min (=
   // comportement v1.22.x strictement préservé).
@@ -1946,7 +1946,7 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-section-titre">' + (modeNavigation ? window.I18n.t("iti.action.titreNav") : window.I18n.t("iti.action.titre")) + '</div>' +
       statusActuel +
       '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
-      // 🆕 v1.60.0 (A6 1:c) — destination sur un AUTRE plan : ouvre la
+      // (A6 1:c) — destination sur un AUTRE plan : ouvre la
       // recherche multi-plans en mode sélection → itinéraire via portail
       // (InterPlanRoute). Affiché seulement si les modules sont chargés.
       ((window.CrossPlanSearch && window.InterPlanRoute)
@@ -2004,7 +2004,7 @@ window.ouvrirItinerairModal = function() {
     });
   })();
 
-  // 🆕 v1.23.0 — Bind handlers section Pause (checkbox + input minutes)
+  // Bind handlers section Pause (checkbox + input minutes)
   (function bindPauseSection() {
     const cb     = document.getElementById("kta-iti-pause-cb");
     const inp    = document.getElementById("kta-iti-pause-min");
@@ -2150,12 +2150,12 @@ window.ouvrirItinerairModal = function() {
     }
     searchResults.style.display = "block";
 
-    // 🆕 v1.44.0 — Event delegation (cohérence avec ligne ~963 idem).
+    // Event delegation (même schéma que plus haut).
     // Stocke limite sur le conteneur, dispatch via data-idx.
     searchResults._lastLimite = limite;
   }
 
-  // 🆕 v1.44.0 — Listener délégué attaché UNE FOIS au build de la modale
+  // Listener délégué attaché UNE FOIS au build de la modale
   // (pas à chaque keypress).
   if (!searchResults._delegateBound) {
     searchResults._delegateBound = true;
@@ -2256,7 +2256,7 @@ window.ouvrirItinerairModal = function() {
     document.getElementById("kta-iti-error").style.display  = "none";
   });
 
-  // 🆕 v1.60.0 (A6) — Destination sur un autre plan : recherche multi-plans
+  // (A6) — Destination sur un autre plan : recherche multi-plans
   // en mode sélection. Point du plan COURANT sélectionné → simple waypoint
   // (flux classique) ; point DISTANT → itinéraire via portail (InterPlanRoute,
   // la modale itinéraire est fermée — le résumé par étapes prend le relais).
@@ -2269,7 +2269,7 @@ window.ouvrirItinerairModal = function() {
           window.itineraireAjouterWaypoint(pt.x, pt.y, label);
           return;
         }
-        // 🌀 v1.64.0 (KARMA « plusieurs points de passage sur le plan A avant
+        // (KARMA « plusieurs points de passage sur le plan A avant
         // le portail ») : les étapes déjà posées dans la modale (non validées,
         // hors origine tracker) deviennent des points de passage OBLIGATOIRES
         // du leg A, dans l'ordre planifié, AVANT le portail.
@@ -2296,7 +2296,7 @@ window.ouvrirItinerairModal = function() {
     errEl.style.display = "none";
     resEl.style.display = "none";
 
-    // 🆕 v1.61.0 : les étapes validées (done) restent listées mais sont
+    // les étapes validées (done) restent listées mais sont
     // EXCLUES du calcul — sinon « Recalculer » re-router par des étapes
     // déjà visitées.
     const wpsCalc = _itineraryWaypoints.filter(function(w) { return !w.done; });
@@ -2317,7 +2317,7 @@ window.ouvrirItinerairModal = function() {
       return;
     }
 
-    // 🆕 v1.43.26 (Pattern D) — Disable bouton pendant le pathfinding Dijkstra
+    // (Pattern D) — Disable bouton pendant le pathfinding Dijkstra
     // (peut prendre 1-3 s sur un grand graph). Sans ça, l'user qui double-clique
     // lance 2 calculs concurrents qui se marchent dessus sur le road preview.
     const originalText = btn.textContent;
@@ -2334,12 +2334,12 @@ window.ouvrirItinerairModal = function() {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
           avoidZones:  avoidPrefs.zones  || [],
-          // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+          // la seule contrainte DURE du moteur suit la case de la modale.
           respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });
-      // 🆕 v1.43.27 (Pattern C) — Guard : la modale peut avoir été fermée pendant
+      // (Pattern C) — Guard : la modale peut avoir été fermée pendant
       // l'await computeRoute() (Dijkstra peut prendre 1-3 s sur grand graph). Sans
       // ça, on écrirait dans resEl détaché + on appellerait getElementById sur
       // "kta-iti-save"/"kta-iti-discard" qui retourneraient null → crash sur
@@ -2436,7 +2436,7 @@ window.ouvrirItinerairModal = function() {
         : (err.message || String(err));
       errEl.style.display = "block";
     } finally {
-      // 🆕 v1.43.26 (Pattern D) — Restore bouton dans tous les chemins de sortie
+      // (Pattern D) — Restore bouton dans tous les chemins de sortie
       btn.disabled = false;
       btn.textContent = originalText;
     }

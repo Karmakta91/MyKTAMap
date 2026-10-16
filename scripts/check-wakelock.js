@@ -187,7 +187,7 @@ function geste(ctx) {
     t("les reprises automatiques sont BORNÉES (pas de boucle contre un système qui refuse)",
       /MAX_REPRISES/.test(SRC) && /_reprises < MAX_REPRISES/.test(SRC));
 
-    // 🔕 v1.85.2 (KARMA « je le vois coché par défaut ») — la vibration
+    // (KARMA « je le vois coché par défaut ») — la vibration
     // haptique est OFF par défaut.
     // 🩸 Changer le défaut NE SUFFIT PAS : tout test en `!== false` rend VRAI
     // sur `undefined` et rallumerait l'option. Même piège que
@@ -199,12 +199,12 @@ function geste(ctx) {
     t("🩸 vibration : plus aucun test en `!== false` (il rendrait vrai sur undefined)",
       !/vibrationEnabled\s*!==\s*false/.test(CFG + UIC + UTL));
     t("vibration : la case coche sur `=== true`", /c\.vibrationEnabled === true/.test(UIC));
-    // 🛰️ v1.85.2 — LA RUBRIQUE « Options via capteur », et ce qu'elle DIT.
+    // LA RUBRIQUE « Options via capteur », et ce qu'elle DIT.
     // 🩸 Avant, une option dont le capteur manque était MASQUÉE : sur iPhone la
     // vibration disparaissait de la modale, sans que rien ne dise pourquoi.
     // L'utilisateur ne pouvait pas distinguer « ça n'existe pas » de « ton
     // système refuse ». On l'affiche désormais, désactivée, avec la raison.
-    // 🧩 01/10/2026 — la rubrique est devenue « Fonctionnalités optionnelles »
+    // la rubrique est devenue « Fonctionnalités optionnelles »
     // (batterie, vibration, replay, heatmap) : même place, mêmes exigences.
     t("🧩 la rubrique Fonctionnalités optionnelles existe", /config\.optionnels\.titre/.test(UIC));
     // 🩸 Elle doit être un GROUPE DE PREMIER NIVEAU, pas une sous-section
@@ -273,7 +273,7 @@ function geste(ctx) {
       t("accueil : les deux cases existent",
         /id="loaderBatterieCb"/.test(IDX2) && /id="loaderVibrationCb"/.test(IDX2));
       t("accueil : elles sont câblées", /loaderBatterieCb/.test(HC) && /loaderVibrationCb/.test(HC));
-      // 🛰️ 12/10/2026 — plus de paragraphe d'explication sous ces cases (le
+      // plus de paragraphe d'explication sous ces cases (le
       // détail vit dans le Guide) : chacune garde un emplacement VIDE, que
       // `ktaCapteurRefuse` remplit avec la raison quand le système refuse le
       // capteur. Sans cet emplacement, la case grisée resterait muette.
@@ -285,7 +285,7 @@ function geste(ctx) {
       t("🩸 le rendu « capteur refusé » est partagé (utils.js), pas dupliqué",
         /window\.ktaCapteurRefuse\s*=/.test(fs.readFileSync("js/utils.js", "utf8")) &&
         /window\.ktaCapteurRefuse/.test(HC) && /window\.ktaCapteurRefuse/.test(UIC));
-      // 🪟 v1.85.3 — L'ancrage des panneaux a QUITTÉ le mode plan : c'est un
+      // L'ancrage des panneaux a QUITTÉ le mode plan : c'est un
       // réglage GLOBAL, il valait pour tous les plans alors qu'on le réglait
       // depuis un seul (audit KARMA). Il vit maintenant dans la ⚙️ Configuration
       // de l'accueil, groupe Affichage — et NE DOIT PLUS reparaître côté plan.
@@ -295,7 +295,7 @@ function geste(ctx) {
         (function () {
           const a = IDX2.indexOf('data-i18n="config.group.affichage"');
           const p = IDX2.indexOf('id="loaderPanneauxAncres"');
-          // 🖼️ v1.85.4 — la borne haute etait le groupe « Performance » ; il a
+          // la borne haute etait le groupe « Performance » ; il a
           // disparu de l accueil (le tuilage est descendu dans la carte de
           // chargement, ce n est pas un reglage). On borne sur le groupe
           // suivant, qui existe toujours.
@@ -305,7 +305,7 @@ function geste(ctx) {
     }
     t("batterie : sauvegardée par le chemin canonique",
       /existing\.batterieEnabled/.test(CFG));
-    // 🧩 01/10/2026 — la batterie est passée OFF par défaut (fonctionnalité
+    // la batterie est passée OFF par défaut (fonctionnalité
     // optionnelle) : l'idiome s'inverse, `=== true` comme tous les défauts OFF.
     t("🩸 batterie : défaut OFF donc test en `=== true`",
       /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled === true/.test(CFG) &&

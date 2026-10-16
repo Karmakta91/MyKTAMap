@@ -195,8 +195,8 @@ function construireTiff(opts) {
 //   l'origine EXACTE du Lambert 93, donc (46,5°N ; 3°E). Le coin sud-est vaut
 //   alors (700020, 6599980). Aucune valeur recopiée : tout se déduit.
 const PIX = new Uint8Array([
-  10, 20, 30,   40, 50, 60,     // ligne 0 : (0,0) puis (1,0)
-  70, 80, 90,   100, 110, 120   // ligne 1
+  10, 20, 30,   40, 50, 60,     // rangée 0 : (0,0) puis (1,0)
+  70, 80, 90,   100, 110, 120   // rangée 1
 ]);
 function fixtureBase(surcharges) {
   const e = [

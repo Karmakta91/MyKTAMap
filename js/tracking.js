@@ -66,7 +66,7 @@ function initTracking() {
   lastStepTime = 0;
   direction  = 0;
   tracking   = false;
-  // 🩸 28/09/2026 (KARMA : « si je quitte le plan sans couper le tracking, le
+  // 🩸 (KARMA : « si je quitte le plan sans couper le tracking, le
   // bouton pour recadrer la position persiste sur l'autre plan ») — le suivi
   // est coupé ICI, sans passer par stopTracking() : la carte orientée n'en
   // était jamais prévenue, et son bouton « 🎯 Recentrer », posé dans le body
@@ -124,7 +124,7 @@ function initTracking() {
     if (polyline) polyline.setLatLngs([]);
     stepCount = 0;
 
-    // 🆕 v1.11.3 V2.3 : log timeline du recalage. Le clic carte recalage
+    // V2.3 : log timeline du recalage. Le clic carte recalage
     // vide le tracé visible (polyline.setLatLngs([])) mais on garde la
     // timeline historique pour le replay (= cumul depuis le start de
     // tracking, pas effacé par les recalages successifs).
@@ -134,7 +134,7 @@ function initTracking() {
     // sur un point compte).
     _pushTimelinePoint("recalage", { src: "click" });
 
-    // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
+    // (KARMA "quand on a fini de l'utiliser, on doit
     // repartir sur la boussole") : auto-désactive le mode recalage après
     // le clic. L'user a fait son recalage, on revient au mode tracker
     // normal (icône boussole tourne avec le heading, sidebar 📍 grisée).
@@ -157,7 +157,7 @@ function initTracking() {
     if (tracking) {
       _applyRotationToTrackerMarker();
     }
-    // 🆕 v1.61.0 : replanification d'itinéraire au recalage clic carte
+    // replanification d'itinéraire au recalage clic carte
     _notifierRecalage(x, y, "click");
   });
 }
@@ -189,7 +189,7 @@ function initTracking() {
 // delta > 180 retournait 360-999 = -639 < 2 → return immediat → icone bloquee).
 let _trackerRotationLast      = null;  // derniere valeur smoothed (pour throttle)
 let _trackerHeadingSmoothed   = null;  // valeur lissee dans [0, 360] (pour smoothing)
-// 🆕 v1.9.2 : valeur CUMULÉE appliquée au CSS — peut être hors [0, 360]
+// valeur CUMULÉE appliquée au CSS — peut être hors [0, 360]
 // (ex: -10, 370, 720, -45…). Évite le saut visuel arrière quand le tracker
 // franchit la frontière 0/360 (KARMA : "si je vais dans l'autre, l'icone
 // saute pour se caler"). Voir le bloc d'application ci-dessous.
@@ -205,13 +205,13 @@ function _applyRotationToTrackerMarker() {
   // d'orientation écran (landscape, portrait inversé). Sinon en landscape
   // l'icône pointait vers le haut DEVICE au lieu du haut VISUEL → décalage
   // de 90° perçu comme un bug par l'user.
-  // 🧭 v1.37.0 : passe par _getPlanRelHeading() qui ajoute en plus l'offset
+  // passe par _getPlanRelHeading() qui ajoute en plus l'offset
   // Nord du plan calibré (default 0 si plan Nord-haut = rétrocompat stricte).
   // Sur plan avec Nord décalé, l'icône pointe alors dans la bonne direction
   // RELATIVE AU PLAN (= où l'user va vu de dessus sur la carte).
   const heading = _getPlanRelHeading();
 
-  // 🧭 v1.97.0 — Mode « plan orienté » : on pousse le cap AVANT le throttle
+  // Mode « plan orienté » : on pousse le cap AVANT le throttle
   // 2° ci-dessous, qui ne concerne que l'icône. MapBearing a son propre
   // lissage, volontairement plus mou (faire pivoter tout un plan n'a pas les
   // mêmes contraintes que faire pivoter une icône de 30 px).
@@ -249,7 +249,7 @@ function _applyRotationToTrackerMarker() {
   _trackerRotationLast = _trackerHeadingSmoothed;
 
   // ===== 3. CUMUL ROTATION HORS [0, 360] POUR ANIMATION CSS CONTINUE =====
-  // 🆕 v1.9.2 (KARMA bug : "icone saute pour se caler" au franchissement
+  // (KARMA bug : "icone saute pour se caler" au franchissement
   // 0/360°).
   //
   // Problème : la CSS transition `transform: rotate(deg)` interprète les
@@ -295,7 +295,7 @@ function _applyRotationToTrackerMarker() {
 function _resetRotationTrackerMarker() {
   _trackerRotationLast      = null;
   _trackerHeadingSmoothed   = null;
-  _trackerRotationUnwrapped = null;  // 🆕 v1.9.2 : reset le cumul d'angles
+  _trackerRotationUnwrapped = null;  // reset le cumul d'angles
   if (!markerPosition) return;
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
@@ -528,7 +528,7 @@ function _getScreenAngleNormalized() {
 // visuel = direction vers laquelle ce bord pointe en monde = direction du
 // bord court device "haut" (= heading brut) + offset angulaire de θ.
 //
-// 🧭 v1.37.0 — Ce heading reste en REPÈRE MONDE (= Nord vrai). Il est utilisé
+// Ce heading reste en REPÈRE MONDE (= Nord vrai). Il est utilisé
 // par la boussole physique (compass.js) qui DOIT toujours pointer vers le
 // vrai Nord magnétique, peu importe l'orientation du plan. Pour le repère
 // PLAN (icône tracker sur la map, vecteur déplacement raster), utiliser
@@ -538,7 +538,7 @@ function _getCorrectedHeading() {
   return ((direction + _screenAngle) % 360 + 360) % 360;
 }
 
-// 🧭 v1.37.0 — Heading projeté dans le REPÈRE PLAN. Ajoute l'offset Nord
+// Heading projeté dans le REPÈRE PLAN. Ajoute l'offset Nord
 // calibré (per-plan) au heading monde. Default 0 → strictement identique
 // à _getCorrectedHeading() (rétrocompat plans v1.36.x).
 //   - offset = 0   : plan orienté Nord-haut (cas standard)
@@ -591,7 +591,7 @@ function _initScreenOrientationListener() {
   // Fallback universel : event orientationchange sur window (iOS Safari, vieux Android)
   window.addEventListener("orientationchange", _onScreenChange);
 
-  // 🧭 v1.37.0 — Re-render à chaud de l'icône tracker quand l'user calibre
+  // Re-render à chaud de l'icône tracker quand l'user calibre
   // le Nord (modifie northOffsetDeg). Le tracker peut être à l'arrêt : sans
   // ça l'icône resterait orientée selon l'ancien offset jusqu'au prochain
   // event device. _applyRotationToTrackerMarker lit _getCorrectedHeading()
@@ -686,7 +686,7 @@ function initMotion() {
 
     magnitude = Math.round(magnitude * 10) / 10;
 
-    // 🆕 v1.9.3-B-side (KARMA "en actif tracking j'ai un log Magnitude qui
+    // (KARMA "en actif tracking j'ai un log Magnitude qui
     // log énormément, c'est du flood") :
     // Throttle 1 Hz max. L'event devicemotion fire à ~60 Hz sur iPhone,
     // ~50 Hz sur Android. Sans throttle, debug.js logue à pleine fréquence
@@ -744,7 +744,7 @@ function _avancerRaster() {
   // rotation de l'icône (cf _applyRotationToTrackerMarker). Avant on utilisait
   // `direction` brut → en PAYSAGE l'icône pointait bien mais le pas partait de
   // travers (décalé de l'angle écran). Invisible en portrait (_screenAngle=0).
-  // 🧭 v1.37.0 : _getPlanRelHeading ajoute aussi l'offset Nord du plan
+  // _getPlanRelHeading ajoute aussi l'offset Nord du plan
   // calibré → le vecteur déplacement reste cohérent avec l'icône tracker
   // sur les plans pas-Nord-haut.
   let rad = _getPlanRelHeading() * Math.PI / 180;
@@ -752,7 +752,7 @@ function _avancerRaster() {
   let newX = position.x + distance * Math.sin(rad);
   let newY = position.y - distance * Math.cos(rad);
 
-  // 🆕 v1.11.3 V2.3 : capture du résultat collision pour pouvoir datater
+  // V2.3 : capture du résultat collision pour pouvoir datater
   // SEULEMENT si le pas a été appliqué (sinon doublon dans la timeline).
   const _stepApplied = estAccessible(newX, newY);
   if (_stepApplied) {
@@ -781,7 +781,7 @@ function _avancerSurGraphe() {
   // 1) PDR brut (même calcul que _avancerRaster).
   const scale      = APP_CONFIG.scale;
   const distance   = APP_CONFIG.stepLength * scale;
-  // 🧭 v1.37.0 : cap dans le repère PLAN (= avec offset Nord calibré).
+  // cap dans le repère PLAN (= avec offset Nord calibré).
   // Cohérent avec _avancerRaster ET avec le matching RoadGraph qui travaille
   // déjà en coord plan.
   const headingDeg = _getPlanRelHeading();
@@ -841,7 +841,7 @@ function _basculerNiveauSiTraversee(m) {
   }
 }
 
-// 🆕 v1.61.0 — Hook de recalage (replanification d'itinéraire).
+// Hook de recalage (replanification d'itinéraire).
 // Émis à CHAQUE recalage de position : clic carte (mode recalage), bouton
 // « 📍 Je suis ici » d'une popup point, arrivée de portail (interPlanLinks
 // passe par recalerTrackerSurPoint). Consommé par interfaceItineraire.js
@@ -852,7 +852,7 @@ function _notifierRecalage(x, y, source, opts) {
     try { window._onTrackerRecale(x, y, source, opts); }
     catch(e) { console.warn("[Tracking] hook recalage échoué :", e); }
   }
-  // 🌀 v1.64.0 : 2e consommateur — « je suis ici » sur le point-portail de
+  // 2e consommateur — « je suis ici » sur le point-portail de
   // sortie re-propose la traversée (interPlanRoute._currentPortalOut)
   if (window.InterPlanRoute && typeof window.InterPlanRoute.onTrackerRecale === "function") {
     try { window.InterPlanRoute.onTrackerRecale(x, y, source); }
@@ -871,7 +871,7 @@ function updateMap() {
   markerPosition.setLatLng(latlng);
 
   if (polyline) {
-    // 🆕 v1.28.0 : le tracé peut être MULTI-SEGMENT (historique restauré/cumulé,
+    // le tracé peut être MULTI-SEGMENT (historique restauré/cumulé,
     // cf _rebuildTrailFromTimeline). addLatLng() ajoute au PREMIER anneau par
     // défaut → on cible explicitement le DERNIER segment pour prolonger le tracé
     // courant. Mono-segment (tracé frais) → addLatLng simple.
@@ -883,7 +883,7 @@ function updateMap() {
     }
   }
 
-  // 🧭 v1.97.0 — Mode « plan orienté » : un pas vient d'être appliqué. Sert
+  // Mode « plan orienté » : un pas vient d'être appliqué. Sert
   // au recentrage (la vue suit le tracker) ET au gel à l'arrêt — sans pas
   // récent, la vue cesse de pivoter, sinon le bruit du magnétomètre la ferait
   // tourner toute seule pendant une pause.
@@ -891,13 +891,13 @@ function updateMap() {
     try { window.MapBearing.onStep(latlng); } catch(e) {}
   }
 
-  // 🪧 27/09/2026 — Guidage de l'itinéraire : chaque pas / recalage fait
+  // Guidage de l'itinéraire : chaque pas / recalage fait
   // avancer le bandeau « dans X m, tourner à gauche » (js/itiGuidage.js).
   if (window.ItiGuidage && typeof window.ItiGuidage.onPosition === "function") {
     try { window.ItiGuidage.onPosition(position); } catch(e) {}
   }
 
-  // 🆕 v1.34.27 — Détection proximité waypoint iti (100px) → vibration
+  // Détection proximité waypoint iti (100px) → vibration
   // medium quand l'user atteint un waypoint actif de l'itinéraire. Pas
   // d'effet si pas d'iti ou pref vibration OFF.
   _checkWaypointProximity();
@@ -906,13 +906,13 @@ function updateMap() {
 // =========================
 // CONTROLES
 // =========================
-// 🆕 v1.11.3 V2.3 : timeline timestamps. Array module-scope qui datage chaque
+// V2.3 : timeline timestamps. Array module-scope qui datage chaque
 // point du parcours tracker (Date.now + delta + type pdr/recalage/start +
 // niveau MLVL).
-// 🆕 v1.21.2 : la timeline est désormais persistée via SessionPersist /
+// la timeline est désormais persistée via SessionPersist /
 // SessionBackups (le commentaire "RAM only" précédent est obsolète depuis
 // cette release — la timeline survit aux reloads).
-// 🐛 v1.21.3 (audit P0-2/3) : cap dur + décimation FIFO. Sans cap, une
+// cap dur + décimation FIFO. Sans cap, une
 // session 6h en cavité atteint ~150k entries × 120 bytes = ~18 Mo RAM,
 // sérialisé toutes les 1.5s en localStorage (cap navigateur 5-10 Mo)
 // → QuotaExceededError → session non sauvée pendant des heures.
@@ -944,9 +944,9 @@ function _decimateTimeline() {
   const merged = anchors.concat(keptPdrs).sort(function(a, b) { return a.t - b.t; });
   _trackingTimeline = merged;
   console.log("[Tracking] Timeline décimée à", _trackingTimeline.length, "entries (cap", MAX_TIMELINE_ENTRIES, ")");
-  // 🐛 v1.34.15 (Pack RAM #2) — Synchronise le polyline visible avec la
+  // (Pack RAM #2) — Synchronise le polyline visible avec la
   // timeline décimée. Sans ce rebuild, le polyline continuait d'accumuler
-  // toutes les positions via addLatLng() (cf updateMap l719) même après
+  // toutes les positions via addLatLng() (cf updateMap) même après
   // décimation de _trackingTimeline → fuite RAM linéaire (chaque pas =
   // 1 LatLng object × ~32 bytes + 1 SVG path command). Sur session 6h
   // dense (1 pas / 600ms = 36k pas), c'était 36k LatLng × 32 = ~1.2 Mo
@@ -997,7 +997,7 @@ function startTracking() {
       typeof window.RoadGraph.getGraph === "function") {
     try { window.RoadGraph.getGraph(); } catch(e) {}
   }
-  // 🆕 v1.28.0 : on NE WIPE PLUS la timeline au Play — elle est désormais
+  // on NE WIPE PLUS la timeline au Play — elle est désormais
   // CUMULATIVE (le tracé doit survivre au reload ET aux cycles Play/Stop ;
   // c'est aussi l'intention v1.21.2 « heatmap multi-sessions »). On marque la
   // reprise par une ancre "start" (= rupture de segment au rendu, comme un
@@ -1018,7 +1018,7 @@ function startTracking() {
   // (cas du clic Play apres que l'orientation a deja ete capte au moins une
   // fois). Sinon, l'event suivant deviceorientation s'en chargera.
   _applyRotationToTrackerMarker();
-  // 🧭 v1.97.0 — le mode « plan orienté » ne vit QUE pendant le tracking.
+  // le mode « plan orienté » ne vit QUE pendant le tracking.
   if (window.MapBearing) { try { window.MapBearing.onTrackingChange(true); } catch(e) {} }
   console.log("[Tracking] ON (level:", trackerLevel + ")");
 }
@@ -1028,7 +1028,7 @@ function stopTracking() {
   _navSegIdx = -1;  // 🧭 nav : oublie le segment courant à l'arrêt
   // 🧭 v158 : reset rotation a 0° (icone pointe Nord = pose neutre).
   _resetRotationTrackerMarker();
-  // 🧭 v1.97.0 — arrêt du tracking = la vue revient droite, même si le
+  // arrêt du tracking = la vue revient droite, même si le
   // toggle reste sur ON (il sera repris au prochain Play).
   if (window.MapBearing) { try { window.MapBearing.onTrackingChange(false); } catch(e) {} }
   console.log("[Tracking] OFF");
@@ -1080,7 +1080,7 @@ function resetTrackingPosition() {
     polyline.setLatLngs([]);
   }
 
-  // 🆕 v1.11.3 V2.3 : reset complet de la timeline (= nouveau cycle).
+  // V2.3 : reset complet de la timeline (= nouveau cycle).
   // Si tracking actif, on push un "start" pour marquer la nouvelle origine.
   _trackingTimeline = [];
   _trackingStartTs  = null;
@@ -1123,14 +1123,14 @@ window.getCurrentHeading = function() {
   // portrait inversé). Le widget boussole et l'icône tracker passent par
   // cette fonction, donc ils restent cohérents avec le haut visuel.
   //
-  // 🧭 v1.37.0 — Reste en REPÈRE MONDE (Nord vrai). À utiliser pour la
+  // Reste en REPÈRE MONDE (Nord vrai). À utiliser pour la
   // boussole physique (compass.js) qui doit toujours pointer le Nord
   // magnétique réel. Pour le repère PLAN (mini-map mode urgence, tracker
   // icône principale), utiliser window.getPlanRelHeading.
   return _getCorrectedHeading();
 };
 
-// 🧭 v1.37.0 — Heading projeté dans le REPÈRE PLAN (= corrected + offset Nord
+// Heading projeté dans le REPÈRE PLAN (= corrected + offset Nord
 // calibré per-plan). Exposé pour les modules qui veulent rendre la rotation
 // d'un marker ou la direction de marche dans le repère du plan (mode urgence
 // emergencyMode.js, mini-cartes, exports). Default = identique à
@@ -1152,7 +1152,7 @@ window.getTrackingPositionEtat = function() {
   return { confirmee: _positionConfirmee, ts: _positionConfirmeeTs, suiviActif: tracking === true };
 };
 
-// 🆕 v1.9.2 : getter pour l'état "Play" du tracker. Utilisé par
+// getter pour l'état "Play" du tracker. Utilisé par
 // refonteInterface.js > refreshStatusBar() pour afficher la LED ON/OFF
 // du status bar (KARMA feedback : "quand le tracker est actif, le footer
 // ne passe pas à ON"). Avant : refonteInterface lisait window.getTrackingActif
@@ -1177,7 +1177,7 @@ window.getTrackingPath = function() {
   });
 };
 
-// 🆕 v1.11.3 V2.3 : exposition de la timeline complète (= path historique
+// V2.3 : exposition de la timeline complète (= path historique
 // avec timestamps + types + levels). Différent de getTrackingPath qui ne
 // retourne que les coords sans datage. La timeline survit aux recalages
 // (le path lui est reset à chaque recalage) → cumul depuis startTracking.
@@ -1474,7 +1474,7 @@ window.resetTrackingTimeline = function() {
   _trackingStartTs  = null;
 };
 
-// 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking comme
+// (KARMA "on active dans la sauvegarde auto le tracking comme
 // ca la fonction [heatmap] devient pertinante") : setter pour restore depuis
 // SessionPersist / SessionBackups. Permet à la timeline tracker de survivre
 // aux reloads → cumul multi-sessions exploitable par la heatmap.
@@ -1497,7 +1497,7 @@ window.setTrackingTimeline = function(timeline, startTs) {
   });
   _trackingTimeline = cleaned;
   _trackingStartTs  = (typeof startTs === "number") ? startTs : null;
-  // 🐛 v1.21.3 (audit P0-3) : applique le cap au restore. Un payload
+  // applique le cap au restore. Un payload
   // corrompu / multi-session cumulé / Backup ancien pouvait injecter 50k+
   // entries → OOM en cascade au boot. _decimateTimeline préserve les
   // ancres start/recalage et trim les PDR les plus anciens.
@@ -1505,14 +1505,14 @@ window.setTrackingTimeline = function(timeline, startTs) {
     console.warn("[Tracking] Restore timeline trop grande :", _trackingTimeline.length, "→ décimation");
     _decimateTimeline();
   }
-  // 🆕 v1.28.0 (KARMA "garder le tracé du tracker au reload") : reconstruit le
+  // (KARMA "garder le tracé du tracker au reload") : reconstruit le
   // tracé VISIBLE + replace le marqueur depuis la timeline restaurée. Appelé
   // ici (restore SessionPersist) qui tourne APRÈS initTracking (cf main.js) →
   // polyline + markerPosition existent.
   _rebuildTrailFromTimeline();
-  // 🆕 v1.49.0 (Lot B) — recentre la vue sur la DERNIÈRE position connue
+  // (Lot B) — recentre la vue sur la DERNIÈRE position connue
   // (« ma position actuelle ») au restore/import d'une timeline. Sans ça, la
-  // vue restait sur initPosition (startX/Y, fixée par initTracking l.62) alors
+  // vue restait sur initPosition (startX/Y, fixée par initTracking) alors
   // que le marker venait d'être replacé ailleurs par _rebuildTrailFromTimeline
   // → incohérence signalée KARMA. Fallback implicite : timeline vide →
   // _rebuildTrailFromTimeline ne touche pas position et on ne recentre pas
@@ -1522,7 +1522,7 @@ window.setTrackingTimeline = function(timeline, startTs) {
   }
 };
 
-// 🆕 v1.28.0 : reconstruit TOUT le tracé visible + repositionne le marqueur
+// reconstruit TOUT le tracé visible + repositionne le marqueur
 // d'après la timeline restaurée. On redessine l'historique COMPLET en segments
 // MULTIPLES, coupés à chaque ancre "recalage"/"start" (= rupture/téléportation)
 // pour ne PAS tracer de ligne fantôme entre deux segments. Le marqueur reprend
@@ -1589,7 +1589,7 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;
 
-  // 🆕 v1.11.3 V2.3 : log timeline du recalage sur point existant
+  // V2.3 : log timeline du recalage sur point existant
   const _ancre = _pushTimelinePoint(
     "recalage",
     (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
@@ -1623,16 +1623,16 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
     } catch(e) {}
   }
   console.log("[Tracking] Recalé sur point :", x, y);
-  // 🆕 v1.34.27 — Vibration haptique discrète pour confirmer le recalage.
+  // Vibration haptique discrète pour confirmer le recalage.
   // L'user vient de toucher "📍 Je suis ici" → feedback tactile = "OK, j'ai
   // compris". Echec silencieux si pref OFF ou iOS Safari (cf utils.js).
   if (window.kta_vibrate) window.kta_vibrate.light();
-  // 🆕 v1.61.0 : replanification d'itinéraire + validation d'étape (coords
+  // replanification d'itinéraire + validation d'étape (coords
   // exactes d'un point → peut matcher une étape de l'itinéraire actif)
   _notifierRecalage(x, y, "point", opts);   // opts.sansReplan : cf Mode Secours (étape validée)
 };
 
-// 🆕 v1.34.27 — Détection de proximité aux waypoints de l'itinéraire actif.
+// Détection de proximité aux waypoints de l'itinéraire actif.
 // Appelée à chaque updateMap() (= à chaque pas / recalage / restore).
 // Hystérésis : vibre UNE FOIS quand on entre dans le rayon 100px d'un waypoint.
 // Si l'user sort à >200px puis y revient, vibre à nouveau. Empêche la

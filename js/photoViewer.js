@@ -288,7 +288,7 @@
       '</div>' +
       '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-prev" title="' + window.I18n.t("photoviewer.prev") + '">◂</button>' +
       '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-next" title="' + window.I18n.t("photoviewer.next") + '">▸</button>';
-      // 🆕 v1.9.3-B1d-fix4 (KARMA "enlève la note qui explique comment
+      // (KARMA "enlève la note qui explique comment
       // zoomer") : retrait du hint en bas. Les gestures sont devenus
       // évidentes pour l'user après une utilisation, et le hint masquait
       // une partie de l'image en landscape mobile.

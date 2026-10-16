@@ -94,7 +94,7 @@
       // Le navigateur peut relâcher sans qu'on demande (batterie critique,
       // onglet caché, décision du système).
       //
-      // 🩸 v1.85.2 — AVANT, on se contentait de vider le sentinel en comptant
+      // 🩸 AVANT, on se contentait de vider le sentinel en comptant
       // sur un `visibilitychange → visible` pour reprendre. Quand le système
       // relâche le verrou TOUT SEUL, sans que l'onglet ait bougé, ce
       // changement n'arrive JAMAIS : la préférence restait à `true`, la case
@@ -132,7 +132,7 @@
     _notify();
   }
 
-  // 🩸 v1.85.2 — REND LE RESULTAT REEL. Avant, la fonction ne rendait rien :
+  // 🩸 REND LE RESULTAT REEL. Avant, la fonction ne rendait rien :
   // l appelant affichait « 🔆 Ecran maintenu allume » sans savoir si le verrou
   // avait ete pose. Quand le navigateur refuse — pas de geste utilisateur,
   // batterie faible, ou implementation qui accepte puis ignore — l app MENTAIT.
@@ -151,7 +151,7 @@
     return false;
   }
 
-  // 🩸 v1.85.2 — LE VERROU FANTÔME (retour KARMA, iPhone 17 Pro en PWA).
+  // 🩸 LE VERROU FANTÔME (retour KARMA, iPhone 17 Pro en PWA).
   // Symptôme : « je coche, ça marche ; je quitte l'app, je relance, la case
   // est cochée mais ça ne marche plus ; je décoche/recoche et ça repart ».
   //
@@ -195,7 +195,7 @@
   // lettre morte. Le premier tap sur l ecran sert de rattrapage. Une seule
   // fois : le listener se retire des qu il a servi.
   // `forcer` : on RELÂCHE avant de reprendre, même si un sentinel est en main.
-  // C'est le cas du retour d'un lancement à froid — cf. `_rearmerApresBoot`.
+  // C'est le cas du retour d'un lancement à froid — cf. `init()`.
   let _gesteArme = false;
   function _reprendreAuPremierGeste(forcer) {
     if (!_enabled) return;

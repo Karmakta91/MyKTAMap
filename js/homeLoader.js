@@ -31,7 +31,7 @@
       }
       if (loadBtn) loadBtn.disabled = false;
 
-      // 🆕 v1.9.2-hotfix-loader-header : symétrique d'afficherLoader →
+      // symétrique d'afficherLoader →
       // retire la classe pour ré-afficher le header + statusbar refonte.
       // Cf. js/main.js afficherLoader() pour le rationale détaillé.
       document.body.classList.remove("kta-loader-active");
@@ -43,7 +43,7 @@
       const zipDropZone     = document.getElementById("zipDropZone");
       const zipFileInput    = document.getElementById("zipFile");
       const zipFileName     = document.getElementById("zipFileName");
-      // v1.7.3 : le bouton "📥 Conf exemple" a été déplacé dans la modale
+      // le bouton "📥 Conf exemple" a été déplacé dans la modale
       // 🏗️ Générateur de plan (cf createConf.js). La const ci-dessous est
       // gardée à null pour rétro-compat avec le handler plus bas (lookup
       // null-safe). Si le bouton n'existe pas → handler skip.
@@ -112,7 +112,7 @@
         let planConfigFile = null;
         const assetFiles = [];
 
-        // 🐛 v1.34.10 (Pack RAM Phase 1 — dry-run logging) :
+        // (Pack RAM Phase 1 — dry-run logging) :
         // Préparation à la re-attaque v1.35.0 (lazy tile extraction).
         // v1.35.0 cassait l'image principale car le regex `^data/tiles/z-?\d+/`
         // pouvait catcher des assets référencés par plan-config (ex. baseImage).
@@ -134,12 +134,12 @@
             }
             _addPath(planConfig.plan && planConfig.plan.baseImage);
             _addPath(planConfig.plan && planConfig.plan.collisionImage);
-            // 🆕 v1.34.19 — Champ `histoirePdf` (PDF embarqué pour Mode Histoire).
+            // Champ `histoirePdf` (PDF embarqué pour Mode Histoire).
             // À garder eager : c'est typiquement un PDF de taille modérée
             // (1-10 Mo) consulté à la demande user, lazy n'apporte rien et
             // simplifie le rendu iframe (qui veut une URL stable).
             _addPath(planConfig.plan && planConfig.plan.histoirePdf);
-            // 📄 v1.71.0 — multi-PDF Histoire
+            // multi-PDF Histoire
             if (planConfig.plan && Array.isArray(planConfig.plan.histoirePdfs)) {
               planConfig.plan.histoirePdfs.forEach(_addPath);
             }
@@ -154,7 +154,7 @@
         }
 
         // === Pass 2 : extraction (eager pour assets référencés + stub pour tuiles) ===
-        // 🐛 v1.34.11 (Phase 2) : activation du VRAI lazy tile.
+        // (Phase 2) : activation du VRAI lazy tile.
         // Les tuiles dans /data/tiles/ qui ne sont PAS dans la whitelist sont
         // poussées comme STUBS (sans blob extrait) → grosse économie RAM au boot.
         // Le blob sera extrait à la demande par _extractLazyAsset (config.js) au
@@ -172,7 +172,7 @@
 
           // === DÉCISION : stub vs eager ===
           if (matchesTilePath && !isReferenced) {
-            // 🐛 v1.34.11 — STUB : objet plain avec _lazyTile flag (pas un File).
+            // STUB : objet plain avec _lazyTile flag (pas un File).
             // Le blob sera extrait à la demande via window._lazyZipRef.
             // Note : on garde `name` (basename) + `_fullPath` (path complet ZIP)
             // pour compatibilité avec findMatchingFile / startImportedPlan.
@@ -210,7 +210,7 @@
 
         console.log("[LazyTiles v1.34.11] Bilan : " + stubCount + " tuile(s) stube (lazy) + " + eagerCount + " asset(s) extrait eager + " + canariCount + " canari(s) détecté(s).");
 
-        // 🐛 v1.34.11 (corrigé v1.34.12) — Garde la référence au ZIP source pour
+        // (corrigé v1.34.12) — Garde la référence au ZIP source pour
         // extraction lazy ultérieure. ATTENTION : on N'ASSIGNE PAS directement à
         // window._lazyZipRef ici car startImportedPlan invoque immédiatement
         // _libererRessourcesPlanPrecedent → resetRuntimeAssets qui nullify
@@ -240,7 +240,7 @@
       zipDropZone.addEventListener("click", function () {
         zipFileInput.click();
       });
-      // 🗺️ v1.75.2 — extensions routées vers « Convertir depuis un SIG ».
+      // extensions routées vers « Convertir depuis un SIG ».
       // `.kmz` en est VOLONTAIREMENT absent : il part vers l'import KMZ
       // historique (celui qui reconstruit un plan depuis un GroundOverlay).
       // Un KMZ purement vectoriel y sera refusé — le message de refus renvoie
@@ -254,7 +254,7 @@
       // 🗺️ GeoTIFF : un plan scanne puis cale dans QGIS. Meme lecon que le SIG
       // en v1.75.2 — l'accueil est l'endroit evident ou deposer un fichier, et
       // un .tif y tombait sur « le fichier doit etre une archive .zip ».
-      // 🚑 06/10/2026 — un fichier du Mode Secours (.mkmsec.json, rapport) déposé ici partait
+      // un fichier du Mode Secours (.mkmsec.json, rapport) déposé ici partait
       // à la conversion SIG (tout .json y va). On lit le DÉBUT du contenu (les messageries
       // renomment) : un « myktamap-secours-… » part au Mode Secours, le reste au SIG.
       function _routerSig(f) {
@@ -310,7 +310,7 @@
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
-        // v1.14.20-hotfix6 / v1.15.0 — route KMZ et GPX vers leur modale
+        // route KMZ et GPX vers leur modale
         // d'import dédiée. Pour un ZIP MyKTAMap classique : flow direct.
         const lower = f.name.toLowerCase();
         if (lower.endsWith(".kmz")) {
@@ -333,7 +333,7 @@
           }
           return;
         }
-        // 🗺️ v1.75.2 (retour KARMA « l'endroit où on importe nos données SIG
+        // (retour KARMA « l'endroit où on importe nos données SIG
         // est mal indiqué ») — L'ACCUEIL LES REFUSAIT PUREMENT ET SIMPLEMENT.
         // La conversion SIG n'était atteignable que depuis la zone d'import DU
         // GÉNÉRATEUR ; ici, un .geojson tombait sur « le fichier doit être une
@@ -379,7 +379,7 @@
           zipFileInput.files = dt.files;
           zipFileName.textContent = "✅ " + f.name;
         } else if (lower.endsWith(".kmz")) {
-          // v1.14.20-hotfix6 — route KMZ vers la modale d'import dédiée
+          // route KMZ vers la modale d'import dédiée
           // (parse + reconstruction en ZIP MyKTAMap avec icônes/annotations
           // préservées).
           if (typeof window.afficherImporterKmz === "function") {
@@ -389,7 +389,7 @@
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.kmzUnavailable") : "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là."), true);
           }
         } else if (lower.endsWith(".gpx")) {
-          // v1.15.0 — route GPX vers la nouvelle modale d'import GPX
+          // route GPX vers la nouvelle modale d'import GPX
           // (parse + canvas vierge auto-calibré + reconstruction ZIP
           // MyKTAMap). Cohérent avec le flow KMZ.
           if (typeof window.afficherImporterGpx === "function") {
@@ -399,7 +399,7 @@
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
         } else if (_estFichierSig(lower)) {
-          // 🗺️ v1.75.2 — même routage que la sélection par clic (cf. plus haut).
+          // même routage que la sélection par clic (cf. plus haut).
           if (lower.endsWith(".json")) _routerJson(f); else _routerSig(f);
         } else if (_estGeoTiff(lower)) {
           // 🗺️ GeoTIFF — même routage que la sélection par clic (cf. plus haut).
@@ -415,7 +415,7 @@
         }
       });
 
-      // 📦 v1.94.0 — import multiple. Le module vit à part : ce bouton ne fait
+      // import multiple. Le module vit à part : ce bouton ne fait
       // que l'ouvrir, et le DIT si le module manque plutôt que de rester inerte.
       const impMasseBtn = document.getElementById("loaderImportMasseBtn");
       if (impMasseBtn) {
@@ -426,7 +426,7 @@
       }
 
       // 💾 UN SEUL MÉCANISME DE PERSISTANCE : la copie du ZIP dans l'app.
-      // 🩸 15/09/2026 (KARMA : « Autoriser l'accès permanent a l'air de servir
+      // 🩸 (KARMA : « Autoriser l'accès permanent a l'air de servir
       // à rien et faire doublon ») — exact. Sur Chrome/Edge le bouton 🔐 était
       // affiché À LA PLACE de la case « Mémoriser », mais la case restait
       // cochée sous le masque et `onLoadPlanClick` lit son état, pas sa
@@ -449,7 +449,7 @@
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
       // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
       // =========================
-      // 🔄 v1.73.1 — MÊME PLAN RÉIMPORTÉ : MISE À JOUR AU LIEU DE DOUBLON
+      // MÊME PLAN RÉIMPORTÉ : MISE À JOUR AU LIEU DE DOUBLON
       // =========================
       // (KARMA « j'importe le même plan des jours après → il duplique »)
       // Rappel du modèle : l'id d'un plan local est DÉRIVÉ de nom+version
@@ -465,7 +465,7 @@
       }
 
       // Retourne l'entrée locale de MÊME NOM, ou null.
-      // 🐛 v1.79.1 (KARMA « même nom → pas de popup, et le plan ne s'ajoute
+      // (KARMA « même nom → pas de popup, et le plan ne s'ajoute
       // jamais à la liste ») — l'ancien filtre exigeait même auteur ET version
       // DIFFÉRENTE (« version identique → même id, déjà géré ») : un ZIP
       // régénéré (même nom + même version) passait sous le radar et ÉCRASAIT
@@ -530,7 +530,7 @@
         });
       }
 
-      // 🩸 14/10/2026 (retour KARMA, iPhone) : « The object can not be found here » (NotFoundError) — le fichier
+      // 🩸 « The object can not be found here » (NotFoundError) — le fichier
       // vient d'IndexedDB et son enregistrement a été remplacé entre-temps (WebKit efface alors les données du
       // Blob qu'on lisait). L'ouverture restait sur l'accueil ; il fallait recliquer 2-3 fois.
       function _blobPerdu(e) {
@@ -562,7 +562,7 @@
           zipFile = neuf;
           if (meta && meta.zipFile) meta.zipFile = neuf;
         }
-        // 🆕 v1.42.0 — Kill-switch anti-fuite : check denylist AVANT extraction.
+        // Kill-switch anti-fuite : check denylist AVANT extraction.
         // Si le ZIP a une empreinte SHA-256 dans denylist.json côté serveur, on
         // refuse l'ouverture, on supprime le plan du registre, on affiche
         // une modale rouge explicative. Aucun hash envoyé au serveur (privacy).
@@ -586,7 +586,7 @@
             console.warn("[Loader] Check denylist échec — chargement autorisé :", eDeny.message);
           }
         }
-        // 🆕 v1.42.3 — Cache le hash dans le PlanRegistry APRÈS chargement réussi
+        // Cache le hash dans le PlanRegistry APRÈS chargement réussi
         // pour que l'audit au prochain boot puisse skip le re-hash (perf gain).
         // L'id du plan local est dispo dans meta.planId si le caller l'a passé,
         // sinon on attendra l'audit suivant pour faire le hash (= sans regret).
@@ -630,7 +630,7 @@
             throw new Error(_t("home.loader.errStep", { step: _step }) + _m);
           }
 
-          // 🔄 v1.73.1 — Détection « même plan, autre version » (UNIQUEMENT sur
+          // Détection « même plan, autre version » (UNIQUEMENT sur
           // un import frais : si meta.planId est déjà posé, le caller vise une
           // entrée précise — rechargement depuis la liste, re-sélection de
           // fichier — et rien ne doit être demandé).
@@ -659,7 +659,7 @@
                   console.log("[Loader] 🔄 Mise à jour du plan existant :", _exist.id,
                               "(v" + (_exist.version || "—") + " → v" + (_infosPlan.version || "—") + ")");
                 }
-                // 🐛 v1.79.1 — « Garder les deux » avec nom + version IDENTIQUES :
+                // « Garder les deux » avec nom + version IDENTIQUES :
                 // l'id naturel genLocalId(nom, version) collisionne avec
                 // l'existant → sans suffixe, addOrUpdate aurait fusionné les
                 // deux plans en une seule entrée (le « garder les deux » mentait).
@@ -693,7 +693,7 @@
           }
 
           setStatus(_t("home.loader.loadedOk"));
-          // 🆕 v1.42.3 — cache le hash SHA-256 dans le PlanRegistry pour
+          // cache le hash SHA-256 dans le PlanRegistry pour
           //    accélérer l'audit denylist au prochain boot.
           _cacheHashAfterLoad();
           if (window.masquerLoader) window.masquerLoader();
@@ -757,7 +757,7 @@
         });
       }
 
-      // 🆕 v1.48.0 — Éditeur de données du plan accessible depuis le home
+      // Éditeur de données du plan accessible depuis le home
       // (modale autoportante : depuis le home, pas de "plan en cours" → seules
       // les sources ZIP + JSON s'affichent, cf tableEditor.js > _afficherAccueil).
       const tableEditorBtn = document.getElementById("loaderTableEditorBtn");
@@ -769,7 +769,7 @@
         });
       }
 
-      // 🔽 v1.71.0 (KARMA) — Footer repliable : gagne la hauteur du bloc
+      // Footer repliable : gagne la hauteur du bloc
       // copyright pour le contenu. État persisté (et exporté avec le profil).
       const LS_FOOTER_REPLIE = "myktamap_home_footer_replie_v1";
       const footerToggle = document.getElementById("loaderFooterToggle");
@@ -782,7 +782,7 @@
         footerToggle.textContent = replie
           ? "▴ © 2026 MyKTAMap · " + ((window.__MKM__ && window.__MKM__.build) || "")
           : "▾";
-        // 🔌 v2.0.0 — Replié, le bloc masque aussi la pastille de connexion
+        // Replié, le bloc masque aussi la pastille de connexion
         // serveur : ktaExtensions repose son icône sur ce bouton (le
         // textContent ci-dessus vient de l'effacer).
         if (window.KtaExtensions && typeof window.KtaExtensions.peindre === "function") {
@@ -798,7 +798,7 @@
         try { _appliquerFooter(localStorage.getItem(LS_FOOTER_REPLIE) === "1"); } catch(e) {}
       }
 
-      // 🔎 v1.69.0 — Recherche multi-plans : n'est plus un bouton d'outil mais
+      // Recherche multi-plans : n'est plus un bouton d'outil mais
       // une BARRE entre « Reprendre » et la liste des plans (allègement du HOME
       // demandé par KARMA). Entrée ou clic sur 🔎 ouvre la modale de résultats
       // avec la saisie reprise. On n'ouvre PAS à chaque frappe : le scan des
@@ -822,7 +822,7 @@
         });
       }
 
-      // 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») — résultats EN
+      // (KARMA « même principe que la barre OSM ») — résultats EN
       // DIRECT sous la barre, sans passer par la modale. Scan via l'API
       // CrossPlanSearch.rechercher (cache RAM partagé avec la modale, TTL
       // 2 min). Entrée / 🔎 / « Voir tout » = modale complète (exhaustive).
@@ -935,7 +935,7 @@
         });
       }
 
-      // 📔 v1.69.0 — Le Carnet depuis le home : timeline de toutes les sorties
+      // Le Carnet depuis le home : timeline de toutes les sorties
       // archivées, tous plans confondus (aucun plan à charger).
       const journalBtn = document.getElementById("loaderJournalBtn");
       if (journalBtn) {
@@ -948,7 +948,7 @@
         });
       }
 
-      // 🌀 v1.59.0 (A3) — Gestionnaire de liaisons inter-plan depuis le home :
+      // (A3) — Gestionnaire de liaisons inter-plan depuis le home :
       // vue globale du registre (état, navigation, suppression), sans plan chargé.
       const linksMgrBtn = document.getElementById("loaderLinksMgrBtn");
       if (linksMgrBtn) {
@@ -961,7 +961,7 @@
         });
       }
 
-      // 🔗 v1.55.0 — Fusionneur de datalayers. 🧹 v1.69.0 : son bouton a quitté
+      // Fusionneur de datalayers. 🧹 v1.69.0 : son bouton a quitté
       // le HOME (allègement demandé par KARMA) — il vit désormais comme 4e
       // source de l'Éditeur de données (`tableEditor.js > kta-tbl-src-fusion`),
       // qui appelle le même `ouvrirExportSessionModal("fusion", true)`.
@@ -1015,7 +1015,7 @@
       }
 
             // ══════════════════════════════════════════════════════════════
-      // 💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE (plans SERVEUR)
+      // BOUTON HORS-LIGNE SUR LA LIGNE (plans SERVEUR)
       // ══════════════════════════════════════════════════════════════
       // Demande KARMA : « offline first oblige, on doit avoir le bouton pour
       // télécharger hors-ligne le plan serveur directement depuis le home ;
@@ -1219,7 +1219,7 @@
       }
 
 function planRowHTML(plan) {
-        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // 🧩 v2.7.0 : ☁️ = plan d'extension
+        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // ☁️ = plan d'extension
         // Badge de persistance (plans locaux) — différencier visuellement les
         // modes de stockage (blob/fsHandle/pick).
         let badgeStorage = "";
@@ -1242,8 +1242,8 @@ function planRowHTML(plan) {
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
         // Si aucun flag → badge V1 implicite (mode classique).
-        // 📐 v170 : les badges modes passent sur LIGNE 2 (sous le nom du plan)
-        // — la ligne 1 contient juste le nom + version + badge storage. Évite
+        // 📐 v170 : les badges modes passent en 2e LIGNE (sous le nom du plan)
+        // — la 1re ligne contient juste le nom + version + badge storage. Évite
         // que les noms longs poussent les badges modes en ellipsis.
         let badgesMode = "";
         if (plan.tiledV2 === true) {
@@ -1256,12 +1256,12 @@ function planRowHTML(plan) {
           badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="' + _homeT("home.plans.mode.v1", "Plan classique (mono-niveau, image entière en RAM)") + '">V1</span>';
         }
         // Structure (v170 suite 3 — épuration affichage compact) :
-        // - .plan-row-title = ligne 1 : nom (ellipsis) + version uniquement
-        // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL + badge storage (✅/🔐/📁)
+        // - .plan-row-title = 1re ligne : nom (ellipsis) + version uniquement
+        // - .plan-row-modes = 2e ligne : badges V1/V2/M-LVL + badge storage (✅/🔐/📁)
         // - Sub (nom zip + taille) et date d'ouverture déplacés vers la
         //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
         //   Allège la liste, surtout quand on en a beaucoup.
-        // 🏷️ v1.78.0 — tags du plan en mini-chips sur la ligne 2 (après les
+        // tags du plan en mini-chips sur la 2e ligne (après les
         // badges de mode) + bouton ⭐/☆ d'épinglage dans les actions.
         let tagsHtml = "";
         if (Array.isArray(plan.tags) && plan.tags.length) {
@@ -1272,7 +1272,7 @@ function planRowHTML(plan) {
         const pinTitle = plan.pinned
           ? _homeT("home.plans.unpinTitle", "Désépingler ce plan")
           : _homeT("home.plans.pinTitle", "Épingler ce plan en tête de liste");
-        // 📁 16/09/2026 — dossier du plan : pastille de couleur devant le nom
+        // dossier du plan : pastille de couleur devant le nom
         // (dans les deux modes), case de sélection et bouton « Déplacer vers »
         // (mode Dossiers seulement — le mode TOUT reste l'écran d'avant).
         const _fid  = window.PlanRegistry.planFolderId ? window.PlanRegistry.planFolderId(plan) : null;
@@ -1314,12 +1314,12 @@ function planRowHTML(plan) {
         `;
       }
 
-      // 🏷️ v1.78.0 — ORGANISATION DE LA LISTE (décision KARMA « 1, 3, 4 ») :
+      // ORGANISATION DE LA LISTE (décision KARMA « 1, 3, 4 ») :
       // tags par plan (chips-filtres, édition dans ℹ️ Infos), épinglage ⭐
       // (remonte en tête), filtre par nom. Les filtres sont RAM only.
       let _plansNameFilter = "";     // minuscule, "" = pas de filtre
       let _plansTagFilter  = null;   // Set<string> (clés minuscules) | null
-      // 📁 16/09/2026 — mode Dossiers : état d'écran (le registre est la source
+      // mode Dossiers : état d'écran (le registre est la source
       // du mode, des dossiers et des appartenances ; ici, seulement l'éphémère).
       let _plansVue = "all";                 // "all" | "folders", relu à chaque rendu
       let _plansSelectMode = false;          // sélection multiple (mode Dossiers)
@@ -1346,7 +1346,7 @@ function planRowHTML(plan) {
         localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
       }
 
-      // 🆕 v1.21.3 (KARMA "ne pas charger les plan serveur au démarrage") :
+      // (KARMA "ne pas charger les plan serveur au démarrage") :
       // pref dédiée — désactive l'auto-discovery serveur (`data/index.json`)
       // au boot, masque le toggle "Afficher plans serveur" du home, et filtre
       // les plans `type === "server"` des stats agrégées du bandeau profil.
@@ -1538,7 +1538,7 @@ function planRowHTML(plan) {
           rows.push({ label: _t("home.plans.info.keyPersistence"), value: storageLabel, mono: false });
         }
         rows.push({ label: _t("home.plans.info.keyMode"), value: modesLabel, mono: false });
-        // 🖼️ v1.90.2 — le preset n'est plus une ligne de tableau en lecture
+        // le preset n'est plus une ligne de tableau en lecture
         // seule : il est devenu un CONTRÔLE, plus bas, et seulement pour les
         // plans que ça concerne (cf. `tuilageHtml`).
         pushRow(_t("home.plans.info.keyAddedAt"),    plan.addedAt    ? fmtDate(plan.addedAt)    : null);
@@ -1585,7 +1585,7 @@ function planRowHTML(plan) {
                  '</tr>';
         }).join("");
 
-        // 💾 v1.74.0 — RÉCUPÉRATION DU ZIP (demande KARMA : « j'ai supprimé les
+        // RÉCUPÉRATION DU ZIP (demande KARMA : « j'ai supprimé les
         // zip de mon PC, le seul truc qui subsiste c'est la DB du navigateur »).
         // L'export de profil n'embarque PAS les archives (exclu par design, cf.
         // profileExportImport.js) — sans ce bouton, un ZIP mémorisé dans le
@@ -1598,7 +1598,7 @@ function planRowHTML(plan) {
         //   • storedBlob        → actif
         //   • fsHandle / re-pick → grisé + raison (le ZIP vit sur le disque, pas ici)
         let dlHtml = "";
-        // 15/10/2026 (KARMA : « en pro on ne peut pas télécharger un plan en base depuis la fiche ») — un plan
+        // (KARMA : « en pro on ne peut pas télécharger un plan en base depuis la fiche ») — un plan
         // d'une extension (type "ext", plan de l'installation) a lui aussi une copie gardée sur l'appareil :
         // bouton actif si elle est là, grisé avec la raison sinon. 16/10/2026 : pas de verrou d'export ici (seule
         // la session est gardée, ktaExportPlanRefuse).
@@ -1632,7 +1632,7 @@ function planRowHTML(plan) {
           }
         }
 
-        // 💾 v1.87.0 — DISPONIBILITÉ HORS-LIGNE (plans SERVEUR uniquement).
+        // DISPONIBILITÉ HORS-LIGNE (plans SERVEUR uniquement).
         // Un plan local vit déjà dans IndexedDB ; un plan serveur, non : il ne
         // survivait que par le cache au vol du SW, plafonné à 800 entrées et
         // purgé à chaque release. Cf js/planOffline.js pour le détail.
@@ -1662,9 +1662,9 @@ function planRowHTML(plan) {
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
               '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
-              // 🏷️ v1.78.0 — édition des tags du plan (saisie libre, séparés
+              // édition des tags du plan (saisie libre, séparés
               // par des virgules ; normalisation côté PlanRegistry.setTags).
-              // ✏️ v1.79.1 — renommage d'AFFICHAGE (cas KARMA : deux plans
+              // renommage d'AFFICHAGE (cas KARMA : deux plans
               // homonymes d'auteurs différents). Le vrai nom (table keyName
               // ci-dessus) reste intact : re-sélection de ZIP, session et
               // détection de doublon continuent de s'y référer.
@@ -1709,7 +1709,7 @@ function planRowHTML(plan) {
                       escapeHtml(_t("home.plans.info.publishHint")) + '</div>' +
                   '</div>'
                 : '') +
-              // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
+              // la suppression vit ICI, en fin de modale
               // (le ✕ de la liste est retiré : clic accidentel trop facile).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                 '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
@@ -1719,13 +1719,13 @@ function planRowHTML(plan) {
           '</div>';
         document.documentElement.appendChild(modal);
 
-        // 🧹 v1.78.0 — suppression du plan depuis la modale (ktaConfirm,
+        // suppression du plan depuis la modale (ktaConfirm,
         // règle D-confirm : nouveaux usages jamais en confirm() natif).
-        // 🧹 v1.79.3 (décision KARMA) — la suppression PURGE aussi les
+        // la suppression PURGE aussi les
         // données associées (session, géoref, photos, backups) via
         // PlanRegistry.purgeAssociatedData ; le confirm LISTE ce qui part.
         // Carnet, récits (PDF/notes Histoire) et liaisons sont conservés.
-        // 💾 v1.87.0 — ZONE HORS-LIGNE : rendue depuis le CACHE RÉEL, à chaque
+        // ZONE HORS-LIGNE : rendue depuis le CACHE RÉEL, à chaque
         // ouverture de la fiche et après chaque action.
         // 🩸 Trois états, et le bouton de téléchargement DISPARAÎT quand le plan
         // est complet — il devient « mettre à jour ». Exigence KARMA : « ne plus
@@ -1755,7 +1755,7 @@ function planRowHTML(plan) {
                       escapeHtml(_t("home.plans.offline.complet", { n: st.total, date: _fmtQuand(st.date) })) +
                       '</span>';
             } else if (st.etat === "partiel") {
-              // 🩸 v1.87.1 — Le plan est utilisable : tout ce que le serveur a
+              // 🩸 Le plan est utilisable : tout ce que le serveur a
               // servi est là. Ce qui manque, il ne l'a pas. On le DIT au lieu
               // de laisser un « incomplet » perpétuel (constat KARMA).
               html += '<span style="color:#f4c542;">' +
@@ -1834,7 +1834,7 @@ function planRowHTML(plan) {
               });
             });
 
-            // 🔎 v1.88.0 — FRAÎCHEUR. Un plan pré-téléchargé est servi depuis
+            // FRAÎCHEUR. Un plan pré-téléchargé est servi depuis
             // son cache dédié, que rien ne purge : il pouvait donc servir du
             // contenu périmé INDÉFINIMENT, et rien ne le disait. On sonde le
             // serveur en conditionnel (304 = inchangé) sur tout SAUF les
@@ -1869,7 +1869,7 @@ function planRowHTML(plan) {
         if (btnRemove) {
           btnRemove.addEventListener("click", async function() {
             const msg = _t("home.plans.confirmRemove") + "\n\n" + _t("home.plans.confirmRemovePurge");
-            // 🗑️ 29/09/2026 (décision KARMA) — les documents d'histoire survivent
+            // les documents d'histoire survivent
             // au plan par défaut (design v1.69 : l'histoire survit aux plans),
             // mais restaient ensuite orphelins dans le Carnet. Une case, décochée,
             // propose de les emporter, avec leur poids réel mesuré ICI.
@@ -1905,7 +1905,7 @@ function planRowHTML(plan) {
           });
         }
 
-        // ✏️ v1.79.1 — renommage d'affichage (vide = retour au nom d'origine)
+        // renommage d'affichage (vide = retour au nom d'origine)
         // ☁️ Publication d'un plan local sur l'installation reliée : l'archive gardée sur
         // l'appareil si elle existe, sinon le fichier ZIP choisi par l'utilisateur.
         const btnPublish = document.getElementById("kta-plan-publish");
@@ -1994,7 +1994,7 @@ function planRowHTML(plan) {
           });
         }
 
-        // 🖼️ v1.90.2 — TUILAGE POUR CE PLAN. Enregistré au changement, sans
+        // TUILAGE POUR CE PLAN. Enregistré au changement, sans
         // bouton : deux valeurs, aucun risque de saisie à moitié faite.
         // 🩸 Le `<select>` n'existe pas sur un plan V2 — d'où le test. Sans
         // lui, `addEventListener` sur null jetait et tuait le câblage des tags
@@ -2008,7 +2008,7 @@ function planRowHTML(plan) {
           });
         }
 
-        // 🏷️ v1.78.0 — sauvegarde des tags (split virgules, normalisation
+        // sauvegarde des tags (split virgules, normalisation
         // dans PlanRegistry.setTags : trim, vides, doublons, 12×24 max).
         const btnTags = document.getElementById("kta-plan-tags-save");
         if (btnTags) {
@@ -2079,7 +2079,7 @@ function planRowHTML(plan) {
         if (!window.PlanRegistry) return;
         const all = window.PlanRegistry.getAll();
         const last = window.PlanRegistry.getLastOpened();
-        _plansVue = _lireVuePlans();   // 📁 16/09/2026
+        _plansVue = _lireVuePlans();
         _majEnteteVuePlans();
 
         // Bouton Reprendre
@@ -2095,7 +2095,7 @@ function planRowHTML(plan) {
 
         // Liste unique
         const myPlansBox = document.getElementById("myPlansBox");
-        // 🔎 v1.69.0 : la barre de recherche suit la liste — proposer de
+        // la barre de recherche suit la liste — proposer de
         // chercher dans une bibliothèque vide n'a aucun sens.
         const searchBar = document.getElementById("loaderSearchBar");
         if (all.length === 0) {
@@ -2110,7 +2110,7 @@ function planRowHTML(plan) {
         // Si l'user a décoché → on retire tous les plans type === "server" de
         // la liste (mais on les laisse dans le PlanRegistry — c'est juste un
         // filtre d'affichage, ré-active toujours possible via le toggle).
-        // 🆕 v1.21.3 : nouvelle pref `skipServerPlans` (Configuration loader).
+        // nouvelle pref `skipServerPlans` (Configuration loader).
         // Si actif → on FORCE le filtre serveur (peu importe le toggle home,
         // qui est de toute façon masqué visuellement). Cohérent avec le
         // message "le toggle disparaît" demandé par KARMA.
@@ -2131,7 +2131,7 @@ function planRowHTML(plan) {
         // Configuration restait décochée et la rangée de l'accueil visible mais sans effet (audit 05/10/2026).
         const cbSkip = document.getElementById("loaderSkipServerPlansCb");
         if (cbSkip) cbSkip.checked = skipServer;
-        // 11/10/2026 (retour KARMA) : aucun plan dans data/ → ni la case de l'accueil, ni la section de Configuration.
+        // aucun plan dans data/ → ni la case de l'accueil, ni la section de Configuration.
         // Exception : « Ne pas charger les plans du site » ACTIVE — la liste du site n'est alors pas lue, on ne sait
         // pas si elle a des plans, et l'option doit rester visible pour pouvoir être désactivée.
         const aDesPlansSite = all.some(function(p) { return p.type === "server"; });
@@ -2140,7 +2140,7 @@ function planRowHTML(plan) {
         const sectionSite = document.getElementById("loaderSitePlansSection");
         if (sectionSite) sectionSite.style.display = (!skipServer && !aDesPlansSite) ? "none" : "";
 
-        // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
+        // CHIPS TAGS : union des tags des plans visibles (avant
         // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).
         // Le bandeau n'existe à l'écran que si au moins un plan est tagué —
         // zéro impact pour qui n'utilise pas la feature. Le Set de filtre est
@@ -2201,15 +2201,15 @@ function planRowHTML(plan) {
           }
         }
 
-        // 📁 16/09/2026 — en mode Dossiers le bandeau de chips disparaît (c'est
+        // en mode Dossiers le bandeau de chips disparaît (c'est
         // lui qui déborde à 50 plans) et le filtre par étiquette ne s'applique
         // pas ; le filtre par nom, lui, agit à l'intérieur des dossiers.
         if (_plansVue === "folders" && chipsBox) { chipsBox.style.display = "none"; chipsBox.innerHTML = ""; }
 
-        // 🏷️ v1.78.0 — filtres nom + tags (RAM only, sur la liste déjà
+        // filtres nom + tags (RAM only, sur la liste déjà
         // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
         const visibles = filtered.filter(function(p) {
-          // ✏️ v1.79.1 — le filtre matche le nom AFFICHÉ **et** le nom réel
+          // le filtre matche le nom AFFICHÉ **et** le nom réel
           // (retrouver « Releve KARMA » ou « Relevé » doit marcher pareil).
           if (_plansNameFilter &&
               String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
@@ -2223,7 +2223,7 @@ function planRowHTML(plan) {
 
         const allPlansList = document.getElementById("allPlansList");
         if (allPlansList && _plansVue === "folders") {
-          _rendreDossiers(allPlansList, visibles);   // 📁 16/09/2026
+          _rendreDossiers(allPlansList, visibles);
         } else if (allPlansList) {
           if (visibles.length === 0) {
             // Cas particulier : registre non vide mais filtres cachent tout
@@ -2237,14 +2237,14 @@ function planRowHTML(plan) {
               if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
               if (a.lastOpened) return -1;
               if (b.lastOpened) return 1;
-              return (a.displayName || a.name || "").localeCompare(b.displayName || b.name || ""); // ✏️ v1.79.1 : tri sur le nom affiché
+              return (a.displayName || a.name || "").localeCompare(b.displayName || b.name || ""); // tri sur le nom affiché
             });
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
         }
         if (_plansVue === "folders") _ktaMobileCollapseDossiers();   // 📁 par dossier déplié
-        else _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
-        // 💾 v1.90.0 — l'état hors-ligne des lignes est relu à CHAQUE rendu :
+        else _ktaMobileCollapsePlans();   // liste bornée sur mobile
+        // l'état hors-ligne des lignes est relu à CHAQUE rendu :
         // il ne peut donc pas rester périmé après un téléchargement, une
         // suppression depuis la fiche, ou une purge du navigateur.
         _rafraichirBoutonsHorsLigne();
@@ -2252,10 +2252,10 @@ function planRowHTML(plan) {
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
           const id = row.dataset.id;
-          // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
+          // plus de bouton ▶️ — la row entière est cliquable
           // (listener plus bas) et porte le title « Charger ce plan ».
-          // 🏷️ v1.78.0 — toggle épinglage (⭐/☆), sans charger le plan
-          // 💾 v1.90.0 — bouton hors-ligne de la LIGNE (plans serveur).
+          // toggle épinglage (⭐/☆), sans charger le plan
+          // bouton hors-ligne de la LIGNE (plans serveur).
           const dlBtn = row.querySelector(".kta-plan-row-dl");
           if (dlBtn) {
             dlBtn.addEventListener("click", function (ev) {
@@ -2272,7 +2272,7 @@ function planRowHTML(plan) {
               window.refreshPlansList();
             });
           }
-          // 🧹 v1.78.0 (KARMA) — le ✕ de suppression a quitté la liste : la
+          // le ✕ de suppression a quitté la liste : la
           // suppression vit désormais EN FIN de modale ℹ️ Infos (ktaConfirm).
           // Moins de risque de clic accidentel dans une liste où chaque row
           // est cliquable.
@@ -2295,8 +2295,8 @@ function planRowHTML(plan) {
       };
 
       // ═══════════════════════════════════════════════════════════════════
-      // 📁 16/09/2026 — MODE DOSSIERS DE « MES PLANS » (étude + décisions
-      // KARMA 1-11, docs/audits/2026-09-16_etude-dossiers-mes-plans.md (archivé : tag Git `archive-docs-2026-09-30`)).
+      // MODE DOSSIERS DE « MES PLANS » (étude + décisions
+      // 1-11, archivées sous le tag Git `archive-docs-2026-09-30`).
       // Contrainte stricte : « Mes plans » garde sa hauteur et sa place. Le
       // sélecteur TOUT / DOSSIERS vit dans la ligne de titre (0 px ajouté),
       // un en-tête de dossier a la hauteur d'une ligne de plan, replié par
@@ -2781,7 +2781,7 @@ function planRowHTML(plan) {
       }
 
 
-      // 📦 07/10/2026 — PLAN DÉCLARÉ PAR SON ARCHIVE dans data/index.json (`"zip": "data/x.zip"`).
+      // PLAN DÉCLARÉ PAR SON ARCHIVE dans data/index.json (`"zip": "data/x.zip"`).
       // Téléchargement avec progression. `conditionnel` : la copie gardée porte ses validateurs
       // HTTP (ETag / Last-Modified) → 304 = « la copie est à jour », rien n'est retéléchargé.
       // `cache: "no-store"` : nos en-têtes conditionnels font foi, pas le cache HTTP du navigateur
@@ -2813,7 +2813,7 @@ function planRowHTML(plan) {
         return res;
       }
 
-      // ⏱️ 07/10/2026 — VEILLEUR D'INACTIVITÉ d'un téléchargement de plan (ZIP de l'index, plan ☁️).
+      // VEILLEUR D'INACTIVITÉ d'un téléchargement de plan (ZIP de l'index, plan ☁️).
       // Retour KARMA (iPhone) : réseau perdu sur l'accueil → « Chargement du plan… » sans fin — la
       // requête ne finissait ni par une réponse ni par une erreur. Pas de délai TOTAL (300 Mo en 4G
       // faible, c'est légitime) : rien reçu en 15 s au départ, ou plus un octet pendant 20 s →
@@ -2949,7 +2949,7 @@ function planRowHTML(plan) {
           return;
         }
 
-        // 🧩 v2.7.0 — plan fourni par une extension (prise « source de plans ») :
+        // plan fourni par une extension (prise « source de plans ») :
         // l'archive vient de l'extension ; une fois ouverte elle est gardée sur
         // l'appareil (hors ligne), et l'effacement à la déconnexion la retire.
         if (plan.type === "ext") {
@@ -3011,7 +3011,7 @@ function planRowHTML(plan) {
             try {
               const blob = await window.PlanRegistry.getBlob(plan.id);
               if (blob) {
-                // 🩸 16/09/2026 — un blob rangé PAR RÉFÉRENCE (imports d'avant
+                // 🩸 un blob rangé PAR RÉFÉRENCE (imports d'avant
                 // la copie réelle, cf. PlanRegistry.saveBlob) a la bonne taille
                 // mais ne se lit plus si le fichier d'origine a bougé. On sonde
                 // 4 octets AVANT d'y croire : sinon on tombe sur « archive
@@ -3169,7 +3169,7 @@ function planRowHTML(plan) {
         options = options || {};
         let file = null;
 
-        // 15/09/2026 : plus de sélecteur système ici (il ne servait qu'à prendre
+        // plus de sélecteur système ici (il ne servait qu'à prendre
         // une référence disque, retirée — cf. l'accueil). Champ classique partout.
         if (!file) {
           file = await new Promise(function(resolve) {
@@ -3313,7 +3313,7 @@ function planRowHTML(plan) {
         });
       }
 
-      // 📁 16/09/2026 — sélecteur TOUT / DOSSIERS (le mode est une préférence,
+      // sélecteur TOUT / DOSSIERS (le mode est une préférence,
       // mémorisée dans le registre), ➕ Nouveau dossier, ☑ Sélection.
       const vueSwitch = document.getElementById("loaderPlansViewSwitch");
       if (vueSwitch) vueSwitch.querySelectorAll("[data-view]").forEach(function(b) {
@@ -3331,7 +3331,7 @@ function planRowHTML(plan) {
         window.refreshPlansList();
       });
 
-      // 🏷️ v1.78.0 — filtre par NOM (bind unique au boot, état RAM only :
+      // filtre par NOM (bind unique au boot, état RAM only :
       // un filtre est un geste de session, pas une préférence).
       const nameFilterInput = document.getElementById("loaderPlansNameFilter");
       if (nameFilterInput) {
@@ -3341,7 +3341,7 @@ function planRowHTML(plan) {
         });
       }
 
-      // 🆕 v1.21.3 — Wire-up de la pref "Ne pas charger les plans serveur".
+      // Wire-up de la pref "Ne pas charger les plans serveur".
       // Sync au boot + change handler. Masque automatiquement le toggle
       // "Afficher plans serveur" du home si pref active (= toggle inutile
       // quand les plans serveur sont déjà skippés à la racine).
@@ -3441,7 +3441,7 @@ function planRowHTML(plan) {
       // export / import / reset).
 
       // ═══════════════════════════════════════════════════════════
-      // 📱 v1.68.0 — HOME MOBILE (lot A, ≤ 640 px, desktop intouché)
+      // HOME MOBILE (lot A, ≤ 640 px, desktop intouché)
       // ═══════════════════════════════════════════════════════════
       // Étude KARMA « interface plus dédiée mobile » (reco 1:a 2:a 3:a) :
       // ① liste des plans BORNÉE aux 5 récents + bouton « 📚 Tous mes
@@ -3490,8 +3490,8 @@ function planRowHTML(plan) {
       // none}` ≤ 640 px a été retiré en même temps (sinon outils invisibles).
 
       // ── Ponts B7 : consommés par homeProfile/homeConfig/le bloc résiduel
-      // (setStatus partout), le plan switcher du titre (chargerPlanDuRegistre,
-      // ex-ligne 5918 du monolithe) et les modales SW (onLoadPlanClick,
+      // (setStatus partout), le plan switcher du titre (chargerPlanDuRegistre)
+      // et les modales SW (onLoadPlanClick,
       // reSelectionnerZipPourPlan). Call-sites inchangés (résolution globale).
       window.setStatus = setStatus;
       window.chargerPlanDuRegistre = chargerPlanDuRegistre;

@@ -232,7 +232,7 @@
         const W = img.naturalWidth;
         const H = img.naturalHeight;
         URL.revokeObjectURL(url);
-        // 🔒 v1.63.0 (A8) : plus de bypass « déjà petite » — le blob original
+        // 🔒 (A8) : plus de bypass « déjà petite » — le blob original
         // peut porter de l'EXIF (GPS). Re-encodage systématique, qualité
         // haute (0.92) sans resize pour les petites (cf photos.js).
         const petite = (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024);
@@ -394,7 +394,7 @@
       return false;
     });
   }
-  // 🩸 29/09/2026 (relecture Secours, R7) — une étape renumérotée par
+  // 🩸 (relecture Secours, R7) — une étape renumérotée par
   // secoursMode._resyncEtapesEquipe emporte ses photos : sans ça, le quota de
   // MAX_PHOTOS_PER_ETAPE (compté par stepIdx) comptait celles d'une autre étape.
   // -2 = étape retirée (photo gardée, hors rapport). Lecture + écriture dans la
@@ -442,7 +442,7 @@
   }
 
   // ============================================================
-  // 🆕 v1.26.0 — IMPORT PHOTO depuis dataUrl (consolidation cross-device)
+  // IMPORT PHOTO depuis dataUrl (consolidation cross-device)
   // ============================================================
   // Différences avec addPhoto :
   //   - Préserve l'id source (pour dédup à l'import par id)
@@ -500,7 +500,7 @@
     generateId:                 generateId,
     compressBlob:               compressBlob,
     addPhoto:                   addPhoto,
-    importPhotoFromDataUrl:     importPhotoFromDataUrl,  // 🆕 v1.26.0
+    importPhotoFromDataUrl:     importPhotoFromDataUrl,
     getPhoto:                   getPhoto,
     getBlob:                    getBlob,
     getObjectUrl:               getObjectUrl,
@@ -510,7 +510,7 @@
     countPhotosForEtape:        countPhotosForEtape,
     countPhotosForScenario:     countPhotosForScenario,
     deletePhoto:                deletePhoto,
-    setStepIdx:                 setStepIdx,              // 🆕 29/09/2026
+    setStepIdx:                 setStepIdx,
     deletePhotosForEtape:       deletePhotosForEtape,
     deletePhotosForScenario:    deletePhotosForScenario,
     clearAll:                   clearAll,

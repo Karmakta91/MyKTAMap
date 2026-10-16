@@ -15,7 +15,7 @@ const fs = require("fs");
 const src = fs.readFileSync("js/createConf.js", "utf8");
 const d = src.indexOf("function _lireDimensionsEntete");
 if (d < 0) { console.error("❌ _lireDimensionsEntete introuvable"); process.exit(1); }
-// v1.76.2 : le bloc extrait contient l'export `window.ktaLireDimensionsEntete`
+// le bloc extrait contient l'export `window.ktaLireDimensionsEntete`
 // (réutilisé par l'éditeur de données) — stub pour l'eval hors navigateur.
 globalThis.window = globalThis.window || {};
 // eslint-disable-next-line no-eval

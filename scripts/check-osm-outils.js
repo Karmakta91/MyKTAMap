@@ -130,7 +130,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const IDX  = fs.readFileSync("index.html", "utf8");
   const SW   = fs.readFileSync("sw.js", "utf8");
 
-  // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX PRÉCÈDE LE RENDU LEVEL-AWARE.
+  // L'INIT DES NIVEAUX PRÉCÈDE LE RENDU LEVEL-AWARE.
   // À l'ouverture, le niveau -1 n'apparaissait pas alors qu'il était actif :
   // `_initVisibleLevels()` était appelé APRÈS le rendu des POI/tracés, qui
   // filtraient donc sur un `_visibleLevels` hérité de la modale précédente. Un
@@ -149,7 +149,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
       iStep6 > 0 && iInit > 0 && iInit < iStep6);
   }
 
-  // 🗺️ v1.90.11 (bug KARMA) — LE WIDGET OSM DE L'ACCUEIL SE RAFRAÎCHIT AU RETOUR
+  // LE WIDGET OSM DE L'ACCUEIL SE RAFRAÎCHIT AU RETOUR
   // HOME. Sans ça, un plan tout juste chargé (donc géoréférencé) n'apparaissait
   // dans sa Vue OSM qu'après un redémarrage complet de l'app.
   {
@@ -159,11 +159,11 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
     t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
       /OsmHomePreview\.refresh\(/.test(corps));
-    // 🗺️ v1.90.12 — …en préférant le plan qu'on vient de quitter.
+    // …en préférant le plan qu'on vient de quitter.
     t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
       /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
 
-    // 🩸 v1.90.15 (bug KARMA) — ON EXÉCUTE LE BLOC DE SÉLECTION, ON NE LE GREP
+    // 🩸 ON EXÉCUTE LE BLOC DE SÉLECTION, ON NE LE GREP
     // PLUS. La v1.90.12 appelait `_setLastSelected(preferId)` — une fonction qui
     // N'EXISTE PAS (le vrai nom est `_saveLastSelected`). `node -c` ne voit pas
     // une ReferenceError, et l'ancienne assertion GREPAIT le texte de l'appel :
@@ -197,7 +197,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     t("🗺️ …et le widget expose bien refresh()",
       /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
 
-    // 🐛 v1.90.13 (crash KARMA) — L'overlay image roté ne doit pas crasher quand
+    // L'overlay image roté ne doit pas crasher quand
     // un `img.onload` tardif tape une carte déjà détruite (re-mount du widget).
     // `_reset` doit court-circuiter si `_map` est null.
     const ROT = fs.readFileSync("lib/leaflet-imageoverlay-rotated.js", "utf8");
@@ -359,7 +359,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("le positionneur de panneau existe", fn !== null);
   t("🪟 par défaut le panneau est CENTRÉ (le défaut est la négation du réglage)",
     fn !== null && /if \(!\(window\.APP_CONFIG && window\.APP_CONFIG\.panneauxAncres === true\)\)/.test(fn));
-  // 16/10/2026 (audit ergonomie M1) : la bande utile exclut AUSSI la barre du haut et le footer de la refonte
+  // la bande utile exclut AUSSI la barre du haut et le footer de la refonte
   // (z-index 1200, au-dessus du panneau) — sinon, en paysage, le bas du panneau restait caché sous le footer.
   t("🪟 bande utile : viewport RÉEL, encoches déduites",
     fn !== null && /let haut = offY \+ safeMargin \+ insets\.top;/.test(fn) &&
@@ -390,7 +390,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("🩸 réglage : sauvegardé par le chemin CANONIQUE (sinon invisible au contrôle des prefs)",
     /existing\.panneauxAncres\s*=/.test(CFG) && /sauvegarderPrefsUtilisateur\(\)/.test(UIC));
   t("réglage : relu au chargement d'un plan", /"panneauxAncres" in saved/.test(CFG));
-  // ⚠️ v1.85.3 : l'option a MIGRÉ vers la config de l'ACCUEIL (audit KARMA —
+  // ⚠️ l'option a MIGRÉ vers la config de l'ACCUEIL (audit KARMA —
   // c'est un réglage global, il n'avait rien à faire dans la config d'un plan).
   t("réglage : la case existe dans ⚙️ Configuration de l'accueil",
     /id="loaderPanneauxAncres"/.test(fs.readFileSync("index.html", "utf8")));

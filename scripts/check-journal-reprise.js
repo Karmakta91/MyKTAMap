@@ -90,7 +90,7 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     .then(() => attend("reprise : une sortie encore `encours` n'est pas reprise",
       [rec({ status: "encours" })], (r) => r === null))
     .then(() => attend("reprise : carnet vide → rien, sans planter", [], (r) => r === null))
-    // 🔀 28/09/2026 — suspension au changement de plan (KARMA 1:a 2:b)
+    // suspension au changement de plan (KARMA 1:a 2:b)
     .then(() => attend("🔀 suspendue : une sortie suspendue il y a 1 h est reprise",
       [rec({ status: "suspendue", closedBy: null, endedAt: null,
              suspendueLe: new Date(1000000 - 3600000).toISOString() })], (r) => !!r && r.id === "s1"))

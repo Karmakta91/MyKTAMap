@@ -102,7 +102,7 @@
   function _refreshModal() {
     const zone = document.getElementById("kta-debug-logzone");
     if (!zone) return;
-    // 🆕 v1.20.0-fix1 : utilise des classes CSS (au lieu de inline colors)
+    // utilise des classes CSS (au lieu de inline colors)
     // pour permettre les overrides thème clair. Voir css/style.css >
     // `.kta-debug-log-line` + `body.kta-theme-light .kta-debug-log-*`.
     zone.innerHTML = _logBuffer.map(function(entry) {

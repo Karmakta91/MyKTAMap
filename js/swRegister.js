@@ -12,7 +12,7 @@
 
 // Enregistrement Service Worker (PWA)
 if ("serviceWorker" in navigator) {
-  // 🆕 v1.20.0 — Hook "controllerchange" pour notifier l'user quand un
+  // Hook "controllerchange" pour notifier l'user quand un
   // nouveau SW prend le contrôle pendant la session. Cas typique : on a
   // bumpé CACHE_NAME côté serveur (ex: -fixes2), le SW s'install + activate
   // + skipWaiting + clients.claim → controllerchange fire → on affiche
@@ -33,7 +33,7 @@ if ("serviceWorker" in navigator) {
     // Vraie update : un ancien controller a été remplacé.
     // Log console TOUJOURS (utile pour debug + traçabilité dans 🐛 Logs).
     console.log("[PWA] 🔄 Nouveau SW a pris le contrôle (cache mis à jour)");
-    // 🆕 v1.25.1 (KARMA "popup style log de dev en mode mise à jour") :
+    // (KARMA "popup style log de dev en mode mise à jour") :
     // Toast UNIQUEMENT en debugMode. En prod, l'user ne voit rien — le
     // log console reste pour les devs qui inspectent. Avant : toast à
     // CHAQUE bump cache → spam visuel sur les cycles dev fréquents
@@ -111,7 +111,7 @@ if ("serviceWorker" in navigator) {
     throw new Error("[PWA] kill switch — short-circuit normal load");
   })();
 
-  // 🧹 v1.75.0 — Nettoyage du cache-buster `?_=<timestamp>` (retour KARMA
+  // Nettoyage du cache-buster `?_=<timestamp>` (retour KARMA
   // « pourquoi j'ai un truc comme ça qui s'ajoute à mon URL »).
   //
   // POURQUOI IL EXISTE : `killsw.html` recharge via `/?_=<timestamp>` parce
@@ -147,7 +147,7 @@ if ("serviceWorker" in navigator) {
       .then(function (reg) {
         console.log("[PWA] Service Worker enregistré", reg);
 
-        // 🆕 v1.20.0 — Log updatefound pour traçabilité (visible dans
+        // Log updatefound pour traçabilité (visible dans
         // 🐛 Logs détaillés si debugMode ON). Aide à diagnostiquer le cas
         // où un nouveau SW s'install mais n'arrive jamais à activate
         // (ex: bug du SW lui-même).

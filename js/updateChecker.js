@@ -70,7 +70,7 @@
     }
   }
 
-  // 🚀 v1.30.0 (P6.A boot fetch timeout) : timeout 1500ms aligné avec
+  // (P6.A boot fetch timeout) : timeout 1500ms aligné avec
   // proLicense.js > FETCH_TIMEOUT_MS. Sans AbortController, un réseau
   // mobile lent pouvait laisser le fetch traîner jusqu'au timeout browser
   // (~30 s), retardant inutilement la flush des modales différées au
@@ -102,7 +102,7 @@
     }
   }
 
-  // 🩸 10/10/2026 (testeur en prod : « la mise à jour m'est demandée à chaque ouverture ») : ces écritures
+  // 🩸 (testeur en prod : « la mise à jour m'est demandée à chaque ouverture ») : ces écritures
   // n'étaient pas protégées. localStorage plein → _markSeen jetait, la version n'était jamais notée, la
   // fenêtre revenait à CHAQUE ouverture et « Plus tard » ne faisait rien. Désormais : écriture protégée
   // (ktaStockageLocal.ecrire → événement mktm:stockage-plein, qui explique à l'utilisateur quoi faire).
@@ -144,7 +144,7 @@
     try { localStorage.removeItem(LS_POSTPONED); } catch (e) { /* rien */ }
   }
 
-  // 🆕 v1.20.0 — Comparison sémantique X.Y.Z (au lieu de comparison string).
+  // Comparison sémantique X.Y.Z (au lieu de comparison string).
   // Bug latent évité : "v1.7.10" en comparaison string est lexicographiquement
   // PLUS PETIT que "v1.7.9" (parce que "1" < "9" au char[5]). Donc si on
   // utilisait `<` ou `>` quelque part, on déduirait à tort que v1.7.10 est
@@ -203,7 +203,7 @@
       return { status: "first-run", remote };
     }
 
-    // 🆕 v1.20.0 — Compare en vrai semver (au lieu d'égalité string).
+    // Compare en vrai semver (au lieu d'égalité string).
     const cmp = compareSemver(remote.version, known);
 
     // Version identique (cmp === 0) : rien à faire
@@ -213,7 +213,7 @@
       return { status: "up-to-date", version: remote.version };
     }
 
-    // 🆕 v1.20.0 — Downgrade serveur détecté (remote < known) : ne PAS proposer
+    // Downgrade serveur détecté (remote < known) : ne PAS proposer
     // une "mise à jour" qui régresse. Cas marginal (l'auteur a roll-back une
     // release sur le CDN) mais important : éviter de surprendre l'user qui
     // verrait sa version installée régresser après un clic « Mise à jour ».
@@ -311,11 +311,11 @@
 
     const known = _getKnownVersion() || (window.__MKM__ && window.__MKM__.build) || "?";
 
-    // 🆕 v1.20.0 — Compare en vrai semver (au lieu d'égalité string) pour
+    // Compare en vrai semver (au lieu d'égalité string) pour
     // gérer aussi le cas downgrade serveur (remote < known) → message neutre
     // "à jour" (= pas de fausse promesse d'upgrade qui régresserait).
     const _cmpShow = remote && remote.version ? compareSemver(remote.version, known) : 0;
-    // 🩸 10/10/2026 : version acceptée mais ANCIEN code encore chargé (le badge de l'accueil montre ⏳) — on ne
+    // 🩸 version acceptée mais ANCIEN code encore chargé (le badge de l'accueil montre ⏳) — on ne
     // répond plus « déjà à jour » : on propose de relancer la mise à jour douce, qui recharge le nouveau code.
     const charge = (window.__MKM__ && window.__MKM__.build) || null;
     if (remote && remote.version && _cmpShow <= 0 && charge && compareSemver(remote.version, charge) > 0 &&
@@ -370,7 +370,7 @@
     onCheck: onCheck,
     getCurrentVersion: _getKnownVersion,
     getLastKnownData: _getLastKnownData,
-    // 🆕 v1.20.0 — Helper exposé pour usages externes (changelog viewer,
+    // Helper exposé pour usages externes (changelog viewer,
     // MemInspector, comparaisons inter-versions). Retourne -1 / 0 / +1.
     // Format accepté : "v1.7.10", "1.7.10", "v1.7.10-fix2", "v143" (legacy).
     compareSemver: compareSemver

@@ -104,7 +104,7 @@
   const STORE      = "photos";
 
   // Limites (anti-OOM, anti-quota)
-  // 🆕 v1.9.3-B1b (KARMA "7: 5 par point") : abaissé de 10 → 5 photos par POI.
+  // (KARMA "7: 5 par point") : abaissé de 10 → 5 photos par POI.
   // 5 = compromis ergonomie (l'user voit toutes les photos en 1 grille 3 cols
   // sans scroll, soit 1 ligne complète + 1 photo seule sur la 2e ligne) +
   // capacité (5 × 500 Ko ≈ 2.5 Mo par point, raisonnable sur quota mobile
@@ -113,7 +113,7 @@
   const MAX_PHOTOS_PER_POINT  = 5;
   const COMPRESS_MAX_DIMENSION = 1920;  // px côté long après compression
   const COMPRESS_JPEG_QUALITY  = 0.85;  // qualité JPEG (0-1)
-  // 🔒 v1.63.0 (A8) : qualité haute pour les photos DÉJÀ petites — elles ne
+  // 🔒 (A8) : qualité haute pour les photos DÉJÀ petites — elles ne
   // sont plus retournées telles quelles (leur EXIF, dont le GPS, survivait)
   // mais re-encodées sans resize. 0.92 = dégradation imperceptible.
   const COMPRESS_JPEG_QUALITY_SMALL = 0.92;
@@ -330,7 +330,7 @@
         const H = img.naturalHeight;
         URL.revokeObjectURL(url);
 
-        // 🔒 v1.63.0 (A8) : le bypass « déjà petite → blob original » est
+        // 🔒 (A8) : le bypass « déjà petite → blob original » est
         // SUPPRIMÉ — le blob original peut porter des métadonnées EXIF
         // (dont les coordonnées GPS de la prise de vue !). Toute photo est
         // re-encodée via canvas = strip EXIF garanti (drawImage applique
@@ -421,7 +421,7 @@
         return _tx("readwrite", function(store) {
           return _reqPromise(store.add(record)).then(function() {
             console.log("[Photos] add OK :", record.id, "(" + Math.round(finalBlob.size / 1024) + " Ko)");
-            // 📔 v1.69.0 — Le Carnet référence les photos PRISES pendant la
+            // Le Carnet référence les photos PRISES pendant la
             // sortie. Hook posé ici et PAS dans restorePhoto() : réimporter une
             // session ne doit pas gonfler le compteur photos de la sortie
             // en cours (ce sont des photos d'une autre sortie, d'un autre jour).
@@ -757,7 +757,7 @@
   }
 
   // ============================================================
-  // 🆔 v2.3.0 — PHOTOS RATTACHÉES À L'UID DU POINT (ETUDE_UID lot C1)
+  // PHOTOS RATTACHÉES À L'UID DU POINT (ETUDE_UID lot C1)
   // ============================================================
   // Avant : une photo est rangée sous le NOM du point (pointId = nom), qui
   // change au renommage et n'est pas unique. Désormais les nouvelles photos
@@ -1054,7 +1054,7 @@
     deletePhotosForPoint:    deletePhotosForPoint,
     deletePhotosForPlan:     deletePhotosForPlan,
     renamePointId:           renamePointId,
-    getPhotosForPointRef:    getPhotosForPointRef,   // 🆔 v2.3.0
+    getPhotosForPointRef:    getPhotosForPointRef,
     setPhotoPointId:         setPhotoPointId,
     changerPlan:             changerPlan,
     migrerPhotosPlan:        migrerPhotosPlan,

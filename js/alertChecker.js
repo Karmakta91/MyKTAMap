@@ -82,7 +82,7 @@
   let _pendingAlerts   = [];               // queue d'alertes à afficher après splash
   let _activeAlertsCache = [];             // dernier snapshot pour getActiveAlerts()
   const _changeListeners = [];             // callbacks pour MAJ badge
-  // 🧩 13/10/2026 — alertes d'une EXTENSION (prise « alertes », KtaExtensions.alertesExtension) : mêmes champs,
+  // alertes d'une EXTENSION (prise « alertes », KtaExtensions.alertesExtension) : mêmes champs,
   // id « ext_… », champ source (« 🏢 Organisation… »). Fusionnées avec alert.json dans la même modale, le même
   // badge, le même acquittement. Aucun appel réseau ajouté ici : l'extension fournit sa liste (et sa copie hors
   // ligne) ; elle annonce un changement par mktm:alertes-changees → relecture et affichage des nouvelles.
@@ -231,7 +231,7 @@
   // actives même acquittées dans le sélecteur. Si false (boot post-splash),
   // ne montre que les non acquittées.
   function _afficherAlertes(alertsAaffich, fromManualClick, onDone) {
-    // 🆕 v1.56.0 — onDone : signal de fin pour le séquenceur de premier
+    // onDone : signal de fin pour le séquenceur de premier
     // lancement (js/firstRunFlow.js). Appelé à la fermeture de la modale
     // d'alerte (ou immédiatement s'il n'y a rien / cas multi non bloquant).
     const _od = function() { if (typeof onDone === "function") { try { onDone(); } catch(e) {} } };
@@ -241,12 +241,12 @@
       _od();
       return;
     }
-    // 🆕 v1.34.27 — Vibration haptique error pour signaler l'alerte serveur.
+    // Vibration haptique error pour signaler l'alerte serveur.
     // Pas pour fromManualClick (= l'user a cliqué le bouton 🚨, il sait déjà
     // qu'il va voir des alertes). Seulement quand l'app remonte une alerte
     // automatiquement (au boot ou sur poll). Pref + support gérés par helper.
     if (!fromManualClick && window.kta_vibrate) {
-      // 🚨 13/09/2026 : une alerte de niveau emergency vibre MÊME si la
+      // une alerte de niveau emergency vibre MÊME si la
       // préférence de confort est OFF (classe urgence, cf utils.js).
       const critique = alertsAaffich.some(function(a) { return a && a.level === "emergency"; });
       if (critique && window.kta_vibrate.urgence) window.kta_vibrate.urgence.error();
@@ -284,7 +284,7 @@
         // PAS de callback onClose → fermeture simple, pas de re-déclenchement
       }
     });
-    // 🆕 v1.56.0 — cas multi : on ne bloque PAS la file de premier lancement sur
+    // cas multi : on ne bloque PAS la file de premier lancement sur
     // l'acquittement (l'user gère via le sélecteur / bouton 🚨). La suite de la
     // séquence (légal, onboarding, PIN) peut s'enchaîner par-dessus le sélecteur.
     _od();
@@ -306,7 +306,7 @@
       _pendingAlerts = [];
       _afficherAlertes(list, false, onDone);
     } else {
-      // 🆕 v1.56.0 — rien à afficher : notifie tout de suite le séquenceur.
+      // rien à afficher : notifie tout de suite le séquenceur.
       if (typeof onDone === "function") { try { onDone(); } catch(e) {} }
     }
   }
@@ -324,7 +324,7 @@
     });
   }
 
-  // 🚀 v1.30.0 (P6.A boot fetch timeout) : timeout 1500ms aligné avec
+  // (P6.A boot fetch timeout) : timeout 1500ms aligné avec
   // proLicense.js + updateChecker.js. Évite qu'un réseau lent (ou un
   // serveur lent à répondre sur /alert.json) laisse le fetch traîner
   // jusqu'au timeout browser (~30 s) et retarde le flush des modales

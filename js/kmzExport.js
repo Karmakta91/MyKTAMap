@@ -54,7 +54,7 @@
   // Construit une transformation 2D qui mappe (x,y) plan vers (lat,lng) GPS.
   //
   // planA, planB : {x, y} en pixels image      gpsA, gpsB : {lat, lng}
-  // 📐 v1.73.0 (KARMA « erreurs de projection sur un assemblage ») :
+  // (KARMA « erreurs de projection sur un assemblage ») :
   // planC/gpsC OPTIONNELS. Absents → similitude 2 points (rotation + échelle
   // uniforme), comportement historique BIT-À-BIT. Présents → AFFINE 6 DOF
   // (échelles X/Y indépendantes + cisaillement) résolue exactement sur les
@@ -162,7 +162,7 @@
     return t;
   }
 
-  // 📐 v1.73.0 — Helper : transform depuis un objet calib/georef
+  // Helper : transform depuis un objet calib/georef
   // { pointA, pointB, pointC? } (chaque point = {x, y, lat, lng}).
   // pointC incomplet → ignoré (warn). Throw identique à buildTransform si A/B invalides.
   function buildTransformCalib(g) {
@@ -186,7 +186,7 @@
   // Convertit (x,y) plan en (lat,lng) GPS via la transformation t.
   function planToGps(t, x, y) {
     if (!t) return null;
-    // 📐 v1.73.0 — chemin affine (3 points) : (x, -y) → mètres E/N relatifs
+    // chemin affine (3 points) : (x, -y) → mètres E/N relatifs
     // à refGps → degrés. Exact sur A, B et C par construction.
     if (t.affine) {
       const f = t.affine, yF = -y;
@@ -214,7 +214,7 @@
     };
   }
 
-  // 🆕 v1.14.0 : Convertit (lat,lng) GPS en (x,y) plan via la transformation
+  // Convertit (lat,lng) GPS en (x,y) plan via la transformation
   // inverse. Utilisé pour l'import GPX (apps tierces fournissent des coords
   // WGS84 qu'on doit ramener dans le repère plan local).
   //
@@ -225,7 +225,7 @@
   //   4. unflip Y (y plan = -dy + refPlan.y)
   function gpsToPlan(t, lat, lng) {
     if (!t) return null;
-    // 📐 v1.73.0 — inverse affine exacte (det vérifié non nul à la construction)
+    // inverse affine exacte (det vérifié non nul à la construction)
     if (t.affine) {
       const f = t.affine;
       const E = (lng - t.refGps.lng) * f.kLng;
@@ -289,7 +289,7 @@
       .replace(/'/g, "&apos;");
   }
 
-  // 🩸 v1.83.0 — L'ALTITUDE ÉTAIT ÉCRITE `0`, EN DUR. Un relevé de carrière
+  // 🩸 L'ALTITUDE ÉTAIT ÉCRITE `0`, EN DUR. Un relevé de carrière
   // exporté en KMZ se posait donc À LA SURFACE : ouvert dans Google Earth, il
   // flottait sur les vignes au lieu d'être sous elles. Les profondeurs des
   // niveaux existent depuis la v1.83.0 — il ne restait qu'à les écrire.
@@ -334,7 +334,7 @@
   }
 
   // =====================================================================
-  // 🎨 v1.76.0 — STYLES KML : couleurs résolues, épaisseurs propres au KML
+  // STYLES KML : couleurs résolues, épaisseurs propres au KML
   // =====================================================================
   // Les COULEURS viennent de `js/styleResolver.js` (table canonique) — c'est
   // la seule chose qui doit rester alignée sur la carte.
@@ -401,7 +401,7 @@
     return out + '</Style>';
   }
 
-  // 🐛 v1.76.0 — CORRECTION DU BUG 2.
+  // CORRECTION DU BUG 2.
   // Les Placemark émettent `<styleUrl>#road_<type></styleUrl>`. Pour un type
   // CUSTOM ça donnait `#road_cust-abc123`, un id qui n'était JAMAIS déclaré
   // dans le document (la table ne listait que les built-in) : styleUrl
@@ -496,7 +496,7 @@
 
     // === GroundOverlay (image plan géoréférencée) ===
     let groundOverlay = "";
-    // 🗼 v1.76.4 — SUPEROVERLAY (plans V2) : un GroundOverlay PAR TUILE de la
+    // SUPEROVERLAY (plans V2) : un GroundOverlay PAR TUILE de la
     // pyramide, chacun avec sa <Region>/<Lod> — Google Earth n'affiche que le
     // niveau adapté au zoom (le mécanisme standard des superoverlays
     // gdal2tiles/MapTiler, et l'équivalent KML de nos tuiles OSM). Les quads
@@ -510,7 +510,7 @@
       const opPct2 = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
       const a255 = Math.round(Math.max(0, Math.min(100, opPct2)) * 2.55);
       const colorTag2 = '<color>' + (a255 < 16 ? "0" : "") + a255.toString(16) + 'ffffff</color>';
-      // 15/10/2026 — mosaïque (Google Earth mobile) : quelques grandes images, bornes natives fournies, sans Region.
+      // mosaïque (Google Earth mobile) : quelques grandes images, bornes natives fournies, sans Region.
       const mosaique = TO.mosaique === true;
       const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + (mosaique ? " — plan" : " — plan (tuiles)")) + '</name>'];
       TO.levels.forEach(function(lvl) {
@@ -520,7 +520,7 @@
         // de plafond (max -1) — recettes standard des superoverlays.
         const lodMin = (lvl.z === zMinP) ? 0 : 128;
         const lodMax = (lvl.z === zMaxP) ? -1 : 512;
-        // 🐛 v1.76.4-fix (capture KARMA : « tuiles décalées », double image) —
+        // (capture KARMA : « tuiles décalées », double image) —
         // k=1 est la bande du BAS du plan (Leaflet CRS.Simple : lat = H − y,
         // vérifié dans tiling.js ET _genererTuilesV2), pas du haut : la
         // v1 plaçait chaque niveau à l'envers, et les rangées partielles
@@ -528,7 +528,7 @@
         // NIVEAU convertis au natif, bornés à l'emprise.
         const lvlH = Math.ceil(opts.imageH / scale);
         const lvlW = Math.ceil(opts.imageW / scale);
-        // 15/10/2026 — un sous-dossier par niveau et des tuiles NOMMÉES : sans nom, Google Earth (mobile)
+        // un sous-dossier par niveau et des tuiles NOMMÉES : sans nom, Google Earth (mobile)
         // listait 2 177 « Superposition sans titre » à plat.
         if (!mosaique) morceaux.push('<Folder><name>' + _xmlEsc("Détail " + (lvl.z - zMinP + 1) + " (" + lvl.tiles.length + " tuiles)") + '</name>');
         lvl.tiles.forEach(function(tu) {
@@ -616,7 +616,7 @@
       tagsRencontres.add(tag);
       const ll = planToGps(t, p.x, p.y);
       const nom = p.nom || p.id || "(point)";
-      // v1.14.20-hotfix9 (KARMA « on perd la descriptions des points dans
+      // (KARMA « on perd la descriptions des points dans
       // le kmz, ou Google ne l'affiche pas ») : wrapper la description en
       // <![CDATA[...]]> pour que Google Earth l'interprète en HTML (les
       // retours à la ligne \n natifs étaient invisibles, Google rend la
@@ -625,7 +625,7 @@
       // en <br/>. L'import KMZ fait l'opération inverse pour préserver
       // le format texte original au roundtrip.
       const desc = p.description ? _emitDescriptionCdata(p.description) : '';
-      // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL via ExtendedData
+      // préserve level M-LVL via ExtendedData
       const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
@@ -636,7 +636,7 @@
              '</Placemark>';
     }
 
-    // 🆕 v1.21.1 (audit fix #14) : Helper ExtendedData KML pour préserver
+    // Helper ExtendedData KML pour préserver
     // les méta MyKTAMap (level M-LVL, fromLevel/toLevel pour jonctions) au
     // roundtrip MKM→KMZ→MKM. Sans ça, les niveaux étaient perdus (chaque
     // Placemark ne portait QUE son styleUrl, le folder parent encodait le
@@ -670,7 +670,7 @@
       // CDATA ne nécessite pas d'XML-escape mais on doit éviter de fermer le
       // CDATA prématurément si la description contenait littéralement "]]>"
       // (très rare, mais défensif).
-      // 🔒 05/10/2026 (audit XSS) : le texte est échappé (Google Earth rend la description en HTML ;
+      // 🔒 le texte est échappé (Google Earth rend la description en HTML ;
       // une note partagée ne doit pas y devenir du balisage). « ]]> » ne peut plus survivre à l'échappement.
       const html = window.ktaEsc(s).replaceAll("\n", "<br/>");
       return '<description><![CDATA[' + html + ']]></description>';
@@ -689,9 +689,9 @@
       const nom = road.type === "itinerary" ? "🗺️ Itinéraire"
                 : road.type === "jonction"  ? "🪜 Jonction"
                 : road.type.charAt(0).toUpperCase() + road.type.slice(1);
-      // v1.16.0 step 1 — description (note) CDATA + \n → <br/> (cf hotfix9 sur points)
+      // description (note) CDATA + \n → <br/> (cf hotfix9 sur points)
       const desc = road.description ? _emitDescriptionCdata(road.description) : '';
-      // 🆕 v1.21.1 (audit fix #14) : level + fromLevel/toLevel pour jonctions
+      // level + fromLevel/toLevel pour jonctions
       const extData = (road.type === "jonction")
         ? _emitExtendedDataLevel(null, { fromLevel: road.fromLevel, toLevel: road.toLevel })
         : _emitExtendedDataLevel(Number.isInteger(road.level) ? road.level : null);
@@ -714,7 +714,7 @@
       const coords = ring
         .map(function(p) { return _coord(planToGps(t, p.x, p.y), _altZone); })
         .join(" ");
-      // 🆕 v1.9.3-A1.b.1 : nom lisible selon le type. Pour les structures
+      // nom lisible selon le type. Pour les structures
       // (pilier-1 / pilier-2 / mur), le mapping basique
       // "type.charAt(0).toUpperCase() + slice(1)" donnerait "Pilier-1" qui
       // est peu informatif. On mappe vers des noms explicites cataphile.
@@ -723,9 +723,9 @@
       else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
       else if (zone.type === "mur") nom = "Mur";
       else nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
-      // v1.16.0 step 1 — description (note) CDATA + \n → <br/>
+      // description (note) CDATA + \n → <br/>
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
-      // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL
+      // préserve level M-LVL
       const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
@@ -737,7 +737,7 @@
              '</Placemark>';
     }
 
-    // 🆕 v1.23.0 Phase 2 Feature A — Émet le Folder Secours complet pour le KMZ.
+    // Phase 2 Feature A — Émet le Folder Secours complet pour le KMZ.
     // Cross-app : Google Earth, OsmAnd, Avenza, Locus, ArcGIS Earth, Strava...
     // Retourne { folder: string, styles: string }.
     function _emitSecoursFolder(opts, secoursPlan, palette) {
@@ -810,7 +810,7 @@
         return planToGps(t, w.x, w.y);
       }
 
-      // 🆕 v1.23.0 (KARMA "ecrit un dossier pour les point pour pouvoir
+      // (KARMA "ecrit un dossier pour les point pour pouvoir
       // filtrer plus facilement, et rajoute les itineraire de chaque équipe") :
       // Restructure le KML en sous-folders par CATÉGORIE dans chaque équipe :
       //   <Folder>🚨 Équipe Alpha</Folder>
@@ -916,7 +916,7 @@
                      '</Placemark>';
         }
         // 2b. Zone roads (halo par road sélectionnée)
-        // 🩸 29/09/2026 — `zoneRoadIds` porte des EMPREINTES de géométrie, pas des
+        // 🩸 `zoneRoadIds` porte des EMPREINTES de géométrie, pas des
         // `road.id` : la résolution appartient au Mode Secours (SecoursMode.tracesZone).
         const tracesZone = (window.SecoursMode && typeof window.SecoursMode.tracesZone === "function")
                            ? window.SecoursMode.tracesZone(g) : [];
@@ -978,14 +978,14 @@
     //   zoneTypesSet : Set<string> | null — whitelist des types eau/remblais/effondrement/inaccessible
     // null = pas de filtre (legacy compat). Set vide = drop tout (parent
     // coché mais aucun enfant sélectionné, edge case).
-    // 🐛 v1.76.0 (bug 2) — ids de style des types CUSTOM réellement rencontrés
+    // ids de style des types CUSTOM réellement rencontrés
     // pendant la génération du corps. Ils sont déclarés en fin de document par
     // `_genererStylesKml`. Sans ça leur <styleUrl> pointait dans le vide et
     // Google Earth affichait un trait par défaut.
     const idsStyleCustom = new Set();
     function _idStyleEtCollecte(prefixe, type) {
       const id = prefixe + "_" + type;
-      // 🧷 v1.76.1 — tout type NON built-in est collecté (plus seulement les
+      // tout type NON built-in est collecté (plus seulement les
       // `cust-`) : une entrée liée à un id technique (« Bas ») doit recevoir
       // son <Style> KML elle aussi.
       const cat = PREFIXE_CATEGORIE[prefixe];
@@ -998,7 +998,7 @@
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
     const roadTypesSet = (opts.include.roadTypesSet instanceof Set) ? opts.include.roadTypesSet : null;
     const zoneTypesSet = (opts.include.zoneTypesSet instanceof Set) ? opts.include.zoneTypesSet : null;
-    // 🆕 v1.9.3-A1.b.1 : filtre granulaire sous-types structures (pilier-1
+    // filtre granulaire sous-types structures (pilier-1
     // / pilier-2 / mur). null = pas de filtre, Set vide = drop tout.
     const structureTypesSet = (opts.include.structureTypesSet instanceof Set) ? opts.include.structureTypesSet : null;
 
@@ -1069,7 +1069,7 @@
           body += '</Folder>';
         }
       }
-      // 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures (piliers + murs + fronts) —
+      // Structures (piliers + murs + fronts) —
       // calqué sur zones avec styles dédiés. Filtre niveau identique.
       // Différenciation polyline (fronts) vs polygon (piliers/mur) au
       // niveau du KML : LineString pour les fronts, Polygon pour le reste.
@@ -1094,7 +1094,7 @@
               const nom = s.type === "front-1"
                 ? "Front de taille 1ère masse"
                 : "Front de taille 2e masse";
-              // 🐛 v1.21.1 (audit fix #7) : émission de <description> manquante
+              // émission de <description> manquante
               // pour les fronts (asymétrie avec _emitPolygon piliers/mur qui
               // l'émettait via _emitDescriptionCdata). Sans ça, la description
               // d'un front se perdait à l'export KMZ → pas affichée Google Earth,
@@ -1102,7 +1102,7 @@
               body += '<Placemark>' +
                         '<name>' + _xmlEsc(nom) + '</name>' +
                         (s.description ? _emitDescriptionCdata(s.description) : '') +
-                        // 🆕 v1.21.1 (audit fix #14) : level M-LVL pour fronts
+                        // level M-LVL pour fronts
                         _emitExtendedDataLevel(Number.isInteger(s.level) ? s.level : null) +
                         '<styleUrl>#' + styleId + '</styleUrl>' +
                         '<LineString><tessellate>1</tessellate>' +
@@ -1138,7 +1138,7 @@
       }
     }
 
-    // 🆕 v1.23.0 Phase 2 Feature A (KARMA "Complet : LineString itinéraire +
+    // Phase 2 Feature A (KARMA "Complet : LineString itinéraire +
     // Placemarks intermédiaires numérotés") — Folder secours visible dans
     // Google Earth/OsmAnd/Avenza/etc. Contient pour chaque équipe :
     //   • Polygon zone (fill 30 % + outline) OU LineStrings halo si zoneType=roads
@@ -1209,7 +1209,7 @@
       throw new Error(window.I18n.t("kmz.err.jszipExport"));
     }
     const zip = new JSZip();
-    // 15/10/2026 (KMZ d'un grand plan tuilé : croix rouges dans Google Earth sur iPhone, archive pourtant saine) :
+    // (KMZ d'un grand plan tuilé : croix rouges dans Google Earth sur iPhone, archive pourtant saine) :
     // 1. le KML est écrit EN PREMIER dans l'archive (usage du format ; certains lecteurs prennent le 1er .kml) ;
     // 2. les images (JPEG / PNG, déjà compressées) sont RANGÉES sans recompression (STORE) : aucun gain à les
     //    dégonfler, seulement du temps et de la mémoire à l'export comme à la lecture.
@@ -1227,7 +1227,7 @@
     zip.file("doc.kml", kml);
 
     if (imageBaseUrl) zip.folder("files").file(imageBasename, opts.imageBlob, SANS_COMPRESSION);
-    // 🗼 v1.76.4 — tuiles du superoverlay V2 : embarquées telles quelles
+    // tuiles du superoverlay V2 : embarquées telles quelles
     // (kmzPath relatif référencé par les <Icon> des GroundOverlays)
     if (opts.include.image && opts.tilesOverlay && Array.isArray(opts.tilesOverlay.levels)) {
       opts.tilesOverlay.levels.forEach(function(lvl) {
@@ -1260,12 +1260,12 @@
       }
     }
 
-    // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
+    // Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
     // Embed `customLegend` dans un fichier JSON annexe au doc.kml. Les apps
     // tierces ignorent les fichiers inconnus du ZIP KMZ — c'est strictement
     // une donnée MyKTAMap. Format ouvert pour ajouter d'autres « extras » plus
     // tard (favoris partagés, notes globales, etc.) sans bumper la version.
-    // 🆕 v1.22.0 (KARMA "définir un plan de secours") : embed un scénario
+    // (KARMA "définir un plan de secours") : embed un scénario
     // Mode Secours via opts.secoursPlan dans le même myktamap-extras.json.
     // Plusieurs champs peuvent coexister (customLegend + secoursPlan), c'est
     // le but du wrapper extensible.
@@ -1304,7 +1304,7 @@
     buildTransform:  buildTransform,
     buildTransformCalib: buildTransformCalib,
     planToGps:       planToGps,
-    gpsToPlan:       gpsToPlan,    // 🆕 v1.14.0 : inverse pour import GPX
+    gpsToPlan:       gpsToPlan,    // inverse pour import GPX
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
     genererKml:      genererKml,

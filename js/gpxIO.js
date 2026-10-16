@@ -67,10 +67,10 @@
   // CHECK CALIBRAGE
   // ============================================================
   //
-  // 🐛 v1.21.0-fix4 (KARMA : "bug export GPX malgré le calibrage il me dit
+  // (KARMA : "bug export GPX malgré le calibrage il me dit
   // que je ne l'ai pas fait") : avant ce fix, on cherchait `calib.transform`
   // dans le calibrage persisté — MAIS `KmzExport.setCalibration` ne stocke
-  // que `{pointA, pointB}` (cf js/kmzExport.js > setCalibration ligne 178),
+  // que `{pointA, pointB}` (cf js/kmzExport.js > setCalibration),
   // pas de champ `transform`. Le transform est calculé À LA DEMANDE via
   // `buildTransform(planA, planB, gpsA, gpsB)`. Donc `verifierCalibrage()`
   // retournait toujours `false` et l'export GPX bloquait avec "pas calibré"
@@ -78,7 +78,7 @@
   //
   // Fix : vérifie les 8 champs requis (x/y/lat/lng × pointA/pointB) puis
   // calcule `transform` au vol. Symétrique exact à ce que fait KMZ
-  // (sessionExporter.js > _exportKmz ligne 2811).
+  // (sessionExporter.js > _exportKmz).
 
   function _calibComplet(calib) {
     if (!calib || !calib.pointA || !calib.pointB) return false;
@@ -98,7 +98,7 @@
     // signaler un calibrage dégénéré).
     if (typeof window.KmzExport.buildTransform !== "function") return false;
     try {
-      window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
       return true;
     } catch(e) {
       // Calibrage présent mais dégénéré (2 points identiques, etc.)
@@ -112,7 +112,7 @@
                   : null;
     if (!_calibComplet(calib)) return null;
     try {
-      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+      return window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
     } catch(e) {
       return null;
     }
@@ -145,7 +145,7 @@
     const incEmbedded = opts.incEmbedded !== false;
     const incRoads    = opts.incRoads    !== false;
     const incIti      = opts.incIti      === true;
-    // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique kmzExport).
+    // Roundtrip légende plan-level (symétrique kmzExport).
     // Si opts.planCustomLegend est présent et non-null, embed dans
     // <extensions><myktamap:customLegend>...</myktamap:customLegend></extensions>
     // sous <metadata>. Skip silencieux si null/absent.
@@ -191,7 +191,7 @@
   function _genererGpx(points, tracks, t, planCustomLegend) {
     const lines = [];
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-    // 🆕 v1.18.1 — Ajout du namespace `xmlns:myktamap` au root <gpx> pour
+    // Ajout du namespace `xmlns:myktamap` au root <gpx> pour
     // permettre l'extension `<myktamap:customLegend>` sous <metadata>.
     // Strictement transparent pour les apps tierces (TopoDroid, OsmAnd…)
     // qui ignorent les namespaces inconnus dans les `<extensions>` standards.
@@ -203,7 +203,7 @@
     lines.push('    <desc>Export GPX depuis MyKTAMap — ' + points.length + ' point(s), ' + tracks.length + ' tracé(s)</desc>');
     lines.push('    <author><name>MyKTAMap</name><link href="https://myktamap.fr"><text>myktamap.fr</text></link></author>');
     lines.push('    <time>' + _isoNow() + '</time>');
-    // 🆕 v1.18.1 — Roundtrip légende plan-level. Embed le state complet en
+    // Roundtrip légende plan-level. Embed le state complet en
     // JSON brut (CDATA inutile car _xmlEsc gère les & et < / > du JSON).
     // Format ouvert {type, version, exportedAt, customLegend} aligné sur
     // myktamap-extras.json côté KMZ (cf §59.2 CLAUDE.md). Les apps tierces
@@ -222,7 +222,7 @@
     }
     lines.push('  </metadata>');
 
-    // 🩸 v1.83.0 — POURQUOI IL N'Y A PAS DE `<ele>` ICI, ET POURQUOI C'EST
+    // 🩸 POURQUOI IL N'Y A PAS DE `<ele>` ICI, ET POURQUOI C'EST
     // LE CHOIX HONNÊTE.
     //
     // Les profondeurs des niveaux existent depuis la v1.83.0, et le KMZ les
@@ -283,7 +283,7 @@
     tracks.forEach(function(r) {
       lines.push('  <trk>');
       lines.push('    <name>' + _xmlEsc(r.label || r.type || "Tracé") + '</name>');
-      // v1.15.0 — ajout de <desc> sur les tracks (description du road) pour
+      // ajout de <desc> sur les tracks (description du road) pour
       // roundtrip MyKTAMap. Avant ce fix, la description du tracé était
       // perdue à l'export GPX (seul le name était écrit).
       const _dr = _descAvecProfondeur(r.description, r.level);
@@ -341,7 +341,7 @@
       if (descEl) metadata.desc = descEl.textContent.trim();
       if (timeEl) metadata.time = timeEl.textContent.trim();
 
-      // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique kmzImport).
+      // Roundtrip légende plan-level (symétrique kmzImport).
       // Extrait `<extensions><myktamap:customLegend>` qui peut contenir
       // soit le payload wrapper complet {type, version, exportedAt,
       // customLegend} soit (legacy/permissif) directement l'état customLegend.
@@ -412,12 +412,12 @@
     for (let i = 0; i < trks.length; i++) {
       const trk = trks[i];
       const nameEl = trk.getElementsByTagName("name")[0];
-      const descEl = trk.getElementsByTagName("desc")[0];  // v1.15.0
+      const descEl = trk.getElementsByTagName("desc")[0];
       const typeEl = trk.getElementsByTagName("type")[0];
       const cmtEl  = trk.getElementsByTagName("cmt")[0];
       const track = {
         name:  nameEl ? nameEl.textContent.trim() : null,
-        desc:  descEl ? descEl.textContent.trim() : null,  // v1.15.0
+        desc:  descEl ? descEl.textContent.trim() : null,
         type:  typeEl ? typeEl.textContent.trim() : null,
         cmt:   cmtEl  ? cmtEl.textContent.trim()  : null,
         points: []
@@ -537,9 +537,9 @@
             level = parseInt(RegExp.$1, 10);
           }
           // Map type GPX → type road MyKTAMap (si reconnu).
-          // v1.15.0 — ajout de "jonction" pour roundtrip complet (sans ça,
+          // ajout de "jonction" pour roundtrip complet (sans ça,
           // un tracé jonction exporté revenait en chemin à l'import).
-          // 🐛 v1.76.0 — les types CUSTOM (`cust-…`) étaient rejetés ici et
+          // les types CUSTOM (`cust-…`) étaient rejetés ici et
           // TOUS convertis en "chemin" : perte de donnée silencieuse, pas
           // seulement de couleur. `gpxImport.js` (le lecteur du générateur)
           // avait reçu ce même correctif en v1.21.1 ; ce lecteur-ci a été
@@ -555,7 +555,7 @@
             // ⚠️ i18n « figé à la langue d'import » : fallback de label écrit comme
             // donnée d'annotation (affiché sur la carte). Non re-traduit ensuite.
             label:       trk.name || window.I18n.t("gpx.import.trackImportedDefault"),
-            description: trk.desc || undefined,  // v1.15.0 — préserve la desc track
+            description: trk.desc || undefined,  // préserve la desc track
             points:      points,
             level:       Number.isInteger(level) ? level : 0
           });

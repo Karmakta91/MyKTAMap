@@ -77,7 +77,7 @@
     // UnlockGate / PIN gate
     if (document.getElementById("kta-unlock-overlay")) return true;
     if (document.querySelector(".kta-pin-gate-overlay")) return true;
-    // 🆕 v1.51.0 : modal plein écran Tracker (classe distincte de readme-modal)
+    // modal plein écran Tracker (classe distincte de readme-modal)
     // → sinon E/M/Z/etc. se déclenchaient « derrière » le modal Tracker ouvert.
     if (document.querySelector(".kta-tracker-modal-overlay")) return true;
     // Modales principales
@@ -152,7 +152,7 @@
     // Pas de modificateurs (sinon laisse passer Ctrl+E browser, Cmd+B macOS, etc.)
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    // 🆕 v1.51.0 : "?" → cheatsheet des raccourcis (toggle). Géré AVANT le
+    // "?" → cheatsheet des raccourcis (toggle). Géré AVANT le
     // guard Shift car "?" nécessite Shift sur la plupart des claviers (AZERTY
     // inclus). `e.key` contient déjà le caractère résolu ("?"), layout-agnostique.
     if (e.key === "?") {
@@ -180,7 +180,7 @@
     // Skip si modale ouverte qui mérite focus
     if (_isModaleBloquante()) return;
 
-    // 🆕 v1.21.0 (U1) : skip si mode présentation actif (sinon raccourci
+    // (U1) : skip si mode présentation actif (sinon raccourci
     // accidentel ouvre un panneau pendant la démo). F seule reste active
     // via presentationMode.js (toggle entrée/sortie).
     if (window.PresentationMode && window.PresentationMode.isActive && window.PresentationMode.isActive()) {

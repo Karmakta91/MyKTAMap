@@ -102,7 +102,7 @@ LANGS.forEach(function (c) {
 // --- C. libellés d'interface ------------------------------------------
 const UI = ["aide.intro", "aide.ui.titre", "aide.ui.search", "aide.ui.shortcuts",
             "aide.ui.other", "aide.ui.back", "aide.ui.empty",
-            "aide.ctx.btn"]   // ❓ v1.94.0 — libellé du bouton d'aide contextuelle des modales
+            "aide.ctx.btn"]   // libellé du bouton d'aide contextuelle des modales
   .concat(CATS.map(function (c) { return "aide.cat." + c.cle; }));
 LANGS.forEach(function (c) {
   const manque = UI.filter(function (k) { return !dicos[c][k]; });

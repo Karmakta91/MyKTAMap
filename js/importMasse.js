@@ -171,7 +171,7 @@
       author: plan.author ? String(plan.author) : null,
       multiLevel: plan.multiLevel === true,
       tiledV2: plan.tiledV2 === true,
-      // 🏷️ 16/09/2026 — étiquettes proposées par le plan-config (Générateur).
+      // étiquettes proposées par le plan-config (Générateur).
       tags: Array.isArray(plan.tags) ? plan.tags : []
     };
   }
@@ -267,7 +267,7 @@
         if (ligne.info.multiLevel) entree.multiLevel = true;
         if (ligne.info.tiledV2)    entree.tiledV2    = true;
         window.PlanRegistry.addOrUpdate(entree);
-        // 🏷️ 16/09/2026 — le ZIP PROPOSE ses étiquettes, même règle que
+        // le ZIP PROPOSE ses étiquettes, même règle que
         // `main > startImportedPlan` : jamais par-dessus des tags "user" ou
         // "index" ; un ZIP sans tags retire ceux qu'un précédent proposait.
         // 🏷️ ancre:debut-tags-config
@@ -445,7 +445,7 @@
     if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
       try { window.OsmHomePreview.refresh(); } catch(e) {}
     }
-    // 🐛 15/09/2026 (KARMA : « ce bouton ne fonctionne pas ») — il restait
+    // (KARMA : « ce bouton ne fonctionne pas ») — il restait
     // DÉSACTIVÉ avec le libellé « Terminé », tout en gardant l'aspect plein
     // d'un bouton actif : on clique, rien ne se passe, et rien ne dit pourquoi.
     // Après un import réussi, l'action évidente est d'aller VOIR ses plans :
@@ -456,7 +456,7 @@
       btn.dataset.fini = "1";
       btn.textContent = _t(rapport.ajoutes.length ? "impmasse.btn.voir" : "impmasse.btn.fermerRien");
     }
-    // 🐛 16/09/2026 (KARMA : « on a le choix entre Fermer et Voir mes plans
+    // (KARMA : « on a le choix entre Fermer et Voir mes plans
     // qui font la même chose ») — deux sorties pour un seul geste. Une fois
     // l'import fini, le bouton principal EST la sortie : le « Fermer » de
     // pied disparaît (le ✕ d'en-tête reste, comme partout).
@@ -465,7 +465,7 @@
   }
 
   function ouvrir() {
-    // 🔒 15/09/2026 (KARMA) — LA PORTE, PAS SEULEMENT LE BOUTON. En kiosque
+    // 🔒 LA PORTE, PAS SEULEMENT LE BOUTON. En kiosque
     // « plans serveur uniquement », l'import local est refusé : le bouton est
     // masqué plus bas (`main.js > _appliquerConfigKiosque`), mais un appel
     // direct à `ImportMasse.ouvrir()` le contournerait. Même prédicat unique

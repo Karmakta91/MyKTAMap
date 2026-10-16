@@ -71,7 +71,7 @@ const session = {
   user: { nom: M }, userProfile: { surnom: M }, author: M
 };
 
-// 📸 12/10/2026 — les photos portent la FICHE de leur point (nom, position) dans
+// les photos portent la FICHE de leur point (nom, position) dans
 // l'index des ZIP de session : elle ne doit jamais sortir d'un export anonymisé.
 const photos = [{ id: "ph1", pointId: "pt_UIDMARK1", mime: "image/jpeg", size: 1, blob: null,
   fiche: { nom: M + " Salle", x: 10, y: 20, niveau: null, type: "salle", maj: 1 } }];
@@ -97,7 +97,7 @@ if (out) {
   t("la session est marquée anonymisée", out.anonymized === true && typeof out.anonymizedAt === "string");
   t("la géométrie est conservée (x/y du 1er point)", out.editorPoints && out.editorPoints[0].x === 10 && out.editorPoints[0].y === 20);
   const json = JSON.stringify(out);
-  // 🆔 v2.1.0 — un uid relierait le fichier anonymisé à la session d'origine.
+  // un uid relierait le fichier anonymisé à la session d'origine.
   t("🆔 aucun identifiant stable (uid) ne survit", json.indexOf("UIDMARK") < 0);
   t("🆔 aucun horodatage de modification (updatedAt) ne survit", json.indexOf("updatedAt") < 0);
   const i = json.indexOf(M);

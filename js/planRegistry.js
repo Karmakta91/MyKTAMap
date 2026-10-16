@@ -22,7 +22,7 @@
 //   ]
 // }
 //
-// 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md (archivé : tag Git `archive-docs-2026-09-30`)) :
+// DOSSIERS DE « MES PLANS » (étude archivée sous le tag Git `archive-docs-2026-09-30`) :
 //   folders:   [{ id, name, color, order, collapsed, src: "user"|"index" }]   ← absent tant qu'aucun dossier
 //   plansView: "all" | "folders"                                              ← absent = jamais choisi
 //   par plan : folderId (absent = Non classés), folderSrc: "user"|"index"
@@ -52,7 +52,7 @@
   let _data = null;
 
   // ========== INIT ==========
-  // 🐛 v1.79.0 (bug KARMA « import de profil : la liste n'apparaît qu'après
+  // (bug KARMA « import de profil : la liste n'apparaît qu'après
   // F5, sans les archives ») — applyProfile écrit `myktamap_plans` DIRECT
   // dans le localStorage : l'état RAM (_data) devenait obsolète, findById ne
   // voyait pas les plans importés → la restauration d'archives les classait
@@ -184,7 +184,7 @@
     return true;
   }
 
-  // 🧹 v1.79.3 (décision KARMA — reco 2:a) — PURGE des données associées à
+  // PURGE des données associées à
   // un plan (appelée par le 🗑️ de la modale ℹ️ Infos et le nettoyeur
   // d'orphelins de l'inspecteur DB). Supprime : session auto (KtaSessionStore), géoref/
   // calibration KMZ (LS), photos (IDB), backups (IDB). PRÉSERVE
@@ -263,7 +263,7 @@
     init();
     _data.plans = [];
     _data.lastPlanId = null;
-    delete _data.folders;      // 📁 16/09/2026 — les dossiers partent avec la liste
+    delete _data.folders;      // les dossiers partent avec la liste
     delete _data.plansView;
     _save();
   }
@@ -289,7 +289,7 @@
     return true;
   }
 
-  // ✏️ v1.79.1 (KARMA « deux plans du même réseau d'auteurs différents — renommer
+  // (KARMA « deux plans du même réseau d'auteurs différents — renommer
   // depuis le HOME pour différencier ») — NOM D'AFFICHAGE local. On ne
   // touche JAMAIS à `name` (le vrai nom du plan-config) : il sert aux
   // vérifications fonctionnelles (nameMatch de la re-sélection de ZIP,
@@ -320,12 +320,12 @@
   // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
   // refus au-delà de la troncature silencieuse serait pire : on tronque en
   // loggant (métadonnée cosmétique, pas un réglage expert).
-  // 🏷️ v1.90.1 — `origine` : "user" (défaut, édition dans ℹ️ Infos) ou
+  // `origine` : "user" (défaut, édition dans ℹ️ Infos) ou
   // "index" (tags proposés par `data/index.json`, cf decouvrirPlansServeur).
   // 🩸 Sans cette distinction, la découverte réécrirait les tags à CHAQUE boot
   // et effacerait ceux que l'utilisateur a posés — exactement le ping-pong
   // corrigé sur `version` en v1.88.0. L'index PROPOSE, l'utilisateur DISPOSE.
-  // 🏷️ 16/09/2026 — troisième origine, "config" : les étiquettes écrites dans
+  // troisième origine, "config" : les étiquettes écrites dans
   // `plan-config.json > plan.tags` par le Générateur (champ 🏷️ Étiquettes) ou
   // ses convertisseurs KMZ / GPX / SIG. Même doctrine que l'index : le FICHIER
   // propose, l'utilisateur dispose, et l'index (le déployeur) passe avant le
@@ -485,7 +485,7 @@
         delete clone.fsHandleId;
         return clone;
       }),
-      // 📁 16/09/2026 — les dossiers voyagent avec la liste (comme avec le profil)
+      // les dossiers voyagent avec la liste (comme avec le profil)
       folders: (_data.folders || []).map(function(f) { return Object.assign({}, f); })
     };
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
@@ -516,7 +516,7 @@
 
     init();
 
-    // 📁 16/09/2026 — les dossiers de la liste importée : fusion par nom
+    // les dossiers de la liste importée : fusion par nom
     // (ou remplacement), et le folderId des plans qui arrivent est traduit.
     const fusion = fusionnerDossiers(_data.folders, payload.folders, mode);
     const traduire = function(p) {
@@ -564,7 +564,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (décisions KARMA 1-11 de
+  // DOSSIERS DE « MES PLANS » (décisions KARMA 1-11 de
   // l'étude du même jour). Un dossier = une section nommée ; un plan est
   // dans UN dossier au plus (`folderId`), sinon « Non classés ».
   // 🩸 MÊME DOCTRINE QUE LES ÉTIQUETTES (v1.90.1) : l'index serveur PROPOSE
@@ -897,7 +897,7 @@
   // Retourne un objet { ok: true } ou { ok: false, error: "..." }
   async function saveBlob(id, blob) {
     if (!blob) return { ok: false, error: t("planreg.err.noFileShort") };
-    // 🩸 16/09/2026 — UNE COPIE, PAS UNE RÉFÉRENCE. Chromium range un `File`
+    // 🩸 UNE COPIE, PAS UNE RÉFÉRENCE. Chromium range un `File`
     // issu d'un sélecteur ou d'un dépôt PAR RÉFÉRENCE au fichier sur le
     // disque : IndexedDB rend ensuite un objet de la bonne taille, mais sa
     // LECTURE échoue dès que le fichier d'origine a été modifié, déplacé ou
@@ -979,13 +979,13 @@
     getLastOpened:        getLastOpened,
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
-    reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
-    purgeAssociatedData:  purgeAssociatedData,  // 🧹 v1.79.3 — session/géoref/photos/backups d'un plan
+    reload:               reload,      // resync RAM après écriture LS externe
+    purgeAssociatedData:  purgeAssociatedData,  // session/géoref/photos/backups d'un plan
     transferAssociatedData: transferAssociatedData, // ☁️ copie locale → version publiée
-    setPinned:            setPinned,   // 🏷️ v1.78.0
-    setTags:              setTags,     // 🏷️ v1.78.0
-    setDisplayName:       setDisplayName, // ✏️ v1.79.1
-    displayName:          displayName,    // ✏️ v1.79.1 — libellé d'affichage
+    setPinned:            setPinned,
+    setTags:              setTags,
+    setDisplayName:       setDisplayName,
+    displayName:          displayName,    // libellé d'affichage
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,
@@ -1000,7 +1000,7 @@
     genServerId:          genServerId,
     genLocalId:           genLocalId,
     normaliserTags:       normaliserTags,
-    // 📁 16/09/2026 — dossiers de « Mes plans »
+    // dossiers de « Mes plans »
     getFolders:           getFolders,
     findFolder:           findFolder,
     findFolderByName:     findFolderByName,

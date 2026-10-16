@@ -64,7 +64,7 @@ function getIconUrlForPoint(point) {
 window.getIconUrlForPoint = getIconUrlForPoint;
 
 // =========================
-// 🔍 v1.7.1 : Double-clic sur un marker → zoom dessus
+// Double-clic sur un marker → zoom dessus
 // =========================
 // Initialement (commit cb846da) on utilisait l'event natif Leaflet `dblclick`.
 // Bug remonté KARMA : ne se déclenche jamais en pratique. Cause probable :
@@ -360,7 +360,7 @@ function attacherGpsValidationCombo(input, opts) {
 window.attacherGpsValidationCombo = attacherGpsValidationCombo;
 
 // =========================
-// 🆕 v1.26.1 — Vérification cohérence échelle px/m ↔ géoréférencement GPS
+// Vérification cohérence échelle px/m ↔ géoréférencement GPS
 // =========================
 // Si un plan a À LA FOIS un calibrage GPS 2 points (via KmzExport.getCalibration)
 // ET une échelle px/m saisie côté APP_CONFIG.scale, on peut DÉTECTER une
@@ -418,7 +418,7 @@ function calculerCoherenceEchelleGeoref(planId) {
   // Build transform pour récupérer metresParPixel (m/px)
   let transform;
   try {
-    transform = window.KmzExport.buildTransformCalib(saved);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+    transform = window.KmzExport.buildTransformCalib(saved);   // pointC optionnel propagé (affine)
   } catch(e) {
     return { hasCalibration: false, error: "Calcul transform impossible : " + (e && e.message ? e.message : String(e)) };
   }
@@ -430,7 +430,7 @@ function calculerCoherenceEchelleGeoref(planId) {
   const scaleGps = 1 / transform.metresParPixel; // px/m
   const deltaPercent = Math.abs(scaleGps - scaleUser) / scaleUser * 100;
 
-  // 🆕 v1.26.2-hotfix1 — Seuils RESSERRÉS (KARMA : « on n'est pas géologues »).
+  // Seuils RESSERRÉS (KARMA : « on n'est pas géologues »).
   // Pour de la nav cataphile, savoir qu'un trajet fait ~1 km avec une marge
   // raisonnable suffit. 10% = 100 m d'erreur sur 1 km = DÉJÀ énorme → critique.
   //   < 3%   silence  (< 30 m/km — tolérance normale du calibrage au pas humain)
@@ -508,14 +508,14 @@ function renderBannerCoherenceEchelle(planId, opts) {
             '</td>' +
           '</tr>' +
         '</table>' +
-        // 💡 v1.76.2 (KARMA) : quelle valeur croire — le géoréf bien fait gagne ; dit en une ligne.
+        // quelle valeur croire — le géoréf bien fait gagne ; dit en une ligne.
         '<p class="kta-scale-coherence-hint">' + t("utils.scaleCoherence.hintCheck") + '</p>' +
       '</div>' +
     '</div>';
 }
 window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
 
-// 🛰️ v1.85.2 — CAPTEURS REFUSES : le meme rendu pour les DEUX modales de
+// CAPTEURS REFUSES : le meme rendu pour les DEUX modales de
 // reglages (plan et accueil). Ecrit ici plutot que copie de chaque cote : une
 // des deux aurait fini par diverger, et c est la dette qu on solde a repetition
 // dans ce projet.
@@ -557,7 +557,7 @@ window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   }
 };
 
-// 🧩 01/10/2026 — case d'une fonctionnalité optionnelle sans capteur (Replay,
+// case d'une fonctionnalité optionnelle sans capteur (Replay,
 // Heatmap) : partagée par l'accueil et ⚙️ Réglages du plan, même état
 // (APP_CONFIG + app_user_prefs). `prefixe` porte les clés `.toastOn/.toastOff`.
 window.ktaBrancherOptionnel = function(cb, cle, prefixe) {
@@ -626,7 +626,7 @@ window.ktaConfirm = function(message, opts) {
                 ' line-height:1.45; cursor:pointer;"><input type="checkbox" id="kta-confirm-case"' +
                 (opts.caseACocher.coche ? ' checked' : '') + ' style="margin-top:2px;"> <span></span></label>'
             : '') +
-          // 🔢 30/09/2026 — champ nombre optionnel (`opts.nombre = {label, valeur, min, max}`), même
+          // champ nombre optionnel (`opts.nombre = {label, valeur, min, max}`), même
           // contrat que la case : la Promise rend un booléen, la valeur est relue dans
           // `opts.nombre.valeur` (Mode Secours : « combien sont remontés ? »).
           (opts.nombre
@@ -636,7 +636,7 @@ window.ktaConfirm = function(message, opts) {
                 (Number.isFinite(opts.nombre.max) ? ' max="' + opts.nombre.max + '"' : '') +
                 ' value="' + (Number.isFinite(opts.nombre.valeur) ? opts.nombre.valeur : '') + '"></label>'
             : '') +
-          // 🔤 09/10/2026 — champ texte optionnel (`opts.texte = {label, valeur, placeholder, maxLength}`),
+          // champ texte optionnel (`opts.texte = {label, valeur, placeholder, maxLength}`),
           // même contrat que `opts.nombre` : booléen rendu, saisie relue dans `opts.texte.valeur` (remplace
           // window.prompt). Label, valeur et placeholder posés par le DOM (jamais concaténés au HTML).
           (opts.texte
@@ -645,7 +645,7 @@ window.ktaConfirm = function(message, opts) {
               '</label>'
             : '') +
           '<div class="kta-conv-actions">' +
-            // 🗑️ 01/10/2026 — 3e choix optionnel (`opts.autre = {label, valeur}`) : la
+            // 3e choix optionnel (`opts.autre = {label, valeur}`) : la
             // Promise rend alors `opts.autre.valeur` (jamais un booléen, pour que
             // l'appelant ne le confonde pas avec OK / Annuler). Sans `autre`, rien ne change.
             (opts.autre
@@ -659,7 +659,7 @@ window.ktaConfirm = function(message, opts) {
         '</div>' +
       '</div>';
     document.documentElement.appendChild(ov);
-    // ☑️ 29/09/2026 — case optionnelle (`opts.caseACocher = {label, coche}`).
+    // case optionnelle (`opts.caseACocher = {label, coche}`).
     // La Promise rend TOUJOURS un booléen (contrat des appelants existants) :
     // l'état de la case est relu dans `opts.caseACocher.coche` après coup.
     // Libellé posé en textContent : il peut porter un nom de fichier.
@@ -718,7 +718,7 @@ window.ktaConfirm = function(message, opts) {
   });
 };
 
-// 💬 09/10/2026 — window.ktaAlerte(message, opts) → Promise (résolue à la fermeture).
+// window.ktaAlerte(message, opts) → Promise (résolue à la fermeture).
 // Remplace alert() natif (hors charte, ignore le thème, « <domaine> indique… », bloquable par iOS
 // en PWA, fige l'app). Fenêtre de ktaConfirm à un seul bouton. Règle (KARMA) : message à LIRE POUR
 // AGIR (erreur qui bloque, consigne) → ktaAlerte ; message qui CONFIRME ce qui vient de se passer →
@@ -827,7 +827,7 @@ window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
 // =========================
 // HELPER : aucun mode édition actif ?
 // =========================
-// v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure, et le
+// (KARMA "je ne peux plus tracer aucune structure, et le
 // popup s'ouvre au bout du trait pendant le tracé") :
 //
 // Pendant qu'un mode tracé/zone/structure est actif, les ghost polylines
@@ -848,7 +848,7 @@ window._aucunModeEditionActif = function() {
   return !window.modeRoad && !window.modeZone && !window.modeStructure;
 };
 
-// 🐛 v1.28.0 : true si un mode « clic carte » CONSOMMATEUR de clics est actif.
+// true si un mode « clic carte » CONSOMMATEUR de clics est actif.
 // Couvre le dessin (tracé / zone / structure), la mesure, le recalage tracker,
 // et TOUS les pickers de position (itinéraire, géoréf, départ tracker,
 // évitement, KMZ) — reconnaissables au floater commun `.kta-iti-floater`.
@@ -863,9 +863,9 @@ window._modeClicCarteActif = function() {
   try {
     // Pickers à floater commun : géoréf / départ tracker / itinéraire / évitement / KMZ.
     if (document.querySelector(".kta-iti-floater")) return true;
-    // 🆕 v1.28.0 (#2) : mode « clic carte » du Mode perdu (classe posée sur <body>).
+    // (#2) : mode « clic carte » du Mode perdu (classe posée sur <body>).
     if (document.body && document.body.classList.contains("kta-lost-click-mode")) return true;
-    // 🆕 v1.28.0 (#2) : sélection de position légende dans 📡 Export externe (banner dédié).
+    // (#2) : sélection de position légende dans 📡 Export externe (banner dédié).
     if (document.getElementById("kta-export-pick-banner")) return true;
     // NB : le tracé de polygone du Mode Secours gère DÉJÀ son propre
     // stopPropagation + overlay plein écran → pas besoin de le couvrir ici.
@@ -1049,7 +1049,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                  '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
                    _esc(window.I18n ? window.I18n.t("utils.note.save") : "💾 Sauver la note") +
                  '</button>' +
-                 // 🔄 v1.82.0 — RECLASSER L'OBJET. Un vecteur importé du SIG peut
+                 // RECLASSER L'OBJET. Un vecteur importé du SIG peut
                  // avoir été rangé dans la mauvaise famille : un front de taille qui
                  // est en fait une galerie n'entre pas dans le graphe d'itinéraire,
                  // puisque le Pathfinder ne lit que les tracés. La popup est le bon
@@ -1060,7 +1060,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
-               // 🗑️ v1.85.0 (KARMA « rajoute, dans le truc pour convertir, un
+               // (KARMA « rajoute, dans le truc pour convertir, un
                // bouton supprimer »). LIGNE SEPAREE, classe danger : meme
                // parti-pris que la popup d un point — une action destructrice
                // ne se pose pas a cote d un « Sauver », le clic serait trop
@@ -1172,7 +1172,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
 // dans interface.js). Echappement HTML/string strict pour eviter les injections
 // si un point a un nom avec apostrophe ou guillemet.
 
-// 🆕 v1.21.2 (KARMA "vue que on sait convertir coordonné px en georef, si
+// (KARMA "vue que on sait convertir coordonné px en georef, si
 // georef fait, on rajoute, juste aprés descriptions les coordonée GPS du
 // point") : helper qui calcule les coords GPS d'un point plan si le plan
 // courant a un calibrage utilisable. Retourne null si pas de calib (= pas
@@ -1196,7 +1196,7 @@ function _planXyToGps(x, y) {
         || typeof B.lat !== "number" || typeof B.lng !== "number") return null;
     if (typeof window.KmzExport.buildTransformCalib !== "function") return null;
     if (typeof window.KmzExport.planToGps !== "function") return null;
-    const t = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+    const t = window.KmzExport.buildTransformCalib(calib);   // pointC optionnel propagé (affine)
     return window.KmzExport.planToGps(t, x, y);
   } catch(e) {
     return null;  // calib dégénéré (2 points identiques, etc.)
@@ -1243,7 +1243,7 @@ window.kta_copierGps = function(txt) {
 // différés (accueil, profil, inspecteurs) s'exécutent AVANT ce fichier (defer) et s'en servent aussi.
 
 // =========================
-// 🫥 v1.62.0 — TRANSPARENCE DES PLANS (helpers partagés)
+// TRANSPARENCE DES PLANS (helpers partagés)
 // =========================
 // Une source PNG/WebP avec canal alpha ne doit plus être aplatie sur un fond
 // opaque au tuilage (V2 générateur + V1 runtime) : les tuiles gardent l'alpha
@@ -1327,7 +1327,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _act = function(action) {
     return 'data-kta-act="' + action + '" data-kta-id="' + _escAttr(id) + '" data-kta-x="' + x + '" data-kta-y="' + y + '" ';
   };
-  // 🆕 v1.16.0 step 3 — Favori : layerInfo passé par les callers
+  // Favori : layerInfo passé par les callers
   // (editor.js → { layerId: "editor", layerLabel: "Mes ajouts" }, utils.js
   // ajouterPointsDepuisJSON → { layerId: <data layer id>, layerLabel: <label> }).
   // Si absent, on déduit du flag isEditorSession.
@@ -1336,7 +1336,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const _firstTag   = (Array.isArray(point.tags) && point.tags[0]) || "default";
   // Échappement attribut pour les chaînes embarquées en data-* / args inline
   function _escAttr(s) { return window.ktaEsc(s); }
-  const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));   // 🆔 v2.4.0
+  const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));
 
   // Bouton Supprimer : visible UNIQUEMENT pour les points de la session
   // utilisateur en cours (listePoints). Detection via le 2eme argument
@@ -1347,7 +1347,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // session → data via Conversion garde "source: editor" dans le JSON, le
   // test serait trompeur → bouton affiche mais supprimerPointEditor ne
   // trouve rien dans listePoints → erreur silencieuse.
-  // 🆕 v1.9.3-B1b : 2 lignes pour les points session :
+  // 2 lignes pour les points session :
   //   - ligne "édition" : ✏️ Modifier (ouvre la modale unifiée avec photos)
   //   - ligne "destruction" : 🗑️ Supprimer (rouge, séparée pour ne pas être
   //     confondue avec une action neutre)
@@ -1359,7 +1359,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
           'title="' + window.I18n.t("poi.editPoint") + '">' +
           window.I18n.t("poi.editBtn") +
         '</button>' +
-        // 📌 v1.85.0 (KARMA « si le POI a ete mal mis ») : arme le picker
+        // (KARMA « si le POI a ete mal mis ») : arme le picker
         // « clic carte » de editor.js. Classe generique volontaire : la
         // reposition n'est pas l'edition, elle n'emprunte pas sa teinte.
         '<button class="kta-popup-btn" type="button" ' + _act("repositionner") +
@@ -1377,13 +1377,13 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
       '</div>'
     : '';
 
-  // 🆕 v1.9.3-B1d : slot photos hydraté en async via popupopen (cf.
+  // slot photos hydraté en async via popupopen (cf.
   // window.attachPopupPhotos appelé depuis _ajouterMarker et
   // ajouterPointsDepuisJSON). Vide par défaut → caché en CSS via :empty
   // pour ne pas créer d'espace blanc si pas de photos.
   const photosSlot = '<div class="kta-popup-photos" data-pointid="' + _escAttr(id) + '"></div>';
 
-  // 🆕 v1.21.2 (KARMA "si georef fait, on rajoute, juste aprés descriptions
+  // (KARMA "si georef fait, on rajoute, juste aprés descriptions
   // les coordonée GPS du point") : ligne coords GPS si le plan est calibré.
   // Affichée pour TOUS les points (session ET data layer — restriction
   // explicite par KARMA "dans le cadre des point uniquement. session, ou
@@ -1402,7 +1402,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
       '</div>';
   }
 
-  // 🆕 v1.34.18 (E2 TTS) — Bouton 🔊 inline à côté de la description si elle
+  // (E2 TTS) — Bouton 🔊 inline à côté de la description si elle
   // existe ET si la Web Speech Synthesis API est supportée par le navigateur.
   // Click = toggle play/stop via window.VoiceTts. Aucune auto-lecture (mode
   // strictement manuel — anti-pollution sonore).
@@ -1418,7 +1418,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                  '</button>';
   }
 
-  // 🌀 v1.57.0 — Liaisons inter-plan : section synchrone (registre localStorage)
+  // Liaisons inter-plan : section synchrone (registre localStorage)
   // listant les liaisons du point (+ liens baked `point.interPlanLinks` d'un
   // datalayer) + bouton « Lier à un autre plan ». Tout point est liable
   // (session ET datalayer — décision 6:a). Cf js/interPlanLinks.js.
@@ -1450,7 +1450,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
                window.I18n.t("poi.addWaypointBtn") +
              '</button>' +
-             // 🆕 v1.16.0 step 3 — Favori : toggle ajout/retrait des favoris.
+             // Favori : toggle ajout/retrait des favoris.
              // Le label et la classe initiale dépendent de l'état actuel.
              // Au clic, window.toggleFavoriPoint mute l'état + rafraîchit le
              // libellé du bouton in-place (pas de re-render du popup entier).
@@ -1514,7 +1514,7 @@ document.addEventListener("error", function(e) {
   if (t && t.tagName === "IMG" && t.dataset && t.dataset.ktaEchec) t.style.opacity = t.dataset.ktaEchec;
 }, true);
 
-// 🆕 v1.34.26 — Helper global vibration haptique (Web Vibration API).
+// Helper global vibration haptique (Web Vibration API).
 // Point d'entrée UNIQUE pour tous les modules qui veulent faire vibrer le
 // device (waypoint atteint, confirmation action, alerte erreur, etc.).
 // Check : (1) APP_CONFIG.vibrationEnabled === true (pref user), (2) API
@@ -1567,7 +1567,7 @@ window.kta_vibrate.urgence = function(pattern) {
 window.kta_vibrate.urgence.medium = function() { return window.kta_vibrate.urgence(100); };
 window.kta_vibrate.urgence.error  = function() { return window.kta_vibrate.urgence([200, 100, 200, 100, 200]); };
 
-// 🆕 v1.34.18 (E2 TTS) — Handler global pour le bouton 🔊 inline dans les
+// (E2 TTS) — Handler global pour le bouton 🔊 inline dans les
 // popups POI. Toggle play/stop via window.VoiceTts. Met à jour l'icône
 // pendant la lecture (🔊 → ⏹️) pour feedback visuel. Repasse à 🔊 quand la
 // lecture termine ou est canceled (via listener onStateChange).
@@ -1598,7 +1598,7 @@ window.kta_lireNotePopup = function(btn) {
   window.VoiceTts.speak(text);
 };
 
-// 🆕 v1.34.18 — Reset l'icône du bouton TTS courant quand la lecture termine
+// Reset l'icône du bouton TTS courant quand la lecture termine
 // naturellement (onend) ou erreur. Sans ce reset, le bouton resterait sur ⏹️
 // à la fin de la note → confusion user.
 if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
@@ -1613,7 +1613,7 @@ if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
   });
 }
 
-// 🆕 v1.16.0 step 3 — Favori : toggle handler global appelé depuis le
+// Favori : toggle handler global appelé depuis le
 // bouton ⭐ inline dans la popup. Reçoit le snapshot complet (pas juste
 // l'ID) pour pouvoir construire l'entrée favori sans relookup. Refresh
 // in-place le libellé du bouton dans toutes les popups ouvertes pour
@@ -1623,7 +1623,7 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
   if (!window.Favoris) return;
   const snapshot = {
     pointId:    pointId,
-    pointUid:   pointUid || undefined,   // 🆔 v2.4.0
+    pointUid:   pointUid || undefined,
     nom:        nom,
     x:          x,
     y:          y,
@@ -1636,7 +1636,7 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
   // ce pointId apparaît à plusieurs endroits — improbable mais robuste).
   const nowFav = window.Favoris.isFav(pointId, pointUid);
   document.querySelectorAll('.kta-popup-btn-fav[data-fav-pointid]').forEach(function(btn) {
-    // 🆔 v2.4.0 — le bouton de CE point (uid), pas celui d'un homonyme.
+    // le bouton de CE point (uid), pas celui d'un homonyme.
     const bu = btn.getAttribute("data-fav-pointuid") || "";
     if (pointUid ? bu === pointUid : btn.getAttribute("data-fav-pointid") === pointId) {
       btn.textContent = nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff");
@@ -1669,14 +1669,14 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
 //
 // Cleanup objectURLs au popupclose (sinon memory leak si l'user ouvre/
 // ferme des popups en boucle sur des plans riches).
-// 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #A) — Registre GLOBAL de TOUTES les
+// (Pack RAM Phase 4 — Fix #A) — Registre GLOBAL de TOUTES les
 // ObjectURL photos créées (par attachPopupPhotos, editor, secoursMode, etc.).
 // Utilisé par window._revokeAllPhotoObjectUrls() au plan switch pour libérer
 // systématiquement les blobs encore référencés (cas où l'user n'a pas fermé
 // les popups individuellement). Sans ce helper global, les Blob photos
 // restaient pinned tant que la page n'était pas refreshed → fuite cumulative
 // massive sur sessions longues (= cause majeure du crash iPhone PWA).
-// Le helper main.js > _libererRessourcesPlanPrecedent l698 appelait
+// Le helper main.js > _libererRessourcesPlanPrecedent appelait
 // _revokeAllPhotoObjectUrls() mais cette fonction n'était NULLE PART définie
 // (bug confirmé par audit autonome) → le call était un no-op silencieux.
 window._ktaAllPhotoUrls = window._ktaAllPhotoUrls || new Set();
@@ -1692,7 +1692,7 @@ window._revokeAllPhotoObjectUrls = window._revokeAllPhotoObjectUrls || function(
   }
 };
 
-// 🆔 v2.3.0 — combien de points du plan (session + calques) portent ce nom ?
+// combien de points du plan (session + calques) portent ce nom ?
 // Une photo rangée sous un nom porté par plusieurs points est « à rattacher » :
 // on ne devine jamais à quel point elle appartient (ETUDE_UID décision 12).
 function _ktaCompterPointsNommes(nom) {
@@ -1716,7 +1716,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
   function _cleanupUrls() {
     _objectUrls.forEach(function(u) {
       try { URL.revokeObjectURL(u); } catch(e) {}
-      // 🐛 v1.34.16 — Sync avec le registre global (évite double-revoke
+      // Sync avec le registre global (évite double-revoke
       // si le plan switch passe avant le popupclose).
       if (window._ktaAllPhotoUrls) window._ktaAllPhotoUrls.delete(u);
     });
@@ -1733,7 +1733,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     const pid = slot.getAttribute("data-pointid") || pointId;
     if (!pid) return;
 
-    // 🔧 v1.9.3-B1d-fix2 : on FORCE le re-fetch à chaque popupopen.
+    // on FORCE le re-fetch à chaque popupopen.
     // Avant on skip si déjà chargé, mais ça causait un piège : après un
     // popupclose qui révoque les blob URLs (anti memory leak), le DOM du
     // popup gardait des <img src="blob:..."> morts → image cassée au
@@ -1747,7 +1747,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
     slot.dataset.loaded = "0";
 
     const planId = window._currentLoadedPlanId || "default";
-    // 🆔 v2.3.0 — double lecture : sous l'uid du point, puis sous son nom.
+    // double lecture : sous l'uid du point, puis sous son nom.
     const _lecture = (pointUid && window.MyKTAMapPhotos.getPhotosForPointRef)
       ? window.MyKTAMapPhotos.getPhotosForPointRef(planId, { uid: pointUid, id: pid })
       : window.MyKTAMapPhotos.getPhotosForPoint(planId, pid);
@@ -1762,7 +1762,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
       const photosWithUrl = arr.map(function(rec) {
         const url = URL.createObjectURL(rec.blob);
         _objectUrls.add(url);
-        // 🐛 v1.34.16 — Aussi ajouter au registre global pour cleanup au plan switch.
+        // Aussi ajouter au registre global pour cleanup au plan switch.
         if (window._ktaAllPhotoUrls) window._ktaAllPhotoUrls.add(url);
         return {
           id:         rec.id,
@@ -1770,12 +1770,12 @@ function attachPopupPhotos(marker, pointId, pointUid) {
           size:       rec.size,
           createdAt:  rec.createdAt,
           _objectUrl: url,
-          // 🆔 v2.3.0 — rangée sous un nom porté par plusieurs points
+          // rangée sous un nom porté par plusieurs points
           _aRattacher: !!(rec._parNom && _nomAmbigu)
         };
       });
       // Rendu : grille de miniatures 44×44.
-      // 🔧 v1.9.3-B1d-fix2 → fix4 → fix6 (KARMA "j'ai toujours le fond bleu") :
+      // → fix4 → fix6 (KARMA "j'ai toujours le fond bleu") :
       // Historique :
       //   - fix2 : passage de background-image inline sur <button> → <img>
       //     enfant dans <button>. Fond bleu toujours visible.
@@ -1808,7 +1808,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
       });
       slot.dataset.loaded = "1";
 
-      // 🆔 v2.3.0 — « À RATTACHER » : ces photos étaient rangées sous le NOM du
+      // « À RATTACHER » : ces photos étaient rangées sous le NOM du
       // point, et plusieurs points portent ce nom. L'app ne choisit pas à la
       // place de l'utilisateur : un bouton par photo la rattache à CE point.
       // Rien n'est supprimé ; une photo non rattachée reste visible ici comme
@@ -1842,7 +1842,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
       }
 
       // Click + keyboard handler sur chaque miniature → viewer plein écran.
-      // 🔧 v1.9.3-B1d-fix6 : on est maintenant sur des <img role="button">
+      // on est maintenant sur des <img role="button">
       // (pas un vrai <button>) → il faut gérer Enter et Space au clavier
       // nous-mêmes pour l'accessibilité.
       slot.querySelectorAll(".kta-popup-photo-mini").forEach(function(el) {
@@ -1901,7 +1901,7 @@ function normaliserPoints(json) {
 }
 
 // =====================================================================
-// 🎨 v1.76.0 — STYLES : ce fichier n'en déclare plus aucun
+// STYLES : ce fichier n'en déclare plus aucun
 // =====================================================================
 // Il en portait SIX tables (3 pour les data layers Leaflet, 3 pour les pipes
 // canvas d'export), soit trois copies de chaque type built-in. Elles viennent
@@ -1959,7 +1959,7 @@ function _passeFiltreDataLevel(lvl) {
   return visibles.indexOf(Number.isInteger(lvl) ? lvl : 0) >= 0;
 }
 
-// 🆕 v1.21.5 (KARMA "filtre par tag/type runtime") : helpers de check des
+// (KARMA "filtre par tag/type runtime") : helpers de check des
 // filtres runtime FilterPanel. Tous retournent `true` si le filtre est
 // désactivé (null) → rétrocompat absolue avec le code v1.21.4.
 function _passeFiltreRuntimeTag(tag) {
@@ -1982,7 +1982,7 @@ function _passeFiltreRuntimeType(category, type) {
 function _filtreNiveauSurMarkerData(marker) {
   if (!marker) return;
   let visible = _passeFiltreDataLevel(marker._ktaLevel);
-  // 🆕 v1.21.5 : combinaison filtre tag runtime
+  // combinaison filtre tag runtime
   if (visible) {
     const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0]) || "default";
     if (!_passeFiltreRuntimeTag(tag)) visible = false;
@@ -2001,12 +2001,12 @@ window._applyLevelFilterToDataPoints = function() {
 function _filtreNiveauSurPolylineData(entry) {
   if (!entry || !entry.polyline) return;
   let visible = _passeFiltreDataLevel(entry.level);
-  // 🆕 v1.21.5 : combinaison filtre runtime type road
+  // combinaison filtre runtime type road
   if (visible && entry.type) {
     if (!_passeFiltreRuntimeType("roads", entry.type)) visible = false;
   }
   try {
-    // 🐛 v1.46.x — on coupe AUSSI fillOpacity au masquage. Les polylines n'ont
+    // on coupe AUSSI fillOpacity au masquage. Les polylines n'ont
     // pas de remplissage (origFillOpacity absent → 0, inoffensif), mais les ronds
     // d'extrémité de jonction embarqués sont des circleMarker REMPLIS (disque
     // blanc) : avec `opacity:0` seul, le bord magenta disparaissait mais le disque
@@ -2022,7 +2022,7 @@ window._applyLevelFilterToDataRoads = function() {
   window._ktaDataPolylines.forEach(_filtreNiveauSurPolylineData);
 };
 
-// 🎨 v1.76.0 (N1) — REPEINT les objets des CALQUES DE DONNÉES après un
+// (N1) — REPEINT les objets des CALQUES DE DONNÉES après un
 // changement de couleur dans la légende. Ils sont construits une fois au
 // chargement du plan : sans ce hook, une couleur choisie ne les atteignait
 // qu'au rechargement (limite documentée à la livraison de l'override —
@@ -2069,13 +2069,13 @@ window._ktaRestyleDataLayers = function() {
 };
 
 // === POLYGONS data layers (zones embarquees) ===
-// 🆕 v1.21.5 : `kindForRuntime` permet de différencier zone vs structure
+// `kindForRuntime` permet de différencier zone vs structure
 // (le même format de polygon entry est utilisé pour les 2). Passé par les
 // wrappers _applyLevelFilterToDataZones / _applyLevelFilterToDataStructures.
 function _filtreNiveauSurPolygonData(entry, kindForRuntime) {
   if (!entry || !entry.polygon) return;
   let visible = _passeFiltreDataLevel(entry.level);
-  // 🆕 v1.21.5 : combinaison filtre runtime type zone OU structure
+  // combinaison filtre runtime type zone OU structure
   if (visible && entry.type && kindForRuntime) {
     if (!_passeFiltreRuntimeType(kindForRuntime, entry.type)) visible = false;
   }
@@ -2091,7 +2091,7 @@ window._applyLevelFilterToDataZones = function() {
   window._ktaDataPolygons.forEach(function(e) { _filtreNiveauSurPolygonData(e, "zones"); });
 };
 
-// 🆕 v1.9.3-A1.a-fix5 : symétrique pour les structures data layer.
+// symétrique pour les structures data layer.
 window._applyLevelFilterToDataStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return;
   window._ktaDataStructurePolygons.forEach(function(e) { _filtreNiveauSurPolygonData(e, "structs"); });
@@ -2100,7 +2100,7 @@ window._applyLevelFilterToDataStructures = function() {
 // =========================
 // 🧮 TOUT CE QUE PORTE LE PLAN — session + calques de données
 // =========================
-// 🩸 v1.82.0 — DEUX MODALES COMPTAIENT LA SESSION SEULE, chacune de son côté.
+// 🩸 DEUX MODALES COMPTAIENT LA SESSION SEULE, chacune de son côté.
 // Sur un plan importé, où le relevé entier vit dans un calque de données, elles
 // annonçaient « (0) » — et l'export PDF, qui désactive une case dont le compteur
 // est nul, n'exportait alors plus rien du tout. Le compte juste se fait ici, une
@@ -2133,7 +2133,7 @@ window.ktaAnnotationsCompletes = function (famille) {
 // de session (bug remonte KARMA 25/05/2026).
 //
 // Source : window._ktaDataMarkers (array de markers Leaflet, alimente
-// par ajouterPointsDepuisJSON ligne ~901). Chaque marker contient :
+// par ajouterPointsDepuisJSON). Chaque marker contient :
 //   - getLatLng() → coordonnees Leaflet
 //   - _ktaLevel  → niveau M-LVL
 //   - _ktaNom    → nom du point
@@ -2164,9 +2164,9 @@ window.getAllEmbeddedPoints = function() {
         level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0,
         layerId: m._ktaLayerId || null
       };
-      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      // expose description embedded
       if (m._ktaDescription) item.description = m._ktaDescription;
-      // 🆔 v2.1.0 — l'identité du calque survit à la lecture (seulement si elle existe).
+      // l'identité du calque survit à la lecture (seulement si elle existe).
       if (m._ktaUid) item.uid = m._ktaUid;
       if (typeof m._ktaUpdatedAt === "number") item.updatedAt = m._ktaUpdatedAt;
       out.push(item);
@@ -2191,20 +2191,20 @@ window.getAllEmbeddedZones = function() {
       return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
     })
     .map(function(e) {
-      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      // expose description embedded
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
-      if (e.uid) out.uid = e.uid;                                   // 🆔 v2.1.0
+      if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
     });
 };
 
-// 🆕 v1.9.3-A1.a : équivalent pour structures embarquées (lecture seule via
+// équivalent pour structures embarquées (lecture seule via
 // data layer). Consommé par l'export KMZ/GPX, la Vue OSM, les exports image
 // et le Mode Secours.
 //
-// 🩸 v1.82.0 — CE COMMENTAIRE ANNONÇAIT UNE COLLISION QUI N'EXISTE PAS. Il
+// 🩸 CE COMMENTAIRE ANNONÇAIT UNE COLLISION QUI N'EXISTE PAS. Il
 // disait « utilisé en A1.b pour la collision pathfinder (les structures
 // bloquent comme les zones inaccessibles) ». C'est faux : `pathfinder.js` ne
 // contient AUCUNE référence aux structures — ni arêtes, ni obstacles. La seule
@@ -2215,14 +2215,14 @@ window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
   return window._ktaDataStructurePolygons
     .filter(function(e) {
-      // 🆕 v1.21.1 (audit fix #6) : seuil min de points dépend du type.
+      // seuil min de points dépend du type.
       // Fronts (front-1/front-2) = polylines = min 2 points. Piliers/mur
       // (et types custom polygon) = polygones = min 3 points. Avant le
       // filtre >= 3 strict excluait les fronts → KMZ/GPX export sans les
       // fronts data layer (alors qu'ils étaient visibles à l'écran via
       // ajouterPointsDepuisJSON qui accepte minPts = 2 pour polylines).
       if (!e || !e.type || !Array.isArray(e.points)) return false;
-      // 🩸 v1.82.0 — LE MEME PIEGE QUE v1.21.1, A MOITIE CORRIGE. Le test
+      // 🩸 LE MEME PIEGE QUE v1.21.1, A MOITIE CORRIGE. Le test
       // litteral ne reconnait que `front-1` et `front-2` : un type CUSTOM
       // polyligne (`cust-...` avec geometry "polyline") retombe donc sur
       // minPts = 3 et disparait des qu il n a que 2 points.
@@ -2241,16 +2241,16 @@ window.getAllEmbeddedStructures = function() {
       return e.points.length >= minPts;
     })
     .map(function(e) {
-      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      // expose description embedded
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
-      if (e.uid) out.uid = e.uid;                                   // 🆔 v2.1.0
+      if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
     });
 };
 
-// 🐛 v1.21.3 (audit P0-6) : token de génération pour annuler les rAF en
+// token de génération pour annuler les rAF en
 // cours quand le plan switch. Avant : une boucle rAF self-recursive pouvait
 // continuer à ajouter des markers DANS LE LAYER DU PLAN PRÉCÉDENT, ce qui
 // retenait des refs vers un layerGroup orphelin (fuite mémoire + zombies).
@@ -2259,7 +2259,7 @@ window.getAllEmbeddedStructures = function() {
 // `_libererRessourcesPlanPrecedent` dans main.js.
 window._ktaDataLayerLoadToken = window._ktaDataLayerLoadToken || 0;
 
-// 🚀 v1.30.0 (P5 viewport culling markers POI) — Étend le toggle ULTRA
+// (P5 viewport culling markers POI) — Étend le toggle ULTRA
 // existant `viewportCull` (déjà actif sur les polylines via road.js)
 // aux markers des data layers (puits, salles, etc.).
 //
@@ -2293,7 +2293,7 @@ function _markerInViewportPadded(marker, padFraction) {
   if (!window.map || !marker) return true;
   try {
     const pad = (padFraction != null) ? padFraction : 0.1;
-    // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON tourné :
+    // sous rotation, `getBounds()` rend le rectangle NON tourné :
     // des markers bien visibles au bord en sortaient. `zoneVisible()` rend
     // l'empreinte réelle de l'écran ; hors mode, c'est `getBounds()`.
     const base = (window.MapBearing && window.MapBearing.zoneVisible
@@ -2313,7 +2313,7 @@ window._markerInViewportPadded = _markerInViewportPadded;
  * Idempotent (rappels successifs sans changement = no-op).
  */
 window._refreshDataMarkersViewport = function() {
-  // 🚀 v1.30.0 (P5) — Chaîne vers le refresh des markers session éditeur.
+  // (P5) — Chaîne vers le refresh des markers session éditeur.
   // editor.js expose `window._refreshEditorMarkersViewport` qui suit le
   // même pattern (toggle OFF = graceful reintegration). On chaîne ici pour
   // qu'un seul hook moveend/zoomend serve les 2 registres de markers,
@@ -2321,7 +2321,7 @@ window._refreshDataMarkersViewport = function() {
   if (typeof window._refreshEditorMarkersViewport === "function") {
     window._refreshEditorMarkersViewport();
   }
-  // 🚀 29/09/2026 — et les TRACÉS du plan (même crochet moveend/zoomend).
+  // et les TRACÉS du plan (même crochet moveend/zoomend).
   window._refreshDataPolylinesUltra();
 
   if (!Array.isArray(window._ktaDataMarkers) || window._ktaDataMarkers.length === 0) return;
@@ -2353,7 +2353,7 @@ window._refreshDataMarkersViewport = function() {
   });
 };
 
-// 🚀 29/09/2026 (backlog « ULTRA no-op ») — viewportCull et decim N'AGISSAIENT
+// (backlog « ULTRA no-op ») — viewportCull et decim N'AGISSAIENT
 // PAS sur les tracés d'un plan : ils sont créés ici, n'entrent jamais dans
 // `roadsData` de road.js, seule liste que ces deux réglages parcouraient.
 // Mesuré sur un relevé de 912 tracés, cull ON à z=0 : 895 polylines sur la
@@ -2471,14 +2471,14 @@ window._bindMarkerViewportHook = function() {
 };
 
 function ajouterPointsDepuisJSON(url, layer) {
-  // 🔍 v1.82.0 — la largeur des fronts dépend du zoom, et un plan importé
+  // la largeur des fronts dépend du zoom, et un plan importé
   // porte ses structures ICI, pas dans la session. Sans cet appel, le
   // branchement au zoom n’a jamais lieu sur ces plans et les traits restent
   // à 10 px quel que soit le dézoom. Idempotent.
   try { if (typeof window.brancherLargeurFronts === "function") window.brancherLargeurFronts(); } catch (e) {}
   const _loadToken = window._ktaDataLayerLoadToken;
 
-  // 🚀 v1.30.0 (P5 viewport culling) : pose le hook moveend/zoomend sur
+  // (P5 viewport culling) : pose le hook moveend/zoomend sur
   // window.map si pas déjà fait pour cette map. Idempotent via flag
   // map._mkmMarkerHookBound. Au plan switch → nouvelle map → nouveau bind.
   // Sans ce hook, les markers cachés au boot ne réapparaîtraient jamais.
@@ -2486,7 +2486,7 @@ function ajouterPointsDepuisJSON(url, layer) {
     window._bindMarkerViewportHook();
   }
 
-  // 🆕 v1.16.0 step 3 : reverse-lookup pour identifier le calque de
+  // reverse-lookup pour identifier le calque de
   // data layer auquel appartient ce JSON. Sert au bouton ⭐ Favori
   // pour stocker le bon layerId/layerLabel dans le snapshot. Pas de
   // dependency sur un nouveau paramètre — on retrouve via la map des
@@ -2518,7 +2518,7 @@ function ajouterPointsDepuisJSON(url, layer) {
       let index = 0;
 
       function ajouterBatch() {
-        // 🐛 v1.21.3 (audit P0-6) : abort si on a switché de plan entre 2 batches.
+        // abort si on a switché de plan entre 2 batches.
         // Sinon les markers atterrissent dans le layerGroup du plan précédent
         // (déjà détruit ou en cours de destruction par _libererRessourcesPlanPrecedent).
         if (_loadToken !== window._ktaDataLayerLoadToken) return;
@@ -2536,7 +2536,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             // Popup avec boutons "Y aller" / "Itinéraire" — helper commun.
             // 2e argument false → point d'un data layer (lecture seule), pas
             // de bouton "🗑️ Supprimer" affiche.
-            // 🆕 v1.16.0 step 3 : 3e arg = layerInfo pour le bouton ⭐ Favori
+            // 3e arg = layerInfo pour le bouton ⭐ Favori
             // 🆕 H3 (audit 2026-06-14) : popup LAZY. bindPopup reçoit une FONCTION,
             // appelée par Leaflet à l'OUVERTURE du popup (pas au bind). Évite de
             // construire ~10 I18n.t() × N markers au chargement pour des popups
@@ -2547,13 +2547,13 @@ function ajouterPointsDepuisJSON(url, layer) {
                 ? window.buildPointPopupHtml(p, false, _layerInfo)
                 : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
             }, window.KTA_POPUP_OPTS);
-            // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à
+            // hydrate les miniatures photos dans le popup à
             // l'ouverture. Pour les data layers, ça permet de voir les
             // photos quand l'user import un plan ZIP qui en contient
             // (workflow B1.d.γ à venir). Pour B1.d.α actuel, les data
             // layers n'ont pas de photos donc le slot reste invisible.
             if (typeof window.attachPopupPhotos === "function") {
-              window.attachPopupPhotos(marker, String(p.id || ""), p.uid);   // 🆔 v2.3.0
+              window.attachPopupPhotos(marker, String(p.id || ""), p.uid);
             }
           }
 
@@ -2567,13 +2567,13 @@ function ajouterPointsDepuisJSON(url, layer) {
           marker._ktaNom  = p.nom || "";
           marker._ktaId   = p.id  || "";
           marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
-          // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+          // description embarquée pour KMZ/GPX export
           // (cohérent avec _ktaDataPolylines/Polygons/Structures).
           marker._ktaDescription = p.description || "";
-          // 🩸 v1.82.0 — calque d origine (cf. entry des roads plus bas) : sans
+          // 🩸 calque d origine (cf. entry des roads plus bas) : sans
           // lui, l export ne peut pas rattacher un point à sa case « calque ».
           marker._ktaLayerId = _layerInfo ? _layerInfo.layerId : null;
-          // 🆔 v2.1.0 — identité du point dans son calque (posée par le Générateur
+          // identité du point dans son calque (posée par le Générateur
           // sur les plans récents ; absente des anciens : on ne l'invente pas).
           if (typeof p.uid === "string" && p.uid) marker._ktaUid = p.uid;
           if (typeof p.updatedAt === "number") marker._ktaUpdatedAt = p.updatedAt;
@@ -2583,7 +2583,7 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
           attachMarkerDblClickZoom(marker);
 
-          // 🚀 v1.30.0 (P5 viewport culling) : skip le addTo si hors viewport
+          // (P5 viewport culling) : skip le addTo si hors viewport
           // et toggle viewportCull actif. Le marker reste référencé dans
           // _ktaDataMarkers et sera réintégré au moveend/zoomend via
           // _refreshDataMarkersViewport(). Trace le layer cible pour
@@ -2624,7 +2624,7 @@ function ajouterPointsDepuisJSON(url, layer) {
                    (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
           });
         }
-        // 🐛 v1.34.14 — Track si on a register au moins une road embedded.
+        // Track si on a register au moins une road embedded.
         // À la fin du forEach, si oui, on trigger UN SEUL renderRoads (au lieu
         // de N renderRoads via registerEmbeddedRoad pour chaque road, ce qui
         // causait 150+ renderRoads en boucle au boot pour des plans avec
@@ -2634,17 +2634,17 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!road.points || road.points.length < 2) return;
           const style = _ktaStyleMap("traces", road.type) || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
-          // v1.16.0 step 1 — si une note (description) est embarquée dans le
+          // si une note (description) est embarquée dans le
           // data layer, on rend la polyline interactive pour binder un popup
           // readonly. Sinon : interactive:false (comportement d'avant — pas
           // d'intrusion au clic).
-          // v1.16.0 step 1c — on garde la polyline visible non-interactive
+          // on garde la polyline visible non-interactive
           // (rendu inchangé) et on ajoute une ghost TRANSPARENTE épaisse
           // par-dessus uniquement si note présente. Ergonomie clic mobile.
           const hasNoteRO = !!(road.description && String(road.description).trim());
           const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
           if (hasNoteRO && typeof window.attacherNotePopup === "function") {
-            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            // titre popup résolu via LC
             const _roadEmojisRO = { principal: "🟩", secondaire: "🟪", chemin: "🟨", jonction: "🪜", itinerary: "🗺️" };
             function _roadROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -2671,7 +2671,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               interactive:         true,
               bubblingMouseEvents: false
             });
-            // v1.16.0 step 1d : on n'attache le ghost à la map QUE si aucun
+            // on n'attache le ghost à la map QUE si aucun
             // mode édition n'est actif maintenant. Sinon il sera attaché plus
             // tard par _kta_syncDataLayerNoteGhosts quand le mode s'arrête.
             if (window._aucunModeEditionActif()) {
@@ -2688,21 +2688,21 @@ function ajouterPointsDepuisJSON(url, layer) {
           }
           // 🏗️ Multi-niveau (v148) : registre pour filtre runtime. Si le JSON
           // de la route contient un champ `level`, on l'utilise. Sinon = 0.
-          // 🆕 v1.21.1 (audit fix #8) : stocke aussi type + points + description
+          // stocke aussi type + points + description
           // pour que getAllEmbeddedRoads expose les méta complètes au KMZ/GPX
           // export. Avant : description perdue à l'export embedded data layers.
           const entry = {
-            // 🩸 v1.82.0 — SANS L'ID DU CALQUE, LE REGISTRE EST INEXPLOITABLE
+            // 🩸 SANS L'ID DU CALQUE, LE REGISTRE EST INEXPLOITABLE
             // à l'export : impossible de dire quel objet vient de quel calque,
             // donc impossible de respecter les cases « calques » de la modale.
             layerId:      _layerInfo ? _layerInfo.layerId : null,
             polyline:    polyline,
-            groupe:      layer,   // 🚀 29/09/2026 — calque parent (réglages ULTRA)
+            groupe:      layer,   // calque parent (réglages ULTRA)
             type:        road.type,
             points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
             description: road.description || undefined,
-            uid:         (typeof road.uid === "string" && road.uid) ? road.uid : undefined,   // 🆔 v2.1.0
+            uid:         (typeof road.uid === "string" && road.uid) ? road.uid : undefined,
             updatedAt:   (typeof road.updatedAt === "number") ? road.updatedAt : undefined,
             origOpacity: style.opacity ?? 1
           };
@@ -2710,7 +2710,7 @@ function ajouterPointsDepuisJSON(url, layer) {
           _filtreNiveauSurPolylineData(entry);  // applique le filtre courant
           // Enregistrer dans road.js avec la référence au layerGroup du calque,
           // pour que les intersections se filtrent par visibilité (toggle calques).
-          // 🐛 v1.34.14 — skipRender=true : on évite N renderRoads en boucle
+          // skipRender=true : on évite N renderRoads en boucle
           // pendant le batch. Un seul renderRoads est trigger à la fin de la
           // boucle (via _renderRoadsThrottled ou window.appliquerFiltreNiveau).
           if (typeof window.registerEmbeddedRoad === "function") {
@@ -2718,7 +2718,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             _ktaEmbeddedRoadRegistered = true;
           }
 
-          // 🪜 v1.7.1 fix : ronds magenta aux extrémités des jonctions embedded
+          // ronds magenta aux extrémités des jonctions embedded
           // (parité visuelle avec road.js > renderRoads pour les jonctions session).
           // Sans ces ronds, les jonctions interniveau converties en data layer
           // perdaient leur signalétique d'extrémité (where start/end visually).
@@ -2740,14 +2740,14 @@ function ajouterPointsDepuisJSON(url, layer) {
               window._ktaDataPolylines.push({
                 polyline:        cm,
                 groupe:          layer,
-                // 🐛 v1.46.x — sans `type`, le filtre runtime par type (toggle
+                // sans `type`, le filtre runtime par type (toggle
                 // « jonction » / liaisons inter-niveaux du FilterPanel) sautait
                 // ces ronds (cf _filtreNiveauSurPolylineData : `if (entry.type)`)
                 // → ils persistaient au masquage alors que la polyline partait.
                 type:            road.type,
                 level:           entry.level,
                 origOpacity:     1,
-                // 🐛 v1.46.x — circleMarker REMPLI (disque blanc, fillOpacity:1) :
+                // circleMarker REMPLI (disque blanc, fillOpacity:1) :
                 // le masquage doit couper fillOpacity, sinon opacity:0 seul ne
                 // cache que le bord magenta et le disque blanc reste visible.
                 origFillOpacity: 1
@@ -2755,7 +2755,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             });
           }
         });
-        // 🐛 v1.34.14 — Render UNE FOIS à la fin du batch (au lieu de N fois
+        // Render UNE FOIS à la fin du batch (au lieu de N fois
         // dans la boucle via registerEmbeddedRoad). Skip si pas de road
         // registered. Le check `window.roadInitialized` reste safe : si
         // road.js n'est pas encore prêt, on no-op (cohérent avec le check
@@ -2764,11 +2764,11 @@ function ajouterPointsDepuisJSON(url, layer) {
             typeof window.renderRoads === "function") {
           window.renderRoads();
         }
-        // 🚀 29/09/2026 — réglages ULTRA appliqués dès le chargement du calque.
+        // réglages ULTRA appliqués dès le chargement du calque.
         window._refreshDataPolylinesUltra();
       }
 
-      // 🆕 v1.9.3-A1.a : Structures embarquées (piliers + murs) en lecture
+      // Structures embarquées (piliers + murs) en lecture
       // seule dans le même layer. Architecture STRICTEMENT calquée sur les
       // zones data layer ci-dessous — structure.json est un data layer
       // comme un autre (id "structure" dans plan-config.json), pas un
@@ -2778,7 +2778,7 @@ function ajouterPointsDepuisJSON(url, layer) {
       if (Array.isArray(json.structures) && json.structures.length > 0) {
         // Styles resolus (lecture seule, interactive: false) — memes valeurs que
         // le rendu session, plus aucune copie locale.
-        // 🆕 v1.10.0-hotfix1 (KARMA "fronts au-dessus des piliers + logique
+        // (KARMA "fronts au-dessus des piliers + logique
         // de niveau") : nouvel ordre Z mur < pilier-2 < pilier-1 < front-2 <
         // front-1 (fronts en avant-plan, plus visibles). En mode multi-niveau,
         // tri primaire par level ascendant (niveau bas en arrière) avant le
@@ -2800,13 +2800,13 @@ function ajouterPointsDepuisJSON(url, layer) {
           window._ktaDataStructurePolygons = [];
         }
         structuresTriees.forEach(function(structure) {
-          // 🆕 v1.9.3-A1.b.2 : min points dépend du type (2 pour polyline, 3 pour polygon)
+          // min points dépend du type (2 pour polyline, 3 pour polygon)
           const style = _ktaStyleMap("structures", structure.type, "mur");
           const isPolyline = !!(style && style.isPolyline);
           const minPts = isPolyline ? 2 : 3;
           if (!structure.points || structure.points.length < minPts) return;
           const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
-          // v1.16.0 step 1 + 1c — note readonly conditionnelle + ghost
+          // note readonly conditionnelle + ghost
           // transparent épais pour les polylines (fronts) si note présente.
           const hasNoteROStruct = !!(structure.description && String(structure.description).trim());
           let leafletLayer;
@@ -2819,7 +2819,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               opacity:  style.opacity,
               lineCap:  "round",
               lineJoin: "round",
-              // 🔍 v1.82.0 — MEME CLASSE QUE LES STRUCTURES DE SESSION.
+              // MEME CLASSE QUE LES STRUCTURES DE SESSION.
               // Les structures des DATALAYERS sont dessinees ici, pas dans
               // structures.js : poser la classe d un seul cote laissait la
               // largeur figee a 10 px pour tous les plans importes - c est-a-dire
@@ -2831,7 +2831,7 @@ function ajouterPointsDepuisJSON(url, layer) {
             leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
-            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            // titre popup résolu via LC
             const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "front-1": "🟨", "front-2": "🟧" };
             function _structROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -2861,7 +2861,7 @@ function ajouterPointsDepuisJSON(url, layer) {
                 interactive:         true,
                 bubblingMouseEvents: false
               });
-              // v1.16.0 step 1d : attach conditionnel (cf roads ci-dessus)
+              // attach conditionnel (cf roads ci-dessus)
               if (window._aucunModeEditionActif()) {
                 ghostStructRO.addTo(layer);
               }
@@ -2881,14 +2881,14 @@ function ajouterPointsDepuisJSON(url, layer) {
           // polyline Leaflet supporte setStyle aussi → no breakage.
           const entry = {
             polygon:         leafletLayer,
-            // 🩸 v1.82.0 — calque d origine (cf. entry des roads ci-dessus).
+            // 🩸 calque d origine (cf. entry des roads ci-dessus).
             layerId:         _layerInfo ? _layerInfo.layerId : null,
             type:            structure.type,
             points:          structure.points,
             level:           Number.isInteger(structure.level) ? structure.level : 0,
-            // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+            // description embarquée pour KMZ/GPX export
             description:     structure.description || undefined,
-            uid:             (typeof structure.uid === "string" && structure.uid) ? structure.uid : undefined,   // 🆔 v2.1.0
+            uid:             (typeof structure.uid === "string" && structure.uid) ? structure.uid : undefined,
             updatedAt:       (typeof structure.updatedAt === "number") ? structure.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.85
@@ -2918,14 +2918,14 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-          // v1.16.0 step 1 — note readonly conditionnelle (cf roads/structures ci-dessus)
+          // note readonly conditionnelle (cf roads/structures ci-dessus)
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
           const polyOpts = (zone.type === "inaccessible")
             ? Object.assign({}, style, { interactive: hasNoteROZone, renderer: window._inaccessibleDataRenderer })
             : Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
-            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            // titre popup résolu via LC
             const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
             function _zoneROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -2960,14 +2960,14 @@ function ajouterPointsDepuisJSON(url, layer) {
           // dure (= polygon bloque les segments qui le traversent).
           const entry = {
             polygon:         polygon,
-            // 🩸 v1.82.0 — calque d origine (cf. entry des roads ci-dessus).
+            // 🩸 calque d origine (cf. entry des roads ci-dessus).
             layerId:         _layerInfo ? _layerInfo.layerId : null,
             type:            zone.type,
             points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,
-            // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+            // description embarquée pour KMZ/GPX export
             description:     zone.description || undefined,
-            uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,   // 🆔 v2.1.0
+            uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.7
@@ -2986,7 +2986,7 @@ function ajouterPointsDepuisJSON(url, layer) {
       if (typeof window._etendreAvailableLevelsSiBesoin === "function") {
         try { window._etendreAvailableLevelsSiBesoin(); } catch(e) {}
       }
-      // 🆔 v2.3.0 — un calque de plus est connu : ses points comptent pour
+      // un calque de plus est connu : ses points comptent pour
       // l'ambiguïté des noms → la migration des photos est (re)planifiée.
       if (typeof window._ktaPlanifierMigrationPhotos === "function") window._ktaPlanifierMigrationPhotos();
     })
@@ -3085,7 +3085,7 @@ async function telechargerPlan() {
         // si visible dans la carte on le dessine
         if (leafletLayerVisible) {
           const overlayImg = await loadImage(layerConfig.file);
-          // 🆕 v1.38.3 — Si l'image layer a une calibration 2 ancres (embed
+          // Si l'image layer a une calibration 2 ancres (embed
           // plan-config.json depuis v1.38.1), on respecte la transform pour
           // que l'export simple reflète ce que l'user voit. Sinon : drawImage
           // stretching plan principal (v1.37.x).
@@ -3212,7 +3212,7 @@ async function telechargerPlan() {
             });
           }
 
-          // 🆕 v1.10.3-structures-embed-fix (KARMA "structures bien
+          // (KARMA "structures bien
           // incluses ?") : Structures embarquées (piliers + mur + fronts)
           // dans le mode export rapide. Trou découvert post-update v1.9.3 :
           // ajouterPointsDepuisJSON (runtime Leaflet) les affichait bien,
@@ -3508,7 +3508,7 @@ async function telechargerPlan() {
 window.telechargerPlan = telechargerPlan;
 
 // =========================================================================
-// 🆕 v1.31.6 — UX4 a11y : gestion globale Escape pour les modales
+// UX4 a11y : gestion globale Escape pour les modales
 // =========================================================================
 // Listener unique au document. Pattern :
 //   1. Trouve l'overlay modal le PLUS HAUT (z-index max) parmi une liste
@@ -3654,7 +3654,7 @@ window.telechargerPlan = telechargerPlan;
 // =====================================================================
 // 📋 window.ktaCopierTexte(txt) → Promise<boolean>
 // =====================================================================
-// 26/09/2026 — le presse-papier était recopié à la main dans SEPT modules
+// le presse-papier était recopié à la main dans SEPT modules
 // (`debug`, `homeConfig`, `interfaceDocs` ×2, `lostMode`, `memInspector`,
 // `osmCoords`, `secoursMode`), chacun avec son propre repli. Le mode urgence
 // devait être le huitième : il devient le premier consommateur d'un helper.
@@ -3666,7 +3666,7 @@ window.telechargerPlan = telechargerPlan;
 // qui marche partout : on ne prive pas quelqu'un de ses coordonnées parce que
 // le navigateur fait la fine bouche.
 //
-// ✅ 10/10/2026 : tous les modules de l'app passent par ce helper (secoursMode compris) ;
+// tous les modules de l'app passent par ce helper (secoursMode compris) ;
 // seul confadmin.js garde sa copie (page à part, sans utils.js).
 window.ktaCopierTexte = function (txt) {
   const s = String(txt == null ? "" : txt);
@@ -3704,7 +3704,7 @@ window.ktaCopierTexte = function (txt) {
 // =====================================================================
 // 💾 window.ktaStockageLocal — mémoire des sessions
 // =====================================================================
-// 10/10/2026 (retour d'un testeur en prod : points disparus + invite de mise à
+// (retour d'un testeur en prod : points disparus + invite de mise à
 // jour à chaque ouverture) : les sessions vivaient dans le localStorage, plafonné
 // à ~5 Mo PAR SITE quel que soit l'espace du téléphone. Plein, toute écriture y
 // échouait (QuotaExceededError) et rien ne le montrait AVANT la panne.

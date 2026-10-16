@@ -36,7 +36,7 @@
 //      tout le sujet : à l'intérieur de `creerIcones()`, elle n'existait
 //      qu'après le chargement d'un plan — trop tard pour le HOME.
 //
-// 🎨 26/09/2026 (audit icônes, étage 1) — IL NE GARDAIT QUE 2 TABLES SUR 8.
+// IL NE GARDAIT QUE 2 TABLES SUR 8.
 // L'audit a mesuré que **six** autres tables connaissent les tags built-in et
 // que rien ne les confrontait : l'invariant ne tenait que par discipline. Or
 // c'est exactement par là que `portail` s'est perdu en v1.81.0. Ajouté :

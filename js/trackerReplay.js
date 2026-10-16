@@ -298,7 +298,7 @@
       '<div class="kta-readme-modal-boite kta-trkrepl-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
           '<span class="kta-readme-modal-titre">' + window.I18n.t("replay.modal.titre") + '</span>' +
-          // 🆕 v1.11.3-fix : bouton ⛶ pour toggle mode compact / normal
+          // bouton ⛶ pour toggle mode compact / normal
           '<button class="kta-trkrepl-btn-icon" id="kta-trkrepl-fullscreen" type="button" title="' + window.I18n.t("replay.compact.reduce") + '" style="margin-right:8px;">▭</button>' +
           '<button class="kta-panneau-close" id="kta-trkrepl-close" type="button">✕</button>' +
         '</div>' +
@@ -356,7 +356,7 @@
 
     // Bind events
     document.getElementById("kta-trkrepl-close").addEventListener("click", fermer);
-    // 🆕 v1.11.3-fix : clic backdrop ferme UNIQUEMENT en mode normal.
+    // clic backdrop ferme UNIQUEMENT en mode normal.
     // En mode compact, le backdrop est transparent et pass-through (l'user
     // veut interagir avec la carte derrière, pas fermer la modale).
     modal.addEventListener("click", function(e) {
@@ -508,7 +508,7 @@
     }
     const btn = document.getElementById("kta-trkrepl-playpause");
     if (btn) btn.textContent = "⏸️";
-    // 🆕 v1.11.3-fix (KARMA "modal reste ouvert, tout se passe derrière") :
+    // (KARMA "modal reste ouvert, tout se passe derrière") :
     // au play, on réduit la modale en floater compact bas-centre +
     // overlay backdrop transparent pour que l'user voie la carte avec le
     // marker mobile + trail. Bouton ⛶ pour revenir taille normale.
@@ -522,7 +522,7 @@
     if (btn) btn.textContent = "▶️";
   }
 
-  // 🆕 v1.11.3-fix : toggle mode compact (floater bas-centre vs modal plein).
+  // toggle mode compact (floater bas-centre vs modal plein).
   // Le mode compact retire l'overlay backdrop pour laisser cliquable la carte
   // dessous ET réduit la modal en panneau bottom-center compact.
   function _setCompactMode(compact) {

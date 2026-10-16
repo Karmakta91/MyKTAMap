@@ -45,7 +45,7 @@
       // Accent bleu (info, action non-destructive) — différencie de la
       // modale de Reset qui est rouge (action destructive).
       overlay.innerHTML =
-        // 🆕 v1.9.2-fix15 : ajout de height:auto + max-height:92vh pour
+        // ajout de height:auto + max-height:92vh pour
         // que la modale ne prenne plus toute la hauteur de l'écran sur
         // PC (KARMA : "prend toute longueur pour rien, bcp de vide").
         // La base CSS .kta-readme-modal-boite donne désormais min(92vh,
@@ -107,7 +107,7 @@
     });
   }
 
-  // 🆘 v1.37.0 — Modale de confirmation pour le bouton "Kill SW"
+  // Modale de confirmation pour le bouton "Kill SW"
   // (ouverture de killsw.html depuis Configuration home). Calque du
   // pattern _afficherConfirmForceUpdate ci-dessus. Accent orange (entre
   // bleu info et rouge danger) car action plus impactante que la mise à
@@ -182,7 +182,7 @@
     });
   }
 
-  // 🆘 v1.37.0 — Modale de refus offline pour Kill SW.
+  // Modale de refus offline pour Kill SW.
   // Équivalent compact de _softUpdateOfflineWarning (interfaceMaintenance.js)
   // adapté au cas Kill SW : action ANNULÉE car re-download des assets
   // requis au prochain boot. Sans Internet → app inutilisable post-kill.

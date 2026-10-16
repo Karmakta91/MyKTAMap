@@ -62,7 +62,7 @@
     const statusClass = typeof entry.status === "number" && entry.status >= 200 && entry.status < 400 ? "kta-net-status-ok"
                       : (typeof entry.status === "number" && entry.status >= 400 ? "kta-net-status-err"
                       : "kta-net-status-pending");
-    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    // (B8) : i18n au rendu, fallback FR inline (pattern projet).
     const _nt = function(k, fb) {
       return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
         ? window.I18n.t(k) : fb;
@@ -86,7 +86,7 @@
     const meta  = document.getElementById("loaderNetLogMeta");
     if (!tbody || !window.NetworkAudit) return;
     const log = window.NetworkAudit.getLog();
-    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    // (B8) : i18n au rendu, fallback FR inline (pattern projet).
     const _nt = function(k, fb, params) {
       return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
         ? window.I18n.t(k, params || {}) : fb;

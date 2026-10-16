@@ -24,7 +24,7 @@ const CLOSE_TOLERANCE = 5;
 // =========================
 // STYLES
 // =========================
-// 🎨 v1.76.0 — Les 4 types built-in ne sont plus declares ici : leurs valeurs
+// Les 4 types built-in ne sont plus declares ici : leurs valeurs
 // viennent de la table canonique de `js/styleResolver.js`.
 // Rappel qui ne se lit pas dans les valeurs : la zone INACCESSIBLE (v169)
 // bloque le pathfinder (tout segment qui traverse le polygone est retire du
@@ -52,7 +52,7 @@ const ZONE_STYLE_PREVIEW = {
 };
 
 // Résolution du style d'une zone — built-in ET types CUSTOM (LegendCustomization).
-// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle. Retourne un objet
+// delegue integralement a window.ktaResolveStyle. Retourne un objet
 // NEUF a chaque appel (avant : l'objet partage de la table), donc un appelant
 // qui mute son style ne contamine plus les autres zones.
 let _resolverManquantSignaleZ = false;
@@ -111,11 +111,11 @@ function initZones() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
-    // 🆕 v1.11.0 Undo/Redo : snapshot avant toute mutation (création de
+    // Undo/Redo : snapshot avant toute mutation (création de
     // currentZone, ajout d'un sommet, fermeture par retour au 1er point).
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
     const _isNewZone = !currentZone;
-    // 🐛 v1.16.0 step2-drawable-fix2 : label custom = user-defined
+    // label custom = user-defined
     let _typeLabel;
     if (window.LegendCustomization && String(window.modeZone).startsWith("cust-")) {
       const e = window.LegendCustomization.findCustomEntry(window.modeZone);
@@ -138,7 +138,7 @@ function initZones() {
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         currentZone.level = window.APP_CONFIG.activeLevel || 0;
       }
-      if (window.KtaUid) window.KtaUid.ensure(currentZone, "zn");   // 🆔 v2.1.0
+      if (window.KtaUid) window.KtaUid.ensure(currentZone, "zn");
       zonesData.push(currentZone);
     }
 
@@ -162,7 +162,7 @@ function initZones() {
     }
 
     currentZone.points.push({ x: x, y: y });
-    if (window.KtaUid) window.KtaUid.touch(currentZone);   // 🆔 v2.1.0
+    if (window.KtaUid) window.KtaUid.touch(currentZone);
     renderZones();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewZone
@@ -231,7 +231,7 @@ function toggleZoneMode(type) {
     currentZone = null;
   }
 
-  // v1.16.0 step 1d : re-render TOUS les layers session + sync data layer
+  // re-render TOUS les layers session + sync data layer
   // KMZ. Cf utils.js > _kta_syncAllNoteUiForModeChange.
   if (typeof window._kta_syncAllNoteUiForModeChange === "function") {
     window._kta_syncAllNoteUiForModeChange();
@@ -303,7 +303,7 @@ function renderZones() {
     if (!zone.points || zone.points.length === 0) return;
     if (!_zonePasseFiltre(zone)) return;
 
-    // 🆕 v1.21.5 (KARMA "filtre par type de zone") : runtime type filter
+    // (KARMA "filtre par type de zone") : runtime type filter
     // via FilterPanel. currentZone bypass (zone en cours de dessin doit
     // rester visible peu importe le filtre).
     if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
@@ -312,7 +312,7 @@ function renderZones() {
     }
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-    // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
+    // résolution dynamique (custom support)
     const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
 
     if (zone === currentZone) {
@@ -347,18 +347,18 @@ function renderZones() {
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
 
-      // 📝 v1.16.0 step 1 — popup au clic pour éditer la note (description)
+      // popup au clic pour éditer la note (description)
       // Capture l'index de la zone dans la closure pour pouvoir lire/écrire
       // la dernière valeur même si zonesData change (renderZones).
       //
-      // 🐛 v1.16.0 step 1d : on ne binde le popup que si aucun mode édition
+      // on ne binde le popup que si aucun mode édition
       // n'est actif (sinon le clic sur un polygone zone ouvre la popup ET
       // ajoute un point au tracé en cours — UX cassée). Re-render au toggle
       // mode → re-bind du popup. Idem pattern road.js / structures.js.
       if (typeof window.attacherNotePopup === "function" &&
           window._aucunModeEditionActif()) {
         const _zoneRef = zone;  // référence directe à l'objet
-        // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+        // titre popup résolu via LC
         const _zoneEmojis = {
           eau:          "💧",
           remblais:     "⬛",
@@ -388,7 +388,7 @@ function renderZones() {
           function() { return _zoneRef.description; },
           function(v) { _zoneRef.description = v; if (window.KtaUid) window.KtaUid.touch(_zoneRef); },
           _zonePopupTitle(zone.type),
-          // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+          // reclassement depuis la popup (cf. convertirObjet.js).
           { convertir: { famille: "zones", obj: _zoneRef } }
         );
       }
@@ -417,10 +417,10 @@ function resetZones() {
 // SUPPRIMER LA DERNIÈRE ZONE FERMÉE
 // =========================
 function removeLastZone() {
-  // 🆕 v1.9.4 (KARMA "on doit pouvoir supprimer d'un coup le tracé en cours,
+  // (KARMA "on doit pouvoir supprimer d'un coup le tracé en cours,
   // que last zone fermé actuellement") : priorité à la zone EN COURS si elle
   // existe, sinon la dernière zone fermée.
-  // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
+  // Undo/Redo : snapshot before (couvre les 2 branches).
   const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
   if (currentZone) {
     const idx = zonesData.indexOf(currentZone);
@@ -453,7 +453,7 @@ function removeLastZonePoint() {
     const last = zonesData[zonesData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
-    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
+    if (window.KtaUid) window.KtaUid.touch(last);
     if (last.points.length < 3) {
       // Plus assez de points → supprimer la zone entière
       zonesData.pop();
@@ -463,7 +463,7 @@ function removeLastZonePoint() {
   }
 
   currentZone.points.pop();
-  if (window.KtaUid) window.KtaUid.touch(currentZone);   // 🆔 v2.1.0
+  if (window.KtaUid) window.KtaUid.touch(currentZone);
   if (currentZone.points.length === 0) {
     const idx = zonesData.indexOf(currentZone);
     if (idx >= 0) zonesData.splice(idx, 1);
@@ -482,7 +482,7 @@ window.getZones = function() {
 
 window.setZones = function(zones) {
   zonesData = zones || [];
-  // 🆔 v2.1.0 — filet : toute zone qui entre ressort avec un uid (cf ktaUid.js).
+  // filet : toute zone qui entre ressort avec un uid (cf ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(zonesData, "zn");
   currentZone = null;
   renderZones();
@@ -495,7 +495,7 @@ window.getCurrentZone = function() {
   return currentZone || null;
 };
 
-// 🆕 v1.90.17 — Parité avec le tracé : préservation de currentZone à travers
+// Parité avec le tracé : préservation de currentZone à travers
 // undo/redo (cf road.js getCurrentRoadIndex/setCurrentRoadByIndex). Sans ça,
 // _applyState remettait modeZone à null au moindre Ctrl+Z (resetZones le wipe,
 // setZones remet currentZone = null) → outil mort dès le 1er undo, continuation

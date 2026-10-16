@@ -54,7 +54,7 @@
     });
   }
 
-  // ⚖️ v1.56.4 — Attend que les GATES DE BOOT (légale → unlock → PIN) soient
+  // Attend que les GATES DE BOOT (légale → unlock → PIN) soient
   // TOUTES franchies avant de dérouler la file. _splashEnd() déclenche run()
   // ~500 ms après le début du fade du splash, c.-à-d. potentiellement PENDANT
   // une gate bloquante à z-index supérieur → l'alerte/onboarding s'affichaient

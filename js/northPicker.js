@@ -170,7 +170,7 @@
   // =========================
   // ACTIONS UI
   // =========================
-  // 🐛 v1.37.0 hotfix — Capturer _resolveFn AVANT _cleanup() (qui le nullifie).
+  // Capturer _resolveFn AVANT _cleanup() (qui le nullifie).
   // Sinon la promesse n'est JAMAIS résolue → le .then() du caller ne s'exécute
   // pas → la modale Réglages cachée par le caller reste cachée pour toujours,
   // l'user est bloqué sur le picker. (KARMA "il se rouvre pas après les deux

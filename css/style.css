@@ -1,9 +1,9 @@
 html, body {
-  /* 🐛 12/10/2026 (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
+  /* (captures KARMA : « Réglages », « Mon profil ») : ni html ni body ne déclaraient de police →
      tout élément sans police explicite (fenêtres posées sur <html>, textes d'aide) retombait sur la police par
      défaut du navigateur, à empattements. Police de la charte à la base ; aucune police propre aux titres. */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
+  /* `min-height: 100dvh`
      pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
      `viewport-fit=cover` (iOS 16+). Fallback `100vh` pour iOS 15 et
      antérieur (déclaration en premier, écrasée par dvh si supporté).
@@ -17,7 +17,7 @@ html, body {
      pourrait apparaître (rubber-band scroll, avant init Leaflet, et
      fallback si jamais un élément ne couvre pas tout). */
   background-color: #0a0d18;
-  /* 🆕 v1.9.2-hotfix-rotation (KARMA "tout grossi au retour vertical après
+  /* (KARMA "tout grossi au retour vertical après
      passage horizontal") : iOS Safari/WebKit a une feature historique de
      "text autosizing" qui regonfle automatiquement le texte des blocs
      larges après une rotation portrait→landscape→portrait. Le footer du
@@ -33,7 +33,7 @@ html, body {
 
 #map {
   display: block;
-  /* 🆕 v1.9.2-fullscreen : `inset: 0` au lieu de `width/height: 100%`.
+  /* `inset: 0` au lieu de `width/height: 100%`.
      Avec position:fixed, `inset: 0` anchre l'élément aux 4 côtés du
      viewport (containing block = visual viewport avec cover). Plus
      robuste que `100%` height qui pouvait être tronquée par le bug
@@ -284,7 +284,7 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   🆕 v1.8.1-refonte-15 — PLAN SWITCHER MODALE (mode refonte UI)
+   PLAN SWITCHER MODALE (mode refonte UI)
    ══════════════════════════════════════════════════════════════════
    En mode refonte, le clic sur le titre du plan ouvre une modale
    centrée (au lieu du dropdown ancré sous le titre). Cohérent avec
@@ -741,7 +741,7 @@ html, body {
   color: #e8eaf0;
   background: rgba(255,255,255,0.08);
 }
-/* 🐛 v1.61.0 (KARMA « carré blanc sur plusieurs ✕ de modales ») :
+/* (KARMA « carré blanc sur plusieurs ✕ de modales ») :
    .kta-readme-modal-close n'avait AUCUN style de base (seul :focus-visible
    existait, pour l'accessibilité) → bouton NATIF gris/blanc avec bordure
    outset sur toutes les modales qui l'utilisent (gestionnaire de liaisons,
@@ -834,7 +834,7 @@ html.kta-theme-light .kta-readme-modal-close:hover {
    BOUTONS GÉNÉRIQUES
    ============================================== */
 
-/* 🐛 12/10/2026 (capture KARMA, iPhone, Réglages : « Calibrer », « Reset », « Ouvrir le géoréférencement ») :
+/* (capture KARMA, iPhone, Réglages : « Calibrer », « Reset », « Ouvrir le géoréférencement ») :
    `.kta-btn` seul n'avait ni fond ni couleur → bouton natif du navigateur, blanc à texte bleu, hors charte.
    Défaut = apparence discrète de la charte (celle de -ghost) ; les variantes, définies après, l'emportent. */
 .kta-btn {
@@ -869,7 +869,7 @@ html.kta-theme-light .kta-readme-modal-close:hover {
   border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* 🐛 29/09/2026 (capture KARMA, iPhone) : .kta-btn-secondary n'avait AUCUN style
+/* .kta-btn-secondary n'avait AUCUN style
    en sombre (seulement en clair) → bouton natif du navigateur, blanc à texte bleu
    sur iOS (« ✏️ Éditer » des phases, 32 boutons du Mode Secours). Déclaré AVANT
    .kta-btn-danger : un bouton « secondary danger » garde le rouge. */
@@ -953,7 +953,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
 }
 
 /* =========================================================================
-   🆕 v1.50.0 — Modal plein écran « Tracker » (refonte du menu déroulé)
+   Modal plein écran « Tracker » (refonte du menu déroulé)
    Grosses tuiles tactiles groupées en sections (Suivi / Outils / Urgence).
    Mobile-first : grille 2 colonnes, z-index modale (99999), charte dark.
    ========================================================================= */
@@ -1126,7 +1126,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
 }
 
 /* =========================================================================
-   🆕 v1.51.0 — Cheatsheet des raccourcis clavier (touche ?)
+   Cheatsheet des raccourcis clavier (touche ?)
    Réutilise le chrome .kta-readme-modal-* ; ajoute la grille + keycaps.
    ========================================================================= */
 .kta-cheatsheet-boite { max-width: 540px; }
@@ -1198,7 +1198,7 @@ body.kta-theme-light .kta-kbd {
 }
 
 /* =========================================================================
-   🆕 v1.51.0 — Hub d'aide (modal Aide ❓ : sections par catégorie + sous-modale)
+   Hub d'aide (modal Aide ❓ : sections par catégorie + sous-modale)
    ========================================================================= */
 .kta-aide-hub-search {
   width: 100%;
@@ -1284,7 +1284,7 @@ body.kta-theme-light .kta-aide-submodal-back {
   max-width: 560px;
   border: 2px solid rgba(255, 107, 53, 0.45);
   box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.10), 0 18px 60px rgba(0,0,0,0.6);
-  /* 🔧 v1.13.0-fix16 : fix hauteur 88vh étirée pour cette modale courte */
+  /* fix hauteur 88vh étirée pour cette modale courte */
   height: auto !important;
   max-height: 90vh !important;
 }
@@ -1512,7 +1512,7 @@ body.kta-theme-light .kta-aide-submodal-back {
   font-size: 13px;
   line-height: 1.5;
 }
-/* 🆕 v1.43.26 — Bannière warning Lost Mode "rayon dépasse la taille du plan".
+/* Bannière warning Lost Mode "rayon dépasse la taille du plan".
    Le inline style hardcoded (color #ffb088 sur fond orange clair) restait
    illisible en thème clair → classe dédiée + variant light. */
 .kta-lost-warn-overflow {
@@ -1652,7 +1652,7 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
   pointer-events: none;
 }
 
-/* 🆕 v1.48.0 — Curseur de PRÉCISION (a11y). Réticule or + contour sombre +
+/* Curseur de PRÉCISION (a11y). Réticule or + contour sombre +
    point central = visible sur plan BLANC comme SOMBRE (l'ancien crosshair
    noir fin disparaissait sur fond blanc). Appliqué dès qu'un mode « clic sur
    la carte » est actif : édition/mesure/recalage/tracé/zone/structure (classe
@@ -1915,7 +1915,7 @@ body.kta-theme-light .kta-equipe-moi, html.kta-theme-light .kta-equipe-moi { col
 }
 
 /* =========================
-   v1.34.19 — MODE HISTOIRE — Bouton 📖 status bar + modale 2 onglets
+   MODE HISTOIRE — Bouton 📖 status bar + modale 2 onglets
    ========================= */
 
 /* Bouton 📖 dans le header refonte (à gauche de la batterie depuis v1.34.21) */
@@ -1930,7 +1930,7 @@ body.kta-theme-light .kta-equipe-moi, html.kta-theme-light .kta-equipe-moi { col
   outline: none;
 }
 
-/* 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d'urgence dans le header refonte
+/* Bouton 🚨 Mode Sortie d'urgence dans le header refonte
    (entre 📖 et 🔋).
    🚨 Audit ergonomie 13/09/2026 (Q5) : c'était le PLUS PETIT bouton de
    l'écran pour la fonction la plus vitale, et rouge seulement au survol —
@@ -1964,14 +1964,14 @@ body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:active {
 body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie .kta-refonte-counter-icon {
   font-size: 16px;   /* comme les autres chips icône seule (v1.35.2) */
 }
-/* 🆕 v1.34.24 — Agrandir l'icône 📖 pour matcher la taille perçue des autres
+/* Agrandir l'icône 📖 pour matcher la taille perçue des autres
    chips (📊 stats, 🔋 batterie). Sans cet override, l'emoji rendait à 12px
    alors que les chips voisins paraissent plus gros à cause du val text
    (12px font 700 weight) à côté de leur icône. Le 📖 seul faisait
    visuellement plus petit. Surcharge sur .kta-refonte-counter-icon
    uniquement INSIDE le chip histoire (pas global pour éviter régression
    sur stats / batterie / résumé mobile). */
-/* v1.35.2 — Override unifié pour les chips icon-only (histoire + sortie) :
+/* Override unifié pour les chips icon-only (histoire + sortie) :
    16px pour qu'ils paraissent égaux aux chips qui ont icône + valeur (📊 1)
    où la valeur compense visuellement le poids. */
 body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
@@ -1980,7 +1980,7 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
 }
 
 /* === v1.35.0 — Modale Sortie d'urgence === */
-/* v1.35.2 — Modale compacte qui s'adapte au contenu (KARMA : "prend toute la
+/* Modale compacte qui s'adapte au contenu (KARMA : "prend toute la
    longueur alors que pas nécessaire"). Override width 960px + height 88vh du
    parent `.kta-readme-modal-boite` qui était trop gros pour ce contenu
    (1 sortie + bouton + lien). On force largeur max 420px + height auto. */
@@ -2405,7 +2405,7 @@ html.kta-theme-light .kta-sortie-alternatives {
   text-align: center;
   margin: 32px 16px;
 }
-/* v1.34.20 — Toolbar PDF (Importer / Remplacer / Retirer) — visible si pas d'embarqué */
+/* Toolbar PDF (Importer / Remplacer / Retirer) — visible si pas d'embarqué */
 .kta-histoire-pdf-toolbar {
   display: flex;
   align-items: center;
@@ -2442,7 +2442,7 @@ html.kta-theme-light .kta-sortie-alternatives {
   border: none;
   background: #ffffff;
 }
-/* 🆕 v1.34.22 — Toolbar PDF actions (ouvrir dans onglet) en sticky overlay
+/* Toolbar PDF actions (ouvrir dans onglet) en sticky overlay
    sur l'iframe. Fallback si CSP bloque l'iframe : l'user a quand même le
    bouton "Ouvrir dans un onglet" qui marche partout (CSP autorise
    window.open de blob:). */
@@ -2490,7 +2490,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   margin: 8px 0;
 }
 
-/* 🆕 v1.34.18 (E2 TTS) — Bouton inline 🔊 dans .kta-popup-desc qui lit la note
+/* (E2 TTS) — Bouton inline 🔊 dans .kta-popup-desc qui lit la note
    à haute voix via Web Speech Synthesis. Affichage compact, marge à droite
    pour séparer du texte, pas de bordure (style "icône cliquable"). État ⏹️
    pendant la lecture, retour 🔊 à la fin. */
@@ -2518,7 +2518,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   background: rgba(140, 180, 255, 0.35);
 }
 
-/* 🆕 v1.21.2 (KARMA "on rajoute juste aprés descriptions les coordonée GPS
+/* (KARMA "on rajoute juste aprés descriptions les coordonée GPS
    du point") : ligne coords GPS calculées via le calibrage. Discrète mais
    sélectionnable + bouton 📋 copier. Visible uniquement si le plan a un
    calibrage utilisable (sinon le bloc n'est même pas généré côté JS). */
@@ -2646,7 +2646,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   color: #ff6b6b !important;
 }
 
-/* 🆕 v1.9.3-B1b — Bouton "✏️ Modifier" : accent bleu sage (action
+/* Bouton "✏️ Modifier" : accent bleu sage (action
    d'édition neutre, distinct du vert recalage / jaune action principale /
    rouge suppression). Pleine largeur car action solo dans sa ligne. */
 .kta-popup-actions .kta-popup-btn-edit {
@@ -2661,7 +2661,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   color: #b4ccff !important;
 }
 
-/* 🆕 v1.16.0 step 3 — Bouton "⭐ Favori" : accent jaune ambre charte.
+/* Bouton "⭐ Favori" : accent jaune ambre charte.
    État inactif (☆) = couleur ambre opaque atténuée. État actif (⭐) =
    ambre pleinement saturé + bordure plus marquée pour feedback visuel
    immédiat au toggle. */
@@ -2684,7 +2684,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   background: rgba(244, 197, 66, 0.32) !important;
 }
 
-/* 🆕 v1.9.3-B1d — Slot photos dans le popup point. Vide par défaut
+/* Slot photos dans le popup point. Vide par défaut
    (hydraté async via attachPopupPhotos au popupopen). Masqué si vide
    pour ne pas créer d'espace blanc. */
 .kta-popup-photos:empty {
@@ -2707,7 +2707,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   max-width: 100%;
 }
 
-/* 🔧 v1.9.3-B1d-fix6 (KARMA "j'ai toujours le fond bleu") :
+/* (KARMA "j'ai toujours le fond bleu") :
    Abandon du <button> qui apporte trop de styles user-agent (border-inset,
    appearance, padding-inline natif, baseline descender...) → on rend la
    <img> directement cliquable (role="button" tabindex=0 côté JS).
@@ -2741,12 +2741,12 @@ img.kta-popup-photo-mini:focus-visible {
   z-index: 1;
 }
 
-/* 🔧 v1.9.3-B1d-fix6 : ancienne règle .kta-popup-photo-mini:hover
+/* ancienne règle .kta-popup-photo-mini:hover
    (sans préfixe `img.`) supprimée — était orpheline du temps où la mini
    était un <button>. La nouvelle img.kta-popup-photo-mini:hover ci-dessus
    couvre déjà tous les cas. */
 
-/* 🆔 v2.3.0 — photo « à rattacher » : rangée sous un nom porté par plusieurs
+/* photo « à rattacher » : rangée sous un nom porté par plusieurs
    points. Cadre orange pointillé + un bouton par photo sous la grille. */
 .kta-popup-photo-mini.kta-popup-photo-arattacher {
   outline: 2px dashed #ffb380;
@@ -3072,7 +3072,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
   z-index: 99999;
   background: rgba(5, 8, 15, 0.88);
   display: flex;
-  /* 🐛 v1.23.2-fix (KARMA audit UX P1) : safe center pour éviter le bug
+  /* safe center pour éviter le bug
      "modale coupée" quand la boîte est plus grande que le viewport
      (mobile portrait + safe-area-inset-top + contenu dense). Cohérent
      avec le fix v1.23.1 sur .kta-emergency-overlay. Bénéfice cascade
@@ -3091,11 +3091,11 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
   border-radius: 14px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.65);
   width: min(960px, 96vw);
-  /* 🆕 v1.9.2-fullscreen : double déclaration vh/dvh. La modale est cap
+  /* double déclaration vh/dvh. La modale est cap
      à 88% du viewport — sur iOS PWA avec cover, `dvh` correspond à
      l'écran physique entier (le `vh` historique pouvait exclure la
      zone home indicator iOS 15-).
-     🐛 v1.40.38 (KARMA "modal bcp trop long, on a eu le cas plein de
+     (KARMA "modal bcp trop long, on a eu le cas plein de
      fois") : passage `height` → `max-height` pour que le contenu
      détermine la hauteur naturellement. Les modales longues (doc, aide,
      audit) atteignent toujours 88vh et scrollent en interne via
@@ -3109,7 +3109,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
   overflow: hidden;
 }
 
-/* 🆕 v1.9.2-fix13 — Modales PC plus grandes (KARMA : « les modal qu'on
+/* Modales PC plus grandes (KARMA : « les modal qu'on
    avait adaptées au PC doivent pouvoir prendre plus de place »).
    Concerne TOUTES les modales utilisant `.kta-readme-modal-boite`
    sans override de width inline : Documentation, Légende, Audit,
@@ -3117,9 +3117,9 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
    override (.kta-aide-modal-boite, .kta-cfg-modal-boite, .kta-loader-
    config-boite), un bloc plus bas surcharge à valeur identique.
    RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
-/* 🆕 v1.9.2-fullscreen : tous les paliers PC ont la double déclaration
+/* tous les paliers PC ont la double déclaration
    vh/dvh pour profiter de l'écran physique entier sur iOS PWA avec cover. */
-/* 🐛 v1.40.38 — Idem fix base : height → max-height pour autoriser le
+/* Idem fix base : height → max-height pour autoriser le
    shrink au contenu sur modales courtes. Les modales longues atteignent
    le plafond naturellement. */
 @media (min-width: 1024px) {
@@ -3191,7 +3191,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: #8b3a00; }
   color: #f4c542;
 }
 
-/* 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en haut
+/* (KARMA "le bouton Onboarding on peux le mettre tout en haut
    de la doc README a coté tu titre Documentation") : bouton 🎓 d'accès
    au tutoriel dans le header de la modale Documentation. Positionné à
    gauche du ✕ via flex order naturel (justify-content: space-between
@@ -3230,7 +3230,7 @@ html.kta-theme-light .kta-readme-tutorial-btn:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
 
-/* 🧩 01/10/2026 — Langue de la doc : menu déroulant (remplace les drapeaux
+/* Langue de la doc : menu déroulant (remplace les drapeaux
    v1.29.0/v1.45.0). Accent bleu d'interaction, hauteur alignée sur 🎓 / 🤖. */
 .kta-readme-lang-select {
   background: rgba(140, 180, 255, 0.10);
@@ -3643,7 +3643,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   text-align: center;
   color: #e8eaf0;
   animation: kta-session-pop-in 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.18);
-  /* 🔧 v1.13.0-fix16 (KARMA "bug de longueur sur enregistrer session,
+  /* (KARMA "bug de longueur sur enregistrer session,
      pareil je suis perdu, itinéraire pareil") : même cas que niv/legende/
      pin-proposal — modale courte sur 88vh étire en hauteur. */
   height: auto !important;
@@ -3887,7 +3887,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
    classe spécifique avec break-inside: avoid au cas par cas (pas fait par
    défaut). */
 @media (min-width: 1024px) {
-  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
+  /* 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-aide-modal-boite {
     max-width: 1400px !important;
     width: min(1400px, 96vw) !important;
@@ -3944,7 +3944,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 @media (min-width: 1024px) {
-  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
+  /* 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-cfg-modal-boite {
     max-width: 1400px !important;
     width: min(1400px, 96vw) !important;
@@ -3965,7 +3965,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
     margin-bottom: 16px;
   }
 
-  /* 🐛 v1.85.2 (capture KARMA) — UN TITRE DE GROUPE NE RESTE PAS SEUL EN BAS
+  /* UN TITRE DE GROUPE NE RESTE PAS SEUL EN BAS
      DE COLONNE. `break-inside` protégeait les sections, mais rien n'empêchait
      une coupure JUSTE APRÈS un titre : « 🔒 Confidentialité & sécurité »
      s'affichait en bas à gauche pendant que son contenu commençait à droite.
@@ -3991,11 +3991,11 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
     column-span: all;
     -webkit-column-span: all;
     display: grid;
-    /* v1.7.3 (suite KARMA) : 3 colonnes au lieu de 4. Le bouton 🗑️ Réinitialiser
+    /* 3 colonnes au lieu de 4. Le bouton 🗑️ Réinitialiser
        a été retiré de la modale ⚙️ Réglages en mode carte (action accessible
        uniquement depuis la modale ⚙️ Configuration du loader). Reste : Reset
        / Appliquer / 🐛 Logs. */
-    /* v1.92.0 (L4) : 2 colonnes — le bouton « Appliquer » n'existe plus,
+    /* (L4) : 2 colonnes — le bouton « Appliquer » n'existe plus,
        tout s'enregistre à la modification. Reste : ↺ Valeurs par défaut / Fermer. */
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -4011,7 +4011,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 @media (max-width: 1023px) {
   .kta-cfg-actions-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr;   /* v1.92.0 : Valeurs par défaut / Fermer */
+    grid-template-columns: 1fr 1fr;   /* Valeurs par défaut / Fermer */
     gap: 8px;
     margin-top: 12px;
     padding-top: 10px;
@@ -4047,7 +4047,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 @media (min-width: 1024px) {
-  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
+  /* 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-loader-config-boite {
     max-width: 1400px !important;
     width: min(1400px, 96vw) !important;
@@ -4070,7 +4070,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   }
 }
 
-/* 🆕 v1.9.2-fix13 — Paliers PC large / ultra-large pour les modales
+/* Paliers PC large / ultra-large pour les modales
    à override max-width (Aide, Cfg map, Loader Config). On utilise
    les mêmes paliers que les autres modales (.kta-readme-modal-boite
    plus haut) pour cohérence. */
@@ -4091,7 +4091,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   }
 }
 
-/* 🆕 v1.9.2-fix14 — Modale Export Images (.kta-export-modal-boite).
+/* Modale Export Images (.kta-export-modal-boite).
    Mobile : garde height:auto (le contenu peut être court) avec max-height
    pour éviter qu'il dépasse l'écran.
    PC : applique les mêmes paliers que les autres modales pour l'élargir,
@@ -4121,7 +4121,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   }
 }
 
-/* 🆕 v1.10.3 — Modale Export PDF (.kta-pdf-modal-boite).
+/* Modale Export PDF (.kta-pdf-modal-boite).
    Hérite de .kta-readme-modal-boite mais reste plus compacte que la modale
    Export Images : moins d'options (pas de calques détaillés ni d'aperçu),
    donc une largeur intermédiaire suffit. Mobile : height:auto avec max-h. */
@@ -4144,7 +4144,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 
-/* 🆕 v1.9.2-fix13 — Légende sur PC : layout multi-colonnes pour
+/* Légende sur PC : layout multi-colonnes pour
    profiter de la largeur agrandie. Les sections (Puits / Accès /
    Signalétique / Tracés / Zones) se distribuent automatiquement. */
 @media (min-width: 1024px) {
@@ -4388,7 +4388,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   margin-top: 4px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  /* 07/10/2026 (KARMA : « ne s'affiche pas de façon animée comme MyKTAMap ») — même révélation de gauche à
+  /* (KARMA : « ne s'affiche pas de façon animée comme MyKTAMap ») — même révélation de gauche à
      droite que le mot « MyKTAMap » (kta-titre-base-reveal), enchaînée juste après lui (titre : 0,45 → 1,45 s).
      Le splash centre en colonne : la boîte fait la largeur du texte, le balayage suit le texte.
      🎬 Ligne d'arrivée commune du splash (07/10/2026, KARMA : « titre et sous-titre doivent finir en même
@@ -4403,7 +4403,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 🧭 v1.47.0 — Arc doré rotatif autour de la boussole = indicateur de
+/* Arc doré rotatif autour de la boussole = indicateur de
    chargement continu (remplace l'ancienne barre + échelle 0-100). Tourne
    tant que le splash est affiché ; l'entrée « calibrage » de la rose
    (splashLogoIn) tourne indépendamment les ~3.5 premières secondes. */
@@ -4428,7 +4428,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   to   { transform: rotate(360deg); }
 }
 
-/* 👑 v1.47.0 — Crédit Claude (haut-gauche, seul) + version (haut-droite).
+/* Crédit Claude (haut-gauche, seul) + version (haut-droite).
    Coins symétriques ; la boussole trône au centre. Teinte « clay » Claude
    #d97757 pour le crédit Claude (distinct du doré charte). */
 #splashClaudeCorner {
@@ -4473,7 +4473,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   right: 22px;
   font-size: 13px;
   font-weight: 700;
-  color: #f4c542;  /* v2.0.0 (KARMA) : accent charte, gras, plus visible */
+  color: #f4c542;  /* accent charte, gras, plus visible */
   text-shadow: 0 0 10px rgba(244, 197, 66, 0.35);
   letter-spacing: 0.06em;
   font-family: 'Courier New', monospace;
@@ -4483,14 +4483,14 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   animation: splashTextIn 1.0s ease-out 1.2s both;   /* finit à 2,2 s avec les textes */
 }
 
-/* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM (orphelin après extraction
+/* #splashFooter retiré du DOM (orphelin après extraction
    de #splashLicense en absolute). Règle CSS gardée vide en commentaire au
    cas où on l'aurait raté quelque part — sinon elle ne s'applique plus. */
 /* #splashFooter — n'existe plus dans le DOM. */
 
 /* Règles #splashAuthor / .splash-by / #splashSignature retirées en fix15. */
 
-/* 🆕 v1.9.2-fix18/fix2 (KARMA "Licence libre doit être plus bas, juste
+/* (KARMA "Licence libre doit être plus bas, juste
    au-dessus de la signature et libs cités" + "elle est à droite, pas
    centrée") : licence positionnée en ABSOLUTE au bas du splash, juste
    au-dessus de la rangée KARMA + crédits libs (bottom 28px).
@@ -4505,10 +4505,10 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
    l'animation translateY peut faire son travail sans conflit. */
 #splashLicense {
   position: absolute;
-  /* 🆕 v1.43.20 — Remonté de 70px → 82px depuis que le crédit splash
+  /* Remonté de 70px → 82px depuis que le crédit splash
      occupe 2 lignes (40px de hauteur au lieu de 20px). Sinon la 1re
      ligne des libs chevauchait avec "Édition pro / Licence active". */
-  /* 🆕 v1.47.0 (KARMA) — Remonté du footer : centré dans le vide entre la
+  /* Remonté du footer : centré dans le vide entre la
      tagline et le footer (libs/Karma). vh → se cale au milieu du gap quelle
      que soit la hauteur d'écran. Centrage horizontal inchangé (left/right 0). */
   bottom: calc(19vh + env(safe-area-inset-bottom, 0px));
@@ -4535,7 +4535,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   font-style: italic;
 }
 
-/* 🏷️ v1.28.3 — Variante "Édition professionnelle" du splash license.
+/* Variante "Édition professionnelle" du splash license.
    Visible UNIQUEMENT côté pro (Licence-pro.json détecté). Couleur ambre
    charte #f4c542 pour la ligne principale, sous-texte ambre + italique
    discret. La bascule est gérée par la classe .kta-instance-pro posée
@@ -4557,7 +4557,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   letter-spacing: 0.01em;
 }
 
-/* 🆕 v1.47.0 — Licence en « pill » (chip bordé charte) au lieu du texte brut,
+/* Licence en « pill » (chip bordé charte) au lieu du texte brut,
    cohérent avec la nouvelle identité du splash. Position bas-centre inchangée
    (#splashLicense reste absolute + text-align:center → le chip se centre).
    ⚠️ display scopé #splashLicense pour préserver la bascule community/pro
@@ -4573,7 +4573,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 #splashLicense .kta-licence-community { display: inline-block; }
 html.kta-instance-pro #splashLicense .kta-licence-community,
 body.kta-instance-pro #splashLicense .kta-licence-community { display: none; }
-/* 🏷️ 09/10/2026 — Installation reliée à un serveur (ktaExtensions.js), licence valide ou NON :
+/* Installation reliée à un serveur (ktaExtensions.js), licence valide ou NON :
    jamais l'identité community au démarrage (licence refusée = splash neutre, puis écran
    « Installation indisponible »). */
 html.kta-instance-reliee #splashLicense .kta-licence-community { display: none; }
@@ -4605,7 +4605,7 @@ body.kta-theme-light .splash-license-detail-pro {
   color: rgba(184, 134, 11, 0.80) !important;
 }
 
-/* 🆕 v1.9.2-fix15 — Signature KARMA en bas à droite du splash avec
+/* Signature KARMA en bas à droite du splash avec
    animation lettre-par-lettre via clip-path: inset() + steps().
    L'image karma.png est révélée de gauche à droite en 5 étapes
    discrètes = effet "K-A-R-M-A" qui apparaît tour à tour. Le délai
@@ -4613,7 +4613,7 @@ body.kta-theme-light .splash-license-detail-pro {
    l'entrée de la signature. */
 #splashKarmaCorner {
   position: absolute;
-  /* 🆕 v1.9.2-fix17 (KARMA "le karma sort du cadre sur bord arrondi") :
+  /* (KARMA "le karma sort du cadre sur bord arrondi") :
      décalage augmenté 14px → 28px pour ne plus être coupé par les coins
      arrondis de l'écran (iPhone PWA + écrans avec viewport bord-à-bord).
      Les safe-area-inset-{right,bottom} restent ajoutés pour les notches
@@ -4635,7 +4635,7 @@ body.kta-theme-light .splash-license-detail-pro {
   height: 20px;
   width: auto;
   display: block;
-  /* 🆕 v1.9.2-fix16 : animation lettre-par-lettre PLUS DOUCE (KARMA
+  /* animation lettre-par-lettre PLUS DOUCE (KARMA
      « arrivée des lettres plus douce »). Avant : steps(5, end) =
      5 jumps secs sans transition. Maintenant : 5 keyframes explicites
      avec courbe cubic-bezier(0.45, 0.05, 0.55, 0.95) (ease-in-out
@@ -4667,7 +4667,7 @@ body.kta-theme-light .splash-license-detail-pro {
    s'affiche la signature KARMA animée). */
 #splashLeafletCredit {
   position: absolute;
-  /* 🆕 v1.9.2-fix17 : 14px → 28px (même raison que splashKarmaCorner :
+  /* 14px → 28px (même raison que splashKarmaCorner :
      éviter le clip par les coins arrondis d'écran). Safe-area conservé
      pour notches latéraux. */
   bottom: calc(28px + env(safe-area-inset-bottom, 0px));
@@ -4675,7 +4675,7 @@ body.kta-theme-light .splash-license-detail-pro {
   font-size: 11px;
   color: #8892a4;  /* checkup thème (C4) */
   letter-spacing: 0.02em;
-  /* 🆕 v1.43.19 — Layout 2 lignes de 3 libs (KARMA "3 et en dessous 3").
+  /* Layout 2 lignes de 3 libs (KARMA "3 et en dessous 3").
      Le `<br>` HTML force le split. Hauteur 20px → 40px pour accueillir
      les 2 lignes. line-height: 20px par ligne. Logo KARMA (height: 20px)
      reste à bottom: 28px → aligné avec la 2e ligne du crédit, comme avant.
@@ -4703,17 +4703,17 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashTitle { font-size: 28px; margin-top: 18px; }
   #splashSubtitle { font-size: 12px; }
   #splashCompassWrap { width: 165px; height: 165px; }
-  /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM, règle obsolète
+  /* #splashFooter retiré du DOM, règle obsolète
      supprimée. Le KARMA img + crédits gardent leurs paliers mobiles. */
   #splashKarmaImg { height: 18px; }
   #splashLeafletCredit {
     font-size: 10px;
-    /* 🆕 v1.43.19 — Mobile : 2 lignes de 18px = 36px total.
+    /* Mobile : 2 lignes de 18px = 36px total.
        KARMA logo (18px) reste aligné avec la 2e ligne. */
     height: 36px;
     line-height: 18px;
   }
-  /* 🆕 v1.43.20 — Mobile : remonté 56px → 78px (crédit splash 2 lignes = 36px). */
+  /* Mobile : remonté 56px → 78px (crédit splash 2 lignes = 36px). */
   #splashLicense { bottom: calc(19vh + env(safe-area-inset-bottom, 0px)); }
 }
 
@@ -4725,13 +4725,13 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashCompassWrap { width: 120px; height: 120px; }
   #splashKarmaImg { height: 16px; }
   #splashLeafletCredit {
-    /* 🆕 v1.43.19 — Landscape compact : 2 lignes de 16px = 32px total. */
+    /* Landscape compact : 2 lignes de 16px = 32px total. */
     height: 32px;
     line-height: 16px;
   }
   #splashLicense {
     font-size: 10px;
-    /* 🆕 v1.43.20 — Landscape compact : remonté 46px → 70px (crédit 2 lignes = 32px). */
+    /* Landscape compact : remonté 46px → 70px (crédit 2 lignes = 32px). */
     bottom: calc(16vh + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -4748,7 +4748,7 @@ body.kta-theme-light .splash-license-detail-pro {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  /* 🆕 v1.9.2-fix12 (KARMA pivot) : padding overlay supprimé.
+  /* padding overlay supprimé.
      « j'en veux pas, je veux le modal full sans noir autour du modal ».
      Le contenu (#planLoaderBox) prend désormais 100% de la viewport.
      Les safe-areas iOS sont gérées au niveau du PADDING INTERNE de la
@@ -4762,7 +4762,7 @@ body.kta-theme-light .splash-license-detail-pro {
 
 #planLoaderBox {
   width: 100%;
-  /* 🆕 v1.9.2-fix12 : plein écran sans bordure noire autour. Le cap
+  /* plein écran sans bordure noire autour. Le cap
      ancien (520px mobile / 1100-2400px PC) est supprimé → la box prend
      100% de la viewport. */
   max-width: 100%;
@@ -4776,13 +4776,13 @@ body.kta-theme-light .splash-license-detail-pro {
   box-shadow: none;
   /* Padding interne avec safe-area iOS UNIQUEMENT EN HAUT pour que le
      contenu (logo, titre, ...) reste sous le notch.
-     🆕 v1.9.2-rollback2 (KARMA "réduit encore un peu") :
+     (KARMA "réduit encore un peu") :
      padding-bottom 8→4px. Minimum acceptable pour ne pas coller au bord. */
   padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 4px;
   box-sizing: border-box;
   font-family: Arial, sans-serif;
   margin: 0;
-  /* 🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` pour iOS PWA
+  /* `100dvh` au lieu de `100vh` pour iOS PWA
      avec cover. Le `100vh` reste en fallback pour iOS 15 et antérieur
      (déclaration en premier, écrasée par dvh si supporté). */
   min-height: 100vh;
@@ -4792,7 +4792,7 @@ body.kta-theme-light .splash-license-detail-pro {
 /* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
    devient un grid 60/40 sur desktop (≥ 1024px).
 
-   🆕 v1.8.0 fix : remplacement de `display: contents` par
+   remplacement de `display: contents` par
    `display: flex; flex-direction: column;`.
 
    Pourquoi : `display: contents` rend le wrapper "transparent" (les
@@ -4818,7 +4818,7 @@ body.kta-theme-light .splash-license-detail-pro {
 }
 
 @media (min-width: 1024px) {
-  /* 🆕 v1.9.2-fix12 : box full edge-to-edge sans cap max-width.
+  /* box full edge-to-edge sans cap max-width.
      Padding horizontal interne augmenté pour respirer sur les côtés
      du contenu sans repousser la box elle-même. */
   #planLoaderBox {
@@ -4828,7 +4828,7 @@ body.kta-theme-light .splash-license-detail-pro {
 
   .loader-grid {
     display: grid;
-    /* 🆕 v1.40.0 — Passe de 2 cols (3fr 2fr) à 3 cols (2fr 3fr 2fr) pour
+    /* Passe de 2 cols (3fr 2fr) à 3 cols (2fr 3fr 2fr) pour
        intégrer la mini-carte 🌍 Vue OSM au milieu. La colonne OSM
        reçoit plus de poids car elle contient une carte interactive
        (besoin d'espace) ; Plans/Actions plus compacts mais ça reste
@@ -4854,7 +4854,7 @@ body.kta-theme-light .splash-license-detail-pro {
   /* Liste des plans : permet un scroll interne si beaucoup de plans
      (sinon la colonne droite finit en bas pendant que la gauche
      s'étend à l'infini).
-     🐛 v1.79.0 (agent, bug KARMA « vide avant le footer / footer coupé ») —
+     (agent, bug KARMA « vide avant le footer / footer coupé ») —
      fin des bornes max-height: calc(100vh - N px) : N fixe (390/410) SOUS-
      réservait dès que le footer était déplié (le min-content de la colonne
      excédait la place restante → footer poussé hors écran, mesuré +10 px à
@@ -4879,8 +4879,8 @@ body.kta-theme-light .splash-license-detail-pro {
   }
 
 
-  /* 🆕 v1.9.2 — Loader PC "fullscreen".
-     🐛 v1.79.0 (agent, bug KARMA « background tronqué quand le footer se
+  /* Loader PC "fullscreen".
+     (agent, bug KARMA « background tronqué quand le footer se
      déplie ») — le décor "puits de lumière" (radial #050810 + points dorés,
      posé en v1.9.2) est SUPPRIMÉ : depuis la box edge-to-edge (v1.9.2-fix12,
      opaque, 100% × ≥100dvh), il n'était plus visible NULLE PART… sauf dans
@@ -4906,7 +4906,7 @@ body.kta-theme-light .splash-license-detail-pro {
     align-items: stretch;
   }
 
-  /* 🆕 v1.9.2-fix12 : la box prend 100vh défini dans la base CSS
+  /* la box prend 100vh défini dans la base CSS
      (cf. plus haut). Ici on ajoute juste le flex-column pour la
      distribution interne (resume / grid / footer). PAS de border /
      box-shadow ajoutés (box edge-to-edge, ces décorations ne sont
@@ -4925,12 +4925,12 @@ body.kta-theme-light .splash-license-detail-pro {
      ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
   .loader-grid {
     flex: 1 1 auto;
-    /* 🐛 v1.77.0 (audit agent 08/08) — min-height:0 autorisait la GRID à
+    /* min-height:0 autorisait la GRID à
        être comprimée sous le min-content de ses colonnes : la rangée auto,
        elle, ne descendait jamais sous le min-content → débordement par le
        bas sur le toggle/copyright. min-height:min-content inversait : le
        surplus poussait le footer hors écran dès qu'il était déplié.
-       🐛 v1.79.0 (agent, bug KARMA « vide avant le footer / footer coupé »,
+       (agent, bug KARMA « vide avant le footer / footer coupé »,
        mesures Playwright) — nouveau modèle : la rangée unique vaut
        minmax(0, 1fr) = EXACTEMENT la hauteur de la grid (elle ne suit plus
        le min-content des colonnes), et chaque colonne gère son contenu EN
@@ -4951,7 +4951,7 @@ body.kta-theme-light .splash-license-detail-pro {
   }
 
   /* La liste des plans prend toute la hauteur dispo dans sa colonne.
-     🐛 v1.79.0 (agent, mesure Playwright) — c'est ELLE l'élément flexible
+     c'est ELLE l'élément flexible
      de la colonne : elle s'étire jusqu'à la place réellement disponible
      (fini le vide sous la liste sur fenêtre haute) et scrolle en interne
      quand le contenu dépasse (min-height:0 = droit de compression sous le
@@ -4967,7 +4967,7 @@ body.kta-theme-light .splash-license-detail-pro {
   }
   .loader-col-plans #myPlansBox {
     flex: 1 1 auto;
-    /* 🐛 v1.79.0 (agent) — !important requis : homeLoader.js pose
+    /* !important requis : homeLoader.js pose
        style.display = "block" en inline à l'affichage du bloc (computed
        mesuré "block" → les enfants n'étaient PAS en layout flex : la liste
        ne pouvait ni s'étirer ni se comprimer, le flex:1/min-height:0
@@ -5009,7 +5009,7 @@ body.kta-theme-light .splash-license-detail-pro {
        est l'effet voulu = aération visuelle. */
     margin-top: auto;
   }
-  /* 🆕 v1.40.0 — Colonne OSM (centre) : occupe la hauteur dispo,
+  /* Colonne OSM (centre) : occupe la hauteur dispo,
      mini-carte stretch sur tout le restant. */
   .loader-col-osm {
     display: flex;
@@ -5019,7 +5019,7 @@ body.kta-theme-light .splash-license-detail-pro {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    /* 🐛 v1.77.0 (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
+    /* (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
        2e passe) — le `min-height: 0` posé ici CASSAIT la propagation du
        minimum réel du widget (carte 220px + bandeau + barre Tiles) vers la
        rangée du grid : la rangée se croyait plus courte que son contenu, et
@@ -5031,14 +5031,14 @@ body.kta-theme-light .splash-license-detail-pro {
   }
   .loader-col-osm .kta-osm-home-content {
     flex: 1 1 auto;
-    /* 🐛 v1.76.2 (KARMA : le footer chevauche la barre Tiles sur PC) —
+    /* (KARMA : le footer chevauche la barre Tiles sur PC) —
        l'ancien min-height: clamp(300px, 52vh, 660px) pouvait EXCÉDER la
        place restante du grid sur une fenêtre peu haute : le content
        (overflow: visible depuis v1.40.22, pour les popups) débordait de sa
        colonne et le footer, peint après dans le flux, passait par-dessus.
        Le flex remplit déjà la colonne sur grand écran ; on garde juste un
        plancher — plus aucun minimum en vh qui force.
-       📐 v1.77.0 (KARMA : « tout doit tenir dans l'écran, je ne veux pas
+       (KARMA : « tout doit tenir dans l'écran, je ne veux pas
        scroller pour voir le footer ») : minima COMPACTÉS — 260→200 ici,
        carte 220→160, marge de box 14→6 — ~120 px d'incompressible en moins.
        Sur grand écran rien ne change (le flex remplit) ; la fenêtre doit
@@ -5052,7 +5052,7 @@ body.kta-theme-light .splash-license-detail-pro {
     margin-bottom: 6px;
   }
 
-  /* 🆕 v1.40.1 — Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
+  /* Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
      (cf js/osmHomePreview.js > _setOsmColumnVisible). On rebascule alors
      le grid PC sur les anciennes proportions 2 cols (3fr 2fr) pour ne pas
      laisser un trou visuel ni un layout déséquilibré. Cohérent avec la
@@ -5062,19 +5062,19 @@ body.kta-theme-light .splash-license-detail-pro {
   }
 }
 
-/* 🐛 v1.79.0 (agent, bug KARMA « footer coupé ») — la compaction PC BAS de la
+/* (agent, bug KARMA « footer coupé ») — la compaction PC BAS de la
    colonne Actions vit en FIN de fichier, à côté du bloc 📐 v1.77.0 « LE
    FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC » (même logique, même contrainte
    d'ordre de cascade). */
 
-/* 🆕 v1.40.0 — Widget Vue OSM HOME (mini-preview entre Mes plans et Ajouter) */
+/* Widget Vue OSM HOME (mini-preview entre Mes plans et Ajouter) */
 .kta-osm-home-content {
   display: flex;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(244, 197, 66, 0.18);
   border-radius: 8px;
-  /* 🆕 v1.40.22 — overflow: visible (était hidden) pour que les popups Leaflet
+  /* overflow: visible (était hidden) pour que les popups Leaflet
      POI ne soient pas clippées par le container. Trade-off : si un enfant
      déborde, il n'aura pas le coin arrondi clippé, mais c'est négligeable car
      les coins arrondis du container restent visibles (rien ne déborde en
@@ -5083,7 +5083,7 @@ body.kta-theme-light .splash-license-detail-pro {
   min-height: 260px;
 }
 .kta-osm-home-loading,
-/* 🌍 v1.90.2 — Bandeau d'annonce du défaut OSM. Discret mais lisible : il dit
+/* Bandeau d'annonce du défaut OSM. Discret mais lisible : il dit
    qu'un fond de carte tiers est désormais affiché sans qu'on l'ait demandé,
    et il disparaît définitivement au premier « J'ai compris ». */
 .kta-osm-defaut-info {
@@ -5164,11 +5164,11 @@ body.kta-theme-light .splash-license-detail-pro {
   background: #f4c542;
   color: #1a1f2e;
 }
-/* 🆕 v1.43.9 — Layout mobile widget OSM Home (KARMA "icône agrandir passe à
+/* Layout mobile widget OSM Home (KARMA "icône agrandir passe à
  * la ligne sur mobile") : sur petit écran, on force le sélecteur de plan
- * à prendre toute la largeur (= ligne 1 seul), puis le slider opacité et
+ * à prendre toute la largeur (= seul sur la 1re ligne), puis le slider opacité et
  * les 3 boutons (📍 GPS, 💾 Save Offline, ⛶ Plein écran) se groupent
- * proprement sur la ligne 2 grâce au flex-wrap déjà actif. Aucun
+ * proprement sur la 2e ligne grâce au flex-wrap déjà actif. Aucun
  * changement sur PC (largeur ≥ 601 px). */
 @media (max-width: 600px) {
   .kta-osm-home-bandeau select {
@@ -5193,7 +5193,7 @@ body.kta-theme-light .splash-license-detail-pro {
   text-align: center;
 }
 
-/* 🆕 v1.40.12 — 2e ligne du bandeau : toggles catégorie compactés */
+/* 2e ligne du bandeau : toggles catégorie compactés */
 .kta-osm-home-tagchips {
   display: flex;
   gap: 4px;
@@ -5233,7 +5233,7 @@ html.kta-theme-light .kta-osm-home-tag-chip.active {
   color: #6b4a10 !important;
 }
 
-/* 🆕 v1.40.22 — Popup POI Vue OSM (modale + widget HOME) : charte dark cohérente.
+/* Popup POI Vue OSM (modale + widget HOME) : charte dark cohérente.
    Cible la classe "kta-osm-popup" passée via bindPopup({ className: "kta-osm-popup" }).
    Override le default Leaflet (fond blanc, ombre soft) pour matcher #1a1f2e + accent jaune. */
 .leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper {
@@ -5300,7 +5300,7 @@ html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-tip {
   border-bottom-color: rgba(180, 130, 30, 0.4) !important;
 }
 
-/* 🆕 v1.40.1 — Variants thème clair pour le widget Vue OSM HOME.
+/* Variants thème clair pour le widget Vue OSM HOME.
    Bug KARMA v1.40.0 : le footer "🔒 Tiles : tile.openstreetmap.org · ⛶ …"
    utilisait color:#8892a4 + border rgba(255,255,255,0.06) → quasi invisible
    sur fond clair (texte gris muet + bordure blanche sur fond beige clair).
@@ -5351,7 +5351,7 @@ html.kta-theme-light .kta-osm-home-empty strong {
   color: var(--kta-light-text, #2a2620) !important;
 }
 
-/* 🆕 v1.40.2 — Plein écran inline (overlay full-viewport)
+/* Plein écran inline (overlay full-viewport)
    Toggle via classe sur #ktaOsmHomeBox depuis openFullScreen().
    Avantages vs Fullscreen API native : marche partout (iOS Safari OK),
    pas de permission, pas de bascule de mode, escape pour quitter. */
@@ -5366,7 +5366,7 @@ html.kta-theme-light .kta-osm-home-empty strong {
   flex-direction: column !important;
 }
 .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head {
-  /* 🐛 v1.71.0 (KARMA mobile) : le ✕ est en position:fixed top/right — sans
+  /* le ✕ est en position:fixed top/right — sans
      cette réserve, il recouvrait la FIN de la barre de recherche (le head va
      jusqu'au bord droit depuis que la recherche y vit). */
   padding: 10px 56px 10px 16px !important;
@@ -5393,13 +5393,13 @@ html.kta-theme-light .kta-osm-home-empty strong {
   font-size: 14px;
   font-weight: 700;
 }
-/* 🆕 v1.43.15 — En fullscreen, position du bouton ⛶ / ✕ (= #ktaOsmHomeFullBtn)
+/* En fullscreen, position du bouton ⛶ / ✕ (= #ktaOsmHomeFullBtn)
  * en haut à droite, plus visible et intuitif (KARMA "croix à une position pas
  * intuitive"). On le sort du flow flex pour le coller au coin de l'écran.
- * 🐛 v1.43.16 — KARMA "la croix est trop grosse" : padding 10×14 → 4×9,
+ * KARMA "la croix est trop grosse" : padding 10×14 → 4×9,
  * font 18 → 13 (= taille bouton standard du bandeau, juste mieux placé). */
 .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn {
-  /* 14/10/2026 (KARMA « pas jolie, trop grosse, mal ancrée ») : croix discrète comme celle des fenêtres
+  /* (KARMA « pas jolie, trop grosse, mal ancrée ») : croix discrète comme celle des fenêtres
      (.kta-panneau-close), centrée sur la ligne de titre « Vue OSM » (texte à 10 px, 16 px de haut). */
   position: fixed;
   top: 3px;
@@ -5446,23 +5446,23 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   color: var(--kta-light-text, #2a2620) !important;
 }
 
-/* 🆕 v1.40.3 — Fixes thème clair HOME déplacés en fin de fichier (v1.40.5)
+/* Fixes thème clair HOME déplacés en fin de fichier (v1.40.5)
    pour gagner en spécificité d'ordre — voir bloc en fin de style.css. */
 
-/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding latéral plus généreux
+/* Loader PC LARGE ≥ 1440px : padding latéral plus généreux
    (la box reste full edge-to-edge). */
 @media (min-width: 1440px) {
   #planLoaderBox {
     padding-left: 64px;
     padding-right: 64px;
   }
-  /* 🐛 v1.79.0 (agent) — la borne max-height: calc(100vh - 410px) posée ici
+  /* la borne max-height: calc(100vh - 410px) posée ici
      est SUPPRIMÉE avec ses sœurs du média ≥1024 : la hauteur de la liste est
      désormais pilotée par le conteneur (rangée grid minmax(0,1fr) + liste
      flexible). La rétablir recréerait le couple footer coupé / vide. */
 }
 
-/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : padding latéral maxi. */
+/* Loader PC ULTRA-LARGE ≥ 1920px : padding latéral maxi. */
 @media (min-width: 1920px) {
   #planLoaderBox {
     padding-left: 96px;
@@ -5480,7 +5480,7 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   gap: 12px;
 }
 
-/* 🎨 v1.7.3 : Titre stylisé du loader — refonte D validée KARMA.
+/* Titre stylisé du loader — refonte D validée KARMA.
    Lockup : logo rose des vents (mkm-full.png) + bloc texte (nom + tagline).
    Cohérent avec le splash (même logo) et la charte (accent jaune #f4c542).
 
@@ -5594,7 +5594,7 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   flex-shrink: 0;
 }
 
-/* 🌍 v1.46.0 — Sélecteur de langue GLOBALE dans la modale Configuration
+/* Sélecteur de langue GLOBALE dans la modale Configuration
    (déplacé du header HOME — KARMA). Ligne label + select, charte dark, avec
    variante thème clair. Options peuplées par JS depuis I18n.available(). */
 .kta-cfg-lang-row {
@@ -5648,7 +5648,7 @@ html.kta-theme-light .kta-cfg-lang-select {
   border-color: rgba(30,95,153,0.35);
   color: #1e5f99;
 }
-/* 🌍 v1.46.3 — Lisibilité des OPTIONS du menu déroulant langue (HOME
+/* Lisibilité des OPTIONS du menu déroulant langue (HOME
    .kta-cfg-lang-select + PLAN .kta-cfg-input). Le popup natif <option>
    héritait d'un fond quasi-transparent → texte clair sur fond clair =
    illisible. On force un fond solide contrasté (dark + variante claire). */
@@ -6219,7 +6219,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-size: 13px;
   color: #e8eaf0;
   font-weight: 500;
-  /* 🆕 v1.71.0 (retour KARMA « pas de titre tronqué ») : wrap jusqu'à 2
+  /* (retour KARMA « pas de titre tronqué ») : wrap jusqu'à 2
      lignes ; l'ellipsis ne tombe qu'au-delà (line-clamp). La colonne étant
      désormais fit-content(420px), la quasi-totalité des titres tient. */
   white-space: normal;
@@ -6243,14 +6243,14 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 
 /* Container des badges historique — DEPRECATED v170 :
-   anciennement à droite du nom sur ligne 1 (modes + storage).
+   anciennement à droite du nom sur la 1re ligne (modes + storage).
    Le HTML actuel ne le génère plus dans planRowHTML — gardé en CSS pour
    compat éventuelle (extensions, plugins user). Le storage badge est
-   désormais dans .plan-row-modes (ligne 2 avec les badges modes V1/V2/M-LVL).
+   désormais dans .plan-row-modes (2e ligne, avec les badges modes V1/V2/M-LVL).
    Si on supprime cette classe à terme, vérifier qu'aucun consommateur tiers
    n'en dépend. */
 
-/* 🆕 v170 : ligne 2 dédiée aux badges meta (sous le nom du plan).
+/* 🆕 v170 : 2e ligne dédiée aux badges meta (sous le nom du plan).
    - Suite 1 : badges modes V1/V2/M-LVL uniquement
    - Suite 2 (ici) : badges modes + badge storage (✅/🔐/📁) groupés
                      ensemble pour qu'un scan visuel donne d'un coup tous
@@ -6328,7 +6328,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   border-color: rgba(140,255,140,0.4);
   color: #8cffb4;
 }
-/* 🧹 v1.78.0 : .plan-row-remove:hover supprimée — le ✕ des lignes a quitté
+/* .plan-row-remove:hover supprimée — le ✕ des lignes a quitté
    la liste (suppression déplacée en fin de modale ℹ️ Infos, décision KARMA). */
 /* ℹ️ v170 (suite 3) : bouton infos — accent bleu cohérent avec la charte */
 .plan-row-info-btn:hover {
@@ -6375,7 +6375,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   vertical-align: top;
 }
 
-/* 15/09/2026 : la persistance du ZIP n'a plus d'UI sur l'accueil (bouton 🔐
+/* la persistance du ZIP n'a plus d'UI sur l'accueil (bouton 🔐
    et case « Mémoriser » retirés) — c'est le réglage ⚙️ Configuration →
    « Mémoriser le plan dans l'app au premier chargement ». */
 
@@ -6439,7 +6439,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-weight: 600;
   margin-top: 6px;
   min-height: 16px;
-  /* 🆕 v1.8.0 fix : autoriser le wrap des noms de fichiers longs (ex:
+  /* autoriser le wrap des noms de fichiers longs (ex:
      "plan_carriere_de_bagneux_v2_KARMA_2026 (3).zip"). Sans ça, le nom
      peut sortir du conteneur si le navigateur ne wrappe pas faute de
      espace dans le nom (les `_` ne sont pas des break points naturels).
@@ -6487,7 +6487,7 @@ html.kta-theme-light .kta-cfg-group-titre {
    PLANNER — créateur de plan ZIP
    ============================================== */
 
-/* 🆕 v1.14.20 (KARMA « rend le modal générateur mieux géré sur PC ») :
+/* (KARMA « rend le modal générateur mieux géré sur PC ») :
    la modale du générateur utilise désormais une largeur dédiée plus
    confortable en PC (1100px max) tout en restant raisonnable. Le corps
    passe en grille 2 colonnes sur écran large (≥1280px) pour réduire le
@@ -6505,7 +6505,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   }
 }
 /* Layout 2 colonnes du CORPS en écran très large (KARMA v1.14.20 +
-   v1.14.21 : « bcp de zone blanche, et géoréférencement on le met à
+   « bcp de zone blanche, et géoréférencement on le met à
    droite après icône et tag »). Assignment EXPLICITE des sections aux
    colonnes via classes .kta-pl-col-* — grid-auto-flow: row dense pour
    combler les trous (les sections de hauteur variable peuvent se
@@ -6518,7 +6518,7 @@ html.kta-theme-light .kta-cfg-group-titre {
     align-items: start;
     grid-auto-flow: row dense;
   }
-  /* 🐛 v1.44.5 — min-width:0 sur TOUS les items du grid. Sans ça, un item au
+  /* min-width:0 sur TOUS les items du grid. Sans ça, un item au
      contenu intrinsèque large (ex: data URL SVG de l'icône entree_plan, ~700px
      en nowrap) impose son min-width:auto à la colonne → la grille déborde les
      1100px du modal → layout distordu + textes des autres sections qui ne
@@ -6538,7 +6538,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   #kta-planner-corps > .kta-pl-col-right {
     grid-column: 2;
   }
-  /* 🐛 15/09/2026 (KARMA : « en mode Avancé les réglages de tracking sont
+  /* (KARMA : « en mode Avancé les réglages de tracking sont
      au-dessus de Charger un fichier, ce qui n'a pas de sens ») — LE TROU.
      Le switcher Simple/Avancé occupe la colonne 1 de la rangée 1, le bouton
      🧙 Assistant la colonne 2 ; l'indication de mode (ce <p>) tombe en
@@ -6596,7 +6596,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   flex-wrap: wrap;
 }
 
-/* 🆕 v1.9.3-A2 : sélecteur mode image (Upload vs Vierge) dans le créateur
+/* sélecteur mode image (Upload vs Vierge) dans le créateur
    de plan. Grille 2 colonnes (1 ligne sur mobile via responsive auto). */
 .kta-planner-image-mode-grid {
   display: grid;
@@ -6825,7 +6825,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-alert-boite {
   max-width: 560px;
-  /* v1.14.3 — fix bug récurrent "modal trop long" sur alerte : on force
+  /* fix bug récurrent "modal trop long" sur alerte : on force
      hauteur auto bornée à 88vh + flex column pour que le corps scrolle
      dans la boîte au lieu de la faire déborder (pattern déjà appliqué
      aux modales niv / légende / jct / iti / lost / session export). */
@@ -6883,7 +6883,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-alert-corps {
   padding: 18px 20px !important;
-  /* v1.14.3 — corps scrollable quand le détail dépasse la hauteur de
+  /* corps scrollable quand le détail dépasse la hauteur de
      boîte. flex:1 1 auto pour prendre tout l'espace restant entre header
      et footer "J'ai compris", min-height:0 nécessaire pour autoriser le
      shrink dans flex (sinon le contenu impose sa hauteur intrinsèque). */
@@ -7138,7 +7138,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   color: #8cb4ff;
 }
 
-/* 🆕 v1.10.0-hotfix1 : flash highlight le bouton "Activer" pour guider
+/* flash highlight le bouton "Activer" pour guider
    l'user après le clic "🔐 Activer maintenant" de la modale proposition.
    3 pulses jaunes en 2.2s + box-shadow expansif. Non bloquant. */
 .kta-pin-enable-flash {
@@ -7162,7 +7162,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 /* =====================================================================
    GATE PLEIN ÉCRAN — modale au boot quand PIN activé
    ===================================================================== */
-/* 🆕 v1.28.1 : modale Doc README ouverte depuis un écran de verrouillage
+/* modale Doc README ouverte depuis un écran de verrouillage
    (UnlockGate communautaire au boot OU PinLock local). Doit passer
    AU-DESSUS des 2 gates (UnlockGate=100100, PinLock=100002) — sinon
    inaccessible. Classe additionnelle posée par afficherReadme({overLocker:true}).
@@ -7171,7 +7171,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   z-index: 100200 !important;
 }
 
-/* 🆕 v1.28.1 : bouton "📖 Documentation" injecté dans UnlockGate + PinLock.
+/* bouton "📖 Documentation" injecté dans UnlockGate + PinLock.
    Style discret façon link-button — accessible mais sans détourner de la
    saisie active du code. Une seule classe utilisée dans les 2 gates et leurs
    variants lockout pour cohérence visuelle. */
@@ -7355,7 +7355,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   cursor: default;
 }
 
-/* 🆕 v1.10.0-hotfix3 : bouton biométrie standalone AU-DESSUS du keypad
+/* bouton biométrie standalone AU-DESSUS du keypad
    (plus visible + gros + auto-prompt automatique 400ms après ouverture). */
 .kta-pin-gate-bio-btn {
   display: block;
@@ -7395,7 +7395,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   background: rgba(255, 107, 107, 0.2);
 }
 
-/* 🆕 v1.10.0-hotfix3 : bouton ✓ Valider (vert) — activé dès PIN_MIN
+/* bouton ✓ Valider (vert) — activé dès PIN_MIN
    chiffres saisis. Disabled = gris avec opacité 0.35. */
 .kta-pin-gate-key-validate {
   background: rgba(108, 226, 138, 0.15);
@@ -7440,7 +7440,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   inset: 0;
   z-index: 100003;  /* au-dessus de tout, même de la PIN gate */
   display: flex;
-  /* 🐛 v1.23.0-fix1 (KARMA "modale coupée") : align-items: center centre
+  /* (KARMA "modale coupée") : align-items: center centre
      verticalement, MAIS si la boîte est plus haute que le viewport (mobile
      portrait avec safe-area + minimap + 4 blocs ≈ 800-900 px), elle
      déborde par le haut ET le bas. overflow-y:auto ne peut pas scroller
@@ -7491,7 +7491,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
 
 /* Layout commun aux 2 thèmes */
-/* 🗺️ 26/09/2026 (KARMA « on gagne de la place pour pas avoir de scroll et
+/* (KARMA « on gagne de la place pour pas avoir de scroll et
    une map plus grande ») : la boîte se limite à la hauteur visible et la
    grille absorbe le reste — la minimap grandit de tout ce que le bloc meta,
    la note rouge et le second bloc de position ont libéré, sans jamais
@@ -7522,7 +7522,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-shadow: 0 0 12px rgba(255, 107, 107, 0.5);
 }
 
-/* 🧹 26/09/2026 — `.kta-emergency-theme-btn` et `.kta-emergency-header-actions`
+/* `.kta-emergency-theme-btn` et `.kta-emergency-header-actions`
    SUPPRIMÉS avec le bouton clair/sombre : le mode urgence suit le thème de
    l'app (`ThemeManager`), il n'a plus de contrôle à lui. */
 
@@ -7557,7 +7557,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-align: right;
 }
 
-/* 📋 03/10/2026 — icône des coordonnées (plan géoréférencé seulement).
+/* icône des coordonnées (plan géoréférencé seulement).
    44 px : minimum tactile, cet écran se touche avec des gants. */
 .kta-em-coords-btn {
   flex: 0 0 auto;
@@ -7587,7 +7587,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-emergency-grid {
   display: grid;
-  /* 03/10/2026 : le bloc position est parti — la minimap est seule et
+  /* le bloc position est parti — la minimap est seule et
      prend toute la place, en portrait comme en paysage. */
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -7609,7 +7609,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   grid-column: 1 / -1;  /* pleine largeur pour la boussole */
   align-items: center;
   text-align: center;
-  /* 🔧 v1.10.2-fix3 : bloc heading transformé en conteneur relatif pour
+  /* bloc heading transformé en conteneur relatif pour
      positionner le minimap full bloc + overlay centré au-dessus. */
   position: relative;
   min-height: 320px;
@@ -7619,7 +7619,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 /* Overlay au-dessus du minimap.
-   🔧 v1.12.0-fix3 (KARMA "met le SE/S en dessous de CAP plus logique, et
+   (KARMA "met le SE/S en dessous de CAP plus logique, et
    descend encore un peu les degrés vu qu'on a gagné de la place en bas") :
      - TOP    = 🧭 CAP + cardinal (SE/S/N/...) groupés via .heading-top
      - CENTRE = libre (minimap + marker boussole visibles)
@@ -7635,7 +7635,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   pointer-events: none;  /* le minimap derrière ne reçoit pas de clics non plus */
   padding: 10px 14px 0 14px;  /* bottom 0 → degrés collés au bord */
 }
-/* 🖐️ 03/10/2026 : la minimap se manipule au doigt — le texte posé dessus
+/* la minimap se manipule au doigt — le texte posé dessus
    (CAP, degrés) laisse passer les gestes. */
 .kta-emergency-bloc-heading-overlay > * {
   pointer-events: none;
@@ -7671,7 +7671,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   margin-top: 2px;
 }
 
-/* 🎯 03/10/2026 — Recentrer : visible seulement quand l'utilisateur a bougé
+/* Recentrer : visible seulement quand l'utilisateur a bougé
    la minimap (le suivi est alors en pause). En bas à droite du bloc, au-dessus
    du texte posé sur la carte, cible ≥ 48 px. */
 .kta-em-recentrer-btn {
@@ -7856,7 +7856,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
 }
 
-/* 🔧 v1.12.0-fix (KARMA "le CAP et le S en bas (ou N, SE...) doit être en
+/* (KARMA "le CAP et le S en bas (ou N, SE...) doit être en
    orange chartre") : label "🧭 CAP" + cardinal (N/S/SE/...) en jaune
    charte #f4c542 (dark) / ocre #b8740b (light), cohérent avec l'ancien
    compass-n et le ring jaune de la nouvelle boussole tracker.
@@ -7871,7 +7871,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   color: #b8740b;
 }
 
-/* 🔧 v1.12.0-fix (KARMA "et cap en gras, plus visible") : override le
+/* (KARMA "et cap en gras, plus visible") : override le
    label CAP uniquement (scoped à l'overlay heading) pour qu'il soit
    plus gras et plus gros que les autres labels (📍 POSITION, 🔋 ÉTAT,
    etc.) qui restent en 11px / opacity 0.85. */
@@ -7883,7 +7883,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 
-/* 🆕 v1.10.2 + fix3 (KARMA "il peut prendre tout le rectangle cap") :
+/* (KARMA "il peut prendre tout le rectangle cap") :
    minimap Leaflet remplit TOUT le bloc heading (pas juste le rond compass).
    Position absolute inset:0 → fill le bloc parent.
    border-radius hérite du parent (12px du bloc, pas 50%). */
@@ -7895,7 +7895,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   overflow: hidden;  /* clip Leaflet tiles à l'arrondi */
 }
 
-/* 🧭 v1.97.6 — minimap orientée (mode « plan orienté » activé).
+/* minimap orientée (mode « plan orienté » activé).
    Le conteneur tourne : il doit donc déborder de sa boîte, sinon ses coins
    se vident en diagonale. Le parent, lui, garde `overflow: hidden`, donc
    rien ne dépasse à l'écran. 1,6× couvre la diagonale d'un carré (√2) avec
@@ -7905,13 +7905,13 @@ html.kta-theme-light .kta-cfg-group-titre {
   border-radius: 0;
 }
 
-/* 🔧 v1.10.2-fix4 (KARMA "affiche les roads c'est utile pour trouver son
+/* (KARMA "affiche les roads c'est utile pour trouver son
    chemin") : filter appliqué UNIQUEMENT à l'image base du plan, pas à
    tout le minimap. Les polylines roads restent vives et lisibles. Cible
    .leaflet-image-layer (= l'imageOverlay du plan). Les polylines sont
    rendues sur canvas/SVG dans .leaflet-overlay-pane au-dessus, donc non
    affectées par ce filter.
-   🔧 v1.10.2-fix8 (KARMA "un peu moins en map, défloute") :
+   (KARMA "un peu moins en map, défloute") :
    - brightness 0.55 → 0.72 (moins assombri, plus net visuellement)
    - saturate 0.4 → 0.55 (un peu plus de couleurs, moins terne)
    La map reste désaturée pour ne pas voler la vedette aux annotations,
@@ -7927,7 +7927,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-mini-map .leaflet-control-container,
 .kta-emergency-mini-map .leaflet-bottom { display: none !important; }
 
-/* 🆕 v1.12.0-fix : mode "sans image de fond" — appliqué quand l'user a choisi
+/* mode "sans image de fond" — appliqué quand l'user a choisi
    "Continuer sans image" sur la modale d'avertissement d'image volumineuse,
    ou quand baseImage est indisponible. Background discrètement texturé pour
    indiquer visuellement l'absence d'image (au lieu d'un noir/beige plat qui
@@ -7945,7 +7945,7 @@ html.kta-theme-light .kta-cfg-group-titre {
     linear-gradient(-45deg, rgba(0,0,0,0.04) 25%, transparent 25%);
 }
 
-/* 🆕 v1.12.0-fix (KARMA "on mais le centre de la bousole triangle rouge a
+/* (KARMA "on mais le centre de la bousole triangle rouge a
    ma position, et le rond rouge sur le cercle jaune bouge pour indiquer le
    nord") : marker tracker stylisé en boussole attachée à la position.
    Remplace l'ancien gros compass widget centré + le L.circleMarker rouge.
@@ -7959,7 +7959,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   background: none !important;
   border: none !important;
 }
-/* 🔧 v1.12.0-fix (KARMA "affiche le triangle rouge le rond jaune en
+/* (KARMA "affiche le triangle rouge le rond jaune en
    légérement plus gros (x2)") : toutes les tailles doublées. */
 .kta-em-mini-tracker {
   position: relative;
@@ -7983,7 +7983,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   transform-origin: center center;
   will-change: transform;
 }
-/* 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la direction où
+/* (KARMA "le triangle ne tourne plus dans la direction où
    on va") : rotor séparé pour le triangle, tourne avec +heading via
    _updateTrackerTriangleRotor. Origin centre, full size pour que la
    rotation soit propre autour de la pointe centrée du triangle. */
@@ -8039,7 +8039,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 
 /* Bouton sortir — gros et visible */
-/* 🩸 v1.97.6 — LE SEUL BOUTON DE SORTIE D'UN ÉCRAN DE PANIQUE DEMANDAIT UN
+/* 🩸 LE SEUL BOUTON DE SORTIE D'UN ÉCRAN DE PANIQUE DEMANDAIT UN
    SCROLL. Mesuré : bas du bouton à 853 px pour 844 de haut en 390×844, et
    823 pour 800 en 1100×800 — sur les DEUX formats. La boîte déborde (le
    « safe center » ci-dessus le prévoit et rend le scroll possible), mais
@@ -8072,7 +8072,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
 }
 
-/* 📱 27/09/2026 — TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
+/* TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
    tout téléphone en affichage zoomé). Mesuré avant cette règle : 50 px de
    défilement, dont l'essentiel vient du PLANCHER de la mini-carte (260 px) et
    non du bouton de copie (retiré depuis). Le bouton de sortie restait atteignable (il est
@@ -8082,14 +8082,14 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-value        { font-size: 23px; }
 }
 
-/* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
+/* (KARMA "décalage en horizontal mode urgence") : layout
    landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape :
    tailles réduites pour que tout rentre sans scroll. La minimap se redimensionne via
    le listener orientationchange (cf emergencyMode.js > _orientationListener). */
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   .kta-emergency-box        { max-width: none; gap: 8px; }
-  /* 🗺️ 03/10/2026 : le bloc position est parti — la minimap occupe toute
+  /* le bloc position est parti — la minimap occupe toute
      la largeur ET toute la hauteur restante. */
   .kta-emergency-grid       { gap: 8px; }
   .kta-emergency-titre      { font-size: 17px; }
@@ -8113,7 +8113,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   max-width: 520px !important;
   border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
   box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
-  /* 🆕 v1.11.1-fix (KARMA "trop long en hauteur sur PC, moitié vide") :
+  /* (KARMA "trop long en hauteur sur PC, moitié vide") :
      même cas que la modale Export Images (v1.9.2-fix14). Le parent
      .kta-readme-modal-boite a un height: 88vh sur PC qui étire la
      boîte malgré son contenu court (~250px). On force height: auto
@@ -8124,7 +8124,7 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 /* =========================================================
-   ⚖️ v1.56.0 — Gate « Conditions d'utilisation » (legalGate.js)
+   Gate « Conditions d'utilisation » (legalGate.js)
    ========================================================= */
 .kta-legal-boite {
   max-width: 560px !important;
@@ -8252,7 +8252,7 @@ html.kta-theme-light .kta-legal-points li { color: var(--kta-light-text-2, #3841
 html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
 
 /* =========================================================
-   🌀 v1.57.0 — Liaisons inter-plan (interPlanLinks.js)
+   Liaisons inter-plan (interPlanLinks.js)
    ========================================================= */
 /* Section dans le popup POI */
 .kta-ipl-section {
@@ -8286,7 +8286,7 @@ html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
    passe par le tag builtin « portail » et son icône dédiée icon/portail.png) */
 /* Modale création */
 .kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; }
-/* 🖥️ v1.81.0 (KARMA, capture PC) — LE GESTIONNAIRE 🌀 Mes liaisons a besoin
+/* LE GESTIONNAIRE 🌀 Mes liaisons a besoin
    de bien plus que les 520 px de la modale de création : chaque ligne porte
    DEUX noms « plan · point » + l'écart de calage + 3 boutons. À 520 px les
    noms tombaient en `text-overflow: ellipsis` (« Galeries techniques · CA… »)
@@ -8373,9 +8373,9 @@ html.kta-theme-light .kta-ipl-search {
 }
 
 /* =========================================================
-   ↩️ v1.58.0 — Bouton flottant « Retour » après un saut inter-plan
+   Bouton flottant « Retour » après un saut inter-plan
    ========================================================= */
-/* v1.61.0 (U4) : le flottant devient un CONTENEUR (bouton principal + [–] + [✕])
+/* (U4) : le flottant devient un CONTENEUR (bouton principal + [–] + [✕])
    ou une mini-pastille discrète (.kta-ipl-back-mini). */
 .kta-ipl-back-float {
   position: fixed;
@@ -8467,7 +8467,7 @@ html.kta-theme-light .kta-ipl-back-float {
 }
 
 /* =========================================================
-   🌐 v1.58.0 — Recherche cross-plan (crossPlanSearch.js)
+   Recherche cross-plan (crossPlanSearch.js)
    ========================================================= */
 .kta-xps-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; }
 .kta-xps-status {
@@ -8489,7 +8489,7 @@ html.kta-theme-light .kta-ipl-back-float {
   border-radius: 4px;
   padding: 2px 6px;
 }
-/* 🌀 v1.59.0 (A3) — Gestionnaire de liaisons */
+/* (A3) — Gestionnaire de liaisons */
 .kta-ipl-mgr-row {
   display: flex;
   align-items: center;
@@ -8518,12 +8518,12 @@ html.kta-theme-light .kta-ipl-back-float {
 }
 .kta-ipl-mgr-absent { color: #8892a4; }
 .kta-ipl-mgr-arrow { color: #f4c542; flex: 0 0 auto; }
-/* 📐 v1.81.0 (D5) — écart de calage d'une liaison. Discret par construction :
+/* (D5) — écart de calage d'une liaison. Discret par construction :
    c'est une mesure de diagnostic, pas le contenu de la ligne. Aucun seuil de
    couleur — 20 m est énorme sur une petite carrière et négligeable sur un
    réseau de 5 km ; colorer reviendrait à juger à la place de l'utilisateur
    avec un seuil qui ignore son échelle. */
-/* 📐 v1.81.0 (D5) — contrôle qualité du calage, sous les chips de la Vue OSM.
+/* (D5) — contrôle qualité du calage, sous les chips de la Vue OSM.
    Classé du PIRE au meilleur : ce qui mérite un recalage est en tête. Aucun
    seuil de couleur, même raison que le badge de 🌀 Mes liaisons. */
 .kta-osm-qualite { margin: 6px 0 2px; }
@@ -8581,7 +8581,7 @@ html.kta-theme-light .kta-ipl-mgr-ecart { color: var(--kta-light-text-2, #4a5568
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 
-/* 🧭 v1.60.0 (A6) — Itinéraire inter-plan */
+/* (A6) — Itinéraire inter-plan */
 .kta-ipr-step {
   font-size: 13px;
   color: #c8d0e0;
@@ -8598,7 +8598,7 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
 }
 
 /* ═══════════════════════════════════════════════════════════
-   📱 v1.68.0 — HOME MOBILE (lot A, étude KARMA — desktop intouché)
+   HOME MOBILE (lot A, étude KARMA — desktop intouché)
    ═══════════════════════════════════════════════════════════ */
 /* Bouton « Tous mes plans » : inexistant sur desktop.
    (HOME v2 : l'accordéon 🧰 Outils du lot A est SUPPRIMÉ — la grille 2×2 de
@@ -8620,7 +8620,7 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   /* ② Liste des plans bornée : 5 récents visibles, le reste déplié à la
      demande (bouton #kta-home-plans-more injecté par homeLoader.js) */
   #allPlansList.kta-collapsed > .plan-row:nth-of-type(n+6) { display: none; }
-  /* 📁 16/09/2026 — même borne, PAR dossier déplié en mode Dossiers */
+  /* même borne, PAR dossier déplié en mode Dossiers */
   .kta-plans-folder-rows.kta-collapsed > .plan-row:nth-of-type(n+6) { display: none; }
   #kta-home-plans-more {
     display: flex;
@@ -8653,7 +8653,7 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
      pour les écrans < 340 px (jamais de débordement). */
   .loader-header { flex-wrap: wrap; row-gap: 6px; column-gap: 6px; }
   .loader-titre { min-width: 0; flex: 1 1 auto; }
-  /* 07/10/2026 (KARMA : « ça devrait être en petit en dessous de MyKTAMap ») — tagline RÉAFFICHÉE, mais elle
+  /* (KARMA : « ça devrait être en petit en dessous de MyKTAMap ») — tagline RÉAFFICHÉE, mais elle
      ne compte plus dans la largeur du lockup : width 0 + min-width 100 % = elle prend la largeur que le titre
      a reçue (flex 1, tout l'espace laissé par les chips), sans jamais l'élargir → les chips restent sur la
      même ligne. Sous-titre d'installation trop long (kiosque, 80 car.) : ellipse. Mesuré 320 → 412 px. */
@@ -8681,7 +8681,7 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   #loadPlanBtn { min-height: 48px; }
 }
 
-/* 🕸️ v1.65.0 (A7) — Vue « réseau de plans » (gestionnaire Mes liaisons) */
+/* (A7) — Vue « réseau de plans » (gestionnaire Mes liaisons) */
 .kta-ipl-mgr-toggle {
   display: flex;
   gap: 8px;
@@ -8783,7 +8783,7 @@ html.kta-theme-light .kta-pnet-badges, html.kta-theme-light .kta-pnet-sep-titre 
 html.kta-theme-light .kta-pnet-edge { stroke: #2d5aa8; }
 html.kta-theme-light .kta-pnet-edge-count { fill: #2d5aa8; }
 
-/* 🌀 v1.64.0 — Multi-hop : case à cocher (recherche multi-plans) */
+/* Multi-hop : case à cocher (recherche multi-plans) */
 .kta-xps-multihop {
   display: flex;
   align-items: center;
@@ -8797,7 +8797,7 @@ html.kta-theme-light .kta-pnet-edge-count { fill: #2d5aa8; }
 .kta-xps-multihop input { accent-color: #8cb4ff; }
 html.kta-theme-light .kta-xps-multihop { color: #3a4358; }
 
-/* 🌀 v1.64.0 — Invite flottante « Portail suivant » (au-dessus du bouton ↩️
+/* Invite flottante « Portail suivant » (au-dessus du bouton ↩️
    Retour bottom:20px — même famille visuelle, accent bleu interaction) */
 .kta-ipr-next-float {
   position: fixed;
@@ -8935,7 +8935,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   margin-bottom: 0;
 }
 
-/* 🆕 v1.9.3-B1d.γ.2 (revisité KARMA "pas très clair") :
+/* (revisité KARMA "pas très clair") :
    Encadré dédié pour l'import ZIP datalayer, mis en avant pour que l'user
    le voie immédiatement (au lieu d'être caché dans le titre de section). */
 .kta-planner-import-zip-box {
@@ -8997,7 +8997,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-size: 11px;
   color: #8892a4;
   flex: 1;
-  /* 🐛 v1.44.5 — min-width:0 indispensable : sans ça, le flex item garde son
+  /* min-width:0 indispensable : sans ça, le flex item garde son
      min-width:auto (= largeur du contenu intrinsèque), ce qui annule
      text-overflow:ellipsis et laisse une data URL SVG longue (icône
      entree_plan) déborder + élargir toute la modale. */
@@ -9056,7 +9056,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   color: #8cb4ff !important;
 }
 
-/* 🆕 v1.8.0 : Bouton principal quand le groupe a un MODE ACTIF en cours
+/* Bouton principal quand le groupe a un MODE ACTIF en cours
    (tracker en Play, mesure active, mode tracé route en cours, etc.).
    Indicateur visuel discret persistant qui survit à la fermeture du
    groupe — sans ça, après le fix v1.8.0 qui autorise la fermeture du
@@ -9107,7 +9107,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 
    🔧 v170 fix critique : Leaflet utilise float: left/right + clear: both
    sur .leaflet-control (héritage IE compat — voir lib/leaflet/leaflet.css
-   lignes 156-162). Avec ce layout floating, le PARENT ne "voit" PAS la
+   > .leaflet-control). Avec ce layout floating, le PARENT ne "voit" PAS la
    hauteur de ses enfants flottants → max-height + overflow-y: auto NE
    DÉCLENCHE PAS le scroll, et les enfants sortent visuellement.
    La règle existante (avant ce fix) ne marchait donc pas en pratique.
@@ -9240,7 +9240,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 .kta-readme-back-top:active { transform: translateY(1px); }
 
 /* RESPONSIVE — sous 800px : sidebar bascule en haut (si visible) */
-/* 🐛 v1.40.38 — height → max-height pour cohérence avec les autres breakpoints */
+/* height → max-height pour cohérence avec les autres breakpoints */
 @media (max-width: 800px) {
   .kta-readme-modal-boite {
     max-height: 92vh;
@@ -9533,7 +9533,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
    ══════════════════════════════════════════════ */
 .kta-iti-modal-boite {
   max-width: 540px;
-  /* 🔧 v1.13.0-fix16 : fix hauteur 88vh étirée pour cette modale courte */
+  /* fix hauteur 88vh étirée pour cette modale courte */
   height: auto !important;
   max-height: 90vh !important;
 }
@@ -9645,7 +9645,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   flex-wrap: wrap;
   gap: 6px;
 }
-/* 🆕 v1.48.0 — Checklist « Zones à éviter » (modale itinéraire). */
+/* Checklist « Zones à éviter » (modale itinéraire). */
 .kta-iti-avoid-zones-list {
   display: flex;
   flex-direction: column;
@@ -9806,7 +9806,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
 }
 
-/* 🆕 v1.61.0 — étape validée (« je suis ici » sur le point) : ✓ vert.
+/* étape validée (« je suis ici » sur le point) : ✓ vert.
    Le marker reste affiché = trace de progression pendant la sortie. */
 .kta-itinerary-waypoint.kta-iti-wp-done .kta-iti-num {
   background: #4caf50;
@@ -9843,7 +9843,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-size: 13px;
   color: #c8d0e0;
   max-width: calc(100vw - 24px);
-  /* 🩸 v1.85.0 (KARMA « ca sort du cadre sur mobile ») : `max-width`
+  /* 🩸 (KARMA « ca sort du cadre sur mobile ») : `max-width`
      plafonne la BOITE, pas son CONTENU. Sans `flex-wrap`, un message non
      coupable et des boutons incompressibles debordent de la boite, qui
      deborde de l ecran. Invisible sur grand ecran, systematique sur
@@ -9907,7 +9907,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   display: none;
 }
 
-/* 🐛 v1.46.4 — `.kta-iti-search-result` (= items de la recherche AVOIDANCES,
+/* `.kta-iti-search-result` (= items de la recherche AVOIDANCES,
    js/interfaceItineraire.js) n'était PAS stylé (le JS génère cette classe mais
    le CSS ne ciblait que `.kta-iti-search-item` de la recherche principale) →
    items sans padding ni fond propre, « flottants » au-dessus de la liste =
@@ -10111,7 +10111,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   color: #00d4ff;
 }
 
-/* 🆕 v1.23.0 Phase 2 / Feature C — Bloc contexte importé depuis Lost Mode
+/* Phase 2 / Feature C — Bloc contexte importé depuis Lost Mode
 
 /* 🆕 v1.23.0 — Section "🛑 Pause entre les arrêts" dans modale itinéraire */
 .kta-iti-pause-row {
@@ -10226,7 +10226,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   margin-right: 6px;
 }
 
-/* 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois, une mesure
+/* (KARMA "en footer, on peux afficher a la fois, une mesure
    de surface, et une comme avant de distance") : le label bas-gauche peut
    désormais contenir 2 lignes simultanées (distance + surface). On stack
    verticalement et on surligne la ligne du mode actif via une bordure
@@ -10247,7 +10247,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   background: rgba(244, 197, 66, 0.08);
 }
 
-/* 🆕 v1.9.3-A1.b.2.5 — labels longueur par segment + angles (KARMA :
+/* labels longueur par segment + angles (KARMA :
    "j'ai la longeur de chaque segment afficher à l'écran et l'angle en
    degré entre deux segments afficher").
    - Segment label : badge jaune charte centré sur le milieu du segment,
@@ -10522,7 +10522,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
      déterministe quelle que soit la taille de police calculée par le browser.
    - flex-shrink: 0 + box-sizing pour éviter les distorsions au resize. */
 .kta-loader-copyright {
-  /* 🆕 v1.9.2-rollback2 (KARMA "réduit encore un peu le footer en
+  /* (KARMA "réduit encore un peu le footer en
      loader") : marges encore plus tassées — margin-top 6→2 +
      padding-top 6→4 + line-height 16→15. */
   margin-top: 2px;
@@ -10567,7 +10567,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
 }
 
 /* =========================
-   🏷️ v1.28.2 — Bascule community ↔ pro (footer + modales)
+   Bascule community ↔ pro (footer + modales)
    =========================
    Le détecteur js/proLicense.js ajoute la classe .kta-instance-pro sur
    <html> et <body> quand /Licence-pro.json est présent côté serveur.
@@ -10582,7 +10582,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
 .kta-licence-pro {
   display: none;
 }
-/* 🆕 v1.29.0-fix4 — Sélecteur précisé : on cible uniquement le <span>
+/* Sélecteur précisé : on cible uniquement le <span>
    du lien d'achat (la classe .kta-licence-community est aussi posée
    sur le séparateur <div> et le bloc <div> "Importer ma licence pro").
    En conservant ces 2 <div> visibles côté pro, on permet aux utilisateurs
@@ -10605,7 +10605,7 @@ body.kta-instance-pro .kta-licence-pro {
   display: inline;
 }
 
-/* 🆕 v1.29.0-fix6 — Suffixe "-pro" stylé pour les titres MyKTAMap.
+/* Suffixe "-pro" stylé pour les titres MyKTAMap.
    La classe .kta-titre-suffix-pro est portée par un <span> ajouté
    dans index.html juste après le mot "MyKTAMap" dans :
      - #splashTitle (splash de boot)
@@ -10618,14 +10618,14 @@ body.kta-instance-pro .kta-licence-pro {
   font-weight: 600;
   letter-spacing: 0.5px;
   margin-left: 1px;
-  /* 🆕 v1.30.0 — Apparition animée du suffixe "-pro" : révélation
+  /* Apparition animée du suffixe "-pro" : révélation
      progressive de gauche à droite, miroir esthétique de la signature
      karma du splash (cf kta-splash-karma-reveal). Souligne discrètement
      l'identité "édition pro" sans imposer. Pattern clip-path identique
      à karma → cohérence visuelle.
-     v1.30.0+ : enchaînement séquentiel avec .kta-titre-base — le mot
+     enchaînement séquentiel avec .kta-titre-base — le mot
      "MyKTAMap" se révèle d'abord, courte pause (~0.3s), puis le "-pro".
-     ⚠️ v1.30.0-fix : on NE pose PAS display: inline-block ici (sinon
+     ⚠️ on NE pose PAS display: inline-block ici (sinon
      ça écrase le `display: none` par défaut de .kta-licence-pro côté
      community — spécificité égale, dernier déclaré gagne). Le display
      est pris en charge par la règle scopée html.kta-instance-pro plus
@@ -10636,7 +10636,7 @@ body.kta-instance-pro .kta-licence-pro {
 }
 
 /* Scope pro uniquement : override le `display: inline` posé par la
-   règle .kta-instance-pro .kta-licence-pro (plus haut ligne ~8714) en
+   règle .kta-instance-pro .kta-licence-pro (plus haut) en
    `display: inline-block` requis pour que clip-path s'applique sur un
    span. Côté community : ces 2 sélecteurs ne matchent jamais (la
    classe .kta-instance-pro n'est jamais posée par js/proLicense.js
@@ -10668,7 +10668,7 @@ body.kta-instance-pro .kta-titre-suffix-pro {
   100% { clip-path: inset(0 0    0 0); }   /* + o finale */
 }
 
-/* 🆕 v1.30.0 — Apparition animée du mot "MyKTAMap" : même pattern
+/* Apparition animée du mot "MyKTAMap" : même pattern
    clip-path reveal que le suffixe -pro, joué AVANT. Le HTML wrap le
    texte "MyKTAMap" dans <span class="kta-titre-base">…</span> pour
    permettre l'animation indépendante du suffixe.
@@ -10701,7 +10701,7 @@ body.kta-instance-pro .kta-titre-suffix-pro {
   100% { clip-path: inset(0 0    0 0); }   /* + p finale */
 }
 
-/* 🆕 v1.29.2-fix1 — Variant thème clair pour le suffixe « -pro » :
+/* Variant thème clair pour le suffixe « -pro » :
    KARMA a validé qu'on garde le MÊME jaune accent #f4c542 qu'en mode
    sombre (= cohérent avec le reste de l'identité loader/splash, tagline
    "Cartographie souterraine" est aussi en #f4c542). La présence d'une
@@ -10729,8 +10729,8 @@ body.kta-theme-light .kta-titre-suffix-pro {
 }
 
 /* Variants thème clair (cohérence palette claire §53).
-   🆕 v1.40.26/27 — Override le `body.kta-theme-light .kta-loader-copyright *
-   { color: ... !important; }` ligne ~14244 qui écrasait sinon le vert en
+   Override le `body.kta-theme-light .kta-loader-copyright *
+   { color: ... !important; }` (plus bas) qui écrasait sinon le vert en
    gris muté. v1.40.26 avait juste ajouté `!important` mais specificity
    égale (0,2,1) → la règle `*` plus loin dans le fichier gagnait par
    cascade order. v1.40.27 augmente la specificity à (0,3,2) via la chaîne
@@ -10753,7 +10753,7 @@ body.kta-theme-light .kta-loader-copyright-edition-title {
    ========================= */
 
 /* =========================
-   🆕 v1.28.4 — Section "💼 Édition pro" dans la modale "Mon profil"
+   Section "💼 Édition pro" dans la modale "Mon profil"
    =========================
    Permet à l'user d'importer manuellement un fichier Licence-pro.json
    reçu par mail/canal privé pour activer le mode pro localement.
@@ -10900,11 +10900,11 @@ body.kta-theme-light .kta-profile-pro-hint {
    ========================= */
 
 
-/* 🆕 v1.9.2-fix17 — Ligne crédits libs/algos dans le footer du home.
+/* Ligne crédits libs/algos dans le footer du home.
    Plus discrète que la ligne copyright (couleur plus pâle, taille
    légèrement réduite). Reprise cohérente avec le crédit du splash. */
 .kta-loader-credits {
-  /* 🆕 v1.9.2-rollback2 : marge top 6→3, line-height 1.5→1.3 pour
+  /* marge top 6→3, line-height 1.5→1.3 pour
      gain vertical supplémentaire (cf. footer loader compactage). */
   margin-top: 3px;
   font-size: 10.5px;
@@ -11077,7 +11077,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a
 html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko,
 body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
 
-/* 🧩 v2.7.0 — « Installation indisponible » (module de connexion absent ou gate
+/* « Installation indisponible » (module de connexion absent ou gate
    déléguée en échec). Au-dessus de tout, comme une gate ; jamais de repli. */
 .kta-instance-indispo {
   position: fixed; inset: 0; z-index: 100100;
@@ -11095,7 +11095,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 .kta-instance-indispo-lien { display: block; margin-top: 14px; font-size: 13px; color: #f4c542; text-decoration: none; }
 .kta-instance-indispo-lien:hover, .kta-instance-indispo-lien:focus-visible { text-decoration: underline; }
 
-/* 🔌 v2.0.0 — Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
+/* Pastille « connexion serveur » (js/ktaExtensions.js). La couleur
    vient de la classe .kta-tx-* posée au rendu (off muted · invalide err ·
    licence warn · configuree info, variantes claires comprises). Sous 380 px,
    seule l'icône reste : le mot est dans l'infobulle et dans la modale réseau. */
@@ -11185,7 +11185,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 }
 .kta-alert-selector-boite {
   max-width: 540px;
-  /* v1.14.3 — bornes forcées en !important + flex column (cf .kta-alert-boite) */
+  /* bornes forcées en !important + flex column (cf .kta-alert-boite) */
   height: auto !important;
   max-height: 88vh !important;
   display: flex !important;
@@ -11193,7 +11193,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 }
 .kta-alert-selector-corps {
   padding: 14px 18px;
-  /* v1.14.3 — corps scrollable si N alertes dépasse la hauteur */
+  /* corps scrollable si N alertes dépasse la hauteur */
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
@@ -11382,7 +11382,7 @@ a.kta-level-btn {
 /* Modal sélecteur de niveau */
 .kta-niv-modal-boite {
   max-width: 460px;
-  /* 🔧 v1.13.0-fix15 (KARMA "la fenêtre de Niveau pour saisir le niveau
+  /* (KARMA "la fenêtre de Niveau pour saisir le niveau
      actif et les calques visibles a le fameux bug de longueur, contrôle
      aussi le mode sombre") : même cas que .kta-pin-proposal-boite et
      .kta-export-modal-boite. Le parent .kta-readme-modal-boite a
@@ -11519,12 +11519,12 @@ a.kta-level-btn {
 /* Modal création jonction */
 .kta-jct-modal-boite {
   max-width: 460px;
-  /* 🔧 v1.13.0-fix15 : idem .kta-niv-modal-boite, fix height pour contenu court */
+  /* idem .kta-niv-modal-boite, fix height pour contenu court */
   height: auto !important;
   max-height: 90vh !important;
 }
 
-/* 🔧 v1.13.0-fix15 (KARMA "pareil pour légende") : modal Légende affiche
+/* (KARMA "pareil pour légende") : modal Légende affiche
    une grille d'icônes + traits courte → ne doit pas occuper 88vh. */
 .kta-legende-modal-boite {
   max-width: 720px;
@@ -11591,7 +11591,7 @@ a.kta-level-btn {
 @keyframes kta-load-spin {
   to { transform: rotate(360deg); }
 }
-/* 🆕 v1.46.4 — Overlay de calcul d'itinéraire (cf interfaceItineraire.js).
+/* Overlay de calcul d'itinéraire (cf interfaceItineraire.js).
    Plein écran, réutilise .kta-load-spinner ; z-index AU-DESSUS de la modale
    itinéraire (.kta-readme-modal-overlay = 99999). */
 .kta-iti-compute-overlay {
@@ -11617,7 +11617,7 @@ a.kta-level-btn {
   padding: 0 18px;
   max-width: 320px;
 }
-/* 🌀 v1.55.1 — Loader générique « calcul en cours » (js/computeLoader.js),
+/* Loader générique « calcul en cours » (js/computeLoader.js),
    réutilisé par « Je suis perdu » + Mode Secours. Même rendu que l'overlay iti. */
 .kta-compute-overlay {
   position: fixed;
@@ -11699,7 +11699,7 @@ a.kta-level-btn {
 /* Pattern identique au tracker warning (cf. ci-dessous) mais avec un accent
    violet (la couleur du V2 dans le planner et les badges plan). Conversion
    lourde donc on conseille PC, avec details memoire/CPU/duree. */
-/* v1.14.20-hotfix7 (KARMA « bug import KMZ en longueur notre fameux
+/* (KARMA « bug import KMZ en longueur notre fameux
    classique ») : application du pattern containment universel à la
    modale 🌍 Import KMZ. Le contenu (upload + résumé + config + actions
    d'import) peut largement dépasser 88vh sur mobile portrait avec un
@@ -11725,7 +11725,7 @@ a.kta-level-btn {
   border: 1px solid rgba(180, 82, 255, 0.40);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(180, 82, 255, 0.10);
   max-width: 560px;
-  /* v1.14.20 — KARMA « bug du modal Conversion V2 - Ressource nécessaire
+  /* KARMA « bug du modal Conversion V2 - Ressource nécessaire
      en longueur notre grand classique ». Application du pattern containment
      universel (déjà utilisé sur les modales alerte / lock / theme-confirm /
      niv / légende / jct / iti / lost / session export) : hauteur auto
@@ -12072,7 +12072,7 @@ body.kta-multilevel-active .kta-compass-widget {
   font-size: 13px;
   line-height: 1.45;
   color: #c8d0e0;
-  /* 🆕 v1.8.0 fix : sans width:100% + box-sizing, un <label> en flex
+  /* sans width:100% + box-sizing, un <label> en flex
      reste shrink-to-fit côté width (= largeur du content max). Avec un
      <span> long en flex:1 1 auto, le label débordait horizontalement
      hors du conteneur de la modale Configuration → texte tronqué à
@@ -12252,7 +12252,7 @@ body.kta-multilevel-active .kta-compass-widget {
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(140, 180, 255, 0.18);
 }
-/* 🆕 v1.20.0-fix1 — Section dédiée "Périmètre myktamap.fr" (clause
+/* Section dédiée "Périmètre myktamap.fr" (clause
    anti-fork/copie). Encadrement orange/saumon pour signaler une mise
    en garde importante sans tomber dans le rouge alarmiste. */
 .kta-net-doc-section.kta-net-doc-section-domain {
@@ -12371,7 +12371,7 @@ html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain code {
    HEADER BAR (sticky top 44px)
    ───────────────────────────────────────────────────────────────── */
 
-/* 🆕 v1.9.2-hotfix-loader-header (KARMA "si je clique sur la rose des
+/* (KARMA "si je clique sur la rose des
    vents, retour home avec haut couleur leaflet. Si je clique sur titre
    puis tous mes plans, retour home avec haut noir") :
    Quand le loader (home) est visible, on cache COMPLÈTEMENT le header
@@ -12399,7 +12399,7 @@ body.kta-refonte-v1 .kta-refonte-header {
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
   border-bottom: 1px solid rgba(244, 197, 66, 0.18);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  /* 🆕 v1.8.1-refonte-12 : layout flex par défaut (portrait). Le titre
+  /* layout flex par défaut (portrait). Le titre
      est centré dans la largeur restante via le wrap `flex:1 + justify-
      content:center` — pas un centrage absolu (asymétrie home/counters),
      mais c'est le comportement que KARMA préfère en portrait. Le grid
@@ -12422,7 +12422,7 @@ body.kta-refonte-v1 .kta-refonte-header {
   user-select: none;
 }
 
-/* 🆕 v1.8.1-refonte-9 fix bug double-comptage (KARMA capture iPhone) :
+/* bug double-comptage (KARMA capture iPhone) :
    l'ancienne règle `.leaflet-top { top: calc(44 + safe-top) }` cumulait
    le décalage AVEC le #map qui est déjà décalé. Sur iPhone notch
    (safe-top ≈ 50px), ça faisait un gap de ~190px au lieu de 0.
@@ -12500,7 +12500,7 @@ body.kta-refonte-v1 .kta-refonte-header-title-wrap {
   display: flex;
   justify-content: center;
 }
-/* 🆕 v1.9.3-B1d-fix5 (KARMA "titre passe derrière les compteurs") :
+/* (KARMA "titre passe derrière les compteurs") :
    Graceful degradation 2 niveaux :
      1. Quand le titre déborde → on cache d'abord la version (JS détecte
         scrollWidth > clientWidth, met display:none sur la version).
@@ -12564,7 +12564,7 @@ body.kta-refonte-v1 .kta-refonte-header-chevron {
 }
 
 /* Compteurs (droite) */
-/* v1.35.2 — gap 8px (avant 6px) pour respiration plus harmonieuse entre les
+/* gap 8px (avant 6px) pour respiration plus harmonieuse entre les
    3 chips (📊 / 📖 / 🚨) + 🔋 batterie. */
 body.kta-refonte-v1 .kta-refonte-header-counters {
   font-size: 11px;
@@ -12579,9 +12579,9 @@ body.kta-refonte-v1 .kta-refonte-counter {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 3px 8px;            /* v1.35.2 — padding uniforme */
-  min-width: 36px;             /* v1.35.2 — largeur min identique pour 📖/🚨 et stats */
-  min-height: 24px;            /* v1.35.2 — hauteur min cohérente */
+  padding: 3px 8px;            /* padding uniforme */
+  min-width: 36px;             /* largeur min identique pour 📖/🚨 et stats */
+  min-height: 24px;            /* hauteur min cohérente */
   box-sizing: border-box;
   border-radius: 5px;
   background: rgba(140, 180, 255, 0.08);
@@ -12589,7 +12589,7 @@ body.kta-refonte-v1 .kta-refonte-counter {
   transition: opacity 0.15s, background 0.15s;
 }
 body.kta-refonte-v1 .kta-refonte-counter-icon {
-  font-size: 14px;             /* v1.35.2 — taille uniforme (avant 12px, mais 📖/🚨 surchargés à 16px) */
+  font-size: 14px;             /* taille uniforme (avant 12px, mais 📖/🚨 surchargés à 16px) */
   line-height: 1;
 }
 body.kta-refonte-v1 .kta-refonte-counter-val {
@@ -12606,7 +12606,7 @@ body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
   color: #8892a4;
 }
 
-/* 🆕 v1.11.1 V2 (KARMA "trop d'icônes sur mobile") : chip résumé 📊
+/* V2 (KARMA "trop d'icônes sur mobile") : chip résumé 📊
    visible UNIQUEMENT en mobile portrait. Sur desktop/tablette/landscape,
    il est masqué et les 5 chips individuels (📍🛣⬛🏛️📸) + 🪫 sont
    affichés. En mobile portrait, on inverse : seul 📊 est visible et il
@@ -12627,7 +12627,7 @@ body.kta-refonte-v1 .kta-refonte-counter-summary .kta-refonte-counter-val {
 
 /* Mobile : un seul chip résumé visible.
    Breakpoint 480px = phone portrait standard (iPhone SE/Mini, Android compact).
-   🐛 v1.76.4 (KARMA) : en PAYSAGE mobile, la largeur (740-900px) échappait au
+   en PAYSAGE mobile, la largeur (740-900px) échappait au
    480px → les 5 compteurs s'affichaient tous et poussaient Histoire/OSM/
    Sortie hors du cadre. On ajoute le combo paysage bas (déjà utilisé
    ailleurs dans ce fichier) : un téléphone couché reste un téléphone. */
@@ -12648,7 +12648,7 @@ body.kta-refonte-v1 .kta-refonte-counter-summary .kta-refonte-counter-val {
      c'est une info critique en sous-sol. */
 }
 
-/* 🆕 v1.11.1 V2 : chip batterie (KARMA 2:d + 4:a code couleur).
+/* V2 : chip batterie (KARMA 2:d + 4:a code couleur).
    La couleur est appliquée en inline-style depuis _refreshBatteryUi
    (refonteInterface.js) selon le niveau actuel. La valeur monospace
    pour stabilité visuelle au changement (87% → 88% ne décale pas). */
@@ -12663,7 +12663,7 @@ body.kta-refonte-v1 .kta-refonte-counter-battery .kta-refonte-counter-val {
   color: inherit;
 }
 
-/* 🆕 v1.11.1-fix3 (KARMA "icône batterie exclue de la surbrillance
+/* (KARMA "icône batterie exclue de la surbrillance
    session") : le chip batterie sort du bouton compteurs et devient un
    sibling dans le header. Il garde sa propre carrosserie visuelle (fond
    + bordure subtils) mais avec une petite marge gauche pour le séparer
@@ -12742,7 +12742,7 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      déjà safe-area-bottom). Quand le footer wrap multi-ligne et
      grandit, la sidebar rétrécit automatiquement pour ne pas se faire
      recouvrir.
-     🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` (fallback `vh`
+     `100dvh` au lieu de `100vh` (fallback `vh`
      gardé en premier pour iOS 15-). */
   max-height: calc(100vh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
   max-height: calc(100dvh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
@@ -12774,7 +12774,7 @@ body.kta-refonte-v1 .leaflet-control {
   clear: none !important;
 }
 /* 🆕 Refonte v1.2 itéré : surcharge la règle Leaflet native plus spécifique
-   `.leaflet-top .leaflet-control { margin-top: 10px }` (leaflet.css ligne 163).
+   `.leaflet-top .leaflet-control { margin-top: 10px }` (lib/leaflet/leaflet.css).
    Ma règle plus haute devrait gagner par spécificité (0,2,1 vs 0,2,0) mais
    on renforce explicitement pour les 2 sidebars + chaque direction de
    margin → garantit que le 1er control de la sidebar est collé au top
@@ -12912,10 +12912,10 @@ body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-c
 body.kta-refonte-v1 .kta-compass-widget {
   /* top: auto annule la règle de base à top:80px qui s'applique en v1. */
   top: auto !important;
-  /* 🆕 v1.8.1-refonte-10 : boussole posée au-dessus du status bar.
+  /* boussole posée au-dessus du status bar.
      Suit la hauteur dynamique du status bar via `--kta-statusbar-h`
      (mise à jour par JS quand la barre wrap multi-ligne).
-     🆕 v1.19.0-fix3 (KARMA "met la légèrement plus haute, pas sur le
+     (KARMA "met la légèrement plus haute, pas sur le
      footer mais au-dessus") : gap augmenté de 8px → 20px pour une vraie
      respiration visuelle. Garantit qu'on lit clairement la séparation
      entre boussole flottante et footer statique, sans risque de
@@ -12924,7 +12924,7 @@ body.kta-refonte-v1 .kta-compass-widget {
   bottom: calc(var(--kta-statusbar-h, 52px) + 36px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
-  /* 🆕 v1.19.0-fix2 (KARMA "bug boussole derrière le footer") : le status
+  /* (KARMA "bug boussole derrière le footer") : le status
      bar refonte a `z-index: 1200`, la boussole base est à 1050 → si la
      variable --kta-statusbar-h n'est pas à jour (ResizeObserver pas encore
      ticked, ou viewport en transition orientation), la boussole se
@@ -12951,7 +12951,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
    bouton Télécharger de l'export image compris). Ne pas la réintroduire sans plafonner la boîte. */
 
 /* ─────────────────────────────────────────────────────────────────
-   🆕 v1.8.1-refonte-10 — LANDSCAPE MODE : SOUS-ACTIONS HORIZONTALES
+   LANDSCAPE MODE : SOUS-ACTIONS HORIZONTALES
    ─────────────────────────────────────────────────────────────────
    En mode portrait (par défaut) les sous-actions s'empilent EN DESSOUS
    du bouton principal (vertical) — la sidebar grossit vers le bas.
@@ -12993,7 +12993,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-bar {
     flex-direction: row-reverse !important;
   }
-  /* 🆕 v1.8.1-refonte-11 EXCEPTION : le zoom natif Leaflet
+  /* EXCEPTION : le zoom natif Leaflet
      (.leaflet-control-zoom contient zoom-in + zoom-out) reste VERTICAL
      même en landscape — convention universelle "+ au-dessus du -" que
      l'utilisateur connaît par cœur (Google Maps, OSM, etc.). Le passer
@@ -13055,7 +13055,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
     border-top: none !important;
     border-bottom: none !important;
   }
-  /* 🆕 v1.8.1-refonte-11 : zoom natif gardé vertical → séparateur entre
+  /* zoom natif gardé vertical → séparateur entre
      zoom-in et zoom-out doit être horizontal (border-top), pas vertical
      (border-left). Override l'exception générale ci-dessus. */
   body.kta-refonte-v1 .leaflet-control-zoom a + a {
@@ -13111,7 +13111,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   margin-bottom: 0;
 }
 
-/* 🆕 v1.11.2 V2.2 : Bloc Stats agrégées en TÊTE de la modale Détails de session.
+/* V2.2 : Bloc Stats agrégées en TÊTE de la modale Détails de session.
    Layout : tableau résumé compact + barres horizontales par type + boutons d'action.
    Cohérent avec la charte (accent jaune doré, fond panneau subtil). */
 .kta-refonte-stats-aggr {
@@ -13287,7 +13287,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
 }
 
 /* ==============================================
-   🐛 v1.16.0-fix — Backups list compact
+   Backups list compact
    ==============================================
    KARMA : « entre chaque snap, il y a bcp espace vide inutile ».
    La classe .kta-refonte-session-list par défaut est verticale
@@ -13320,7 +13320,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
 }
 
 /* Compteurs du header — feedback visuel cliquable */
-/* v1.35.3 — Override padding du wrapper button qui hérite de .kta-refonte-header-btn
+/* Override padding du wrapper button qui hérite de .kta-refonte-header-btn
    (padding 6px 10px). En mobile portrait il ne contient qu'1 seul chip 📊 → ses
    10px de padding-right s'ajoutent au gap 8px du parent → espace visuel 18px
    entre 📊 et 📖 (vs 8px entre 📖 et 🚨). KARMA feedback : "📊 plus loin de 📖
@@ -13348,7 +13348,7 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    STATUS BAR (sticky bottom, 36px ouvert / 14px replié)
    ───────────────────────────────────────────────────────────────── */
 
-/* 🆕 v1.8.1-refonte-10 : variable CSS partagée `--kta-statusbar-h` =
+/* variable CSS partagée `--kta-statusbar-h` =
    hauteur EFFECTIVE actuelle du status bar.
    - Fallback CSS = 52px (portrait standard, footer 1 ligne).
    - JS (refonteInterface.js > ResizeObserver) la réécrit dynamiquement
@@ -13374,14 +13374,14 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
-  /* 🆕 v1.9.2-fix3 (KARMA "uniquement sur mobile, padding renforcé pour
+  /* (KARMA "uniquement sur mobile, padding renforcé pour
      éviter le clip des coins arrondis bottom-left/right de l'écran")
      → règle mobile-only plus bas. Sur PC on garde 12px (pas de coins
      arrondis à éviter). */
   padding: 0 12px;
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
-  /* 🆕 v1.8.1-refonte-10 : `min-height` au lieu de `height` pour permettre
+  /* `min-height` au lieu de `height` pour permettre
      l'agrandissement dynamique quand les stats wrap sur plusieurs lignes
      (cas typique mobile petit écran + 4 stats actives = mesure + distance
      totale + itinéraire + tracker). Le contenu décide la hauteur, le
@@ -13407,7 +13407,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   user-select: none;
 }
 
-/* 🆕 v1.9.2-fix3 (KARMA "rajoute le petit fix pour les marges en footer
+/* (KARMA "rajoute le petit fix pour les marges en footer
    pour éviter le souci de bord arrondi, uniquement sur mobile, sinon
    on perd un bout d'icône à droite et à gauche") :
    sur écrans tactiles avec coins arrondis (iPhone, Android phones), le
@@ -13438,7 +13438,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-cont
 body.kta-refonte-v1 .kta-refonte-statusbar-content {
   flex: 1 1 auto;
   display: flex;
-  /* 🆕 v1.8.1-refonte-10 : flex-wrap pour multi-ligne au lieu de scroll
+  /* flex-wrap pour multi-ligne au lieu de scroll
      horizontal masqué (qui cachait l'info hors viewport). */
   flex-wrap: wrap;
   align-items: center;
@@ -13462,7 +13462,7 @@ body.kta-refonte-v1 .kta-refonte-stat {
 body.kta-refonte-v1 .kta-refonte-stat-icon {
   font-size: 13px;
 }
-/* 🆕 v1.9.2 : couleur des valeurs en footer passées à l'ambre charte
+/* couleur des valeurs en footer passées à l'ambre charte
    `#f4c542` (orange chaud du projet — même teinte que les titres dorés
    et le logo rose des vents). Avant : blanc cassé `#e8eaf0` qui se
    confondait avec le texte standard. Feedback KARMA : "peux tu ecrire
@@ -13486,7 +13486,7 @@ body.kta-refonte-v1 .kta-refonte-stat-empty .kta-refonte-stat-val {
   text-shadow: none;
 }
 
-/* 🆕 v1.8.1-refonte-14 : stats CLIQUABLES (uniquement la stat itinéraire
+/* stats CLIQUABLES (uniquement la stat itinéraire
    pour l'instant) — feedback visuel pointer + léger hover. On désactive
    l'effet quand la stat est vide (rien à ouvrir) pour ne pas tromper. */
 body.kta-refonte-v1 .kta-refonte-stat-clickable {
@@ -13510,7 +13510,7 @@ body.kta-refonte-v1 .kta-refonte-stat-clickable.kta-refonte-stat-empty:hover {
   background: transparent;
 }
 
-/* 🆕 v1.8.1-refonte-14 : indicateur tracker GPS — ON vert / OFF rouge.
+/* indicateur tracker GPS — ON vert / OFF rouge.
    Style "LED hardware" : pill arrondi compact avec fond coloré + texte
    gras. Visibilité immédiate du statut GPS pour l'user (KARMA : "on
    met une boussole avec un ON vert et un OFF rouge"). */
@@ -13561,7 +13561,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle {
   border: 1px solid rgba(140, 180, 255, 0.25);
   color: #8cb4ff;
   cursor: pointer;
-  /* 🆕 v1.8.1-refonte-14 : bouton ▾▴ plus gros (KARMA feedback).
+  /* bouton ▾▴ plus gros (KARMA feedback).
      28x24 / 14px → 40x36 / 22px → plus visible et plus facile à taper
      au pouce sur mobile. Reste flex-shrink:0 pour ne pas wrap avec
      les stats. */
@@ -13577,7 +13577,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle {
   margin-left: 10px;
   padding: 0;
   line-height: 1;
-  /* 🆕 v1.9.2 : transition height/font-size pour suivre l'état
+  /* transition height/font-size pour suivre l'état
      collapsed sans saccade visuelle. */
   transition: background 0.15s, border-color 0.15s, color 0.15s,
               width 0.2s ease-out, height 0.2s ease-out, font-size 0.2s ease-out;
@@ -13589,7 +13589,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
   color: #b3ccff;
   outline: none;
 }
-/* 🆕 v1.9.2 : quand le footer est replié (height ~20px + safe-bottom),
+/* quand le footer est replié (height ~20px + safe-bottom),
    le bouton 40x36 dépassait par-dessus le haut du footer → effet bizarre
    visuellement (KARMA feedback : "vue que on a augmenter la taille de
    l'icone de reduction du footer, il sort du footer réduit ca fait un
@@ -13605,7 +13605,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-togg
 
 /* MASQUAGE des labels Leaflet bottom en mode refonte — ils sont
    remplacés par les stats du status bar en bas.
-   🆕 v1.8.1-refonte-9 fix KARMA : classe `.kta-measure-distance`
+   classe `.kta-measure-distance`
    (anglais "measure", pas "mesure" FR comme j'avais écrit avant).
    Le label "Distance : 0 m" restait visible en mode refonte car
    l'ancienne règle (orthographe FR « mesure ») ne matchait jamais.
@@ -13636,7 +13636,7 @@ body.kta-refonte-v1 #measureLabel {
 
 body.kta-refonte-v1 #map {
   top: calc(44px + env(safe-area-inset-top, 0px));
-  /* 🆕 v1.8.1-refonte-10 : variable `--kta-statusbar-h` mise à jour
+  /* variable `--kta-statusbar-h` mise à jour
      dynamiquement par JS (ResizeObserver sur la barre). Quand la barre
      wrap multi-ligne et grandit, #map remonte automatiquement pour
      ne pas être recouvert. Fallback calc(52 + safe) si JS pas chargé.
@@ -13659,7 +13659,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-refonte-header {
     height: calc(36px + env(safe-area-inset-top, 0px));
-    /* 🐛 v1.76.4 (captures KARMA paysage mobile) — l'ancien grid
+    /* l'ancien grid
        `1fr auto 1fr` (v1.8.1-refonte-12, centrage absolu du titre) datait
        d'AVANT l'ajout des chips 📖/🌍/🚨/🔋 en ENFANTS DIRECTS du header
        (v1.34.19 → v1.39) : avec 7 enfants pour 3 colonnes, tout ce qui
@@ -13686,7 +13686,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   }
   /* #map bottom : la variable --kta-statusbar-h gère déjà tout (JS la
      met à jour quand le statusbar bouge). Pas de override hardcodé. */
-  /* 🆕 v1.8.1-refonte-9 : .leaflet-top et .leaflet-bottom RESTENT à
+  /* .leaflet-top et .leaflet-bottom RESTENT à
      0 (natif Leaflet) car le #map est déjà décalé. Les anciens overrides
      `.leaflet-top { top: 36+safe-top }` et `.leaflet-bottom { bottom:
      40+safe-bottom }` causaient un double-comptage = gros gap visible
@@ -13697,13 +13697,13 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   }
   /* Recalcule la max-height des sidebars pour landscape — suit la
      variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte).
-     🆕 v1.9.2-fullscreen : double déclaration vh/dvh. */
+     double déclaration vh/dvh. */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
     max-height: calc(100vh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
     max-height: calc(100dvh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
   }
-  /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
+  /* boussole en BAS-CENTRÉE en landscape (pas
      bas-gauche comme en portrait). Sur petit écran horizontal, les
      icônes des sidebars descendent bas → la boussole en bas-gauche
      les cachait. En la centrant horizontalement on garde la même
@@ -14058,7 +14058,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 }
 
 /* ============================================================================
- * 🎨 v1.13.0 — THÈME CLAIR (LIMITÉ AU MODE CARTE)
+ * THÈME CLAIR (LIMITÉ AU MODE CARTE)
  * ============================================================================
  * Activé par body.kta-theme-light (= window.ThemeManager.setTheme("light")).
  * KARMA choix : background beige cataphile #f0e8d8 (D:b) + accent jaune
@@ -14077,7 +14077,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
    (≥ 4,5 sur les fonds clairs) ; le jaune charte reste pour fonds et bordures. */
 html.kta-theme-light,
 body.kta-theme-light {
-  /* 🔄 v1.13.0-fix7 (KARMA "RB la dernière modif de fond, je parlais du
+  /* (KARMA "RB la dernière modif de fond, je parlais du
      fond du home") : rollback du body uniforme — body re-passe en beige
      clair #f0e8d8 (mode carte). Le fond brun-beige est désormais réservé
      au HOME (= #planLoaderOverlay + #planLoaderBox + sections home). */
@@ -14117,7 +14117,7 @@ body.kta-theme-light {
 }
 
 /* === HEADER refonte ===
-   🔧 v1.13.0-fix4 (KARMA "plus de contraste en mode clair, sur le top
+   (KARMA "plus de contraste en mode clair, sur le top
    comme en footer") : background brun-beige #c9b88f (vs ancien #e5dcc5
    trop proche du body #f0e8d8) + bordure forte 2px en bas + ombre
    subtile pour profondeur. */
@@ -14149,7 +14149,7 @@ body.kta-theme-light .kta-refonte-counters-btn:hover {
 }
 
 /* === STATUS BAR footer ===
-   🔧 v1.13.0-fix4 : même traitement que le header — brun-beige contrasté
+   même traitement que le header — brun-beige contrasté
    + bordure forte en haut + ombre vers le haut pour la profondeur. */
 body.kta-theme-light .kta-refonte-statusbar {
   background: var(--kta-light-bg-bar) !important;
@@ -14178,12 +14178,12 @@ body.kta-theme-light .kta-refonte-statusbar-toggle:hover {
 }
 
 /* === SIDEBARS Leaflet — boutons principaux + sous-actions ===
-   🔧 v1.13.0-fix (KARMA "le mode clair ne comprend pas les icônes dans les
+   (KARMA "le mode clair ne comprend pas les icônes dans les
    menus déroulants gauche et droite") : les vraies classes utilisées par
    _creerGroupeAccordeon sont `.leaflet-bar a` (bouton principal) et
    `.leaflet-bar a.kta-sub` (sous-action). !important pour battre les
    règles dark.
-   🔧 v1.13.0-fix8 (KARMA "utilise la couleur de fond du footer et top,
+   (KARMA "utilise la couleur de fond du footer et top,
    pour le fond des icônes") : background des icônes passe en brun-beige
    #c9b88f (= var(--kta-light-bg-bar)) pour s'harmoniser avec header +
    footer. Hover en #b8a576 (= var(--kta-light-bg-bar-deep), plus foncé). */
@@ -14218,7 +14218,7 @@ body.kta-theme-light .leaflet-bar a.kta-actif:hover {
 /* Bouton principal en mode actif — fond BLANC solide pour se détacher du
    fond brun-beige des autres icônes. Le contraste blanc-sur-brun est
    maximal et lit immédiatement "ce bouton est en mode actif".
-   🔧 v1.13.0-fix (KARMA "quand un icône est actif, il doit rester en
+   (KARMA "quand un icône est actif, il doit rester en
    fond blanc, pas transparent") + v1.13.0-fix8 (cohérent avec le fond
    brun des autres icônes — le blanc tranche encore mieux). */
 body.kta-theme-light .leaflet-bar a.kta-group-mode-actif {
@@ -14257,7 +14257,7 @@ body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-gr
   color: #fff !important;
 }
 
-/* 🆕 v1.50.0 — Modal Tracker en thème clair */
+/* Modal Tracker en thème clair */
 body.kta-theme-light .kta-tracker-modal-overlay {
   background: rgba(20, 28, 44, 0.55);
 }
@@ -14321,7 +14321,7 @@ body.kta-theme-light .leaflet-bar {
 }
 
 /* Layers toggle (haut-droite Leaflet — control des calques).
-   v1.14.13 (KARMA) : aligné sur --kta-light-bg-bar (au lieu de #fdf8eb)
+   aligné sur --kta-light-bg-bar (au lieu de #fdf8eb)
    pour avoir LA MÊME couleur que les autres boutons .leaflet-bar a en
    mode clair → cohérence visuelle des contrôles flottants. Taille déjà
    32×32 héritée des règles base. SVG hamburger conservé. */
@@ -14459,7 +14459,7 @@ body.kta-theme-light .kta-histoire-note-status,
 html.kta-theme-light .kta-histoire-note-status {
   color: var(--kta-light-text-muted, #777);
 }
-/* v1.34.30 — MD editor inline (note libre) — theme clair */
+/* MD editor inline (note libre) — theme clair */
 body.kta-theme-light .kta-histoire-md-toolbar,
 html.kta-theme-light .kta-histoire-md-toolbar {
   background: rgba(217, 119, 6, 0.05);
@@ -14930,7 +14930,7 @@ html.kta-theme-light .kta-note-popup-readonly-text {
   border-left-color: rgba(161, 110, 16, 0.45) !important;
 }
 
-/* v1.14.17 (KARMA « reprend depuis 0 sans toutes nos itérations ») :
+/* (KARMA « reprend depuis 0 sans toutes nos itérations ») :
    tous les styles spécifiques à la modale Import (.kta-import-choix-* et
    les overrides #kta-import-choix-modal .kta-ses-*) sont retirés. La
    nouvelle implémentation (window.ouvrirImportChoix) calque le pattern
@@ -14939,7 +14939,7 @@ html.kta-theme-light .kta-note-popup-readonly-text {
    classes CSS déjà existantes — zéro nouveau CSS. */
 
 /* === Popups Leaflet (markers, zones) ===
-   v1.14.4 — fix bug "popup data layer en sombre malgré mode clair" :
+   fix bug "popup data layer en sombre malgré mode clair" :
    les règles dark base utilisent toutes !important (background:#1a1f2e
    !important), donc les overrides light DOIVENT aussi avoir !important
    sinon ils sont battus en spécificité. Cas signalé par KARMA quand on
@@ -14979,7 +14979,7 @@ body.kta-theme-light .kta-popup-ext-info,
 html.kta-theme-light .kta-popup-ext-info {
   color: var(--kta-light-text-muted) !important;
 }
-/* 🆕 v1.21.2 : ligne coords GPS du popup point — adapté pour le clair. */
+/* ligne coords GPS du popup point — adapté pour le clair. */
 body.kta-theme-light .kta-popup-point .kta-popup-gps,
 html.kta-theme-light .kta-popup-point .kta-popup-gps {
   background: rgba(40, 80, 160, 0.08) !important;
@@ -15142,7 +15142,7 @@ body.kta-theme-light .kta-refonte-session-meta {
    light mode, c'est cohérent pour la lisibilité des photos) === */
 
 /* === Modale d'export (PNG / PDF / KMZ / Session) === */
-/* 🆕 v1.55.0 — Règles de base globalisées (elles n'existaient QUE dans le
+/* Règles de base globalisées (elles n'existaient QUE dans le
    <style> local de js/exporter.js → absentes tant que la modale d'export image
    n'avait jamais été ouverte). La modale « Nouvelle entrée légende »
    (legendCustomization.js) réutilise ces classes → case « Activer le
@@ -15239,7 +15239,7 @@ body.kta-theme-light .leaflet-bar a.kta-disabled {
 }
 
 /* === Override global texte clair sur fond clair (catch-all) ===
-   🔧 v1.13.0-fix (KARMA "surement des effets de bord ailleurs") : nombre
+   (KARMA "surement des effets de bord ailleurs") : nombre
    d'éléments enfants (h1/h2/h3/p/span/li/strong/em/code/td/th dans les
    modales et panneaux) ont un color: #e8eaf0 ou color: #fff hardcodé en
    dark, non couverts par les overrides individuels. On force le texte
@@ -15321,7 +15321,7 @@ body.kta-theme-light .leaflet-tooltip {
 }
 
 /* === Zoom controls Leaflet (haut-droite) ===
-   v1.14.13 — DUPLICATE retirée (KARMA « fais passer le fond de calque
+   DUPLICATE retirée (KARMA « fais passer le fond de calque
    Leaflet même couleur que les autres icônes »). Cette règle re-déclarait
    .leaflet-bar a avec --kta-light-bg-elevated (beige clair) sans
    !important, créant une incohérence visuelle avec la définition
@@ -15341,7 +15341,7 @@ body.kta-theme-light .kta-legende-modal-boite {
 /* (volontairement vide) */
 
 /* ============================================================================
- * 🔧 v1.13.0-fix2 — EXTENSION DU THÈME CLAIR À LA HOME + LOADER + DOCS UI
+ * EXTENSION DU THÈME CLAIR À LA HOME + LOADER + DOCS UI
  * ============================================================================
  * KARMA "active le mode clair partout, home, les modal, les doc afficher
  * dans l'UI readme, audit, aide, et possibilité d'activer ou non depuis
@@ -15362,7 +15362,7 @@ body.kta-theme-light {
 }
 
 /* === LOADER plein écran ===
-   🔧 v1.13.0-fix7 (KARMA "je parlais du fond du home") : home = même
+   (KARMA "je parlais du fond du home") : home = même
    couleur que le header + footer du mode carte (brun-beige #c9b88f).
    Le contraste interne se fait via les cartes (Reprendre, Mes plans,
    Récents) qui ressortent en blanc/beige clair sur ce fond brun. */
@@ -15390,7 +15390,7 @@ body.kta-theme-light #planLoaderBox a:hover {
 }
 
 /* === Boutons home ===
-   v1.14.20-hotfix5 (KARMA « le fond de l'icône verrouillé n'est pas blanc
+   (KARMA « le fond de l'icône verrouillé n'est pas blanc
    toujours transparent ») : remplacement du fond rgba(0,0,0,0.05) (5%
    noir = quasi-transparent sur fond beige du loader-header → l'user
    percevait ça comme « transparent ») par un vrai blanc opaque #ffffff.
@@ -15402,7 +15402,7 @@ body.kta-theme-light .loader-btn-secondary {
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
-/* v1.14.15 (KARMA) : :hover encapsulé dans @media (hover: hover) pour
+/* :hover encapsulé dans @media (hover: hover) pour
    ne s'activer que sur les devices avec un vrai pointeur (mouse). Sur
    tactile, après tap, le :hover restait sticky → le bouton apparaissait
    en ambre permanent après un tap. */
@@ -15433,9 +15433,9 @@ body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
 }
 
-/* 🆕 v1.29.2-fix1 — Restaure le jaune accent #f4c542 pour le suffixe
+/* Restaure le jaune accent #f4c542 pour le suffixe
    « -pro » du HEADER du home (.loader-titre-nom). Sans cette règle, le
-   sélecteur `body.kta-theme-light #planLoaderBox *` (ligne ~13334)
+   sélecteur `body.kta-theme-light #planLoaderBox *`
    force tous les descendants du home en `var(--kta-light-text)` (noir
    muté), ce qui écrasait le jaune #f4c542 défini en §8731+ pour
    .kta-titre-suffix-pro.
@@ -15450,7 +15450,7 @@ body.kta-theme-light #planLoaderBox .kta-titre-suffix-pro {
 }
 
 /* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP ===
-   🔧 v1.13.0-fix7 : sur fond brun-beige #c9b88f, les cards ressortent
+   sur fond brun-beige #c9b88f, les cards ressortent
    désormais en blanc-clair #fdf8eb avec bordure plus marquée pour
    bien se détacher du fond. */
 body.kta-theme-light #myPlansBox,
@@ -15615,7 +15615,7 @@ body.kta-theme-light #kta-load-message {
    garder son côté "urgence à voir absolument". */
 
 /* ============================================================================
- * 🔧 v1.13.0-fix5 — MODALES APPEND À documentElement (= <html>)
+ * MODALES APPEND À documentElement (= <html>)
  * ============================================================================
  * KARMA "tous les modals se chargent en mode sombre" : beaucoup de modales
  * sont créées via `document.documentElement.appendChild(modal)` (= enfant
@@ -15728,7 +15728,7 @@ html.kta-theme-light .kta-readme-modal-overlay textarea:focus {
 }
 
 /* === Sommaire / TOC des modales Doc/Aide (kta-readme-toc-*) ===
-   🔧 v1.13.0-fix9 (KARMA "pb de sommaire, dans les sous menu mes plans
+   (KARMA "pb de sommaire, dans les sous menu mes plans
    il faut intégrer ça mieux, moins contraste, on doit mieux voir la
    séparation entre les différents plans dans la liste telle que on le
    voyait avant en sombre") : mes catch-all `.kta-readme-modal-corps *
@@ -15819,7 +15819,7 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-sublist li > .kta
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix10 — BOUTONS .kta-btn-* + MODALE UPDATE + ALERTES
+ * BOUTONS .kta-btn-* + MODALE UPDATE + ALERTES
  * ============================================================================
  * KARMA "les boutons des modal en mode clair s'affiche moin bien, il
  * fonctionne mais bizarre graphiquement, pas de contraste, revoit le
@@ -16104,7 +16104,7 @@ html.kta-theme-light #kta-alert-charte {
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix11 — PLAN SWITCHER (clic titre) + SPLASH chargement plan
+ * PLAN SWITCHER (clic titre) + SPLASH chargement plan
  * ============================================================================
  * KARMA "le bouton qui permet de lister les plans en mode carte quand
  * on clique sur le titre, est en sombre, pareil pour le module quand
@@ -16224,7 +16224,7 @@ html.kta-theme-light #splashTitle {
 html.kta-theme-light #splashSubtitle {
   color: #6b6354 !important;
 }
-/* 🆕 v1.47.0 — Arc de chargement : doré charte trop clair sur fond beige →
+/* Arc de chargement : doré charte trop clair sur fond beige →
    doré sombre (darkgoldenrod) pour le contraste. Crédit Claude « clay » +
    version : assombris pour rester lisibles sur le thème clair. */
 html.kta-theme-light #splashSpinArc circle {
@@ -16254,7 +16254,7 @@ html.kta-theme-light .splash-credits {
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix12 — UNLOCK GATE + PIN GATE + PIN PROPOSAL
+ * UNLOCK GATE + PIN GATE + PIN PROPOSAL
  * ============================================================================
  * KARMA "pareil pour le modal pour enrengistrer un mdp, et pour le saisir
  * a la relance" :
@@ -16468,7 +16468,7 @@ html.kta-theme-light .kta-pin-gate-lockout-explication p {
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix13 — INTÉGRATION HOME EN MODE CLAIR (cards arrondies)
+ * INTÉGRATION HOME EN MODE CLAIR (cards arrondies)
  * ============================================================================
  * KARMA "peux tu arrondir les différentes box Mes plans / Ajouter un
  * plan, améliorer l'intégration mode light".
@@ -16658,7 +16658,7 @@ html.kta-theme-light .kta-load-hint {
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix16 — RECHERCHE UNIFIÉE (Ctrl+K) + ONGLETS MODE rapide/avancé
+ * RECHERCHE UNIFIÉE (Ctrl+K) + ONGLETS MODE rapide/avancé
  * + HAUTEUR MODALES Session/Iti/Perdu + autres
  * ============================================================================
  * KARMA reports : (a) "bug affichage recherche unifié" (input dark sur
@@ -16824,7 +16824,7 @@ html.kta-theme-light .kta-kmz-section {
 }
 
 /* ============================================================================
- * 🔧 v1.13.0-fix18 — MODALES PROGRESS .kta-modal (forcer mise à jour / reset)
+ * MODALES PROGRESS .kta-modal (forcer mise à jour / reset)
  * ============================================================================
  * KARMA "dernier bug, forcer la mise à jour, et surement tout reset
  * affiche toujours la popup de reset en cours en sombre".
@@ -16834,9 +16834,9 @@ html.kta-theme-light .kta-kmz-section {
  * overrides précédents.
  *
  * Modales concernées :
- *   - mettreAJourCodeSeul() (interface.js l.2478) : overlay "Mise à jour
+ *   - mettreAJourCodeSeul() (interfaceMaintenance.js) : overlay "Mise à jour
  *     en cours…" avec étapes (ping, SW, purge cache, reload)
- *   - viderCacheAppli() (l.2614+) : overlay "Reset en cours…"
+ *   - viderCacheAppli() (interfaceMaintenance.js) : overlay "Reset en cours…"
  *   - Confirm dialogs divers (Session en cours, Yes/No, etc.)
  *
  * Couvert maintenant : .kta-modal-overlay + .kta-modal + .kta-modal-titre
@@ -17163,7 +17163,7 @@ body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
 }
 
 /* ==============================================
-   🆕 v1.16.0-fix — Boussole widget (mode réduit) en thème clair
+   Boussole widget (mode réduit) en thème clair
    ==============================================
    KARMA : « en mode clair, si je clique sur boussole, quand elle est en
    mode réduite sur la carte elle est en sombre. »
@@ -17207,7 +17207,7 @@ body.kta-theme-light .kta-compass-info {
 }
 
 /* ==============================================
-   🆕 v1.16.0 step2-flyout : Sidebar flyout (panneau latéral)
+   Sidebar flyout (panneau latéral)
    ==============================================
    KARMA : « quand on va avoir trop icone. il faut modifier UI, pas de
    déroulant. un icone principal ouvre une sorte de modal type charte
@@ -17242,7 +17242,7 @@ body.kta-theme-light .kta-compass-info {
      dynamique iOS Safari, safe-area, etc.). */
   overflow-y: auto;
   overflow-x: hidden;
-  /* 🐛 v1.16.0 step2-flyout-fix : meilleure visibilité scrollbar sur
+  /* meilleure visibilité scrollbar sur
      desktop (gros plans ou customs nombreux) pour signaler que le panel
      déroule. Sur mobile, le scroll touch fonctionne sans indicateur. */
   scrollbar-width: thin;
@@ -17276,7 +17276,7 @@ body.kta-theme-light .kta-compass-info {
   padding: 4px 4px 6px 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 4px;
-  /* 🐛 v1.16.0 step2-flyout-fix : header sticky pour que l'utilisateur
+  /* header sticky pour que l'utilisateur
      sache toujours sur quel groupe il est en train de scroller dans une
      longue liste de types + customs. Sticky simple — position relative
      au .kta-group-flyout qui scrolle. */
@@ -17447,7 +17447,7 @@ body.kta-theme-light .kta-group-flyout-sep {
 }
 
 /* ==============================================
-   🆕 v1.16.0 step 2 : Personnalisation de la légende (modale Export PNG)
+   Personnalisation de la légende (modale Export PNG)
    ============================================== */
 
 .kta-legend-custom-details {
@@ -17574,7 +17574,7 @@ body.kta-theme-light .kta-group-flyout-sep {
   border-color: rgba(255, 80, 80, 0.6);
 }
 
-/* 🎨 v1.76.0 — Sélecteur de couleur d'un type built-in dans l'éditeur de
+/* Sélecteur de couleur d'un type built-in dans l'éditeur de
    légende. Il remplace la pastille statique, donc il doit occuper exactement
    la même place (16px, flex fixe) pour ne pas décaler les colonnes de la
    ligne. Les navigateurs ajoutent un padding interne au <input type="color">
@@ -17651,7 +17651,7 @@ body.kta-theme-light .kta-legend-label:focus {
 }
 
 /* ===========================================================
-   🆕 v1.17.0 — Switcher Simple/Avancé du Générateur
+   Switcher Simple/Avancé du Générateur
    =========================================================== */
 
 .kta-planner-mode-switcher {
@@ -17711,7 +17711,7 @@ body.kta-theme-light .kta-legend-label:focus {
 }
 
 /* ===========================================================
-   🆕 v1.17.0 — Section légende plan-level (Avancé only)
+   Section légende plan-level (Avancé only)
    =========================================================== */
 
 .kta-planner-legend-status {
@@ -17744,7 +17744,7 @@ body.kta-theme-light .kta-legend-label:focus {
 }
 
 /* ===========================================================
-   🆕 v1.17.0 — Variants thème clair
+   Variants thème clair
    =========================================================== */
 
 body.kta-theme-light .kta-planner-mode-switcher,
@@ -17761,7 +17761,7 @@ html.kta-theme-light .kta-planner-mode-btn:hover {
   background: var(--kta-light-accent-bg) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
-/* 🐛 v1.37.0 fix3 — KARMA "je parle du remplissage du mode" : le bouton
+/* KARMA "je parle du remplissage du mode" : le bouton
    actif en theme clair n'a pas de fond visible. fix2 avait passé en orange
    saturé mais le cache CSS PWA peut servir l'ancienne version. Pour ce
    fix : sélecteur ULTRA-spécifique (#kta-planner-corps en plus) + couleur
@@ -17804,7 +17804,7 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   color: var(--kta-light-text) !important;
 }
 /* ===========================================================
-   🆕 v1.20.0-fix1 — Modales Logs (debug + réseau) thème clair
+   Modales Logs (debug + réseau) thème clair
    Bug remonté KARMA : fond #0d1117 hardcodé + texte clair
    #c8d0e0 → illisible en mode clair (clair sur clair).
    =========================================================== */
@@ -17922,7 +17922,7 @@ html.kta-theme-light .kta-net-cell-method {
     gap: 16px;
     margin-bottom: 16px;
   }
-  /* 📐 v1.72.2 (KARMA « symétrie ») : profil et Reprendre = MÊMES largeur
+  /* (KARMA « symétrie ») : profil et Reprendre = MÊMES largeur
      (flex égal, plafond 620 px chacune — le sans-plafond a été rollback
      sur ordre KARMA) ET hauteur. ⚠️ Hauteur : #resumeBox porte un
      margin-bottom:14px INLINE (index.html) jamais retiré par le JS — en
@@ -18000,7 +18000,7 @@ html.kta-theme-light .kta-net-cell-method {
 }
 
 /* =========================================================================
-   🆕 v1.52.0 — Rangs de profil (gamification) : anneau coloré + bloc rang
+   Rangs de profil (gamification) : anneau coloré + bloc rang
    ========================================================================= */
 /* Couleurs par rang (cascade via data-kta-rank, posé en JS) */
 [data-kta-rank="touriste"]    { --kta-rank-ring:#6b7280; --kta-rank-fg:#9aa4b5; --kta-rank-bg:rgba(107,114,128,0.16); }
@@ -18142,7 +18142,7 @@ body.kta-theme-light .kta-profile-rank-bar { background:rgba(0,0,0,0.08); }
 .kta-loader-profile-rank:empty { display: none; }
 body.kta-theme-light .kta-loader-profile-badge { background: #fdf8eb; }
 
-/* 🆕 v1.53.0 — Hauts faits (succès) dans la modale Détails profil */
+/* Hauts faits (succès) dans la modale Détails profil */
 .kta-profile-details-feats {
   margin: 0 0 14px;
   padding: 12px 14px;
@@ -18183,7 +18183,7 @@ body.kta-theme-light .kta-profile-details-feats { background: #fff; border-color
 body.kta-theme-light .kta-feats-head,
 body.kta-theme-light .kta-feat-fam { color: #1a1f2e; }
 body.kta-theme-light .kta-feat-val { color: #5a6478; }
-/* 🆕 v1.54.0 — section Spéciaux (one-shot) */
+/* section Spéciaux (one-shot) */
 .kta-feats-sptitle { margin: 22px 0 10px; font-size: 14px; font-weight: 600; color: #e8eaf0; }
 .kta-feats-specials { display: flex; flex-wrap: wrap; gap: 6px; }
 .kta-feat-sp {
@@ -18256,13 +18256,13 @@ body.kta-theme-light .kta-feat-sp.kta-feat-unlocked { color: #1a1f2e; background
   font-weight: 400;
 }
 
-/* 🆕 v1.21.1 (KARMA) : bouton ⚙️ Détails RETIRÉ — toute la box bandeau
+/* bouton ⚙️ Détails RETIRÉ — toute la box bandeau
    est cliquable. CSS conservé pour rétrocompat éventuelle si flag dev. */
 .kta-loader-profile-btn-details {
   display: none !important;
 }
 
-/* 🆕 v1.21.1-fix2 (KARMA "on a la place en longueur pour en afficher
+/* (KARMA "on a la place en longueur pour en afficher
    une deuxieme sur mobile") : breakpoint abaissé à 380px pour afficher
    les 2 stats dès mobile médian (iPhone Mini 375, Galaxy S20 412, etc.).
    - Mobile < 380px : cachées (très petits écrans uniquement)
@@ -18499,7 +18499,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
 }
 .kta-profile-stat-grid {
   display: grid;
-  /* 🆕 v1.21.3 : 6 cells au lieu de 5 (ajout sauvegarde).
+  /* 6 cells au lieu de 5 (ajout sauvegarde).
      Mobile 2 cols × 3 rows / PC 3 cols × 2 rows = layout équilibré. */
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -18524,7 +18524,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
 .kta-profile-stat-cell-wide {
   grid-column: span 2;
 }
-/* 🆕 v1.21.3 : taille de police réduite pour les valeurs bytes "12.3 MB"
+/* taille de police réduite pour les valeurs bytes "12.3 MB"
    (par rapport aux chiffres seuls comme "47 plans"). */
 .kta-profile-stat-num-bytes {
   font-size: 17px !important;
@@ -18544,7 +18544,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   letter-spacing: 0.5px;
 }
 
-/* 🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans profile les
+/* (KARMA "on doit dans ce cas pouvoir choisir dans profile les
    2 ou 3 stats du bandeau") — Section toggle stats du bandeau home. */
 .kta-profile-barstats {
   margin-top: 16px;
@@ -18627,7 +18627,7 @@ html.kta-theme-light .kta-profile-barstats-cb:hover {
   border-color: rgba(161, 110, 16, 0.40) !important;
 }
 
-/* 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque plan
+/* (KARMA "dans les stat, rajoute comme on voit sur chaque plan
    stat détailé les graph et tout") — Section camemberts agrégés cross-plan
    dans la modale 👤 Mon profil, après la table "📊 Mes plans". Réutilise
    le rendu de window.StatsGlobales.renderPieChart (cf statsGlobales.js). */
@@ -18663,9 +18663,9 @@ html.kta-theme-light .kta-profile-barstats-cb:hover {
   border-radius: 8px;
   padding: 10px 12px;
 }
-/* 🩸 v1.90.3 — Note des types personnalisés non résolus. Discrète : c'est une
+/* 🩸 Note des types personnalisés non résolus. Discrète : c'est une
    explication, pas une alerte — le chiffre est juste, seul le NOM manque. */
-/* 🏷️ v1.90.4 — Filtre par étiquette des stats du profil. Les trois états se
+/* Filtre par étiquette des stats du profil. Les trois états se
    lisent au SYMBOLE (✓ / ✕) autant qu'à la couleur : un filtre qui ne se
    distingue qu'à la teinte est illisible pour qui les distingue mal. */
 .kta-profile-tagfilter { margin: 10px 0 4px; }
@@ -18754,7 +18754,7 @@ html.kta-theme-light .kta-profile-pies-card-title {
   color: #6b4d10 !important;
 }
 
-/* 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les lister")
+/* (KARMA "récuperer les stat global de chaque plan pour les lister")
    — Section stats agrégées par plan dans la modale 👤 Mon profil. Calcul
    séquentiel anti-crash (cf index.html > _calculerStatsPlansAggregees). */
 .kta-profile-plansstats {
@@ -18825,7 +18825,7 @@ html.kta-theme-light .kta-profile-pies-card-title {
 .kta-profile-plansstats-table .kta-pps-row-current {
   background: rgba(108, 226, 138, 0.06);
 }
-/* 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+/* (KARMA "les stat de plan ne comprenne que les session") :
    marqueur "partial" — plan jamais ouvert dans cette release, on n'a
    accès qu'aux stats de session (data layers embedded manquants). */
 .kta-pps-partial {
@@ -19005,7 +19005,7 @@ html.kta-theme-light .kta-profile-details-footer-hint {
 }
 
 /* ============================================================
-   🎬 v1.21.0 (U1) — Mode présentation
+   (U1) — Mode présentation
    ============================================================
    KARMA : "Cache header + sidebars + footer (garde zoom + boussole)".
    Toggle via touche F (presentationMode.js). Cache tous les éléments UI
@@ -19043,7 +19043,7 @@ body.kta-presentation-mode .kta-compass-widget {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
 
-/* 🆕 v1.21.0-fix3 : section "Mode présentation" en tête de la modale
+/* section "Mode présentation" en tête de la modale
    Réglages — visuellement distinguée du reste (centrage + accent doré
    subtil) pour signaler "action principale rapide" et non pas un
    réglage à éditer. Pas de titre de section (le bouton est explicite). */
@@ -19057,7 +19057,7 @@ html.kta-theme-light .kta-cfg-presentation-section {
   border-color: rgba(154, 135, 84, 0.40) !important;
 }
 
-/* 🆕 v1.21.0-fix2 : bouton flottant ✕ pour sortir du mode présentation
+/* bouton flottant ✕ pour sortir du mode présentation
    sur MOBILE (la touche F est inaccessible sans clavier physique).
    Position fixed top-right, safe-area-aware iOS PWA. Petit (32×32) +
    semi-transparent (40% opacity) pour ne pas distraire en démo, opaque
@@ -19117,7 +19117,7 @@ html.kta-theme-light .kta-presentation-exit-btn:focus-visible {
 }
 
 /* ============================================================
-   🌐 v1.21.0-fix1 — Géoref picker (Réglages + Enregistrer KMZ)
+   Géoref picker (Réglages + Enregistrer KMZ)
    ============================================================
    Classes déplacées depuis le <style> inline de sessionExporter.js
    vers ici (permanent), pour que la section 🌐 Géoréférencement de
@@ -19199,7 +19199,7 @@ html.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta {
   color: var(--kta-light-text-muted, #6b6354) !important;
 }
 /* =================================================================
-   🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréférencement GPS
+   Banner cohérence échelle px/m ↔ géoréférencement GPS
    =================================================================
    Affiché dans 2 emplacements (en haut) :
    - Modale ⚙️ Réglages (interface.js > afficherConfig)
@@ -19311,7 +19311,7 @@ html.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta {
 }
 
 /* === Niveau CRITICAL (rouge clair translucide marqué > 10%) === */
-/* 🆕 v1.26.2-hotfix2 — KARMA : « le noir jure avec la charte, met un fond
+/* « le noir jure avec la charte, met un fond
    rouge clair ». Abandon du fond sombre/noir : on passe à un rouge clair
    TRANSLUCIDE (même principe que warn/alert mais plus saturé + bordure
    rouge vive épaisse). Avantage : les textes de base du banner (clair en
@@ -19373,7 +19373,7 @@ body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta {
   color: #a32020;
 }
-/* 🆕 v1.26.2-hotfix2 — Critical thème clair = rouge clair translucide
+/* Critical thème clair = rouge clair translucide
    (cohérent avec mode sombre). Plus de fond bordeaux-noir, donc les textes
    de base theme-light (sombres) restent lisibles SANS override. */
 body.kta-theme-light .kta-scale-coherence-critical,
@@ -19390,7 +19390,7 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
 }
 
 /* =========================================================================
-   🆕 v1.31.6 — UX2 a11y : prefers-reduced-motion (cf ui.md §88.1)
+   UX2 a11y : prefers-reduced-motion (cf ui.md §88.1)
    =========================================================================
    Désactive (raccourcit à 0.01ms = effectivement instantané) toutes les
    animations CSS quand l'utilisateur a activé la préférence système
@@ -19410,7 +19410,7 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
 }
 
 /* =========================================================================
-   🆕 v1.31.6 — UX5 a11y : focus-visible sur boutons charte (cf ui.md §88.2)
+   UX5 a11y : focus-visible sur boutons charte (cf ui.md §88.2)
    =========================================================================
    Outline ambre (charte) visible uniquement en navigation clavier
    (Tab/Shift+Tab), pas au clic souris — `:focus-visible` natif.
@@ -19452,7 +19452,7 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
 }
 
 /* =========================================================================
-   🕵️ v1.31.8 F2 — INCOGNITO MODE
+   F2 — INCOGNITO MODE
    ========================================================================= */
 /* Quand window.IncognitoMode est actif (URL ?incognito=1), js/incognitoMode.js
    pose la classe `.kta-incognito` sur <html>. Cette section ajoute :
@@ -19467,7 +19467,7 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
    Pas d'override forcé du `display`/positionnement existant — uniquement des
    surcouches visuelles pour ne pas casser la lisibilité ni la responsive.
 */
-/* 🩹 v1.31.10-fix1 — Refactor de l'approche bordure incognito. AVANT :
+/* Refactor de l'approche bordure incognito. AVANT :
    box-shadow inset sur <body>. PROBLÈME : sur la vue carte, Leaflet pose
    un container `#map` en position absolute full-viewport avec background
    solide qui MASQUE complètement le box-shadow du body en arrière-plan.
@@ -19496,7 +19496,7 @@ html.kta-incognito body::before {
 }
 
 /* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js SOUS le subtitle/tagline.
-   🩹 v1.31.8-fix1 : passé d'inline (à côté du titre, débordait sur mobile)
+   passé d'inline (à côté du titre, débordait sur mobile)
    à block sur sa propre ligne, centré sous le sous-titre. width: fit-content
    pour ne prendre que la place du texte (pas full-width). */
 .kta-incognito-badge {
@@ -19534,7 +19534,7 @@ html.kta-incognito #kta-build-version {
 }
 
 /* Variante thème clair : violet plus saturé pour contraste sur fond blanc.
-   🩹 v1.31.10-fix1 : applique le même pattern ::before que la version
+   applique le même pattern ::before que la version
    sombre. Cibles : html.kta-incognito.kta-theme-light + html.kta-theme-light
    body.kta-incognito (selon où la classe theme atterrit). */
 html.kta-incognito.kta-theme-light body::before,
@@ -19585,7 +19585,7 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
   outline-offset: 2px;
 }
 
-/* 🆕 v1.31.9 — Variant "Quitter le mode incognito" : rouge/orange
+/* Variant "Quitter le mode incognito" : rouge/orange
    (sortir = action destructive : perte des données accumulées). Gardé
    sur le même container .kta-cfg-incognito-btn pour réutiliser layout
    + focus + transitions. */
@@ -19597,7 +19597,7 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
 }
 
 /* =========================================================================
-   📋 v1.33.0 D1 — RAPPORT DE SORTIE (sessionReport.js)
+   D1 — RAPPORT DE SORTIE (sessionReport.js)
    =========================================================================
    Modale du module js/sessionReport.js. Réutilise les classes charte
    existantes (.kta-readme-modal-overlay, .kta-aide-section, .kta-btn) +
@@ -19757,7 +19757,7 @@ html.kta-theme-light .kta-report-hint {
 }
 
 /* =========================================================================
-   🎤 v1.34.0 E1 — COMMANDES VOCALES (voiceCommand.js)
+   E1 — COMMANDES VOCALES (voiceCommand.js)
    ========================================================================= */
 /* Bouton mic flottant (push-to-talk) + overlay transcription live + modale
    aide commandes. Visible UNIQUEMENT si l'user a activé "🎤 Commandes
@@ -19916,7 +19916,7 @@ html.kta-theme-light .kta-voice-aide-list li strong {
 }
 
 /* Mobile : taille bouton mic légèrement réduite + overlay plein large.
-   🩹 v1.34.0-fix3 — KARMA : "monte l'icone du micro legerement plus haut
+   "monte l'icone du micro legerement plus haut
    sur mobile il chevauche un peut le footer, et coler a droite".
    - bottom: 72 → 120px pour passer au-dessus du footer/statusbar refonte
      (52px + safe-bottom + marge confortable)
@@ -19937,7 +19937,7 @@ html.kta-theme-light .kta-voice-aide-list li strong {
   }
 }
 
-/* v1.35.4 — KARMA feedback : en mobile paysage, le bouton 🎤 chevauchait les
+/* KARMA feedback : en mobile paysage, le bouton 🎤 chevauchait les
    icônes du sidebar droit (chevrons ▼ et autres boutons utility, ~50 px de
    large collés à droite). On le décale vers la GAUCHE en ajoutant une marge
    droite suffisante pour passer derrière le sidebar (qui mesure ~52 px).
@@ -19950,7 +19950,7 @@ html.kta-theme-light .kta-voice-aide-list li strong {
 }
 
 /* ===========================================================
-   🧭 v1.37.0 — Picker calibration Nord 2 clics (northPicker.js)
+   Picker calibration Nord 2 clics (northPicker.js)
    Overlay flottant en bas-centre + marqueur "N" sur la map.
    Z-index 99998 (juste sous 99999 splash, au-dessus modales).
    =========================================================== */
@@ -20043,14 +20043,14 @@ html.kta-theme-light .kta-north-picker-step strong {
 }
 
 /* ============================================================================
- * 🆕 v1.40.9 — REFONTE PROPRE thème clair HOME (suite KARMA "c'est devenu
+ * REFONTE PROPRE thème clair HOME (suite KARMA "c'est devenu
  *              nimp la le css du home en mode clair, reprend tout ca d'un
  *              oeil différent pour rendre ca plus armonieux").
  *
  * HISTORIQUE TENTATIVES (à effacer mentalement) :
- *   v1.40.3 : passé sections HOME #fdf8eb → #e5dcc5
+ *   passé sections HOME #fdf8eb → #e5dcc5
  *   v1.40.5 : déplacé en fin de fichier (cascade)
- *   v1.40.8 : ajouté wrapper + bandeau profil en #e5dcc5
+ *   ajouté wrapper + bandeau profil en #e5dcc5
  *   → Résultat : tout aplati en #e5dcc5, plus aucune hiérarchie visuelle
  *
  * NOUVELLE APPROCHE — Option A KARMA validée : RESPECTER la sémantique
@@ -20064,9 +20064,9 @@ html.kta-theme-light .kta-north-picker-step strong {
  *     remplacer #c9b88f brun-beige original qui détonnait
  *   - Cards (Profil, Reprendre, Mes plans, Vue OSM, Ajouter) = #fdf8eb crème,
  *     ressortent légèrement sur le wrapper neutre via border + box-shadow
- *     (les règles existantes lignes 14105+15206+17424 sont OK comme ça,
+ *     (les règles existantes du thème clair sont OK comme ça,
  *     pas besoin d'override sur Mes plans / Reprendre / Profil / Ajouter)
- *   - Footer copyright = #e5dcc5 beige saturé (déjà OK ligne 14068)
+ *   - Footer copyright = #e5dcc5 beige saturé (déjà OK plus haut)
  *
  * Seuls overrides nécessaires en fin de fichier :
  *   1. #planLoaderBox : passer #c9b88f → --kta-light-bg (#f0e8d8) pour
@@ -20086,7 +20086,7 @@ html.kta-theme-light #planLoaderBox {
 }
 
 /* --- 2. Card "🌍 Vue OSM" : crème comme Mes plans / Ajouter ---
-   Pattern identique à #myPlansBox (cf lignes 15206+). La nouvelle card
+   Pattern identique à `body.kta-theme-light #myPlansBox`. La nouvelle card
    ressort du wrapper neutre comme les autres. */
 body.kta-theme-light #ktaOsmHomeBox,
 html.kta-theme-light #ktaOsmHomeBox {
@@ -20113,7 +20113,7 @@ html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
 }
 
 /* =================================================================
-   🆕 v1.43.26 (extension Pattern B) — overrides theming light pour
+   (extension Pattern B) — overrides theming light pour
    inline-styles dark hardcodés communs dans toutes les modales.
    =================================================================
    La codebase a accumulé ~30 fichiers JS qui injectent des styles inline
@@ -20166,15 +20166,15 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 
 
 /* =========================================================
-   📔 v1.69.0 — Le Carnet (journal.js / journalUi.js)
+   Le Carnet (journal.js / journalUi.js)
    Modale carnet (liste des sorties) + fiche de sortie (sous-modale).
    Charte : fond #1a1f2e→#0a0d18, accent #f4c542, interaction #8cb4ff.
    ========================================================= */
 
-/* 🧹 v1.69.0 : « 📔 Mon carnet » a rejoint la liste des outils classiques —
+/* « 📔 Mon carnet » a rejoint la liste des outils classiques —
    le conteneur dédié `.loader-journal-action` n'existe plus. Le liseré doré
    reste, posé directement sur le bouton, pour le distinguer dans la liste. */
-/* (v1.73.0, KARMA : l'accent doré du bouton Carnet est retiré — même
+/* KARMA : l'accent doré du bouton Carnet est retiré — même
    apparence que les autres outils de la grille, .loader-btn-secondary nue.) */
 
 /* ── Modale carnet ── */
@@ -20288,7 +20288,7 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 .kta-jrn-note-lab { display: block; font-size: 12px; color: #c8d0e0; margin-bottom: 4px; }
 .kta-jrn-note {
   width: 100%;
-  /* 🐛 v1.85.2 (capture KARMA) : sans ça, le champ DEBORDE du cadre à droite.
+  /* sans ça, le champ DEBORDE du cadre à droite.
      `width: 100%` + 20px de padding + 2px de bordure = 122 % du conteneur —
      un <textarea> est en `content-box` par défaut, et le projet n'a aucun
      reset global qui le rattraperait. */
@@ -20342,7 +20342,7 @@ html.kta-theme-light .kta-jrn-trace-wrap { background: rgba(255, 255, 255, 0.55)
 .kta-jrn-bureau-toggle:hover { color: #c8d0e0; border-color: rgba(140, 180, 255, 0.4); }
 html.kta-theme-light .kta-jrn-bureau-toggle:hover { color: #1a1f2e; }
 
-/* 📖 v1.69.0 — onglet Récits (Mode Histoire remonté au HOME) */
+/* onglet Récits (Mode Histoire remonté au HOME) */
 .kta-jrn-onglets { display: flex; gap: 6px; margin-bottom: 10px; }
 .kta-jrn-onglet {
   flex: 1 1 auto;
@@ -20382,7 +20382,7 @@ html.kta-theme-light .kta-jrn-bureau-toggle:hover { color: #1a1f2e; }
 }
 html.kta-theme-light .kta-jrn-recit-rendu { color: var(--kta-light-text, #1a1f2e); background: rgba(255,255,255,0.5); }
 
-/* 📄 v1.69.0 — Mode Histoire : liste de documents PDF (N par plan) */
+/* Mode Histoire : liste de documents PDF (N par plan) */
 .kta-histoire-pdf-docs {
   display: flex;
   flex-wrap: wrap;
@@ -20450,7 +20450,7 @@ html.kta-theme-light .kta-histoire-doc,
 html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); }
 
 /* =========================================================
-   🖥️ v1.69.0 — Le Carnet sur GRAND ÉCRAN (retour KARMA)
+   Le Carnet sur GRAND ÉCRAN (retour KARMA)
    Mobile strictement inchangé : tout est sous @media ≥ 1024 px.
    Seuil aligné sur celui déjà utilisé par la modale ⚙️ Réglages.
    ========================================================= */
@@ -20510,7 +20510,7 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
   .kta-histoire-doc-nom { max-width: 320px; }
 }
 
-/* 🖥️ v1.69.0 — Mode Histoire sur grand écran : la visionneuse PDF est LA
+/* Mode Histoire sur grand écran : la visionneuse PDF est LA
    surface de lecture, 900 px de large sur un 27" c'était timide. */
 @media (min-width: 1024px) {
   .kta-histoire-boite { max-width: 1400px; height: 92vh; }
@@ -20568,7 +20568,7 @@ html.kta-theme-light .kta-jrn-doc-open { color: var(--kta-light-text, #1a1f2e); 
 html.kta-theme-light .loader-search-input { color: var(--kta-light-text, #1a1f2e); }
 html.kta-theme-light .loader-search-input::placeholder { color: #6a7488; }
 @media (max-width: 1023px) {
-  /* Le header s'enroule : logo + chips ligne 1, recherche ligne 2 pleine largeur. */
+  /* Le header s'enroule : logo + chips en 1re ligne, recherche pleine largeur en 2e ligne. */
   .loader-header { flex-wrap: wrap; }
   .loader-search-wrap {
     order: 3;
@@ -20630,13 +20630,13 @@ html.kta-theme-light .loader-search-input::placeholder { color: #6a7488; }
   font-size: 12px;
   line-height: 1.3;
   border-radius: 10px;
-  /* 📐 15/09/2026 — un libellé plus long que la tuile se REPLIE au lieu de
+  /* un libellé plus long que la tuile se REPLIE au lieu de
      l'élargir : `min-width: auto` (défaut grid) laissait le contenu dicter
      la largeur minimale de la cellule. */
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* 📐 15/09/2026 (KARMA : « on a encore un souci de zoom ») — L'ORPHELIN.
+/* (KARMA : « on a encore un souci de zoom ») — L'ORPHELIN.
    Cinq outils dans deux colonnes : le dernier se retrouvait seul à droite
    d'une cellule vide, avec son libellé sur deux lignes — à TOUT zoom, la
    colonne faisant 300 px fixes depuis la v1.69.0. Un nombre impair d'outils
@@ -20661,13 +20661,13 @@ body.kta-theme-light .loader-col {
 html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50, 0.14); }
 
 /* ═══════════════════════════════════════════════════════════
-   🔎 v1.70.0 — MODE OSM lot 1 : recherche locale (plans georef + POI)
+   MODE OSM lot 1 : recherche locale (plans georef + POI)
    Visible UNIQUEMENT en mode OSM (fullscreen du widget HOME).
    ═══════════════════════════════════════════════════════════ */
-/* 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
+/* la barre vit dans la LIGNE DE TITRE
    « 🌍 Vue OSM » (mode réduit ET mode OSM) : le nœud y est déplacé par
    _monterRechercheDansHead. */
-/* 🔎 v1.78.0 (KARMA « à la ligne, même logique que le filtre plans ») — la
+/* (KARMA « à la ligne, même logique que le filtre plans ») — la
    barre ne vit PLUS dans la ligne de titre : bloc pleine largeur entre le
    bandeau et la carte. Les règles flex/head de v1.71.0 sont retirées. */
 .kta-osm-home-search {
@@ -20696,10 +20696,10 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
 .kta-osm-home-search input::placeholder { color: #8892a4; }
 .kta-osm-home-search input:focus { outline: none; border-color: rgba(140, 180, 255, 0.55); }
 .kta-osm-home-search-results {
-  /* 🐛 v1.72.1 (KARMA « sort du cadre ») : ancré sur la LARGEUR DE LA BARRE
+  /* (KARMA « sort du cadre ») : ancré sur la LARGEUR DE LA BARRE
      (elle vit dans la ligne de titre, souvent étroite et collée à droite) —
      l'ancien centrage 520 px débordait du widget. */
-  /* 🐛 v1.72.1 (spec finale KARMA « collé sous la barre ») : position:fixed
+  /* (spec finale KARMA « collé sous la barre ») : position:fixed
      (échappe à tout clipping parent) mais top + left + width sont posés EN JS
      depuis le rect de l'input — le dropdown épouse la barre, où qu'elle soit
      (widget réduit / mode OSM). AUCUNE règle horizontale ici : une seule
@@ -20751,10 +20751,10 @@ html.kta-theme-light .kta-osm-home-search-results { background: #f4ecd8; }
 html.kta-theme-light .kta-osm-search-row { color: #3a4256; }
 
 /* ═══════════════════════════════════════════════════════════
-   🗂️ v1.71.0 — MODE OSM lot 2 : panneau multi-plans (pile de calques)
+   MODE OSM lot 2 : panneau multi-plans (pile de calques)
    Visible uniquement en mode OSM (fullscreen). Haut de liste = au-dessus.
    ═══════════════════════════════════════════════════════════ */
-/* 🎚️ v1.71.0 (retour KARMA) — la gestion multi-plans vit dans une MODALE
+/* la gestion multi-plans vit dans une MODALE
    dédiée (bouton ≡ du bandeau), plus aucun panneau flottant sur la carte.
    Les styles .kta-osm-multi-row/-cat/... ci-dessous sont réutilisés par la
    modale. */
@@ -20809,12 +20809,12 @@ html.kta-theme-light .kta-osm-home-multi { background: rgba(244, 236, 216, 0.95)
 html.kta-theme-light .kta-osm-multi-nom { color: #1a1f2e; }
 
 /* ═══════════════════════════════════════════════════════════
-   🗂️ v1.71.0 — chips de filtrage PAR PLAN (panneau multi-plans)
+   chips de filtrage PAR PLAN (panneau multi-plans)
    ═══════════════════════════════════════════════════════════ */
 .kta-osm-multi-cats {
   flex-basis: 100%;
   display: flex;
-  /* 🐛 v1.71.0 (KARMA mobile) : SANS wrap, les 5 chips libellés débordaient
+  /* SANS wrap, les 5 chips libellés débordaient
      du cadre au lieu de passer à la ligne. */
   flex-wrap: wrap;
   min-width: 0;
@@ -20829,7 +20829,7 @@ html.kta-theme-light .kta-osm-multi-nom { color: #1a1f2e; }
   display: grid;
   place-items: center;
   font-size: 11px;
-  /* 🐛 v1.71.0 (KARMA PC) : sans `color`, le texte des <button> retombe sur
+  /* sans `color`, le texte des <button> retombe sur
      la couleur UA (noir sur desktop) — les libellés étaient illisibles. */
   color: #c8d0e0;
   background: none;
@@ -20851,7 +20851,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 }
 
 /* ═══════════════════════════════════════════════════════════
-   📏 v1.71.0 — Bande profil + Reprendre AMINCIE sur PC (retour KARMA :
+   Bande profil + Reprendre AMINCIE sur PC (retour KARMA :
    « moins épais, on gagne en hauteur pour la Vue OSM »). Mobile intouché
    (le hero Reprendre garde ses 52 px tactiles).
    ═══════════════════════════════════════════════════════════ */
@@ -20861,15 +20861,15 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
   .kta-loader-top-row .kta-loader-profile-avatar-wrap { width: 36px; height: 36px; }
   .kta-loader-top-row .kta-loader-profile-stats > * { padding: 3px 8px; font-size: 11px; }
   .kta-loader-top-row #resumeBox .loader-btn-resume { padding: 8px 22px; font-size: 13.5px; }
-  /* 🐛 v1.77.0 (audit agent 08/08) — la règle « 52 → 58vh » qui vivait ici
+  /* la règle « 52 → 58vh » qui vivait ici
      ÉCRASAIT (même spécificité, plus bas dans la cascade) le fix v1.76.2 de
-     la ligne ~4880 : min-height:260px était une déclaration MORTE, la vraie
+     la règle plus haut : min-height:260px était une déclaration MORTE, la vraie
      valeur restait un clamp en vh qui excédait la place du grid → le widget
      débordait sur le footer. Supprimée : le flex:1 remplit déjà la colonne
      sur grand écran, un plancher en vh n'apportait rien de visible. */
 }
 
-/* 🎚️ v1.71.0 — modale ≡ enrichie : sections + chips libellés + tags */
+/* modale ≡ enrichie : sections + chips libellés + tags */
 .kta-osm-filters-sect {
   font-size: 11px;
   font-weight: 600;
@@ -20895,15 +20895,15 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 .kta-osm-filters-globaux { padding: 0; flex-wrap: wrap; display: flex; gap: 5px; }
 .kta-osm-filters-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 
-/* 🐛 v1.71.0 (KARMA mobile) — la modale ≡ ne déborde jamais horizontalement */
+/* la modale ≡ ne déborde jamais horizontalement */
 .kta-osm-filters-boite .kta-readme-modal-corps { overflow-x: hidden; }
 .kta-osm-filters-tags,
 .kta-osm-filters-globaux { flex-wrap: wrap; min-width: 0; max-width: 100%; }
 
-/* 🔽 v1.71.0 — Footer HOME repliable (flèche classique, état persisté) */
+/* Footer HOME repliable (flèche classique, état persisté) */
 .kta-footer-toggle {
   display: block;
-  margin: 4px auto 0;   /* 📐 v1.77.0 : 8→4, le footer doit tenir dans l'écran (KARMA) */
+  margin: 4px auto 0;   /* 8→4, le footer doit tenir dans l'écran (KARMA) */
   padding: 3px 18px;
   font-size: 11px;
   color: #8892a4;
@@ -20916,7 +20916,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 .kta-footer-toggle:hover { color: #c8d0e0; border-color: rgba(140, 180, 255, 0.35); }
 html.kta-theme-light .kta-footer-toggle { color: #6a7488; }
 
-/* 📄 v1.71.0 — Générateur : liste des PDF Histoire multiples */
+/* Générateur : liste des PDF Histoire multiples */
 .kta-planner-hist-liste { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .kta-planner-hist-row {
   display: flex;
@@ -20934,7 +20934,7 @@ html.kta-theme-light .kta-footer-toggle { color: #6a7488; }
 html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
 
 /* ═══════════════════════════════════════════════════════════
-   🧙 v1.72.1 — ASSISTANT du générateur (wizard)
+   ASSISTANT du générateur (wizard)
    ═══════════════════════════════════════════════════════════ */
 /* En mode assistant : une page à la fois → on neutralise la grille 2 colonnes */
 #kta-planner-corps.kta-wiz-actif { display: block !important; }
@@ -20972,7 +20972,7 @@ html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
 }
 .kta-wiz-lien { width: 14px; height: 1px; background: rgba(140, 180, 255, 0.25); }
 
-/* 🔄 v1.73.0 (KARMA) : convention installeur — Annuler seul à GAUCHE,
+/* convention installeur — Annuler seul à GAUCHE,
    navigation Précédent/Passer/Suivant à DROITE (Générer encore plus à
    droite sur la page Résumé). Réalisé en flex `order` + margin auto sur
    Annuler : le DOM ne bouge pas (listeners/JS intacts), et wizard OFF
@@ -21012,7 +21012,7 @@ html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
 html.kta-theme-light .kta-wiz-resume-nom { color: #1a1f2e; }
 html.kta-theme-light .kta-wiz-resume-warns { color: #6a5a1e; }
 
-/* 🔎 v1.72.1 — Résultats LIVE de la barre du HOME (même modèle que la
+/* Résultats LIVE de la barre du HOME (même modèle que la
    recherche OSM : fixed, top/left/width posés en JS depuis le rect de l'input) */
 .loader-search-results {
   position: fixed;
@@ -21317,7 +21317,7 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   }
 }
 
-/* 🗺️ v1.75.2 — mention SIG dans la zone de dépôt de l'accueil (retour KARMA
+/* mention SIG dans la zone de dépôt de l'accueil (retour KARMA
    « l'endroit où on importe nos données SIG est mal indiqué »). Discrète : le
    cas principal reste le ZIP de plan, on ne veut pas noyer le message. */
 .zip-drop-sig {
@@ -21328,17 +21328,17 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   color: #8892a4;
   opacity: 0.9;
 }
-/* 12/10/2026 (KARMA) : une seule ligne d'extensions, plus de liste commentée. */
+/* une seule ligne d'extensions, plus de liste commentée. */
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 
 /* ═══════════════════════════════════════════════════════════════════
-   📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
+   LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
    Budget mesuré : HOME desktop ≈ 870px déplié, gouverné par la colonne
    ACTIONS (~556px) — pas par l'OSM (les compactages précédents sur la
    colonne OSM ne gagnaient RIEN, elle est ~250px sous la contraignante).
    Le footer déplié ne coûte que ~65px : on récupère ~92px sur le vrai
    gras. ⚠️ Ce bloc DOIT rester en FIN de fichier : la règle des tuiles
-   doit battre le bloc HOME v2 (~ligne 21040) à spécificité égale.
+   doit battre le bloc HOME v2 (plus haut) à spécificité égale.
    Seuils honnêtes : ≥ ~780px de viewport = tient déplié ; en dessous de
    ~715px le scroll est structurel (laptop 768 scrollera quoi qu'on fasse).
    ═══════════════════════════════════════════════════════════════════ */
@@ -21359,7 +21359,7 @@ html.kta-theme-light .zip-drop-sig { color: #5a6478; }
   .zip-drop-zone { padding: 14px 16px; }
 }
 
-/* 📐 v1.77.0 (suite — retour KARMA : « quelques pixels en trop font
+/* (suite — retour KARMA : « quelques pixels en trop font
    apparaître la barre de scroll ») : 2e rabotage sur les leviers restants
    de l'audit, ~38px. Même contrainte : bloc en FIN de fichier. */
 @media (min-width: 1024px) {
@@ -21369,7 +21369,7 @@ html.kta-theme-light .zip-drop-sig { color: #5a6478; }
   .loaderActions { margin-top: 8px; }                            /* 16→8 : ~8px */
 }
 
-/* 🐛 v1.79.0 (agent, bug KARMA « footer coupé ») — 3e rabotage, PC BAS
+/* (agent, bug KARMA « footer coupé ») — 3e rabotage, PC BAS
    uniquement (portables ≤820px de haut, ex. 1366×768) : même après les deux
    passes v1.77.0 ci-dessus, la colonne Actions cumule ~556 px incompressibles
    (drop-zone 181 + hint FS Access 109 + boutons + têtes, mesure Playwright)
@@ -21382,7 +21382,7 @@ html.kta-theme-light .zip-drop-sig { color: #5a6478; }
    compactée reste ≤ ~515 px — re-mesurer si on ajoute un bloc à la colonne.
    Hauteur d'ÉCRAN seulement — aucune règle mobile (<1024 de large) touchée. */
 @media (min-width: 1024px) and (max-height: 820px) {
-  /* 🩸 v1.88.1 — FILET : la colonne Actions peut scroller EN INTERNE.
+  /* 🩸 FILET : la colonne Actions peut scroller EN INTERNE.
      Jusqu ici elle etait « incompressible » et le plancher de 520 px de la
      grid reposait sur une hauteur MESUREE A LA MAIN en v1.79.0 (~510 px).
      Toute ligne ajoutee depuis perimait cette constante en silence — c est
@@ -21410,7 +21410,7 @@ html.kta-theme-light .zip-drop-sig { color: #5a6478; }
     margin-top: 4px;
   }
 
-  /* 📐 15/09/2026 (audit agent + KARMA « ça fait plusieurs fois qu'on bosse
+  /* (audit agent + KARMA « ça fait plusieurs fois qu'on bosse
      sans résoudre ce problème ») — LE BUDGET VERTICAL, STRUCTURELLEMENT.
      Mesuré : la colonne Actions d'un portable 1080p à 125 % Windows
      (1536×800) était à ZÉRO de marge ; la liste des formats (+71 px) puis la
@@ -21443,7 +21443,7 @@ html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 }
 
 /* ═══════════════════════════════════════════════════════════
-   🏷️ v1.78.0 — ORGANISATION DE LA LISTE DE PLANS (KARMA 1+3+4)
+   ORGANISATION DE LA LISTE DE PLANS (KARMA 1+3+4)
    Filtre par nom + chips tags (réutilisent .kta-osm-home-tag-chip) +
    épinglage ⭐. Les chips ne sont rendues que si des tags existent.
    ═══════════════════════════════════════════════════════════ */
@@ -21581,7 +21581,7 @@ html.kta-theme-light .kta-plans-swatch.kta-actif { border-color: #1a1f2e; box-sh
 .kta-plan-row-pinned { border-left: 2px solid rgba(244, 197, 66, 0.55); }
 
 /* ═══════════════════════════════════════════════════════════
-   🌍 v1.79.4 — SÉLECTEUR DE LANGUE DE LA GATE (premier lancement)
+   SÉLECTEUR DE LANGUE DE LA GATE (premier lancement)
    Rang discret en tête de la box mdp — pilote la langue GLOBALE.
    ═══════════════════════════════════════════════════════════ */
 .kta-unlock-langs {
@@ -21621,7 +21621,7 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   color: #7a5c10;
 }
 
-/* 🔍 v1.82.0 — LARGEUR DES FRONTS DE TAILLE, PILOTÉE PAR LE ZOOM.
+/* LARGEUR DES FRONTS DE TAILLE, PILOTÉE PAR LE ZOOM.
    `weight` de Leaflet est en pixels ÉCRAN : un front garde 10 px à tous les
    zooms, donc en dézoomant les traits se rapprochent sans maigrir et
    fusionnent en aplat. Sur un plan importé portant 10 000 fronts, la carte
@@ -21639,7 +21639,7 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
    place (cf. structures.js > majLargeurFronts). */
 
 /* ==============================================
-   🔄 v1.82.0 — Modale « Convertir cet objet »
+   Modale « Convertir cet objet »
    ==============================================
    Reclassement d'un objet de session d'un type (et d'une famille) à l'autre.
    Réutilise la boîte de modale charte (.kta-readme-modal-*) ; seuls les
@@ -21716,7 +21716,7 @@ body.kta-theme-light .kta-convert-choix {
 body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0.10); }
 
 /* ==============================================
-   📉 v1.83.0 — Profondeur des niveaux + profil en long
+   Profondeur des niveaux + profil en long
    ============================================== */
 .kta-prof-boite, .kta-profil-boite { max-width: 520px; }
 .kta-prof-hint { font-size: 12px; color: #8892a4; line-height: 1.5; margin: 0 0 10px; }
@@ -21764,7 +21764,7 @@ body.kta-theme-light .kta-profil-grille { stroke: rgba(0, 0, 0, 0.12); }
 body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
 
 /* ==============================================
-   📏 v1.83.0 — Mesure dans la Vue OSM
+   Mesure dans la Vue OSM
    ============================================== */
 #kta-osm-mes-floater {
   position: fixed; left: 50%; transform: translateX(-50%);
@@ -21792,7 +21792,7 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
   border: 1px solid rgba(244, 197, 66, 0.5);
   color: #f4c542; font-size: 11px; font-weight: 600; white-space: nowrap;
 }
-/* 📍 v1.85.0 — releve de coordonnees GPS de surface. Meme gabarit que le
+/* releve de coordonnees GPS de surface. Meme gabarit que le
    bandeau de mesure : les deux outils vivent au meme endroit de l ecran et
    sont exclusifs, ils ne se chevaucheront jamais. */
 #kta-osm-coord-floater {
@@ -21830,7 +21830,7 @@ body.kta-theme-light #kta-osm-mes-floater {
   background: #ffffff; color: #24304a; border-color: rgba(180, 140, 20, 0.5);
 }
 
-/* 📉 v1.83.0 — champs de profondeur du Générateur (sous la case multi-niveau) */
+/* champs de profondeur du Générateur (sous la case multi-niveau) */
 .kta-planner-prof-row {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin: 8px 0 4px 26px; padding: 8px 10px;
@@ -21841,7 +21841,7 @@ body.kta-theme-light #kta-osm-mes-floater {
 .kta-planner-prof-row .kta-cfg-input { width: 90px; }
 .kta-planner-prof-row .kta-cfg-label { font-size: 12px; margin: 0; }
 
-/* 🎯 v1.85.0 — bandeau de sélection multiple. Il hérite de .kta-iti-floater
+/* bandeau de sélection multiple. Il hérite de .kta-iti-floater
    (position, fond, ombre) : seul l'écart des boutons change, parce qu'il en
    porte quatre là où les autres pickers en ont un. */
 .kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
@@ -21851,7 +21851,7 @@ body.kta-theme-light #kta-osm-mes-floater {
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
 
-/* 🔗 v1.85.2 — fusion de sorties dans le carnet. La barre vit SOUS la liste :
+/* fusion de sorties dans le carnet. La barre vit SOUS la liste :
    au-dessus, elle repousserait les sorties hors de l'écran sur téléphone. */
 .kta-jrn-fusion-barre {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -21864,7 +21864,7 @@ body.kta-theme-light #kta-osm-mes-floater {
 .kta-jrn-row-sel { border-color: rgba(140, 180, 255, 0.55) !important; }
 
 /* ═══════════════════════════════════
-   💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN (serveur uniquement)
+   BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN (serveur uniquement)
    Demande KARMA (« offline first oblige »). Trois couleurs pour trois états,
    lus du CACHE RÉEL : neutre = à télécharger, vert = disponible (le bouton
    devient « mettre à jour »), ambre = incomplet ou fichiers manquants.
@@ -21877,7 +21877,7 @@ body.kta-theme-light #kta-osm-mes-floater {
 .plan-row-btn.kta-dl-partiel { color: #f4c542; opacity: 1; }
 .plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }
 
-/* 🚨 13/09/2026 — thème clair des nouveaux éléments de la Sortie d'urgence
+/* thème clair des nouveaux éléments de la Sortie d'urgence
    (audit ergonomie Q4/B1). Sélecteur dual body/html : la modale est appendée
    à documentElement (cf ui.md §90.4). */
 body.kta-theme-light .kta-sortie-origine,
@@ -21942,7 +21942,7 @@ html.kta-theme-light .kta-storage-banner {
 .kta-filter-ctrl a.kta-filter-ctrl-actif {
   box-shadow: inset 0 0 0 2px #f4c542;
 }
-/* 🔵 14/09/2026 (KARMA : « remplacer le chiffre par un point plein ») — la
+/* (KARMA : « remplacer le chiffre par un point plein ») — la
    pastille comptait les CATÉGORIES filtrées, pas les objets masqués : un seul
    type décoché ou vingt affichaient « 1 ». Le point signale sans prétendre
    mesurer ; le compte vit dans l'infobulle du bouton. */
@@ -22107,7 +22107,7 @@ html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
   color: #8cb4ff;
   outline: none;
 }
-/* 🐛 14/09/2026 (KARMA : « le ? est centré entre le titre tracker et la croix,
+/* (KARMA : « le ? est centré entre le titre tracker et la croix,
    et non collé comme les autres à la croix ») — les deux en-têtes sont en
    `space-between`, mais leurs titres ne se comportent pas pareil : celui des
    modales de contenu porte `flex: 1` et mange l'espace libre, donc le ❓ et la
@@ -22120,7 +22120,7 @@ html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
 body.kta-theme-light .kta-aide-ctx-btn,
 html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }
 
-/* 📦 v1.94.0 — Import multiple : l'écran qui ajoute N archives à la liste
+/* Import multiple : l'écran qui ajoute N archives à la liste
    sans en ouvrir aucune. La liste montre CE QUI VA SE PASSER avant d'écrire
    quoi que ce soit — un import de vingt plans qui démarre sans annoncer son
    poids sature un téléphone à l'aveugle. */
@@ -22200,7 +22200,7 @@ body.kta-theme-light .kta-impm-intro,
 html.kta-theme-light .kta-impm-intro { color: #3a4256; }
 
 /* ============================================================
-   🧭 v1.97.0 — Mode « plan orienté » (la carte tourne)
+   Mode « plan orienté » (la carte tourne)
    ============================================================
    Le pane INTERCALAIRE porte la rotation de la vue. Il est inséré par
    js/mapBearing.js entre `.leaflet-map-pane` et ses enfants : le map-pane
@@ -22292,7 +22292,7 @@ html.kta-theme-light .kta-bearing-recentrer {
   .kta-bearing-recentrer { transition: none; }
 }
 
-/* 🧭 v1.97.0 — Mode « plan orienté » : le pan est refait à la main (le drag
+/* Mode « plan orienté » : le pan est refait à la main (le drag
    de Leaflet part de travers sous rotation), donc `dragging` est désactivé —
    ce qui retire la classe `leaflet-touch-drag` et rend au navigateur le
    droit de scroller la page au doigt. On le lui reprend ici, sinon le pan
@@ -22558,7 +22558,7 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-m
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps .kta-tx-magenta,
 body.kta-theme-light #planLoaderBox .kta-tx-magenta { color: #a0147a !important; }
 
-/* 🐛 30/09/2026 (capture KARMA) — listes déroulantes des FENÊTRES : une <option> ouverte
+/* listes déroulantes des FENÊTRES : une <option> ouverte
    (Windows / Chrome) héritait du texte clair du champ sur le fond BLANC du système
    → illisible (choix de l'équipe au lancement du Mode Secours, chef, niveau…). Jusqu'ici
    corrigé composant par composant (Vue OSM, Configuration) ; désormais pour toutes les

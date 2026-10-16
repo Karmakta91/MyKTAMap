@@ -86,7 +86,7 @@
     photoMime:  null,
     createdAt:  null,
     updatedAt:  null,
-    // 🖼️ v1.74.0 — fond d'écran du HOME (cf. bloc dédié en bas de fichier)
+    // fond d'écran du HOME (cf. bloc dédié en bas de fichier)
     hasWallpaper: false,
     wallVoile:    55,
     wallPosX:     50,
@@ -126,7 +126,7 @@
 
   // ───────── IDB UTILS ─────────
 
-  // ⚠️ v1.75.2 — `onblocked` + délai de garde. Sans eux, une ouverture bloquée
+  // ⚠️ `onblocked` + délai de garde. Sans eux, une ouverture bloquée
   // (autre onglet tenant une version différente) laissait la promesse JAMAIS
   // RÉGLÉE : l'appelant restait suspendu pour toujours APRÈS avoir consommé le
   // jeton de rendu le plus récent, donc tous les rendus suivants abandonnaient
@@ -153,7 +153,7 @@
     });
   }
 
-  // ⚠️ v1.75.2 — DISTINGUE « absent » DE « échec ».
+  // ⚠️ DISTINGUE « absent » DE « échec ».
   // Avant, les deux cas rendaient `null`. Les écrivains faisaient alors
   // `(await _readEntry()) || { id, surnom: "", createdAt }` : sur un simple
   // échec transitoire de lecture, ils écrivaient un enregistrement NEUF —
@@ -230,7 +230,7 @@
 
   // ───────── COMPRESSION PHOTO ─────────
 
-  // 🖼️ v1.74.0 — compresseur partagé avatar / fond d'écran. Le passage par
+  // compresseur partagé avatar / fond d'écran. Le passage par
   // canvas STRIPPE L'EXIF, ce qui compte doublement pour un fond d'écran :
   // c'est souvent une photo perso qui embarque les coordonnées GPS de prise
   // de vue.
@@ -460,7 +460,7 @@
   // X ; en paysage avec une photo portrait, c'est Y. Les 2 sont exposés pour
   // couvrir les 2 orientations sans que l'user ait à comprendre lequel agit.
   const CADRAGE_DEFAUT      = 50;   // % (centre)
-  // 🖼️ v1.75.0 — MODE D'AFFICHAGE (retour KARMA : « une image verticale, il
+  // MODE D'AFFICHAGE (retour KARMA : « une image verticale, il
   // va la zoomer et la cropper en vue horizontale alors qu'on pourrait
   // presque l'afficher telle quelle »).
   //   "cover"   → remplit tout l'écran, ROGNE ce qui dépasse (défaut historique)
@@ -533,7 +533,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 🐛 v1.75.2 — LES RÉGLAGES D'AFFICHAGE NE TOUCHENT PLUS L'IDB
+  // LES RÉGLAGES D'AFFICHAGE NE TOUCHENT PLUS L'IDB
   // ═══════════════════════════════════════════════════════════
   // CAUSE RACINE du bug « j'ajoute un fond → OK ; je rouvre la modale, je
   // modifie les réglages → au retour au HOME, plus de fond ET plus de photo
@@ -639,7 +639,7 @@
     setSurnom:          setSurnom,
     setPhoto:           setPhoto,
     removePhoto:        removePhoto,
-    // 🖼️ v1.74.0 — fond d'écran du HOME
+    // fond d'écran du HOME
     setWallpaper:          setWallpaper,
     removeWallpaper:       removeWallpaper,
     getWallpaperBlob:      getWallpaperBlob,

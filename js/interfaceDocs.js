@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE DOCS — Modales doc README + AIDE + AIDE IA
 // =========================
-// 🆕 v1.31.0 (P3 Lot 4 — découpe interface.js) : module extrait de
+// (P3 Lot 4 — découpe interface.js) : module extrait de
 // js/interface.js (3 blocs : 1308-1751, 1752-2356, 8570-8806 avant
 // extraction) pour réduire le volume du fichier principal.
 //
@@ -47,7 +47,7 @@
 
 // README — modale plein écran
 // =========================
-// 🆕 v1.28.1 : opts.hideOnboarding et opts.overLocker permettent d'afficher
+// opts.hideOnboarding et opts.overLocker permettent d'afficher
 // la doc depuis les écrans de verrouillage (UnlockGate communautaire au boot
 // + PinLock local). Dans ce contexte :
 //   - hideOnboarding masque le bouton 🎓 Tutoriel (l'user lockout ne peut pas
@@ -55,7 +55,7 @@
 //   - overLocker boost le z-index du modal à 100200 pour passer au-dessus
 //     des deux gates (UnlockGate=100100, PinLock=100002). Sans ça la modale
 //     apparaît derrière et l'user voit son fond mais ne peut pas interagir.
-// 🆕 v1.29.0 P0 i18n — Langue de la doc utilisateur (FR / EN).
+// P0 i18n — Langue de la doc utilisateur (FR / EN).
 // Décisions design KARMA 1:a 2:c 3:a 4:a 5:c :
 //   - Toggle drapeaux 🇫🇷 / 🇬🇧 dans header modale Doc UNIQUEMENT (cas particulier
 //     isolé, palier 0 — le reste de l'app reste FR jusqu'au palier P1+).
@@ -68,7 +68,7 @@
 // un sélecteur global de langue.
 const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
 
-// 🆕 v1.45.0 — Langues pour lesquelles un fichier README_USER existe RÉELLEMENT.
+// Langues pour lesquelles un fichier README_USER existe RÉELLEMENT.
 // fr = README_USER.md (sans suffixe, historique) ; les autres = README_USER.<code>.md.
 // Ajouter une langue (ru, es…) = déposer le fichier + ajouter son code ici
 // (+ l'ajouter à ASSETS_TO_CACHE du SW). 100% générique, aucun code figé.
@@ -85,7 +85,7 @@ const DOC_AVAILABLE_LANGS = ["fr", "en", "es"];
 // « ajouter une langue = déposer un fichier » et « ajouter une langue = écrire
 // 870 lignes de HTML » ne pouvait que mentir. Le lot 2 a supprimé la cause.
 
-// 🆕 v1.45.0 — Langue à PRÉSÉLECTIONNER pour la doc :
+// Langue à PRÉSÉLECTIONNER pour la doc :
 //   1. choix manuel mémorisé (myktamap_readme_lang) s'il est encore dispo ;
 //   2. sinon défaut dérivé de la langue de l'app via I18n.resolveContentLang
 //      (langue app si doc dispo, sinon "en", sinon "fr").
@@ -126,10 +126,10 @@ if (window.I18n && typeof window.I18n.onChange === "function") {
 }
 
 // Retourne le chemin du fichier README selon la langue.
-// 🆕 v1.29.3 — README_USER.md + .en.md regroupés sous docs/applications/
+// README_USER.md + .en.md regroupés sous docs/applications/
 // avec les autres docs lues par l'app (AI_CONTEXT, NETWORK_AUDIT). À la
 // racine : README.md (GitHub) + CLAUDE.md (agents IA) uniquement.
-// 🆕 v1.45.0 — fr = sans suffixe ; toute autre langue = README_USER.<code>.md.
+// fr = sans suffixe ; toute autre langue = README_USER.<code>.md.
 function _readmePathForLang(lang) {
   return (lang === "fr")
     ? "docs/applications/README_USER.md"
@@ -555,7 +555,7 @@ function _ouvrirReadmeModal(html, opts) {
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
-  // 🆕 v1.28.1 : si la modale est ouverte depuis un écran de verrouillage
+  // si la modale est ouverte depuis un écran de verrouillage
   // (UnlockGate communautaire au boot ou PinLock local), classe additionnelle
   // qui boost le z-index à 100200 (au-dessus de UnlockGate=100100 et
   // PinLock=100002). Sans ça, la modale Doc apparaîtrait DERRIÈRE la gate
@@ -565,7 +565,7 @@ function _ouvrirReadmeModal(html, opts) {
   // - sidebar : sommaire desktop fixe / inline en haut sur mobile (CSS @media)
   // - corps : contenu rendu, scroll-behavior: smooth, contient aussi le bouton retour-en-haut
   // - footer : crédit Leaflet (cohérence avec le splash)
-  // 🆕 v1.28.1 : bouton 🎓 Onboarding masqué quand hideOnboarding=true
+  // bouton 🎓 Onboarding masqué quand hideOnboarding=true
   // (cas d'ouverture depuis un lockeur — l'user lockout ne peut pas lancer
   // le tutoriel de toute façon, et KARMA a explicitement demandé "sans
   // l'icone Onboarding").
@@ -577,7 +577,7 @@ function _ouvrirReadmeModal(html, opts) {
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="' + _docTxt("docs.tutorielBtn") +
       '" title="🎓 ' + _docTxt("docs.tutorielBtn") + '">🎓</button>';
-  // 🆕 v1.45.0 — Onglets de langue de la doc : UN drapeau par langue réellement
+  // Onglets de langue de la doc : UN drapeau par langue réellement
   // dispo (DOC_AVAILABLE_LANGS), la langue courante marquée .active. Générique :
   // 2 drapeaux aujourd'hui (FR/EN), 3+ dès qu'un nouveau README_USER.<code>.md
   // existe. La langue présélectionnée suit l'app si l'user n'a pas de choix
@@ -587,7 +587,7 @@ function _ouvrirReadmeModal(html, opts) {
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
-  // 🧩 01/10/2026 (KARMA) — un menu déroulant remplace les drapeaux : un
+  // un menu déroulant remplace les drapeaux : un
   // seul contrôle quel que soit le nombre de langues, et la place libérée
   // accueille le bouton 🤖 Aide IA (retiré du groupe 📚 Aide de la barre).
   const btnLang = '<select class="kta-readme-lang-select" id="kta-readme-lang-select" ' +
@@ -674,7 +674,7 @@ function _ouvrirReadmeModal(html, opts) {
   document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 
-  // 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en haut
+  // (KARMA "le bouton Onboarding on peux le mettre tout en haut
   // de la doc README") : handler du bouton 🎓 dans le header → ouvre le
   // tutoriel. La modale Documentation reste ouverte derrière (le tutoriel
   // se pose par-dessus grâce à son z-index plus élevé). À la fermeture
@@ -700,7 +700,7 @@ function _ouvrirReadmeModal(html, opts) {
     });
   }
 
-  // 🆕 v1.45.0 — Choix de langue de la doc (menu déroulant depuis le
+  // Choix de langue de la doc (menu déroulant depuis le
   // 01/10/2026). Langue ≠ courante → persiste + rebuild la modale
   // (préserve TOC dépliable, smooth scroll… sans dupliquer le rendu). Scope
   // strictement LOCAL à la doc (ne touche pas la langue globale de l'app).
@@ -842,7 +842,7 @@ function _aidePoserBouton(modal) {
   // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
   // d'une modale à l'autre.
   const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
-  // 🚨 26/09/2026 — `querySelector` cherche en PROFONDEUR : dans plusieurs
+  // `querySelector` cherche en PROFONDEUR : dans plusieurs
   // en-têtes la croix est imbriquée dans un conteneur d'actions, et
   // `head.insertBefore(b, croix)` jetait alors un `NotFoundError` (« the node
   // before which the new node is to be inserted is not a child of this node »).
@@ -907,7 +907,7 @@ function afficherAide() {
 
   const aideTitre = window.I18n ? window.I18n.t("aide.ui.titre") : "";
 
-  // 🆕 v1.51.0 (Lot C) : le corps n'est plus le gros scroll monolithique mais
+  // (Lot C) : le corps n'est plus le gros scroll monolithique mais
   // un HUB de sections (cartes par catégorie + recherche) → sous-modale par
   // section. Depuis le lot 2, les sections viennent des DICOS (`aide.sec.*`),
   // plus d'un HTML en dur parsé au vol.
@@ -931,7 +931,7 @@ function afficherAide() {
 }
 
 // =========================
-// 🆕 v1.51.0 (Lot C) — Hub d'aide : sections groupées + sous-modale
+// (Lot C) — Hub d'aide : sections groupées + sous-modale
 // =========================
 // Regroupement des sections d'aide pour le hub. `idx` = index de la section
 // Rangement des sections en catégories. Depuis le lot 2 le mapping se fait par
@@ -970,14 +970,14 @@ const AIDE_SECTIONS = [
   "mode-secours", "mesure", "edition-points", "structures",
   "traces", "zones", "optimiser-plan", "code-acces",
   "astuces", "depannage", "liaisons-inter-plan", "carnet",
-  // 🌍 v1.85.0 — la Vue OSM n’avait AUCUNE fiche : six fonctions y
+  // la Vue OSM n’avait AUCUNE fiche : six fonctions y
   // vivaient sans foyer documentaire (mesure, coordonnees de surface,
   // plans par etiquette, couleurs personnalisees, travail de session,
   // ecart de calage). Un ecran entier absent de l’aide.
   "vue-osm",
-  // 🧩 01/10/2026 — fiches des fonctionnalités optionnelles qui n'en avaient pas.
+  // fiches des fonctionnalités optionnelles qui n'en avaient pas.
   "heatmap", "vibration",
-  // ❓ 03/10/2026 (audit de l'aide) — fonctions qui n'avaient pas de fiche à
+  // fonctions qui n'avaient pas de fiche à
   // elles : noyées dans « tracker » ou « mesure », ou répétées dans trois fiches.
   "je-suis-perdu", "urgence-xl", "itineraire", "corriger", "multi-niveau"
 ];
@@ -990,7 +990,7 @@ const AIDE_SECTIONS = [
 // précisément ce que cette migration achète.
 // (Les 3 autres défauts — conteneur oublié, section absente en EN, « Mon
 // carnet » orpheline — ont été corrigés au lot 0.)
-// ❓ 03/10/2026 — les catégories suivent les chapitres du guide, dans l'ordre
+// les catégories suivent les chapitres du guide, dans l'ordre
 // où l'on en a besoin. « Pour aller plus loin » reçoit ce qui est désactivé par
 // défaut, le Mode Secours et les outils des créateurs de plans.
 const AIDE_CATEGORIES = [
@@ -1034,7 +1034,7 @@ function _aideRow(section, onClick) {
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
   const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
-  // ⌨️ 14/09/2026 — le raccourci clavier a sa PROPRE clé, facultative. Avant,
+  // le raccourci clavier a sa PROPRE clé, facultative. Avant,
   // il était écrit dans le titre avec son `<span>` : posé en `textContent`, le
   // balisage s'affichait en clair (« Recherche unifiée <span class=… »). Le
   // titre est du texte, la mise en forme appartient au gabarit — règle CLAUDE.md.
@@ -1250,19 +1250,18 @@ function _aideFermerSousModal() {
 // =========================
 // 🤖 AIDE IA — génère un fichier de contexte téléchargeable
 // =========================
-// Le contenu vit dans le fichier STATIQUE `docs/AI_CONTEXT.md` (depuis
-// v1.8.0 — auparavant à la racine, déplacé dans docs/ avec README_USER.md).
-// JS se contente de :
-//   1. fetch docs/AI_CONTEXT.md (le squelette enrichi)
-//   2. fetch docs/README_USER.md (la doc officielle)
+// Le contenu vit dans le fichier STATIQUE `docs/applications/AI_CONTEXT.md`.
+// JS se contente de (_genererContexte > _genererContenuContexteIA) :
+//   1. fetch docs/applications/AI_CONTEXT.md (le squelette enrichi)
+//   2. filtrer par profil, retirer les commentaires HTML
 //   3. remplacer les placeholders {{DATE}}, {{BUILD}}, {{README_USER}}
 //   4. proposer le fichier au téléchargement
 //
 // Avantage : tout l'enrichissement du contexte IA se fait en éditant
-// docs/AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
+// docs/applications/AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
 // =========================
 
-// 🆕 v1.69.0 — PROFILS DE CONTEXTE. Le template est balisé par des marqueurs
+// PROFILS DE CONTEXTE. Le template est balisé par des marqueurs
 // `<!-- @@PROFIL usage,diagnostic -->` (un marqueur s'applique jusqu'au
 // suivant ; "tous" = commun à tous les profils). Filtrer = garder les blocs
 // du profil demandé + les blocs communs. profil null/"complet" = tout garder.
@@ -1280,7 +1279,7 @@ function _filtrerContexteParProfil(tpl, profil) {
   return out.join("\n");
 }
 
-// 🆕 v1.69.0 — Bloc « état de l'installation » (opt-in, case décochée par
+// Bloc « état de l'installation » (opt-in, case décochée par
 // défaut). Généré 100 % localement, joint au contexte pour permettre à l'IA
 // un diagnostic ciblé. ANONYME PAR CONSTRUCTION : aucun nom de plan, aucun
 // point/coordonnée/photo — uniquement des caractéristiques techniques.
@@ -1346,7 +1345,7 @@ function _genererContenuContexteIA(aiContextTemplate, profil, etatBlock) {
   const dateExport = new Date().toISOString().slice(0, 10);
   const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
 
-  // Si le template docs/AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
+  // Si le template docs/applications/AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
   if (aiContextTemplate && aiContextTemplate.trim().length > 0) {
     let contenu = _filtrerContexteParProfil(aiContextTemplate, profil)
       // Purge des commentaires HTML restants (note éditeur en tête, etc.) :
@@ -1484,7 +1483,7 @@ window.afficherModaleAideIA = function() {
     }
   });
 
-  // 🆕 v1.69.0 — génération factorisée : fetch du template (seul — la doc
+  // génération factorisée : fetch du template (seul — la doc
   // intégrale n'est plus injectée), filtrage par profil, bloc état opt-in.
   async function _genererContexte(statusEl) {
     statusEl.textContent = window.I18n.t("aiia.dl.fetching");

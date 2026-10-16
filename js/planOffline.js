@@ -70,7 +70,7 @@
     if (typeof window.resolveServerPaths === "function") {
       cfg = window.resolveServerPaths(cfg, dir);
     }
-    // 🎨 v1.87.2 — memes icones que le chargement reel : on SONDE aussi,
+    // memes icones que le chargement reel : on SONDE aussi,
     // sinon le pre-cache listerait une icone que le rendu n utilise pas
     // (ou l inverse), et le plan serait « incomplet » a vie.
     if (typeof window.resoudreIconesPlanServeur === "function") {
@@ -96,7 +96,7 @@
     // La racine des tuiles est rendue avec la liste : `verifierMaj` s en sert
     // pour EXCLURE les tuiles des sondes. Sonder 1275 tuiles serait absurde,
     // et inutile : elles derivent de l image, qui est sondee, elle.
-    // 🩸 v1.88.3 — on SONDE, comme le rendu. L hypothese synchrone se
+    // 🩸 on SONDE, comme le rendu. L hypothese synchrone se
     // trompait sur les plans dont le deploiement a deplace l image sans
     // deplacer les tuiles : le pre-cache telechargeait alors 1275 URLs en 404.
     const racineTuiles = (typeof window.ktaResoudreRacineTuiles === "function")
@@ -140,7 +140,7 @@
     if (!man || !Array.isArray(man.urls)) {
       return { etat: present > 0 ? "incomplet" : "absent", present: present, total: 0, manquants: [], date: null };
     }
-    // 🩸 v1.87.1 — TROIS ÉTATS, PAS DEUX. Le manifeste v1 listait tout ce qu'on
+    // 🩸 TROIS ÉTATS, PAS DEUX. Le manifeste v1 listait tout ce qu'on
     // avait TENTÉ, y compris les fichiers absents du serveur. Un plan dont le
     // plan-config déclare un fichier non déployé restait donc « incomplet — 9
     // sur 10 » À VIE : le bouton invitait à retélécharger indéfiniment un
@@ -179,11 +179,11 @@
     const urls  = liste.urls;
     const cache = await caches.open(nomCache(plan.id));
     let fait = 0, ok = 0, echecs = 0, annule = false;
-    // 🩸 v1.87.1 — on retient QUELS fichiers manquent, pas juste combien.
+    // 🩸 on retient QUELS fichiers manquent, pas juste combien.
     // Sans la liste, l utilisateur voyait « 9 sur 10 » sans jamais savoir
     // lequel, et retelechargait en boucle un fichier absent du serveur.
     const manquants = [];
-    // 🔎 v1.88.0 — VALIDATEURS HTTP, retenus au telechargement. Ils sont la
+    // VALIDATEURS HTTP, retenus au telechargement. Ils sont la
     // seule facon FIABLE de savoir plus tard si le serveur a change : le
     // champ `version` de index.json est saisi a la main et derive (dans ce
     // repo meme, index dit V1 et le plan-config dit V2), et le generateur
@@ -235,7 +235,7 @@
 
 
   // ── Y a-t-il du neuf sur le serveur ? ───────────────────────────────
-  // 🔎 v1.88.0 — On envoie des requetes CONDITIONNELLES : 304 = inchange
+  // On envoie des requetes CONDITIONNELLES : 304 = inchange
   // (corps vide, cout quasi nul), 200 = le fichier a change.
   //
   // 🩸 POURQUOI PAS LE CHAMP `version` : il est saisi a la main dans

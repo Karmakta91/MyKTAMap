@@ -38,7 +38,7 @@
   // Dernière config valide connue de l'instance. Donnée de l'INSTANCE, pas de
   // l'utilisateur : elle ne voyage pas avec l'export de profil.
   const LS_MEMO = "myktamap_server_connection_v1";
-  // v2.7.0 (chantier 3) : `on` et `down` existent — un module greffé les
+  // (chantier 3) : `on` et `down` existent — un module greffé les
   // SIGNALE (règle C : community ne sonde jamais le serveur).
   const ETATS = ["off", "invalide", "licence", "configuree", "on", "down"];
   const CLASSE_ETAT = {
@@ -172,14 +172,14 @@
     // Le signal d'un module ne vaut que sur une instance « configurée » (on +
     // licence serveur) : il ne peut jamais rallumer une instance OFF.
     if (_etat === "configuree" && _signal) _etat = _signal;
-    // 📶 07/10/2026 — Réseau coupé (mode avion, tunnel) : « injoignable » tout de suite, sans
+    // Réseau coupé (mode avion, tunnel) : « injoignable » tout de suite, sans
     // attendre le module. Avant, l'état n'était établi qu'au démarrage : perdre le réseau sur
     // l'accueil laissait « connectée », et ouvrir un plan ☁️ partait sur le réseau et attendait
     // sans fin (retour KARMA, iPhone). En « down », la garde refuse les requêtes : l'accueil
     // rouvre aussitôt la copie gardée.
     if ((_etat === "configuree" || _etat === "on") && _reseauCoupe) _etat = "down";
     _raison = (_etat === "licence" && _signal === "licence") ? _signalRaison : (_connexion.raison || "");
-    // 🏷️ 09/10/2026 — Installation RELIÉE (connexion serveur déclarée, même sans licence valide) :
+    // Installation RELIÉE (connexion serveur déclarée, même sans licence valide) :
     // le splash et le pied de page cessent d'afficher l'identité community. Avant, une licence
     // refusée retirait .kta-instance-pro et le splash redevenait celui de myktamap.fr juste avant
     // l'écran « Installation indisponible » (retour KARMA). Posée dès la dernière config connue.
@@ -200,7 +200,7 @@
   // ── Affichage ──
   const _t = function (k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 
-  // 09/10/2026 — Licence REFUSÉE par le serveur (signalée par le module) ≠ licence absente de
+  // Licence REFUSÉE par le serveur (signalée par le module) ≠ licence absente de
   // l'installation : même état « licence » (contrat inchangé), libellés distincts. Avant, le
   // module ne savait dire que « down » : une licence expirée s'affichait « Base de données :
   // injoignable » (retour KARMA).
@@ -326,7 +326,7 @@
 
 
   // =====================================================================
-  // 🧩 v2.7.0 — POINTS D'EXTENSION (chantier 3, community-server-line.md §3)
+  // POINTS D'EXTENSION (chantier 3, community-server-line.md §3)
   // =====================================================================
   // Tout est NEUTRE : nommé sans référence au pro, utilisable par n'importe
   // quelle extension, sans effet tant qu'aucune ne s'est déclarée.
@@ -989,7 +989,7 @@
     // Les autres ne sont pas réécrites (une réécriture ferme la fiche ouverte et coupe
     // le dessin en cours — retour de l'audit multi-utilisateur 05/10/2026).
     const tracesRecues = new Set(distant.tombstones.map(function (t) { return t && t.uid; }));
-    // 🩸 08/10/2026 — L'ÉCHO DE SES PROPRES ENVOIS N'EST PAS UNE NOUVEAUTÉ. Le serveur renvoie, au cycle
+    // 🩸 L'ÉCHO DE SES PROPRES ENVOIS N'EST PAS UNE NOUVEAUTÉ. Le serveur renvoie, au cycle
     // suivant, les objets que cet appareil vient d'envoyer (même uid, même updatedAt). Ils comptaient comme
     // « reçus » : famille réécrite et historique d'annulation vidé à CHAQUE synchro — Ctrl+Z inopérant même
     // seul sur le plan (retour KARMA). Un objet reçu ne compte que s'il est inconnu ici ou plus récent.
@@ -1583,7 +1583,7 @@
     }
     return true;
   };
-  // 🔒 08/10/2026 (KARMA) — à chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée
+  // 🔒 à chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée
   // (avant : on ne l'apprenait qu'en essayant d'ajouter un objet). Appelée par main.js en fin de chargement.
   window.ktaAnnoncerLectureSeule = function () {
     const id = window._currentLoadedPlanId;

@@ -2,7 +2,7 @@
 // =====================================================================
 // attendre.js — attendre qu'une condition évaluée dans la page soit vraie
 // =====================================================================
-// 🩸 12/10/2026 — REMPLACE page.waitForFunction dans tous les harnais.
+// 🩸 REMPLACE page.waitForFunction dans tous les harnais.
 // waitForFunction passe par une évaluation de chaîne que la CSP de l'app
 // (script-src 'self', sans 'unsafe-eval') REFUSE : il échouait aussitôt, et
 // le harnais concluait « pas chargé » (smoke rouge à l'étape 4 sans défaut

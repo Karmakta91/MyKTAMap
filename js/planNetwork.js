@@ -39,7 +39,7 @@
   const SPRING_LEN = 150;          // longueur de repos des arêtes (px)
   const REPULSE_K = 26000;         // constante de répulsion entre nœuds
   // Bande « plans isolés » : séparateur+titre puis rangées de pastilles.
-  // 🐛 v1.65.0 (KARMA « le titre est trop proche de l'icône ») : la pastille
+  // (KARMA « le titre est trop proche de l'icône ») : la pastille
   // s'étend de -R au-dessus de son centre et nom+badges descendent à +47 —
   // le centre de rangée doit laisser ~30px au titre et chaque rangée ~70px.
   const ISO_TITLE_H = 30;          // hauteur séparateur + titre
@@ -180,7 +180,7 @@
     const W = Math.max(320, containerEl.clientWidth || 560);
     const hasIsolated = data.isolated.length > 0;
     const graphH = (data.linked.length > 0) ? Math.max(300, Math.min(460, 200 + data.linked.length * 34)) : 0;
-    // 🐛 v1.65.0 : la hauteur compte TOUTES les rangées d'isolés (avant :
+    // la hauteur compte TOUTES les rangées d'isolés (avant :
     // une seule → 2e rangée coupée en bas)
     const perRow  = Math.max(1, Math.floor(W / 130));
     const isoRows = hasIsolated ? Math.ceil(data.isolated.length / perRow) : 0;
@@ -191,7 +191,7 @@
     // Bande « plans isolés » en bas — centres de rangée SOUS le titre
     if (hasIsolated) {
       data.isolated.forEach(function(nd, i) {
-        // 🐛 v1.77.0 (KARMA « la deuxième colonne, les titres sortent du
+        // (KARMA « la deuxième colonne, les titres sortent du
         // cadre ») — marges SYMÉTRIQUES : l'ancien pas (W-110) posait la
         // dernière colonne à x = W-40, et le nom centré (jusqu'à ~100 px de
         // large) débordait du viewBox à droite. W-140 → dernière colonne à

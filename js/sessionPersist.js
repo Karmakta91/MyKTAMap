@@ -33,7 +33,7 @@
 (function() {
   "use strict";
 
-  // 🆕 v1.16.1 — Préfixe + helper pour générer la clé par plan.
+  // Préfixe + helper pour générer la clé par plan.
   // Ancien format unique « myktamap_session_v1 » migré au boot vers
   // « myktamap_session_v1_<planId> » via _migrerAncienSlotUniqueSiBesoin.
   const STORAGE_PREFIX = "myktamap_session_v1_";
@@ -69,13 +69,13 @@
   let _currentPlanId = null;
   // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
   let _quotaWarned   = false;
-  // 🩸 10/10/2026 (retour testeur en prod) : la sauvegarde automatique ne supprime le slot d'un plan QUE si la
+  // 🩸 la sauvegarde automatique ne supprime le slot d'un plan QUE si la
   // session de cette page l'a chargé (restaurée) ou écrit. Avant : une session écartée (nom de plan différent)
   // était effacée au 1er tick — carte vide = « état vide » = removeItem, sans un mot.
   let _slotAssume    = false;
   // Question « restaurer la session d'un autre nom ? » en cours : aucune écriture tant qu'elle n'est pas tranchée.
   let _decisionEnAttente = false;
-  // 🆕 v1.8.1 : ID du setTimeout de la phase 2 de restore (itinéraire différé).
+  // ID du setTimeout de la phase 2 de restore (itinéraire différé).
   // Permet d'annuler la phase 2 si l'user clique "Effacer la session" avant
   // que les 1500ms ne soient écoulés — sinon l'itinéraire réapparaissait
   // ~1.5s après l'effacement, ce qui était très perturbant.
@@ -89,7 +89,7 @@
 
   // ========== MIGRATION LEGACY (v1.16.0 → v1.16.1) ==========
 
-  // 🆕 v1.16.1 — L'ancien slot unique `myktamap_session_v1` est déplacé
+  // L'ancien slot unique `myktamap_session_v1` est déplacé
   // vers le slot per-plan `myktamap_session_v1_<savedPlanId>` quand on
   // boot pour la 1ère fois sur la nouvelle version. Idempotent : appelé
   // à chaque `onPlanLoaded` mais ne fait rien si l'ancien slot est
@@ -148,7 +148,7 @@
   // ========== ETAT COURANT ==========
 
   function _gatherState() {
-    // 🆕 v1.8.1 (demande KARMA) : on persiste DESORMAIS aussi les roads
+    // on persiste DESORMAIS aussi les roads
     // de type "itinerary". Avant (suite 29, 09/05/2026), elles etaient
     // filtrees pour eviter un crash au reload (drop-shadow CSS du halo
     // neon cyan qui saturait le GPU au boot quand applique trop tot dans
@@ -166,11 +166,11 @@
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
       roads:        window.getRoads         ? (window.getRoads()         || []) : [],
       zones:        window.getZones         ? (window.getZones()         || []) : [],
-      // 🆕 v1.9.3-A1.a : structures (piliers + murs) — clés séparée pour
+      // structures (piliers + murs) — clés séparée pour
       // ne pas casser la rétrocompat (anciens payloads sans 'structures'
       // sont restaurés avec array vide via `payload.structures || []`).
       structures:   window.getStructures    ? (window.getStructures()    || []) : [],
-      // 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois,
+      // (KARMA "en footer, on peux afficher a la fois,
       // une mesure de surface, et une comme avant de distance") : les
       // 2 mesures coexistent désormais en simultané. `measure` = la
       // polyline DISTANCE (rétrocompat avec anciennes sessions), et
@@ -179,7 +179,7 @@
       measureSurface: window.getMeasurePointsSurface ? (window.getMeasurePointsSurface() || []) : [],
       // Mode actif (drive les clics + surligne la ligne du footer).
       measureMode:  (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance",
-      // 🆕 v1.16.0 step 2 : overrides de la légende personnalisée (libellés
+      // overrides de la légende personnalisée (libellés
       // renommés, entrées cachées, entrées custom ajoutées). Optionnel et
       // vide par défaut — n'occupe rien dans le localStorage si l'user
       // n'a rien personnalisé. Rétrocompat : payload.customLegend absent
@@ -188,7 +188,7 @@
                       ? window.LegendCustomization.getSessionState()
                       : null,
 
-      // 🔄 v1.85.0 — calques de donnees RAPATRIES en session (cf.
+      // calques de donnees RAPATRIES en session (cf.
       // js/calqueSession.js). Ne porte QUE la liste de leurs ids : les objets,
       // eux, sont deja dans roads/zones/structures/editorPoints ci-dessus,
       // marques par `_srcCalque`. `null` tant que rien n est rapatrie, donc
@@ -196,11 +196,11 @@
       calquesSession: (window.CalqueSession && window.CalqueSession.getSessionState)
                         ? window.CalqueSession.getSessionState()
                         : null,
-      // 🆔 v2.2.0 — traces de suppression { uid, deletedAt } (ETUDE_UID lot B) :
+      // traces de suppression { uid, deletedAt } (ETUDE_UID lot B) :
       // sans elles, une synchro ressusciterait un objet supprimé ici.
       tombstones: window.KtaUid ? window.KtaUid.getTombstones() : [],
 
-      // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking
+      // (KARMA "on active dans la sauvegarde auto le tracking
       // comme ca la fonction [heatmap] devient pertinante") :
       // persistance de la timeline tracker GPS. Avant : RAM-only (perte
       // au reload) → la heatmap multi-sessions ne pouvait jamais agréger
@@ -221,7 +221,7 @@
                          ? (window.getTrackingStartTs()  || null)
                          : null,
 
-      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet — persistance per-plan") :
+      // (KARMA "refonte filtre Leaflet — persistance per-plan") :
       // état des filtres runtime du FilterPanel (tags, types road/zone/struct).
       // Sérialisation Set → Array ; null = pas de filtre (tout visible).
       // Au restore, on reconvertit Array → Set côté loader. Rétrocompat :
@@ -255,11 +255,11 @@
   }
 
   function _isEmptyState(state) {
-    // 🆕 v1.16.0 step 2 : si l'user a UNIQUEMENT personnalisé sa légende
+    // si l'user a UNIQUEMENT personnalisé sa légende
     // (sans rien dessiner), on garde quand même la session pour ne pas
     // perdre ses overrides. Une session est "vide" seulement si rien du
     // tout n'est défini, y compris la légende.
-    // 🐛 v1.76.1 (audit 06/08 — PERTE DE DONNÉES) : ce test local ne
+    // ce test local ne
     // connaissait ni `colors` ni `borders` (ajoutés v1.76.0/1) — une session
     // où l'utilisateur avait UNIQUEMENT recoloré des types built-in était
     // jugée vide → slot localStorage SUPPRIMÉ, couleurs perdues au reload
@@ -279,17 +279,17 @@
         && state.zones.length        === 0
         && (state.structures || []).length === 0
         && state.measure.length      === 0
-        // 🐛 v1.12.0-fix (KARMA "une surface n'est pas persistée") : sans
+        // (KARMA "une surface n'est pas persistée") : sans
         // ce check, un user qui a UNIQUEMENT dessiné un polygone surface
         // verrait son état considéré "vide" → localStorage purgé → perte
         // au reload. Surface compte aussi comme contenu.
         && (state.measureSurface || []).length === 0
-        // 🐛 v1.28.0-fix : une session tracker-SEULE (timeline/tracé sans aucun
+        // une session tracker-SEULE (timeline/tracé sans aucun
         // point/tracé/zone/mesure) ne doit PAS être jugée "vide" — sinon le slot
         // localStorage est purgé (save > _isEmptyState → removeItem) et le tracé
         // est perdu au reload. Le tracker compte comme contenu.
         && (state.trackerTimeline || []).length === 0
-        // 🆔 v2.2.0 — des traces SEULES comptent comme contenu : tout supprimer
+        // des traces SEULES comptent comme contenu : tout supprimer
         // ne doit pas effacer le slot, sinon les traces partiraient avec et les
         // objets supprimés ressusciteraient à la prochaine synchro.
         && (state.tombstones || []).length === 0
@@ -337,7 +337,7 @@
     }
     _lastForceSave = 0;
 
-    if (window.KtaUid) window.KtaUid.purge();   // 🆔 v2.2.0 : traces > 90 jours
+    if (window.KtaUid) window.KtaUid.purge();   // traces > 90 jours
     const state = _gatherState();
     const hash  = _hashState(state);
     if (hash === _lastHash) return false; // pas de changement depuis dernier save
@@ -361,11 +361,11 @@
       savedAt:      new Date().toISOString(),
       editorPoints: state.editorPoints,
       roads:        state.roads,
-      // 🆕 v1.9.3-A1.a : structures (piliers + murs)
+      // structures (piliers + murs)
       structures:   state.structures || [],
       zones:        state.zones,
       measure:      state.measure,
-      // 🐛 v1.12.0-fix (KARMA "une surface n'est pas persistée à la
+      // (KARMA "une surface n'est pas persistée à la
       // différence de mesure") : le payload écrit dans localStorage
       // doit inclure measureSurface ET measureMode, sinon _gatherState
       // les remonte correctement mais save() les jette. Bug introduit
@@ -373,19 +373,19 @@
       // champs dans _gatherState mais pas dans le payload final.
       measureSurface: state.measureSurface || [],
       measureMode:    state.measureMode    || "distance",
-      // 🔄 v1.85.0 — verrou des calques rapatries (cf. js/calqueSession.js).
+      // verrou des calques rapatries (cf. js/calqueSession.js).
       calquesSession: state.calquesSession || null,
-      // 🆔 v2.2.0 — traces de suppression (purgées à 90 jours avant écriture).
+      // traces de suppression (purgées à 90 jours avant écriture).
       tombstones:     state.tombstones || [],
-      // 🆕 v1.16.0 step 2 : overrides légende (libellés + visibilité +
+      // overrides légende (libellés + visibilité +
       // entrées custom). null si LegendCustomization n'a pas encore été
       // chargé ou si l'user n'a rien personnalisé — c'est OK, le restore
       // gère gracieusement payload.customLegend == null.
       customLegend:   state.customLegend   || null,
-      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : filtres runtime
+      // (KARMA "refonte filtre Leaflet") : filtres runtime
       // FilterPanel (tags + types road/zone/struct) persistés per-plan.
       runtimeFilters:  state.runtimeFilters  || null,
-      // 🐛 v1.28.0-fix : trackerTimeline/trackerStartTs étaient présents dans
+      // trackerTimeline/trackerStartTs étaient présents dans
       // _gatherState() mais OMIS de ce payload final → jamais écrits en
       // localStorage → le tracé du tracker ne survivait PAS au reload (« l'auto
       // save du tracé ne fonctionne pas »). EXACTEMENT le même bug que
@@ -393,7 +393,7 @@
       trackerTimeline: state.trackerTimeline || [],
       trackerStartTs:  (typeof state.trackerStartTs === "number") ? state.trackerStartTs : null
     };
-    // 🆕 v1.16.1 : écriture dans le slot par-plan. Si pas de planId set
+    // écriture dans le slot par-plan. Si pas de planId set
     // (cas dégénéré, pré-onPlanLoaded), skip — on ne peut pas savoir
     // quel plan on est en train de sauvegarder.
     const _writeKey = _storageKeyFor(_currentPlanId);
@@ -462,7 +462,7 @@
     });
   }
 
-  // 🆕 v1.16.1 — getSaved accepte un planId optionnel. Sans argument →
+  // getSaved accepte un planId optionnel. Sans argument →
   // lit le slot du plan courant (`_currentPlanId`). Avec argument → lit
   // le slot du plan demandé. Utilisé par SessionBackups pour snapshotter
   // toujours le bon slot, et par onPlanLoaded pour vérifier au boot.
@@ -503,7 +503,7 @@
   }
 
   function clear(opts) {
-    // 🆕 v1.16.0 step 4 : snapshot AVANT le wipe pour permettre de
+    // snapshot AVANT le wipe pour permettre de
     // revenir en arrière depuis 📦 Backups. Best effort — async IDB,
     // peut ne pas finir si l'user reload tout de suite. Le périodique
     // 5 min couvre déjà la majorité des cas. `opts.snapshotFait` (13/09/2026) :
@@ -512,13 +512,13 @@
         window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
       try { window.SessionBackups.snapshot("before-clear-session"); } catch(e) {}
     }
-    // 🆕 v1.16.1 : on efface UNIQUEMENT le slot du plan courant — les
+    // on efface UNIQUEMENT le slot du plan courant — les
     // autres plans gardent leur session intacte.
     if (_currentPlanId) {
       try { _store().retirer(_currentPlanId); } catch(e) {}
     }
     _slotAssume = false;
-    // 🔄 v1.85.0 — 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
+    // 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
     // Effacer la session detruit les objets rapatries ; laisser le verrou
     // masquerait alors le calque d origine, et l utilisateur verrait son
     // releve disparaitre en croyant le plan casse. On libere, on reaffiche.
@@ -534,7 +534,7 @@
     // Une installation reliée en déduit qu'il faut tout relire (sinon les objets des
     // autres ne revenaient jamais). No-op sans écouteur.
     try { window.dispatchEvent(new CustomEvent("mktm:session-cleared", { detail: { planId: _currentPlanId || null } })); } catch(e) {}
-    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
+    // annule la phase 2 de restore en attente. Sans ça, si
     // l'user clique "🗑️ Effacer la session" dans la modale de feedback
     // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait
     // après l'effacement (timing piège du restore différé).
@@ -578,11 +578,11 @@
 
   function _applyRestore(payload) {
     if (!payload) return null;
-    // 🆕 v1.12.0-fix : measureSurface tracké séparément pour le compteur
+    // measureSurface tracké séparément pour le compteur
     // de la modale de feedback "Session restaurée".
     const restored = { points: 0, roads: 0, zones: 0, structures: 0, measure: 0, measureSurface: 0 };
     try {
-      // 🐛 v1.76.1 (C2 audit 06/08) — LA LÉGENDE D'ABORD, LES OBJETS ENSUITE.
+      // LA LÉGENDE D'ABORD, LES OBJETS ENSUITE.
       // Elle était chargée en FIN de restore, après setRoads/setZones/
       // setStructures : à chaque boot, les objets de session d'un type custom
       // se rendaient au repli (blanc/gris) et les couleurs override étaient
@@ -593,7 +593,7 @@
         window.LegendCustomization.loadSessionState(payload.customLegend);
       }
 
-      // 🔄 v1.85.0 — la LISTE des calques rapatries se charge ICI, mais les
+      // la LISTE des calques rapatries se charge ICI, mais les
       // VERROUS ne s appliquent qu en FIN de restore : `appliquerVerrous`
       // refuse de masquer un calque dont la copie de session est absente, et
       // il lui faut donc les objets deja restaures pour en juger.
@@ -601,7 +601,7 @@
         window.CalqueSession.loadSessionState(payload.calquesSession);
       }
 
-      // 🆔 v2.1.0 — MIGRATION DES IDENTIFIANTS, à l'ouverture du plan (ETUDE_UID
+      // MIGRATION DES IDENTIFIANTS, à l'ouverture du plan (ETUDE_UID
       // décision 4). Les objets d'une session ancienne reçoivent un uid, et leur
       // updatedAt prend la date de la DERNIÈRE SAUVEGARDE de la session (pas
       // « maintenant » : ils n'ont pas été modifiés aujourd'hui). Un Set partagé
@@ -618,7 +618,7 @@
                 + window.KtaUid.ensureAll(payload.zones, "zn", repli, vus)
                 + window.KtaUid.ensureAll(payload.structures, "st", repli, vus);
         if (n > 0) console.log("[SessionPersist] Identifiants posés sur " + n + " objet(s) (migration v2.1.0)");
-        // 🆔 v2.2.0 — traces de suppression de ce plan (absentes d'une session
+        // traces de suppression de ce plan (absentes d'une session
         // antérieure = liste vide), purgées au-delà de 90 jours.
         window.KtaUid.setTombstones(payload.tombstones);
         const purgees = window.KtaUid.purge();
@@ -632,7 +632,7 @@
         restored.points = payload.editorPoints.length;
       }
       // setRoads redessine en interne (renderRoads), donc juste reset + set.
-      // 🆕 v1.8.1 (re-fix KARMA) : restore en DEUX PHASES pour éviter le
+      // restore en DEUX PHASES pour éviter le
       // crash GPU au boot avec un itineraire actif :
       //   - Phase 1 (immédiate) : toutes les roads SAUF itinerary
       //   - Phase 2 (différée +1500ms) : les itinerary
@@ -706,7 +706,7 @@
         if (window.setZones)   window.setZones(payload.zones);
         restored.zones = payload.zones.length;
       }
-      // 🆕 v1.9.3-A1.a : restore des structures (piliers + murs).
+      // restore des structures (piliers + murs).
       // Rétrocompat : payload.structures peut être absent dans les saves
       // antérieurs à v1.9.3 → on traite comme array vide (aucun reset
       // non plus pour ne pas écraser des structures déjà présentes via
@@ -717,7 +717,7 @@
         if (window.setStructures)   window.setStructures(payload.structures);
         restored.structures = payload.structures.length;
       }
-      // 🆕 v1.12.0-fix : restore le mode actif (drive juste l'UI footer
+      // restore le mode actif (drive juste l'UI footer
       // active line + cible des prochains clics, n'efface plus rien).
       if (typeof window.setMeasureMode === "function" && typeof payload.measureMode === "string") {
         window.setMeasureMode(payload.measureMode);
@@ -727,7 +727,7 @@
         window.setMeasurePoints(payload.measure);
         restored.measure = payload.measure.length;
       }
-      // 🆕 v1.12.0-fix : restore aussi le polygone surface séparément
+      // restore aussi le polygone surface séparément
       if (window.setMeasurePointsSurface && Array.isArray(payload.measureSurface)) {
         window.setMeasurePointsSurface(payload.measureSurface);
         restored.measureSurface = payload.measureSurface.length;
@@ -735,7 +735,7 @@
       // (restore de la légende : déplacé EN TÊTE de _applyRestore — cf. C2
       // ci-dessus. Les objets doivent se rendre avec la légende déjà en place.)
 
-      // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking") :
+      // (KARMA "on active dans la sauvegarde auto le tracking") :
       // restore de la timeline tracker GPS. Rétrocompat : anciens payloads
       // n'ont pas trackerTimeline → setTrackingTimeline guarded sur Array.
       // Le tracker n'est PAS automatiquement redémarré (= juste la timeline
@@ -746,7 +746,7 @@
         restored.trackerTimeline = payload.trackerTimeline.length;
       }
 
-      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet — persistance per-plan") :
+      // (KARMA "refonte filtre Leaflet — persistance per-plan") :
       // restore des filtres runtime FilterPanel. Array → Set côté loader.
       // Rétrocompat : anciens payloads sans runtimeFilters → état par défaut
       // (tous filtres null = tout visible). Le runtime accepte aussi null
@@ -789,7 +789,7 @@
       }
 
       // 🏷️ ancre:verrous-calques-restaures
-      // 🔄 v1.85.0 — VERROUS DES CALQUES RAPATRIES, une fois les objets la.
+      // VERROUS DES CALQUES RAPATRIES, une fois les objets la.
       // 🩸 Piege paye d avance : un verrou pose SANS sa copie donnerait un
       // plan vide et muet (cas reel : la sauvegarde a saute sur quota).
       // `appliquerVerrous` verifie la presence avant de masquer, et libere
@@ -814,11 +814,11 @@
   }
 
   function _viderEtatCourant() {
-    // 🆕 v1.8.1 : annule la phase 2 de restore en attente (même raison
+    // annule la phase 2 de restore en attente (même raison
     // que dans clear() — cf. commentaire). Double protection en cas
     // d'appel direct sans passer par clear().
     _annulerPhase2();
-    // 🆔 v2.2.0 — « Effacer la session » est une remise à zéro locale : les
+    // « Effacer la session » est une remise à zéro locale : les
     // traces de suppression partent aussi (décision KARMA Q1, 04/10/2026).
     if (window.KtaUid) window.KtaUid.setTombstones([]);
     // 🌀 Un point de session qui porte une LIAISON INTER-PLAN (portail) est gardé :
@@ -835,17 +835,17 @@
     if (window.setEditorPoints)  window.setEditorPoints(portails);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
-    // 🆕 v1.9.3-A1.a : structures purgées aussi lors d'un vidage
+    // structures purgées aussi lors d'un vidage
     if (window.resetStructures)  window.resetStructures();
-    // 🆕 v1.16.0 step 2 : reset des overrides légende session (les valeurs
+    // reset des overrides légende session (les valeurs
     // du plan restent — c'est le niveau supérieur de la cascade).
     if (window.LegendCustomization && typeof window.LegendCustomization.resetSession === "function") {
       window.LegendCustomization.resetSession();
     }
     if (window.setMeasurePoints)        window.setMeasurePoints([]);
-    // 🆕 v1.12.0-fix : vide aussi la mesure de surface
+    // vide aussi la mesure de surface
     if (window.setMeasurePointsSurface) window.setMeasurePointsSurface([]);
-    // 🐛 v1.64.0 (KARMA « je refuse la session mais le tracé tracker de la
+    // (KARMA « je refuse la session mais le tracé tracker de la
     // précédente session persiste ») : le TRACKER n'était jamais vidé —
     // la timeline restaurée, le tracé visible (polyline multi-segments) et
     // le marker repositionné survivaient à l'« Effacer la session ».
@@ -865,9 +865,9 @@
     if (!restored) return;
     const total = restored.points + restored.roads + restored.zones
                 + (restored.structures || 0) + restored.measure
-                // 🆕 v1.12.0-fix : surface compte aussi pour décider d'afficher
+                // surface compte aussi pour décider d'afficher
                 + (restored.measureSurface || 0)
-                // 🐛 v1.64.0 : une session TRACKER-SEULE (long tracé, rien
+                // une session TRACKER-SEULE (long tracé, rien
                 // d'autre) n'affichait pas la modale → impossible de la
                 // refuser. Le tracé compte comme contenu restauré.
                 + (restored.trackerTimeline ? 1 : 0);
@@ -876,19 +876,19 @@
     const existing = document.getElementById("kta-session-modal");
     if (existing) existing.remove();
 
-    // 🌍 v1.46.0 — i18n au rendu (la modale se construit au chargement du plan,
+    // i18n au rendu (la modale se construit au chargement du plan,
     // donc après I18n.init). Helper local avec fallback clé brute.
     const _t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
     const parts = [];
     if (restored.points)     parts.push(restored.points  + " " + _t(restored.points  > 1 ? "session.unit.points"     : "session.unit.point"));
     if (restored.roads)      parts.push(restored.roads   + " " + _t(restored.roads   > 1 ? "session.unit.roads"      : "session.unit.road"));
     if (restored.zones)      parts.push(restored.zones   + " " + _t(restored.zones   > 1 ? "session.unit.zones"      : "session.unit.zone"));
-    // 🆕 v1.9.3-A1.a : structures dans le feedback restauration session
+    // structures dans le feedback restauration session
     if (restored.structures) parts.push(restored.structures + " " + _t(restored.structures > 1 ? "session.unit.structures" : "session.unit.structure"));
     if (restored.measure)    parts.push(_t("session.unit.measureDist"));
-    // 🆕 v1.12.0-fix : surface dans le feedback de restauration
+    // surface dans le feedback de restauration
     if (restored.measureSurface) parts.push(_t("session.unit.measureSurf"));
-    // 🐛 v1.64.0 : tracé tracker dans le feedback (et le total ci-dessus)
+    // tracé tracker dans le feedback (et le total ci-dessus)
     if (restored.trackerTimeline) parts.push(_t("session.unit.tracker"));
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
@@ -995,7 +995,7 @@
     });
   }
 
-  // 🐛 v1.64.0 — Appelé par main.js > _libererRessourcesPlanPrecedent AVANT
+  // Appelé par main.js > _libererRessourcesPlanPrecedent AVANT
   // tout démontage : save final forcé (l'état RAM est encore intact) puis
   // ARRÊT du polling. Sans ça, un tick 1.5 s entre le teardown (qui vide la
   // timeline tracker) et le onPlanLoaded du nouveau plan sauvegardait un
@@ -1037,7 +1037,7 @@
     _stopPolling();
     _slotAssume = false;
     _decisionEnAttente = false;
-    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
+    // annule la phase 2 de restore en attente. Sinon, si
     // l'user a chargé une session avec itinéraire (phase 2 setTimeout
     // de 1500ms en cours) puis a fait un plan switch (🗂️) avant que
     // les 1500ms s'écoulent, le setTimeout finirait par s'exécuter sur
@@ -1047,7 +1047,7 @@
     _currentPlanId = planId || null;
     _lastHash = null;
 
-    // 🆕 v1.16.1 — Migration ancien slot unique → per-plan (idempotente).
+    // Migration ancien slot unique → per-plan (idempotente).
     // Si on a une session legacy stockée dans `myktamap_session_v1`, on
     // la déplace vers `myktamap_session_v1_<savedPlanId>` au boot. Comme
     // ça les users qui mettent à jour depuis v1.16.0 ne perdent rien.
@@ -1059,7 +1059,7 @@
       return null;
     }
 
-    // 🐛 v1.76.0 — RESET DE LA LÉGENDE AVANT TOUTE RESTAURATION.
+    // RESET DE LA LÉGENDE AVANT TOUTE RESTAURATION.
     // `LegendCustomization._sessionState` n'était réinitialisé NULLE PART au
     // changement de plan : `loadSessionState` n'était appelé que depuis
     // `_applyRestore`, donc uniquement quand un slot existait ET que le
@@ -1074,7 +1074,7 @@
       try { window.LegendCustomization.loadSessionState(null); }
       catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
     }
-    // 🆔 v2.2.0 — même piège que la légende : les traces de suppression du plan
+    // même piège que la légende : les traces de suppression du plan
     // PRÉCÉDENT ne doivent pas être écrites dans le slot de celui-ci. On repart
     // de zéro ; _applyRestore recharge celles du plan s'il en a.
     if (window.KtaUid) window.KtaUid.setTombstones([]);
@@ -1098,7 +1098,7 @@
         restored = _applyRestore(saved);
         if (restored) { _slotAssume = true; _afficherModaleSession(restored); }
       } else {
-        // 🩸 10/10/2026 (retour testeur en prod) : nom vraiment différent (plan renommé par sa nouvelle version, ou
+        // 🩸 nom vraiment différent (plan renommé par sa nouvelle version, ou
         // collision d'identifiant). Avant : écartée en silence PUIS effacée par l'autosauvegarde. Désormais : copie
         // dans 📦 Backups, écriture suspendue, et l'utilisateur tranche.
         console.warn("[SessionPersist] session d'un autre nom de plan :", saved.planName, "≠", currentName);
@@ -1143,7 +1143,7 @@
   }
 
   // ========== MÉMOIRE DES SESSIONS ==========
-  // 10/10/2026 (testeur en prod : points disparus, invite de mise à jour à chaque ouverture) : une mémoire pleine
+  // une mémoire pleine
   // ne se voyait qu'APRÈS la panne (bandeau d'échec de sauvegarde). On prévient AVANT, au chargement d'un plan
   // (≥ 80 %), et dès qu'une écriture échoue faute de place. Une fois par page et par niveau : jamais une fenêtre à
   // chaque plan ouvert. Deux mémoires possibles (ktaStockageLocal.mesurer().mode) :
@@ -1192,7 +1192,7 @@
   // ========== EXPORTS ==========
   window.SessionPersist = {
     onPlanLoaded: onPlanLoaded,
-    onPlanUnload: onPlanUnload,   // 🐛 v1.64.0 : figer la persistance au teardown
+    onPlanUnload: onPlanUnload,   // figer la persistance au teardown
     save:         save,
     clear:        clear,
     getSaved:     getSaved,

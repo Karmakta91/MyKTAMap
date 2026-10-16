@@ -371,7 +371,7 @@ if (UP) {
   const ATTENDU = [
     "init", "get", "getPhotoBlob", "getPhotoObjectUrl", "setSurnom", "setPhoto",
     "removePhoto", "clear", "onChange", "getInitial", "getAvatarColor",
-    // 🖼️ v1.74.0 — fond d'ecran
+    // fond d'ecran
     "setWallpaper", "removeWallpaper", "getWallpaperBlob", "getWallpaperObjectUrl",
     "setWallpaperVoile", "setWallpaperCadrage", "setWallpaperFit"
   ];
@@ -416,19 +416,19 @@ if (LC) {
     "getLabel", "getDefaultLabel", "isVisible", "getSource",
     "listEntries", "listCustomEntries", "findCustomEntry",
     "addCustomEntry", "removeCustomEntry", "ouvrirEditeur",
-    // 🎨 v1.76.0 — override de couleur. `getColor` est appelee par
+    // override de couleur. `getColor` est appelee par
     // window.ktaResolveStyle : si elle disparait des exports, la carte perd
     // silencieusement les couleurs choisies par l'utilisateur.
     "getColor", "setColor", "hasColorOverride",
-    // 🐛 v1.76.0 (F8) — decompte des objets utilisant un type, lu par la
+    // (F8) — decompte des objets utilisant un type, lu par la
     // confirmation de suppression de l'editeur.
     "countUsages",
-    // 🧹 v1.76.0 (F19/F23) — exporter.js DELEGUE sa dialog d'ajout a
+    // (F19/F23) — exporter.js DELEGUE sa dialog d'ajout a
     // ouvrirAddDialog (son clone de 209 lignes a ete supprime) : si ce nom
     // change, le bouton ➕ de la modale Export devient un no-op silencieux.
     // listOrphanTypes est lu par le bandeau ⚠️ de la Legende.
     "ouvrirAddDialog", "listOrphanTypes",
-    // 🎨 v1.76.1 — bordure independante (lues par ktaResolveStyle).
+    // bordure independante (lues par ktaResolveStyle).
     "getBorderColor", "setBorderColor"
   ];
   ATTENDU_LC.forEach(function(m) {
@@ -497,7 +497,7 @@ if (LC) {
   t("l'entree plan sans collision reste listee", lst.some(function(e) { return e.id === "cust-planonly"; }));
   t("ordre historique conserve (plan d'abord)", lst[0].id === "cust-dup" && lst[1].id === "cust-planonly");
   LC.loadSessionState(null);
-  // 🖊️ v1.82.0 — RENOMMER / RECOLORER une entrée PLAN-LEVEL. Symétrique du
+  // RENOMMER / RECOLORER une entrée PLAN-LEVEL. Symétrique du
   // tombstone ci-dessus, et resté en plan pendant tout ce temps :
   // `updateCustomEntry` ne cherchait que dans la session et sortait sur
   // `return false` sans rien dire. Les entrées d'un plan importé (un type par
@@ -599,7 +599,7 @@ if (LC) {
   })());
   LC.loadSessionState(null);
 
-  // 🎨 v1.76.1 — bordure independante : persiste, voyage, se reset.
+  // bordure independante : persiste, voyage, se reset.
   LC.setBorderColor("zones", "eau", "#121212");
   t("setBorderColor est enregistre", LC.getBorderColor("zones", "eau") === "#121212");
   t("hasColorOverride vrai sur bordure seule", LC.hasColorOverride("zones", "eau") === true);
@@ -611,7 +611,7 @@ if (LC) {
   t("retrait de la bordure -> plus d'override", LC.hasColorOverride("zones", "eau") === false);
   LC.loadSessionState(null);
 
-  // 🧷 v1.76.1 — LIAISON PAR ID TECHNIQUE (le mur « Bas » de KARMA) :
+  // LIAISON PAR ID TECHNIQUE (le mur « Bas » de KARMA) :
   // une entree peut porter l'id EXACT d'un type brut deja present dans les
   // donnees ; le resolveur la sert comme n'importe quel custom.
   const idBas = LC.addCustomEntry({ id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" });
@@ -666,7 +666,7 @@ if (LC) {
     LC.loadSessionState(null);
   })();
 
-  // 🪦 v1.76.5 — TOMBSTONES : une entrée PLAN-LEVEL supprimée par
+  // TOMBSTONES : une entrée PLAN-LEVEL supprimée par
   // l'utilisateur ne doit PAS revenir du plan-config au prochain chargement
   // (vécu KARMA : « Bas » embarqué dans un ZIP régénéré, insupprimable).
   LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [

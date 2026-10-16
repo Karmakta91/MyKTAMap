@@ -44,7 +44,7 @@
     { id: "batisseur",   emoji: "🏛️", metric: "structures",  unit: "",      seuils: [20, 150, 400, 600] }
   ];
 
-  // 🆕 v1.54.0 — Hauts faits "Spéciaux" (one-shot, fun). Dérivés du même objet
+  // Hauts faits "Spéciaux" (one-shot, fun). Dérivés du même objet
   // de métriques (+ hasTracked / maxLevels / maxTrackerH / score, calculés
   // inline). `completiste` reçoit un contexte { tieredUnlocked }.
   const TIERED_TOTAL = FAMILIES.length * 4;  // 32
@@ -57,7 +57,7 @@
     { id: "completiste", emoji: "🏆", check: function(m, ctx) { return !!ctx && ctx.tieredUnlocked >= TIERED_TOTAL; } }
   ];
 
-  // 🐛 v1.68.1 : garde `v !== key` mort depuis l'humanisation H1 (t() ne
+  // garde `v !== key` mort depuis l'humanisation H1 (t() ne
   // retourne plus jamais la clé brute) → has() teste la présence réelle.
   function _t(key, fb) {
     if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
@@ -103,7 +103,7 @@
         });
       });
     });
-    // 🆕 v1.54.0 : spéciaux one-shot. completiste lit le nb de tiered débloqués.
+    // spéciaux one-shot. completiste lit le nb de tiered débloqués.
     const tieredUnlocked = out.filter(function(a) { return a.unlocked; }).length;
     const ctx = { tieredUnlocked: tieredUnlocked };
     SPECIALS.forEach(function(s) {

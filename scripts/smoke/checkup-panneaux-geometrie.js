@@ -147,7 +147,7 @@ async function controlerPanneau(page, f, mode, gid) {
   } else if (mode === "ancré" && r.fond) {
     pb(etiquette + " : fond posé en mode ancré");
   } else if (f.touch && r.croix < 40) {
-    // 🩸 17/10/2026 : la règle « pointer: coarse » était placée AVANT les règles de base → sans effet (36/24 px).
+    // 🩸 la règle « pointer: coarse » était placée AVANT les règles de base → sans effet (36/24 px).
     pb(etiquette + " : croix de " + r.croix + " px au toucher (40 attendus)");
   } else {
     ok(etiquette + " : " + r.haut + "→" + r.bas + " dans " + limH + "→" + limB + ", dernier bouton atteint");

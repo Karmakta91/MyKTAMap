@@ -143,7 +143,7 @@ let journalOk = false;
 if (readme) {
   const lignes = readme.split(/\r?\n/);
   // Le TITRE de section, pas la première mention : le sommaire et le résumé
-  // de tête citent tous les deux « Journal des versions » (lignes 41 et 53),
+  // de tête citent tous les deux « Journal des versions »,
   // et viser l'un d'eux ferait échouer un README pourtant correct.
   const i = lignes.findIndex((l) => /^#{1,3}\s.*Journal des versions/.test(l));
   if (i !== -1) journalOk = reV.test(lignes.slice(i, i + 40).join("\n"));

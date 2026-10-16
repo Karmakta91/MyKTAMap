@@ -164,7 +164,7 @@ function inf(m) { console.log("  •  " + m); }
       for (let i = 0; i < 30; i++) { envoyer(); await new Promise(function (r) { setTimeout(r, 50); }); }
       await new Promise(function (r) { setTimeout(r, 1200); });
 
-      // 🔋 29/09/2026 — immobile, la minimap ne doit PLUS se recentrer à chaque
+      // immobile, la minimap ne doit PLUS se recentrer à chaque
       // tick (250 ms) : 40 setView en 10 s relançaient chacun un parcours de
       // toute la grille de tuiles. On compte ses setView pendant 2 s d'arrêt.
       const proto = L.Map.prototype, setViewOrig = proto.setView;

@@ -166,14 +166,14 @@
       _updateLive(msg, "error");
       setTimeout(_hideLiveOverlay, 2500);
       _setListening(false);
-      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream (cf bug iOS
+      // libère la ref pour GC du MediaStream (cf bug iOS
       // indicateur micro persistant après stop dans stopListening).
       _recognition = null;
     };
 
     r.onend = function() {
       _setListening(false);
-      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream. À la prochaine
+      // libère la ref pour GC du MediaStream. À la prochaine
       // startListening(), une nouvelle instance est créée via _initRecognition().
       _recognition = null;
     };
@@ -209,7 +209,7 @@
   }
 
   function stopListening() {
-    // 🩹 v1.34.2 — KARMA bug iPhone : "l'arret d'enrengistrement bug, il me
+    // KARMA bug iPhone : "l'arret d'enrengistrement bug, il me
     // met icone violet 'arreté' mais en haut sur mon iphone c'est toujours
     // en écoute".
     // Cause : sur iOS Safari, `recognition.stop()` est trop "doux" — il
@@ -247,7 +247,7 @@
       let isAsync = false;
       try {
         const ret = match.cmd.handler(match.matches);
-        // 🩹 v1.34.0-fix2 — Si le handler retourne une Promise (handler async),
+        // Si le handler retourne une Promise (handler async),
         // on saute l'auto-hide 1.5s : c'est le handler qui gère son propre
         // cycle de vie de l'overlay (recherche → résultat → hide). Cas usage
         // typique : "aller à <POI>" qui fait un findByQuery + Pathfinder
@@ -265,7 +265,7 @@
       _updateLive(_t("voice.live.unknown", { text: text }), "unknown");
       setTimeout(_hideLiveOverlay, 2500);
     }
-    // 🩹 v1.34.3 — STOP EXPLICITE après chaque transcript final.
+    // STOP EXPLICITE après chaque transcript final.
     // KARMA bug : "si je dis aller a drapeau, il me trouve l'itineraire,
     // mais reste en ecoute (j'ai la télé allumé, mais sous terre on peut
     // avoir des gens qui parle a coté) donc si recherche effectuer (point
@@ -357,7 +357,7 @@
 
   function _afficherAideModale() {
     if (document.getElementById("kta-voice-aide-modal")) return;
-    // 🩹 v1.34.0-fix1 — KARMA bug : "si je dis aide, j'ai pas erreur
+    // KARMA bug : "si je dis aide, j'ai pas erreur
     // comme quoi il ne pige pas la commande mais ca s'ouvre pas".
     // Cause : l'overlay voice-live (top-center) reste affiché 1.5s
     // après "✅ Aide commandes", et il chevauche visuellement la
@@ -370,7 +370,7 @@
     const m = document.createElement("div");
     m.id        = "kta-voice-aide-modal";
     m.className = "kta-readme-modal-overlay";
-    // 🩹 v1.34.0-fix1 — display: flex explicite pour garantir l'affichage
+    // display: flex explicite pour garantir l'affichage
     // (certains résiduels CSS pourraient appliquer display:none par défaut).
     m.style.display = "flex";
 
@@ -446,7 +446,7 @@
   // Si le handler ne peut pas exécuter, il log un warn console mais ne
   // crash pas — l'user voit "Commande exécutée" mais rien ne se passe.
 
-  // 🩹 v1.34.0-fix1 — KARMA : "rajoute des formulations en plus différente
+  // "rajoute des formulations en plus différente
   // telle que aide, ouvre aide ou tracker on, allume tracker...". Expansion
   // massive des patterns pour chaque commande, couvrant les formulations
   // naturelles FR + impératif + indicatif + variantes synonymiques.
@@ -527,7 +527,7 @@
       }
     });
 
-    // 🆕 v1.34.0-fix2 — KARMA : "il serait super si on pouvait dire par
+    // "il serait super si on pouvait dire par
     // exemple 'aller a puit 25' on fait dans le 'simple' depuis ma position".
     // Itinéraire simple depuis la position tracker actuelle vers le POI
     // matchant le nom prononcé. Utilise window.SearchPoints.findByQuery
@@ -758,7 +758,7 @@
       }
     });
 
-    // 🆕 v1.35.0 — Sortie d'urgence : trouve la sortie la plus proche
+    // Sortie d'urgence : trouve la sortie la plus proche
     // (puits/escalier/cavage ouvert ou tag "entrée") via pathfinder.
     // Patterns volontairement larges (urgence = user stressé).
     registerCommand({

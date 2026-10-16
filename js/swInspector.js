@@ -104,7 +104,7 @@
   }
 
   // ============================================================
-  // 🆕 v1.43.22 — QUERY SW : INSTALL FAILURES LOG
+  // QUERY SW : INSTALL FAILURES LOG
   // ============================================================
   // Récupère la liste des échecs d'install loggués dans IDB
   // myktamap_sw_install_log/install_failures par _cacheAddDiag.
@@ -202,7 +202,7 @@
   // ============================================================
   // RENDER REPORT (HTML)
   // ============================================================
-  // 🆕 v1.43.22 — Labels user-friendly + emoji pour chaque type d'erreur
+  // Labels user-friendly + emoji pour chaque type d'erreur
   // d'install. Permet à l'user de comprendre POURQUOI un asset manque
   // (FTP partiel = 404, serveur en erreur = 5xx, offline = network, etc.).
   // icon/color = données visuelles (non traduites) ; le label texte est résolu
@@ -285,7 +285,7 @@
         '</div>';
     }
 
-    // 🆕 v1.43.22 — Section ÉCHECS DÉTECTÉS — stats agrégées par type d'erreur.
+    // Section ÉCHECS DÉTECTÉS — stats agrégées par type d'erreur.
     // Affichée même si tous les manquants ont une cause (= utile pour vue
     // synthétique : "j'ai 3 fichiers absents du serveur + 1 erreur réseau").
     if (failures.length > 0) {
@@ -372,18 +372,18 @@
   // ============================================================
   let _currentDiff = null;
   let _currentCacheName = null;
-  // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Inspecteur SW.
+  // Pilote ModalLifecycle de la modale Inspecteur SW.
   let _lc = null;
 
   async function _collectAndRender(bodyEl) {
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si
+      // Pattern C via _lc.guard : throw ModalClosedError si
       // modale fermée pendant les 3 awaits. Plus besoin de N isConnected.
       const guard = _lc ? function(p) { return _lc.guard(p); } : function(p) { return p; };
       const expected = await guard(_querySwExpectedAssets());
       const actual   = await guard(_queryActualAssets(expected.cacheName));
       const diff     = _computeDiff(expected.assets, actual);
-      // 🆕 v1.43.22 — Fetch aussi le log des échecs d'install
+      // Fetch aussi le log des échecs d'install
       // (peut être vide si tout est OK ou si v1.43.21 ou antérieur).
       const failures = await guard(_querySwInstallFailures());
       _currentDiff = diff;
@@ -392,7 +392,7 @@
       const btn = document.getElementById("kta-sw-inspector-refetch");
       if (btn && _lc) _lc.on(btn, "click", _handleRefetchClick);
     } catch(e) {
-      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
+      // Modale fermée pendant l'await → silently return.
       if (e && e.name === "ModalClosedError") return;
       if (!bodyEl.isConnected) return;
       bodyEl.innerHTML =
@@ -413,12 +413,12 @@
     if (!_currentDiff || !_currentDiff.missing || _currentDiff.missing.length === 0) return;
     const btn    = document.getElementById("kta-sw-inspector-refetch");
     const status = document.getElementById("kta-sw-inspector-refetch-status");
-    // 🆕 v1.44.0 — Pattern D via _lc.lockButton : auto-restore disabled + label
+    // Pattern D via _lc.lockButton : auto-restore disabled + label
     // au release(). Plus besoin de gérer manuellement btn.disabled.
     const release = (_lc && btn) ? _lc.lockButton(btn, { text: _t("refetch.running") }) : function() {};
     if (status) status.textContent = _t("refetch.downloading");
     try {
-      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si
+      // Pattern C via _lc.guard : throw ModalClosedError si
       // modale fermée pendant le refetch (long : ~50 assets × HTTP).
       const refetchP = _refetchMissing(_currentDiff.missing);
       const result = await (_lc ? _lc.guard(refetchP) : refetchP);
@@ -429,7 +429,7 @@
                              (failCount > 0 ? " · " + _t("refetch.failCount", { count: failCount }) : "");
         status.style.color = failCount > 0 ? "#f4c542" : "#a6d785";
       }
-      // 🆕 v1.44.0 — setTimeout tracked : cleared si user ferme la modale
+      // setTimeout tracked : cleared si user ferme la modale
       // dans le 1.5s entre le refetch et la re-vérification.
       const scheduleReload = function() {
         const bodyEl = document.getElementById("kta-sw-inspector-body");
@@ -463,7 +463,7 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    // 🆕 v1.44.0 — ModalLifecycle : listeners (close, backdrop, Escape)
+    // ModalLifecycle : listeners (close, backdrop, Escape)
     // cleared automatiquement au fermer().
     _lc = window.ModalLifecycle.attach(overlay, {
       label: "SwInspector",
@@ -488,7 +488,7 @@
   }
 
   // ============================================================
-  // 🆕 v1.43.13 — AUTO-HEAL SILENCIEUX AU BOOT
+  // AUTO-HEAL SILENCIEUX AU BOOT
   // ============================================================
   // Appelé depuis index.html après ~5s post-load, tente automatiquement
   // de récupérer les assets manquants SI on a internet. Garde-fous stricts
@@ -508,7 +508,7 @@
   // retiré : la pastille rouge et son indicateur d'en-tête le remplacent.
 
   const SS_AUTOHEAL_KEY = "kta_sw_autoheal_done";
-  // 🆕 v1.43.23 — Mémorise le résultat du dernier check pour décider si
+  // Mémorise le résultat du dernier check pour décider si
   // on doit re-tirer au reload (échecs non résolus = retry) ou pas (tout OK).
   const SS_AUTOHEAL_LAST_FAILED = "kta_sw_autoheal_last_failed";
 
@@ -530,7 +530,7 @@
     opts = opts || {};
     const maxRefetch = (typeof opts.maxRefetch === "number") ? opts.maxRefetch : 100;
 
-    // 🆕 v1.43.23 — Garde-fou INTELLIGENT (au lieu de "1× par session" brut) :
+    // Garde-fou INTELLIGENT (au lieu de "1× par session" brut) :
     //   - Si le dernier check était OK → skip (cache déjà sain, pas de spam)
     //   - Si le dernier check avait des échecs → RE-TIRER à chaque reload
     //     (KARMA "50 manquants au 1er load, 7 après reload, mais l'auto-heal
@@ -564,7 +564,7 @@
     // Garde-fous : SW controller actif (sinon REFETCH_MISSING_ASSETS plante)
     if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
       console.log("[SwInspector] auto-heal skipped : SW pas controller → retry dans 5s");
-      // 🆕 v1.43.23 — Au lieu d'abandonner, on re-programme un retry dans 5s.
+      // Au lieu d'abandonner, on re-programme un retry dans 5s.
       // Ça couvre le cas où le timeout 5s d'index.html tire avant que le SW
       // ait terminé son install (1er load post-update, SW en train de claim).
       // On NE marque PAS le flag sessionStorage (sinon on bloquerait toutes
@@ -590,7 +590,7 @@
 
       if (diff.missing.length === 0) {
         console.log("[SwInspector] auto-heal : ✅ cache complet (" + diff.present.length + " assets)");
-        // 🆕 v1.43.23 — Marquer "dernier check OK" → garde-fou pour skip
+        // Marquer "dernier check OK" → garde-fou pour skip
         // les reload suivants tant que le cache est sain.
         try { sessionStorage.setItem(SS_AUTOHEAL_LAST_FAILED, "0"); } catch(e) {}
         return { healed: 0, present: diff.present.length, missing: 0 };
@@ -621,7 +621,7 @@
         console.log("[SwInspector] auto-heal terminé : ✅ " + okCount + " récupérés, cache complet.");
       }
 
-      // 🆕 v1.43.23 — Persiste le résultat pour décider du retry au prochain
+      // Persiste le résultat pour décider du retry au prochain
       // reload. Si failCount > 0 (ou capped = il reste des fichiers non
       // traités), on marque "fail" pour re-tirer la prochaine fois. Sinon
       // c'est "ok" et on skip jusqu'à la prochaine session.

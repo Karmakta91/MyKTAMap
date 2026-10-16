@@ -52,7 +52,7 @@ async function fabriquerZip(dossier, i) {
   const cfg = JSON.parse(await entree.async("string"));
   cfg.plan.name = "Checkup import " + i;
   cfg.plan.version = "V" + i;
-  // 🏷️ 16/09/2026 — étiquettes proposées par le ZIP (champ du Générateur) :
+  // étiquettes proposées par le ZIP (champ du Générateur) :
   // elles doivent apparaître dans la liste dès l'import multiple.
   cfg.plan.tags = ["checkup", "lot " + i];
   z.file(entree.name, JSON.stringify(cfg));
@@ -117,7 +117,7 @@ async function etatBlobs(p) {
     const e1 = await etatBlobs(p);
     t("3 plans entrés dans la liste, tous marqués « mémorisé »", e1.length === 3 && e1.every(function (x) { return x.storedBlob; }));
     t("les 3 blobs se lisent dans l'onglet de l'import", e1.every(function (x) { return x.taille && x.lisible === true; }));
-    // 🏷️ 16/09/2026 — les étiquettes du plan-config arrivent AVEC l'entrée, origine "config".
+    // les étiquettes du plan-config arrivent AVEC l'entrée, origine "config".
     const tags1 = await p.evaluate(function () {
       return window.PlanRegistry.getAll().filter(function (pl) { return pl.type === "local"; })
         .map(function (pl) { return { tags: pl.tags || [], src: pl.tagsSrc || null }; });

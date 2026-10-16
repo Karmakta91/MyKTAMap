@@ -28,7 +28,7 @@
   let _selection  = new Set();    // indices sélectionnés
   let _tri        = { col: null, asc: true };
   let _filtre     = "";
-  // 🆕 v1.48.x — _kind = quel tableau on édite dans la source :
+  // _kind = quel tableau on édite dans la source :
   //   "data" | "editorPoints" (= points complets x/y/tags)
   //   "roads" | "zones" | "structures" (= note/type/niveau éditables, géométrie `points` 🔒)
   let _kind       = null;
@@ -48,7 +48,7 @@
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
   function _estSession() { return _kind === "editorPoints"; }
-  // 🆔 v2.1.0 — préfixe d'uid de la famille éditée (cf js/ktaUid.js).
+  // préfixe d'uid de la famille éditée (cf js/ktaUid.js).
   function _prefixeUid() {
     return _kind === "roads" ? "rd" : _kind === "zones" ? "zn" : _kind === "structures" ? "st" : "pt";
   }
@@ -333,7 +333,7 @@
   // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
   function _afficherAccueil(errMsg) {
     if (_modal) { _modal.remove(); _modal = null; }
-    // 🐛 v1.69.0 : PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
+    // PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
     // pas à null) → la carte « 🗺️ plan en cours » s'affichait depuis l'accueil
     // et menait à un plan qui n'est plus à l'écran. Cf. gotchas.md § PLAN_CONFIG.
     var planAffiche = (typeof window.ktaPlanAffiche === "function") ? window.ktaPlanAffiche() : true;
@@ -424,11 +424,11 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
-    // 🔁 v1.76.2 — même flux d'import que JSON, mais la dialog de conversion
+    // même flux d'import que JSON, mais la dialog de conversion
     // s'ouvrira automatiquement une fois le tableau affiché.
     document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
-    document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup); // 🧹 v1.77.0
-    // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
+    document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
+    // délègue au fusionneur existant (onglet « Fusion » de la
     // modale d'export de session), ouvert en mode solo comme depuis le HOME.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();
@@ -674,7 +674,7 @@
     data.forEach(function(p) {
       Object.keys(p).forEach(function(k) { set.add(k); });
     });
-    // 🆔 v2.1.0 — l'identité n'est pas une donnée à éditer : `uid` et
+    // l'identité n'est pas une donnée à éditer : `uid` et
     // `updatedAt` restent sur les objets mais ne deviennent jamais des colonnes
     // (une cellule modifiable permettrait de casser l'identité d'un objet).
     set.delete("uid");
@@ -684,7 +684,7 @@
     // plans multi-niveau aient la colonne niveau visible à côté des coords
     // (cohérence visuelle x/y/level). Sans ça, level passait en queue de
     // tableau via le fallback set.forEach (P3 audit Karma_dev).
-    // 🆕 v1.48.x : "type" en tête + "points" (géométrie, lecture seule) près de
+    // "type" en tête + "points" (géométrie, lecture seule) près de
     // la queue → couvre points ET roads/zones/structures avec un ordre lisible.
     const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
@@ -848,7 +848,7 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        // 🆕 v1.48.x : "points" (géométrie roads/zones/structures) = lecture seule.
+        // "points" (géométrie roads/zones/structures) = lecture seule.
         const ro = (col === "id" || col === "points");
         let cls = "";
         if (ro) cls += "col-readonly";
@@ -959,7 +959,7 @@
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
     if (isNum && col !== "profondeur") input.step = "1";
 
-    // 🧹 v1.76.0 (F20) — la colonne `type` était un champ texte TOTALEMENT
+    // (F20) — la colonne `type` était un champ texte TOTALEMENT
     // libre : une faute de frappe (`pilierr-1`, `cust-` tronqué…) créait un
     // objet orphelin, rendu en couleur de repli sans aucun signal. On ne
     // BLOQUE pas (un type inconnu peut être voulu, ex. futur custom), mais :
@@ -1231,7 +1231,7 @@
       else nouv[c] = "";
     });
     if ("id" in nouv) nouv.id = "";
-    if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(nouv, _prefixeUid()));   // 🆔 v2.1.0
+    if (window.KtaUid) window.KtaUid.touch(window.KtaUid.ensure(nouv, _prefixeUid()));
     _data.push(nouv);
     _modifie = true;
     _construireCorps();
@@ -1257,7 +1257,7 @@
     if (_selection.size === 0) return;
     const indices = [..._selection].sort(function(a, b) { return a - b; });
     indices.forEach(function(i) {
-      // 🆔 v2.1.0 — 🩸 une copie JSON recopierait l'uid : deux objets distincts
+      // 🩸 une copie JSON recopierait l'uid : deux objets distincts
       // partageraient une identité, et la future fusion « le plus récent gagne »
       // en perdrait un. La copie reçoit un uid neuf.
       const copie = window.KtaUid ? window.KtaUid.cloneNeuf(_data[i], _prefixeUid())
@@ -1447,7 +1447,7 @@
   }
 
   // ========== MENU DE SAUVEGARDE ==========
-  // 🆕 v1.48.x — règle « no live » pour les datalayers (data/roads/zones/structures) :
+  // règle « no live » pour les datalayers (data/roads/zones/structures) :
   // export-only + note « repasser par le Générateur ». Seule la SESSION
   // (editorPoints) garde le remplacement live (`Remplacer la session`).
   function _menuSauvegarde() {
@@ -1638,7 +1638,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 🧹 v1.77.0 — DÉDOUBLONNAGE (demande KARMA, suite au bug clic-carte
+  // DÉDOUBLONNAGE (demande KARMA, suite au bug clic-carte
   // multiplié : N sommets confondus empilés par clic dans les dessins de
   // tracés/zones/structures et les mesures — invisibles à l'écran, mais
   // sessions et exports gonflés)

@@ -85,7 +85,7 @@
   // APPLICATION DOM
   // ============================================================
   function _applyToDom(theme) {
-    // 🔧 v1.13.0-fix5 (KARMA "tous les modals se chargent en mode sombre") :
+    // (KARMA "tous les modals se chargent en mode sombre") :
     // beaucoup de modales sont append à document.documentElement (= <html>),
     // pas à <body>. Le selector `body.kta-theme-light .modal` ne matchait
     // donc jamais parce que la modale est SIBLING de body, pas descendante.
@@ -155,7 +155,7 @@
     return setTheme(_current === "dark" ? "light" : "dark");
   }
 
-  // v1.14.2 (KARMA) : changement de thème = reload complet de l'app.
+  // changement de thème = reload complet de l'app.
   // Le swap "live" via _applyToDom marchait à 90% mais a toujours laissé
   // des bugs résiduels sur le bandeau top / certains modals chargés avant
   // le toggle. Plus simple et bullet-proof : on persiste le choix en

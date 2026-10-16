@@ -179,7 +179,7 @@
     function capOut(s) { return _capEntre(ch, s, s + W); }
 
     // 1) Candidats : les croisements posés sur le trajet, ET RIEN D'AUTRE.
-    // 🩸 27/09/2026 (retour KARMA sur un relevé réel) — les virages francs du
+    // 🩸 les virages francs du
     // dessin SANS croisement étaient annoncés aussi (« le tracé ne montre pas
     // toutes les ouvertures »). Sur un réseau de galeries, c'est du bruit :
     // tant qu'il n'y a qu'un chemin, suivre la galerie suffit. Un virage ne se
@@ -593,7 +593,7 @@
   function _suiviActif() {
     return !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
   }
-  // 01/10/2026 (KARMA 1:a) — guidage SANS suivi : on avance de plaque en plaque
+  // guidage SANS suivi : on avance de plaque en plaque
   // (« 📍 Je suis ici »). Il faut alors une position CONFIRMÉE : sans elle, la
   // position vaut le départ du plan et le bandeau donnerait de fausses consignes.
   function _positionConfirmee() {
@@ -641,7 +641,7 @@
     _el.querySelector(".kta-guid-corps").addEventListener("click", function() {
       if (_road) ouvrirFeuilleDeRoute(_road);
     });
-    // 01/10/2026 (KARMA 2:a) — la croix ÉTEINT le guidage (réglage « Jamais »,
+    // la croix ÉTEINT le guidage (réglage « Jamais »,
     // la tuile 🪧 du menu Tracker passe à off) ; la tuile le rallume aussitôt.
     // Avant, elle masquait seulement CET itinéraire, et la tuile ne savait pas
     // lever ce masquage : il fallait recalculer l'itinéraire pour le retrouver.

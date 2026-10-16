@@ -8,7 +8,7 @@
 // =========================
 // STRUCTURES POLYGONALES (piliers + murs)
 // =========================
-// 🆕 v1.9.3-A1.a (introduit branche Karma_dev après v1.9.2).
+// (introduit branche Karma_dev après v1.9.2).
 //
 // Permet de tracer des structures fermées et remplies représentant les
 // éléments physiques d'une carrière :
@@ -43,7 +43,7 @@
 
 window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-1" | "front-2"
 
-// 🆕 v1.9.3-A1.b.2 : sous-types qui sont des POLYLINES (= suite de points
+// sous-types qui sont des POLYLINES (= suite de points
 // ouverte, comme une road) au lieu de polygones fermés. Les fronts de
 // taille représentent les LIMITES d'exploitation d'une couche — un tracé
 // épais sans contour qui longe le bord du massif. Tous les autres types
@@ -51,7 +51,7 @@ window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-
 const STRUCTURE_TYPES_POLYLINE = ["front-1", "front-2"];
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
-  // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, lit la géométrie
+  // pour les types CUSTOM, lit la géométrie
   // déclarée dans LegendCustomization (polyline = front, polygon = pilier).
   if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
     const e = window.LegendCustomization.findCustomEntry(type);
@@ -63,7 +63,7 @@ function _isPolylineType(type) {
 // Résolution du style d'une structure — built-in ET types CUSTOM. Pour un
 // custom, la geometrie declaree tranche : polyline → gabarit « front de taille »
 // (epais, sans contour), polygon → gabarit « pilier/mur » (contour noir).
-// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle, qui applique le
+// delegue integralement a window.ktaResolveStyle, qui applique le
 // gabarit de la CATEGORIE demandee. Retourne un objet NEUF a chaque appel.
 let _resolverManquantSignaleS = false;
 function _resolveStructureStyle(type) {
@@ -94,10 +94,10 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 // des zones mais avec stroke #000 systématique + fill plus saturé
 // (les structures représentent du physique solide, pas du marquage).
 //
-// 🆕 v1.9.3-A1.a-fix (KARMA "j'ai inversé les couleurs 1er masse / 2e masse") :
+// (KARMA "j'ai inversé les couleurs 1er masse / 2e masse") :
 //   - 1ère masse → JAUNE (#f4c542, couleur charte MKM)
 //   - 2e masse   → ORANGE (#ff9933)
-// 🎨 v1.76.0 — Les 5 types built-in ne sont plus declares ici : leurs valeurs
+// Les 5 types built-in ne sont plus declares ici : leurs valeurs
 // viennent de la table canonique de `js/styleResolver.js`.
 // Rappels de DESIGN, qui ne se lisent pas dans les valeurs :
 //   • Piliers/mur : stroke NOIR systematique — c'est la signature visuelle qui
@@ -107,13 +107,13 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //     avec l'icone eau »).
 //   • Fronts de taille (v1.9.3-A1.b.2) : POLYLINES epaisses (weight 10, ~2x les
 //     roads) sans contour, representant les limites d'exploitation d'une couche.
-//     🔧 v1.10.1-hotfix2 (KARMA « si orange = 2e masse, le front de taille
+//     (KARMA « si orange = 2e masse, le front de taille
 //     orange et 2e masse ») : front-1 JAUNE comme pilier-1 (1ere masse),
 //     front-2 ORANGE comme pilier-2 (2e masse). Elles etaient inversees « par
 //     design » — c'etait une erreur : sur le terrain la coherence couleur/masse
 //     prime (un trait orange = 2e masse, un trait jaune = 1ere).
 
-// 🔍 v1.82.0 — LARGEUR DES FRONTS : UNE LARGEUR RÉELLE, PAS UN NOMBRE DE PIXELS.
+// LARGEUR DES FRONTS : UNE LARGEUR RÉELLE, PAS UN NOMBRE DE PIXELS.
 //
 // 🩸 Première version : des paliers fixes par zoom (10 / 7 / 5 / 3 / 2 px).
 // Ils marchaient sur le plan de test et n'ont RIEN changé sur un vrai relevé —
@@ -131,12 +131,12 @@ const FRONT_LARGEUR_M = 1.5;    // largeur physique typique d'un front de taille
 const FRONT_MIN_PX    = 1;      // plancher : un front invisible serait pire
 const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un trait
 
-// 🩸 v1.82.0 — LA LOI EST PARTAGÉE AVEC L'EXPORT, ELLE NE PEUT PAS ÊTRE
+// 🩸 LA LOI EST PARTAGÉE AVEC L'EXPORT, ELLE NE PEUT PAS ÊTRE
 // RECOPIÉE. À l'écran le facteur d'agrandissement vaut 2^zoom ; à l'export
 // PNG/PDF il vaut la résolution choisie (1 = natif, 2 = HD). C'est le MÊME
 // nombre — des pixels rendus par pixel de plan — donc la même formule.
 // L'export appelle ceci via `window.ktaLargeurFrontPourRatio`.
-// 🩸 v1.83.0 — LE CŒUR DE LA LOI, en PIXELS PAR MÈTRE. Trois consommateurs,
+// 🩸 LE CŒUR DE LA LOI, en PIXELS PAR MÈTRE. Trois consommateurs,
 // une seule formule :
 //   • l'écran (mode plan) : px/m = APP_CONFIG.scale × 2^zoom
 //   • l'export PNG/PDF    : px/m = APP_CONFIG.scale × résolution
@@ -199,7 +199,7 @@ function _largeurFrontPourZoom(z) {
   return _largeurFrontPourRatio(Math.pow(2, z));
 }
 
-// 🩸 v1.82.0 — LA LARGEUR SE PILOTE PAR `options.weight`, PAS PAR LE CSS.
+// 🩸 LA LARGEUR SE PILOTE PAR `options.weight`, PAS PAR LE CSS.
 //
 // La première version posait une classe et une variable CSS. Elle n'a jamais
 // rien fait : la carte est rendue en CANVAS (`preferCanvas: true`, map.js:382),
@@ -265,7 +265,7 @@ function majLargeurFronts() {
   try {
     const r = window.map && window.map._renderer;
     if (r && typeof r._redraw === "function") {
-      // 🩸 v1.82.0 (bis) — `_redrawBounds` DOIT ÊTRE NEUTRALISÉ D'ABORD.
+      // 🩸 (bis) — `_redrawBounds` DOIT ÊTRE NEUTRALISÉ D'ABORD.
       // Lu dans `lib/leaflet/leaflet.js` (1.1.1) : `_redraw` clippe `_draw`
       // sur ces bornes et saute tout layer qui ne les croise pas. Si une
       // demande de redraw par layer est en attente (`_requestRedraw` les a
@@ -279,14 +279,14 @@ function majLargeurFronts() {
 }
 window.majLargeurFronts = majLargeurFronts;
 
-// 🩸 v1.82.0 — LE BRANCHEMENT NE PEUT PAS DÉPENDRE DE `renderStructures`.
+// 🩸 LE BRANCHEMENT NE PEUT PAS DÉPENDRE DE `renderStructures`.
 // Il y était posé au départ, et ça ne marchait que pour les structures de
 // SESSION : un plan importé porte les siennes dans un DATALAYER, rendu par
 // `utils.js > ajouterPointsDepuisJSON`. Sur ces plans — précisément ceux qui
 // ont des milliers de fronts — `renderStructures` n'est jamais appelé, rien ne
 // branche le recalcul, et la largeur reste au défaut de 10 px.
 // D'où : un point d'entrée unique, appelable de partout et idempotent.
-// 🩸 v1.82.0 (bis) — LE DRAPEAU ÉTAIT GLOBAL, IL DOIT ÊTRE SUR LA MAP.
+// 🩸 (bis) — LE DRAPEAU ÉTAIT GLOBAL, IL DOIT ÊTRE SUR LA MAP.
 // `window._ktaFrontZoomBound` survivait au changement de plan : la map est
 // recréée, la nouvelle n'a donc PLUS de listener `zoomend`, mais le drapeau
 // dit le contraire et le branchement est sauté. Résultat : la largeur ne se
@@ -359,13 +359,13 @@ function initStructures() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
-    // 🆕 v1.11.0 Undo/Redo : snapshot before. Le label se construit
+    // Undo/Redo : snapshot before. Le label se construit
     // ensuite selon que c'est une nouvelle structure, un sommet de plus
     // ou une fermeture (cas polygon).
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
     const _isNewStruct = !currentStructure;
     const _typeKey = window.modeStructure;
-    // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, le label vient de
+    // pour les types CUSTOM, le label vient de
     // LegendCustomization (le libellé que l'utilisateur a saisi).
     function _resolveTypeLabel(k) {
       const _builtin = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"];
@@ -386,7 +386,7 @@ function initStructures() {
       // 🏗️ Multi-niveau : tag avec le niveau actif si la feature est ON
       // pour ce plan. Sinon → aucun champ level (rétrocompat).
       //
-      // 🆕 v1.9.3-A1.a-fix (KARMA insight cataphile) : un pilier de 2e
+      // un pilier de 2e
       // masse représente structurellement la couche INFÉRIEURE visible
       // depuis la couche courante (la masse "en dessous"). Donc en mode
       // multi-niveau, on l'auto-tagge à `activeLevel - 1` au lieu de
@@ -397,7 +397,7 @@ function initStructures() {
       // ce que l'utilisateur voit / dessine est aussi à ce niveau).
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         const _activeLvl = window.APP_CONFIG.activeLevel || 0;
-        // 🆕 v1.9.3-A1.b.2 : front-2 suit la même règle que pilier-2
+        // front-2 suit la même règle que pilier-2
         // (= niveau de la 2e masse = activeLevel - 1). Front-1 et autres
         // restent au niveau actif.
         if (currentStructure.type === "pilier-2" || currentStructure.type === "front-2") {
@@ -406,18 +406,18 @@ function initStructures() {
           currentStructure.level = _activeLvl;
         }
       }
-      if (window.KtaUid) window.KtaUid.ensure(currentStructure, "st");   // 🆔 v2.1.0
+      if (window.KtaUid) window.KtaUid.ensure(currentStructure, "st");
       structuresData.push(currentStructure);
     }
 
-    // 🆕 v1.9.3-A1.b.2 : pour les types POLYLINE (fronts de taille), pas
+    // pour les types POLYLINE (fronts de taille), pas
     // de fermeture par re-clic — c'est une ligne ouverte. L'utilisateur
     // ferme via le bouton ✅ "Fermer la structure en cours" dans le menu.
     // Les types POLYGON (piliers + mur) gardent le comportement re-clic
     // proche du 1er point pour fermer.
     if (_isPolylineType(currentStructure.type)) {
       currentStructure.points.push({ x: x, y: y });
-      if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
+      if (window.KtaUid) window.KtaUid.touch(currentStructure);
       renderStructures();
       if (window.HistoryManager && _historyBefore) {
         const lbl = _isNewStruct
@@ -447,7 +447,7 @@ function initStructures() {
     }
 
     currentStructure.points.push({ x: x, y: y });
-    if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
+    if (window.KtaUid) window.KtaUid.touch(currentStructure);
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewStruct
@@ -536,7 +536,7 @@ function toggleStructureMode(type) {
 // =========================
 function fermerStructureEnCours() {
   if (!currentStructure) return false;
-  // 🆕 v1.9.3-A1.b.2 : minimum 2 points pour polyline (front), 3 pour
+  // minimum 2 points pour polyline (front), 3 pour
   // polygon (pilier / mur). Sans ça, KARMA n'aurait pas pu fermer un
   // front avec seulement 2 points (= ligne minimale valide).
   const minPoints = _isPolylineType(currentStructure.type) ? 2 : 3;
@@ -553,7 +553,7 @@ function fermerStructureEnCours() {
 // RENDU
 // =========================
 function renderStructures() {
-  // 🔍 v1.82.0 — largeur des fronts recalculee au zoom. Le binding est pose
+  // largeur des fronts recalculee au zoom. Le binding est pose
   // ICI, une seule fois, et non a chaque rendu : Leaflet dedoublonne les
   // handlers identiques, mais une closure fraiche a chaque appel empilerait.
   window.brancherLargeurFronts();
@@ -566,7 +566,7 @@ function renderStructures() {
     structurePreviewLayer = null;
   }
 
-  // 🆕 v1.10.0-hotfix1 (KARMA "les fronts de taille doivent être au-dessus
+  // (KARMA "les fronts de taille doivent être au-dessus
   // des piliers, et respecter la logique de niveau") :
   //
   // Ordre Z FINAL (du plus en arrière au plus en avant-plan) :
@@ -629,7 +629,7 @@ function renderStructures() {
     if (!s.points || s.points.length === 0) return;
     if (!_structurePasseFiltre(s)) return;
 
-    // 🆕 v1.21.5 (KARMA "filtre par type de structure") : runtime type
+    // (KARMA "filtre par type de structure") : runtime type
     // filter via FilterPanel. currentStructure bypass (en cours de dessin).
     if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
         && s !== currentStructure) {
@@ -637,16 +637,16 @@ function renderStructures() {
     }
 
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
-    // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
+    // résolution dynamique (custom support)
     const style = _resolveStructureStyle(s.type) || _resolveStructureStyle("mur");
 
-    // 🆕 v1.9.3-A1.b.2 : différenciation polyline (fronts) vs polygon
+    // différenciation polyline (fronts) vs polygon
     // (piliers + mur). Les fronts sont des lignes ouvertes épaisses
     // sans contour (= juste color, pas de stroke noir comme les piliers).
     const isPolyline = !!style.isPolyline;
 
     if (s === currentStructure) {
-      // 🆕 v1.9.3-A1.b.2.5-fix (KARMA "si ce sont bien des tracés, ils
+      // (KARMA "si ce sont bien des tracés, ils
       // ne doivent pas être en pointillé pendant le dessin, on garde le
       // même comportement écran que une road") :
       // - Polyline (front) en cours : ligne CONTINUE déjà au style final
@@ -656,7 +656,7 @@ function renderStructures() {
       // - Polygon (pilier/mur) en cours : preview pointillé (dashArray
       //   "8 5") pour bien signaler que ce n'est pas encore fermé.
       //
-      // 🐛 v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure ;
+      // (KARMA "je ne peux plus tracer aucune structure ;
       // popup s'ouvre au bout du trait pendant le tracé") : la structure
       // EN COURS DE TRACÉ doit RESTER SANS ghost ni popup, sinon (a) la
       // ghost intercepte le clic suivant pour fermer/continuer le tracé
@@ -713,7 +713,7 @@ function renderStructures() {
           opacity:   style.opacity,
           lineCap:   "round",
           lineJoin:  "round",
-          // 🔍 v1.82.0 — LARGEUR ADAPTÉE AU ZOOM (retour KARMA : « vu que nos
+          // LARGEUR ADAPTÉE AU ZOOM (retour KARMA : « vu que nos
           // vecteurs sont des fronts de taille, quand on dézoome la largeur
           // des traits fait qu'on voit une grosse tache »).
           // `weight` est en pixels ÉCRAN : il reste à 10 px quel que soit le
@@ -731,14 +731,14 @@ function renderStructures() {
       }
       structureLayers.push(layer);
 
-      // 📝 v1.16.0 step 1 — popup note au clic sur toutes les structures
+      // popup note au clic sur toutes les structures
       //
-      // v1.16.0 step 1c — pour les fronts (polylines), on ajoute une ghost
+      // pour les fronts (polylines), on ajoute une ghost
       // transparente plus épaisse (idem pattern road.js) pour ergonomie au
       // clic. Pour les polygones (piliers/murs), l'aire du polygone capte
       // déjà bien les clics donc pas de ghost nécessaire.
       //
-      // 🆕 v1.16.0 step 1d : on n'installe ghost + popup QUE si aucun mode
+      // on n'installe ghost + popup QUE si aucun mode
       // tracé/zone/structure n'est actif. Sinon la ghost intercepterait
       // les clics map destinés à ajouter des points au tracé en cours.
       // À la désactivation du mode, toggleStructureMode → renderStructures
@@ -746,7 +746,7 @@ function renderStructures() {
       if (typeof window.attacherNotePopup === "function" &&
           window._aucunModeEditionActif()) {
         const _structRef = s;
-        // 🐛 v1.16.0 step2-drawable-fix2 (KARMA "le nom des structure est
+        // (KARMA "le nom des structure est
         // un cust-mpj... pas le nom que j'ai donné") : le titre de la popup
         // doit être le libellé défini par l'utilisateur (LC.findCustomEntry
         // pour les customs, LC.getLabel pour les built-in — ce qui permet
@@ -789,7 +789,7 @@ function renderStructures() {
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; if (window.KtaUid) window.KtaUid.touch(_structRef); },
           _structPopupTitle(s.type),
-          // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+          // reclassement depuis la popup (cf. convertirObjet.js).
           { convertir: { famille: "structures", obj: _structRef } }
         );
       }
@@ -818,10 +818,10 @@ function resetStructures() {
 // SUPPRIMER LA DERNIÈRE STRUCTURE FERMÉE
 // =========================
 function removeLastStructure() {
-  // 🆕 v1.9.4 (KARMA "supprimer d'un coup la structure en cours") :
+  // (KARMA "supprimer d'un coup la structure en cours") :
   // priorité à la structure EN COURS si elle existe, sinon la dernière
   // fermée. Cohérent avec removeLastRoad et removeLastZone (depuis v1.9.4).
-  // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
+  // Undo/Redo : snapshot before (couvre les 2 branches).
   const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
   if (currentStructure) {
     const idx = structuresData.indexOf(currentStructure);
@@ -854,8 +854,8 @@ function removeLastStructurePoint() {
     const last = structuresData[structuresData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
-    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
-    // 🆕 v1.9.3-A1.b.2 : minimum dépend du type (2 pour polyline, 3 pour polygon)
+    if (window.KtaUid) window.KtaUid.touch(last);
+    // minimum dépend du type (2 pour polyline, 3 pour polygon)
     const minPoints = _isPolylineType(last.type) ? 2 : 3;
     if (last.points.length < minPoints) {
       // Plus assez de points → supprimer la structure entière
@@ -866,7 +866,7 @@ function removeLastStructurePoint() {
   }
 
   currentStructure.points.pop();
-  if (window.KtaUid) window.KtaUid.touch(currentStructure);   // 🆔 v2.1.0
+  if (window.KtaUid) window.KtaUid.touch(currentStructure);
   if (currentStructure.points.length === 0) {
     const idx = structuresData.indexOf(currentStructure);
     if (idx >= 0) structuresData.splice(idx, 1);
@@ -885,7 +885,7 @@ window.getStructures = function() {
 
 window.setStructures = function(structures) {
   structuresData = structures || [];
-  // 🆔 v2.1.0 — filet : toute structure qui entre ressort avec un uid (cf ktaUid.js).
+  // filet : toute structure qui entre ressort avec un uid (cf ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(structuresData, "st");
   currentStructure = null;
   renderStructures();
@@ -898,7 +898,7 @@ window.getCurrentStructure = function() {
   return currentStructure || null;
 };
 
-// 🆕 v1.90.17 — Parité avec le tracé : préservation de currentStructure à
+// Parité avec le tracé : préservation de currentStructure à
 // travers undo/redo (cf road.js getCurrentRoadIndex/setCurrentRoadByIndex).
 // Sans ça, _applyState remettait modeStructure à null au moindre Ctrl+Z
 // (resetStructures le wipe, setStructures remet currentStructure = null) →
@@ -919,7 +919,7 @@ window.setCurrentStructureByIndex = function(idx) {
 // =========================
 // EXPORT GLOBAL
 // =========================
-// 🆕 v1.9.4 : helper exposé pour que activerModeSuppressionStructureClic
+// helper exposé pour que activerModeSuppressionStructureClic
 // (interface.js) sache quelle géométrie tester (polyline pour fronts,
 // polygon pour piliers + murs).
 window.isStructurePolylineType       = _isPolylineType;

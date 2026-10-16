@@ -58,7 +58,7 @@
   const _initialPreset = (function() {
     try {
       let v = localStorage.getItem(LOST_PRESET_STORAGE_KEY);
-      // 🆕 v1.26.3 — Micro-migration : l'ancien preset "bourre" a été
+      // Micro-migration : l'ancien preset "bourre" a été
       // renommé "blesse" (professionnalisation). Réécrit la valeur stockée
       // pour préserver le réglage des users qui avaient ce preset actif.
       if (v === "bourre") {
@@ -89,13 +89,13 @@
   let _zoneOverflow     = false;  // true si le rayon dépasse la taille du plan
   let _lastClues        = "";     // texte des indices saisis (pour restauration)
   let _currentPreset    = _initialPreset;  // clé du preset actif (blesse/lente/normale/rapide)
-  // 🆕 v1.43.26 — Timeout debounce de la recherche autocomplete. Promu au
+  // Timeout debounce de la recherche autocomplete. Promu au
   // scope module pour pouvoir être cleared au close (sinon le setTimeout
   // continue de tourner et tente d'écrire dans `searchResults.innerHTML`
   // alors que l'élément a déjà été retiré du DOM).
-  // 🆕 v1.44.0 — Migré progressivement vers _lc.setTimeout (tracking auto).
+  // Migré progressivement vers _lc.setTimeout (tracking auto).
   let _searchTimeout    = null;
-  // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Lost Mode.
+  // Pilote ModalLifecycle de la modale Lost Mode.
   let _lc               = null;
 
 
@@ -111,7 +111,7 @@
   let _zoneLayer        = null;
   let _lastKnownMarker  = null;
   let _matchMarkers     = [];
-  // 🐛 v1.34.15 (Pack RAM #4) — Promote svgRenderer du scope local de
+  // (Pack RAM #4) — Promote svgRenderer du scope local de
   // _renderOnMap (était `const svgRenderer = L.svg(...)`) au scope module.
   // Sans ça, à chaque appel de _renderOnMap, un NOUVEAU L.svg() était créé
   // et addTo(map), mais l'ancien restait attaché dans map._layers (jamais
@@ -295,7 +295,7 @@
     _reachStats = null;
     _matchMarkers.forEach(function(m) { window.map.removeLayer(m); });
     _matchMarkers = [];
-    // 🐛 v1.34.15 (Pack RAM #4) — Libère le SVG renderer (sinon il reste
+    // (Pack RAM #4) — Libère le SVG renderer (sinon il reste
     // attaché à window.map._layers et accumule à chaque _renderOnMap).
     if (_svgRenderer)       { window.map.removeLayer(_svgRenderer);       _svgRenderer = null; }
   }
@@ -332,7 +332,7 @@
     // automatiquement la nouvelle layer si elle n'est pas attachée à un
     // LayerGroup déclaré comme layer Leaflet. SVG est plus fiable pour les
     // ajouts ad-hoc en cours de session.
-    // 🐛 v1.34.15 (Pack RAM #4) — Réutilise _svgRenderer module-level si déjà
+    // (Pack RAM #4) — Réutilise _svgRenderer module-level si déjà
     // créé (cf _clearLayers qui le revoke). Évite d'accumuler des SVG renderers
     // attachés à map._layers à chaque appel de _renderOnMap.
     _svgRenderer = L.svg({ padding: 0.5 });
@@ -548,7 +548,7 @@
     _desactiverClicCarte();
     _clickModeActive = true;
     document.body.classList.add("kta-lost-click-mode");
-    // 🆕 v1.48.0 : curseur géré par CSS (body.kta-lost-click-mode → réticule
+    // curseur géré par CSS (body.kta-lost-click-mode → réticule
     // de précision contrasté). On n'impose plus de crosshair inline (qui
     // écraserait le curseur custom de la charte).
     window.map.getContainer().style.cursor = "";
@@ -785,10 +785,10 @@
     }
 
     _active = false;
-    // 🆕 v1.43.26 — Cancel le debounce de la recherche autocomplete pour éviter
+    // Cancel le debounce de la recherche autocomplete pour éviter
     // qu'un setTimeout pending tente d'écrire dans un élément retiré du DOM.
     if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
-    // 🆕 v1.44.0 — Cleanup centralisé via ModalLifecycle (timers + listeners).
+    // Cleanup centralisé via ModalLifecycle (timers + listeners).
     if (_lc) { _lc.close(); _lc = null; }
     const m = document.getElementById("kta-lost-modal");
     if (m) m.remove();
@@ -975,7 +975,7 @@
       '</div>';
     document.documentElement.appendChild(modal);
 
-    // 🆕 v1.44.0 — ModalLifecycle attaché : cleanup auto au close (listeners
+    // ModalLifecycle attaché : cleanup auto au close (listeners
     // + timers + blob URLs si on en ajoute plus tard).
     if (window.ModalLifecycle) {
       _lc = window.ModalLifecycle.attach(modal, { label: "LostMode" });
@@ -1029,14 +1029,14 @@
     const searchInput   = document.getElementById("kta-lost-search");
     const searchResults = document.getElementById("kta-lost-search-results");
     searchInput.addEventListener("input", function() {
-      // 🆕 v1.43.26 — utilise le `_searchTimeout` module-level (cleared au close)
+      // utilise le `_searchTimeout` module-level (cleared au close)
       clearTimeout(_searchTimeout);
       const q = searchInput.value.trim();
       if (q.length < 2) { searchResults.innerHTML = ""; return; }
       _searchTimeout = setTimeout(async function() {
         try {
           const found = await window.SearchPoints.findByQuery(q);
-          // 🆕 v1.43.27 (Pattern C) — Guard : modale peut avoir été fermée
+          // (Pattern C) — Guard : modale peut avoir été fermée
           // pendant l'await findByQuery() (qui peut prendre 100-500 ms sur
           // une grosse base de points). Sans guard, on écrirait dans un
           // searchResults DOM-détaché + on appendrait des divs orphelins
@@ -1105,7 +1105,7 @@
       btn.textContent = _t("lost.btn.calcLoading");
       try {
         _lastClues = document.getElementById("kta-lost-clues").value || "";
-        // 🌀 v1.55.1 : overlay « calcul en cours » (computeReachable est SYNC
+        // overlay « calcul en cours » (computeReachable est SYNC
         // bloquant → sans yield-to-paint l'écran fige sans rien montrer).
         const _msg = _t("lost.compute.loading");
         if (window.ComputeLoader && window.ComputeLoader.wrap) {
@@ -1156,7 +1156,7 @@
               '· ' + _t("lost.results.zone.detail", { speed: _speedKmH, m: _elapsedMinutes }) +
             '</span></div>';
     if (_zoneOverflow) {
-      // 🆕 v1.43.26 — Classe CSS dédiée au lieu de styles inline hardcodés (qui
+      // Classe CSS dédiée au lieu de styles inline hardcodés (qui
       // restaient illisibles en thème clair). Les overrides light vivent dans
       // css/style.css sous body.kta-theme-light .kta-lost-warn-overflow.
       html += '<div class="kta-lost-stat kta-lost-warn-overflow">' +
@@ -1213,7 +1213,7 @@
               '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">' + _t("lost.btn.copyReport") + '</button>' +
               '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">' + _t("lost.btn.confirm") + '</button>' +
             '</div>' +
-            // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours
+            // Phase 2 / Feature C — Lancer un plan de secours
             // depuis Lost Mode. Pré-remplit le scénario avec context.lastKnownPoint
             // + zoneIncertitude + elapsedMinutes → workflow naturel "je suis
             // perdu (OU je cherche quelqu'un) → coordination équipes".
@@ -1238,7 +1238,7 @@
         if (!(await window.ktaCopierTexte(txt))) throw new Error("clipboard + execCommand KO");
         const original = btn.textContent;
         btn.textContent = _t("lost.btn.copied");
-        // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.5s.
+        // setTimeout tracked : cleared si modale fermée avant 1.5s.
         const restoreFn = function() { if (btn.isConnected) btn.textContent = original; };
         if (_lc) _lc.setTimeout(restoreFn, 1500);
         else     setTimeout(restoreFn, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
@@ -1259,7 +1259,7 @@
       }
     });
 
-    // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours pré-rempli
+    // Phase 2 / Feature C — Lancer un plan de secours pré-rempli
     const launchSecoursBtn = document.getElementById("kta-lost-launch-secours");
     if (launchSecoursBtn) {
       launchSecoursBtn.addEventListener("click", function() {
@@ -1296,7 +1296,7 @@
     close({ keepLayers: false });
   }
 
-  // 🆕 v1.23.0 Phase 2 / Feature C (KARMA Mode Secours auto pre-fill context
+  // Phase 2 / Feature C (KARMA Mode Secours auto pre-fill context
   // depuis Lost Mode) : expose le state pour SecoursMode.creerDepuisLostMode.
   // Snapshot défensif (clone des objets) pour éviter mutations cross-module.
   function getState() {
@@ -1305,7 +1305,7 @@
       lastKnownPos:   _lastKnownPos ? {
         x:     _lastKnownPos.x,
         y:     _lastKnownPos.y,
-        // 🩸 29/09/2026 (audit Secours) — le niveau voyage avec la position : le
+        // 🩸 le niveau voyage avec la position : le
         // Mode Secours prenait le niveau AFFICHÉ au moment du clic sur « Lancer un
         // plan de secours », faux dès qu'on avait changé d'étage entre-temps.
         level: Number.isInteger(_lastKnownPos.level) ? _lastKnownPos.level : null,

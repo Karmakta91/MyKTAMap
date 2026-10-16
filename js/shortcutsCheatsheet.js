@@ -40,7 +40,7 @@
     "fn:recherche":     "cheatsheet.tool.recherche"
   };
 
-  // 🐛 v1.68.1 : garde `v !== key` mort depuis l'humanisation H1 (t() ne
+  // garde `v !== key` mort depuis l'humanisation H1 (t() ne
   // retourne plus jamais la clé brute) → has() teste la présence réelle.
   function _t(key, fallback) {
     if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {

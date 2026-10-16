@@ -376,7 +376,7 @@ const CALQUE = {
   t("🩸 cablage : l import de session RESYNCHRONISE les calques APRES les objets",
     IE.indexOf("CalqueSession.resynchroniser()") > IE.indexOf("window.setStructures(dataParsee.structures"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
-    // 13/09/2026 : clear(opts) — `opts.snapshotFait` évite un double snapshot
+    // clear(opts) — `opts.snapshotFait` évite un double snapshot
     // quand la modale de restauration l'a déjà pris et attendu (audit Q44).
     /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
   // 🩸 UN <button> N'EMET JAMAIS `change`. Les trois actions ont d'abord ete

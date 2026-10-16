@@ -84,7 +84,7 @@
     return Math.max(0, l.until - Date.now());
   }
 
-  // 🔑 v1.90.6 (demande KARMA) — MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
+  // MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
   // Une instance auto-hébergée peut publier SON hash dans
   // `data/index.json > config.accessHash`. Deux mots de passe ouvrent alors
   // l'app : celui de la communauté (hardcodé ci-dessus, inchangé) et celui du
@@ -156,7 +156,7 @@
   // valeur acceptée par comparaison de chaînes.
   async function _hashInstance() {
     try {
-      // 🏛️ v2.6.0 (chantier 2) — l'index n'est plus relu ici : on lit la config
+      // (chantier 2) — l'index n'est plus relu ici : on lit la config
       // d'instance chargée UNE fois au démarrage, avant les gates
       // (js/ktaInstance.js). Index injoignable → dernière config connue : hors
       // ligne, une instance protégée garde son mot de passe (avant, le fetch
@@ -182,7 +182,7 @@
     } catch(e) { return null; }
   }
 
-  // 🔒 v1.90.8 — L'instance impose-t-elle un mot de passe d'accès ? (accessHash
+  // 🔒 L'instance impose-t-elle un mot de passe d'accès ? (accessHash
   // publié et valide.) Async : demande l'index. Utilisé par main.js pour
   // refuser le bypass d'une licence pro LOCALE, et par la gate pour masquer le
   // bloc d'import. 🩸 Échec réseau → false : hors-ligne au 1ᵉʳ contact, on ne
@@ -192,7 +192,7 @@
     return !!(await _hashInstance());
   }
 
-  // 🔑 v1.90.6 — Le déployeur a changé son mot de passe : on oublie l'ancien,
+  // Le déployeur a changé son mot de passe : on oublie l'ancien,
   // et l'utilisateur le ressaisira au PROCHAIN démarrage. On ne recharge pas la
   // page en pleine session — couper quelqu'un au milieu de son relevé pour une
   // rotation de mot de passe serait pire que le délai d'un boot.
@@ -265,7 +265,7 @@
   // =========================================================================
   // Crée l'overlay plein écran avec champ de saisie, bouton et signature.
   // Style charte MyKTAMap (gradient noir, accent jaune #f4c542).
-  // 🌍 v1.79.4 — rang de langues de la gate (drapeau + code natif, actif
+  // rang de langues de la gate (drapeau + code natif, actif
   // surligné). Libellés = métadonnées de I18n.available(), rien à traduire.
   function _langsHtml() {
     if (!window.I18n || typeof window.I18n.available !== "function") return "";
@@ -284,7 +284,7 @@
     o.id = "kta-unlock-overlay";
     o.innerHTML =
       '<div class="kta-unlock-box">' +
-        // 🌍 v1.79.4 (demande KARMA « choisir sa langue au premier
+        // (demande KARMA « choisir sa langue au premier
         // lancement ») — le choix de langue vit sur la TOUTE PREMIÈRE gate :
         // il pilote la langue GLOBALE (I18n.setLang, même clé que ⚙️ Config)
         // → tout le funnel suit (gate légale, tutoriel, home). Pré-sélection
@@ -292,9 +292,9 @@
         '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
         '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
-        // 14/10/2026 (KARMA) : plus de phrase sous le titre en mode libre ; le mode mot de passe garde la sienne.
+        // plus de phrase sous le titre en mode libre ; le mode mot de passe garde la sienne.
         (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
-        // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
+        // Vrais canaux de contact (avant : « contacte l'auteur »
         // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
           t("gate.contact") +
@@ -311,7 +311,7 @@
               '</button>' +
             '</form>') +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
-        // 🆕 v1.28.1 — Bouton 📖 Documentation accessible depuis l'écran de
+        // Bouton 📖 Documentation accessible depuis l'écran de
         // verrouillage. Permet à un user qui doute (« c'est quoi ce projet ? »,
         // « pourquoi un code ? ») de lire le README utilisateur sans devoir
         // entrer. L'onboarding (🎓) est volontairement masqué : sans accès à
@@ -327,7 +327,7 @@
     return o;
   }
 
-  // 🆕 v1.28.1 — Helper d'ouverture de la modale Doc README au-dessus du
+  // Helper d'ouverture de la modale Doc README au-dessus du
   // lockeur. opts.hideOnboarding masque le bouton 🎓 (incohérent dans un
   // contexte verrouillé) et opts.overLocker boost le z-index de la modale
   // à 100200 pour passer au-dessus de l'overlay UnlockGate (z-index 100100).
@@ -383,11 +383,11 @@
           '<div class="kta-unlock-lockout-hint">' +
             t("gate.lockout.hint") +
           '</div>' +
-          // 🆕 v1.28.0 — Canaux explicites (avant : « contacte l'auteur » sans canal).
+          // Canaux explicites (avant : « contacte l'auteur » sans canal).
           '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
             t("gate.contact") +
           '</div>' +
-          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout : si l'user est
+          // Accès doc utilisateur même en lockout : si l'user est
           // bloqué et veut comprendre ce qu'est l'app avant de réinstaller
           // OU contacter l'auteur, il peut lire le README. Ne touche en rien
           // au verrouillage : ouvre juste un modal info par-dessus.
@@ -421,7 +421,7 @@
       return;
     }
 
-    // 🔑 v1.90.6 — QUAND UNE INSTANCE PUBLIE SON MOT DE PASSE, IL EST LE SEUL
+    // QUAND UNE INSTANCE PUBLIE SON MOT DE PASSE, IL EST LE SEUL
     // QUI OUVRE. 🩸 TROU DE SÉCURITÉ CORRIGÉ (KARMA) : la première version
     // acceptait AUSSI le code communautaire. Or ce code est distribué
     // largement — il ouvre la prod qui n'héberge rien. Quiconque le connaît
@@ -435,7 +435,7 @@
     // y est négligeable. Hors-ligne, le Service Worker sert l'index en cache
     // (network-first), donc le hash d'instance reste connu.
     const hashInstance = await _hashInstance();
-    // 🔓 04/10/2026 : plus de code communautaire. Seul le mot de passe publié
+    // plus de code communautaire. Seul le mot de passe publié
     // par l'instance ouvre (le champ n'est affiché que s'il existe).
     const okInstance   = !!(hashInstance && hashed === hashInstance);
 
@@ -499,7 +499,7 @@
   // qui ne résout JAMAIS si lockout (5 tentatives ratées). Le caller
   // (main.js > initApp) await ça → l'app reste bloquée tant que pas auth.
   function ouvrirGate() {
-    // 🌍 v1.79.4 — corps extrait dans _monterGate : le changement de langue
+    // corps extrait dans _monterGate : le changement de langue
     // re-monte la gate dans la nouvelle langue SANS toucher la Promise
     // (_resolveGate survit au re-render).
     return new Promise(function(resolve) {
@@ -509,7 +509,7 @@
   }
 
   function _monterGate() {
-    // 🔓 04/10/2026 — le mode dépend de l'instance : on lit son hash AVANT de
+    // le mode dépend de l'instance : on lit son hash AVANT de
     // dessiner (config d'instance déjà chargée et mémorisée : instantané).
     _hashInstance().catch(function() { return null; }).then(function(h) { _monterGateMode(h); });
   }
@@ -535,7 +535,7 @@
       const libre = !hashInstance;
       const overlay = _creerOverlay(libre ? "libre" : "instance");
 
-      // 🌍 v1.79.4 — sélecteur de langue : setLang recharge le dico puis on
+      // sélecteur de langue : setLang recharge le dico puis on
       // re-monte la gate (l'overlay actuel est remplacé, la Promise survit).
       overlay.querySelectorAll(".kta-unlock-lang-btn").forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -584,7 +584,7 @@
         _onSubmit(overlay, input, fb);
       });
 
-      // 🆕 v1.28.1 — Bouton 📖 Documentation (mode gate normale, pas lockout).
+      // Bouton 📖 Documentation (mode gate normale, pas lockout).
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
@@ -608,7 +608,7 @@
     } catch(e) {}
   }
 
-  // 🆕 v1.29.1-fix1 — Pose le flag LS_UNLOCK car une licence pro a été
+  // Pose le flag LS_UNLOCK car une licence pro a été
   // détectée — licence SERVEUR uniquement (/Licence-pro.json de l'installation ;
   // l'import d'une licence par l'utilisateur n'existe plus depuis le 09/10/2026).
   // Appelé par main.js juste après la résolution async de proLicense.isPro().
@@ -625,8 +625,8 @@
     ouvrirGate:  ouvrirGate,
     lock:        lock,
     markUnlockedViaLicensePro: markUnlockedViaLicensePro,
-    revaliderInstance: revaliderInstance,   // 🔑 v1.90.6 (appelé par main.js)
-    instanceRequiertMotDePasse: instanceRequiertMotDePasse   // 🔒 v1.90.8
+    revaliderInstance: revaliderInstance,   // (appelé par main.js)
+    instanceRequiertMotDePasse: instanceRequiertMotDePasse
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

@@ -31,7 +31,7 @@
   // Marges PDF en mm
   const PDF_MARGIN_MM     = 12;
   // 🩸 RESTAUREE le 03/09/2026 — supprimee A TORT par le nettoyage de code mort
-  // du 09/08 (commit 9834504) alors qu elle est UTILISEE l.517. Consequence :
+  // du 09/08 (commit 9834504) alors qu elle est UTILISEE plus bas. Consequence :
   // toute generation PDF avec en-tete echouait sur
   // « HEADER_HEIGHT_MM is not defined », et ce depuis pres d un mois - le smoke
   // ne genere pas de PDF, aucun des 18 garde-fous ne lisait les identifiants.
@@ -135,7 +135,7 @@
       return;
     }
 
-    // 🩸 v1.82.0 — CES COMPTEURS NE SONT PAS DÉCORATIFS : `_cbRow` DÉSACTIVE
+    // 🩸 CES COMPTEURS NE SONT PAS DÉCORATIFS : `_cbRow` DÉSACTIVE
     // la case quand ils valent zéro. Comptés sur la seule session, ils mettaient
     // donc l'export PDF d'un plan importé — dont tout le relevé vit dans un
     // calque de données — dans l'impossibilité de sortir la moindre annotation.
@@ -651,7 +651,7 @@
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(7.5);
     pdf.setTextColor(120, 120, 120);
-    // 🛠️ v1.73.0 : sous-titre kiosque (index.json > config.subtitle) prioritaire
+    // sous-titre kiosque (index.json > config.subtitle) prioritaire
     // sur le tagline i18n — un kiosque « Secteur Nord » exporte des PDF « Secteur Nord ».
     const _kioskSt = (window.KIOSK_CONFIG && typeof window.KIOSK_CONFIG.subtitle === "string")
       ? window.KIOSK_CONFIG.subtitle.trim().slice(0, 80) : "";

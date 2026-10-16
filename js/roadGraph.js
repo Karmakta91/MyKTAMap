@@ -174,7 +174,7 @@
     return Math.max(MATCH_RADIUS_MIN_PX, scale * m);
   }
 
-  // 🆕 v1.49.0 — poids du cap surchargeable à chaud via APP_CONFIG.smartNavHeadingWeight
+  // poids du cap surchargeable à chaud via APP_CONFIG.smartNavHeadingWeight
   // (≥ 0 ; 0 = le cap n'influe plus sur le choix de branche aux croisements ;
   // baisser = passe plus facilement une jonction même mal orienté). Réglable dans
   // ⚙️ Réglages → « Verrou sur tracé (avancé) ». Défaut = W_HEADING_PX_PER_DEG.

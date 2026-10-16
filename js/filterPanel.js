@@ -41,7 +41,7 @@
 (function() {
   "use strict";
 
-  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
+  // (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
   // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-filtres.css", "kta-css-style-filtres");
@@ -115,7 +115,7 @@
     if (!a) return;
     const n = _nbFiltresActifs();
     a.classList.toggle("kta-filter-ctrl-actif", n > 0);
-    // 🔵 14/09/2026 (KARMA) — UN POINT, PAS UN CHIFFRE. `n` compte les
+    // UN POINT, PAS UN CHIFFRE. `n` compte les
     // CATÉGORIES filtrées (points, tracés, zones, structures, niveaux), pas
     // les objets masqués : décocher un seul type ou vingt affichait « 1 ».
     // Un chiffre qui ne mesure pas ce qu'on croit est pire que pas de chiffre.
@@ -146,7 +146,7 @@
     }, 200);
   }
 
-  // 🐛 v1.44.1 — Recalcul des roads/intersections après toggle d'un calque
+  // Recalcul des roads/intersections après toggle d'un calque
   // DATA. Contexte : road.js écoute `overlayadd`/`overlayremove` (événements
   // émis par le contrôle de couches Leaflet NATIF) pour recalculer les
   // cercles d'intersection quand un calque devient visible/masqué. Or depuis
@@ -183,7 +183,7 @@
 
   function isVisible() { return !!_modal; }
 
-  // 🆕 v1.21.5 (sync M-LVL bidirectionnel) : appelé par appliquerFiltreNiveau
+  // (sync M-LVL bidirectionnel) : appelé par appliquerFiltreNiveau
   // quand visibleLevels / activeLevel changent ailleurs (modale Niveaux,
   // pastille). Re-render seulement la section M-LVL si la modale est ouverte.
   function onLevelChange() {
@@ -197,7 +197,7 @@
     _bindLevelHandlers(sec);
   }
 
-  // 🆕 v1.43.26 — Refacto event delegation : au lieu de re-binder tous les
+  // Refacto event delegation : au lieu de re-binder tous les
   // boutons à chaque onLevelChange (qui faisait un innerHTML reflow + multi
   // attaches de listeners sur les nouveaux noeuds), on attache UN SEUL
   // listener click/change sur `sec` (le conteneur de section M-LVL, jamais
@@ -216,7 +216,7 @@
       if (btnActive && scope.contains(btnActive)) {
         const lvl = parseInt(btnActive.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // 🆕 v1.74.0 : passe par le helper unique (avant : écriture directe de
+        // passe par le helper unique (avant : écriture directe de
         // activeLevel + notify d'un callback _onLevelChange jamais défini →
         // ni pastille ni modules rafraîchis depuis cette modale).
         if (typeof window.ktaSetActiveLevel === "function") {
@@ -315,7 +315,7 @@
       if (!Array.isArray(items)) return;
       items.forEach(function(it) {
         if (!it || !it.type) return;
-        // 🐛 v1.21.5-fix1 (KARMA "itinerary1") : exclure le type "itinerary" du
+        // (KARMA "itinerary1") : exclure le type "itinerary" du
         // filtre runtime. C'est un dérivé Pathfinder (= chemin calculé), pas un
         // type user-chooseable. Cohérent avec les hooks runtime qui bypass
         // déjà road.type === "itinerary" dans renderRoads.
@@ -337,14 +337,14 @@
   }
 
   // Label LegendCustomization-aware
-  // 🐛 v1.76.0 (F11) — `getLabel` ne consulte QUE les libellés des types
+  // (F11) — `getLabel` ne consulte QUE les libellés des types
   // built-in : pour un type CUSTOM elle rendait la clé brute, et la puce du
   // filtre affichait `cust-m2k9x-3fa` au lieu du nom choisi. Il faut passer par
   // `findCustomEntry`, comme le font déjà refonteInterface.js, statsGlobales.js
   // et pathfinder.js — ce module était le seul à l'avoir oublié.
   function _lcLabel(category, type, fallback) {
     const LC = window.LegendCustomization;
-    // 🧷 v1.76.1 — findCustomEntry pour TOUT type non résolu par getLabel
+    // findCustomEntry pour TOUT type non résolu par getLabel
     // (plus seulement `cust-`) : une entrée liée à un id technique (« Bas »)
     // doit afficher son libellé ici aussi.
     if (LC && typeof LC.findCustomEntry === "function") {
@@ -502,12 +502,12 @@
     }
     let html = '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
-      // 🩹 v1.34.5 — KARMA bug prod v1.34.3 : check imageLayer → close →
+      // KARMA bug prod v1.34.3 : check imageLayer → close →
       // reopen → unchecked. Cause initiale supposée : mismatch d'id si
       // plan-config sans `id`. Fallback `lc.id || lc.label` aligné avec
-      // map.js l423. Bénéfice : couvre quand même le cas des vieux plans
+      // map.js > initMapFromConfig. Bénéfice : couvre quand même le cas des vieux plans
       // sans champ `id` (défense en profondeur).
-      // 🐛 v1.34.7 — Le vrai bug racine était ailleurs : initDataFromConfig
+      // Le vrai bug racine était ailleurs : initDataFromConfig
       // (main.js l39, ancien) vidait `_ktaImageOverlays` JUSTE APRÈS que
       // initMapFromConfig venait de le populer. Fix : retrait du reset
       // dupliqué dans main.js. Le check `hasLayer` ici fonctionne désormais.
@@ -536,7 +536,7 @@
     }
     const pc = window.PLAN_CONFIG;
     const cfg = (pc && Array.isArray(pc.dataLayers)) ? pc.dataLayers : [];
-    // 🔄 v1.85.0 — RAPATRIEMENT EN SESSION (cf. js/calqueSession.js).
+    // RAPATRIEMENT EN SESSION (cf. js/calqueSession.js).
     // Un calque de données est en LECTURE SEULE et rendu UNE seule fois : pour
     // y corriger quoi que ce soit il faut amener son contenu dans la session,
     // là où `renderRoads`/`renderZones`/`renderStructures` savent redessiner.
@@ -585,7 +585,7 @@
     return html;
   }
 
-  // 🔄 v1.85.0 — re-rend la SEULE section des calques. Un `ouvrir()` complet
+  // re-rend la SEULE section des calques. Un `ouvrir()` complet
   // refermerait les `<details>` que l'utilisateur a repliés et perdrait sa
   // position de défilement : après un rapatriement, on ne redessine que ce
   // qui a changé.
@@ -690,7 +690,7 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     document.addEventListener("keydown", _onKey);
 
-    // 🆕 v1.43.27 (Pattern 2 — extension du refactor M-LVL v1.43.26) :
+    // (Pattern 2 — extension du refactor M-LVL v1.43.26) :
     // event delegation sur `overlay` pour les sections Image / Data / Tags /
     // show-all / hide-all. Avant : N listeners individuels par section
     // (cb.addEventListener × ~30 checkboxes). Maintenant : 2 listeners
@@ -717,7 +717,7 @@
         if (!grp || !window.map) return;
         if (t.checked) { try { window.map.addLayer(grp); } catch(_) {} }
         else           { try { window.map.removeLayer(grp); } catch(_) {} }
-        // 🐛 v1.44.1 — recalcule roads + cercles d'intersection (les roads
+        // recalcule roads + cercles d'intersection (les roads
         // embarquées du calque masqué doivent disparaître du calcul, cf.
         // _scheduleRoadsRecalc pour le contexte complet).
         _scheduleRoadsRecalc();
@@ -739,7 +739,7 @@
       btn.addEventListener("click", function() {
         const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        // 🆕 v1.74.0 : helper unique (cf. _bindLevelHandlers, même correctif).
+        // helper unique (cf. _bindLevelHandlers, même correctif).
         if (typeof window.ktaSetActiveLevel === "function") {
           window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
         } else {
@@ -785,7 +785,7 @@
       });
     });
 
-    // 🆕 v1.43.27 — Tags+Types délégués via le listener `change` sur overlay
+    // Tags+Types délégués via le listener `change` sur overlay
     // (cf. bloc plus haut). Plus de forEach individuel.
 
     // === Mini actions "Tout / Aucun" par section — délégation click ===
@@ -831,7 +831,7 @@
         _notify();
         // Recoche toutes les checkboxes runtime
         overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) { cb.checked = true; });
-        // 🐛 v1.34.6 — Fix bug confirmé : "Tout afficher" ne touchait PAS les
+        // Fix bug confirmé : "Tout afficher" ne touchait PAS les
         // image layers ni les data layers. L'utilisateur attendait un reset
         // complet (toutes les couches re-visibles) — uniquement les chips
         // tags/types étaient remises à zéro. Maintenant on dispatch un event
@@ -920,7 +920,7 @@
   function _escAttr(s) { return window.ktaEsc(s); }
 
   // ============================================================
-  // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION
+  // RAPATRIEMENT D'UN CALQUE EN SESSION
   // ============================================================
   // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur des relevés réels :
   // 225 octets par objet, donc ~1,1 Mo pour un relevé SIG de 5 000 objets —

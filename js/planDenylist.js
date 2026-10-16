@@ -245,7 +245,7 @@
                        ? (info.sha256.slice(0, 12) + "…" + info.sha256.slice(-8))
                        : t("denylist.hashUnavailable");
 
-    // 🆕 v1.42.14 — Palette adaptée au thème (gardons le rouge danger fort
+    // Palette adaptée au thème (gardons le rouge danger fort
     // dans les 2 thèmes — la sémantique reste critique — juste les fonds
     // s'adaptent à la charte).
     const isLight = _isLightTheme();
@@ -375,7 +375,7 @@
     document.head.appendChild(style);
   }
 
-  // 🆕 v1.42.14 — Détecte si le thème clair cataphile est actif (themeManager).
+  // Détecte si le thème clair cataphile est actif (themeManager).
   function _isLightTheme() {
     try {
       return document.body.classList.contains("kta-theme-light") ||
@@ -386,7 +386,7 @@
   function _escapeHtml(s) { return window.ktaEsc(s); }
 
   // ============================================================
-  // 🆕 v1.42.3 — AUDIT BOOT : check des plans LOCAUX déjà importés
+  // AUDIT BOOT : check des plans LOCAUX déjà importés
   // ============================================================
   // Au boot, on hash tous les plans `type:"local"` du PlanRegistry et on
   // compare à la denylist actuelle. Permet de purger automatiquement les
@@ -395,7 +395,7 @@
   //
   // Performance :
   //   • Cache hash dans le registry (`plan.sha256`) → 1 seul hash par plan
-  //     dans sa vie (sauf si KARMA force un re-hash via clearAllHashes()).
+  //     dans sa vie (un re-hash demande de vider `plan.sha256`).
   //   • Audit séquentiel en arrière-plan (await yield entre chaque plan)
   //     pour ne pas bloquer le main thread.
   //   • Skip total si denylist vide (= cas commun, 0 charge).
@@ -539,7 +539,7 @@
     const existing = document.getElementById("kta-denylist-purged-modal");
     if (existing) existing.remove();
 
-    // 🆕 v1.42.14 — Palette adaptée au thème (orange ambré reste dominant
+    // Palette adaptée au thème (orange ambré reste dominant
     // dans les 2 thèmes — sémantique alerte douce — fonds adaptés).
     const isLightP = _isLightTheme();
     const pp = isLightP ? {
@@ -655,7 +655,7 @@
     getDenylist:         function() { return _denylist; },
     computeSha256:       computeSha256,
     showDeniedModal:     showDeniedModal,
-    // 🆕 v1.42.3 — Audit boot des plans locaux déjà importés
+    // Audit boot des plans locaux déjà importés
     auditPlansLocaux:    auditPlansLocaux,
     getPurgedAtBoot:     getPurgedAtBoot,
     clearPurgedAtBoot:   clearPurgedAtBoot,

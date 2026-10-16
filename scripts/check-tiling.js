@@ -109,12 +109,12 @@ function blocOffV2() {
 }
 
 // ───────── 3. les plans SERVEUR résolvent leurs tuiles en HTTP ─────────
-// 🩸 v1.87.0 : la dérivation a quitté l'IIFE locale pour une fonction
+// 🩸 la dérivation a quitté l'IIFE locale pour une fonction
 // TOP-LEVEL partagée avec le pré-cache hors-ligne. Deux copies auraient
 // divergé, et le symptôme aurait été un plan « téléchargé » mais troué.
 t("🌐 la racine des tuiles serveur est une fonction PARTAGÉE",
   /function ktaRacineTuilesServeur\(pc\)/.test(CODE));
-// 🩸 v1.88.3 : le runtime NE calcule plus la racine — il la REÇOIT, sondée,
+// 🩸 le runtime NE calcule plus la racine — il la REÇOIT, sondée,
 // de chargerImage. L'ancienne assertion visait `const RACINE_SRV =
 // ktaRacineTuilesServeur(` et est devenue fausse par le refactor lui-même.
 // Le §16 couvre désormais la chaîne complète ; ici on garde le repli.
@@ -138,7 +138,7 @@ t("🩸 un repli baseImage existe quand aucune tuile n'est exploitable",
   /function _repliBaseImage\(/.test(CODE));
 t("il ne se déclenche qu'une seule fois par chargement",
   /if \(state\.repliFait\) return;[\s\S]{0,80}state\.repliFait = true;/.test(CODE));
-// 🧱 29/09/2026 — une tuile hors écran n'est plus POSÉE mais reste RÉSOLUE
+// une tuile hors écran n'est plus POSÉE mais reste RÉSOLUE
 // (différée) : « aucune résolue » compte les deux, sinon un plan zoomé loin de
 // tout déclencherait le repli à tort. L'assertion exige les deux termes.
 t("déclencheur 1 : aucune tuile résolue (ni posée ni différée)",
@@ -232,7 +232,7 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
       ["icon/house.png",          "data/toto", "icon/house.png",             "icon/ reste à la racine (icônes de l'app)"],
       ["https://x/y.png",         "data/toto", "https://x/y.png",            "URL absolue intacte"],
       ["/racine.png",             "data/toto", "/racine.png",                "chemin absolu intact"],
-      // 🩸 v1.88.4 : un nom NU vient du dossier `data/` du ZIP — c est la mise
+      // 🩸 un nom NU vient du dossier `data/` du ZIP — c est la mise
       // en page de toute archive produite par l app. Rattrape les plans SIG
       // deja deployes, dont le plan-config omet le prefixe.
       ["sig.json",                "data/toto", "data/toto/data/sig.json",   "🩸 nom NU (import SIG) : sous data/"],
@@ -252,9 +252,9 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 
 // ───────── 10. 🎨 ICÔNES : ON SONDE, ON NE DEVINE PLUS ─────────
 // 🩸 VÉCU DEUX FOIS, ET LA 2e ÉTAIT MA CORRECTION DE LA 1re.
-//   v1.86.1 — les icônes PERSO d'un plan servi n'étaient pas résolues
+//   les icônes PERSO d'un plan servi n'étaient pas résolues
 //             (`icon/…` toujours lu depuis la racine du site).
-//   v1.86.2 — j'ai voulu trancher sur le catalogue `TAGS_BUILTIN` : hors
+//   j'ai voulu trancher sur le catalogue `TAGS_BUILTIN` : hors
 //             catalogue = icône du ZIP → préfixée. FAUX. `TAGS_BUILTIN` liste
 //             des **tags de POI**, pas les icônes livrées avec l'app :
 //             `icon/iconetrack.png` (marqueur du tracker) existe bien à la
@@ -262,7 +262,7 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 //             tracker partait donc en `data/<plan>/icon/iconetrack.png` → 404.
 //             Régression d'AFFICHAGE, révélée par hasard par le pré-cache
 //             hors-ligne (« 9 fichiers sur 10 », constat KARMA).
-//   v1.87.2 — on ne devine plus : on DEMANDE au serveur. Une icône n'est
+//   on ne devine plus : on DEMANDE au serveur. Une icône n'est
 //             réécrite que si elle est VRAIMENT dans le dossier du plan.
 // Aucun catalogue ne liste toutes les icônes de l'app : tout critère fondé
 // sur une liste rejouera ce bug. C'est ce que ce contrôle empêche.
@@ -615,7 +615,7 @@ function _opaciteCalque() {
     /const pTuiles = _paneTuiles\(paneNom, opacite\);/.test(HP) && /opacity: pTuiles \? 1 : opacite/.test(HP) &&
     /const pT   = pn \? _paneTuiles\(pn\.nom, op\) : null;/.test(HP) && /opacity: pT \? 1 : op/.test(HP) &&
     /parent\.insertBefore\(pane, parent\.firstChild\);/.test(HP) && !/pane\.style\.zIndex = "-1";/.test(HP));
-  // 🩸 12/10/2026 : plus de z-index négatif (Safari iOS le repeignait derrière le fond OSM pendant le glissé) ;
+  // 🩸 plus de z-index négatif (Safari iOS le repeignait derrière le fond OSM pendant le glissé) ;
   // le sous-calque reste sous les tracés par l'ordre du DOM (premier enfant du calque du plan).
   t("🫥 accueil : les 3 réglages d'opacité passent par le calque (sinon la tuile se re-multiplie)",
     (HP.match(/_opaciteTuilesPlan\(/g) || []).length === 4);
@@ -711,7 +711,7 @@ function _lruZip() {
 }
 
 // ───────── 18. 🖨️ RÉGION PEINTE DEPUIS LES TUILES (cartes PDF du Mode Secours) ─────────
-// 🩸 07/10/2026 : les cartes PDF rendaient le plan ENTIER sous 16 Mpx puis recadraient —
+// 🩸 les cartes PDF rendaient le plan ENTIER sous 16 Mpx puis recadraient —
 // sur un grand plan, ~20 % de la résolution, noms de galeries illisibles (test terrain du
 // 30/09). `ktaDessinerRegionTuiles` ne peint que la région demandée, depuis les tuiles.
 // Bac à sable : faux plan 1300 × 1100 (tuiles partielles en haut et à droite), faux ZIP,

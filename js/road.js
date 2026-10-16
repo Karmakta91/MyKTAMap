@@ -14,14 +14,14 @@ let roadsData = [];
 let currentRoad = null;
 let roadLayers = [];
 
-// 🆕 v1.26.4-perf : cercles d'intersection dans un tableau SÉPARÉ de roadLayers.
+// cercles d'intersection dans un tableau SÉPARÉ de roadLayers.
 // Permet de débouncer leur recompute pendant le dessin actif (chemin chaud
 // O(N²×P²)) : les polylines se reconstruisent à chaque point, mais les cercles
 // survivent au teardown (cf _renderIntersections / _scheduleIntersectionRender).
 let intersectionLayers = [];
 let _interRenderTimer = null;
 
-// 🆕 v1.31.2 (P9) — État de rendu par road, maintenu entre 2 renderRoads() pleins.
+// (P9) — État de rendu par road, maintenu entre 2 renderRoads() pleins.
 // Permet le refresh viewport incrémental (addTo/remove ciblé) au moveend/zoomend
 // sans recréer toutes les polylines à chaque tick. Chaque entry =
 // { road, target, layers, inViewport, bbox } :
@@ -43,7 +43,7 @@ let _roadRenderState = [];
 // calque est masqué, ses roads disparaissent ET leurs intersections aussi.
 let _embeddedRoads = [];
 
-// 🎨 v1.76.0 — Les styles des 5 types built-in ne sont plus declares ici : ils
+// Les styles des 5 types built-in ne sont plus declares ici : ils
 // viennent de `js/styleResolver.js` (table canonique unique). Voir l'en-tete de
 // ce module pour le pourquoi (les memes couleurs etaient recopiees dans ~25
 // tables, et une divergence y etait invisible).
@@ -70,7 +70,7 @@ const ROAD_INTERSECTION_PRIORITY = {
 const ROAD_INTERSECTION_RADIUS = 8;  // 16px de diamètre
 
 // Résolution du style d'un tracé — built-in ET types CUSTOM (LegendCustomization).
-// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle. Retourne
+// delegue integralement a window.ktaResolveStyle. Retourne
 // desormais un objet NEUF a chaque appel (avant : l'objet partage de la table),
 // donc un appelant qui mute son style ne contamine plus les autres traces.
 // Retourne null si le type est inconnu — l'appelant garde son propre repli.
@@ -89,7 +89,7 @@ function _resolveRoadStyle(type) {
   return window.ktaResolveStyle("traces", type);
 }
 
-// 🐛 v1.57.4 — Abonnement PerfUltra ONE-SHOT (audit « fuites au plan
+// Abonnement PerfUltra ONE-SHOT (audit « fuites au plan
 // switch ») : initRoad est ré-exécutée à chaque switch (roadInitialized remis
 // à false par main.js) mais PerfUltra est un singleton → l'onChange s'empilait
 // (N re-renders au toggle Perf après N switches). Abonnement unique + réf
@@ -110,7 +110,7 @@ function initRoad() {
   // roadLayers : la map précédente est détruite avant lancerApplication,
   // donc removeLayer n'a rien à faire — on vide juste la liste de références.
   roadLayers = [];
-  // 🆕 v1.26.4-perf : idem pour les cercles d'intersection + annulation d'un
+  // idem pour les cercles d'intersection + annulation d'un
   // éventuel débounce en vol (sinon il tirerait dans le contexte du nouveau plan).
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
   intersectionLayers = [];
@@ -140,7 +140,7 @@ function initRoad() {
   // 🚀 PerfUltra : re-render sur moveend/zoomend si viewport culling OU
   // décimation est actif.
   //
-  // 🆕 v1.31.2 (P9) — Deux chemins selon les toggles actifs :
+  // (P9) — Deux chemins selon les toggles actifs :
   //  - Si `decim` est ON : `renderRoads()` complet est requis car la décimation
   //    (Ramer-Douglas-Peucker) dépend du niveau de zoom courant — il faut
   //    recalculer chaque polyline avec un nouveau set de points.
@@ -163,7 +163,7 @@ function initRoad() {
   // Hook sur les changements de toggles PerfUltra → re-render à la volée
   // pour appliquer décimation / viewport culling / cap intersections sans
   // forcer l'utilisateur à reload (sauf animOff qui nécessite reload).
-  // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie (cf déclarations avant
+  // abonnement ONE-SHOT + réf rafraîchie (cf déclarations avant
   // initRoad) — avant, un callback de plus s'empilait à chaque plan switch.
   _renderRoadsThrottledRef = _renderRoadsThrottled;
   if (!_perfUltraSubBound && window.PerfUltra && typeof window.PerfUltra.onChange === "function") {
@@ -196,7 +196,7 @@ function initRoad() {
       _flashSnap(_snap.x, _snap.y);
     }
 
-    // 🆕 v1.11.0 Undo/Redo : snapshot AVANT toute mutation (création
+    // Undo/Redo : snapshot AVANT toute mutation (création
     // de currentRoad OU ajout d'un sommet à l'existant). Label adapté
     // selon que c'est le 1er point d'une nouvelle road ou un sommet
     // additionnel.
@@ -223,7 +223,7 @@ function initRoad() {
           currentRoad.level = APP_CONFIG.activeLevel || 0;
         }
       }
-      if (window.KtaUid) window.KtaUid.ensure(currentRoad, "rd");   // 🆔 v2.1.0
+      if (window.KtaUid) window.KtaUid.ensure(currentRoad, "rd");
       roadsData.push(currentRoad);
       if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
         console.log("[Road] nouveau tracé", currentRoad.type);
@@ -231,12 +231,12 @@ function initRoad() {
     }
 
     currentRoad.points.push({ x, y });
-    if (window.KtaUid) window.KtaUid.touch(currentRoad);   // 🆔 v2.1.0 : chaque sommet est une modification
+    if (window.KtaUid) window.KtaUid.touch(currentRoad);   // chaque sommet est une modification
 
     renderRoads();
 
     if (window.HistoryManager && _historyBefore) {
-      // 🐛 v1.16.0 step2-drawable-fix2 : label custom = user-defined
+      // label custom = user-defined
       let typeLabel;
       if (window.LegendCustomization && String(window.modeRoad).startsWith("cust-")) {
         const e = window.LegendCustomization.findCustomEntry(window.modeRoad);
@@ -247,7 +247,7 @@ function initRoad() {
                   : window.modeRoad === "chemin"     ? window.I18n.t("road.type.chemin")
                   : window.modeRoad === "jonction"   ? window.I18n.t("road.type.jonction")
                   : window.modeRoad;
-        // 🏷️ v1.78.0 — un type built-in RENOMMÉ dans la légende garde son
+        // un type built-in RENOMMÉ dans la légende garde son
         // nom choisi jusque dans le libellé d'historique (undo). Sans
         // renommage : libellé i18n ci-dessus, inchangé.
         const _LC = window.LegendCustomization;
@@ -281,7 +281,7 @@ function toggleRoadMode(type) {
     currentRoad = null;
   }
 
-  // v1.16.0 step 1d : re-render TOUS les layers session (roads + zones +
+  // re-render TOUS les layers session (roads + zones +
   // structures) + sync data layer KMZ. Pourquoi tous : un mode actif quel
   // qu'il soit doit retirer ghosts/popups des 3 types d'éléments pour ne
   // pas intercepter les clics destinés au tracé en cours. Cf utils.js >
@@ -353,7 +353,7 @@ function _typeGagnant(typeA, typeB) {
 // (cf README_USER section "Optimiser ton plan").
 // Seuil dynamique selon le toggle PerfUltra.noIntersect : 50 en mode aggressive,
 // 500 en mode normal. Lu à chaque appel pour réagir aux changements à chaud.
-// 🆕 v1.36.2 — seuil 200 → 500 (cause racine bug "ronds disparus") : les plans
+// seuil 200 → 500 (cause racine bug "ronds disparus") : les plans
 // denses récents (relevé dense récent, cf KARMA report) dépassaient silencieusement
 // les 200 routes ; le pre-check à _calculerIntersectionsRoads renvoyait [] sans
 // alerter l'user (juste console.warn jamais lu). Avec 500 on couvre la grande
@@ -419,7 +419,7 @@ function _decimatePointsRDP(pts, epsilon) {
   return out;
 }
 
-// 🚀 29/09/2026 — même décimation pour les tracés d'un PLAN (calques de
+// même décimation pour les tracés d'un PLAN (calques de
 // données, `utils.js`), qui ne passent jamais par `renderRoads`. Exposé ici
 // plutôt que recopié : un seul epsilon, une seule RDP. Rend `null` quand le
 // zoom ne justifie aucune décimation (l'appelant garde alors la précision).
@@ -472,7 +472,7 @@ function _calculerIntersectionsRoads(roads) {
   // pas physiquement (un est au-dessus de l'autre). Bug report user.
   const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
 
-  // 🎨 v1.76.0 — memo des couleurs par type gagnant. La boucle ci-dessous est
+  // memo des couleurs par type gagnant. La boucle ci-dessous est
   // en O(N²) sur les paires de routes ; depuis que le style vient du resolver,
   // chaque appel construit un objet neuf. On resout donc chaque type UNE fois.
   // Memo LOCAL a l'appel (pas au module) : une couleur custom modifiee a chaud
@@ -757,11 +757,11 @@ function _targetLayerForRoad(roadType) {
 // NB : le filtre multi-niveau ci-dessous est un miroir de _passeFiltreNiveau
 // (closure interne à renderRoads) — gardé local pour ne pas toucher au chemin
 // des polylines (zéro régression). À mutualiser si la logique diverge.
-// 🐛 v1.44.1 — Helper de purge des cercles d'intersection (mutualisé entre
+// Helper de purge des cercles d'intersection (mutualisé entre
 // _renderIntersections et resetRoads). Bug pré-existant depuis v1.26.4-perf :
 // `layer.remove()` sur un L.circleMarker fait `this._map.removeLayer(this)`,
 // ce qui retire le layer de la MAP mais PAS du FeatureGroup parent
-// (`window.layerEditor`, cible de l'addTo ligne ~640). Le FeatureGroup
+// (`window.layerEditor`, cible de l'addTo plus haut). Le FeatureGroup
 // gardait sa référence interne → les anciens cercles s'accumulaient à
 // chaque re-render. Mesuré en session debug : 719 cercles fantômes dans
 // layerEditor pour 9 intersections réellement calculées (relevé réel,
@@ -787,11 +787,11 @@ function _renderIntersections() {
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
 
   // Purge des cercles précédents (indépendante de roadLayers).
-  // 🐛 v1.44.1 — purge via helper (fix accumulation FeatureGroup, cf. supra).
+  // purge via helper (fix accumulation FeatureGroup, cf. supra).
   _purgeIntersectionLayers();
 
-  // 🆕 v1.9.2 — toggle on/off des cercles d'intersection. Défaut OFF (getPlanShowsIntersections).
-  // 🆕 v1.36.2 — l'option est désormais PER-PLAN (déplacée de Configuration
+  // toggle on/off des cercles d'intersection. Défaut OFF (getPlanShowsIntersections).
+  // l'option est désormais PER-PLAN (déplacée de Configuration
   // home vers ⚙️ Réglages map mode). Helper `getPlanShowsIntersections()`
   // (cf js/config.js) lit la pref per-plan, fallback sur la pref globale
   // historique, fallback false. Le calcul reste accessible via
@@ -817,8 +817,8 @@ function _renderIntersections() {
     return _vis.indexOf(lvl) >= 0;
   }
 
-  // 🐛 v1.44.1 — Filtre runtime par type de tracé (FilterPanel). Miroir exact
-  // de la logique de renderRoads (~ligne 790) : quand l'user décoche un type
+  // Filtre runtime par type de tracé (FilterPanel). Miroir exact
+  // de la logique de renderRoads : quand l'user décoche un type
   // dans Filtres ≡, les polylines de ce type disparaissent — les cercles
   // d'intersection impliquant ce type doivent disparaître aussi. Sans ce
   // filtre, _renderIntersections recalculait sur TOUTES les roads et
@@ -867,7 +867,7 @@ function _scheduleIntersectionRender() {
   }, 350);
 }
 
-// 🪧 27/09/2026 — UN SEUL renderer SVG pour l'itinéraire et ses raccords, par
+// UN SEUL renderer SVG pour l'itinéraire et ses raccords, par
 // carte. Avant : un `L.svg()` NEUF par polyline et par renderRoads — autant
 // de <svg> empilés, et autant de renderers que le mode « plan orienté » ne
 // connaissait pas (cf mapBearing.js > _majPaddingRenderer : le trajet se
@@ -893,9 +893,9 @@ function renderRoads() {
   // .remove() détache le layer où qu'il soit (map directe ou via layerGroup).
   // Plus portable que window.map.removeLayer(...) maintenant que les layers
   // peuvent vivre dans layerEditor au lieu de la map.
-  // 🐛 v1.46.x — les ronds roses des jonctions (L.circleMarker ajoutés à
+  // les ronds roses des jonctions (L.circleMarker ajoutés à
   // window.layerEditor plus bas) souffraient du même bug que les cercles
-  // d'intersection (cf _purgeIntersectionLayers ligne ~577) : layer.remove()
+  // d'intersection (cf _purgeIntersectionLayers) : layer.remove()
   // sur un circleMarker retire de la MAP mais PAS du FeatureGroup parent →
   // les ronds survivaient au toggle des liaisons inter-niveaux. Fix : retrait
   // FeatureGroup-aware (removeLayer propage aussi le retrait de la map).
@@ -910,7 +910,7 @@ function renderRoads() {
     } catch(e) {}
   });
   roadLayers = [];
-  // 🆕 v1.31.2 (P9) — Clear le cache de state ; il va être repopulé pendant
+  // (P9) — Clear le cache de state ; il va être repopulé pendant
   // le forEach ci-dessous (1 entry par road qui passe les filtres non-viewport).
   _roadRenderState = [];
 
@@ -922,7 +922,7 @@ function renderRoads() {
   let _vpBox = null;
   if (_viewportCull) {
     try {
-      // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON
+      // sous rotation, `getBounds()` rend le rectangle NON
       // tourné de la vue : des tracés bien visibles au bord en sortaient.
       // `zoneVisible()` rend l'empreinte réelle de l'écran ; hors mode, elle
       // rend exactement `getBounds()`.
@@ -1020,7 +1020,7 @@ function renderRoads() {
     // 🏗️ Multi-niveau : skip si la road ne passe pas le filtre du niveau actif.
     if (!_passeFiltreNiveau(road)) return;
 
-    // 🆕 v1.21.5 (KARMA "filtre par type de road") : runtime type filter via
+    // (KARMA "filtre par type de road") : runtime type filter via
     // FilterPanel. window._ktaRuntimeFilters.roadTypes :
     //   • null    → tout visible (default, rétrocompat)
     //   • Set     → seuls les types dans le Set sont visibles
@@ -1058,7 +1058,7 @@ function renderRoads() {
     }
 
     const latlngs = workPoints.map(p => convertCoord(p.x, p.y));
-    // 🆕 v1.16.0 step2-drawable : résolution dynamique du style — supporte
+    // résolution dynamique du style — supporte
     // les types CUSTOM via LegendCustomization (cf _resolveRoadStyle).
     const style = _resolveRoadStyle(road.type) || { color: "white", weight: 5, opacity: 1 };
     const target = _targetLayerForRoad(road.type);
@@ -1075,13 +1075,13 @@ function renderRoads() {
       // Roads session normales : canvas par defaut (preferCanvas)
       polyline = L.polyline(latlngs, style);
     }
-    // 🆕 v1.31.2 (P9) — addTo conditionnel : si la road est culled au render
+    // (P9) — addTo conditionnel : si la road est culled au render
     // initial, on garde la polyline en RAM (pour réinjection rapide au prochain
     // moveend si elle entre dans le viewport) mais on ne l'attache pas au DOM
     // Leaflet. roadLayers la garde pour le cleanup global au prochain renderRoads().
     if (_isInViewport) polyline.addTo(target);
     roadLayers.push(polyline);
-    // 🆕 v1.31.2 (P9) — tracker les layers de cette road pour le refresh viewport.
+    // (P9) — tracker les layers de cette road pour le refresh viewport.
     const _trackedLayers = [polyline];
 
     // 🪧 Guidage (27/09/2026, décision KARMA K) — le trajet À VOL D'OISEAU
@@ -1108,18 +1108,18 @@ function renderRoads() {
       });
     }
 
-    // 📝 v1.16.0 step 1 — popup note au clic. Exclus itinéraire (éphémère)
+    // popup note au clic. Exclus itinéraire (éphémère)
     // et jonction (multi-niveau, gérée séparément). Reste : principal /
     // secondaire / chemin → éditables.
     //
-    // v1.16.0 step 1c (KARMA « augmenter zone cliquable autour du trait ») :
+    // (KARMA « augmenter zone cliquable autour du trait ») :
     // on ajoute une polyline « ghost » TRANSPARENTE par-dessus la vraie,
     // beaucoup plus épaisse (weight base + 14 px, mini 18 px). C'est cette
     // ghost qui capte les clics et binde le popup — la polyline visible
     // garde son weight d'origine pour le rendu. Marge ~7-9 px de chaque
     // côté du trait → ergonomie tactile mobile sans toucher au visuel.
     //
-    // 🐛 v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure ;
+    // (KARMA "je ne peux plus tracer aucune structure ;
     // popup au bout du trait pendant tracé") :
     //
     // - Pas de ghost sur la road EN COURS DE TRACÉ (road === currentRoad).
@@ -1136,7 +1136,7 @@ function renderRoads() {
         road !== currentRoad &&
         window._aucunModeEditionActif()) {
       const _roadRef = road;
-      // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC pour les
+      // titre popup résolu via LC pour les
       // customs ET les built-in (qui peuvent être renommés via ✏️ Modifier).
       const _roadEmojis = { principal: "🟩", secondaire: "🟪", chemin: "🟨" };
       function _roadPopupTitle(t) {
@@ -1167,7 +1167,7 @@ function renderRoads() {
         bubblingMouseEvents:  false,
         // Pas de renderer forcé : suit le default preferCanvas:true du map
       });
-      // 🆕 v1.31.2 (P9) — addTo conditionnel (cf §82.B6 ci-dessus).
+      // (P9) — addTo conditionnel (cf §82.B6 ci-dessus).
       if (_isInViewport) ghost.addTo(target);
       roadLayers.push(ghost);
       _trackedLayers.push(ghost);
@@ -1176,7 +1176,7 @@ function renderRoads() {
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; if (window.KtaUid) window.KtaUid.touch(_roadRef); },
         _roadPopupTitle(road.type),
-        // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+        // reclassement depuis la popup (cf. convertirObjet.js).
         { convertir: { famille: "roads", obj: _roadRef } }
       );
     }
@@ -1198,14 +1198,14 @@ function renderRoads() {
           weight:      3,
           interactive: false
         });
-        // 🆕 v1.31.2 (P9) — addTo conditionnel (cf bloc viewport cull ci-dessus).
+        // (P9) — addTo conditionnel (cf bloc viewport cull ci-dessus).
         if (_isInViewport) cm.addTo(target);
         roadLayers.push(cm);
         _trackedLayers.push(cm);
       });
     }
 
-    // 🆕 v1.31.2 (P9) — push l'entrée de state pour cette road. Utilisé par
+    // (P9) — push l'entrée de state pour cette road. Utilisé par
     // _refreshRoadsViewportOnly() au prochain moveend/zoomend pour faire le diff
     // addTo/remove sans avoir à appeler renderRoads() complet. On stocke la
     // bbox calculée plus haut (ou null si pas calculée parce que itinéraire/
@@ -1245,7 +1245,7 @@ function renderRoads() {
     try { window._rdOnRoadsChanged(); } catch(e) {}
   }
 
-  // 🆕 v1.8.0 : Hook itinéraire — met à jour le label "distance + temps"
+  // Hook itinéraire — met à jour le label "distance + temps"
   // en bas-gauche selon l'état actuel des roads (présence ou non d'un
   // type "itinerary"). Auparavant, le label ne s'affichait qu'après les
   // actions de la modale Itinéraire (Calculer / Effacer), pas après les
@@ -1261,7 +1261,7 @@ function renderRoads() {
 }
 
 // =========================
-// 🆕 v1.31.2 (P9) — REFRESH VIEWPORT INCRÉMENTAL
+// (P9) — REFRESH VIEWPORT INCRÉMENTAL
 // =========================
 // Au moveend/zoomend, plutôt que de re-render toutes les polylines depuis zéro
 // (= renderRoads() complet, O(N) coûteux sur plans denses), on diff l'état
@@ -1289,7 +1289,7 @@ function _refreshRoadsViewportOnly() {
   // renderRoads(). Padding 10% pour éviter le pop-in au pan.
   let _vpBox;
   try {
-    // 🧭 v1.97.3 — même empreinte réelle qu'en rendu complet (cf renderRoads).
+    // même empreinte réelle qu'en rendu complet (cf renderRoads).
     const b = (window.MapBearing && window.MapBearing.zoneVisible
                ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
     const sw = b.getSouthWest(), ne = b.getNorthEast();
@@ -1352,15 +1352,15 @@ function resetRoads() {
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
 
-  // 🆕 v1.26.4-perf : cercles d'intersection dans leur tableau séparé + timer
+  // cercles d'intersection dans leur tableau séparé + timer
   // de débounce — purge explicite (sinon des cercles orphelins survivraient au
   // reset, et un débounce en vol re-rendrait sur un état déjà effacé).
-  // 🐛 v1.44.1 — purge via helper (fix accumulation FeatureGroup, cf.
+  // purge via helper (fix accumulation FeatureGroup, cf.
   // _purgeIntersectionLayers).
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
   _purgeIntersectionLayers();
 
-  // 🆕 v1.8.1 : déclencher les hooks de fin de render pour synchroniser
+  // déclencher les hooks de fin de render pour synchroniser
   // les UI dépendantes (panneau Distance totale + label distance itinéraire
   // en bas-gauche). Sans ça, après un resetRoads() le label "🗺️ XX m"
   // restait visible alors que l'itinéraire venait d'être effacé — bug
@@ -1383,7 +1383,7 @@ function resetRoads() {
 // =========================
 function removeLastRoad() {
   if (roadsData.length === 0) return false;
-  // 🆕 v1.11.0 Undo/Redo : snapshot before
+  // Undo/Redo : snapshot before
   const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("roads") : null;
   const removed = roadsData.pop();
   if (currentRoad === removed) currentRoad = null;
@@ -1407,7 +1407,7 @@ function removeLastRoadPoint() {
     if (currentRoad === last) currentRoad = null;
   } else {
     last.points.pop();
-    if (window.KtaUid) window.KtaUid.touch(last);   // 🆔 v2.1.0
+    if (window.KtaUid) window.KtaUid.touch(last);
     // Si plus aucun point dans ce tracé, le retirer aussi
     if (last.points.length === 0) {
       roadsData.pop();
@@ -1427,13 +1427,13 @@ window.getRoads = function() {
 
 window.setRoads = function(roads) {
   roadsData = roads || [];
-  // 🆔 v2.1.0 — filet : tout tracé qui entre ressort avec un uid (cf ktaUid.js).
+  // filet : tout tracé qui entre ressort avec un uid (cf ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(roadsData, "rd");
   currentRoad = null;
   renderRoads();
 };
 
-// 🆕 v1.26.3-hotfix3 — Préservation de currentRoad à travers undo/redo.
+// Préservation de currentRoad à travers undo/redo.
 // BUG corrigé : un Ctrl-Z pendant le dessin d'un tracé passait par
 // setRoads() qui force currentRoad = null. Le point suivant créait alors
 // un NOUVEAU tracé déconnecté (« lien suivant cassé »), alors que le
@@ -1492,7 +1492,7 @@ window.passeFiltreNiveau = function(item) {
 // =========================
 // Permet à utils.js > ajouterPointsDepuisJSON d'enregistrer les routes lues
 // dans un calque de données, afin qu'elles participent au calcul des intersections.
-// 🐛 v1.34.14 — Ajout du paramètre `skipRender` (optionnel, défaut false).
+// Ajout du paramètre `skipRender` (optionnel, défaut false).
 // Quand un caller batch beaucoup d'appels (cf utils.js ajouterPointsDepuisJSON
 // qui itère sur toutes les roads d'un datalayer), il doit passer skipRender=true
 // pour éviter N renderRoads complets en boucle. Le caller doit alors appeler
@@ -1537,7 +1537,7 @@ window.getEmbeddedRoads = function() {
 // en perf de rendu, tout en gardant le calcul d'itineraire fonctionnel.
 // Sans ca, masquer le calque empechait le pathfinder de trouver un chemin
 // car il ne voyait plus le reseau de routes.
-// 🩸 v1.82.0 — expose aussi le CALQUE d'origine (cf. utils.js). L'export en a
+// 🩸 expose aussi le CALQUE d'origine (cf. utils.js). L'export en a
 // besoin pour respecter les cases « calques » de sa modale. On renvoie une
 // copie : la route d'origine ne doit pas se voir greffer un champ au passage.
 window.getAllEmbeddedRoads = function() {

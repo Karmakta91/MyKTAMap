@@ -53,12 +53,12 @@
   let _overlay     = null;  // L.imageOverlay
   let _canvas      = null;  // canvas standalone
   let _lastOpts    = null;  // pour le redraw au zoom
-  let _overlayUrl  = null;  // 🐛 v1.21.3 (P0-4) : ObjectURL du dernier overlay (à revoke)
+  let _overlayUrl  = null;  // (P0-4) : ObjectURL du dernier overlay (à revoke)
 
   // Defaults
   const DEFAULT_RADIUS_PX = 40;     // rayon du gradient radial
   const DEFAULT_INTENSITY = 1.0;    // multiplicateur global
-  // 🐛 v1.21.3 (audit P0-5) : seuil au-delà duquel _renderCanvas refuse de
+  // seuil au-delà duquel _renderCanvas refuse de
   // dessiner (warning OOMGuard à la place). Empêche les heatmaps avec
   // millions de blobs qui bloquent le main thread >10s → ANR / kill OS.
   // 50000 segments × ~10 samples/segment = 500k blobs canvas — déjà long
@@ -187,7 +187,7 @@
   // ============================================================
   // RENDU CANVAS
   // ============================================================
-  // 🆕 v1.21.2 (KARMA "je trouve les zone afficher par heatmap tres aléatoire") :
+  // (KARMA "je trouve les zone afficher par heatmap tres aléatoire") :
   // refonte du rendu pour donner du sens à la heatmap.
   //
   // Avant : on dessinait UN blob gaussien par point ET la normalisation
@@ -212,7 +212,7 @@
 
     // Downscale pour perf : on travaille sur un canvas avec un cap qui
     // s'adapte à la mémoire device.
-    // 🐛 v1.21.3 (audit P0-4) : avant cap fixe 2048×2048 = 16 Mo RGBA →
+    // avant cap fixe 2048×2048 = 16 Mo RGBA →
     // +clone getImageData = 32 Mo → +toDataURL PNG ~10 Mo → pic transitoire
     // ~40 Mo. iPhone PWA budget ~500 Mo → OOM sur plans ≥5000 px. On baisse
     // à 1024 sur device low-mem (deviceMemory < 6 Go ou heuristique mobile).
@@ -250,7 +250,7 @@
     }
 
     // Helper : convertit un point plan {x, y} en coords canvas [px, py].
-    // 🐛 v1.21.2-fix (KARMA "il me met des zone ou il n'y a rien") : retire
+    // (KARMA "il me met des zone ou il n'y a rien") : retire
     // le flip Y bogué. Le canvas est overlay sur Leaflet avec bounds
     // [[0,0], [imgH, imgW]], donc canvas pixel (0,0) est rendu à Leaflet
     // (lat=imgH, lng=0) = haut du plan. Pour qu'un blob au canvas cy=py*scale
@@ -341,7 +341,7 @@
       _overlayUrl = null;
     }
 
-    // 🐛 v1.21.3 (audit P0-4) : on remplace toDataURL → toBlob +
+    // on remplace toDataURL → toBlob +
     // URL.createObjectURL. Avant : toDataURL encode synchrone en base64 PNG
     // (~10 Mo de string pour un canvas 2048²) puis Leaflet redécode dans
     // un <img> → pic transitoire ~40 Mo. Avec toBlob, le PNG reste binaire
@@ -366,7 +366,7 @@
   // ============================================================
   // COLLECTE DES SEGMENTS SOURCES
   // ============================================================
-  // 🆕 v1.21.2 (KARMA pertinence) : le collecteur retourne des SEGMENTS
+  // le collecteur retourne des SEGMENTS
   // [{a:{x,y}, b:{x,y}}] et non plus des points. Le rendu interpole le
   // long de chaque segment pour produire de vraies traînées continues
   // (vs scatter de blobs aux vertices). Un point isolé est représenté
@@ -398,7 +398,7 @@
     }
   }
 
-  // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+  // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
   // helper qui détermine si un item (point/road/zone/structure) passe le filtre
   // niveau. `levelSet` est un Set<number> | null (null = pas de filtre).
   // Gestion spéciale jonctions interniveau : visible si fromLevel OU toLevel
@@ -415,7 +415,7 @@
   }
 
   // Helper : itère sur une liste d'items {points:[{x,y}]} ou points uniques {x,y}.
-  // 🆕 v1.21.3 : 4e arg `levelSet` filtre par niveau (skip items hors set).
+  // 4e arg `levelSet` filtre par niveau (skip items hors set).
   function _pushShapesAsSegs(segs, items, closed, levelSet) {
     if (!Array.isArray(items)) return;
     items.forEach(function(it) {
@@ -431,7 +431,7 @@
 
   function _collecterSegments(opts) {
     const segs = [];
-    // 🆕 v1.21.3 : levelSet pour filtrage M-LVL. null = pas de filtre (M-LVL
+    // levelSet pour filtrage M-LVL. null = pas de filtre (M-LVL
     // off OU user n'a pas restreint). Si présent, ne contient QUE les niveaux
     // cochés par l'user dans la modale heatmap.
     const levelSet = (opts.levels instanceof Set) ? opts.levels : null;
@@ -516,9 +516,9 @@
     const _dlS = _legacyDL ? true : !!opts.srcDataStructures;
 
     // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
-    // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
+    // NaN : `window._ktaDataMarkers` est un FLAT array de
     // L.marker (cf. utils.js), pas un objet layerId → markers.
-    // 🆕 v1.21.3 : filtre niveau via marker._ktaLevel (cf utils.js > ajouterPointsDepuisJSON).
+    // filtre niveau via marker._ktaLevel (cf utils.js > ajouterPointsDepuisJSON).
     if (_dlP && Array.isArray(window._ktaDataMarkers)) {
       const pc = window.PLAN_CONFIG;
       const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
@@ -531,7 +531,7 @@
       });
     }
     // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
-    // 🆕 v1.21.3 : entry.level (cf utils.js) + jonctions (entry.fromLevel/toLevel)
+    // entry.level (cf utils.js) + jonctions (entry.fromLevel/toLevel)
     if (_dlR && Array.isArray(window._ktaDataPolylines)) {
       window._ktaDataPolylines.forEach(function(entry) {
         // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
@@ -589,7 +589,7 @@
       effacer();
       return;
     }
-    // 🐛 v1.21.3 (audit P0-5) : garde-fou anti-ANR — au-delà de MAX_SEGMENTS,
+    // garde-fou anti-ANR — au-delà de MAX_SEGMENTS,
     // le pipeline canvas génère plusieurs millions de blobs et bloque le
     // main thread >10s. Abort propre avec warning explicite plutôt que kill OS.
     if (segs.length > MAX_SEGMENTS) {
@@ -622,7 +622,7 @@
       try { window.map.removeLayer(_overlay); } catch(e) {}
       _overlay = null;
     }
-    // 🐛 v1.21.3 (audit P0-4) : revoke l'ObjectURL pour libérer le Blob PNG
+    // revoke l'ObjectURL pour libérer le Blob PNG
     // (sans ça, le Blob reste pinné en mémoire tant que le tab vit).
     if (_overlayUrl) {
       try { URL.revokeObjectURL(_overlayUrl); } catch(e) {}
@@ -644,7 +644,7 @@
     // Compteurs live pour aider l'user à voir ce qu'il va activer
     const nTracker = (typeof window.getTrackingTimeline === "function") ? window.getTrackingTimeline().length : 0;
     const nEditor  = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []).length : 0;
-    // 🆕 v1.21.2 (KARMA "rajoute aussi road session, zone, structure") :
+    // (KARMA "rajoute aussi road session, zone, structure") :
     // tracés / zones / structures session. On compte les vertices car c'est
     // ce qui sera réellement utilisé par la heatmap (un tracé long crée plus
     // de chaleur qu'un tracé court — sémantique "densité de présence").
@@ -657,11 +657,11 @@
     const nZonesPts   = _countVertices(zonesArr);
     const nStruct     = structArr.length;
     const nStructPts  = _countVertices(structArr);
-    // 🐛 v1.21.2 fix NaN : _ktaDataMarkers est un FLAT array de L.marker
+    // NaN : _ktaDataMarkers est un FLAT array de L.marker
     // (cf. utils.js). Avant : Object.keys + index → NaN car .length sur un
     // marker unique.
     const nDataMarkers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
-    // 🆕 v1.21.2 (KARMA "rajoute la possibilité de filter les calque de donnée") :
+    // (KARMA "rajoute la possibilité de filter les calque de donnée") :
     // 4 compteurs séparés pour cocher/décocher indépendamment points / tracés /
     // zones / structures côté data layer. _ktaDataPolylines peut contenir
     // des "circleMarker d'extrémité jonction" sans `.points` → on les exclut.
@@ -700,7 +700,7 @@
     const srcDataZones      = (o.srcDataZones      !== undefined) ? o.srcDataZones      : (_legacyDL || dlZones.n     > 0);
     const srcDataStructures = (o.srcDataStructures !== undefined) ? o.srcDataStructures : (_legacyDL || dlStructs.n   > 0);
 
-    // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+    // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
     // détection M-LVL + construction de la liste des niveaux disponibles.
     // - `availableLevels` : tous les niveaux du plan (cf APP_CONFIG, default [-2..2])
     // - `visibleLevels`   : niveaux actuellement visibles sur la carte (modale Niveaux)
@@ -797,7 +797,7 @@
             '</label>' +
           '</div>' +
 
-          // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+          // (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
           // section "Niveaux" rendue UNIQUEMENT si multiLevel actif. Cases
           // pré-cochées sur les niveaux actuellement visibles (cohérent avec
           // la modale "Niveaux" globale de l'app).
@@ -862,7 +862,7 @@
       _close();
     });
 
-    // 🆕 v1.21.2 : bouton "⇅ Tout" toggle global des 4 sous-cases data layer.
+    // bouton "⇅ Tout" toggle global des 4 sous-cases data layer.
     // Si au moins une case est cochée → tout décocher. Sinon → tout cocher
     // (en respectant les disabled = on ne force pas une case sans données).
     const _dlAllBtn = document.getElementById("kta-hm-dl-toggleall");
@@ -878,7 +878,7 @@
       });
     }
 
-    // 🆕 v1.21.3 : bouton "⇅ Tout" toggle des niveaux (M-LVL). Même pattern
+    // bouton "⇅ Tout" toggle des niveaux (M-LVL). Même pattern
     // que le toggle data layers ci-dessus.
     const _lvlAllBtn = document.getElementById("kta-hm-lvl-toggleall");
     if (_lvlAllBtn) {
@@ -891,7 +891,7 @@
     }
 
     document.getElementById("kta-hm-appliquer").addEventListener("click", function() {
-      // 🆕 v1.21.2 : sources session (roads/zones/structures) + 4 sous-flags
+      // sources session (roads/zones/structures) + 4 sous-flags
       // data layer indépendants (points/tracés/zones/structures). Les .checked
       // sont guardés via `?.` car la checkbox peut être disabled / absente
       // si la catégorie est vide (cf. rendu conditionnel ci-dessus).
@@ -908,7 +908,7 @@
         radius:            parseInt(rEl.value, 10),
         intensity:         parseFloat(iEl.value)
       };
-      // 🆕 v1.21.3 : si M-LVL actif, lit les checkboxes niveau et construit
+      // si M-LVL actif, lit les checkboxes niveau et construit
       // un Set passé au collecteur. Si l'user a tout décoché, on envoie un
       // Set vide → aucun niveau → heatmap vide (toast warning naturel).
       if (_isMultiLevel) {

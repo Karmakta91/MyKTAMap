@@ -150,7 +150,7 @@
       _fermerFiche();
 
       const chips = _chipsAjouts(rec);
-      // 🧭 17/08/2026 — si la sortie a été affinée, on dessine le tracé
+      // si la sortie a été affinée, on dessine le tracé
       // RECONSTRUIT (chemin de galeries entre les « 📍 Je suis ici »). Le brut
       // reste stocké et n'est jamais écrasé ; la mention sous le dessin dit
       // lequel est affiché, parce qu'un tracé reconstruit est une HYPOTHÈSE :
@@ -181,7 +181,7 @@
                 'id="kta-jrn-fin">✏️ ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-metrics">' +
-              // ⏱️ v1.85.2 — la durée de la SORTIE (début → fin) en premier ;
+              // la durée de la SORTIE (début → fin) en premier ;
               // le temps d'usage de l'app reste dit juste dessous, parce qu'il
               // dit ce que vaut la mesure : 3 h de sortie pour 12 min d'app,
               // c'est un podomètre qui n'a presque rien vu.
@@ -196,11 +196,11 @@
               // croire à un tracker en panne. On montre les photos à la place.
               (_estTerrain(rec)
                 ? '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dist(rec.distM)) + '</span>' +
-                    // 📏 16/08/2026 — la part estimée (tronçons entre « 📍 Je suis
+                    // la part estimée (tronçons entre « 📍 Je suis
                     // ici », podomètre muet) est dite, jamais fondue dans le total :
                     // l'user doit savoir ce que vaut le chiffre qu'il lit.
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
-                      // 🩸 v1.85.2 — DIRE D OU VIENT LA PART ESTIMEE. « Calculee
+                      // 🩸 DIRE D OU VIENT LA PART ESTIMEE. « Calculee
                       // sur les galeries » et « a vol d oiseau » n ont pas la
                       // meme valeur : dans un labyrinthe l ecart est un facteur
                       // 2 ou 3. `trackAffine` n existe QUE si l affinage reseau
@@ -545,7 +545,7 @@
   // Sources lues DIRECTEMENT, sans charger le plan (c'était tout l'intérêt) :
   //   • note libre  → localStorage `myktamap_note_libre_<planId>` (modeHistoire.js)
   //   • documents   → IDB `myktamap_histoire_pdfs`, store `pdfs`
-  // 📕 26/09/2026 — un PDF LIVRÉ DANS LE ZIP remonte désormais ici, et rien
+  // un PDF LIVRÉ DANS LE ZIP remonte désormais ici, et rien
   // n'a changé dans ce fichier pour ça : `modeHistoire.js > syncDocsEmbarques`
   // en dépose une COPIE dans la même base au chargement du plan (id
   // déterministe `embed_<planId>_<rang>`, donc pas de doublon), et le Carnet la
@@ -584,7 +584,7 @@
     });
   }
 
-  // 📄 v1.69.0 — le store est passé en v2 (N documents par plan) : clé = id du
+  // le store est passé en v2 (N documents par plan) : clé = id du
   // document, index `by_plan`. On gère aussi une base restée en v1 (l'user n'a
   // pas rouvert le Mode Histoire depuis la mise à jour) : la clé EST le planId.
   function _histTousDocs() {
@@ -659,7 +659,7 @@
     });
   }
 
-  // 🆕 v1.81.0 (dette D1) — RESTAURATION d'un document venu d'un export de
+  // (dette D1) — RESTAURATION d'un document venu d'un export de
   // profil. Distinct de `_histAjouter` : celui-ci reçoit un File fraîchement
   // choisi et forge un id ; ici on REPOSE un document existant en conservant
   // son id, son nom et sa date d'origine — sans quoi un profil réimporté deux
@@ -812,7 +812,7 @@
     const rendu = (typeof window.kta_renderMd === "function" && r.note)
       ? window.kta_renderMd(r.note)
       : ('<p class="kta-ipl-empty">' + _esc(r.note || _t("jrn.recits.noteVide")) + '</p>');
-    // 🖥️ v1.69.0 (retour KARMA) — sur PC, la fiche récit s'ouvre en DEUX
+    // sur PC, la fiche récit s'ouvre en DEUX
     // COLONNES : note + documents à gauche, visionneuse PDF à droite (qui prend
     // toute la hauteur utile). Le balisage est le même partout ; c'est le CSS
     // ≥ 1024 px qui bascule en grille — mobile strictement inchangé.
@@ -988,7 +988,7 @@
           '<button class="kta-readme-modal-close" id="kta-jrn-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          // 📖 v1.69.0 (demande KARMA 29/07) — 2e onglet : les récits (note libre
+          // 2e onglet : les récits (note libre
           // + PDF du Mode Histoire) étaient enfermés dans l'écran plan, donc
           // illisibles sans charger le plan. Ils remontent ici, tous plans
           // confondus, éditables sur place.
@@ -1060,7 +1060,7 @@
   // Bouton « 🏁 Clôturer ma sortie » (modale Session de l'écran plan).
   // La clôture manuelle garde TOUJOURS la sortie (pas de seuil), puis en
   // rouvre une nouvelle — cf journal.js > cloturer().
-  // 📍 v1.85.2 — DEMANDER OU L ON EST AVANT DE CLOTURER.
+  // DEMANDER OU L ON EST AVANT DE CLOTURER.
   //
   // 🩸 LE TROU QUE CA FERME : la distance entre deux « 📍 Je suis ici » est
   // comblee quand l ancre SUIVANTE arrive, en regardant en arriere. Apres le
@@ -1148,7 +1148,7 @@
     ouvrir:           ouvrir,
     ouvrirFiche:      ouvrirFiche,
     cloturerDepuisUi: cloturerDepuisUi,
-    // 🆕 v1.81.0 (dette D1) — accès aux documents du Mode Histoire pour
+    // (dette D1) — accès aux documents du Mode Histoire pour
     // l'export/import de profil. Exposé ICI et pas réécrit dans
     // `profileExportImport.js` : le schéma de cette base est DÉJÀ dupliqué
     // entre `modeHistoire.js` et ce module, une 3ᵉ copie garantissait la
@@ -1159,7 +1159,7 @@
       lister:    _histTousDocs,    // → [{id, planId, name, size, addedAt}] (sans blob)
       getDoc:    _histGet,         // → l'enregistrement COMPLET, blob inclus
       restaurer: _histRestaurer,   // ← repose un doc exporté (idempotent)
-      // 🗑️ 29/09/2026 — la suppression d'un plan PEUT emporter ses documents
+      // la suppression d'un plan PEUT emporter ses documents
       // (case à cocher, décision KARMA). Base v1 : l'id listé EST le planId,
       // donc la même suppression par id convient aux deux schémas.
       supprimerPourPlan: function(planId) {
