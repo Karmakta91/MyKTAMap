@@ -3,6 +3,8 @@
 > Lecture du code, plus des mesures Playwright sur le serveur local (390×844 et 360×640 en portrait, 844×390 et
 > 640×360 en paysage, 1366×800 sur PC ; FR, EN, ES ; pref `panneauxAncres` OFF puis ON). Scripts et captures
 > hors dépôt. Aucun code modifié. Le HOME n'est pas audité.
+>
+> **État au 17/10/2026** — faits : QW1, QW4, QW5, M1, M2, M3 (habillage centré), G2 (`checkup-panneaux-geometrie.js`). Ouverts : QW2, QW3, QW6-QW10, M4, M5, G1.
 
 ## Résumé
 

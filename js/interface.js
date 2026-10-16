@@ -1505,6 +1505,10 @@ function _fermerFlyout() {
     try { _currentFlyout.remove(); } catch(e) {}
     _currentFlyout = null;
   }
+  if (_currentFlyoutFond) {
+    try { _currentFlyoutFond.remove(); } catch(e) {}
+    _currentFlyoutFond = null;
+  }
   document.removeEventListener("pointerdown", _onDocClickFlyout, true);
   document.removeEventListener("mousedown",   _onDocClickFlyout, true);
   document.removeEventListener("touchstart",  _onDocClickFlyout, true);
@@ -1521,6 +1525,9 @@ function _fermerFlyout() {
 // tout premier événement (pointerdown) et on avale, sur la carte, la suite du même geste (mousedown émulé,
 // touchend, click) pendant un court instant.
 let _flyoutAvalerJusqua = 0;
+// Fond posé sous le panneau en mode CENTRÉ (audit ergonomie 16/10/2026, M3) : même habillage que Tracker et
+// Filtres. Il reste sous la barre du haut et le footer (z-index 1049 < 1200), qui restent utilisables.
+let _currentFlyoutFond = null;
 const _EVTS_GESTE = ["pointerdown", "mousedown", "touchstart", "touchend", "mouseup", "click"];
 function _cibleSurCarte(t) {
   const carte = document.getElementById("map");
@@ -1547,7 +1554,8 @@ function _onDocClickFlyout(e) {
   const grpId = _currentFlyout.dataset.groupId;
   const grp = _groupes[grpId];
   if (grp && grp.btnPrincipal && grp.btnPrincipal.contains(e.target)) return;
-  if (_cibleSurCarte(e.target)) {
+  // Toucher le fond revient à toucher la carte : une fois le fond retiré, la suite du geste tombe dessus.
+  if (_cibleSurCarte(e.target) || (_currentFlyoutFond && e.target === _currentFlyoutFond)) {
     _flyoutAvalerJusqua = Date.now() + 700;
     _avalerGesteCarte(e);
   }
@@ -1755,6 +1763,13 @@ function _ouvrirFlyout(groupId) {
     grid.appendChild(btn);
   });
 
+  if (!(window.APP_CONFIG && window.APP_CONFIG.panneauxAncres === true)) {
+    fly.classList.add("kta-flyout-centre");
+    _currentFlyoutFond = document.createElement("div");
+    _currentFlyoutFond.className = "kta-group-flyout-fond";
+    _currentFlyoutFond.setAttribute("aria-hidden", "true");
+    document.body.appendChild(_currentFlyoutFond);
+  }
   document.body.appendChild(fly);
   _positionnerFlyout(fly, grp.btnPrincipal, grp.position);
   _currentFlyout = fly;
@@ -1835,13 +1850,31 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   // Mesuré via une sonde CSS jetable, seule façon de lire un `env()` en JS.
   const insets = _lireSafeAreaInsets();
 
+  // Bande utile VERTICALE : entre la barre du haut et le footer de la refonte (z-index 1200, au-dessus du
+  // panneau à 1050). Sans elles dans le calcul, le panneau passait dessous : en paysage, « Fermer la structure
+  // en cours » et « Effacer » restaient cachés sous le footer (audit ergonomie 16/10/2026, M1 — la vraie cause
+  // du bug v1.82). Repli sur l'écran visible et les safe-areas quand une barre est absente ou masquée.
+  let haut = offY + safeMargin + insets.top;
+  let bas  = offY + vpH - safeMargin - insets.bottom;
+  const _barre = function (id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return (r.height > 0 && r.width > 0 && getComputedStyle(el).visibility !== "hidden") ? r : null;
+  };
+  const rHaut = _barre("kta-refonte-header");
+  const rBas  = _barre("kta-refonte-statusbar");
+  if (rHaut && rHaut.bottom + 6 > haut) haut = rHaut.bottom + 6;
+  if (rBas  && rBas.top - 6 < bas)      bas  = rBas.top - 6;
+  if (bas - haut < 120) { haut = offY + safeMargin + insets.top; bas = offY + vpH - safeMargin - insets.bottom; }
+
   // 🐛 v1.16.0 step2-flyout-fix (KARMA "le modal doit pouvoir se dérouler
   // et ne pas sortir du cadre en horizontal") : on COMPUTE la max-height
   // en pixels réels (pas en vh) pour garantir que le panneau ne déborde
   // jamais du viewport — particulièrement en landscape mobile où 78vh peut
   // dépasser 80% de l'écran et où Safari iOS a parfois des soucis avec vh
   // (URL bar dynamique, safe-area, etc.). Le scroll INTERNE prend le relais.
-  const maxH = Math.max(120, vpH - 2 * safeMargin - insets.top - insets.bottom);
+  const maxH = Math.max(120, bas - haut);
   fly.style.maxHeight = maxH + "px";
 
   // Idem pour la largeur (utile en portrait étroit où 280px peut être trop
@@ -1859,10 +1892,8 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   // Si le panel dépasserait en bas → on le remonte. Si le top dépasse
   // déjà en bas (cas extrême), on clamp à safeMargin.
   let top = rect.top;
-  if (top + flyHeight > offY + vpH - safeMargin - insets.bottom) {
-    top = offY + vpH - flyHeight - safeMargin - insets.bottom;
-  }
-  if (top < offY + safeMargin + insets.top) top = offY + safeMargin + insets.top;
+  if (top + flyHeight > bas) top = bas - flyHeight;
+  if (top < haut) top = haut;
 
   // Position horizontale : selon sidebar (topleft → flyout à droite ;
   // topright → flyout à gauche). Clamp + bascule si pas de place.
@@ -1896,11 +1927,11 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   // panneau à côté de son bouton sans jamais gêner, et le retirer d'office
   // serait une régression pour ceux qui travaillent à la souris.
   if (!(window.APP_CONFIG && window.APP_CONFIG.panneauxAncres === true)) {
-    top  = offY + insets.top + (vpH - insets.top - insets.bottom - flyHeight) / 2;
+    top  = haut + (bas - haut - flyHeight) / 2;
     left = offX + insets.left + (vpW - insets.left - insets.right - flyWidth) / 2;
-    // Un panneau plus haut que l'écran donnerait un `top` négatif : on le
-    // colle en haut, son scroll interne prend le relais.
-    if (top  < offY + safeMargin + insets.top)  top  = offY + safeMargin + insets.top;
+    // Un panneau plus haut que la bande utile donnerait un `top` trop haut :
+    // on le colle en haut, son scroll interne prend le relais.
+    if (top  < haut) top = haut;
     if (left < offX + safeMargin + insets.left) left = offX + safeMargin + insets.left;
   }
 

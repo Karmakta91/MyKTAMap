@@ -17339,6 +17339,25 @@ body.kta-theme-light .kta-compass-info {
   background: rgba(255, 255, 255, 0.05);
   color: #e8eaf0;
 }
+/* Mode CENTRÉ (défaut) : habillage de la modale Tracker — fond assombri sous le panneau, croix 36 px
+   (audit ergonomie 16/10/2026, M3). Le fond reste sous la barre du haut et le footer (1200). Mode ancré :
+   inchangé, sans fond. */
+.kta-group-flyout-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 1049;
+  background: rgba(6, 9, 18, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35); }
+.kta-group-flyout.kta-flyout-centre .kta-group-flyout-close {
+  flex: 0 0 auto;   /* un 2e bouton d en-tête (Zones) la comprimait à 30 px */
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  border-radius: 10px;
+}
 
 .kta-group-flyout-grid {
   display: flex;

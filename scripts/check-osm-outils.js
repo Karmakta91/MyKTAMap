@@ -359,8 +359,16 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("le positionneur de panneau existe", fn !== null);
   t("🪟 par défaut le panneau est CENTRÉ (le défaut est la négation du réglage)",
     fn !== null && /if \(!\(window\.APP_CONFIG && window\.APP_CONFIG\.panneauxAncres === true\)\)/.test(fn));
-  t("🪟 centrage vertical sur le viewport RÉEL, encoches déduites",
-    fn !== null && /top\s*=\s*offY \+ insets\.top \+ \(vpH - insets\.top - insets\.bottom - flyHeight\) \/ 2/.test(fn));
+  // 16/10/2026 (audit ergonomie M1) : la bande utile exclut AUSSI la barre du haut et le footer de la refonte
+  // (z-index 1200, au-dessus du panneau) — sinon, en paysage, le bas du panneau restait caché sous le footer.
+  t("🪟 bande utile : viewport RÉEL, encoches déduites",
+    fn !== null && /let haut = offY \+ safeMargin \+ insets\.top;/.test(fn) &&
+    /let bas\s+= offY \+ vpH - safeMargin - insets\.bottom;/.test(fn));
+  t("🩸 bande utile : sous la barre du haut et au-dessus du footer",
+    fn !== null && /"kta-refonte-header"/.test(fn) && /"kta-refonte-statusbar"/.test(fn) &&
+    /maxH = Math\.max\(120, bas - haut\)/.test(fn));
+  t("🪟 centrage vertical dans la bande utile",
+    fn !== null && /top\s*=\s*haut \+ \(bas - haut - flyHeight\) \/ 2/.test(fn));
   t("🪟 centrage horizontal de même",
     fn !== null && /left\s*=\s*offX \+ insets\.left \+ \(vpW - insets\.left - insets\.right - flyWidth\) \/ 2/.test(fn));
   // 🩸 Un panneau plus haut que l'écran donne un `top` négatif : il doit être
@@ -373,8 +381,8 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const iC = fn === null ? -1 : fn.indexOf("panneauxAncres === true))");
   const branche = iC < 0 ? null : fn.slice(iC, fn.indexOf("}", fn.indexOf("insets.left) left", iC)));
   t("la branche de centrage est délimitable", branche !== null);
-  t("🩸 un panneau plus haut que l'écran est collé EN HAUT, pas au-dessus du bord",
-    branche !== null && /if \(top\s+< offY \+ safeMargin \+ insets\.top\)\s+top\s+= offY \+ safeMargin \+ insets\.top;/.test(branche));
+  t("🩸 un panneau plus haut que la bande utile est collé EN HAUT, pas au-dessus du bord",
+    branche !== null && /if \(top\s+< haut\) top = haut;/.test(branche));
   t("🩸 et de même à gauche",
     branche !== null && /if \(left < offX \+ safeMargin \+ insets\.left\) left = offX \+ safeMargin \+ insets\.left;/.test(branche));
 

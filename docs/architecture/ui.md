@@ -1901,7 +1901,7 @@ Résultat mesuré après : 0 px caché et primaire visible sur toutes les config
 
 ---
 
-### 96. Flyout de sidebar : borné au viewport VISIBLE, pas au viewport de mise en page (v1.82.0)
+### 96. Flyout de sidebar : borné à la bande UTILE (viewport visible, barre du haut, footer)
 
 Sur mobile, le panneau 🏛️ **Structures** descendait sous le bord de l'écran :
 « Fermer la structure en cours » et tout ce qui le suit restaient inatteignables.
@@ -1939,6 +1939,31 @@ seule façon d'obtenir un `env()` en JS. Cache invalidé sur changement de
 `visualViewport` le signale. Ses événements `resize` et `scroll` sont donc
 écoutés en plus des listeners existants, et **retirés dans `_fermerFlyout`** avec
 les autres.
+
+🩸 **Le viewport visible ne suffit pas : les barres de la refonte sont au-dessus.**
+`#kta-refonte-header` et `#kta-refonte-statusbar` sont à z-index **1200**, le
+flyout à **1050**. Borné au seul viewport, le panneau passait **sous** le footer :
+en paysage, « Fermer la structure en cours » restait caché même scrollé au bout.
+`_positionnerFlyout` calcule donc une **bande utile** `haut → bas` entre le bas de
+la barre du haut et le haut du footer (6 px de marge ; repli sur viewport +
+safe-areas si une barre est absente ou si la bande fait moins de 120 px), et y
+cale `max-height`, le clamp et le centrage. Le flyout reste à 1050 : il ne cache
+jamais les barres. `box-sizing: border-box` sur `.kta-group-flyout`, sinon padding
+et bordure ajoutent 22 px au `max-height` calculé.
+
+**Habillage selon le réglage « Ancrer les panneaux »** (`APP_CONFIG.panneauxAncres`) :
+- **centré** (défaut) : classe `kta-flyout-centre` + fond `.kta-group-flyout-fond`
+  (z-index 1049, sous les barres) et croix 36 px — même famille que la modale Tracker ;
+- **ancré** : panneau seul, sans fond.
+
+**Fermer en touchant la carte ne doit rien faire d'autre.** Le tracé pose son sommet
+dès le `mousedown` (`road.js`), zones et structures au `click`. `_onDocClickFlyout`
+ferme donc au **début** du geste (`pointerdown`, repli `mousedown`/`touchstart`) et
+`_avalerGesteCarte` (écouteur de capture posé une fois) avale sur `#map` la suite du
+même geste pendant 700 ms. Toucher le fond compte comme toucher la carte.
+
+🛡️ `scripts/smoke/checkup-panneaux-geometrie.js` (porte de release) vérifie tout
+cela au pixel : 4 formats × centré/ancré × 4 panneaux, liste allongée à 22 boutons.
 
 ---
 
