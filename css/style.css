@@ -13007,7 +13007,10 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
      l'utilisateur connaît par cœur (Google Maps, OSM, etc.). Le passer
      en horizontal serait perturbant. Feedback KARMA : "pour le zoom,
      on laisse comme avant, le - en dessous du +". */
-  body.kta-refonte-v1 .leaflet-control-zoom {
+  body.kta-refonte-v1 .leaflet-control-zoom,
+  body.kta-refonte-v1 .leaflet-top .leaflet-bar.leaflet-control-zoom {
+    /* 2e sélecteur : la règle « .leaflet-top.leaflet-left .leaflet-bar » (row) est plus spécifique
+       et mettait les boutons côte à côte en paysage (audit ergonomie 16/10/2026, QW4). */
     flex-direction: column !important;
   }
   /* Boutons en ligne — override le display:block du mode vertical.
@@ -17245,6 +17248,7 @@ body.kta-theme-light .kta-compass-info {
 
 .kta-group-flyout {
   position: fixed;
+  box-sizing: border-box;  /* le maxHeight calculé inclut padding + bordure (sinon +22 px sous l'écran) */
   z-index: 1050;  /* au-dessus des controls Leaflet (~800) et popups (~700) */
   background: #1a1f2e;
   border: 1px solid rgba(140, 180, 255, 0.25);

@@ -821,6 +821,7 @@ function _renderCfgGlobauxLectureSeule() {
     [t("config.globaux.carnet"), carnet],
     [t("config.display.scaledMarkers.label"), c.scaledMarkers !== false ? on : off],
     [t("config.panneaux.label"), c.panneauxAncres === true ? on : off],
+    [t("config.zoomBoutons.label"), c.zoomBoutons === true ? on : off],
     [t("config.snapdraw.label"), c.snapDraw === true ? (on + " · " + (Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 12) + " px") : off]
   ];
   return '<div class="kta-aide-section kta-cfg-globaux">' +

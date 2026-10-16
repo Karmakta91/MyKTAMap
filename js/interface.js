@@ -1505,14 +1505,37 @@ function _fermerFlyout() {
     try { _currentFlyout.remove(); } catch(e) {}
     _currentFlyout = null;
   }
-  document.removeEventListener("click",    _onDocClickFlyout, true);
-  document.removeEventListener("touchend", _onDocClickFlyout, true);
+  document.removeEventListener("pointerdown", _onDocClickFlyout, true);
+  document.removeEventListener("mousedown",   _onDocClickFlyout, true);
+  document.removeEventListener("touchstart",  _onDocClickFlyout, true);
   window.removeEventListener("resize",     _onResizeFlyout);
   window.removeEventListener("scroll",     _onResizeFlyout, true);
   if (window.visualViewport) {
     window.visualViewport.removeEventListener("resize", _onResizeFlyout);
     window.visualViewport.removeEventListener("scroll", _onResizeFlyout);
   }
+}
+
+// Toucher la carte pour refermer le panneau ne doit RIEN faire d'autre (audit ergonomie 16/10/2026, M2) :
+// le tracé ajoute son sommet dès le `mousedown` (road.js), zones et structures au `click`. On ferme donc au
+// tout premier événement (pointerdown) et on avale, sur la carte, la suite du même geste (mousedown émulé,
+// touchend, click) pendant un court instant.
+let _flyoutAvalerJusqua = 0;
+const _EVTS_GESTE = ["pointerdown", "mousedown", "touchstart", "touchend", "mouseup", "click"];
+function _cibleSurCarte(t) {
+  const carte = document.getElementById("map");
+  return !!(carte && t && carte.contains(t));
+}
+function _avalerGesteCarte(e) {
+  if (Date.now() > _flyoutAvalerJusqua || !_cibleSurCarte(e.target)) return;
+  e.stopPropagation();
+  if (e.cancelable && e.type !== "touchstart") e.preventDefault();
+}
+let _avaleurPose = false;
+function _poserAvaleur() {
+  if (_avaleurPose) return;
+  _avaleurPose = true;
+  _EVTS_GESTE.forEach(function(t) { document.addEventListener(t, _avalerGesteCarte, true); });
 }
 
 function _onDocClickFlyout(e) {
@@ -1524,6 +1547,10 @@ function _onDocClickFlyout(e) {
   const grpId = _currentFlyout.dataset.groupId;
   const grp = _groupes[grpId];
   if (grp && grp.btnPrincipal && grp.btnPrincipal.contains(e.target)) return;
+  if (_cibleSurCarte(e.target)) {
+    _flyoutAvalerJusqua = Date.now() + 700;
+    _avalerGesteCarte(e);
+  }
   _fermerFlyout();
 }
 
@@ -1740,8 +1767,12 @@ function _ouvrirFlyout(groupId) {
   // setTimeout pour éviter que le click ayant déclenché l'ouverture
   // ne re-déclenche immédiatement la fermeture (bubble).
   setTimeout(function() {
-    document.addEventListener("click",    _onDocClickFlyout, true);
-    document.addEventListener("touchend", _onDocClickFlyout, true);
+    // Fermeture au DÉBUT du geste (pas au click) : cf _onDocClickFlyout. mousedown/touchstart = navigateurs
+    // sans PointerEvent ; ailleurs le premier des trois ferme et retire les autres.
+    _poserAvaleur();
+    document.addEventListener("pointerdown", _onDocClickFlyout, true);
+    document.addEventListener("mousedown",   _onDocClickFlyout, true);
+    document.addEventListener("touchstart",  _onDocClickFlyout, true);
     window.addEventListener("resize",     _onResizeFlyout);
     window.addEventListener("scroll",     _onResizeFlyout, true);
     // La barre d'URL mobile apparaît et disparaît sans provoquer de `resize` :
