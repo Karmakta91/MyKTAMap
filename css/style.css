@@ -12943,51 +12943,12 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   z-index: 1250 !important;
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   MODALES — réserver l'espace du header + footer en mode refonte
-   ─────────────────────────────────────────────────────────────────
-   Bug remonté KARMA : la modale "Distance totale" s'affichait sous
-   le footer (modale plein écran centrée verticalement → la boîte
-   débordait dans la zone occupée par le status bar 52px).
-
-   Cause : .kta-readme-modal-overlay a `inset: 0; align-items: center`.
-   Le centrage flex prend tout le viewport (100vh), donc une boîte
-   de 88vh est centrée à 6vh du top + 6vh du bottom. En mode refonte,
-   les 6vh du bottom passent SOUS le footer fixed (52px + safe-area).
-
-   Fix : padding-top + padding-bottom sur l'overlay en mode refonte
-   pour réserver l'espace des 2 bars. Le fond sombre couvre toujours
-   tout l'écran (inset:0 + background rgba), mais la boîte centrée
-   reste dans la zone padding-box → plus de débordement.
-
-   PORTÉE RÉELLE (audit ergonomie 16/10/2026, M4) : seuls les overlays
-   insérés dans <body> (sélecteur de plan, Secours, légende perso… ~8)
-   reçoivent cette réserve. Ceux insérés dans <html>
-   (documentElement.appendChild : exports, Filtres, Éditeur de données,
-   ktaAlerte/ktaConfirm… ~100) gardent 16 px et couvrent les barres :
-   c'est la règle, voulue. L'overlay (99999) passe de toute façon
-   au-dessus du header et du footer, et la boîte (88-92dvh) ne rétrécit
-   pas avec ce padding : étendue à <html>, la réserve pousserait le bas
-   de l'export image hors de l'écran en paysage (−15 px en 844×390,
-   −17 px en 640×360, bouton Télécharger compris). Ne pas l'étendre
-   sans plafonner la boîte. */
-body.kta-refonte-v1 .kta-readme-modal-overlay {
-  padding-top:    calc(44px + env(safe-area-inset-top, 0px) + 16px);
-  /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
-     `--kta-statusbar-h` (qui inclut safe-area déjà) + 16px de respiration.
-     Quand le footer wrap multi-ligne, les modales s'ajustent automatiquement. */
-  padding-bottom: calc(var(--kta-statusbar-h, 52px) + 16px);
-}
-
-/* En landscape mobile, header est plus court (36px). Le footer suit
-   également la variable dynamique --kta-statusbar-h (qui devient 40+safe
-   en landscape via la règle plus bas), donc rien à changer côté bottom. */
-@media (max-height: 500px) and (orientation: landscape) {
-  body.kta-refonte-v1 .kta-readme-modal-overlay {
-    padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
-    padding-bottom: calc(var(--kta-statusbar-h, 40px) + 8px);
-  }
-}
+/* Modales `.kta-readme-modal-overlay` et barres de la refonte (décision KARMA 17/10/2026, audit ergonomie M4) :
+   la modale COUVRE la barre du haut et le footer — son overlay (z-index 99999) passe au-dessus d'eux, et toutes
+   les modales se comportent pareil, où qu'elles soient insérées (<html> ou <body>).
+   Il n'y a donc PAS de réserve de place pour les barres. Une réserve (padding sur l'overlay) ne rétrécit pas la
+   boîte (88-92dvh) : elle la pousse vers le bas et coupait le bas des modales en paysage (−17 px en 640×360,
+   bouton Télécharger de l'export image compris). Ne pas la réintroduire sans plafonner la boîte. */
 
 /* ─────────────────────────────────────────────────────────────────
    🆕 v1.8.1-refonte-10 — LANDSCAPE MODE : SOUS-ACTIONS HORIZONTALES
