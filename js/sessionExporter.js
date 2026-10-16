@@ -50,10 +50,8 @@
   // + dupIds (ids POI en double détectés, concat brut conservé — alerte seulement).
   let _fusionInputs = [];
   let _fusionMerged = null;
-  // Mode "solo" : modale focalisée sur un seul onglet (barre masquée), ex. le
-  // fusionneur ouvert depuis l'accueil via ouvrirExportSessionModal("fusion", true).
-  let _soloTab = false;
-  // Titre de la modale en mode solo, par onglet.
+  // Titre de la modale, par onglet. La fenêtre ne montre qu'un onglet à la fois : plus de barre d'onglets, chaque
+  // tuile du lanceur d'export ouvre sa fenêtre focalisée.
   const _TITRES_SOLO = {
     full: "export.solo.full", advanced: "export.solo.advanced", extern: "export.solo.extern",
     conversion: "export.solo.conversion", fusion: "tabledit.source.fusion"
@@ -91,37 +89,6 @@
         max-width: 560px; width: 95%;
         display: flex; flex-direction: column;
         max-height: 90vh;
-      }
-
-      .kta-ses-tabs {
-        display: flex;
-        gap: 4px;
-        padding: 12px 18px 0;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-        background: var(--bg-modal, #1a1f2e);
-      }
-      .kta-ses-tab {
-        flex: 1;
-        padding: 10px 8px;
-        background: transparent;
-        color: #8892a4;
-        border: 1px solid transparent;
-        border-radius: 6px 6px 0 0;
-        cursor: pointer;
-        font-size: 13px;
-        font-family: inherit;
-        font-weight: 500;
-        transition: all 0.12s;
-      }
-      .kta-ses-tab:hover {
-        color: #c0c8d8;
-        background: rgba(140,180,255,0.05);
-      }
-      .kta-ses-tab.active {
-        color: #8cb4ff;
-        background: rgba(140,180,255,0.1);
-        border-color: rgba(140,180,255,0.3);
-        border-bottom-color: transparent;
       }
 
       .kta-ses-content {
@@ -546,10 +513,8 @@
   // ========== ENTRÉE PUBLIQUE ==========
   // ouvrirExportSessionModal(initialTab, solo, opts)
   //   initialTab  : "full" (défaut) | "advanced" | "extern" | "conversion" | "fusion"
-  //   solo        : true → un seul onglet, barre masquée, titre propre à l'onglet
-  //   opts.format : "kmz" | "gpx" → onglet extern ouvert sur ce format
-  // Conversion et Fusion n'ont plus d'onglet dans la barre (elles vivent dans l'Éditeur de données) :
-  // demandées, elles s'ouvrent toujours en solo.
+  //   solo        : sans effet (signature conservée) — la fenêtre montre toujours un seul onglet, titre propre
+  //   opts.format : "kmz" | "gpx" → onglet extern ouvert sur ce format, sans sélecteur de format
   window.ouvrirExportSessionModal = function(initialTab, solo, opts) {
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
@@ -563,9 +528,8 @@
     _filtre = { du: "", au: "", auteur: "" };
     // initialTab optionnel (ex. "fusion" depuis l'Éditeur de données) ; défaut "full".
     _activeTab = tab;
-    _soloTab = !!solo || tab === "conversion" || tab === "fusion";
     const fmt = opts && opts.format;
-    _formatImpose = (_soloTab && tab === "extern" && (fmt === "kmz" || fmt === "gpx")) ? fmt : null;
+    _formatImpose = (tab === "extern" && (fmt === "kmz" || fmt === "gpx")) ? fmt : null;
     if (fmt === "kmz" || fmt === "gpx") _externFormat = fmt;
     _afficherModal();
   };
@@ -821,14 +785,9 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_soloTab ? t(_formatImpose ? "export.solo." + _formatImpose : _TITRES_SOLO[_activeTab]) : t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${t(_formatImpose ? "export.solo." + _formatImpose
+                                                     : _TITRES_SOLO[_activeTab])}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
-        </div>
-
-        <div class="kta-ses-tabs"${_soloTab ? ' style="display:none;"' : ''}>
-          <button class="kta-ses-tab" data-tab="full">${t("export.tab.full")}</button>
-          <button class="kta-ses-tab" data-tab="advanced">${t("export.tab.advanced")}</button>
-          <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
@@ -848,16 +807,18 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
     // Un seul écouteur Échap, retiré par _fermer() quelle que soit la façon de fermer.
     _detacherEchap();
-    _onEchap = function(e) { if (e.key === "Escape" && _modal) _fermer(); };
+    // Pendant le « clic carte » du calibrage KMZ/GPX (modale masquée), Échap annule seulement ce choix : la
+    // fenêtre revient avec les points déjà saisis, comme le bouton Annuler du floater.
+    _onEchap = function(e) {
+      if (e.key !== "Escape" || !_modal) return;
+      if (_kmzClickActive) {
+        _kmzDesactiverModeClic();
+        _modal.style.display = "";
+        return;
+      }
+      _fermer();
+    };
     document.addEventListener("keydown", _onEchap);
-
-    // Listeners onglets
-    modal.querySelectorAll(".kta-ses-tab").forEach(function(tab) {
-      tab.addEventListener("click", function() {
-        _activeTab = tab.dataset.tab;
-        _renderTab();
-      });
-    });
 
     document.getElementById("kta-ses-download").addEventListener("click", _executerExport);
 
@@ -867,10 +828,6 @@
   // ========== RENDU DES ONGLETS ==========
   function _renderTab() {
     if (!_modal) return;
-
-    _modal.querySelectorAll(".kta-ses-tab").forEach(function(t) {
-      t.classList.toggle("active", t.dataset.tab === _activeTab);
-    });
 
     const c = document.getElementById("kta-ses-content");
     if (!c) return;
@@ -3463,8 +3420,9 @@
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">📤 GPX</button>' +
         '</div>' +
-        '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +
       '</div>' +
+      // Texte qui explique le format : HORS de la section ci-dessus, pour rester visible quand le format est imposé.
+      '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +
 
       // ===== Options KMZ (visible si fmt=kmz) =====
       '<div id="kta-extern-opts-kmz" class="kta-extern-opts"' + (fmt === "kmz" ? '' : ' style="display:none;"') + '>' +

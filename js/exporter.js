@@ -1432,6 +1432,10 @@
   //   • Au-delà : l'option reste possible, mais annoncée (mémoire estimée).
   //   • iPhone/iPad : Safari refuse tout canvas au-delà de IOS_MAX_PX_CANVAS
   //     (toBlob rend alors null) — ces options sont désactivées, pas avertie.
+  //   • Si même ¼ dépasse le plafond (iPhone + très grand plan), une 4e option
+  //     « Max » est ajoutée : le plus grand facteur qui tient sous le plafond
+  //     (même formule que le plafonnement du PDF), cochée d'office. Jamais une
+  //     option désactivée cochée : sinon rien n'est cliquable ni exportable.
   const SEUIL_PX_EXPORT   = 64 * 1024 * 1024;   // ≈ 256 Mo de canvas
   const IOS_MAX_PX_CANVAS = 16777216;           // 4096², limite WebKit iOS
   const RESOLS_EXPORT     = [1, 0.5, 0.25];
@@ -1440,20 +1444,57 @@
     return Math.round(config.plan.imageWidth * r) * Math.round(config.plan.imageHeight * r);
   }
 
+  // Taille RÉELLEMENT produite à la résolution r (même arrondi que _genererCanvasExport).
+  function _tailleExport(config, r) {
+    return { w: Math.round(config.plan.imageWidth * r), h: Math.round(config.plan.imageHeight * r) };
+  }
+
+  // Plus grand facteur (au millième) dont le canvas tient sous `budget` pixels.
+  function _facteurMaxSous(config, budget) {
+    const W = config.plan.imageWidth, H = config.plan.imageHeight;
+    let r = Math.floor(Math.sqrt(budget / (W * H)) * 1000) / 1000;
+    // L'arrondi des côtés peut faire déborder d'un cheveu : on redescend au millième près.
+    while (r > 0.001 && _pixelsExport(config, r) > budget) r = Math.round((r - 0.001) * 1000) / 1000;
+    return r;
+  }
+
   function _preparerResolutions(config) {
     if (!config || !config.plan || !config.plan.imageWidth) return;
     const ios = (typeof window.ktaEstIos === "function") && window.ktaEstIos();
     const plafond = ios ? IOS_MAX_PX_CANVAS : SEUIL_PX_EXPORT;
-    let choix = RESOLS_EXPORT[RESOLS_EXPORT.length - 1];
+    let choix = null;
     RESOLS_EXPORT.forEach(function(r) {
       const px = _pixelsExport(config, r);
-      if (ios && px > IOS_MAX_PX_CANVAS) {
-        const el = document.querySelector('input[name="resol"][value="' + r + '"]');
-        if (el) { el.disabled = true; el.parentElement?.classList.add("kta-disabled"); }
+      const el = document.querySelector('input[name="resol"][value="' + r + '"]');
+      if (ios && px > IOS_MAX_PX_CANVAS && el) {
+        el.disabled = true;
+        el.checked = false;
+        el.parentElement?.classList.add("kta-disabled");
       }
-      if (px <= plafond && r > choix) choix = r;
+      if (px <= plafond && (choix === null || r > choix)) choix = r;
     });
-    _setRadio("resol", String(choix));
+    if (choix === null) {
+      // Même ¼ dépasse le plafond : option « Max » au plus grand facteur qui passe.
+      const r = _facteurMaxSous(config, plafond);
+      const plusPetite = RESOLS_EXPORT[RESOLS_EXPORT.length - 1];
+      const ancre = document.querySelector('input[name="resol"][value="' + plusPetite + '"]');
+      const ligne = ancre && ancre.parentElement;
+      if (ligne && r > 0) {
+        const label = document.createElement("label");
+        label.className = "kta-export-radio-row";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "resol";
+        input.value = String(r);
+        const span = document.createElement("span");
+        span.textContent = window.I18n.t(ios ? "imgexport.format.resol.maxIos" : "imgexport.format.resol.max");
+        label.appendChild(input);
+        label.appendChild(span);
+        ligne.parentNode.insertBefore(label, ligne.nextSibling);
+        choix = r;
+      }
+    }
+    if (choix !== null) _setRadio("resol", String(choix));
   }
 
   function _majInfoResolution() {
@@ -1462,7 +1503,7 @@
     const config = window.PLAN_CONFIG;
     if (!el || !config || !config.plan || !config.plan.imageWidth) return;
     const r  = parseFloat(_radioVal("resol") || "1");
-    const w  = Math.round(config.plan.imageWidth * r), h = Math.round(config.plan.imageHeight * r);
+    const taille = _tailleExport(config, r), w = taille.w, h = taille.h;
     const mo = Math.round(w * h * 4 / 1048576);
     let txt = window.I18n.t("imgexport.format.resol.info", { w: w, h: h, mo: mo.toLocaleString() });
     if (w * h > SEUIL_PX_EXPORT) txt += " " + window.I18n.t("imgexport.format.resol.lourd");
@@ -1515,9 +1556,10 @@
     const el = document.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : null;
   }
+  // Une option désactivée n'est jamais cochée (restauration d'état comprise) : le choix en place est gardé.
   function _setRadio(name, val) {
     const el = document.querySelector('input[name="' + name + '"][value="' + val + '"]');
-    if (el) el.checked = true;
+    if (el && !el.disabled) el.checked = true;
   }
 
   // =========================
@@ -1527,11 +1569,24 @@
     // Fermer la modale temporairement
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
 
-    // Banner d'instruction
+    // Floater d'instruction, même grammaire que le calibrage KMZ/GPX : un bouton Annuler (au doigt, pas de
+    // touche Échap) qui fait la même chose qu'Échap — le choix est abandonné, la modale revient.
     const banner = document.createElement("div");
-    banner.id = "kta-export-pick-banner";
-    banner.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:10px 18px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.4); border:1px solid rgba(140,180,255,0.5);";
-    banner.innerHTML = window.I18n.t("imgexport.pick.banner");
+    banner.id = "kta-export-pick-banner";   // repéré par window._modeClicCarteActif (utils.js)
+    banner.className = "kta-iti-floater";
+    const icone = document.createElement("span");
+    icone.className = "kta-iti-floater-icon";
+    icone.textContent = "🎯";
+    const msg = document.createElement("span");
+    msg.className = "kta-iti-floater-msg";
+    msg.textContent = window.I18n.t("imgexport.pick.floaterMsg");
+    const btnAnnuler = document.createElement("button");
+    btnAnnuler.type = "button";
+    btnAnnuler.className = "kta-btn kta-btn-ghost";
+    btnAnnuler.textContent = window.I18n.t("imgexport.btn.annuler");
+    banner.appendChild(icone);
+    banner.appendChild(msg);
+    banner.appendChild(btnAnnuler);
     document.body.appendChild(banner);
 
     // Mode crosshair
@@ -1559,12 +1614,16 @@
       _afficherModal("avance", etatPrecedent);
     }
 
-    function onEchap(e) {
-      if (e.key === "Escape") {
-        nettoyer();
-        _afficherModal("avance", etatPrecedent);
-      }
+    function annuler() {
+      nettoyer();
+      _afficherModal("avance", etatPrecedent);
     }
+
+    function onEchap(e) {
+      if (e.key === "Escape") annuler();
+    }
+
+    btnAnnuler.addEventListener("click", annuler);
 
     window.map.on("click", onClic);
     document.addEventListener("keydown", onEchap);
@@ -1606,10 +1665,8 @@
       // Info textuelle
       const info = document.getElementById("kta-export-preview-info");
       if (info) {
-        const config = window.PLAN_CONFIG;
-        const finalW = Math.round(config.plan.imageWidth  * opts.resol);
-        const finalH = Math.round(config.plan.imageHeight * opts.resol);
-        info.textContent = opts.format.toUpperCase() + " — " + finalW + "×" + finalH + " px";
+        const taille = _tailleExport(window.PLAN_CONFIG, opts.resol);
+        info.textContent = opts.format.toUpperCase() + " — " + taille.w + "×" + taille.h + " px";
       }
     } catch(err) {
       console.warn("[Export] Aperçu erreur :", err);
