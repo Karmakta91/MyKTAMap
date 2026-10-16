@@ -1600,11 +1600,9 @@ function planRowHTML(plan) {
         let dlHtml = "";
         // 15/10/2026 (KARMA : « en pro on ne peut pas télécharger un plan en base depuis la fiche ») — un plan
         // d'une extension (type "ext", plan de l'installation) a lui aussi une copie gardée sur l'appareil :
-        // bouton actif si elle est là ET si l'extension permet l'export de ce plan (même droit que le verrou
-        // d'export, KtaExtensions.exportAutorise) ; grisé avec la raison sinon.
+        // bouton actif si elle est là, grisé avec la raison sinon. 16/10/2026 : pas de verrou d'export ici (seule
+        // la session est gardée, ktaExportPlanRefuse).
         const _ext = plan.type === "ext";
-        const _exportPermis = !_ext || !window.KtaExtensions || typeof window.KtaExtensions.exportAutorise !== "function" ||
-          window.KtaExtensions.exportAutorise(plan.id);
         const _boutonGrise = function(raison) {
           return '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
                  'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
@@ -1613,8 +1611,7 @@ function planRowHTML(plan) {
                  escapeHtml(raison) + '</div>';
         };
         if (_ext) {
-          if (!_exportPermis) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtRefuse"));
-          else if (!plan.storedBlob) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtPasCopie"));
+          if (!plan.storedBlob) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtPasCopie"));
           else {
             dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
                      'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +

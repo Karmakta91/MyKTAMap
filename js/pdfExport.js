@@ -129,8 +129,6 @@
 
     const existing = document.getElementById("kta-pdf-modal");
     if (existing) { existing.remove(); return; }
-    // 🔒 Verrou d'export de l'installation (plan dont l'export est interdit).
-    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
 
     if (!_checkJsPDF()) {
       window.ktaAlerte(window.I18n.t("pdfexport.alert.indispo"), { type: "erreur" });

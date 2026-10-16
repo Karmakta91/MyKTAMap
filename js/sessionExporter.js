@@ -553,9 +553,9 @@
   window.ouvrirExportSessionModal = function(initialTab, solo, opts) {
     const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     const tab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
-    // La Fusion n'exporte pas le plan affiché (elle fusionne des fichiers téléversés) : pas de verrou.
-    // Les autres onglets le gardent, Conversion comprise (son sens par défaut sort les données du plan).
-    if (tab !== "fusion") {
+    // Verrou de l'installation : la SESSION seulement (complet, avancé, conversion — 16/10/2026, KARMA). Export
+    // externe (KMZ / GPX) et Fusion (fichiers téléversés) passent.
+    if (tab === "full" || tab === "advanced" || tab === "conversion") {
       if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     }
     _injecterStyles();

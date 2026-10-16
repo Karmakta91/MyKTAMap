@@ -1392,7 +1392,6 @@
   "home.plans.info.dlZipOk": "✅ {nom} téléchargé ({taille})",
   "home.plans.info.dlZipErr": "❌ Échec : {err}",
   "home.plans.info.dlZipMissing": "❌ L'archive n'est plus dans l'app. Le navigateur l'a probablement supprimée pour libérer de la place. Il faut réimporter le ZIP d'origine.",
-  "home.plans.info.dlZipExtRefuse": "L'installation ne permet pas d'exporter ce plan.",
   "home.plans.info.dlZipExtPasCopie": "Ce plan n'a pas encore de copie sur cet appareil : ouvre-le une fois, puis reviens ici.",
   "home.plans.info.dlZipExtMissing": "❌ La copie de ce plan n'est plus sur l'appareil (le navigateur l'a probablement supprimée pour libérer de la place). Rouvre le plan pour la retélécharger depuis l'installation.",
   "home.plans.info.dlZipFs": "Ce plan n'est pas copié dans l'app : elle garde seulement un raccourci vers le fichier sur ton disque. Il n'y a donc rien à récupérer ici — le ZIP est (ou était) à son emplacement d'origine.",

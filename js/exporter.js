@@ -137,7 +137,6 @@
   // ENTRÉE PUBLIQUE
   // =========================
   window.ouvrirExportModal = function() {
-    if (typeof window.ktaExportPlanRefuse === "function" && window.ktaExportPlanRefuse()) return;
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
     if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();

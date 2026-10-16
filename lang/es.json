@@ -1392,7 +1392,6 @@
   "home.plans.info.dlZipOk": "✅ {nom} descargado ({taille})",
   "home.plans.info.dlZipErr": "❌ Fallo: {err}",
   "home.plans.info.dlZipMissing": "❌ El archivo ya no está en la app. El navegador probablemente lo eliminó para liberar espacio. Habrá que reimportar el ZIP original.",
-  "home.plans.info.dlZipExtRefuse": "La instalación no permite exportar este mapa.",
   "home.plans.info.dlZipExtPasCopie": "Este mapa todavía no tiene copia en este dispositivo: ábrelo una vez y vuelve aquí.",
   "home.plans.info.dlZipExtMissing": "❌ La copia de este mapa ya no está en el dispositivo (el navegador probablemente la borró para liberar espacio). Vuelve a abrir el mapa para descargarlo de nuevo desde la instalación.",
   "home.plans.info.dlZipFs": "Este mapa no está copiado en la app: solo guarda un acceso directo al archivo de tu disco. Aquí no hay nada que recuperar — el ZIP está (o estaba) en su ubicación original.",

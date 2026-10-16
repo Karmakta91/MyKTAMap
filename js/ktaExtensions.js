@@ -1570,13 +1570,17 @@
   };
 
   // ── Goulots pour le reste de l'app (sans extension : toujours « permis ») ──
-  // Export du plan OUVERT (session, KMZ, GPX, image/PDF, ZIP du plan) : refusé = message.
+  // Export de la SESSION du plan ouvert (complet, avancé, conversion) : refusé = message. 16/10/2026 (KARMA) :
+  // KMZ, GPX, image, PDF, exports du Secours et ZIP de la fiche du plan ne passent plus par ici — seule la session
+  // (ce qu'on a écrit sur le plan) est gardée. Message marqué important : il était tu en mode « Essentielles ».
   window.ktaExportPlanRefuse = function () {
     const id = window._currentLoadedPlanId;
     // Seulement plan affiché : depuis l'accueil (ex. fusionneur de sessions), rien à refuser.
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return false;
     if (!id || exportAutorise(id)) return false;
-    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(_t("ext.export.refuse"), "warn");
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(_t("ext.export.refuse"), "warn", { important: true });
+    }
     return true;
   };
   // 🔒 08/10/2026 (KARMA) — à chaque ouverture d'un plan en lecture seule, une fenêtre le dit d'emblée
