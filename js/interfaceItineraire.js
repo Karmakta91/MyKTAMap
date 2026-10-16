@@ -173,9 +173,21 @@ function _panEtFlashSurPoint(p) {
 // via le pathfinder qui utilise getAllEmbeddedRoads (cf suite 26).
 
 // Modal charte : confirme remplacement de l'itineraire en cours
-function _confirmRemplacerItineraire(onConfirm) {
+// `actif` (16/10/2026, KARMA) : l'itinéraire en place. Si c'est le parcours d'une équipe du Mode Secours
+// (road.secours), la fenêtre le dit — le remplacer arrête le guidage de l'équipe — et met en avant « Garder ».
+function _confirmRemplacerItineraire(onConfirm, actif) {
   const existing = document.getElementById("kta-iti-confirm-replace");
   if (existing) existing.remove();
+  let equipe = null;
+  if (actif && actif.secours) {
+    try {
+      const sc = window.SecoursMode && typeof window.SecoursMode.get === "function" ? window.SecoursMode.get(actif.secours.scenarioId) : null;
+      const g = sc && (sc.groupes || []).find(function(x) { return x.id === actif.secours.equipeId; });
+      equipe = (g && g.nom) || "—";
+    } catch (e) { equipe = "—"; }
+  }
+  const T = window.I18n.t;
+  const esc = window.ktaEsc;
 
   const modal = document.createElement("div");
   modal.id = "kta-iti-confirm-replace";
@@ -183,13 +195,16 @@ function _confirmRemplacerItineraire(onConfirm) {
   modal.innerHTML =
     '<div class="kta-modal" style="max-width:420px;">' +
       '<div class="kta-modal-icon" style="color:#f4c542;">⚠️</div>' +
-      '<div class="kta-modal-titre">' + window.I18n.t("iti.replace.titre") + '</div>' +
+      '<div class="kta-modal-titre">' + (equipe !== null ? esc(T("iti.replace.secoursTitre")) : T("iti.replace.titre")) + '</div>' +
       '<div class="kta-modal-texte">' +
-        window.I18n.t("iti.replace.texte") +
+        (equipe !== null ? esc(T("iti.replace.secoursTexte", { equipe: equipe })) : T("iti.replace.texte")) +
       '</div>' +
       '<div class="kta-modal-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-cancel" type="button">' + window.I18n.t("iti.replace.cancel") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-ok"     type="button">' + window.I18n.t("iti.replace.ok") + '</button>' +
+        (equipe !== null
+          ? '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-ok"     type="button">' + esc(T("iti.replace.secoursOk")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-cancel" type="button">' + esc(T("iti.replace.secoursGarder")) + '</button>'
+          : '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-cancel" type="button">' + T("iti.replace.cancel") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-ok"     type="button">' + T("iti.replace.ok") + '</button>') +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
@@ -334,7 +349,7 @@ window.itineraireYAller = function(x, y, nom, opts) {
   const existing = (window.getRoads ? window.getRoads() : [])
     .find(function(r) { return r.type === "itinerary"; });
   if (existing && !opts.urgence) {
-    _confirmRemplacerItineraire(_calculer);
+    _confirmRemplacerItineraire(_calculer, existing);
   } else {
     _calculer();
   }
@@ -1110,7 +1125,7 @@ window.itineraireActiverRoad = function(newRoad, opts) {
     if (typeof opts.onDone === "function") opts.onDone();
   };
   const existing = (window.getRoads ? window.getRoads() : []).find(function(r) { return r.type === "itinerary"; });
-  if (existing && opts.confirmer) _confirmRemplacerItineraire(activer);
+  if (existing && opts.confirmer) _confirmRemplacerItineraire(activer, existing);
   else activer();
 };
 

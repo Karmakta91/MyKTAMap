@@ -5208,19 +5208,37 @@
       // 🆕 hotfix3 — Badge ✓ si étape sortie effectuée
       _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "sortie"), latlng);
     }
-    // Itinéraire suggéré — polyline dashed couleur équipe
+    // Itinéraire suggéré — polyline dashed couleur équipe. 16/10/2026 (capture KARMA : pointillés qui
+    // traversaient la vue du niveau 0 sans galerie dessous) : découpé par niveau, un tronçon sur un niveau
+    // non affiché est atténué (comme les positions des autres, ktaPresences.js).
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
-      const latlngs = g.itineraireSuggere.map(_planToLatLng);
-      const ligne = L.polyline(latlngs, {
-        color:     couleur,
-        weight:    5,
-        opacity:   0.90,
-        dashArray: "10 6",
-        lineCap:   "round",
-        lineJoin:  "round"
+      const mlvl = _mlvlActif() && typeof window.passeFiltreNiveau === "function";
+      const visible = function(lvl) { return !mlvl || window.passeFiltreNiveau({ level: lvl }); };
+      const tracer = function(run, lvl) {
+        if (run.length < 2) return;
+        const vu = visible(lvl);
+        const ligne = L.polyline(run.map(_planToLatLng), {
+          color:     couleur,
+          weight:    vu ? 5 : 3,
+          opacity:   vu ? 0.90 : 0.22,
+          dashArray: "10 6",
+          lineCap:   "round",
+          lineJoin:  "round"
+        });
+        ligne.bindTooltip(t("secours.overlay.itineraire", { equipe: _escHtml(g.nom) }), { permanent: false });
+        ligne.addTo(_overlayLayer);
+      };
+      let run = [], niv = g.itineraireSuggere[0].level;
+      g.itineraireSuggere.forEach(function(q) {
+        if (mlvl && q.level !== niv) {
+          const dernier = run[run.length - 1];
+          tracer(run, niv);
+          run = dernier ? [dernier] : [];
+          niv = q.level;
+        }
+        run.push(q);
       });
-      ligne.bindTooltip(t("secours.overlay.itineraire", { equipe: _escHtml(g.nom) }), { permanent: false });
-      ligne.addTo(_overlayLayer);
+      tracer(run, niv);
     }
   }
   function clearOverlay() {
@@ -13432,6 +13450,8 @@
     renderOverlay:          renderOverlay,
     clearOverlay:           clearOverlay,
     setFocus:               setFocus,
+    // 16/10/2026 — changement de niveau : la carte du scénario affiché se redessine (atténuation hors niveau).
+    redessinerOverlay:      function() { if (_overlayLayer) renderOverlay(_currentScenarioId); },
     // Events
     onChange:               onChange,
     // 🆕 v1.29.0 C1 + C2 — Multi-phases.

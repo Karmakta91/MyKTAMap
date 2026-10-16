@@ -2127,6 +2127,10 @@ window.appliquerFiltreNiveau = function() {
   if (window.KtaPresences && typeof window.KtaPresences.redessiner === "function") {
     try { window.KtaPresences.redessiner(); } catch(e) {}
   }
+  // 🚑 Carte du Mode Secours (itinéraires des équipes) : même atténuation hors niveau.
+  if (window.SecoursMode && typeof window.SecoursMode.redessinerOverlay === "function") {
+    try { window.SecoursMode.redessinerOverlay(); } catch(e) {}
+  }
   // Roads + zones de session : re-render complet (filtre applique au build)
   if (typeof window.renderRoads === "function") {
     try { window.renderRoads(); } catch(e) {}
