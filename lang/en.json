@@ -1803,7 +1803,7 @@
   "impexp.gpx.cancel": "Cancel",
   "impexp.gpx.confirm": "Confirm import",
   "impexp.gpx.errorPrefix": "❌ Error:",
-  "impexp.gpx.howToCalibrate": "<strong>How to calibrate</strong>: close this window → 📤 Export → 📡 External export tab → enter 2 points (x/y map + GPS lat/lng). Once done, come back here to import your GPX.",
+  "impexp.gpx.howToCalibrate": "<strong>How to calibrate</strong>: close this window → 💾 Export → 🌍 External export → GPX → enter 2 points (x/y map + GPS lat/lng). Once done, come back here to import your GPX.",
   "impexp.gpx.intro": "The GPX points and tracks are added to your session.",
   "impexp.gpx.modalTitle": "📍 Add a GPX file",
   "impexp.gpx.notCalibratedBody": "To import a GPX, the app needs to know how to transform WGS84 coordinates (lat/lng) into local map coordinates. This transformation is defined by 2 calibration points (map ↔ GPS).",

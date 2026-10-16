@@ -16788,28 +16788,6 @@ html.kta-theme-light .kta-conv-sens-btn .kta-conv-sens-desc {
   max-width: 720px !important;
 }
 
-/* Onglets Full / Avancé / Conversion / KMZ */
-html.kta-theme-light .kta-ses-tabs {
-  background: var(--kta-light-bg-bar) !important;
-  border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
-}
-html.kta-theme-light .kta-ses-tab {
-  background: transparent !important;
-  color: var(--kta-light-text-muted) !important;
-  border: 1px solid transparent !important;
-}
-html.kta-theme-light .kta-ses-tab:hover {
-  background: rgba(244, 197, 66, 0.15) !important;
-  color: var(--kta-light-text) !important;
-}
-html.kta-theme-light .kta-ses-tab.active {
-  background: #fdf8eb !important;
-  color: #2a2620 !important;
-  border-color: var(--kta-light-accent) !important;
-  border-bottom-color: #fdf8eb !important;
-  font-weight: 700 !important;
-}
-
 /* Contenu interne */
 html.kta-theme-light .kta-ses-content {
   background: #fdf8eb !important;
