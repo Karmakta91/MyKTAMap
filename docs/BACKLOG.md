@@ -22,6 +22,7 @@ chantier déjà fait (cas réel du 31/08). **Reclore le jour même.**
 |---|---|---|
 | **FR en dur restant** | Tri complet fait le 09/10. Reste assumé : `confadmin.html` (100 % FR), motifs de config invalide de `ktaExtensions.js`, `Error` techniques. **Au fil de l'eau** | — |
 | **Pastille hors-ligne** | 🔬 coût de `SwInspector.etat()` sur un vieux téléphone non mesuré (3-7 ms sur PC) ; états orange et thème clair non testés en navigateur | S |
+| **Vue OSM : points sous les tuiles (iPhone)** | 🔬 16/10/2026 (KARMA, iPhone PWA, plan réel) : une partie des POI passe **derrière** les tuiles du plan (ternes, ~la moitié de la vue) alors que le pane des tuiles (`ktaOsmTuiles`, z 350) est sous le `markerPane` (600) — ✅ code lu. Piste : défaut de compositing Safari sur les tuiles de bord rognées (`clip-path`, `tiling.js > ktaRognerTuile`) pivotées dans un pane à opacité. À trancher d'abord : même vue sur PC Chrome (net = Safari). Correctifs : couche composée forcée sur le `markerPane` de la Vue OSM et du widget, sinon rognage sans `clip-path`. Test sur iPhone réel obligatoire. À part : `pa`/`pc`/`danger`/`info` sont semi-transparentes à 90-100 % et prennent la teinte du fond (fond opaque sous l'icône en OSM, ou icônes opaques au catalogue = choix de charte KARMA) | S |
 | **Vieille clé de profil** | ⚪ un vieil export de profil réécrit `myktamap_network_paranoia_v1` (inerte) — purge en 1 ligne si gênant | XS |
 
 ### 🚑 Mode Secours — la refonte qui reste (audit du 29/09)
