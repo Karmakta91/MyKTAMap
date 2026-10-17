@@ -5,142 +5,47 @@
  */
 
 // =========================
-// SECOURSMODE.JS — Mode Secours (depuis v1.22.0)
+// secoursMode.js — Mode Secours : préparer et conduire une recherche de personne par équipes.
 // =========================
-// Outil opérationnel pour assigner méthodiquement des équipes de secours à
-// des zones de recherche sur un plan cataphile. Cas d'usage : une personne
-// est portée disparue, plusieurs équipes arrivent en surface, le PC secours
-// doit assigner chaque équipe à une portion du réseau avec point d'entrée,
-// point de sortie, itinéraire suggéré, durée estimée. Au retour terrain,
-// chaque équipe rapporte ses observations.
-//
-// Le mode Secours orchestre les briques existantes :
-//   • 🔍 Recherche unifiée — sélection rapide des points d'accès
-//   • 🗺️ Pathfinder       — calcul itinéraire entre waypoints
-//   • 🔥 Heatmap          — visualisation zones probables (Phase 2)
-//   • ⬛ Zones polygones  — délimitation visuelle d'une zone d'équipe
-//   • 🛣️ Tracés           — sélection multi-clic des galeries d'une zone
-//   • 🏗️ M-LVL            — assignement par étage
-//   • 📍 Lost Mode        — pré-fill du contexte (Phase 2)
-//   • ⭐ Favoris          — points clés taggés (Phase 2)
-//
-// PERSISTANCE :
-//   localStorage["myktamap_secours_v1_<planId>"] = JSON array de scénarios
-//   Multi-scénarios par plan (cap 10 FIFO). Permet à l'user de préparer
-//   plusieurs hypothèses ("si Marc parti par l'Est" vs "si par le Sud").
-//
-// API publique :
-//   window.SecoursMode = {
-//     ouvrir, fermer, isOpen, getCurrentScenarioId,
-//     list, get, create, update, delete, duplicate,
-//     addGroupe, updateGroupe, removeGroupe,
-//     recalculerItineraires, exporterPDF, exporterKMZ,
-//     renderOverlay, clearOverlay, setFocus,
-//     onChange, PALETTE
-//   }
-//
-// FORMAT d'un scénario :
-//   {
-//     id:        "secours_<timestamp>_<rand>",
-//     nom:       "Recherche Marc — 15/06/2026",
-//     createdAt: "2026-06-15T14:32:00.000Z",
-//     updatedAt: "2026-06-15T14:50:12.000Z",
-//     context: {
-//       incidentAt:       "2026-06-15T13:45:00.000Z",
-//       lastKnownPoint:   { x, y, level, ts } | null,
-//       zoneIncertitude: { x, y, radius } | null,
-//       notes:           "Marc parti vers 14h..."
-//     },
-//     groupes: [
-//       {
-//         id:               "G_<timestamp>",
-//         nom:              "Équipe Alpha",
-//         couleurIdx:       0,            // index dans PALETTE
-//         membres:          ["Léa", "Tom"],
-//         entree:           { x, y, level, pointId? } | null,
-//         sortie:           { x, y, level, pointId? } | null,
-//         zoneType:         "polygon" | "roads",
-//         zonePolygon:      [{x, y, level}, ...] | null,    // si polygon
-//         zoneRoadIds:      ["roadId1", ...] | null,         // si roads
-//         itineraireSuggere: [{x, y, level}, ...] | null,    // calc Pathfinder
-//         distanceM:        45.3,                            // calc auto
-//         dureeEstimeeMin:  15,                              // = distM ÷ vitesse
-//         statut:           "non_demarré"|"en_cours"|"terminé"|"rappelé", // Phase 3
-//         observations:     ""
-//       }
-//     ],
-//     // 🆕 v1.29.0 C1 — Multi-phases (Phase 1 balayage axes principaux,
-//     // Phase 2 chambres d'exploitation, etc.). Rétro-compat stricte :
-//     // un scénario v1 sans phases[] est migré au load vers 1 phase
-//     // implicite "Phase 1" qui couvre tous ses groupes.
-//     phases: [
-//       {
-//         id:        "P_<timestamp>_<rand>",
-//         idx:       0,                   // position dans phases[]
-//         nom:       "Phase 1",           // libellé custom user
-//         groupeIds: ["G_..." , ...],     // équipes assignées à CETTE phase
-//                                         // (hybride 1:c — checkbox "participe à
-//                                         //  cette phase" par équipe et par phase)
-//         startedAt: ISO | null,          // set par lancerExecution + phaseSuivante
-//         endedAt:   ISO | null,          // set par terminerPhase (C3) / arret exec
-//         debrief:   "",                  // texte libre (rempli en C3)
-//         debriefAt: ISO | null           // timestamp debrief (C3)
-//       }
-//     ],
-//     pointsCles: [
-//       { pointId | x, y, level, role, label }
-//     ],
-//     execution?: {
-//       // ... champs existants Phase 3 ...
-//       currentPhaseIdx: 0   // 🆕 v1.29.0 C1 — index de la phase active dans phases[]
-//     }
-//   }
-// =========================
+// Le PC secours assigne à chaque équipe une portion du réseau (entrée, sortie, étapes, zone en polygone ou en
+// tracés, itinéraire suggéré, durée estimée), lance l'exécution terrain (phases, étapes à statut, photos,
+// suivi live), échange des fichiers .mkmsec avec les téléphones et produit les rapports PDF/KMZ.
+// Orchestre : recherche unifiée, Pathfinder, zones, tracés, multi-niveau, Lost Mode, favoris.
+// Expose : window.SecoursMode = { ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update,
+//   delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF,
+//   exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, … }
+// Persistance : localStorage["myktamap_secours_v1_<planId>"] = tableau de scénarios (10 par plan, FIFO
+//   protégé, cf _saveScenarios). Format d'un scénario et de scenario.execution : docs/architecture/secours.md.
+// 🩸 Un point de passage est identifié par son `wid` (calculé, pas tiré au hasard : cf _widDeterministe) ;
+//    c'est la seule clé qui relie les étapes entre appareils et entre phases.
+// 🩸 Ne jamais relire `zoneRoadIds` à la main : passer par `_tracesZone(g)` (ce ne sont pas des road.id).
+// Garde-fous : scripts/check-secours-relais.js, check-secours-balayage.js, check-extensions.js, check-uid.js.
+// Doc : docs/architecture/secours.md.
 
 (function() {
   "use strict";
 
-  // ============================================================
-  // (P2 progressive lazy CSS) — préchargement du chunk
-  // CSS dédié Mode Secours dès l'init du module. Le CSS spécifique
-  // (.kta-secours-* + .kta-mkmsec-*) est extrait de `css/style.css`
-  // principal vers `css/style-secours.css` pour alléger le boot
-  // (parse CSS bloquant le rendu sur mobile cold cache).
-  //
-  // Pattern fire-and-forget : on n'attend pas la Promise. Le browser
-  // parse le CSS en parallèle de l'init du module, et il est
-  // typiquement appliqué AVANT que l'user ait ouvert une modale
-  // Mode Secours (clic après onboarding, exploration, etc.).
-  //
-  // Échec gracieux côté _loadCssOnce : si fetch échoue (offline +
-  // cache vide cas marginal), la modale s'affiche avec un styling
-  // dégradé sur les règles de style.css principal. Pas de blocage.
-  //
-  // Idempotence garantie : appels multiples no-op si déjà loaded.
-  // ============================================================
+  // CSS du Mode Secours (css/style-secours.css, hors style.css pour alléger le boot) préchargé dès l'init,
+  // sans attendre la Promise : il est appliqué avant la première ouverture. Échec (hors ligne, cache vide) :
+  // rendu dégradé sur style.css, pas de blocage. Idempotent.
   if (typeof window._loadCssOnce === "function") {
     window._loadCssOnce("css/style-secours.css", "kta-css-style-secours");
   }
 
-  // ============================================================
-  // i18n — helper de traduction (chantier multilingue v1.45+)
-  // ============================================================
-  // À appeler AU RENDU (jamais au load) : les dicos lang/<code>.json sont
-  // chargés après I18n.init(). Fallback = la clé brute si I18n absent.
-  // Interpolation : t("secours.x", { param }) → remplace {param}.
+  // ── i18n ────────────────────────────────────────────────────────────
+  // À appeler AU RENDU (jamais au load) : les dicos lang/<code>.json arrivent après I18n.init().
+  // Repli = la clé brute si I18n absent. t("secours.x", { param }) remplace {param}.
   const t = (k, p) => (window.I18n ? window.I18n.t(k, p) : k);
 
-  // Libellé i18n d'un statut TABLEAU_STATUTS par id (résolution au rendu).
-  // Le champ `.label` du tableau reste comme fallback FR de référence.
+  // Libellé i18n d'un statut TABLEAU_STATUTS (résolu au rendu ; `.label` = repli FR).
   function _statutLabel(statutId) {
     const info = _getStatutInfo(statutId);
     return t("secours.statut." + info.id, {}) !== "secours.statut." + info.id
       ? t("secours.statut." + info.id)
       : info.label;
   }
-  // Contre-audit GRIMP (30/09) : une même étape portait deux numéros à l'écran
-  // (« Étape 6/41 » en tête, « ÉTAPE 5 » dans le bloc). Numéro unique, celui de la
-  // carte et des PDF : entrée « E », étapes 1…N (intermédiaires), sortie « S ».
+  // Numéro unique d'une étape, le même à l'écran, sur la carte et dans les PDF : entrée « E », étapes 1…N,
+  // sortie « S ».
   function _numEtape(et, idx) {
     return (et && et.type === "entree") ? "E" : (et && et.type === "sortie") ? "S" : String(idx);
   }
@@ -149,19 +54,16 @@
          : (et && et.type === "sortie") ? t("secours.num.sortie")
          : t("secours.num.etape", { n: idx });
   }
-  // Libellé de statut pour un PDF : accents gardés (la police les affiche), seuls les
-  // caractères hors police sont retirés (window.ktaTextePdf, utils.js).
+  // Libellé de statut pour un PDF : accents gardés (la police les affiche), seuls les caractères hors police
+  // sont retirés (window.ktaTextePdf, utils.js).
   function _statutLabelPdf(statutId) {
     return window.ktaTextePdf(_statutLabel(statutId));
   }
 
-  // ============================================================
-  // CONSTANTES
-  // ============================================================
+  // ── Constantes ──────────────────────────────────────────────────────
 
-  // Palette charte fixe — 10 couleurs distinctes lisibles sur dark + light.
-  // Choix terrain : couleurs vives, contrastées entre voisines (anti-confusion
-  // en briefing). Ordre = "alphabet OTAN" Alpha, Bravo, Charlie...
+  // Palette fixe de 10 couleurs lisibles en sombre comme en clair, contrastées entre voisines (pas de
+  // confusion en briefing). Ordre = alphabet OTAN (Alpha, Bravo, Charlie…).
   const PALETTE = [
     { hex: "#ff4444", nom: "Alpha"    },  // rouge vif
     { hex: "#4488ff", nom: "Bravo"    },  // bleu
@@ -175,27 +77,18 @@
     { hex: "#404040", nom: "Juliet"   }   // gris foncé
   ];
 
-  // Cap FIFO : au-delà de 10 scénarios par plan, on supprime le plus ancien
-  // au create. Évite l'accumulation infinie. 10 = compromis raisonnable
-  // (l'user peut nettoyer manuellement via delete).
+  // Au-delà de 10 scénarios par plan, le plus ancien non protégé part (cf _saveScenarios).
   const MAX_SCENARIOS = 10;
 
-  // Vitesse de fouille par défaut, en m/s — conservée pour l'API publique
-  // (SecoursMode.VITESSE_MPS_DEFAUT). Le calcul, lui, lit les réglages du scénario
-  // (`reglagesDuree`, défaut DUREE_DEFAUT = 1,5 km/h). 4e relecture (R4-10) : valait
-  // 0,5 m/s (1,8 km/h) sans plus rien piloter — un piège pour un intégrateur.
+  // Vitesse de fouille par défaut en m/s, gardée pour l'API publique (SecoursMode.VITESSE_MPS_DEFAUT) et
+  // alignée sur DUREE_DEFAUT (1,5 km/h). 🩸 Le calcul ne la lit pas : il lit les réglages du scénario
+  // (`reglagesDuree`) — une valeur divergente ici tromperait un intégrateur.
   const VITESSE_MPS_DEFAUT = 1.5 / 3.6;   // = DUREE_DEFAUT.vitesseKmh (déclaré plus bas)
 
-  // Phase 3 — TABLEAU_STATUTS pour la vue EXÉCUTION terrain.
-  // Statuts rapides cliquables à chaque étape d'un parcours équipe.
-  // Validation KARMA terrain : 4 statuts de base + 3 critiques (pompiers/spéléo).
-  // Extensibilité : ajouter une entry ici suffit (rendu UI + colors + export
-  // PDF + report JSON suivent automatiquement via cette table).
-  //
-  // Convention : id = ASCII lowercase sans accent (clé localStorage), emoji
-  // pour rendu visuel, label pour UI, color pour swatch/border, severity
-  // pour tri/escalade dans la vue Opérateur surface (0=neutre, 1=warning,
-  // 2=alerte, 3=urgence absolue).
+  // Statuts d'étape de la vue Exécution : 4 de base + 3 critiques. Ajouter une entrée ici suffit (rendu,
+  // couleurs, PDF et rapport JSON suivent).
+  // ⚠️ id = ASCII minuscule sans accent (stocké) ; severity sert au tri/escalade de la vue Opérateur
+  // (0 neutre, 1 attention, 2 alerte, 3 urgence absolue).
   const TABLEAU_STATUTS = [
     {
       id: "pending",
@@ -247,9 +140,8 @@
       color: "#9d44ff",
       severity: 1
     },
-    // Contre-audit GRIMP (30/09) : « Étape suivante » sans statut posait RAS — une
-    // étape SAUTÉE devenait « fouillée, rien à signaler » dans le rapport. Statut
-    // posé par l'app seulement (`auto` : jamais proposé en bouton).
+    // 🩸 « Étape suivante » sans statut ne doit pas valoir RAS : une étape SAUTÉE deviendrait « fouillée, rien
+    // à signaler » dans le rapport. Statut posé par l'app seulement (`auto` : jamais proposé en bouton).
     {
       id: "non-renseigne",
       emoji: "⚪",
@@ -268,63 +160,41 @@
     }
   ];
 
-  // Helper d'accès — retourne l'entry du tableau par id (fallback pending).
+  // Entrée du tableau par id (repli : pending).
   function _getStatutInfo(statutId) {
     return TABLEAU_STATUTS.find(function(st) { return st.id === statutId; })
         || TABLEAU_STATUTS[0];   // fallback pending
   }
 
-  // ============================================================
-  // STATE MODULE-LEVEL
-  // ============================================================
+  // ── État du module ──────────────────────────────────────────────────
 
-  // Cache des scénarios chargés pour le plan courant. Lu au _load() initial,
-  // muté par les CRUD, persisté au _save() après chaque mutation.
+  // Scénarios du plan courant : lus par _loadScenarios, mutés par le CRUD, persistés après chaque mutation.
   let _scenarios = [];
 
-  // ID du scénario actuellement édité dans la modale (= null si modale fermée
-  // ou en mode "liste"). Permet à renderOverlay de savoir lequel afficher.
+  // Scénario édité dans la modale (null si fermée ou en liste) ; renderOverlay s'en sert.
   let _currentScenarioId = null;
 
-  // Modale DOM root (= null si fermée). Idempotency : ouvrir() ferme l'ex avant
-  // de créer la nouvelle.
+  // Racine DOM de la modale (null si fermée). ouvrir() ferme l'ancienne avant d'en créer une.
   let _modal = null;
-  // C2 — Tracker de la vue active. Mis à jour par _switchView.
-  // Utilisé par _afficherModalePhase pour re-render la bonne vue après une
-  // mutation (le bouton "➕ Ajouter une phase" est présent en Edit ET en Live).
+  // Vue active (mise à jour par _switchView) : _afficherModalePhase re-rend la bonne vue après une mutation
+  // (« Ajouter une phase » existe en Édition ET en Live).
   let _activeView = null;
 
-  // Layer Leaflet qui contient l'overlay des zones d'équipes sur la carte.
-  // Créé à renderOverlay, nettoyé à clearOverlay (et au plan switch).
+  // Couche Leaflet des zones d'équipes : créée par renderOverlay, nettoyée par clearOverlay (et au
+  // changement de plan).
   let _overlayLayer = null;
 
-  // ID du groupe focusé (= null pour afficher TOUS). En mode focus, l'app
-  // masque les zones des autres équipes — utile navigation terrain à la
-  // sortie pour une équipe spécifique.
+  // Groupe focalisé (null = tous) : en focus, les zones des autres équipes sont masquées.
   let _focusedGroupeId = null;
-  // Pattern A (anti-leak) : référence module au listener Esc
-  // de la modale Phase, pour pouvoir le retirer si l'utilisateur ré-ouvre
-  // la modale sans l'avoir fermée (cas où oldModal.remove() retire le DOM
-  // mais laissait le keydown listener orphelin sur document).
+  // Listener Échap de la modale Phase, gardé au scope module pour le retirer si on la rouvre sans l'avoir
+  // fermée (oldModal.remove() retire le DOM, pas le listener sur document).
   let _phaseModalEsc = null;
 
-  // (Pattern A généralisé) — Helper mutualisé pour les sous-modales
-  // de Mode Secours. Gère le bind + cleanup automatique d'un éventuel listener
-  // Esc orphelin (cas ré-ouverture rapide sans close manuel). Retourne unbind().
-  //
-  // Usage :
-  //   const unbindEsc = _bindSubModalEsc(_close);
-  //   ... dans _close() : unbindEsc();
-  //
-  // Tracking flat (1 listener actif à la fois pour les sous-modales) :
-  //   - Si une sous-modale est déjà ouverte et qu'on en ouvre une 2e par-dessus,
-  //     l'ancien listener est retiré (l'ancienne modale aurait Esc inactif, mais
-  //     elle est masquée derrière la nouvelle de toute manière).
-  //   - Pas applicable à la modale Mode Secours PRINCIPALE (qui a son propre
-  //     pattern `_onKeyDown` plus large, gérant +touches).
+  // Échap des sous-modales : un seul listener actif à la fois ; en ouvrir une retire l'éventuel orphelin.
+  // Usage : const unbindEsc = _bindSubModalEsc(_close); … puis unbindEsc() dans _close().
+  // La modale principale a son propre `_onKeyDown`, plus large.
   let _activeSubModalEsc = null;
   function _bindSubModalEsc(closeFn) {
-    // Cleanup éventuel listener orphelin d'une modale précédente
     if (_activeSubModalEsc) {
       document.removeEventListener("keydown", _activeSubModalEsc);
       _activeSubModalEsc = null;
@@ -342,45 +212,31 @@
     };
   }
 
-  // Listeners pour onChange — appelés après chaque mutation persistée.
+  // Listeners onChange, appelés après chaque mutation persistée.
   const _changeListeners = [];
 
-  // ============================================================
-  // PERSISTANCE LOCALSTORAGE
-  // ============================================================
+  // ── Persistance localStorage ───────────────────────────────────────
 
-  // Construit la clé localStorage pour le plan courant. Retourne null si
-  // pas de plan chargé (= modale ne devrait pas être ouverte de toute façon,
-  // mais defensive).
+  // Clé localStorage du plan courant, ou null sans plan chargé.
   function _storageKey() {
     const planId = window._currentLoadedPlanId;
     if (!planId || typeof planId !== "string") return null;
     return "myktamap_secours_v1_" + planId;
   }
 
-  // ============================================================
-  // C1 — MULTI-PHASES (data model + migration v1)
-  // ============================================================
-  // KARMA validation : "Phase 1 balaye axes principaux, retour, debrief PC,
-  // Phase 2 X équipes vont en chambres d'exploitation". Choix design tranchés :
-  //   1:c → Équipes hybrides : définies au scénario, checkbox "participe à
-  //         cette phase" par phase (phase.groupeIds[]).
-  //   2:c → Transition hybride : auto-détection + toast confirmation Op (C3).
-  //   3:c → Édition de parcours équipe autorisée entre phases (C3).
-  //   4:a → Réutilise les 7+1 statuts existants (pas de pollution TABLEAU_STATUTS).
-  //   5:b → Forwarding obs équipe→PC via relai reporté à release ultérieure.
-  //   6:a → PDF global avec sections par phase + debriefs intercalés (C5).
-  //   7:a → Bouton "Terminer phase" visible Op uniquement (C3).
-  //
-  // RÉTRO-COMPAT STRICTE : un scénario v1 (pas de phases[]) est migré au load
-  // vers 1 phase implicite couvrant tous ses groupes. Pas de bump de format.
+  // ── Multi-phases (modèle + migration) ──────────────────────────────
+  // Ex. phase 1 : balayage des axes principaux, retour, debrief PC ; phase 2 : quelques équipes en chambres.
+  // Choix de conception :
+  //   · équipes définies au scénario, cochées par phase (phase.groupeIds[]) ;
+  //   · transition assistée (auto-détection + toast), décidée par l'opérateur ;
+  //   · parcours modifiables entre phases ; mêmes statuts d'étape ;
+  //   · PDF global avec sections par phase + debriefs ; « Terminer la phase » réservé à l'opérateur.
+  // ⚠️ Un scénario sans phases[] est migré au chargement vers 1 phase implicite couvrant tous ses groupes
+  // (pas de changement de format).
 
-  // Libellé par défaut de la phase implicite créée à la migration.
   const PHASE_DEFAULT_NOM = "Phase 1";
 
-  // Construit une phase vide avec un id unique + idx + libellé + équipes.
-  // Utilisé par la migration ET par createScenario ET (futur C2/C3) par
-  // l'ajout de phases successives.
+  // Phase vide (id unique, idx, libellé, équipes) : migration, createScenario, ajout de phase.
   function _construirePhase(idx, nom, groupeIds) {
     return {
       id:        _genId("P"),
@@ -394,27 +250,18 @@
     };
   }
 
-  // Migration v1 → multi-phases. Idempotente — peut tourner 100 fois sans
-  // dégât : si phases[] existe déjà et est valide, on ne fait rien.
-  // Cas couverts :
-  //   - Scénario v1 sans phases[] : crée 1 phase implicite couvrant tous les
-  //     groupes. Si execution existe (Phase 3 lancée), reporte startedAt/endedAt
-  //     sur cette phase implicite (pour cohérence rapport historique).
-  //   - Scénario v1.29 avec phases[] mais sans currentPhaseIdx dans execution :
-  //     ajoute currentPhaseIdx=0 (phase active = première).
-  //   - Phases sans groupeIds ou avec groupeIds invalides : repush tous les
-  //     groupes du scénario dans phases[0] (filet de sécurité).
+  // Migration vers multi-phases, idempotente. Cas :
+  //   · pas de phases[] → 1 phase implicite avec tous les groupes (et startedAt/endedAt de l'exécution
+  //     éventuelle, pour les rapports) ;
+  //   · execution sans currentPhaseIdx → 0 ;
+  //   · phases[0] sans groupeIds valides alors que le scénario a des groupes → tous les groupes (filet).
   function _migrateScenarioV1ToPhases(s) {
     if (!s || typeof s !== "object") return;
-    // Cas 1 : phases[] absente ou pas un array → crée phase implicite
     if (!Array.isArray(s.phases) || s.phases.length === 0) {
       const allGroupeIds = (Array.isArray(s.groupes) ? s.groupes : [])
         .map(function(g) { return g && g.id; })
         .filter(function(id) { return typeof id === "string"; });
       const phase0 = _construirePhase(0, PHASE_DEFAULT_NOM, allGroupeIds);
-      // Si une execution existe déjà (scénario v1 lancé en Phase 3 historique),
-      // reporte ses timestamps sur la phase implicite. Permet aux rapports
-      // futurs (C5 PDF avec sections) d'afficher la durée correcte.
       if (s.execution && typeof s.execution === "object") {
         if (typeof s.execution.startedAt === "string") {
           phase0.startedAt = s.execution.startedAt;
@@ -425,14 +272,10 @@
       }
       s.phases = [phase0];
     }
-    // Cas 2 : execution existe mais currentPhaseIdx absent → set à 0
     if (s.execution && typeof s.execution === "object"
         && typeof s.execution.currentPhaseIdx !== "number") {
       s.execution.currentPhaseIdx = 0;
     }
-    // Cas 3 : filet de sécurité — si phase[0].groupeIds est vide alors qu'il
-    // y a des groupes dans le scénario, on repush (cohérence avec doctrine
-    // "1 phase implicite couvre tout v1").
     if (s.phases.length === 1
         && (!Array.isArray(s.phases[0].groupeIds) || s.phases[0].groupeIds.length === 0)
         && Array.isArray(s.groupes) && s.groupes.length > 0) {
@@ -442,9 +285,7 @@
     }
   }
 
-  // Retourne la phase active du scénario (= celle d'index execution.currentPhaseIdx).
-  // Si execution absente OU phases[] absente → retourne phases[0] (= phase implicite
-  // après migration). Si tout est cassé → null.
+  // Phase active (execution.currentPhaseIdx) ; sans exécution ou sans phases → phases[0] ; sinon null.
   function _getCurrentPhase(s) {
     if (!s || !Array.isArray(s.phases) || s.phases.length === 0) return null;
     const idx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
@@ -453,9 +294,7 @@
     return s.phases[idx] || s.phases[0] || null;
   }
 
-  // Retourne la liste des objets groupes ASSIGNÉS à une phase donnée.
-  // Si phase invalide → array vide. Filtre les groupeIds qui ne matchent plus
-  // (équipe supprimée du scénario depuis = à virer du groupeIds, voir C2/C3).
+  // Groupes ASSIGNÉS à une phase ; les groupeIds qui ne correspondent plus à une équipe sont ignorés.
   function _listerEquipesPhase(s, phaseIdx) {
     if (!s || !Array.isArray(s.phases) || !Array.isArray(s.groupes)) return [];
     const phase = s.phases[phaseIdx];
@@ -467,8 +306,7 @@
       .filter(function(g) { return g != null; });
   }
 
-  // True si l'équipe equipeId est listée dans phases[phaseIdx].groupeIds.
-  // Tolère phase ou equipeId invalides → false.
+  // Vrai si l'équipe est dans phases[phaseIdx].groupeIds (faux si phase ou id invalide).
   function _groupeParticipeAPhase(s, equipeId, phaseIdx) {
     if (!s || !Array.isArray(s.phases) || typeof equipeId !== "string") return false;
     const phase = s.phases[phaseIdx];
@@ -476,12 +314,10 @@
     return phase.groupeIds.indexOf(equipeId) !== -1;
   }
 
-  // C2 — Mutations phases (encapsulées pour garantir invariants).
-  // ───────────────────────────────────────────────────────────────────
+  // ── Mutations des phases (garantissent les invariants) ─────────────
 
-  // Crée une nouvelle phase à la fin du tableau (idx auto). Retourne la phase
-  // créée OU null si scénario introuvable. nom par défaut = "Phase N+1".
-  // groupeIds = équipes assignées (peut être vide, l'Op peut cocher ensuite).
+  // Ajoute une phase en fin de tableau ; nom par défaut « Phase N+1 », groupeIds éventuellement vide.
+  // Retourne la phase créée, ou null si scénario introuvable.
   function creerPhase(scenarioId, nom, groupeIds) {
     const s = get(scenarioId);
     if (!s) return null;
@@ -490,7 +326,6 @@
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim().slice(0, 80)
                      : "Phase " + (nextIdx + 1);
-    // Filtre : ne garde que les groupeIds qui matchent des équipes existantes
     const safeGroupeIds = (Array.isArray(groupeIds) ? groupeIds : [])
       .filter(function(gid) {
         return typeof gid === "string"
@@ -502,7 +337,7 @@
     return phase;
   }
 
-  // Renomme une phase (whitelist). Retourne true si OK, false sinon.
+  // Renomme une phase. Retourne true si OK.
   function renommerPhase(scenarioId, phaseIdx, nouveauNom) {
     const s = get(scenarioId);
     if (!s || !Array.isArray(s.phases)) return false;
@@ -516,12 +351,8 @@
     return true;
   }
 
-  // Supprime une phase. Garde-fous :
-  //   - Refuse si c'est la dernière phase (au moins 1 phase doit exister).
-  //   - Refuse si la phase est ACTIVE dans l'exécution (passer par
-  //     terminerPhase/lancerPhaseSuivante de C3 plutôt).
-  //   - Refuse si la phase a startedAt set (historique préservé).
-  // Re-numérote les idx des phases restantes.
+  // Supprime une phase, sauf : la dernière, la phase ACTIVE de l'exécution (passer par
+  // terminerPhase/lancerPhaseSuivante), une phase déjà démarrée (historique préservé). Renumérote les idx.
   function supprimerPhase(scenarioId, phaseIdx) {
     const s = get(scenarioId);
     if (!s || !Array.isArray(s.phases)) return false;
@@ -531,22 +362,18 @@
     }
     const phase = s.phases[phaseIdx];
     if (!phase) return false;
-    // Refus si phase active dans l'exécution
     if (s.execution && s.execution.active === true
         && s.execution.currentPhaseIdx === phaseIdx) {
       console.warn("[SecoursMode] Refus suppression : phase active. Utiliser terminerPhase (C3).");
       return false;
     }
-    // Refus si phase a déjà été démarrée (historique)
     if (phase.startedAt) {
       console.warn("[SecoursMode] Refus suppression : phase déjà démarrée (historique préservé).");
       return false;
     }
     s.phases.splice(phaseIdx, 1);
-    // Re-numérote les idx
     s.phases.forEach(function(p, i) { p.idx = i; });
-    // Ajuste execution.currentPhaseIdx si nécessaire (la suppression d'une
-    // phase située AVANT la phase active décale d'un cran)
+    // Supprimer une phase située AVANT la phase active décale currentPhaseIdx d'un cran.
     if (s.execution && typeof s.execution.currentPhaseIdx === "number"
         && s.execution.currentPhaseIdx > phaseIdx) {
       s.execution.currentPhaseIdx--;
@@ -555,15 +382,10 @@
     return true;
   }
 
-  // C3 — Helpers transitions / debrief / auto-détection.
-  // ───────────────────────────────────────────────────────────────────
+  // ── Transitions, debrief, auto-détection ───────────────────────────
 
-  // Détecte si la phase active est "prête à clore" (KARMA C3.2:a) :
-  // toutes les équipes participantes ont leur étape SORTIE avec completedAt.
-  // Si une équipe n'a pas de parcours (pas d'étape sortie) on l'IGNORE
-  // (pas de critère bloquant — l'Op décide quand même).
-  // Retourne true uniquement si AU MOINS UNE équipe a une sortie ET
-  // toutes les équipes avec sortie l'ont complétée.
+  // Phase active « prête à clore » : AU MOINS UNE équipe participante a une étape sortie et toutes celles qui
+  // en ont une l'ont complétée. Une équipe sans sortie est ignorée (l'opérateur décide de toute façon).
   function _phaseEstPretAClore(s) {
     if (!s || !s.execution || !s.execution.active) return false;
     if (!s.execution.etapes) return false;
@@ -575,7 +397,6 @@
       const g = equipes[i];
       const arr = s.execution.etapes[g.id];
       if (!Array.isArray(arr)) continue;
-      // Cherche l'étape de type "sortie"
       const sortie = arr.find(function(e) { return e && e.type === "sortie"; });
       if (!sortie) continue;
       auMoinsUneSortie = true;
@@ -584,20 +405,16 @@
     return auMoinsUneSortie;
   }
 
-  // Archive les étapes de la phase courante avant un passage de phase.
-  // Stocke dans s.execution.etapesArchive[phaseIdx] = deep clone de
-  // s.execution.etapes. Permet aux rapports (C5) de remonter l'historique
-  // par phase sans avoir à tagger chaque étape avec _phaseIdx.
+  // Archive les étapes de la phase courante dans s.execution.etapesArchive[phaseIdx] (copie profonde) :
+  // les rapports retrouvent l'historique par phase sans marquer chaque étape.
   function _archivePhaseEtapes(s, phaseIdx) {
     if (!s || !s.execution) return;
     if (!s.execution.etapesArchive) s.execution.etapesArchive = {};
-    // Deep clone via JSON pour figer l'état (les étapes ne doivent plus
-    // évoluer après archivage, c'est le contrat de l'historique).
+    // ⚠️ Copie JSON : une étape archivée ne doit plus évoluer (contrat de l'historique).
     try {
       s.execution.etapesArchive[String(phaseIdx)] =
         JSON.parse(JSON.stringify(s.execution.etapes || {}));
-      // 4e relecture (R4-4) : les signalements hors parcours de la phase sont gardés
-      // avec son historique (avant : effacés au passage de phase, sans trace).
+      // Les signalements hors parcours de la phase restent avec son historique.
       if (s.execution._etapesRetirees) {
         s.execution.etapesArchive[String(phaseIdx)]._retirees =
           JSON.parse(JSON.stringify(s.execution._etapesRetirees));
@@ -607,10 +424,8 @@
     }
   }
 
-  // Lecture : retourne les étapes archivées d'une équipe pour une phase
-  // donnée. Si la phase est encore active OU absente d'archive, retourne
-  // null (le caller doit fallback sur s.execution.etapes pour la phase
-  // courante via _getEtapesEquipe).
+  // Étapes archivées d'une équipe pour une phase, ou null (phase active ou absente de l'archive : l'appelant
+  // retombe sur s.execution.etapes via _getEtapesEquipe).
   function _getArchivedEtapes(s, phaseIdx, equipeId) {
     if (!s || !s.execution || !s.execution.etapesArchive) return null;
     const archive = s.execution.etapesArchive[String(phaseIdx)];
@@ -618,13 +433,9 @@
     return archive[equipeId];
   }
 
-  // Termine la phase active. Archive les étapes courantes + set endedAt.
-  // **Ne lance PAS automatiquement la phase suivante** (KARMA C3.2:c flow
-  // hybride : auto-détection assiste mais ne décide pas — le debrief +
-  // lancerPhaseSuivante sont des étapes utilisateur explicites).
-  // Si opts.debrief (string) fourni → enregistre dans phase.debrief +
-  // phase.debriefAt = now.
-  // Retourne le scénario muté ou null si erreur.
+  // Termine la phase active : archive les étapes, pose endedAt, enregistre opts.debrief (+ debriefAt).
+  // ⚠️ Ne lance PAS la phase suivante : l'auto-détection assiste, debrief et lancerPhaseSuivante restent
+  // des gestes explicites. Retourne le scénario, ou null.
   function terminerPhase(scenarioId, opts) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.active) return null;
@@ -636,13 +447,10 @@
       console.warn("[SecoursMode] terminerPhase : phase déjà terminée.");
       return s;
     }
-    // 1. Archive les étapes courantes (deep clone)
     _archivePhaseEtapes(s, phaseIdx);
-    // 1bis. Vague 7b (décision KARMA 6:a) — le PARCOURS PRÉVU de chaque équipe de la
-    // phase est copié : replanifier la phase suivante ne l'efface plus (le rapport
-    // montre le parcours de chaque phase, pas seulement celui du moment).
+    // Le PARCOURS PRÉVU de chaque équipe est copié : replanifier la phase suivante ne l'efface pas (le rapport
+    // montre le parcours de chaque phase).
     _archivePhaseParcours(s, phaseIdx);
-    // 2. Marque la phase comme terminée
     phase.endedAt = _nowIso();
     _journaliser(s, "secours.mc.phaseClose", { phase: phase.nom || String(phaseIdx + 1) });
     if (opts && typeof opts.debrief === "string") {
@@ -653,18 +461,10 @@
     return s;
   }
 
-  // Lance la phase suivante (phaseIdx + 1). Pré-conditions :
-  //   - L'execution doit être active
-  //   - La phase actuelle DOIT être terminée (endedAt set, via terminerPhase)
-  //   - Il doit exister une phase d'index supérieur
-  // Pour chaque équipe participant à la nouvelle phase, reconstruit les
-  // étapes depuis le parcours ACTUEL du groupe (KARMA C3.1:b — Op peut
-  // avoir modifié entree/sortie/intermediaires entre les phases).
-  // Les équipes ne participant PAS à la nouvelle phase voient leur entry
-  // dans s.execution.etapes supprimée (= la vue Live Op n'affiche plus
-  // que les équipes pertinentes). Leurs étapes archivées restent dans
-  // s.execution.etapesArchive pour les rapports.
-  // Retourne la phase suivante mutée OU null si erreur.
+  // Lance la phase suivante. Pré-conditions : exécution active, phase actuelle terminée (endedAt), phase
+  // suivante existante. Les étapes des équipes participantes sont reconstruites depuis leur parcours ACTUEL
+  // (modifiable entre phases) ; celles des non-participantes quittent s.execution.etapes (la vue Live
+  // n'affiche que les équipes concernées) et restent dans etapesArchive. Retourne la phase, ou null.
   function lancerPhaseSuivante(scenarioId) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.active) return null;
@@ -682,42 +482,33 @@
     }
     const nextPhase = s.phases[nextIdx];
     if (!nextPhase) return null;
-    // 1. Pour chaque équipe participant à la nouvelle phase, rebuild les
-    //    étapes depuis le parcours ACTUEL. KARMA C3.1:b — les modifs de
-    //    parcours faites par l'Op entre P1 et P2 sont prises en compte.
     const newEtapes = {};
     const participants = _listerEquipesPhase(s, nextIdx);
     participants.forEach(function(g) {
       newEtapes[g.id] = _buildEtapesPourEquipe(g);
     });
-    // Préserve _notes_libres si présent (mode secouriste libre, indépendant
-    // des équipes)
+    // _notes_libres (mode secouriste, hors équipes) est préservé.
     if (s.execution.etapes && s.execution.etapes._notes_libres) {
       newEtapes._notes_libres = s.execution.etapes._notes_libres;
     }
-    // 2e relecture (N2) : l'archive des étapes retirées appartient à la phase close —
-    // une étape remise en phase 2 ne doit pas récupérer les saisies de la phase 1.
+    // L'archive des étapes retirées appartient à la phase close : une étape remise en phase 2 ne doit pas
+    // récupérer les saisies de la phase 1.
     delete s.execution._etapesRetirees;
     s.execution.etapes = newEtapes;
-    // 2. Met à jour l'index de phase active + startedAt nouvelle phase
     s.execution.currentPhaseIdx = nextIdx;
     nextPhase.startedAt = _nowIso();
     _journaliser(s, "secours.mc.phaseLancee", { phase: nextPhase.nom || String(nextIdx + 1) });
-    // 3. Reset flag d'auto-détection pour permettre un nouveau toast quand
-    //    la nouvelle phase sera prête à clore
+    // Réarme l'auto-détection pour la nouvelle phase.
     if (s.execution._phaseReadyToastShownForIdx === currentIdx) {
       delete s.execution._phaseReadyToastShownForIdx;
     }
-    // 4. Reset focus stepper Live (cohérent avec lancerExecution hotfix11)
     _liveEquipeFocusIdx     = 0;
     _liveEquipeFreshSession = true;
     _commitMutation(s);
     return nextPhase;
   }
 
-  // Toggle de participation d'une équipe à une phase (modèle hybride 1:c).
-  // participe=true → ajoute si absent · participe=false → retire si présent.
-  // Idempotent. Retourne true si la phase a été modifiée, false sinon.
+  // Participation d'une équipe à une phase (ajout / retrait), idempotent. Retourne true si modifié.
   function affecterEquipeAPhase(scenarioId, equipeId, phaseIdx, participe) {
     const s = get(scenarioId);
     if (!s || !Array.isArray(s.phases) || typeof equipeId !== "string") return false;
@@ -727,7 +518,6 @@
     const pos = phase.groupeIds.indexOf(equipeId);
     let changed = false;
     if (participe && pos === -1) {
-      // Vérifie que l'équipe existe
       if (s.groupes.some(function(g) { return g.id === equipeId; })) {
         phase.groupeIds.push(equipeId);
         changed = true;
@@ -736,7 +526,7 @@
       phase.groupeIds.splice(pos, 1);
       changed = true;
     }
-    // 🩸 Relecture 29/09 (R6) — équipe cochée dans la phase EN COURS : ses étapes.
+    // 🩸 Équipe cochée dans la phase EN COURS : il lui faut ses étapes tout de suite.
     if (changed && participe && s.execution && s.execution.currentPhaseIdx === phaseIdx) {
       const g = s.groupes.find(function(x) { return x.id === equipeId; });
       _resyncEtapesEquipe(s, g);
@@ -745,10 +535,8 @@
     return changed;
   }
 
-  // Charge les scénarios depuis localStorage pour le plan courant.
-  // Tolère absence (= array vide) et corruption (= reset + warn).
-  // C1 — applique la migration multi-phases à chaque scénario
-  // chargé (idempotent — pas de cycle si déjà migré).
+  // Charge les scénarios du plan courant ; absent → vide, corrompu → reset + warn. Migration multi-phases
+  // appliquée à chacun (idempotente).
   function _loadScenarios() {
     const key = _storageKey();
     if (!key) { _scenarios = []; return; }
@@ -761,13 +549,11 @@
         _scenarios = [];
         return;
       }
-      // Filtre défensif : chaque entry doit avoir au minimum id + nom
       _scenarios = parsed.filter(function(s) {
         return s && typeof s === "object" && typeof s.id === "string" && typeof s.nom === "string";
       });
-      // Migration silencieuse multi-phases (rétro-compat v1 stricte)
       _scenarios.forEach(_migrateScenarioV1ToPhases);
-      // 4e relecture (R4-6) : durées recalculées avec les réglages Secours propres
+      // Durées recalculées avec les réglages Secours propres.
       if (_scenarios.map(_migrerDurees).some(Boolean)) {
         try { localStorage.setItem(key, JSON.stringify(_scenarios)); } catch(e) {}
       }
@@ -777,20 +563,15 @@
     }
   }
 
-  // Persiste l'état courant dans localStorage. Cap FIFO à MAX_SCENARIOS.
-  // Throttle inutile : les CRUD sont user-driven, pas en boucle. Synchrone OK.
+  // Persiste dans localStorage (synchrone : les CRUD viennent de gestes utilisateur), limite MAX_SCENARIOS.
   function _saveScenarios() {
     const key = _storageKey();
     if (!key) return false;
-    // Cap FIFO : si > MAX, on retire les plus anciens par createdAt.
-    // 🩸 JAMAIS un scénario en cours d'exécution
-    // ni celui ouvert : avant, créer un 11ᵉ scénario pendant une intervention
-    // pouvait effacer celle-ci. Le plus récent non plus (sinon, 10 en cours → le
-    // scénario qu'on vient de créer disparaît). Tout l'excédent protégé → on dépasse le cap.
-    // 🩸 Relecture 29/09 (R1) — un scénario IMPORTÉ garde le `createdAt` du PC : trié
-    // parmi les plus anciens, il était purgé dans le commit même de l'import, sur un
-    // téléphone qui avait déjà 10 scénarios (« importé » annoncé, liste vide). L'âge
-    // FIFO est donc la plus récente de la création et de l'arrivée sur CET appareil.
+    // Limite FIFO : on retire les plus anciens.
+    // 🩸 JAMAIS un scénario en exécution, ni celui ouvert, ni le plus récent (sinon créer un 11ᵉ scénario
+    // pendant une intervention l'effacerait). Si tout l'excédent est protégé, on dépasse la limite.
+    // 🩸 Âge FIFO = la plus récente de la création et de l'arrivée sur CET appareil : un scénario IMPORTÉ garde
+    // le `createdAt` du PC et serait purgé dans le commit même de son import.
     if (_scenarios.length > MAX_SCENARIOS) {
       const age = function(x) {
         return Math.max(Date.parse(x.createdAt || 0) || 0, Date.parse(x.arriveeAt || 0) || 0);
@@ -801,8 +582,8 @@
       for (let i = 0; i < _scenarios.length - 1 && excess > 0; i++) {
         const s = _scenarios[i];
         if ((s.execution && s.execution.active) || s.id === _currentScenarioId) continue;
-        // 4e relecture (R4-16) : intervention TERMINÉE dont aucun rapport n'est encore
-        // sorti de l'appareil — la purger effaçait ses saisies et ses photos.
+        // 🩸 Intervention TERMINÉE dont aucun rapport n'est sorti de l'appareil : la purger effacerait ses
+        // saisies et ses photos.
         if (s.execution && s.execution.endedAt && !s.execution.rapportExporteAt) continue;
         purges.push(s.id);
         excess--;
@@ -817,7 +598,7 @@
       return true;
     } catch(e) {
       console.warn("[SecoursMode] Save échoué :", e);
-      // OOMGuard toast si quota dépassé (cohérent avec pattern sessionPersist)
+      // Toast si quota dépassé (comme sessionPersist).
       if (e && e.name === "QuotaExceededError" && window.OOMGuard
           && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(
@@ -829,19 +610,16 @@
     }
   }
 
-  // ============================================================
-  // HELPERS INTERNES
-  // ============================================================
+  // ── Helpers internes ────────────────────────────────────────────────
 
-  // Génère un ID unique pour scénario / groupe / point clé
+  // ID unique (scénario, groupe, point clé).
   function _genId(prefix) {
     return prefix + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
   }
 
-  // ISO timestamp courant
   function _nowIso() { return new Date().toISOString(); }
 
-  // Mute updatedAt + notifie les listeners + save + auto-refresh overlay
+  // updatedAt + listeners + sauvegarde + rafraîchissement de l'overlay.
   function _commitMutation(scenario) {
     if (scenario && typeof scenario === "object") {
       scenario.updatedAt = _nowIso();
@@ -849,23 +627,13 @@
     _saveScenarios();
     _notify();
     _majFooterSecours();
-    try { _majRoadSuivi(scenario); } catch(e) {}   // B1 : étapes faites → itinéraire suivi
-    // Auto-refresh overlay si on est en train d'afficher ce scénario sur la carte
+    try { _majRoadSuivi(scenario); } catch(e) {}   // étapes faites → itinéraire suivi
     if (_overlayLayer && scenario && scenario.id === _currentScenarioId) {
       renderOverlay(scenario.id);
     }
-    // Event générique sur window pour permettre à des
-    // modules extérieurs (intégrations tierces, plugins, déclinaisons
-    // commerciales, extensions navigateur, etc.) de réagir aux mutations
-    // sans avoir à passer par _changeListeners (qui transmet la liste
-    // COMPLÈTE des scénarios). Ici on émet une info CIBLÉE — scenarioId,
-    // planExternalId, updatedAt — suffisant pour qu'un listener fasse
-    // un traitement différentiel (re-render partiel, persistance ailleurs,
-    // notification, etc.).
-    //
-    // Aucun listener n'est attaché côté community → no-op total côté UX.
-    // Convention de nommage `mktm:*` cohérente avec `mktm:license-changed`
-    // émis par js/proLicense.js.
+    // Événement `mktm:secours-scenario-mutated` (scenarioId, planExternalId, updatedAt) pour un module
+    // extérieur qui veut un traitement différentiel, sans la liste complète de _changeListeners.
+    // No-op sans écouteur (aucun côté community).
     try {
       window.dispatchEvent(new CustomEvent("mktm:secours-scenario-mutated", {
         detail: {
@@ -876,33 +644,28 @@
         }
       }));
     } catch(e) {
-      // Anciens browsers sans CustomEvent constructor → swallow silencieux
+      // Navigateur sans constructeur CustomEvent : ignoré.
     }
   }
 
-  // Notifie tous les listeners du changement d'état
   function _notify() {
     _changeListeners.forEach(function(cb) {
       try { cb(_scenarios); } catch(e) { /* swallow handler errors */ }
     });
   }
 
-  // ============================================================
-  // CRUD — SCÉNARIOS
-  // ============================================================
+  // ── CRUD des scénarios ──────────────────────────────────────────────
 
-  // Retourne une copie défensive de la liste (pas la ref interne)
+  // Copie défensive (pas la référence interne).
   function list() {
     return _scenarios.slice();
   }
 
-  // Retourne un scénario par id (ou null)
   function get(id) {
     return _scenarios.find(function(s) { return s.id === id; }) || null;
   }
 
-  // Crée un nouveau scénario vide avec nom donné. Retourne l'objet créé.
-  // Si nom vide → fallback "Scénario du <date>".
+  // Nouveau scénario vide ; nom vide → « Scénario du <date> ».
   function createScenario(nom) {
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim()
@@ -920,10 +683,7 @@
       },
       groupes:    [],
       pointsCles: [],
-      // C1 — Init avec 1 phase vide. Les équipes ajoutées via
-      // addGroupe seront poussées par défaut dans phases[0].groupeIds.
-      // C2 permettra de créer phases[1], phases[2], etc. avec leur propre
-      // selection d'équipes (modèle hybride 1:c).
+      // 1 phase vide : addGroupe y pousse les équipes par défaut.
       phases: [_construirePhase(0, PHASE_DEFAULT_NOM, [])]
     };
     _scenarios.push(scenario);
@@ -931,15 +691,13 @@
     return scenario;
   }
 
-  // Update partiel d'un scénario par id. Merge shallow uniquement (pas deep).
-  // Retourne le scénario muté ou null si introuvable.
+  // Mise à jour partielle (fusion superficielle, champs en liste blanche). Retourne le scénario ou null.
   function updateScenario(id, partial) {
     const s = get(id);
     if (!s || !partial || typeof partial !== "object") return null;
-    // Whitelist des champs mutables (anti-pollution)
     if ("nom" in partial && typeof partial.nom === "string") s.nom = partial.nom;
     if ("context" in partial && partial.context && typeof partial.context === "object") {
-      // Merge shallow sur context (préserve champs absents du partial)
+      // context : fusion superficielle (les champs absents du partial restent).
       Object.keys(partial.context).forEach(function(k) {
         s.context[k] = partial.context[k];
       });
@@ -947,7 +705,7 @@
     if ("pointsCles" in partial && Array.isArray(partial.pointsCles)) {
       s.pointsCles = partial.pointsCles.slice();
     }
-    // types de POI exclus de « ✨ POI de la zone » (chaînes courtes, 100 au plus)
+    // Types de POI exclus de « POI de la zone » (chaînes courtes, 100 au plus).
     if ("tagsExclusPoiZone" in partial && Array.isArray(partial.tagsExclusPoiZone)) {
       s.tagsExclusPoiZone = partial.tagsExclusPoiZone.filter(function(x) { return typeof x === "string"; })
         .map(function(x) { return x.slice(0, 60); }).slice(0, 100);
@@ -966,11 +724,8 @@
     return s;
   }
 
-  // Supprime un scénario par id. Retourne true si trouvé+supprimé.
-  // 2e relecture (N10b) : les photos d'un scénario qui disparaît (supprimé, purgé par
-  // la limite de 10) ou d'une exécution relancée restaient en base sous les mêmes
-  // ids : exclues du rapport depuis, mais elles comptaient encore dans le quota de
-  // 5 par étape. Elles partent avec leur scénario / leur exécution.
+  // Les photos d'un scénario qui disparaît (supprimé, purgé par la limite) ou d'une exécution relancée
+  // partent avec lui : restées en base sous les mêmes ids, elles compteraient dans le quota de 5 par étape.
   function _purgerPhotosScenario(id) {
     const P = window.MyKTAMapSecoursPhotos;
     if (!id || !P || typeof P.deletePhotosForScenario !== "function") return;
@@ -982,15 +737,14 @@
     if (idx < 0) return false;
     _scenarios.splice(idx, 1);
     _purgerPhotosScenario(id);
-    // Si on supprime le scénario courant, on désactive le focus
     if (_currentScenarioId === id) {
       _currentScenarioId = null;
       clearOverlay();
     }
     _saveScenarios();
     _notify();
-    // Pendant de `mktm:secours-scenario-mutated` : une suppression VOULUE (pas la purge
-    // FIFO des 10 scénarios, qui n'est qu'une limite de stockage local). No-op sans écouteur.
+    // Pendant de `mktm:secours-scenario-mutated` : une suppression VOULUE seulement (pas la purge FIFO, simple
+    // limite de stockage local). No-op sans écouteur.
     try {
       window.dispatchEvent(new CustomEvent("mktm:secours-scenario-deleted", {
         detail: { scenarioId: id, planExternalId: window._currentLoadedPlanId || null, ts: _nowIso() }
@@ -999,47 +753,12 @@
     return true;
   }
 
-  // ============================================================
-  // Phase 3 — CRUD EXECUTION (mode terrain)
-  // ============================================================
-  //
-  // Modèle de données scenario.execution :
-  //   {
-  //     active:          boolean,             // true tant que le plan est lancé
-  //     startedAt:       ISO,                 // début du déclenchement
-  //     endedAt:         ISO | null,          // null = en cours
-  //     pausedAt:        ISO | null,          // si pause, ISO du début de pause
-  //     pausedTotalMs:   number,              // cumul des pauses (pour timer juste)
-  //     role:            "operateur" | "equipe" | "secouriste",
-  //     currentEquipeId: string | null,       // équipe focus si role="equipe"
-  //     etapes: {
-  //       [equipeId]: [
-  //         {
-  //           type:          "entree" | "interm" | "sortie",
-  //           idx:           number,           // 0=entrée, 1..N=intermédiaires, N+1=sortie
-  //           label:         string,           // hérité du parcours (POI name ou coords)
-  //           observations:  string,           // user input libre
-  //           statut:        "pending" | "ras" | "suspect" | ... (cf TABLEAU_STATUTS),
-  //           photoIds:      [string, ...],    // ids dans MyKTAMapSecoursPhotos (IDB)
-  //           startedAt:     ISO | null,       // quand l'équipe arrive à cette étape
-  //           completedAt:   ISO | null        // quand elle passe à la suivante
-  //         },
-  //         ...
-  //       ],
-  //       // Pour role="secouriste" : tableau de notes libres avec timestamps
-  //       _notes_libres: [
-  //         { id, ts, statut, texte, photoIds }
-  //       ]
-  //     }
-  //   }
-  //
-  // Persistance dans le scénario localStorage existant (myktamap_secours_v1_<planId>).
-  // Pas de nouvelle DB. Le plan switch ne ferme PAS l'execution active.
+  // ── Exécution (mode terrain) ────────────────────────────────────────
+  // Format de scenario.execution (active, startedAt/endedAt, pause, role, currentEquipeId, etapes par équipe,
+  // _notes_libres du rôle secouriste) : docs/architecture/secours.md. Persisté dans le scénario (même clé
+  // localStorage). Changer de plan ne ferme PAS l'exécution active.
 
-  // Helper interne — construit le tableau d'étapes pour une équipe depuis son
-  // parcours actuel (entree + intermediaires + sortie). À appeler au lancement.
-  // Crée des étapes avec statut "pending" partout. Ne touche pas aux étapes
-  // déjà existantes si l'execution a été relancée (préserve observations).
+  // Étapes d'une équipe depuis son parcours actuel (entrée + intermédiaires + sortie), toutes « pending ».
   function _buildEtapesPourEquipe(g) {
     const etapes = [];
     let idx = 0;
@@ -1090,23 +809,12 @@
     return etapes;
   }
 
-  // 🩸 UNE ÉQUIPE AJOUTÉE OU MODIFIÉE PENDANT UNE PHASE
-  // N'AVAIT PAS SES ÉTAPES. Les étapes ne se construisaient qu'au lancement et au
-  // passage de phase : un renfort ajouté en cours n'avait aucun stepper, et un
-  // parcours modifié gardait l'ancien. On reconstruit depuis le parcours actuel et
-  // on reporte ce qui est déjà saisi sur l'étape de même type + même libellé (dans
-  // l'ordre, pour les homonymes). Une étape retirée qui portait des données n'est
-  // pas jetée : elle part dans `execution._etapesRetirees[gid]` (traçabilité).
-  //
-  // 🩸 Relecture 29/09 (R3, R4, R6, R7) — la 1re version appariait par libellé seul :
-  // deux « Carrefour » échangeaient leurs saisies, une étape remise ne retrouvait
-  // pas ses données, la photo d'une étape retirée passait à sa voisine, l'étape
-  // affichée n'était pas recalée. Désormais : appariement par POSITION du point
-  // (`cle`), puis libellé par rang d'occurrence (`_apparierEtapes`) ; une étape
-  // qui revient est restaurée depuis l'archive ; les photos suivent leur étape en
-  // IndexedDB (`setStepIdx`, -2 = étape retirée) ; le focus live est recalé.
+  // 🩸 Équipe ajoutée ou parcours modifié PENDANT une phase : les étapes sont reconstruites depuis le parcours
+  // actuel, et ce qui est déjà saisi est reporté sur l'étape appariée (`_apparierEtapes`). Une étape retirée
+  // porteuse de données n'est pas jetée : `execution._etapesRetirees[gid]`, restaurée si elle revient ; les
+  // photos suivent leur étape en IndexedDB (`setStepIdx`, -2 = retirée) ; le focus live est recalé.
   const ETAPE_CHAMPS_SAISIS = ["statut", "observations", "photoIds", "startedAt", "completedAt", "_importedFrom",
-    "_obsImport", "victimePos"];   // _obsImport : R4-3 ; victimePos : A3 (position précisée)
+    "_obsImport", "victimePos"];   // _obsImport : dernier texte reçu ; victimePos : position précisée
   function _etapeADesDonnees(e) {
     return !!e && (e.statut !== "pending" || !!(e.observations || "").trim()
                    || (e.photoIds || []).length > 0 || !!e.startedAt);
@@ -1115,26 +823,20 @@
     if (!wp || typeof wp.x !== "number" || typeof wp.y !== "number") return null;
     return Math.round(wp.x) + "," + Math.round(wp.y) + "," + (Number.isInteger(wp.level) ? wp.level : 0);
   }
-  // 🩸 2e relecture 29/09 (N1, N3, N7, N8) — le repli par LIBELLÉ reliait des étapes
-  // sans rapport (« Puits » ailleurs, homonyme de remplacement, aller-retour par le
-  // même carrefour). Chaque point de passage a désormais une IDENTITÉ `wid`, posée à
-  // sa création (updateGroupe, export, lancement) ; chaque étape porte celle de son
-  // point. C'est la seule clé ; la position ne sert qu'aux données d'avant (sans
-  // wid), le libellé qu'aux rapports d'avant la v1.98.8 (ni wid ni position).
-  //
-  // 🩸 3e relecture (R3-1) — les wid étaient TIRÉS AU HASARD sur chaque appareil :
-  // un téléphone qui lançait un .mkmsec d'avant la version s'en fabriquait d'autres
-  // que le PC → au rapport, 1 étape fusionnée sur 5, victime dupliquée. Un wid manquant
-  // est désormais CALCULÉ (équipe + rôle + position + rang d'occurrence) : deux
-  // appareils qui ont le même parcours trouvent le même, sans échanger quoi que ce soit.
+  // 🩸 Identité d'un point de passage : `wid`, posé à sa création (updateGroupe, export, lancement) et porté
+  // par chaque étape. C'est la seule clé fiable : apparier par libellé relie des étapes sans rapport
+  // (homonymes, aller-retour par le même carrefour).
+  // 🩸 Un wid manquant est CALCULÉ (équipe + rôle + position + rang d'occurrence), jamais tiré au hasard :
+  // deux appareils qui ont le même parcours trouvent le même wid sans rien échanger. Tiré au hasard, chaque
+  // téléphone aurait le sien et le rapport fusionné dupliquerait les étapes.
   function _widDeterministe(gid, role, wp, rang) {
     const src = String(gid || "") + "|" + role + "|" + (_cleWaypoint(wp) || "") + "|" + rang;
     let h = 0x811c9dc5;
     for (let i = 0; i < src.length; i++) { h ^= src.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
     return "W" + h.toString(36) + "r" + rang;
   }
-  // Pose les wid manquants d'un parcours [{role, wp}] (ordre du parcours). Le rang
-  // compte TOUS les points de même rôle et même position, avec ou sans wid.
+  // Pose les wid manquants d'un parcours [{role, wp}] (dans l'ordre). Le rang compte TOUS les points de même
+  // rôle et même position, avec ou sans wid.
   function _poserWids(gid, parcours) {
     const pris = new Set();
     parcours.forEach(function(it) { if (it.wp && it.wp.wid) pris.add(it.wp.wid); });
@@ -1163,8 +865,8 @@
     if (!g) return false;
     return _poserWids(g.id, _parcoursRoles(g.entree, g.intermediaires, g.sortie));
   }
-  // Étapes construites avant les wid : elles correspondent une à une au parcours
-  // ACTUEL (toute modification en exécution resynchronise) → on leur rattache le wid.
+  // Étapes construites sans wid : elles correspondent une à une au parcours ACTUEL (toute modification en
+  // exécution resynchronise), on leur rattache donc le wid.
   function _rattacherWidEtapes(s, g) {
     const ex = s && s.execution;
     const et = ex && ex.etapes && g && ex.etapes[g.id];
@@ -1174,8 +876,8 @@
     (g.intermediaires || []).forEach(function(w) { liste.push(w); });
     if (g.sortie) liste.push(g.sortie);
     if (liste.length !== et.length) return;
-    // 3e relecture (R3-9) : une exécution démarrée avant les resync peut avoir des
-    // étapes décalées du parcours → on ne rattache que si type ET libellé concordent.
+    // 🩸 Exécution ancienne : étapes possiblement décalées du parcours → rattachement seulement si type ET
+    // libellé concordent.
     const roles = _parcoursRoles(g.entree, g.intermediaires, g.sortie);
     et.forEach(function(e, i) {
       const w = liste[i];
@@ -1184,7 +886,7 @@
       if (!e.cle) e.cle = _cleWaypoint(w);
     });
   }
-  // Mêmes conditions pour la resync ET la garde de retrait (2e relecture, N4).
+  // Mêmes conditions pour la resynchronisation ET la garde de retrait.
   function _resyncApplicable(s, g) {
     const ex = s && s.execution;
     if (!ex || !ex.active || !ex.etapes || !g) return false;
@@ -1194,13 +896,13 @@
     if (Array.isArray(s.phases) && s.phases.length > 0 && !_groupeParticipeAPhase(s, g.id, phaseIdx)) return false;
     return true;
   }
-  // Pour chaque cible, la source appariée (ou null). Chaque source ne sert qu'une
-  // fois. Passe 1 : même wid. Passe 2 (l'un des deux sans wid) : même type + même
-  // position. Passe 3 (cible sans wid ni position : rapport d'avant v1.98.8) : même
-  // type + même libellé, dans l'ordre. Passe 4 : cible sans libellé → même numéro.
+  // Pour chaque cible, la source appariée (ou null) ; chaque source ne sert qu'une fois.
+  // Passe 1 : même wid. Passe 2 (l'un des deux sans wid) : même type + même position. Passe 3 (cible sans wid
+  // ni position, données anciennes) : même type + même libellé, dans l'ordre. Passe 4 : cible sans libellé →
+  // même numéro.
   function _apparierEtapes(sources, cibles) {
-    // 3e relecture (R3-1) : un wid INCONNU de l'autre côté (tiré ailleurs, ou d'avant
-    // les wid calculés) ne vaut rien : on retombe sur la position, puis le libellé.
+    // 🩸 Un wid INCONNU de l'autre côté (tiré ailleurs, ou ancien) ne vaut rien : on retombe sur la position,
+    // puis le libellé.
     const widsS = new Set(sources.map(function(x) { return x && x.wid; }).filter(Boolean));
     const widsC = new Set(cibles.map(function(x) { return x && x.wid; }).filter(Boolean));
     const widConnu = function(a, c) { return !!a.wid && !!c.wid && widsC.has(a.wid) && widsS.has(c.wid); };
@@ -1248,7 +950,7 @@
     const anciennes = Array.isArray(ex.etapes[g.id]) ? ex.etapes[g.id] : [];
     const nouvelles = _buildEtapesPourEquipe(g);
     const archive = (ex._etapesRetirees && ex._etapesRetirees[g.id]) || [];
-    // 1. saisies des étapes conservées
+    // 1. Saisies des étapes conservées.
     const paires = _apparierEtapes(anciennes, nouvelles);
     nouvelles.forEach(function(n, i) {
       const o = paires[i];
@@ -1256,7 +958,7 @@
       _reporterSaisies(o, n);
       if (o.idx !== n.idx) _photosVersEtape(n.photoIds, n.idx);
     });
-    // 2. étape qui revient : restaurée depuis l'archive
+    // 2. Étape qui revient : restaurée depuis l'archive.
     const orphelines = nouvelles.filter(function(n, i) { return !paires[i]; });
     const restaurees = _apparierEtapes(archive, orphelines);
     orphelines.forEach(function(n, i) {
@@ -1266,7 +968,7 @@
       delete n.retireeAt;
       _photosVersEtape(n.photoIds, n.idx);
     });
-    // 3. étapes retirées porteuses de données → archive (photos hors rapport : -2)
+    // 3. Étapes retirées porteuses de données → archive (photos hors rapport : -2).
     const gardeArchive = archive.filter(function(a) { return restaurees.indexOf(a) < 0; });
     anciennes.forEach(function(o) {
       if (paires.indexOf(o) >= 0 || !_etapeADesDonnees(o)) return;
@@ -1276,7 +978,7 @@
     ex._etapesRetirees = ex._etapesRetirees || {};
     if (gardeArchive.length > 0) ex._etapesRetirees[g.id] = gardeArchive;
     else delete ex._etapesRetirees[g.id];
-    // 4. étape affichée recalée (équipe en cours sur cet appareil)
+    // 4. Étape affichée recalée (équipe en cours sur cet appareil).
     if (ex.currentEquipeId === g.id) {
       const vue = anciennes[_liveEquipeFocusIdx];
       const k = vue ? paires.indexOf(vue) : -1;
@@ -1286,11 +988,8 @@
     return true;
   }
 
-  // Lance l'exécution d'un scénario. Initialise s.execution avec étapes
-  // par équipe construites depuis les parcours. Marque active=true +
-  // startedAt = now. Cas particulier role="secouriste" : pas d'équipes
-  // utilisées, juste un tableau _notes_libres pour les notes en vrac.
-  // Retourne le scénario muté ou null si introuvable.
+  // Lance l'exécution : s.execution avec les étapes de chaque équipe, active = true, startedAt = maintenant.
+  // Rôle « secouriste » : pas d'équipes, un tableau _notes_libres. Retourne le scénario, ou null.
   function lancerExecution(scenarioId, opts) {
     const s = get(scenarioId);
     if (!s) return null;
@@ -1298,28 +997,23 @@
     const role = opts.role || "operateur";
     const currentEquipeId = opts.currentEquipeId || null;
 
-    // Si une execution existe déjà et est active → ne pas écraser (l'user
-    // doit l'arrêter explicitement avant de relancer). Permettre reprise
-    // via setRole/setCurrentEquipe au lieu de relance.
+    // Exécution déjà active : on ne l'écrase pas (l'arrêter d'abord) ; seuls rôle et équipe changent.
     if (s.execution && s.execution.active === true) {
-      // Update du rôle/équipe sans casser les étapes existantes
       s.execution.role = role;
       s.execution.currentEquipeId = currentEquipeId;
       _commitMutation(s);
       return s;
     }
 
-    // Construction initiale ou réinitialisation
     if (s.execution) _purgerPhotosScenario(s.id);     // exécution relancée : photos de l'ancienne
     (s.groupes || []).forEach(_normaliserParcours);   // identités des points (wid)
     const etapes = {};
     if (role !== "secouriste") {
-      // Mode équipe/opérateur : 1 array d'étapes par équipe
       (s.groupes || []).forEach(function(g) {
         etapes[g.id] = _buildEtapesPourEquipe(g);
       });
     } else {
-      // Mode secouriste libre : pas d'équipes structurées
+      // Secouriste libre : pas d'équipes structurées.
       etapes._notes_libres = [];
     }
 
@@ -1332,17 +1026,12 @@
       role:            role,
       currentEquipeId: currentEquipeId,
       etapes:          etapes,
-      // C1 — Index de la phase active. C2 ajoutera l'UI pour
-      // créer phases[1+] et naviguer entre elles. C3 ajoutera transition
-      // automatique avec confirmation Op (modèle hybride 2:c).
       currentPhaseIdx: 0
     };
     _journaliser(s, "secours.mc.lancement", {});   // main courante
-    // Test terrain KARMA (30/09) : un scénario DÉJÀ JOUÉ gardait les heures de ses
-    // phases. Les étapes repartent de zéro, mais le départ par défaut d'une équipe est
-    // le début de phase : relancé le lendemain, les 8 équipes étaient « en retard de
-    // 9 à 12 h » dès la première seconde. Nouveau lancement = nouvelles heures.
-    // (Le débriefing écrit reste : c'est du texte de l'utilisateur.)
+    // 🩸 Nouveau lancement = nouvelles heures de phase : le départ par défaut d'une équipe est le début de
+    // phase, et un scénario rejoué le lendemain mettrait toutes les équipes « en retard de 9 à 12 h » dès la
+    // première seconde. Le debrief écrit reste (texte de l'utilisateur).
     if (Array.isArray(s.phases)) {
       s.phases.forEach(function(p, i) {
         if (!p) return;
@@ -1350,22 +1039,20 @@
         p.endedAt = null;
       });
     }
-    // 🐛 hotfix11 — Reset focus + fresh session flag pour le nouveau lancement.
-    // Permet le smart-skip initial vers la 1ère étape pending au boot,
-    // tout en laissant ensuite la nav user (prev/next/stepper) prendre le relai.
+    // Focus remis à zéro + marque de session neuve : saut initial vers la 1re étape pending, puis la
+    // navigation de l'utilisateur prend le relais.
     _liveEquipeFocusIdx     = 0;
     _liveEquipeFreshSession = true;
     _commitMutation(s);
     return s;
   }
 
-  // Arrête l'exécution d'un scénario. Garde execution comme historique
-  // (active=false + endedAt set). Permet le re-affichage du rapport final
-  // ultérieurement sans perdre les observations.
+  // Arrête l'exécution en la gardant comme historique (active = false, endedAt) : le rapport final reste
+  // consultable avec ses observations.
   function arreterExecution(scenarioId) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.active) return null;
-    // Si on était en pause, comptabilise le dernier segment avant d'arrêter
+    // En pause : on compte le dernier segment avant d'arrêter.
     if (s.execution.pausedAt) {
       const pauseDur = Date.now() - Date.parse(s.execution.pausedAt);
       if (pauseDur > 0) s.execution.pausedTotalMs += pauseDur;
@@ -1374,9 +1061,7 @@
     s.execution.active = false;
     s.execution.endedAt = _nowIso();
     _journaliser(s, "secours.mc.fin", {});   // main courante
-    // C1 — Set endedAt sur la phase active (filet pour le cas où
-    // l'utilisateur arrête sans passer par "Terminer phase" de C3). Idempotent :
-    // si déjà set par C3, on ne touche pas.
+    // endedAt sur la phase active si l'utilisateur arrête sans « Terminer la phase » (déjà posé : intact).
     if (Array.isArray(s.phases)) {
       const idx = (typeof s.execution.currentPhaseIdx === "number")
                   ? s.execution.currentPhaseIdx
@@ -1390,16 +1075,13 @@
     return s;
   }
 
-  // Met en pause OU reprend l'exécution. Calcule pausedTotalMs pour que
-  // le timer affiché reste juste (= temps écoulé - temps de pause cumulé).
+  // Pause / reprise. pausedTotalMs garde le chronomètre juste (temps écoulé − pauses cumulées).
   function pauseExecution(scenarioId, paused) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.active) return null;
     if (paused && !s.execution.pausedAt) {
-      // Démarre une pause
       s.execution.pausedAt = _nowIso();
     } else if (!paused && s.execution.pausedAt) {
-      // Reprend
       const pauseDur = Date.now() - Date.parse(s.execution.pausedAt);
       if (pauseDur > 0) s.execution.pausedTotalMs += pauseDur;
       s.execution.pausedAt = null;
@@ -1408,7 +1090,7 @@
     return s;
   }
 
-  // ── 🧩 Installation reliée (étude Secours, étapes 1-3) : prises NEUTRES ──
+  // ── Installation reliée : prises NEUTRES ────────────────────────────
   // Sans extension : aucun bouton, aucun texte, tout est permis, aucun événement n'a d'écouteur.
   const _actionsExt = new Map(); let _actionsExtSeq = 0;
   function _X() { return window.KtaExtensions || null; }
@@ -1523,8 +1205,8 @@
     return true;
   }
 
-  // Update partiel d'une étape d'équipe (whitelist anti-pollution).
-  // Champs mutables : observations, statut, photoIds, startedAt, completedAt.
+  // Mise à jour partielle d'une étape (liste blanche : observations, statut, photoIds, startedAt,
+  // completedAt).
   function updateEtape(scenarioId, equipeId, etapeIdx, partial) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.etapes) return null;
@@ -1532,12 +1214,11 @@
     if (!Array.isArray(arr) || etapeIdx < 0 || etapeIdx >= arr.length) return null;
     const et = arr[etapeIdx];
     if (!partial || typeof partial !== "object") return et;
-    if (!_peut(scenarioId, equipeId, "etape")) return null;   // 🧩 réservé (installation reliée)
+    if (!_peut(scenarioId, equipeId, "etape")) return null;   // réservable (installation reliée)
     if ("observations" in partial && typeof partial.observations === "string") {
       et.observations = partial.observations.slice(0, 2000);
     }
     if ("statut" in partial && typeof partial.statut === "string") {
-      // Valide contre TABLEAU_STATUTS
       const info = TABLEAU_STATUTS.find(function(st) { return st.id === partial.statut; });
       if (info && info.id !== et.statut && info.id !== "pending") {
         _journaliser(s, "secours.mc.statut", { equipe: _nomEquipe(s, equipeId), etape: _lblEtape(et.label) || "?", statut: info.id });
@@ -1553,10 +1234,10 @@
     if ("completedAt" in partial) {
       et.completedAt = partial.completedAt;
     }
-    // 🔁 Horodatage de la dernière modification : départage deux appareils qui touchent la même étape
-    // (relais en direct d'une installation reliée — _fusionnerExecutionDirect).
+    // Horodatage de la dernière modification : départage deux appareils qui touchent la même étape (relais
+    // en direct d'une installation reliée, cf _fusionnerExecutionDirect).
     et.majAt = _nowIso();
-    if ("victimePos" in partial) {   // A3 : position précisée de la victime (ou null)
+    if ("victimePos" in partial) {   // position précisée de la victime (ou null)
       const v = partial.victimePos;
       et.victimePos = (v && typeof v.x === "number" && typeof v.y === "number")
         ? { x: v.x, y: v.y, level: Number.isInteger(v.level) ? v.level : 0, at: v.at || _nowIso() } : null;
@@ -1564,15 +1245,9 @@
     }
     _commitMutation(s);
     _emettre("mktm:secours-etape-changee", { scenarioId: s.id, equipeId: equipeId, etape: _copieEtape(et) });
-    // C3 — Watcher auto-détection (KARMA C3.2:a + C3.2:c hybride) :
-    // si la mutation vient de compléter une étape sortie ET que toutes les
-    // équipes participantes de la phase active ont leur sortie completée,
-    // déclenche un toast Op "Phase prête à clore" (qu'une seule fois par
-    // phase pour ne pas spammer).
-    // Conditions d'affichage du toast :
-    //   - role Operateur (les équipiers ne peuvent pas terminer une phase)
-    //   - Multi-phases (phases.length >= 2) — pas de pollution mono-phase
-    //   - Pas déjà affiché pour cette phase (flag _phaseReadyToastShownForIdx)
+    // Auto-détection : l'étape sortie qui vient d'être complétée termine-t-elle la phase active ? Toast
+    // « Phase prête à clore » une seule fois par phase (_phaseReadyToastShownForIdx), seulement pour
+    // l'opérateur et en multi-phases (phases.length >= 2).
     try {
       const phaseIdx = s.execution.currentPhaseIdx || 0;
       const isOp = (s.execution.role === "operateur");
@@ -1581,18 +1256,15 @@
       if (isOp && isMulti && !alreadyShown && _phaseEstPretAClore(s)) {
         s.execution._phaseReadyToastShownForIdx = phaseIdx;
         _commitMutation(s);
-        // Toast assistant non bloquant — l'Op clique pour ouvrir le debrief.
-        // Ne ferme PAS auto, important : l'Op doit volontairement confirmer.
+        // Toast non bloquant : l'opérateur ouvre lui-même le debrief (confirmation volontaire).
         _toast(t("secours.toast.phasePretAClore"), "info");
       }
     } catch(e) { /* swallow watcher errors */ }
     return et;
   }
 
-  // Raccourci avec timestamps auto : marque le statut d'une étape +
-  // pose completedAt = now si non-pending (= étape effectivement traitée).
-  // Si l'étape précédente n'avait pas de completedAt, on lui en pose un aussi
-  // (l'équipe a logiquement passé l'étape précédente avant de marquer celle-ci).
+  // Statut d'une étape + completedAt si non pending. L'étape précédente sans completedAt en reçoit un aussi
+  // (l'équipe l'a forcément passée).
   function marquerEtapeStatut(scenarioId, equipeId, etapeIdx, statutId) {
     const partial = { statut: statutId };
     const info = TABLEAU_STATUTS.find(function(st) { return st.id === statutId; });
@@ -1600,16 +1272,14 @@
       partial.completedAt = _nowIso();
     }
     const updated = updateEtape(scenarioId, equipeId, etapeIdx, partial);
-    // Auto-fix : pose startedAt sur l'étape courante si elle n'en avait pas
+    // startedAt posé sur l'étape courante si absent.
     if (updated && !updated.startedAt) {
       updateEtape(scenarioId, equipeId, etapeIdx, { startedAt: _nowIso() });
     }
     return updated;
   }
 
-  // Retourne le temps écoulé depuis le lancement (en ms), en excluant le
-  // temps de pause cumulé. Si l'execution est en pause, fige la valeur à
-  // l'instant du début de pause (pas de progression visuelle pendant pause).
+  // Temps écoulé depuis le lancement (ms), pauses exclues ; figé pendant une pause.
   function getExecutionDureeMs(scenarioId) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.startedAt) return 0;
@@ -1621,12 +1291,10 @@
     return Math.max(0, grossMs - (s.execution.pausedTotalMs || 0));
   }
 
-  // Raccourcis lecture
-  // ─── A3 (vague 5, 29/09/2026) — LA VICTIME A UNE POSITION ───
-  // Avant : « Victime trouvée » n'était qu'un statut d'étape, sans position ni
-  // suite. Désormais la victime est au point de son étape (niveau compris), ou à
-  // la position précisée sur la carte (`etape.victimePos`, qui voyage dans le
-  // rapport et se fusionne). Source unique : _victimesDe (vues, carte, rapports).
+  // ── Victime : une position ──────────────────────────────────────────
+  // La victime est au point de son étape (niveau compris) ou à la position précisée sur la carte
+  // (`etape.victimePos`, qui voyage dans le rapport et se fusionne). Source unique : _victimesDe (vues,
+  // carte, rapports).
   function _posDeCle(cle) {
     const c = String(cle || "").split(",").map(Number);
     return (c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
@@ -1675,7 +1343,7 @@
     return out;
   }
   // jsPDF (police standard) imprime les accents mais pas les emojis ni les flèches.
-  // A4 : « Départ 14:02 · rentrée 16:12 · rappelée 15:50 » pour les rapports.
+  // « Départ 14:02 · rentrée 16:12 · rappelée 15:50 » pour les rapports.
   function _ligneSuiviRapport(ed) {
     const su = (ed && ed.suivi) || {};
     const parts = [];
@@ -1695,7 +1363,7 @@
     return window.ktaTextePdf(txt).replace(/\s{2,}/g, " ").trim();
   }
   // Texte saisi par l'utilisateur (nom, note, observation) vers un PDF : filtré D'ABORD, puis
-  // repli sur `defaut` s'il ne reste rien (un nom 100 % emoji donnait un titre vide).
+  // repli sur `defaut` s'il ne reste rien (un nom 100 % emoji donnerait un titre vide).
   function _pdfLibre(txt, defaut) {
     const s = _stripPourPdf(txt);
     return s || (defaut == null ? "" : String(defaut));
@@ -1704,13 +1372,12 @@
     return iso ? new Date(iso).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
   }
 
-  // ─── A4 (vague 5, 29/09/2026) — DÉPART, RETOUR PRÉVU, RETARD ───
-  // Avant : aucune heure de départ ni de retour par équipe, aucune alerte. Chaque
-  // équipe engagée dans la phase en cours a un suivi (s.execution.suivi[phase][gid])
-  // : départ (bouton, sinon début de la phase / lancement), rentrée. Retour prévu =
-  // départ + durée estimée ; orange passé l'heure, rouge après la marge réglable.
-  // ⚠️ Pas de réseau entre appareils : chaque appareil calcule SES alertes ; les
-  // heures voyagent dans le rapport d'équipe et se fusionnent.
+  // ── Départ, retour prévu, retard ────────────────────────────────────
+  // Chaque équipe engagée dans la phase en cours a un suivi (s.execution.suivi[phase][gid]) : départ
+  // (bouton, sinon début de phase / lancement), rentrée. Retour prévu = départ + durée estimée ; orange
+  // passé l'heure, rouge après la marge réglable.
+  // ⚠️ Pas de réseau entre appareils : chacun calcule SES alertes ; les heures voyagent dans le rapport
+  // d'équipe et se fusionnent.
   function _phaseCour(s) {
     return (s && s.execution && typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0;
   }
@@ -1726,9 +1393,9 @@
     return (ex.suivi && ex.suivi[k] && ex.suivi[k][gid]) || null;
   }
   function _equipeEngagee(s, g) { return _getEtapesEquipe(s, g.id).length > 0; }
-  // B9 + 06/10/2026 (décision KARMA) — effectif = personnes qui DESCENDENT. Saisi s'il l'est ; sinon le plus
-  // grand de « membres nommés » et « comptes reliés » (installation reliée). Jamais déduit des seuls comptes
-  // quand une saisie existe : une équipe de 4 avec un seul téléphone a 1 compte mais 4 personnes à remonter.
+  // Effectif = personnes qui DESCENDENT (décision produit). Saisi s'il l'est ; sinon le plus grand de
+  // « membres nommés » et « comptes reliés ». 🩸 Jamais déduit des seuls comptes quand une saisie existe :
+  // une équipe de 4 avec un seul téléphone a 1 compte mais 4 personnes à remonter.
   function _scenarioDuGroupe(g) {
     for (let i = 0; i < _scenarios.length; i++) if ((_scenarios[i].groupes || []).indexOf(g) >= 0) return _scenarios[i];
     return null;
@@ -1774,13 +1441,12 @@
   }
   function _chef(g) {
     const m = (g && Array.isArray(g.membres)) ? g.membres : [];
-    // Sans liste de membres, le chef se saisit librement (contre-audit GRIMP 30/09 :
-    // 7 équipes sur 8 du scénario réel n'avaient ni membres ni chef possible).
+    // Sans liste de membres, le chef se saisit librement (sinon aucune équipe sans membres n'aurait de chef).
     if (g && g.chef && (!m.length || m.indexOf(g.chef) >= 0)) return g.chef;
     return m[0] || null;
   }
-  // Contrôle des engagés, pour la vue opérateur (contre-audit GRIMP 30/09 : aucun
-  // total nulle part). Équipes de la phase en cours ; effectif inconnu = compté à part.
+  // Contrôle des engagés pour la vue opérateur : équipes de la phase en cours ; effectif inconnu compté à
+  // part.
   function _bilanEngages(s) {
     const r = { engages: 0, sousTerre: 0, manquants: 0, inconnus: [] };
     const ph = _phaseCour(s);
@@ -1875,10 +1541,10 @@
                : '') +
            '</div>';
   }
-  // ─── Rappel (vague 5, 29/09/2026 — décision KARMA 8:a) ───
-  // ⚠️ Aucun réseau entre appareils : l'app NE PRÉVIENT PAS les équipes. Le rappel
-  // est un ÉTAT tenu par l'opérateur (qui, à quelle heure), transmis par radio ou à
-  // la voix, affiché en violet et consigné dans le rapport. La confirmation le dit.
+  // ── Rappel ──────────────────────────────────────────────────────────
+  // ⚠️ Aucun réseau entre appareils : l'app NE PRÉVIENT PAS les équipes. Le rappel est un ÉTAT tenu par
+  // l'opérateur (qui, à quelle heure), transmis par radio ou à la voix, affiché en violet et consigné dans
+  // le rapport. La confirmation le dit (décision produit).
   function _equipesARappeler(s) {
     return (s.groupes || []).filter(function(g) {
       const su = _suiviEquipe(s, g.id) || {};
@@ -1888,7 +1554,7 @@
   async function _rappeler(sid, gids) {
     const s = get(sid);
     if (!s || !gids.length) { _toast(t("secours.rappel.aucune"), "info"); return false; }
-    if (!_peut(sid, null, "rappel")) return false;   // 🧩 PC seulement (installation reliée)
+    if (!_peut(sid, null, "rappel")) return false;   // PC seulement (installation reliée)
     const noms = (s.groupes || []).filter(function(g) { return gids.indexOf(g.id) >= 0; })
                                   .map(function(g) { return _escHtml(g.nom); }).join(", ");
     const msg = t("secours.rappel.confirm", { n: gids.length, equipes: noms, h: _heureCourte(_nowIso()) });
@@ -1909,19 +1575,19 @@
     return true;
   }
 
-  // B9 (décision KARMA 3:a) : « ✅ Rentrée » demande COMBIEN sont remontés. En dessous
-  // de l'effectif : alerte rouge « N personne(s) manquante(s) » tant que ce n'est pas
-  // corrigé — le contrôle le plus important sur le terrain.
+  // « Rentrée » demande COMBIEN sont remontés. En dessous de l'effectif : alerte rouge « N personne(s)
+  // manquante(s) » tant que ce n'est pas corrigé — le contrôle le plus important sur le terrain.
   async function _demanderRemontes(sid, gid) {
     const s = get(sid);
     const g = s && (s.groupes || []).find(function(x) { return x.id === gid; });
     if (!g) return false;
-    if (!_peut(sid, gid, "rentree")) return false;   // 🧩 chef de l'équipe ou PC (installation reliée)
+    if (!_peut(sid, gid, "rentree")) return false;   // chef de l'équipe ou PC (installation reliée)
     const eff = _effectif(g);
     const su0 = _suiviEquipe(s, gid) || {};
     const nombre = { label: t("secours.b9.remontesLabel", { effectif: eff || "?" }),
-                     // Jamais prérempli avec l'effectif (contre-audit GRIMP 30/09) : un seul
-                     // « Valider » donnait « 3/3 » sans que personne n'ait compté.
+                     // 🩸 Jamais prérempli avec l'effectif : un seul « Valider » donnerait « 3/3 » sans que personne
+                     // n'ait
+                     // compté.
                      valeur: Number.isInteger(su0.remontes) ? su0.remontes : null, min: 0, max: 99 };
     const msg = t("secours.b9.remontesQuestion", { equipe: _escHtml(g.nom) });
     const ok = (typeof window.ktaConfirm === "function")
@@ -1945,8 +1611,7 @@
     _emettreSuivi(s2, gid);
     if (manque > 0) {
       _toast(t("secours.b9.toastManquants", { equipe: g.nom, n: manque }), "error");
-      // 📳 Soumis au réglage Vibration (décision KARMA 01/10/2026). Seules les
-      // alertes de survie passent outre, via kta_vibrate.urgence.
+      // Soumis au réglage Vibration ; seules les alertes de survie passent outre (kta_vibrate.urgence).
       if (window.kta_vibrate) window.kta_vibrate([400, 150, 400, 150, 400]);
     }
     return true;
@@ -1973,8 +1638,8 @@
     const s = _scenarioEnCours();
     if (!s) return;
     const eqId = (s.execution.role === "equipe") ? s.execution.currentEquipeId : null;
-    // Un seul toast pour tous les seuils franchis ensemble (un toast chasse le précédent :
-    // deux équipes en retard au même moment, la première disparaissait — vu au test).
+    // Un seul toast pour tous les seuils franchis ensemble : un toast chasse le précédent, la première équipe
+    // en retard disparaîtrait.
     const messages = [];
     let rouge = false;
     (s.groupes || []).forEach(function(g) {
@@ -1997,9 +1662,8 @@
     _majFooterSecours(true);
   }
 
-  // Vague 7 (5:a) : notes du secouriste libre → main courante du PC, à leur heure,
-  // signées « Secouriste », sans doublon (id de la note). Photos non importées
-  // (elles restent dans son propre rapport PDF). Retourne le nombre ajouté.
+  // Notes du secouriste libre → main courante du PC, à leur heure, signées « Secouriste », sans doublon
+  // (id de la note). Photos non importées (elles restent dans son rapport PDF). Retourne le nombre ajouté.
   function _importerNotesSecouriste(payload) {
     const s = get(_currentScenarioId);
     if (!s || !s.execution) return 0;
@@ -2018,12 +1682,11 @@
     return n;
   }
 
-  // ─── B10 (vague 7b, décision KARMA 8:a) ───
-  // Au lancement : un plan SERVEUR qui n'est pas entièrement disponible hors-ligne
-  // sur cet appareil = risque de carte incomplète sous terre. On prévient, sans
-  // bloquer (un plan importé depuis un ZIP est déjà sur l'appareil : rien à dire).
-  // Rend le texte de l'avertissement (ou null) : il est affiché dans le message unique
-  // du lancement (test terrain 30/09 : 4 messages successifs masquaient les boutons).
+  // ── Hors-ligne au lancement ─────────────────────────────────────────
+  // Plan SERVEUR pas entièrement disponible hors ligne sur cet appareil = carte peut-être incomplète sous
+  // terre : on prévient sans bloquer (un plan importé en ZIP est déjà là). Rend le texte de l'avertissement
+  // (ou null), glissé dans le message UNIQUE du lancement (plusieurs messages successifs masquent les
+  // boutons).
   async function _verifierHorsLigne() {
     try {
       const id = window._currentLoadedPlanId;
@@ -2038,11 +1701,10 @@
     } catch(err) { console.warn("[SecoursMode] contrôle hors-ligne :", err); return null; }
   }
 
-  // ─── Vague 8b (30/09, contre-audit IGC) — NIVEAU DES ZONES ───
-  // Une zone polygone vaut au niveau où elle a été DESSINÉE (niveau de ses sommets,
-  // sinon celui de l'équipe) — ou sur tous les niveaux si l'équipe le demande
-  // (`zoneTousNiveaux`). Avant, la zone valait pour tous les niveaux sans le dire :
-  // le −1 était annoncé « couvert à 80 % » alors que 4,9 % en étaient parcourus.
+  // ── Niveau des zones ────────────────────────────────────────────────
+  // Une zone polygone vaut au niveau où elle a été DESSINÉE (niveau de ses sommets, sinon celui de l'équipe),
+  // ou sur tous les niveaux si l'équipe le demande (`zoneTousNiveaux`). 🩸 Sans cette règle, un niveau
+  // inférieur est annoncé « couvert à 80 % » alors que 5 % en sont parcourus.
   function _mlvlActif() { return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true); }
   function _niveauZone(g) {   // null = tous niveaux
     if (!_mlvlActif() || !g || g.zoneTousNiveaux) return null;
@@ -2086,20 +1748,18 @@
     }).join(" · ") });
   }
 
-  // ─── B3 (vague 7b, décision KARMA 7:a) — COUVERTURE ───
-  // Une aide à la lecture, sans affectation automatique : (1) POI situés DANS la zone
-  // d'une équipe mais absents de son parcours, (2) POI visités par plusieurs équipes,
-  // (3) part des galeries du plan couverte par les zones (tracés sélectionnés ou
-  // segments dont le milieu tombe dans un polygone). Niveaux ignorés (approximation
-  // assumée : c'est un ordre de grandeur pour l'opérateur).
+  // ── Couverture ──────────────────────────────────────────────────────
+  // Aide à la lecture, sans affectation automatique : (1) POI DANS la zone d'une équipe mais hors de son
+  // parcours, (2) POI visités par plusieurs équipes, (3) part des galeries couverte par les zones (tracés
+  // sélectionnés ou segments dont le milieu tombe dans un polygone). Niveaux ignorés : ordre de grandeur
+  // pour l'opérateur (décision produit).
   function _calculerCouverture(s) {
     const groupes = (s && s.groupes) || [];
-    // l'uid d'abord : deux POI homonymes ne sont pas « le même ».
+    // L'uid d'abord : deux POI homonymes ne sont pas « le même ».
     const cle = function(w) { return w && (w.pointUid || w.pointId || (Math.round(w.x) + "," + Math.round(w.y))); };
     const parcoursDe = function(g) {
       return [g.entree].concat(g.intermediaires || [], [g.sortie]).filter(function(w) { return w && typeof w.x === "number"; });
     };
-    // POI visités par plusieurs équipes
     const visites = {};
     groupes.forEach(function(g) {
       const vus = {};
@@ -2112,7 +1772,6 @@
     });
     const doublons = Object.keys(visites).map(function(k) { return visites[k]; })
                            .filter(function(v) { return v.equipes.length > 1; });
-    // POI dans une zone mais hors parcours
     const pois = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
     const horsParcours = [];
     groupes.forEach(function(g) {
@@ -2134,7 +1793,6 @@
       });
       if (noms.length) horsParcours.push({ equipe: g.nom, noms: noms });
     });
-    // Galeries couvertes par les zones
     const tous = _tousLesTraces();
     const clesZones = {};
     groupes.forEach(function(g) { if (g.zoneType === "roads") _tracesZone(g).forEach(function(r) { clesZones[_cleTrace(r)] = true; }); });
@@ -2154,12 +1812,10 @@
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     return { doublons: doublons, horsParcours: horsParcours, totalM: total / pxParM, couvertM: couvert / pxParM };
   }
-  // ─── Vague 8b (30/09, contre-audits GRIMP + IGC) — COUVERTURE HONNÊTE ───
-  // « 93 % couvert » mesurait les galeries SOUS une zone, pas celles qu'une équipe va
-  // parcourir (21-24 % sur le scénario réel). Par niveau : longueur, part dans une
-  // zone, part SUR UN PARCOURS (tronçon dont le milieu est à < 3 m de l'itinéraire
-  // calculé d'une équipe, même niveau), longueur affectée à 2 équipes ou plus.
-  // Les itinéraires sont indexés dans une grille (87 km de galeries × 8 parcours).
+  // Couverture par niveau : longueur, part dans une zone, part SUR UN PARCOURS (tronçon dont le milieu est
+  // à < 3 m de l'itinéraire calculé d'une équipe, même niveau), longueur affectée à 2 équipes ou plus.
+  // 🩸 « Sous une zone » ≠ « parcouru » : seule la part sur parcours dit ce qui sera vraiment fouillé.
+  // Itinéraires indexés dans une grille (des dizaines de km de galeries × plusieurs parcours).
   function _couvertureParNiveau(s) {
     const groupes = (s && s.groupes) || [];
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
@@ -2238,7 +1894,7 @@
       m += Math.hypot(sg.b.x - sg.a.x, sg.b.y - sg.a.y) / pxParM;
       segs.push([_planToLatLng(sg.a), _planToLatLng(sg.b)]);
     });
-    // UNE polyligne multiple (des milliers de tronçons : un calque chacun pèserait sur mobile)
+    // UNE polyligne multiple : des milliers de tronçons, un calque chacun pèserait sur mobile.
     _couvCalque = L.polyline(segs, { color: "#ff6b6b", weight: 5, opacity: 0.85, interactive: false });
     _couvCalque.addTo(window.map);
     fermer();
@@ -2289,9 +1945,9 @@
     return html;
   }
 
-  // ─── Vague 7b (6:a) — un parcours par phase ───
-  // s.execution.parcoursArchive[phase][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin }
-  // (copie légère : ce qu'un chef d'intervention relit dans le rapport).
+  // ── Un parcours par phase ───────────────────────────────────────────
+  // s.execution.parcoursArchive[phase][gid] = { etapes: [libellés], distanceM, dureeEstimeeMin } (copie
+  // légère : ce qu'un chef d'intervention relit dans le rapport).
   function _archivePhaseParcours(s, phaseIdx) {
     if (!s || !s.execution) return;
     const ex = s.execution;
@@ -2314,12 +1970,10 @@
     return (a && a[gid]) || null;
   }
 
-  // ─── Main courante (vague 7, 30/09/2026 — décision KARMA 4:a) ───
-  // Avant : aucun journal — chaque statut écrasait le précédent, et les décisions de
-  // l'opérateur ne laissaient aucune trace pour le RETEX. Journal horodaté, AUTOMATIQUE
-  // (lancement, statuts, victime, départ / rentrée / rappel, remontés, imports, phases,
-  // fin) + notes libres. Stocké en { at, cle, p, source? } et traduit À L'AFFICHAGE
-  // (langue courante). Voyage dans le rapport d'équipe ; fusion sans doublon.
+  // ── Main courante ───────────────────────────────────────────────────
+  // Journal horodaté AUTOMATIQUE pour le RETEX (lancement, statuts, victime, départ / rentrée / rappel,
+  // remontés, imports, phases, fin) + notes libres. Stocké en { at, cle, p, source? } et traduit À
+  // L'AFFICHAGE (langue courante). Voyage dans le rapport d'équipe ; fusion sans doublon.
   const MC_MAX = 2000;
   function _journaliser(s, cle, p, extra) {
     if (!s || !s.execution) return;
@@ -2361,16 +2015,13 @@
            '</details>';
   }
 
-  // Au lancement en mode équipe (demande KARMA, 30/09/2026) : le suivi est placé à
-  // l'ENTRÉE de l'équipe. Position pas encore confirmée (suivi éteint, jamais recalé) →
-  // automatique ; déjà confirmée → on demande (téléporter sans prévenir effacerait une
-  // position juste). `teleport` : le saut ne compte pas comme un trajet parcouru.
-  // Contre-audit GRIMP (30/09) : valider une étape ne recalait pas le suivi — après 5
-  // étapes, 135 m d'écart, et 136 consignes de guidage bâties sur une position qui
-  // dérive. Une étape validée avec un statut qui SUPPOSE d'y être = « Je suis ici » :
-  // recalage silencieux sous RECALAGE_SILENCE_M, question au-delà (la position peut
-  // être juste et l'étape mal posée). Jamais pour « bloqué » / « demi-tour » (on n'y
-  // est pas arrivé), ni pour l'opérateur qui relaie une équipe depuis la surface.
+  // Au lancement en mode équipe, le suivi est placé à l'ENTRÉE de l'équipe : automatique si la position
+  // n'a jamais été confirmée, sinon on demande (téléporter sans prévenir effacerait une position juste).
+  // `teleport` : le saut ne compte pas comme trajet parcouru.
+  // 🩸 Une étape validée avec un statut qui SUPPOSE d'y être vaut « Je suis ici » : sans recalage, la
+  // position dérive d'étape en étape et le guidage se bâtit dessus. Recalage silencieux sous
+  // RECALAGE_SILENCE_M, question au-delà (la position peut être juste et l'étape mal posée). Jamais pour
+  // « bloqué » / « demi-tour » (pas arrivé), ni pour l'opérateur qui relaie une équipe depuis la surface.
   const RECALAGE_SILENCE_M = 30;
   const STATUTS_SUR_PLACE = ["ras", "suspect", "indice", "aide", "victime"];
   function _recalerSurEtape(sid, gid, idx, statutId) {
@@ -2422,14 +2073,13 @@
     return null;
   }
 
-  // « quand un plan de secours est en cours, on devrait avoir
-  // l'info en footer ». Pastille dans la barre d'état du mode carte ; un toucher
-  // rouvre le plan. Retirée dès que plus rien ne tourne.
+  // Intervention en cours : pastille dans la barre d'état du mode carte, un toucher rouvre le plan. Retirée
+  // dès que plus rien ne tourne.
   function _majFooterSecours(depuisVeille) {
     const barre = document.getElementById("kta-refonte-statusbar-content");
     let pastille = document.getElementById("kta-refonte-stat-secours");
     const s = _scenarioEnCours();
-    // A4 : la veille des retards tourne tant qu'une intervention est en cours.
+    // La veille des retards tourne tant qu'une intervention est en cours.
     if (typeof setInterval === "function") {   // (harnais Node : pas de minuterie)
       if (s && !_veilleRetardsId) _veilleRetardsId = setInterval(_veilleRetards, 20000);
       if (!s && _veilleRetardsId) { clearInterval(_veilleRetardsId); _veilleRetardsId = null; }
@@ -2463,7 +2113,7 @@
                       : t("secours.footer.operateur", { n: (s.groupes || []).length })) +
                   (total ? " · " + faites + "/" + total : "");
     pastille.title = t("secours.footer.title", { nom: s.nom || "" });
-    // A4 : la pastille prend la couleur du pire retard (son équipe, ou toutes pour l'opérateur).
+    // La pastille prend la couleur du pire retard (son équipe, ou toutes pour l'opérateur).
     let pire = "ok";
     (eq ? [eq] : (s.groupes || [])).forEach(function(g) {
       if (!_equipeEngagee(s, g)) return;
@@ -2485,8 +2135,7 @@
     return Array.isArray(arr) ? arr : [];
   }
 
-  // Mode secouriste libre — ajoute une note en vrac dans _notes_libres.
-  // Pas d'étape structurée. Note = { id, ts, statut, texte, photoIds }.
+  // Secouriste libre : note en vrac dans _notes_libres, { id, ts, statut, texte, photoIds }.
   function ajouterNoteLibre(scenarioId, opts) {
     const s = get(scenarioId);
     if (!s || !s.execution) return null;
@@ -2504,9 +2153,8 @@
     return note;
   }
 
-  // Update une note libre par id (whitelist : statut, texte, photoIds).
+  // Mise à jour d'une note libre par id (liste blanche : statut, texte, photoIds).
 
-  // Supprime une note libre par id.
   function supprimerNoteLibre(scenarioId, noteId) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.etapes._notes_libres) return false;
@@ -2518,18 +2166,13 @@
     return true;
   }
 
-  // (KARMA "crée une équipe et lui assigné une zone sur un
-  // niveau") : mini-prompt qui demande nom + niveau M-LVL avant d'ajouter
-  // une équipe. Ouvert depuis "+ Ajouter une équipe" sur les plans
-  // multi-niveau (M-LVL actif). Sur plan mono-niveau, on bypass et on
-  // ajoute direct avec nom auto (cohérent v1.22.x).
-  // « Auto : 1 équipe par niveau » créait une équipe sur
-  // des niveaux VIDES (availableLevels = -2..+2 par défaut quand le plan n'en
-  // déclare pas). Seuls les niveaux qui portent quelque chose ; le 0 = plan
-  // principal, toujours gardé. Sans le scan (module absent) : ancien comportement.
-  // équipes repliables — avec tous les POI d'un parcours, la
-  // vue Édition devenait une longue page à faire défiler. État par appareil
-  // (confort de lecture, pas une donnée du scénario) : localStorage, try/catch.
+  // Plan multi-niveau : « + Ajouter une équipe » demande nom + niveau ; mono-niveau : ajout direct, nom
+  // automatique.
+  // « Auto : 1 équipe par niveau » ne prend que les niveaux qui portent quelque chose (availableLevels vaut
+  // -2..+2 par défaut quand le plan n'en déclare pas) ; le 0 = plan principal, toujours gardé. Sans le
+  // module de scan : tous les niveaux.
+  // Équipes repliables (un parcours avec tous ses POI fait une longue page). État par appareil (confort de
+  // lecture, pas une donnée du scénario) : localStorage, try/catch.
   const LS_REPLIEES = "myktamap_secours_equipes_repliees_v1";
   let _replieesCache = null;
   function _repliees() {
@@ -2552,24 +2195,19 @@
     if (b) { b.textContent = oui ? "▸" : "▾"; b.setAttribute("aria-expanded", oui ? "false" : "true"); }
   }
 
-  // KARMA 29/09 : dans les listes de niveaux, un niveau qui ne porte rien est
-  // marqué « (vide) » — gardé choisissable (préparer une équipe sur un niveau pas
-  // encore relevé), mais on ne le prend plus pour un niveau réel. 0 = plan principal.
+  // Un niveau qui ne porte rien est marqué « (vide) » dans les listes : choisissable (préparer un niveau pas
+  // encore relevé) mais distingué d'un niveau réel. 0 = plan principal.
   function _suffixeNiveauVide(lvl) {
     if (lvl === 0 || typeof window.ktaNiveauxOccupes !== "function") return "";
     return window.ktaNiveauxOccupes().indexOf(lvl) >= 0 ? "" : " " + t("secours.level.vide");
   }
 
-  // ─── B1 (vague 6, 30/09/2026) — CE QUE LE GUIDAGE ATTEND DU CALCUL ───
-  // Le pathfinder rend `carrefours` (croisements posés sur le trajet) et `raccords`
-  // (trajets à vol d'oiseau étape → tracé) ; le Secours les jetait et ne gardait que
-  // le tracé. Ils sont gardés sur l'équipe (`g.guidage`) et partent avec le .mkmsec :
-  // le téléphone peut guider sans recalculer. `n` = nombre de points du tracé, pour
-  // reconnaître des données qui ne correspondent plus au tracé (recalcul au besoin).
-  // Contre-audit IGC (30/09) : seule la PIRE étape au-delà de 50 m était signalée —
-  // une étape à 31 m d'une galerie passait sans un mot. Toutes les étapes à plus de
-  // SEUIL_ETAPE_LOIN_M de la galerie la plus proche (à vol d'oiseau), numérotées
-  // comme sur la carte (E, 1…N, S), d'après les raccords du dernier calcul.
+  // ── Ce que le guidage attend du calcul ─────────────────────────────
+  // Le pathfinder rend `carrefours` (croisements du trajet) et `raccords` (vol d'oiseau étape → tracé) :
+  // gardés sur l'équipe (`g.guidage`) et transmis dans le .mkmsec, le téléphone guide sans recalculer.
+  // `n` = nombre de points du tracé, pour reconnaître des données périmées (recalcul au besoin).
+  // Toutes les étapes à plus de SEUIL_ETAPE_LOIN_M de la galerie la plus proche sont signalées (pas
+  // seulement la pire), numérotées comme sur la carte (E, 1…N, S), d'après les raccords du dernier calcul.
   const SEUIL_ETAPE_LOIN_M = 25;   // 15 m (proposé par l'audit) signalait les POI posés dans une salle, à 16-19 m de l'axe tracé
   function _etapesLoin(raccords) {
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
@@ -2596,12 +2234,11 @@
     };
   }
 
-  // ─── B1 (vague 6) — « 🧭 SUIVRE MON PARCOURS » ───
-  // Le parcours de l'équipe devient l'itinéraire de l'app (type "itinerary" +
-  // `secours` : scénario, équipe, évitements) : le bandeau de guidage, la feuille de
-  // route et l'écran XL marchent tels quels. Étapes faites = waypoints `done` (tenus à
-  // jour à chaque mutation) : « Recalculer » repart vers la prochaine étape NON faite,
-  // avec les évitements du Secours (interfaceItineraire > _replanifierDepuis).
+  // ── Suivre mon parcours ─────────────────────────────────────────────
+  // Le parcours de l'équipe devient l'itinéraire de l'app (type "itinerary" + `secours` : scénario, équipe,
+  // évitements) : bandeau de guidage, feuille de route et écran XL marchent tels quels. Étapes faites =
+  // waypoints `done` (tenus à jour à chaque mutation) : « Recalculer » repart vers la prochaine étape NON
+  // faite, avec les évitements du Secours (interfaceItineraire > _replanifierDepuis).
   function _roadSuiviActive(sid) {
     const roads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
     return roads.find(function(r) { return r && r.type === "itinerary" && r.secours && (!sid || r.secours.scenarioId === sid); }) || null;
@@ -2629,7 +2266,7 @@
     const waypoints = _waypointsSuivi(s, g);
     const avoidPoints = _collecterAvoidPointsAutresEquipes(sid, gid);
     let points = g.itineraireSuggere, gd = g.guidage;
-    // Données absentes (scénario d'avant la v1.98.18) ou périmées : on recalcule ici.
+    // Données absentes (scénario ancien) ou périmées : on recalcule ici.
     if (!gd || gd.n !== points.length) {
       try {
         const r = await window.Pathfinder.computeRoute(waypoints.map(function(w) { return Object.assign({}, w, { done: false }); }),
@@ -2642,7 +2279,7 @@
       raccords: (gd && gd.raccords) || [], carrefours: (gd && gd.carrefours) || [],
       secours: { scenarioId: sid, equipeId: gid, avoidPoints: avoidPoints, avoidRadius: 30 }
     };
-    // C1 : parcours de balayage → le guidage le garde (un écart le fait rejoindre plus loin).
+    // Parcours de balayage : le guidage le garde (un écart le fait rejoindre plus loin).
     if (_estBalayage(g)) {
       road.secours.balayage = points.map(function(p) { return { x: p.x, y: p.y, level: p.level }; });
       road.secours.balayageIdx = 0;
@@ -2652,7 +2289,7 @@
       _toast(t("secours.suivre.lance"), "info");
       const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif();
       if (!actif) setTimeout(function() { _toast(t("secours.suivre.trackerOff"), "warn"); }, 2500);
-      // Des étapes déjà faites : on repart d'ici vers la prochaine (3:a).
+      // Des étapes déjà faites : on repart d'ici vers la prochaine.
       if (actif && waypoints.some(function(w) { return w.done; }) && typeof window.itineraireReplanifierDepuis === "function") {
         const pos = window.getTrackingPosition && window.getTrackingPosition();
         if (pos) window.itineraireReplanifierDepuis(pos.x, pos.y);
@@ -2673,10 +2310,9 @@
     });
     if (change && typeof window.setRoads === "function") window.setRoads(window.getRoads());
   }
-  // C1 — progression sur un parcours de BALAYAGE : le point du circuit atteint (à 15 m
-  // près, dans les 400 m qui suivent ; à égalité, le plus tôt — un cul-de-sac repasse
-  // par les mêmes points à l'aller et au retour). Sert au recalcul après un écart, qui
-  // repart d'ici au lieu du début (interfaceItineraire > _replanifierDepuis).
+  // Progression sur un parcours de BALAYAGE : point du circuit atteint (à 15 m près, dans les 400 m qui
+  // suivent ; à égalité le plus tôt — un cul-de-sac repasse par les mêmes points à l'aller et au retour).
+  // Sert au recalcul après un écart, qui repart d'ici (interfaceItineraire > _replanifierDepuis).
   function _avancerBalayage(road, pos) {
     const sec = road && road.secours;
     if (!sec || !Array.isArray(sec.balayage) || sec.balayage.length < 2) return;
@@ -2691,7 +2327,7 @@
     }
     if (best > i0) sec.balayageIdx = best;
   }
-  // 4:a — arrivée sur la prochaine étape : un toast, et la vue live s'ouvrira dessus.
+  // Arrivée sur la prochaine étape : un toast, et la vue live s'ouvrira dessus.
   let _veilleArriveeId = null;
   const _arriveesNotifiees = {};
   function _armerVeilleArrivee() {
@@ -2721,10 +2357,9 @@
     if (window.kta_vibrate) window.kta_vibrate([120, 80, 120]);
   }
 
-  // B2 (vague 6, 30/09/2026) — feuille de route d'une équipe, en texte, pour le PDF.
-  // Rend null s'il n'y a pas d'itinéraire calculé (le PDF le dit), [] si le moteur de
-  // guidage manque. Données de guidage périmées ou absentes → consignes sans
-  // carrefours : on préfère alors l'absence (null) à une feuille fausse.
+  // Feuille de route d'une équipe, en texte, pour le PDF. null sans itinéraire calculé (le PDF le dit), []
+  // si le moteur de guidage manque. Données de guidage périmées ou absentes → null plutôt qu'une feuille
+  // fausse (consignes sans carrefours).
   function _feuilleDeRouteLignes(s, g) {
     if (!g || !Array.isArray(g.itineraireSuggere) || g.itineraireSuggere.length < 2) return null;
     if (!g.guidage || g.guidage.n !== g.itineraireSuggere.length) return null;
@@ -2829,16 +2464,14 @@
     }, 50);
   }
 
-  // 🚑 Options brancard de « Évacuer » (A3, reste livré le 06/10/2026). Les types de zones
-  // du plan (session + embarquées) sont proposés ; eau et remblais cochés d'office. Les zones
-  // inaccessibles restent infranchissables sauf case cochée (dernier recours, décochée).
-  // Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la fenêtre
-  // de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
+  // Options brancard de « Évacuer » : les types de zones du plan (session + embarquées) sont proposés, eau et
+  // remblais cochés d'office. Les zones inaccessibles restent infranchissables sauf case cochée (dernier
+  // recours, décochée). ⚠️ Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la
+  // fenêtre de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
   const BRANCARD_COCHES = ["eau", "remblais"];
-  // « ✨ POI de la zone » : les types (tags) à exclure des étapes, avec leur
-  // nombre. Un POI reste s'il a au moins un type gardé ; sans type = « Sans type ». Le
-  // choix est gardé dans le scénario (s.tagsExclusPoiZone) pour toutes les équipes. Un
-  // seul type présent : pas de question.
+  // « POI de la zone » : types (tags) à exclure des étapes, avec leur nombre. Un POI reste s'il a au moins un
+  // type gardé ; sans type = « Sans type ». Choix gardé dans le scénario (s.tagsExclusPoiZone) pour toutes
+  // les équipes. Un seul type présent : pas de question.
   function _demanderTagsPoiZone(s, candidats, onChoix) {
     const cleDe = function(c) { return (c.tags && c.tags.length) ? c.tags.map(function(x) { return String(x || "").trim().toLowerCase(); }) : [""]; };
     const compte = {};
@@ -2937,11 +2570,8 @@
     });
   }
 
-  // Phase 2 / Feature G (KARMA roadmap §65.12 "Recherche unifiée
-  // Ctrl+K → assigner à équipe en 2 clics") : mini-modale qui ouvre depuis
-  // searchPoints.js quand l'user clique le bouton 📌 sur un résultat point.
-  // Permet d'assigner le POI à une équipe + role en 2 sélections sans
-  // perdre le focus de la recherche.
+  // Depuis la recherche unifiée (bouton d'un résultat point) : assigner le POI à une équipe + un rôle en
+  // deux sélections, sans perdre le focus de la recherche.
   function ouvrirAssignerModale(point, layerLabel) {
     if (!_currentScenarioId) {
       _toast(t("secours.toast.aucunScenarioActif"), "warn");
@@ -2957,7 +2587,6 @@
       _toast(t("secours.toast.pointInvalide"), "error");
       return;
     }
-    // Cleanup éventuelle modale précédente (idempotency)
     const existing = document.getElementById("kta-secours-assign-modal");
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
@@ -2967,7 +2596,7 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100002";   // au-dessus de la modale Recherche (99999)
 
-    // Options équipes (avec préfixe swatch via emoji couleur)
+    // Options équipes, préfixées d'un emoji de couleur.
     const equipesOptions = s.groupes.map(function(g) {
       const c = PALETTE[g.couleurIdx % PALETTE.length];
       return '<option value="' + _escAttr(g.id) + '">' +
@@ -3007,9 +2636,8 @@
       '</div>';
     document.documentElement.appendChild(overlay);
 
-    // 🩸 « Entrée » était cochée d'office : oublier de
-    // changer le choix ÉCRASAIT l'entrée de l'équipe, sans rien dire. Le rôle par
-    // défaut suit l'équipe choisie : « Entrée » seulement si elle n'en a pas encore.
+    // 🩸 Rôle par défaut selon l'équipe choisie : « Entrée » seulement si elle n'en a pas encore. Coché
+    // d'office, un oubli écraserait l'entrée de l'équipe sans rien dire.
     function _roleParDefaut() {
       const sel = document.getElementById("kta-sec-assign-equipe");
       const eq = sel ? s.groupes.find(function(g) { return g.id === sel.value; }) : null;
@@ -3045,9 +2673,8 @@
           pointUid: point.uid || null,
           label:   point.nom || point.id || null
         };
-        // idx = null pour les 3 cas :
-        //   - entree/sortie : ignoré (1 seul slot)
-        //   - intermediaire : append à la fin de la liste (cf _appliquerWaypoint)
+        // idx = null : ignoré pour entrée/sortie (un seul emplacement), ajout en fin pour un intermédiaire
+        // (cf _appliquerWaypoint).
         _appliquerWaypoint(equipeId, role, null, wp);
         const equipe = s.groupes.find(function(g) { return g.id === equipeId; });
         const equipeNom = equipe ? equipe.nom : equipeId;
@@ -3056,45 +2683,33 @@
                       : t("secours.roleShort.intermediaire");
         _toast(t("secours.toast.pointAssigne", { point: nomPoint, equipe: equipeNom, role: roleLbl }), "info");
         _close();
-        // Re-render edit si la modale Mode Secours est visible (sinon l'user
-        // est en mode overlay carte, on laisse comme c'est).
+        // Re-rendu de l'édition si la modale est visible (sinon on est sur l'overlay carte : rien à faire).
         if (_modal && _modal.style.display !== "none" && _currentScenarioId) {
           _switchView("edit");
         }
       });
     });
-    // Focus auto sur le select pour saisie clavier rapide
     setTimeout(function() {
       const sel = document.getElementById("kta-sec-assign-equipe");
       if (sel) sel.focus();
     }, 50);
   }
 
-  // Phase 2 / Feature C (KARMA "Lost Mode → auto pre-fill context") :
-  // Crée un nouveau scénario Mode Secours pré-rempli avec les infos du
-  // Lost Mode en cours. Workflow : user en Lost Mode (cherche quelqu'un) →
-  // clic "🚨 Lancer un plan de secours" → scénario créé direct avec :
-  //   • nom = "Recherche - <date>"
-  //   • context.incidentAt = now - lostState.elapsedMinutes
-  //   • context.lastKnownPoint = lostState.lastKnownPos (avec label si POI)
-  //   • context.zoneIncertitude = { x, y, radiusMeters } (cercle Lost)
-  //   • context.notes = preset vitesse + indices saisis dans Lost Mode
-  // Puis ouvre la modale en vue Edit pour que l'user ajoute les équipes.
+  // Depuis le Mode Perdu (« Lancer un plan de secours ») : scénario pré-rempli — nom « Recherche - <date> »,
+  // incidentAt = maintenant − elapsedMinutes, lastKnownPoint (avec libellé si POI), zoneIncertitude (cercle),
+  // notes (vitesse + indices saisis). Ouvre ensuite l'édition pour ajouter les équipes.
   function creerDepuisLostMode(lostState) {
     if (!lostState || !lostState.lastKnownPos) {
       _toast(t("secours.toast.aucunePositionLost"), "warn");
       return null;
     }
-    // Nom auto : "Recherche - 26/05/2026 14:32"
     const now = new Date();
     const nomAuto = t("secours.lost.nomAuto", {
       date: now.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR"),
       heure: now.toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" })
     });
-    // Timestamp d'incident = maintenant - elapsedMinutes
     const elapsed = (typeof lostState.elapsedMinutes === "number") ? lostState.elapsedMinutes : 0;
     const incidentTs = Date.now() - elapsed * 60 * 1000;
-    // Compose les notes contextuelles
     const notesParts = [t("secours.lost.notesIntro")];
     if (elapsed > 0) {
       const h = Math.floor(elapsed / 60);
@@ -3112,7 +2727,6 @@
     if (lostState.clues && lostState.clues.trim()) {
       notesParts.push(t("secours.lost.notesIndices", { indices: lostState.clues.trim() }));
     }
-    // Création + remplissage du contexte
     const scenario = createScenario(nomAuto);
     updateScenario(scenario.id, {
       context: {
@@ -3120,7 +2734,7 @@
         lastKnownPoint: {
           x:     lostState.lastKnownPos.x,
           y:     lostState.lastKnownPos.y,
-          // Niveau du point lui-même (Mode Perdu ≥ 29/09/2026), à défaut celui affiché.
+          // Niveau du point lui-même, à défaut celui affiché.
           level: Number.isInteger(lostState.lastKnownPos.level) ? lostState.lastKnownPos.level
                : (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                  ? window.APP_CONFIG.activeLevel : 0,
@@ -3136,28 +2750,14 @@
       }
     });
     _toast(t("secours.toast.scenarioCreeLost", { nom: nomAuto }), "info");
-    // Ouvre la modale Mode Secours en vue Edit
     ouvrir(scenario.id);
     return scenario;
   }
 
-  // ============================================================
-  // EXPORT / IMPORT SCÉNARIO STANDALONE (.mkmsec.json) v1.23.4
-  // KARMA : « on doit pouvoir exporter un plan de secour, que on poura
-  // importer sur un autre appareil (sans a avoir a exporter une session
-  // full) ca nous servira quoi qu'il arrive pour mode "operateur chef de
-  // surface" et "secouriste" »
-  // ============================================================
-  // Format JSON autonome contenant :
-  //  • metadata (type, version, exportedAt, appVersion)
-  //  • plan minimal (id, name, version, imageWidth/Height, multiLevel,
-  //    availableLevels) — pour valider que l'import correspond au plan ouvert
-  //  • scenario complet (id, nom, context, groupes, pointsCles)
-  //
-  // Base pour Phase 3 partage cross-device (chef de surface → équipe
-  // secouriste via QR code share — le contenu QR encodera ce JSON).
-  //
-  // Extension fichier : .mkmsec.json (clair = JSON MyKTAMap Secours)
+  // ── Export / import d'un scénario autonome (.mkmsec.json) ──────────
+  // Transmettre un plan de secours à un autre appareil sans exporter toute la session (opérateur de surface,
+  // téléphones des équipes). Contenu : métadonnées (type, version, exportedAt, appVersion), plan minimal (id,
+  // nom, version, dimensions, multi-niveau) pour vérifier qu'il correspond au plan ouvert, scénario complet.
 
   const MKMSEC_FORMAT_VERSION = 1;
 
@@ -3167,8 +2767,8 @@
       _toast(t("secours.toast.scenarioIntrouvable"), "error");
       return null;
     }
-    // Identités des points posées AVANT le départ vers les équipes : sinon PC et
-    // téléphones en tireraient chacun de différentes (2e relecture).
+    // 🩸 Identités des points posées AVANT le départ vers les équipes : sinon PC et téléphones en tireraient
+    // chacun de différentes.
     let widPoses = false;
     (s.groupes || []).forEach(function(g) {
       if (_normaliserParcours(g)) { widPoses = true; _rattacherWidEtapes(s, g); }
@@ -3193,7 +2793,7 @@
       exportedAt:   new Date().toISOString(),
       appVersion:   (window.__MKM__ && window.__MKM__.build) || "",
       plan:         planInfo,
-      // Deep clone via JSON roundtrip pour éviter ref accidentelle
+      // Copie profonde (pas de référence partagée).
       scenario:     JSON.parse(JSON.stringify(s))
     };
     try {
@@ -3214,20 +2814,12 @@
     }
   }
 
-  // Parse + validation SEULE (pas d'injection). Retourne le
-  // payload + warning éventuel sur plan différent, MAIS ne touche pas au
-  // cache _scenarios. Permet à `_ouvrirImportMkmsecPicker` d'afficher une
-  // modale preview AVANT injection définitive (cf §35 — confirm() natif
-  // banni, modale Promise-based charte requise).
-  // Retourne : { ok: bool, payload?: object, warning?: string, error?: string }
-  // 🩸 MÊME plan, mais REGÉNÉRÉ depuis l'export :
-  // seul l'id du plan était comparé. Un plan retracé (nouvelle version, autres
-  // dimensions) passait sans un mot, alors que positions d'étapes, zones et empreintes
-  // de tracés peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
-  // Test terrain (30/09) : le même plan n'a pas le même identifiant selon qu'il est
-  // importé (« local_… ») ou servi (« server_… »). Comparer les seuls ids affichait
-  // « plan différent — source : X, courant : X » (même nom). Autre plan =
-  // ids différents ET (nom ou dimensions différents).
+  // Parse + validation SEULE : ne touche pas à _scenarios, pour que `_ouvrirImportMkmsecPicker` montre un
+  // aperçu AVANT l'injection (pas de confirm() natif). Retourne { ok, payload?, warning?, error? }.
+  // 🩸 Autre plan ? Le même plan n'a pas le même id selon qu'il est importé (« local_… ») ou servi
+  // (« server_… ») : autre plan = ids différents ET (nom ou dimensions différents). Un plan REGÉNÉRÉ (autre
+  // version, autres dimensions) est signalé aussi : positions d'étapes, zones et empreintes de tracés
+  // peuvent ne plus tomber au bon endroit. Retourne un avertissement ou null.
   function _autrePlan(planFichier) {
     const f = planFichier || {};
     const idCourant = window._currentLoadedPlanId;
@@ -3252,9 +2844,8 @@
       maintenant: verC || (pl.imageWidth + "×" + pl.imageHeight)
     });
   }
-  // 4e relecture (R4-13) : un plan regénéré SANS changer sa version fait perdre les
-  // tracés de zone (empreintes de géométrie) sans un mot. Compte les clés de zone que
-  // le plan chargé ne résout plus. Autre plan → rien (déjà signalé ailleurs).
+  // 🩸 Un plan regénéré SANS changer de version perd les tracés de zone (empreintes de géométrie) sans un
+  // mot : on compte les clés de zone que le plan chargé ne résout plus. Autre plan → rien (signalé ailleurs).
   function _blocTracesIntrouvables(planFichier, groupes) {
     const f = planFichier || {};
     if (_autrePlan(f)) return "";
@@ -3298,7 +2889,6 @@
       return { ok: false, error: t("secours.import.errJson", { message: e.message }) };
     }
 
-    // Validation stricte du format
     if (!payload || typeof payload !== "object") {
       return { ok: false, error: t("secours.import.errPayload") };
     }
@@ -3314,8 +2904,7 @@
       return { ok: false, error: t("secours.import.errScenario") };
     }
 
-    // Détection plan différent → renvoyé comme warning, pas comme erreur.
-    // La décision finale (importer ou annuler) est prise dans la modale preview.
+    // Autre plan = avertissement, pas erreur : la modale d'aperçu décide.
     let warning = null;
     if (_autrePlan(payload.plan)) {
       const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
@@ -3325,25 +2914,18 @@
     return { ok: true, payload: payload, warning: warning };
   }
 
-  // Injection SEULE depuis un payload déjà validé. Re-génère
-  // les ids (scénario + groupes) pour éviter collision, applique le filtre
-  // défensif anti-pollution, push + commit. À appeler APRÈS confirmation
-  // user via modale preview.
-  // Retourne : { ok: bool, scenario: object } (jamais d'erreur ici car le
-  // payload est déjà validé par _parsePayloadMkmsec)
-  // 🩸 LES IDS D'ORIGINE SONT GARDÉS. Avant, tout import les
-  // régénérait : le téléphone d'une équipe travaillait sur des ids qui n'étaient
-  // plus ceux du PC, et le rapport qu'il rapportait était refusé à 100 %
-  // (`_parsePayloadReport` exige scénario + équipe identiques). L'import consolidé
-  // n'a jamais pu marcher entre deux appareils (audit 2026-09-29, A1).
+  // Injection depuis un payload déjà validé (après confirmation dans l'aperçu) : filtre défensif, push,
+  // commit. Retourne { ok, scenario } (pas d'erreur possible ici).
+  // 🩸 LES IDS D'ORIGINE SONT GARDÉS : le rapport d'un téléphone n'est accepté que si scénario + équipe sont
+  // identiques (`_parsePayloadReport`). Régénérés, aucun rapport ne pourrait être consolidé.
   // `mode` ne compte que si le scénario est DÉJÀ sur l'appareil :
   //   "remplacer" → même place, mêmes ids (plan mis à jour, rapports acceptés) ;
-  //   "copie" (défaut) → nouveaux ids, comme avant — non destructif.
-  // 🔁 Relais en direct (installation reliée, étude Secours étape 0, 05/10/2026) — le scénario reçu
-  // d'un autre appareil ne doit pas effacer l'intervention en cours ici. Fusion :
+  //   "copie" (défaut) → nouveaux ids, non destructif.
+  // Relais en direct (installation reliée) : le scénario reçu ne doit pas effacer l'intervention en cours
+  // ici. Fusion :
   //   • champs de l'APPAREIL (rôle, équipe suivie…) : jamais repris de l'autre ;
-  //   • étapes : par équipe et par étape (wid, sinon idx), la modification la plus récente (majAt)
-  //     gagne ; à défaut d'horodatage, le statut le plus grave ;
+  //   • étapes : par équipe et par étape (wid, sinon idx), la modification la plus récente (majAt) gagne ;
+  //     sans horodatage, le statut le plus grave ;
   //   • main courante et notes libres : union sans doublon ;
   //   • le reste (phase, pause, fin) : la version reçue, la plus récente.
   // Sans exécution ici, rien n'est créé (l'appareil choisit lui-même de rejoindre l'intervention).
@@ -3403,9 +2985,9 @@
     const regenerer = !(typeof sc.id === "string" && sc.id) || (idxExistant >= 0 && !remplacer);
     if (regenerer) sc.id = _genId("secours");
     sc.updatedAt = _nowIso();
-    // C1 — Remapping cross-phases : phase.groupeIds[] suivent les g.id.
-    // Un id d'équipe n'est régénéré que pour une copie, ou s'il est absent/en double.
-    const idMap = Object.create(null);   // oldId → newId (sans prototype : 2e relecture)
+    // phase.groupeIds[] suivent les g.id. Un id d'équipe n'est régénéré que pour une copie, ou s'il est
+    // absent / en double.
+    const idMap = Object.create(null);   // oldId → newId (sans prototype)
     const vus = {};
     if (Array.isArray(sc.groupes)) {
       sc.groupes.forEach(function(g) {
@@ -3413,19 +2995,18 @@
         const valide = typeof oldId === "string" && oldId && !vus[oldId];
         if (regenerer || !valide) g.id = _genId("G");
         vus[g.id] = true;
-        // Relecture 29/09 (R2) : un id en DOUBLE ne doit pas écraser la 1re entrée —
-        // sinon la phase suivait l'équipe régénérée et la 1re sortait de sa phase.
+        // 🩸 Un id en DOUBLE ne doit pas écraser la 1re entrée : la phase suivrait l'équipe régénérée et la 1re
+        // sortirait de sa phase.
         if (typeof oldId === "string" && !(oldId in idMap)) idMap[oldId] = g.id;
       });
     }
-    // Remap phase.groupeIds[] avec les nouveaux IDs (sécurise re-import v1.29+)
     let importedPhases = null;
     if (Array.isArray(sc.phases) && sc.phases.length > 0) {
       importedPhases = sc.phases.map(function(p, i) {
         const mapped = (Array.isArray(p.groupeIds) ? p.groupeIds : [])
           .map(function(oldGid) { return idMap[oldGid] || oldGid; })
           .filter(function(id) {
-            // Garde seulement les IDs qui matchent une équipe importée
+            // Seulement les ids d'une équipe importée.
             return sc.groupes.some(function(g) { return g.id === id; });
           });
         return {
@@ -3458,25 +3039,22 @@
         pauseMin:   Math.max(0, Math.min(120, Number(sc.reglagesDuree.pauseMin) || 0)),
         margeRetardMin: Math.max(0, Math.min(240, Number.isFinite(Number(sc.reglagesDuree.margeRetardMin))
                           ? Number(sc.reglagesDuree.margeRetardMin) : DUREE_DEFAUT.margeRetardMin))
-      } : undefined   // R4-12 : mêmes bornes que updateScenario
-      // phases ajouté juste après si présent (sinon migration le créera)
+      } : undefined   // mêmes bornes que updateScenario
+      // phases ajouté juste après s'il existe (sinon la migration le crée).
     };
     if (importedPhases) cleanScenario.phases = importedPhases;
-    _migrerDurees(cleanScenario);   // R4-6 : .mkmsec d'avant 4.1 → durées recalculées
-    // C1 — Migration explicite après push : si le payload était v1
-    // sans phases[], une phase implicite est créée couvrant toutes les équipes.
-    // Si déjà multi-phases, idempotent.
+    _migrerDurees(cleanScenario);   // .mkmsec sans reglagesDuree → durées recalculées
+    // Migration après push : un payload sans phases[] reçoit sa phase implicite (idempotent sinon).
     _migrateScenarioV1ToPhases(cleanScenario);
-    // Remplacer = même place dans la liste ; l'exécution locale éventuelle part
-    // avec l'ancienne version (la modale d'aperçu l'a annoncé).
+    // Remplacer = même place dans la liste ; l'exécution locale éventuelle part avec l'ancienne version
+    // (l'aperçu l'a annoncé).
     if (remplacer && garderExecution && _scenarios[idxExistant].execution) {
-      // 🔁 Relais en direct : l'exécution en cours est fusionnée, ses photos restent.
+      // Relais en direct : l'exécution en cours est fusionnée, ses photos restent.
       cleanScenario.execution = _fusionnerExecutionDirect(_scenarios[idxExistant].execution, sc.execution);
       _scenarios[idxExistant] = cleanScenario;
     } else if (remplacer) {
-      // 🩸 Relecture 29/09 (R8, décision KARMA 2:a) — les photos de l'exécution
-      // effacée partent avec elle. Avant, mêmes ids gardés : elles revenaient dans
-      // le rapport suivant et comptaient dans le quota de 5 par étape.
+      // 🩸 Les photos de l'exécution effacée partent avec elle : gardées sous les mêmes ids, elles
+      // reviendraient dans le rapport suivant et compteraient dans le quota de 5 par étape.
       const P = window.MyKTAMapSecoursPhotos;
       if (_scenarios[idxExistant].execution && P && typeof P.deletePhotosForScenario === "function") {
         P.deletePhotosForScenario(sc.id).catch(function(e) { console.warn("[SecoursMode] photos :", e); });
@@ -3488,27 +3066,20 @@
     return { ok: true, scenario: cleanScenario, remplace: remplacer };
   }
 
-  // Import scénario depuis fichier (File ou string JSON) — API publique
-  // exposée via window.SecoursMode.importerScenario. Combine parse + apply
-  // pour les callers programmatiques (legacy v1.23.4) qui n'ont PAS besoin
-  // de preview interactif. La modale preview est gérée séparément par
-  // _ouvrirImportMkmsecPicker (déclenchée par bouton UI).
-  //
-  // ⚠️ Rétro-compat v1.23.4 : si plan différent, demande confirmation (modale
-  // charte `ktaConfirm` depuis le 29/09/2026). Pour le flow UI complet, le picker.
-  // `opts.mode` ("remplacer" | "copie") : cf `_appliquerPayloadImport` — sans lui,
-  // un scénario déjà présent est importé en copie (jamais d'écrasement implicite).
-  // `opts.garderExecution` (avec "remplacer") : l'intervention en cours ici est FUSIONNÉE avec celle
-  // reçue au lieu d'être effacée (relais en direct d'une installation reliée).
-  //
-  // Retourne : { ok: bool, scenario?: object, remplace?: bool, warning?: string, error?: string }
+  // Import programmatique (window.SecoursMode.importerScenario, File ou chaîne JSON) : parse + injection sans
+  // aperçu interactif (l'interface passe par _ouvrirImportMkmsecPicker).
+  // ⚠️ Plan différent : confirmation (ktaConfirm). `opts.mode` ("remplacer" | "copie") : cf
+  // `_appliquerPayloadImport` — sans lui, un scénario déjà présent est importé en copie (jamais d'écrasement
+  // implicite). `opts.garderExecution` (avec "remplacer") : l'intervention en cours ici est FUSIONNÉE avec
+  // celle reçue au lieu d'être effacée (relais en direct).
+  // Retourne { ok, scenario?, remplace?, warning?, error? }
   async function importerScenario(input, opts) {
     const parsed = await _parsePayloadMkmsec(input);
     if (!parsed.ok) return parsed;
     if (parsed.warning) {
       const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
       const importedPlanName = (parsed.payload.plan && parsed.payload.plan.name) || t("secours.import.planInconnu");
-      // ktaConfirm rend du HTML : les noms viennent du fichier → échappés.
+      // 🔒 ktaConfirm rend du HTML : les noms viennent du fichier, donc échappés.
       const confirmMsg = t("secours.import.confirmPlanDifferent", {
         planSource: _escHtml(importedPlanName),
         planCourant: _escHtml(currentPlanName)
@@ -3523,11 +3094,8 @@
     return { ok: true, scenario: applied.scenario, remplace: applied.remplace, warning: parsed.warning };
   }
 
-  // File picker pour l'import .mkmsec.json depuis la vue LIST.
-  // Crée un <input type="file"> volatile, déclenche la dialog OS, parse le
-  // fichier choisi via importerScenario (async), affiche le résultat dans
-  // une modale custom (succès avec warning éventuel OU erreur détaillée),
-  // refresh la liste si succès.
+  // Import .mkmsec.json depuis la vue Liste : <input type="file"> volatile, parse, aperçu, puis résultat
+  // (succès avec avertissement éventuel ou erreur détaillée) et rafraîchissement de la liste.
   function _ouvrirImportMkmsecPicker() {
     const input = document.createElement("input");
     input.type = "file";
@@ -3537,7 +3105,7 @@
       const file = input.files && input.files[0];
       document.body.removeChild(input);
       if (!file) return;
-      // Flow split : parse seul, AVANT injection.
+      // Parse seul, AVANT injection.
       let parsed;
       try {
         parsed = await _parsePayloadMkmsec(file);
@@ -3545,12 +3113,10 @@
         console.warn("[SecoursMode] _ouvrirImportMkmsecPicker exception :", e);
         parsed = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
       }
-      // Si erreur de parse/validation → modale d'erreur direct (pas de preview)
       if (!parsed.ok) {
         _afficherResultatImport({ ok: false, error: parsed.error }, file.name);
         return;
       }
-      // Sinon : modale preview avec callback de confirmation.
       _afficherPreviewImport(parsed.payload, parsed.warning, file.name, function(confirmer, mode) {
         if (!confirmer) return;  // user a annulé
         const applied = _appliquerPayloadImport(parsed.payload, mode);
@@ -3560,7 +3126,6 @@
           remplace: applied.remplace,
           warning:  parsed.warning
         }, file.name);
-        // Refresh vue liste pour montrer le nouveau scénario
         _switchView("list");
       });
     });
@@ -3568,17 +3133,10 @@
     input.click();
   }
 
-  // Modale preview AVANT injection définitive d'un payload
-  // .mkmsec.json. Charte Promise-via-callback (pattern §35 : confirm()
-  // natif banni → modale custom Promise-based). Affiche détails complets :
-  // nom + date export + version app + plan source + liste des équipes
-  // (avec level + nb membres + zone définie ?) + warning éventuel si plan
-  // différent (bandeau orange) + boutons "❌ Annuler" / "✓ Importer".
-  //
-  // Args : payload (validé par _parsePayloadMkmsec), warning (string|null),
-  //        sourceFilename (string), onDone(confirmer: bool) callback.
+  // Aperçu AVANT injection d'un .mkmsec.json (modale charte, pas de confirm() natif) : nom, date d'export,
+  // version, plan source, équipes (niveau, membres, zone ?), bandeau orange si autre plan, Annuler / Importer.
+  // Args : payload (validé par _parsePayloadMkmsec), warning (string|null), sourceFilename, onDone(confirmer).
   function _afficherPreviewImport(payload, warning, sourceFilename, onDone) {
-    // Cleanup éventuelle modale précédente
     const existing = document.getElementById("kta-secours-import-preview");
     if (existing) existing.remove();
 
@@ -3601,7 +3159,7 @@
                        : t("secours.import.dateInconnue");
     const appVer = payload.appVersion || t("secours.import.versionInconnue");
 
-    // Mini-résumé des équipes (max 8 affichées, "+N autres" si plus)
+    // Résumé des équipes (8 au plus, puis « +N autres »).
     const groupes = Array.isArray(sc.groupes) ? sc.groupes : [];
     let equipesHtml = "";
     if (groupes.length === 0) {
@@ -3646,8 +3204,8 @@
                      '</div>';
     }
 
-    // 🩸 Scénario déjà sur l'appareil (même id) : le choix entre
-    // « Remplacer » (garde le lien avec les rapports des équipes) et « Copie ».
+    // 🩸 Scénario déjà sur l'appareil (même id) : choix « Remplacer » (garde le lien avec les rapports des
+    // équipes) ou « Copie ».
     const existant = (typeof sc.id === "string" && sc.id) ? get(sc.id) : null;
     let existeBlock = "";
     if (existant) {
@@ -3731,23 +3289,10 @@
     document.body.appendChild(overlay);
   }
 
-  // Helper local — format court d'un niveau pour la preview équipes.
-  // 0 → "RDC", >0 → "+N", <0 → "-N". Idempotent avec le chip card équipe.
-  // 🩸 LA PROFONDEUR ENTRE DANS LA FICHE DE SECOURS.
-  //
-  // Un niveau était rendu « -2 » ou « RDC ». C'est une COORDONNÉE INTERNE : elle
-  // ne dit rien à qui prépare une intervention. « -2 · -35 m » dit combien de
-  // corde, quel type d'équipe, quelle durée d'évacuation.
-  //
-  // C'est le seul usage des profondeurs qui ait un enjeu autre que le confort,
-  // et c'est pourquoi il passe par CE formateur : il est la source unique du
-  // relevé texte (`secours.txt.niveau`), du PDF et des cartes de scénario. Le
-  // brancher ici les sert tous les trois d'un coup — l'écrire trois fois aurait
-  // garanti qu'une des trois dérive.
-  //
-  // Silencieux si la profondeur n'est pas renseignée : une fiche de secours ne
-  // devine pas.
-  // Audit i18n (O7) : « RDC » était écrit en dur (5 endroits) → GF / PB en EN / ES.
+  // Format court d'un niveau (0 → « RDC » traduit, >0 → « +N », <0 → « -N »), suivi de la profondeur si
+  // elle est renseignée : « -2 · -35 m » dit combien de corde, quelle équipe, quelle durée d'évacuation.
+  // ⚠️ Source unique du relevé texte (`secours.txt.niveau`), du PDF et des cartes de scénario : ne pas le
+  // dupliquer, une des copies dériverait. Rien si la profondeur manque (une fiche de secours ne devine pas).
   function _lblNiveau(lvl) {
     return (lvl === 0) ? t("filter.levels.ground") : ((lvl > 0 ? "+" : "") + lvl);
   }
@@ -3760,12 +3305,9 @@
     return base + " · " + z.toFixed(0) + " m";
   }
 
-  // Modale de feedback post-import. Succès = vert + bouton
-  // "Ouvrir le scénario" qui bascule directement en vue Edit. Échec = rouge
-  // avec message d'erreur détaillé (validation, JSON malformé, etc.).
-  // Warning éventuel (plan différent) affiché en bandeau orange.
+  // Résultat d'import : succès en vert (+ « Ouvrir le scénario » → édition), échec en rouge avec l'erreur
+  // détaillée, avertissement (autre plan) en bandeau orange.
   function _afficherResultatImport(result, sourceFilename) {
-    // Cleanup éventuelle modale précédente
     const existing = document.getElementById("kta-secours-import-result");
     if (existing) existing.remove();
 
@@ -3850,41 +3392,24 @@
     document.body.appendChild(overlay);
   }
 
-  // ==========================================================================
-  // Import rapport équipier .mkmsec.report.json (consolidation cross-device)
-  // ==========================================================================
-  // Permet à l'opérateur surface d'importer le rapport d'un équipier (export
-  // .mkmsec.report.json scope=equipe généré v1.25.0) pour FUSIONNER ses
-  // observations + statuts + photos dans le scenario.execution opérateur.
-  //
-  // Cas d'usage : équipier au retour surface partage son rapport via fichier
-  // (mail, AirDrop, USB, Discord…), l'opérateur l'importe et son tableau de
-  // supervision est mis à jour avec les obs terrain. Remplace fonctionnellement
-  // la voie QR Share Phase 4 (rollback hotfix17).
-  //
-  // Politique de fusion (validée KARMA v1.26.0) :
-  //   - obs : concaténation `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé`
-  //   - statut : prendre le PLUS SÉVÈRE via TABLEAU_STATUTS.severity
-  //   - photos : push avec dédup par id (collision rare via genId aléatoire)
-  //   - timestamps : préserve le plus ancien startedAt + plus récent completedAt
-  //   - flag `_importedFrom` sur chaque étape mutée (traçabilité + chip UI)
-  //   - audit log dans `s.execution._importLog: []`
-  //   - snapshot SessionBackups AVANT (= undo via restauration backup)
-  //
-  // Refus :
-  //   - scope !== "equipe" (operateur = doublon, secouriste = scope différent)
-  //   - scenario.id différent de l'actif (force la cohérence opérateur ↔ équipier)
-  //   - equipe.id absent du scénario actif (équipe inconnue, anti-doublon)
-  //   - pas d'exécution active côté op (lancer le plan d'abord)
-  //
-  // Plan différent → warning (pas erreur) — décision finale dans modale preview.
+  // ── Import d'un rapport d'équipe .mkmsec.report.json ───────────────
+  // L'opérateur FUSIONNE le rapport d'un équipier (scope « equipe ») dans son scenario.execution :
+  // observations, statuts, photos. Le rapport arrive par fichier (mail, AirDrop, USB…).
+  // Fusion :
+  //   - observations : concaténées sous un séparateur « Import Équipier <ts> » ;
+  //   - statut : le PLUS SÉVÈRE (TABLEAU_STATUTS.severity) ;
+  //   - photos : ajoutées, dédoublonnées par id ;
+  //   - horodatages : startedAt le plus ancien, completedAt le plus récent ;
+  //   - `_importedFrom` sur chaque étape touchée, journal `s.execution._importLog`,
+  //     sauvegarde SessionBackups AVANT (annulation = restauration).
+  // Refus : scope inattendu, scenario.id ≠ celui ouvert, équipe inconnue, pas d'exécution active ici.
+  // Autre plan → avertissement (pas erreur), l'aperçu décide.
 
   const REPORT_FORMAT_VERSION_MAX = 1; // version max supportée à l'import
 
-  // Parse + validation seule (pas d'injection). Symétrique à _parsePayloadMkmsec.
-  // Retourne : { ok, payload?, equipeId?, conflits?, warning?, error? }
-  // `conflits` est un array d'étapes côté op déjà renseignées (statut !== pending
-  // OU observations non-vides) qui seront fusionnées (info pour modale preview).
+  // Parse + validation seule (pendant de _parsePayloadMkmsec). Retourne { ok, payload?, equipeId?,
+  // conflits?, warning?, error? } ; `conflits` = étapes déjà renseignées ici (statut ≠ pending ou
+  // observations) qui seront fusionnées.
   async function _parsePayloadReport(input) {
     let text;
     try {
@@ -3906,7 +3431,6 @@
       return { ok: false, error: t("secours.import.errJson", { message: e.message }) };
     }
 
-    // Validation type/version
     if (!payload || typeof payload !== "object") {
       return { ok: false, error: t("secours.import.errPayload") };
     }
@@ -3917,14 +3441,13 @@
       return { ok: false, error: t("secours.report.errVersion", { version: payload.version, max: REPORT_FORMAT_VERSION_MAX }) };
     }
 
-    // Validation scope = equipe (MVP v1.26.0 : seuls les rapports équipiers fusionnables)
     if (payload.scope !== "equipe") {
       if (payload.scope === "operateur") {
         return { ok: false, error: t("secours.report.errScopeOperateur") };
       }
       if (payload.scope === "secouriste") {
-        // Vague 7 (décision KARMA 5:a) : le rapport du secouriste libre est ACCEPTÉ —
-        // ses notes entrent dans la main courante (mêmes contrôles de scénario).
+        // Le rapport du secouriste libre est accepté : ses notes entrent dans la main courante (mêmes contrôles
+        // de scénario).
         const sc = get(_currentScenarioId);
         if (!sc) return { ok: false, error: t("secours.report.errAucunScenario") };
         if (!sc.execution || !sc.execution.active) return { ok: false, error: t("secours.report.errPasExecution") };
@@ -3938,7 +3461,7 @@
       return { ok: false, error: t("secours.report.errScopeInconnu", { scope: payload.scope }) };
     }
 
-    // Validation equipesData (doit contenir 1 équipe)
+    // equipesData doit contenir exactement 1 équipe.
     if (!Array.isArray(payload.equipesData) || payload.equipesData.length !== 1) {
       return { ok: false, error: t("secours.report.errEquipesData", { n: (Array.isArray(payload.equipesData) ? payload.equipesData.length : t("secours.report.nonArray")) }) };
     }
@@ -3947,7 +3470,6 @@
       return { ok: false, error: t("secours.report.errEquipeInvalide") };
     }
 
-    // Validation scénario actif côté op
     const currentScenario = get(_currentScenarioId);
     if (!currentScenario) {
       return { ok: false, error: t("secours.report.errAucunScenario") };
@@ -3956,21 +3478,18 @@
       return { ok: false, error: t("secours.report.errPasExecution") };
     }
 
-    // Validation scenario.id correspond
     if (payload.scenario && payload.scenario.id && payload.scenario.id !== currentScenario.id) {
       return { ok: false, error: t("secours.report.errScenarioDifferent", { nom: (payload.scenario.nom || t("secours.import.sansNom")), id: payload.scenario.id.slice(0, 8), nomActif: currentScenario.nom }) };
     }
 
-    // Validation equipe.id existe côté op
     const equipeOp = currentScenario.groupes.find(function(g) { return g.id === ed.equipe.id; });
     if (!equipeOp) {
       return { ok: false, error: t("secours.report.errEquipeAbsente", { nom: (ed.equipe.nom || t("secours.import.sansNom")), id: ed.equipe.id.slice(0, 8) }) };
     }
 
-    // Détection des conflits (info pour preview, pas une erreur).
-    // 4e relecture (R4-9) : mêmes préparatifs que la fusion — identités posées et
-    // rattachées, et étapes de la phase visée (phase close → son historique) —
-    // sinon l'aperçu annonçait autre chose que ce qui serait fusionné.
+    // Conflits (information pour l'aperçu). 🩸 Mêmes préparatifs que la fusion (identités posées et
+    // rattachées, étapes de la phase visée — phase close → son historique), sinon l'aperçu annonce autre chose
+    // que ce qui sera fusionné.
     const gPrev = currentScenario.groupes.find(function(x) { return x.id === ed.equipe.id; });
     if (gPrev) { _normaliserParcours(gPrev); _rattacherWidEtapes(currentScenario, gPrev); }
     const phCour = (typeof currentScenario.execution.currentPhaseIdx === "number") ? currentScenario.execution.currentPhaseIdx : 0;
@@ -3997,7 +3516,6 @@
       }
     });
 
-    // Plan différent → warning (pas erreur)
     let warning = null;
     if (_autrePlan(payload.plan)) {
       const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
@@ -4016,16 +3534,13 @@
     };
   }
 
-  // Injection seule depuis payload déjà validé. Mute s.execution.etapes[equipeId][...]
-  // avec fusion + flag _importedFrom + audit log. Async (écriture photos IDB).
-  // Retourne : { ok, stats: { etapesFusionnees, etapesSkipped, photosImportees,
-  //                           photosSkipped, warnings: [string] } }
-  // 🩸 4e relecture (R4-2, décision KARMA a) — UN RAPPORT DE PHASE 1 IMPORTÉ APRÈS LE
-  // PASSAGE EN PHASE 2 remplissait en silence les étapes de la phase 2 (équipe
-  // reconduite) : des galeries paraissaient fouillées alors que personne n'y était
-  // allé. Phase du rapport = celle qu'il déclare ; rapport d'avant (sans phase) :
-  // déduite des horodatages (tout terminé avant le début de la phase en cours →
-  // phase précédente). Retourne l'index de phase du rapport.
+  // Injection depuis un payload validé : fusion dans s.execution.etapes[equipeId], `_importedFrom`, journal.
+  // Async (photos en IndexedDB). Retourne { ok, stats: { etapesFusionnees, etapesSkipped, photosImportees,
+  // photosSkipped, warnings } }.
+  // 🩸 Un rapport de phase 1 importé APRÈS le passage en phase 2 ne doit pas remplir les étapes de la phase 2
+  // (équipe reconduite) : des galeries paraîtraient fouillées sans que personne n'y soit allé. Phase du
+  // rapport = celle qu'il déclare ; rapport sans phase : déduite des horodatages (tout terminé avant le
+  // début de la phase en cours → phase précédente). Retourne l'index de phase du rapport.
   function _phaseDuRapport(s, payload) {
     const ex = s.execution || {};
     const cour = (typeof ex.currentPhaseIdx === "number") ? ex.currentPhaseIdx : 0;
@@ -4049,8 +3564,7 @@
     const sourceScenarioId = (payload.scenario && payload.scenario.id) || null;
     const sourceAppVersion = payload.appVersion || null;
 
-    // Snapshot AVANT pour undo (cf SessionBackups v1.16.0 step 4).
-    // Si le module n'est pas dispo, on continue quand même (best-effort).
+    // Sauvegarde AVANT pour annuler (SessionBackups) ; module absent : on continue.
     try {
       if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
         window.SessionBackups.snapshot(t("secours.report.snapshotLabel", { equipe: (ed.equipe.nom || t("secours.import.sansNom")) }));
@@ -4063,16 +3577,14 @@
     const phaseRap = _phaseDuRapport(s, payload);
     const archPhase = (phaseRap !== phaseCour && s.execution.etapesArchive)
       ? s.execution.etapesArchive[String(phaseRap)] : null;
-    // Rapport d'une phase CLOSE : fusion dans l'historique de CETTE phase, jamais dans
-    // la phase en cours ; pas de remise de point (le parcours actuel n'est pas le sien).
+    // Rapport d'une phase CLOSE : fusion dans l'historique de CETTE phase, jamais dans la phase en cours ; pas
+    // de remise de point (le parcours actuel n'est pas le sien).
     const phaseClose = !!(archPhase && Array.isArray(archPhase[equipeId]));
     let etapesOp;
     if (phaseClose) {
       etapesOp = archPhase[equipeId];
     } else {
-      // 4e relecture (R4-18) : ne plus CRÉER d'entrée vide pour une équipe hors de la
-      // phase en cours (la fusion n'ajoute jamais d'étape : elle ne ferait que traîner
-      // dans la structure de la phase).
+      // Pas d'entrée vide créée pour une équipe hors de la phase en cours (la fusion n'ajoute jamais d'étape).
       s.execution.etapes = s.execution.etapes || {};
       etapesOp = s.execution.etapes[equipeId] || [];
     }
@@ -4087,11 +3599,11 @@
       photosSkipped: 0,
       photosDejaPresentes: 0,
       warnings: [],
-      alertes: [],  // 2e relecture (N11) : affichées en clair, jamais repliées
-      avis: []      // 4e relecture : avertissements orange en clair (rapport de phase close…)
+      alertes: [],  // affichées en clair, jamais repliées
+      avis: []      // avertissements orange en clair (rapport de phase close…)
     };
 
-    // Index photos importées par stepIdx pour rattachement
+    // Photos importées indexées par stepIdx, pour le rattachement.
     const photosByStep = {};
     photosImportees.forEach(function(p) {
       if (typeof p.stepIdx !== "number") return;
@@ -4099,16 +3611,14 @@
       photosByStep[p.stepIdx].push(p);
     });
 
-    // Timestamp formaté pour le séparateur de concat
     const tsLabel = new Date(payload.exportedAt || importedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR", {
       day: "2-digit", month: "2-digit", year: "numeric",
       hour: "2-digit", minute: "2-digit"
     });
 
-    // 🩸 2e relecture (N11, décision KARMA a) — « aide » ou « victime » signalée par
-    // l'équipe sur une étape que le PC a retirée entre-temps : le point est REMIS
-    // dans le parcours de l'équipe, à sa place (après le point importé précédent),
-    // puis fusionné normalement ; une alerte rouge le dit. Jamais une ligne repliée.
+    // 🩸 « Aide » ou « victime » signalée sur une étape que le PC a retirée entre-temps : le point est REMIS
+    // dans le parcours de l'équipe, à sa place (après le point importé précédent), puis fusionné ; une alerte
+    // rouge le dit. Jamais une ligne repliée.
     const gEq = phaseClose ? null : s.groupes.find(function(x) { return x.id === equipeId; });
     if (phaseClose) {
       const nomPh = (s.phases && s.phases[phaseRap] && s.phases[phaseRap].nom) || String(phaseRap + 1);
@@ -4119,12 +3629,12 @@
         }
       });
     }
-    // 3e relecture (R3-1) : identités posées et rattachées AVANT d'apparier.
+    // Identités posées et rattachées AVANT d'apparier.
     if (gEq) { _normaliserParcours(gEq); _rattacherWidEtapes(s, gEq); }
     const preApp = _apparierEtapes(etapesOp, etapesImportees);
-    // Remise SEULEMENT si le point a vraiment quitté le parcours (ni son wid ni sa
-    // position n'y sont) et si l'équipe est dans la phase en cours (R3-2) ; sinon
-    // alerte rouge sans remise (R3-2, R3-6 : rapport sans position).
+    // Remise SEULEMENT si le point a vraiment quitté le parcours (ni son wid ni sa position n'y sont) et si
+    // l'équipe est dans la phase en cours ; sinon alerte rouge sans remise (aussi pour un rapport sans
+    // position).
     const dansParcours = function(e) {
       return _parcoursRoles(gEq.entree, gEq.intermediaires, gEq.sortie).some(function(it) {
         return (e.wid && it.wp.wid === e.wid) || (e.cle && _cleWaypoint(it.wp) === e.cle);
@@ -4140,7 +3650,7 @@
       stats.alertes.push(t("secours.report.alerteNonRemise", { statut: _statutLabel(e.statut), label: e.label || "?" }));
     });
     const aRemettre = graves.filter(remettable);
-    const remis = new Map();   // étape importée → wid du point remis (R3-5)
+    const remis = new Map();   // étape importée → wid du point remis
     if (gEq && aRemettre.length > 0) {
       aRemettre.forEach(function(e) {
         const c = e.cle.split(",").map(Number);
@@ -4160,30 +3670,27 @@
         gEq.intermediaires = arr;
         _poserWids(gEq.id, _parcoursRoles(gEq.entree, gEq.intermediaires, gEq.sortie));
         remis.set(e, wp.wid);
-        preApp[iImp] = { type: "interm", wid: wp.wid };   // R3-4 : « avant » des remises suivantes
+        preApp[iImp] = { type: "interm", wid: wp.wid };   // repère « avant » des remises suivantes
         stats.alertes.push(t("secours.report.alerteRemise", { statut: _statutLabel(e.statut), label: e.label || "?" }));
       });
       _resyncEtapesEquipe(s, gEq);
       etapesOp = s.execution.etapes[equipeId];
     }
 
-    // Fusion étape par étape (sequential car écritures IDB photos)
-    // Appariement global (position, puis libellé par rang, puis numéro) : cf _apparierEtapes.
+    // Fusion étape par étape, séquentielle (écritures IndexedDB des photos). Appariement : cf _apparierEtapes.
     const pairesFusion = _apparierEtapes(etapesOp, etapesImportees);
     for (let i = 0; i < etapesImportees.length; i++) {
       const etImp = etapesImportees[i];
-      // Point remis (R3-5) : retrouvé par son wid, quel que soit son ancien type.
+      // Point remis : retrouvé par son wid, quel que soit son ancien type.
       const etapeOp = pairesFusion[i] || (remis.has(etImp)
         ? etapesOp.find(function(x) { return x.wid === remis.get(etImp); }) || null : null);
       if (!etapeOp) {
         stats.etapesSkipped++;
         stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
-        // 2e relecture (N11) : ses saisies ne sont pas jetées — archivées avec les
-        // étapes retirées (photos non importées : l'étape n'existe plus ici).
+        // Ses saisies ne sont pas jetées : archivées avec les étapes retirées.
         if (_etapeADesDonnees(etImp)) {
-          // 4e relecture (R4-4) : un indice / une observation / une photo sur une étape
-          // que le PC n'a plus n'est plus invisible : avis orange en clair, photos
-          // importées (hors rapport, stepIdx -2) et comptées dans l'archive.
+          // Un indice / une observation / une photo sur une étape que le PC n'a plus reste visible : avis orange,
+          // photos importées (hors rapport, stepIdx -2) et comptées dans l'archive.
           const photosHp = [];
           const P = window.MyKTAMapSecoursPhotos;
           for (const ph of (photosByStep[etImp.idx] || [])) {
@@ -4201,8 +3708,7 @@
             stats.avis.push(t("secours.report.avisHorsParcours", { statut: _statutLabel(etImp.statut), label: etImp.label || "?" }));
           }
           s.execution._etapesRetirees = s.execution._etapesRetirees || {};
-          // R4-3 : une étape déjà archivée (même point) est MISE À JOUR, pas ré-ajoutée
-          // à chaque import (archive 2 → 4 → 6 mesurée).
+          // 🩸 Une étape déjà archivée (même point) est MISE À JOUR, pas ré-ajoutée à chaque import.
           const arch = (s.execution._etapesRetirees[equipeId] || []).filter(function(x) {
             return !((etImp.wid && x.wid === etImp.wid) || (!etImp.wid && etImp.cle && x.cle === etImp.cle
               && x.type === etImp.type) || (!etImp.wid && !etImp.cle && x.label === etImp.label && x.type === etImp.type));
@@ -4215,11 +3721,10 @@
         continue;
       }
 
-      // Concaténation observations (sauf si import vide).
-      // 🩸 4e relecture (R4-3) — chaque ré-import (et le rapport final, qui reprend
-      // l'intermédiaire) DUPLIQUAIT les observations (« trace » ×3 mesuré). L'étape
-      // mémorise le dernier texte reçu de l'équipe (`_obsImport`) : identique → rien ;
-      // prolongé → seule la partie nouvelle ; déjà présent au PC → rien.
+      // Concaténation des observations (sauf import vide).
+      // 🩸 Chaque ré-import (et le rapport final, qui reprend l'intermédiaire) DUPLIQUERAIT les observations.
+      // L'étape mémorise le dernier texte reçu de l'équipe (`_obsImport`) : identique → rien ; prolongé → seule
+      // la partie nouvelle ; déjà présent au PC → rien.
       const importedObs = String(etImp.observations || "").trim();
       const dejaRecu = String(etapeOp._obsImport || "");
       let aAjouter = importedObs;
@@ -4238,12 +3743,9 @@
       }
       if (importedObs) etapeOp._obsImport = importedObs;
 
-      // Statut : plus sévère (sauf si import = pending, qui n'écrase jamais).
-      // 🩸 l'égalité gardait TOUJOURS le statut du PC :
-      // « RAS » (sévérité 0, comme « en attente ») rapporté par l'équipe était perdu,
-      // et entre bloqué / indice / demi-tour (tous 1) le premier arrivé gagnait.
-      // Désormais : un statut reçu bat « en attente » ; à sévérité égale, le plus
-      // récent (completedAt, lu AVANT la fusion des horodatages ci-dessous) gagne.
+      // Statut : le plus sévère ; un import « pending » n'écrase jamais.
+      // 🩸 Un statut reçu bat « en attente » (sinon « RAS », de sévérité 0 comme « en attente », serait perdu) ;
+      // à sévérité égale, le plus récent gagne (completedAt, lu AVANT la fusion des horodatages ci-dessous).
       if (etImp.statut && etImp.statut !== "pending") {
         const statutOp = etapeOp.statut || "pending";
         const sevOp = _getStatutInfo(statutOp).severity;
@@ -4255,7 +3757,7 @@
         }
       }
 
-      // Timestamps : préserver le plus ancien startedAt + le plus récent completedAt
+      // Horodatages : startedAt le plus ancien, completedAt le plus récent.
       if (etImp.startedAt) {
         if (!etapeOp.startedAt || new Date(etImp.startedAt) < new Date(etapeOp.startedAt)) {
           etapeOp.startedAt = etImp.startedAt;
@@ -4267,23 +3769,21 @@
         }
       }
 
-      // Photos rattachées à cette étape
       const photosCetteEtape = photosByStep[etImp.idx] || [];
       etapeOp.photoIds = etapeOp.photoIds || [];
       for (let j = 0; j < photosCetteEtape.length; j++) {
         const photo = photosCetteEtape[j];
-        // Dédup par id (très rare collision via generateId aléatoire mais safety)
+        // Dédoublonnage par id (collision très rare, par sûreté).
         if (etapeOp.photoIds.indexOf(photo.id) >= 0) {
           stats.photosDejaPresentes++;
           continue;
         }
-        // Vérif autonome (dataUrl présent) sinon skip
+        // Photo sans dataUrl (non autonome) : ignorée.
         if (!photo.dataUrl) {
           stats.photosSkipped++;
           stats.warnings.push(t("secours.report.warnPhotoSansData", { id: photo.id }));
           continue;
         }
-        // Écriture IDB via secoursPhotos
         try {
           if (window.MyKTAMapSecoursPhotos
               && typeof window.MyKTAMapSecoursPhotos.importPhotoFromDataUrl === "function") {
@@ -4312,14 +3812,14 @@
         }
       }
 
-      // A3 : position précisée de la victime — la plus récente gagne.
+      // Position précisée de la victime : la plus récente gagne.
       if (etImp.victimePos && typeof etImp.victimePos.x === "number" && typeof etImp.victimePos.y === "number") {
         const tImp = Date.parse(etImp.victimePos.at || 0) || 0;
         const tOp = etapeOp.victimePos ? (Date.parse(etapeOp.victimePos.at || 0) || 0) : -1;
         if (tImp >= tOp) etapeOp.victimePos = etImp.victimePos;
       }
 
-      // Flag traçabilité (UI chip + audit)
+      // Traçabilité (chip d'interface + journal).
       etapeOp._importedFrom = {
         sourceScenarioId: sourceScenarioId,
         sourceAppVersion: sourceAppVersion,
@@ -4329,7 +3829,7 @@
       stats.etapesFusionnees++;
     }
 
-    // A4 : heures de départ / rentrée venues du téléphone de l'équipe (phase du rapport).
+    // Heures de départ / rentrée venues du téléphone de l'équipe (phase du rapport).
     if (ed.suivi && typeof ed.suivi === "object") {
       s.execution.suivi = s.execution.suivi || {};
       const kPh = String(phaseRap);
@@ -4339,7 +3839,7 @@
       ["departAt", "rentreeAt", "rappelAt"].forEach(function(k) {
         if (ed.suivi[k] && !isNaN(Date.parse(ed.suivi[k]))) su[k] = tot(su[k], ed.suivi[k]);
       });
-      // B9 : le compte des remontés fait par l'équipe elle-même, si le PC n'en a pas.
+      // Compte des remontés fait par l'équipe elle-même, si le PC n'en a pas.
       if (Number.isInteger(ed.suivi.remontes) && !Number.isInteger(su.remontes)) su.remontes = ed.suivi.remontes;
     }
 
@@ -4359,7 +3859,6 @@
     }
     _journaliser(s, "secours.mc.import", { equipe: ed.equipe.nom || "?", n: stats.etapesFusionnees });
 
-    // Audit log scenario-level
     s.execution._importLog = s.execution._importLog || [];
     s.execution._importLog.push({
       at:                  importedAt,
@@ -4380,11 +3879,9 @@
     return { ok: true, stats: stats };
   }
 
-  // Modale preview AVANT injection. Symétrique à _afficherPreviewImport mais
-  // pour rapports équipiers (highlight équipe cible + n étapes + n photos +
-  // n conflits si applicable).
+  // Aperçu AVANT injection d'un rapport d'équipe (pendant de _afficherPreviewImport) : équipe cible, nombre
+  // d'étapes, de photos et de conflits.
   function _afficherPreviewImportRapport(parseResult, sourceFilename, onDone) {
-    // Cleanup éventuelle modale précédente
     const existing = document.getElementById("kta-secours-import-rapport-preview");
     if (existing) existing.remove();
 
@@ -4511,7 +4008,7 @@
     document.body.appendChild(overlay);
   }
 
-  // Modale résultat post-import (succès = stats détaillées, échec = error).
+  // Résultat d'import d'un rapport (succès = statistiques, échec = erreur).
   function _afficherResultatImportRapport(result, sourceFilename) {
     const existing = document.getElementById("kta-secours-import-rapport-result");
     if (existing) existing.remove();
@@ -4547,7 +4044,7 @@
                  ((stats.etapesSkipped || 0) > 0 ? '⏭️ ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
                  ((stats.photosSkipped || 0) > 0 ? '⚠️ ' + t("secours.rapportRes.photosSkipped", { n: stats.photosSkipped }) + '<br>' : '') +
                '</div>';
-      // 2e relecture (N11) : alertes « aide / victime » en clair, avant tout le reste
+      // Alertes « aide / victime » en clair, avant tout le reste.
       if (Array.isArray(stats.alertes) && stats.alertes.length > 0) {
         inner += '<div class="kta-tx-err" style="background:rgba(255,68,68,0.14); border:1px solid #ff4444; border-radius:6px;' +
                  ' padding:10px 12px; margin:10px 0; color:#ffb3b3; font-size:13px; line-height:1.5;">🚨 ' +
@@ -4558,7 +4055,6 @@
                  ' padding:10px 12px; margin:10px 0; color:#ffb380; font-size:13px; line-height:1.5;">⚠️ ' +
                  stats.avis.map(_escHtml).join('<br>⚠️ ') + '</div>';
       }
-      // Warnings détaillés en dépliable
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
         const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
         inner += '<details style="margin:10px 0; font-size:13px;">' +
@@ -4587,7 +4083,6 @@
     boite.innerHTML = inner;
     overlay.appendChild(boite);
 
-    // Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       _unbindEsc();
@@ -4602,8 +4097,7 @@
     document.body.appendChild(overlay);
   }
 
-  // File picker pour l'import .mkmsec.report.json depuis la vue Live Opérateur.
-  // Symétrique à _ouvrirImportMkmsecPicker mais ciblé rapport équipier.
+  // Import .mkmsec.report.json depuis la vue Live Opérateur (pendant de _ouvrirImportMkmsecPicker).
   function _ouvrirImportRapportEquipePicker() {
     const input = document.createElement("input");
     input.type = "file";
@@ -4625,7 +4119,7 @@
         _afficherResultatImportRapport({ ok: false, error: parsed.error }, file.name);
         return;
       }
-      if (parsed.secouriste) {   // vague 7 : notes du secouriste → main courante
+      if (parsed.secouriste) {   // notes du secouriste → main courante
         const n = parsed.payload.notesLibres.length;
         const ok = (typeof window.ktaConfirm === "function")
           ? await window.ktaConfirm(t("secours.secouriste.importConfirm", { n: n }), { titre: t("secours.secouriste.importTitre") })
@@ -4636,7 +4130,6 @@
         if (_modal) _switchView("live");
         return;
       }
-      // Modale preview avec callback de confirmation
       _afficherPreviewImportRapport(parsed, file.name, async function(confirmer) {
         if (!confirmer) return;
         let applied;
@@ -4647,9 +4140,8 @@
           applied = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
         }
         _afficherResultatImportRapport(applied, file.name);
-        // Refresh vue live op pour afficher les chips _importedFrom.
-        // 4e relecture (R4-8) : appelait _renderInline, qui n'a jamais existé (le
-        // typeof masquait l'absence) → cartes opérateur figées sur l'état d'avant.
+        // Re-rendu de la vue Live opérateur (chips _importedFrom). ⚠️ Appeler une fonction qui existe : un typeof
+        // sur un nom absent masquerait l'échec et figerait les cartes sur l'état d'avant.
         try {
           if (_modal) _switchView("live");
           if (_overlayLayer) renderOverlay(_currentScenarioId);
@@ -4660,9 +4152,7 @@
     input.click();
   }
 
-  // Duplique un scénario (= deep clone via JSON roundtrip + nouveau id).
-  // Pratique pour "et si l'équipe Alpha sort par le Sud au lieu de l'Est" :
-  // dupliquer puis modifier l'équipe sans perdre l'original.
+  // Duplique un scénario (copie profonde, nouvel id) : pour une variante « et si Alpha sort par le Sud ».
   function duplicateScenario(id) {
     const src = get(id);
     if (!src) return null;
@@ -4671,12 +4161,10 @@
     copy.nom = t("secours.scenario.copieSuffix", { nom: src.nom });
     copy.createdAt = _nowIso();
     copy.updatedAt = _nowIso();
-    // Régénère aussi les IDs internes des groupes (sinon collisions)
-    // 🩸 Relecture 29/09 (H1) — les phases n'étaient pas remappées (la copie
-    // n'avait aucune équipe dans ses phases) et l'exécution EN COURS était recopiée
-    // avec les anciens ids : la « variante et si » d'une intervention naissait
-    // « en cours », protégée de la purge, sans étapes. Une variante est un plan
-    // neuf : phases remappées et remises à zéro, pas d'exécution.
+    // Ids des groupes régénérés (sinon collisions).
+    // 🩸 Une variante est un plan NEUF : phases remappées et remises à zéro, pas d'exécution. Recopier
+    // l'exécution en cours avec les anciens ids ferait naître une variante « en cours », protégée de la purge,
+    // sans étapes.
     const idMap = {};
     if (Array.isArray(copy.groupes)) {
       copy.groupes.forEach(function(g) { const ancien = g.id; g.id = _genId("G"); idMap[ancien] = g.id; });
@@ -4697,15 +4185,10 @@
     return copy;
   }
 
-  // ============================================================
-  // CRUD — GROUPES (équipes) au sein d'un scénario
-  // ============================================================
+  // ── CRUD des groupes (équipes) ──────────────────────────────────────
 
-  // Ajoute un groupe vide à un scénario. couleurIdx auto-assigné au prochain
-  // libre dans la palette (cyclique si > 10 équipes).
-  // accept un 3e arg `level` (number | null) pour assigner
-  // directement le niveau M-LVL de référence à la création (sinon récupéré
-  // depuis APP_CONFIG.activeLevel par défaut dans le constructor du groupe).
+  // Ajoute un groupe vide ; couleurIdx = prochaine couleur libre de la palette (cyclique au-delà de 10).
+  // `level` (number | null) : niveau de référence à la création, sinon APP_CONFIG.activeLevel.
   function addGroupe(scenarioId, nom, level) {
     const s = get(scenarioId);
     if (!s) return null;
@@ -4717,22 +4200,14 @@
       nom:               safeName,
       couleurIdx:        s.groupes.length % PALETTE.length,
       membres:           [],
-      // (KARMA "on doit pouvoir crée une équipe et lui assigné
-      // une zone sur un niveau") : niveau M-LVL de RÉFÉRENCE de l'équipe.
-      // Type : number | null (null = équipe pas assignée à un niveau, cas
-      // plan mono-niveau ou équipe traversant plusieurs étages via jonctions).
-      // Cohérent avec rendu overlay carte + filtre M-LVL au render.
-      // Défini par défaut depuis APP_CONFIG.activeLevel si M-LVL actif.
+      // Niveau de RÉFÉRENCE de l'équipe : number | null (null = plan mono-niveau, ou équipe qui traverse
+      // plusieurs étages par des jonctions). Sert au rendu de l'overlay et au filtre de niveau.
       level:             (level != null) ? level
                        : (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true
                           && typeof window.APP_CONFIG.activeLevel === "number")
                          ? window.APP_CONFIG.activeLevel : null,
-      // (KARMA "je dois pouvoir entrer par le même point de
-      // sortie et balayer la zone, avoir des points intermédiaires") :
-      // parcours = entree + intermediaires[] + sortie. Pathfinder itère
-      // [entree, ...intermediaires, sortie] pour calc itinéraire complet
-      // qui ratisse la zone méthodiquement. Boucle = entree = sortie (même
-      // POI choisi 2 fois). Tous les waypoints partagent le format
+      // Parcours = entree + intermediaires[] + sortie ; le Pathfinder enchaîne [entree, …intermediaires, sortie]
+      // pour ratisser la zone. Boucle = même POI en entrée et en sortie. Format commun des points :
       // {x, y, level, pointId?, label?}.
       entree:            null,
       intermediaires:    [],
@@ -4745,19 +4220,13 @@
       dureeEstimeeMin:   null,
       statut:            "non_demarré",
       observations:      "",
-      // E — Position GPS surface de l'équipe (où elle est en
-      // surface = PC secours, lieu de rdv pompiers, etc.). Optionnel.
-      // Format {lat, lng} décimal (WGS84). null = non renseigné.
-      // Sérialisé naturellement dans export JSON .mkmsec.json + utilisé
-      // par le Briefing pompiers PDF (lien OSM clickable, marker carte).
+      // Position GPS de surface de l'équipe (PC, rendez-vous pompiers…), facultative : {lat, lng} WGS84 ou null.
+      // Exportée dans le .mkmsec.json, utilisée par le briefing pompiers PDF (lien OSM, marqueur).
       surfaceGps:        null
     };
     s.groupes.push(groupe);
-    // C1 — Affecte automatiquement le nouvel équipage à la phase
-    // courante (ou phase 0 si pas d'exécution lancée). Modèle hybride 1:c :
-    // l'utilisateur pourra décocher cette équipe d'une phase ultérieure via
-    // l'UI C2 si elle n'y participe pas. Garde-fou idempotent : pas de doublon
-    // si l'ID y est déjà.
+    // Nouvelle équipe affectée à la phase courante (phase 0 sans exécution), sans doublon ; on peut la
+    // décocher d'une phase ultérieure.
     if (Array.isArray(s.phases) && s.phases.length > 0) {
       const targetIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
                         ? s.execution.currentPhaseIdx
@@ -4775,25 +4244,23 @@
     return groupe;
   }
 
-  // Update partiel d'un groupe. Whitelist des champs mutables.
+  // Mise à jour partielle d'un groupe (liste blanche).
   function updateGroupe(scenarioId, groupeId, partial) {
     const s = get(scenarioId);
     if (!s) return null;
     const g = s.groupes.find(function(x) { return x.id === groupeId; });
     if (!g || !partial || typeof partial !== "object") return null;
-    // 🩸 Relecture 29/09 (R4, décision KARMA 1:a) — retirer du parcours, pendant
-    // l'intervention, une étape qui porte des saisies : confirmation ; REFUS si elle
-    // porte « aide demandée » ou « victime » (l'info ne doit pas quitter le stepper).
+    // 🩸 Retirer du parcours, pendant l'intervention, une étape qui porte des saisies : confirmation ; REFUS si
+    // elle porte « aide demandée » ou « victime » (l'info ne doit pas quitter le stepper).
     const touchePar = ("entree" in partial || "sortie" in partial || "intermediaires" in partial);
     if (touchePar) {
-      // Identité des points : un point NOUVEAU (ou remplacé) reçoit un nouveau wid ;
-      // les étapes d'avant les wid sont rattachées au parcours actuel.
+      // Identité des points : un point NOUVEAU (ou remplacé) reçoit un nouveau wid ; les étapes sans wid sont
+      // rattachées au parcours actuel.
       _normaliserParcours(g);
       _rattacherWidEtapes(s, g);
-      // Un point fourni SANS wid (objet neuf d'un appelant) mais au même endroit et
-      // dans le même rôle qu'un point existant EST ce point : il hérite de son wid.
-      // Seul un point nouveau ou déplacé reçoit une identité neuve (un homonyme
-      // placé ailleurs reste un autre point : N3).
+      // Un point fourni SANS wid mais au même endroit et dans le même rôle qu'un point existant EST ce point : il
+      // hérite de son wid. Seul un point nouveau ou déplacé reçoit une identité neuve (un homonyme placé
+      // ailleurs reste un autre point).
       const heriter = function(liste, anciens) {
         const pris = new Set(liste.map(function(w) { return w && w.wid; }).filter(Boolean));
         liste.forEach(function(w) {
@@ -4818,8 +4285,8 @@
         ("entree" in partial) ? partial.entree : g.entree,
         Array.isArray(partial.intermediaires) ? partial.intermediaires : g.intermediaires,
         ("sortie" in partial) ? partial.sortie : g.sortie));
-      // Le refus aide/victime est RE-VÉRIFIÉ au ré-appel après confirmation (N5) :
-      // seule la question est sautée, pas le contrôle.
+      // 🩸 Le refus aide/victime est RE-VÉRIFIÉ au ré-appel après confirmation : seule la question est sautée,
+      // pas le contrôle.
       const perdues = _etapesPerduesSi(s, g, partial);
       if (perdues.some(function(e) { return _getStatutInfo(e.statut).severity >= 2; })) {
         _toast(t("secours.etape.retraitRefuse"), "error");
@@ -4841,7 +4308,6 @@
         return null;
       }
     }
-    // Whitelist
     if ("nom" in partial && typeof partial.nom === "string") g.nom = partial.nom;
     if ("couleurIdx" in partial && Number.isInteger(partial.couleurIdx)) {
       g.couleurIdx = ((partial.couleurIdx % PALETTE.length) + PALETTE.length) % PALETTE.length;
@@ -4849,9 +4315,8 @@
     if ("membres" in partial && Array.isArray(partial.membres)) {
       g.membres = partial.membres.slice();
     }
-    // B9 (vague 7) : chef d'équipe (un des membres) et effectif (nombre de personnes).
-    // Contre-audit GRIMP (30/09) : l'heure de retour IMPÉRATIVE (autonomie des éclairages,
-    // relève) est une consigne du chef, pas une estimation. « HH:MM » ou null.
+    // Chef d'équipe (un des membres), effectif (personnes). L'heure de retour IMPÉRATIVE (autonomie des
+    // éclairages, relève) est une consigne du chef, pas une estimation : « HH:MM » ou null.
     if ("zoneTousNiveaux" in partial) g.zoneTousNiveaux = partial.zoneTousNiveaux === true;
     if ("heureRetour" in partial) g.heureRetour = (typeof partial.heureRetour === "string" && /^\d{2}:\d{2}$/.test(partial.heureRetour)) ? partial.heureRetour : null;
     if ("chef" in partial) g.chef = (typeof partial.chef === "string" && partial.chef.trim()) ? partial.chef.trim().slice(0, 60) : null;
@@ -4864,7 +4329,7 @@
     if ("intermediaires" in partial && Array.isArray(partial.intermediaires)) {
       g.intermediaires = partial.intermediaires.slice();
     }
-    // niveau M-LVL de référence de l'équipe (number | null)
+    // Niveau de référence de l'équipe (number | null).
     if ("level" in partial) {
       g.level = (typeof partial.level === "number" && Number.isInteger(partial.level))
                 ? partial.level : null;
@@ -4872,21 +4337,20 @@
     if ("zoneType" in partial) g.zoneType = partial.zoneType;  // "polygon"|"roads"|null
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
-    // C1 (15/10/2026) — "court" (défaut : plus court chemin par les étapes) | "complet" | "ossature"
+    // Mode de parcours : "court" (défaut : plus court chemin par les étapes) | "complet" | "ossature".
     if ("approcheM" in partial) g.approcheM = (typeof partial.approcheM === "number" && partial.approcheM >= 0) ? partial.approcheM : null;
     if ("parcoursMode" in partial) {
       g.parcoursMode = (partial.parcoursMode === "complet" || partial.parcoursMode === "ossature") ? partial.parcoursMode : null;
     }
     if ("itineraireSuggere" in partial) g.itineraireSuggere = partial.itineraireSuggere;
-    if ("guidage" in partial) g.guidage = partial.guidage;   // B1 : carrefours / raccords du calcul
+    if ("guidage" in partial) g.guidage = partial.guidage;   // carrefours / raccords du calcul
     if ("distanceM" in partial) g.distanceM = partial.distanceM;
     if ("dureeEstimeeMin" in partial) g.dureeEstimeeMin = partial.dureeEstimeeMin;
     if ("statut" in partial && typeof partial.statut === "string") g.statut = partial.statut;
     if ("observations" in partial && typeof partial.observations === "string") {
       g.observations = partial.observations;
     }
-    // E — Position GPS surface équipe. Validation : {lat, lng}
-    // numériques bornés, sinon null. Accepte aussi explicit null pour reset.
+    // Position GPS de surface : {lat, lng} numériques bornés, sinon null ; null explicite = effacer.
     if ("surfaceGps" in partial) {
       const p = partial.surfaceGps;
       if (p === null) {
@@ -4896,7 +4360,7 @@
                  && p.lat >= -90 && p.lat <= 90 && p.lng >= -180 && p.lng <= 180) {
         g.surfaceGps = { lat: p.lat, lng: p.lng };
       }
-      // sinon : valeur invalide ignorée (pas d'écrasement)
+      // Sinon : valeur invalide ignorée (pas d'écrasement).
     }
     if ("entree" in partial || "sortie" in partial || "intermediaires" in partial) {
       _resyncEtapesEquipe(s, g);   // parcours modifié en cours de phase
@@ -4905,7 +4369,6 @@
     return g;
   }
 
-  // Supprime un groupe par id
   function removeGroupe(scenarioId, groupeId) {
     const s = get(scenarioId);
     if (!s) return false;
@@ -4913,9 +4376,7 @@
     if (idx < 0) return false;
     s.groupes.splice(idx, 1);
     if (_focusedGroupeId === groupeId) _focusedGroupeId = null;
-    // C1 — Nettoyage cross-phases : retire l'id de tous les
-    // groupeIds[] de toutes les phases (sinon affichage de phantôme dans
-    // l'UI C2). Idempotent — splice ne fait rien si pas trouvé.
+    // Retire l'id des groupeIds[] de toutes les phases (sinon équipe fantôme dans l'interface).
     if (Array.isArray(s.phases)) {
       s.phases.forEach(function(phase) {
         if (!phase || !Array.isArray(phase.groupeIds)) return;
@@ -4927,56 +4388,38 @@
     return true;
   }
 
-  // ============================================================
-  // STUBS pour Phase 1 — implémentations dans les commits suivants
-  // ============================================================
-
-  // Stub Phase 1 commit 4 — pré-calcul itinéraires via Pathfinder
+  // Stub de l'API publique : non implémenté (journalise et rend null).
   function recalculerItineraires(scenarioId) {
     console.warn("[SecoursMode] recalculerItineraires : pas encore implémenté (commit 4/9)");
     return null;
   }
 
-  // ============================================================
-  // MAP OVERLAY (depuis v1.22.0 commit 5/9)
-  // ============================================================
-  // Rendu Leaflet des zones + entrées/sorties + itinéraires de toutes les
-  // équipes d'un scénario sur la carte. Couleurs PALETTE par équipe.
-  //
-  // KARMA validation : "Overlay par couleur d'équipe (transparent)"
-  //   → fillOpacity 0.30 pour les polygons (briefing clair sans masquer fond)
-  //
-  // Si _focusedGroupeId est set, on n'affiche QUE cette équipe (mode focus
-  // navigation terrain, masque les autres pour réduire la pollution visuelle).
+  // ── Overlay carte ───────────────────────────────────────────────────
+  // Zones, entrées/sorties et itinéraires des équipes d'un scénario, aux couleurs de PALETTE (polygones à
+  // fillOpacity 0.30 : lisible en briefing sans masquer le fond). Avec _focusedGroupeId : cette équipe seule.
   function renderOverlay(scenarioId) {
     clearOverlay();
     const s = get(scenarioId || _currentScenarioId);
     if (!s || !window.map) return;
     _currentScenarioId = s.id;
     _overlayLayer = L.layerGroup().addTo(window.map);
-    // Phase 2 / Feature C — Rendu du contexte Lost Mode si présent
-    // (lastKnownPoint marker urgence + zoneIncertitude cercle pointillé).
-    // Affiché AVANT les équipes (z-index bas) pour ne pas masquer les overlays
-    // d'assignation.
+    // Contexte du Mode Perdu (marqueur de dernière position + cercle d'incertitude), posé AVANT les équipes
+    // pour ne pas masquer les zones.
     if (s.context) {
       _renderContextOverlay(s.context);
     }
-    // 🆕 hotfix3 (KARMA "si mode équipier en cours, on dit afficher sa zone
-    // de recherche en mode edit, si opérateur toutes les zone, si secours
-    // toutes les zones, avec un petit ✓ vert quand le point a été passé") :
-    // Filtrage selon le rôle d'exécution si execution active. Sinon
-    // comportement v1.25.x strict (toutes équipes + focus optionnel).
+    // Filtrage selon le rôle quand l'exécution est active : un équipier ne voit que SA zone (prime sur le
+    // focus), opérateur et secouriste voient tout ; ✓ vert sur les points passés.
     const execActive = _estExecutionActive(s);
     const isEquipier = execActive && s.execution.role === "equipe" && s.execution.currentEquipeId;
     s.groupes.forEach(function(g) {
-      // Mode équipier en cours → afficher SEULEMENT son équipe (override focus)
       if (isEquipier && g.id !== s.execution.currentEquipeId) return;
-      // Mode focus manuel (legacy) → respecter
+      // Focus manuel.
       if (!isEquipier && _focusedGroupeId && g.id !== _focusedGroupeId) return;
       const couleur = PALETTE[g.couleurIdx % PALETTE.length].hex;
       _renderGroupeOverlay(g, couleur, s);
     });
-    // A3 : chaque victime a son marqueur ✚, visible de TOUS (sécurité), équipier compris.
+    // Chaque victime a son marqueur ✚, visible de TOUS, équipier compris (sécurité).
     _victimesDe(s).forEach(function(v) {
       if (!v.pos) return;
       L.marker(_planToLatLng(v.pos), {
@@ -4987,21 +4430,17 @@
     });
   }
 
-  // 🆕 hotfix3 — Helper pour récupérer l'étape execution correspondant à
-  // un waypoint d'une équipe. Retourne null si pas d'execution active OU
-  // si l'étape n'existe pas dans l'execution (cas où parcours ajusté après
-  // lancement). Mapping : entrée=idx 0, intermédiaires=idx 1..N, sortie=idx N+1.
+  // Étape d'exécution d'un point de parcours, ou null (pas d'exécution, ou étape absente car parcours
+  // ajusté après lancement). Correspondance : entrée = 0, intermédiaires = 1..N, sortie = N+1.
   function _getEtapeForWaypoint(s, equipeId, waypointType, intermIdx) {
     if (!_estExecutionActive(s) && !(s.execution && s.execution.endedAt)) {
-      // Considère aussi execution terminée (rapport historique) pour
-      // que les ✓ verts restent visibles dans bandeau PLAN TERMINÉ
+      // Une exécution terminée compte aussi : les ✓ restent visibles dans le bandeau PLAN TERMINÉ.
       return null;
     }
     const etapes = _getEtapesEquipe(s, equipeId);
     if (!Array.isArray(etapes) || etapes.length === 0) return null;
-    // 4e relecture (R4-15) : appariement par IDENTITÉ d'étape (wid) d'abord. Par
-    // rang seul, le ✓ glissait sur le mauvais point dès que les étapes n'étaient plus
-    // resynchronisées (équipe sortie de la phase, puis parcours modifié).
+    // 🩸 Appariement par IDENTITÉ d'étape (wid) d'abord : par rang seul, le ✓ glisse sur le mauvais point dès
+    // que les étapes ne sont plus resynchronisées (équipe sortie de la phase, puis parcours modifié).
     const g = (s.groupes || []).find(function(x) { return x.id === equipeId; });
     const wp = !g ? null : waypointType === "entree" ? g.entree : waypointType === "sortie" ? g.sortie
              : (waypointType === "interm" && Array.isArray(g.intermediaires)) ? g.intermediaires[intermIdx] : null;
@@ -5015,21 +4454,17 @@
       return etapes.find(function(e) { return e.type === "sortie"; }) || null;
     }
     if (waypointType === "interm" && typeof intermIdx === "number") {
-      // Les intermédiaires sont indexés dans l'ordre d'apparition
       const interms = etapes.filter(function(e) { return e.type === "interm"; });
       return interms[intermIdx] || null;
     }
     return null;
   }
 
-  // 🆕 hotfix3 — Ajoute un badge ✓ vert (L.marker divIcon) en top-right
-  // du marker d'étape si l'étape a été effectuée (completedAt set + statut
-  // non-pending). Utilise la couleur du statut pour différencier RAS (vert)
-  // vs Bloqué (gris) vs Victime (rouge) etc.
+  // Badge ✓ (L.marker divIcon) en haut à droite du marqueur d'une étape faite (completedAt + statut non
+  // pending), à la couleur du statut (RAS vert, bloqué gris, victime rouge…).
   function _addCheckBadgeIfDone(etape, latlng) {
     if (!etape || !etape.completedAt || etape.statut === "pending") return;
     const info = _getStatutInfo(etape.statut);
-    // Petit badge circulaire avec l'emoji du statut (très petit)
     const icon = L.divIcon({
       className: "kta-secours-overlay-check-badge",
       html:      '<span class="kta-secours-overlay-check-badge-inner" ' +
@@ -5043,11 +4478,9 @@
     badge.addTo(_overlayLayer);
   }
 
-  // Feature C — Overlay du contexte importé Lost Mode :
-  // marker rouge ⛑️ sur lastKnownPoint + cercle pointillé rouge sur zoneIncertitude
+  // Contexte importé du Mode Perdu : marqueur sur lastKnownPoint, cercle pointillé rouge sur zoneIncertitude.
   function _renderContextOverlay(ctx) {
     if (!ctx) return;
-    // Cercle zone d'incertitude (rayon en mètres → px via APP_CONFIG.scale)
     if (ctx.zoneIncertitude && typeof ctx.zoneIncertitude.x === "number"
         && typeof ctx.zoneIncertitude.radiusMeters === "number") {
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
@@ -5055,8 +4488,8 @@
       const radiusPx = ctx.zoneIncertitude.radiusPx
                        || (ctx.zoneIncertitude.radiusMeters * scale);
       const center = _planToLatLng(ctx.zoneIncertitude);
-      // L.circle prend un rayon en mètres pour CRS standard mais en pixels
-      // pour CRS.Simple. Ici APP_CONFIG.scale est px/m → on a déjà radiusPx.
+      // ⚠️ En CRS.Simple, L.circle prend un rayon en PIXELS (en mètres seulement en CRS standard) : d'où la
+      // conversion par APP_CONFIG.scale (px/m).
       const circle = L.circle(center, {
         radius:      radiusPx,
         color:       "#ff4444",
@@ -5072,7 +4505,6 @@
       );
       circle.addTo(_overlayLayer);
     }
-    // Marker dernière position connue
     if (ctx.lastKnownPoint && typeof ctx.lastKnownPoint.x === "number") {
       const cm = L.circleMarker(_planToLatLng(ctx.lastKnownPoint), {
         radius:      12,
@@ -5114,10 +4546,8 @@
   }
 
   function _renderGroupeOverlay(g, couleur, s) {
-    // 🆕 hotfix3 — Param `s` optionnel pour récupérer les étapes execution
-    // et afficher les ✓ verts sur les waypoints effectués. Si s absent
-    // (legacy callers), pas de badges (comportement v1.25.x strict).
-    // Zone polygone — fillOpacity 30 % + border 3px (briefing visible)
+    // `s` facultatif : sans lui, pas de badges ✓.
+    // Zone polygone : fillOpacity 30 %, bord 3 px.
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
       const latlngs = g.zonePolygon.map(_planToLatLng);
       const poly = L.polygon(latlngs, {
@@ -5131,9 +4561,8 @@
       poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
       poly.addTo(_overlayLayer);
     }
-    // Zone roads — 15/10/2026 (KARMA) : un POLYGONE sous tout le secteur (enveloppe des
-    // galeries, couleur de l'équipe en transparence) et les galeries de la zone dans une
-    // teinte plus foncée, en une seule ligne (avant : un halo épais par galerie).
+    // Zone « tracés » : un POLYGONE sous tout le secteur (enveloppe des galeries, couleur de l'équipe en
+    // transparence) et ses galeries en teinte plus foncée, en une seule ligne.
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
       const traces = _tracesZone(g).filter(function(r) { return r && Array.isArray(r.points) && r.points.length >= 2; });
       const env = _enveloppeZone(g, traces);
@@ -5151,7 +4580,7 @@
         }).bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" }).addTo(_overlayLayer);
       }
     }
-    // Entrée — marker circle vert avec halo couleur équipe
+    // Entrée : cercle vert, halo couleur équipe.
     if (g.entree && typeof g.entree.x === "number" && typeof g.entree.y === "number") {
       const latlng = _planToLatLng(g.entree);
       const cm = L.circleMarker(latlng, {
@@ -5163,11 +4592,9 @@
       });
       cm.bindTooltip(t("secours.overlay.entree", { equipe: _escHtml(g.nom) }), { permanent: false });
       cm.addTo(_overlayLayer);
-      // 🆕 hotfix3 — Badge ✓ si étape entrée effectuée
       _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "entree"), latlng);
     }
-    // Intermédiaires : markers ronds plus petits couleur équipe
-    // avec border blanc fin, numérotés via tooltip
+    // Intermédiaires : petits ronds couleur équipe, bord blanc, numérotés en tooltip.
     if (Array.isArray(g.intermediaires)) {
       g.intermediaires.forEach(function(w, i) {
         if (!w || typeof w.x !== "number" || typeof w.y !== "number") return;
@@ -5183,14 +4610,13 @@
                        (w.label ? " — " + _escHtml(w.label) : ""),
                        { permanent: false });
         cm.addTo(_overlayLayer);
-        // 🆕 hotfix3 — Badge ✓ si étape intermédiaire effectuée
         _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "interm", i), latlng);
       });
     }
-    // Sortie — marker square (via divIcon) couleur équipe avec bord rouge
+    // Sortie : carré (divIcon) couleur équipe, bord rouge.
     if (g.sortie && typeof g.sortie.x === "number" && typeof g.sortie.y === "number") {
       const latlng = _planToLatLng(g.sortie);
-      // Si entrée === sortie (boucle), marker double bordure (vert + rouge superposés)
+      // Boucle (entrée = sortie) : double bordure vert + rouge.
       const isBoucle = _samePoint(g.entree, g.sortie);
       const cm = L.circleMarker(latlng, {
         radius:      isBoucle ? 11 : 9,
@@ -5205,12 +4631,10 @@
         { permanent: false }
       );
       cm.addTo(_overlayLayer);
-      // 🆕 hotfix3 — Badge ✓ si étape sortie effectuée
       _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "sortie"), latlng);
     }
-    // Itinéraire suggéré — polyline dashed couleur équipe. 16/10/2026 (capture KARMA : pointillés qui
-    // traversaient la vue du niveau 0 sans galerie dessous) : découpé par niveau, un tronçon sur un niveau
-    // non affiché est atténué (comme les positions des autres, ktaPresences.js).
+    // Itinéraire suggéré en pointillé couleur équipe, découpé par niveau : un tronçon d'un niveau non affiché
+    // est atténué (comme les positions des autres, ktaPresences.js) — sinon il traverse la vue sans galerie.
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       const mlvl = _mlvlActif() && typeof window.passeFiltreNiveau === "function";
       const visible = function(lvl) { return !mlvl || window.passeFiltreNiveau({ level: lvl }); };
@@ -5246,36 +4670,26 @@
       try { window.map.removeLayer(_overlayLayer); } catch(e) {}
     }
     _overlayLayer = null;
-    // cleanup floater retour modale (au cas où l'user
-    // ferme via Échap ou plan switch sans repasser par le toggle).
+    // Retire le bouton flottant de retour à la modale (fermeture par Échap ou changement de plan).
     if (typeof _removeOverlayFloater === "function") _removeOverlayFloater();
   }
   function setFocus(groupeId) {
     _focusedGroupeId = groupeId || null;
-    // Re-render uniquement si overlay existe déjà (sinon no-op)
     if (_overlayLayer && _currentScenarioId) {
       renderOverlay(_currentScenarioId);
     }
   }
 
-  // ============================================================
-  // Phase 3 — RAPPORT AU FIL DES ÉTAPES
-  // ============================================================
-  //
-  // 3 formats : 📄 PDF (jsPDF) + 📦 .mkmsec.report.json + 📋 Texte presse-papier
-  // 3 scopes : "operateur" (toutes équipes) | "equipe" (currentEquipeId seul)
-  //          | "secouriste" (notes libres uniquement)
-  //
-  // Disponible à tout moment pendant l'exécution + après l'arrêt du plan
-  // (rapport final consultable tant que le scénario existe). Indisponible
-  // si le scénario n'a JAMAIS été lancé (pas d'execution).
+  // ── Rapport au fil des étapes ───────────────────────────────────────
+  // 3 formats (PDF jsPDF, .mkmsec.report.json, texte presse-papier) × 3 scopes : "operateur" (toutes les
+  // équipes), "equipe" (currentEquipeId), "secouriste" (notes libres). Disponible pendant l'exécution et
+  // après l'arrêt ; indisponible si le scénario n'a JAMAIS été lancé.
 
   const REPORT_FORMAT_VERSION = 1;
 
-  // Génère l'objet structuré commun aux 3 formats. Async car les photos
-  // sont résolues en data:base64 si includePhotos=true.
-  // Retourne : { type, version, exportedAt, appVersion, scope, plan, scenario,
-  //              execution, equipesData: [...], notesLibres: [...] }
+  // Objet commun aux 3 formats (async : photos résolues en data:base64 si includePhotos).
+  // Retourne { type, version, exportedAt, appVersion, scope, plan, scenario, execution, equipesData,
+  // notesLibres }.
   async function genererRapportData(scenarioId, scope, opts) {
     opts = opts || {};
     const s = get(scenarioId);
@@ -5283,7 +4697,6 @@
     if (!s.execution) return null;  // pas lancé → pas de rapport
     const includePhotos = (opts.includePhotos !== false);   // true par défaut
 
-    // Métadonnées plan source
     const pc = window.PLAN_CONFIG;
     const planInfo = pc && pc.plan ? {
       id:          window._currentLoadedPlanId || null,
@@ -5296,7 +4709,7 @@
                    ? window.APP_CONFIG.scale : null
     } : null;
 
-    // Snapshot execution clean (retire les flags internes _previous*)
+    // Exécution nettoyée (sans les drapeaux internes _previous*).
     const executionClean = {
       active:        !!s.execution.active,
       startedAt:     s.execution.startedAt,
@@ -5305,12 +4718,11 @@
       pausedTotalMs: s.execution.pausedTotalMs || 0,
       role:          s.execution.role,
       currentEquipeId: s.execution.currentEquipeId,
-      // 4e relecture (R4-2) : la phase du rapport, pour ne pas le verser dans une autre.
+      // La phase du rapport, pour ne pas le verser dans une autre.
       currentPhaseIdx: (typeof s.execution.currentPhaseIdx === "number") ? s.execution.currentPhaseIdx : 0,
       dureeMs:       getExecutionDureeMs(scenarioId)
     };
 
-    // Sélection des équipes selon scope
     let equipesACibler = [];
     if (scope === "operateur") {
       equipesACibler = (s.groupes || []).slice();
@@ -5322,7 +4734,6 @@
       equipesACibler = [];  // mode notes libres uniquement
     }
 
-    // Construction equipesData : équipe + étapes + photos résolues
     const equipesData = [];
     for (const g of equipesACibler) {
       const etapes = _getEtapesEquipe(s, g.id);
@@ -5334,18 +4745,17 @@
         level:      (typeof g.level === "number") ? g.level : null,
         statut:     g.statut || null,
         observations: g.observations || "",
-        chef:       _chef(g),                                            // B9
-        effectif:   Number.isInteger(g.effectif) ? g.effectif : null     // B9 (sinon : nombre de membres)
+        chef:       _chef(g),                                            
+        effectif:   Number.isInteger(g.effectif) ? g.effectif : null     // sinon : nombre de membres
       };
-      // Résolution photos
       let photosResolved = [];
       if (includePhotos) {
         photosResolved = await _resolverPhotosEquipe(scenarioId, g.id);
       } else {
-        // Juste les IDs (compact, pas autonome)
+        // Ids seuls (compact, non autonome).
         photosResolved = await _listerPhotoIdsEquipe(scenarioId, g.id);
       }
-      // 4e relecture (R4-4) : signalements hors parcours (phase en cours + phases closes).
+      // Signalements hors parcours (phase en cours + phases closes).
       const horsParcours = [].concat((s.execution._etapesRetirees && s.execution._etapesRetirees[g.id]) || []);
       Object.keys(s.execution.etapesArchive || {}).forEach(function(k) {
         const r = s.execution.etapesArchive[k] && s.execution.etapesArchive[k]._retirees;
@@ -5353,37 +4763,34 @@
           if (!horsParcours.some(function(x) { return x.wid && x.wid === e.wid && x.retireeAt === e.retireeAt; })) horsParcours.push(e);
         });
       });
-      // 4e relecture (R4-7) : étapes des phases CLOSES (avant, le rapport final
-      // n'avait que la phase en cours, mais gardait les photos des phases closes).
+      // Étapes des phases CLOSES aussi (le rapport final garde déjà leurs photos).
       const historique = Object.keys(s.execution.etapesArchive || {}).map(Number).sort(function(a, b) { return a - b; })
         .map(function(k) {
           const arr = s.execution.etapesArchive[String(k)] && s.execution.etapesArchive[String(k)][g.id];
           return Array.isArray(arr) && arr.length > 0
             ? { phaseIdx: k, nom: (s.phases && s.phases[k] && s.phases[k].nom) || String(k + 1), etapes: arr.slice(),
-                parcours: _parcoursPhase(s, k, g.id) }   // vague 7b : parcours prévu de la phase
+                parcours: _parcoursPhase(s, k, g.id) }   // parcours prévu de la phase
             : null;
         }).filter(Boolean);
       equipesData.push({
         equipe: equipeClean,
         etapes: etapes.slice(),    // shallow copy (étapes déjà clean)
-        suivi: Object.assign({}, _suiviEquipe(s, g.id) || {}),   // A4 : départ / rentrée / rappel
+        suivi: Object.assign({}, _suiviEquipe(s, g.id) || {}),   // départ / rentrée / rappel
         photos: photosResolved,
         horsParcours: horsParcours,
         historique: historique
       });
     }
 
-    // Notes libres (mode secouriste)
     let notesLibres = [];
     if (scope === "secouriste"
         && s.execution.etapes
         && Array.isArray(s.execution.etapes._notes_libres)) {
       notesLibres = s.execution.etapes._notes_libres.slice();
-      // Résolution photos des notes libres (stockées avec equipeId="_notes_libres", stepIdx=-1)
+      // Photos des notes libres : stockées avec equipeId = "_notes_libres", stepIdx = -1.
       if (includePhotos && notesLibres.length > 0) {
         try {
           const photosNotes = await _resolverPhotosEquipe(scenarioId, "_notes_libres");
-          // Ajouter au rapport sous une clé dédiée pour distinction
           notesLibres = notesLibres.map(function(note) {
             const noteWithPhotos = Object.assign({}, note);
             noteWithPhotos.photosResolved = photosNotes.filter(function(p) {
@@ -5414,15 +4821,13 @@
       execution:    executionClean,
       equipesData:  equipesData,
       notesLibres:  notesLibres,
-      mainCourante: _mcTriee(s)   // vague 7
+      mainCourante: _mcTriee(s)   
     };
   }
 
-  // 🩸 Numéro d'étape d'une photo = celui de l'étape qui la DÉTIENT
-  // (`photoIds`), à défaut celui stocké en base. Une étape renumérotée par
-  // `_resyncEtapesEquipe` garde ses photos sans réécrire IndexedDB.
-  // 4e relecture (R4-7) : phase de l'étape qui détient la photo (null = phase en
-  // cours ou inconnue) — pour libeller « Phase k · Étape N » dans le PDF.
+  // 🩸 Numéro d'étape d'une photo = celui de l'étape qui la DÉTIENT (`photoIds`), à défaut celui stocké en
+  // base : une étape renumérotée par `_resyncEtapesEquipe` garde ses photos sans réécrire IndexedDB.
+  // Rend aussi la phase de cette étape (null = en cours ou inconnue), pour « Phase k · Étape N » dans le PDF.
   function _phasePhoto(scenarioId, equipeId, rec) {
     const s = get(scenarioId);
     const ex = s && s.execution;
@@ -5448,8 +4853,7 @@
       const e = etapes.find(function(x) { return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0; });
       if (e) return e.idx;
     }
-    // 3e relecture (R3-3) : une étape d'une phase CLOSE détient aussi ses photos
-    // (l'équipe reconduite en phase 2 repart d'étapes vierges).
+    // Une étape d'une phase CLOSE détient aussi ses photos (l'équipe reconduite repart d'étapes vierges).
     const phases = (s && s.execution && s.execution.etapesArchive) || {};
     for (const k in phases) {
       const arrPh = phases[k] && phases[k][equipeId];
@@ -5463,22 +4867,20 @@
     if (rec.stepIdx === -2 || (Array.isArray(arch) && arch.some(function(x) {
       return Array.isArray(x.photoIds) && x.photoIds.indexOf(rec.id) >= 0;
     }))) return null;
-    // 2e relecture (N9, N10b) : une photo qu'AUCUNE étape ne détient vient d'une
-    // exécution précédente (scénario supprimé puis réimporté, exécution relancée —
-    // mêmes ids) → hors rapport. Les notes libres (-1) ne sont pas des étapes.
+    // 🩸 Photo qu'AUCUNE étape ne détient = exécution précédente (scénario supprimé puis réimporté, exécution
+    // relancée : mêmes ids) → hors rapport. Les notes libres (-1) ne sont pas des étapes.
     if (Array.isArray(etapes) && rec.stepIdx !== -1) return null;
     return rec.stepIdx;
   }
 
-  // Helper interne — résout toutes les photos d'une équipe en data:base64.
-  // Retourne [{id, mime, sizeBytes, dataUrl, stepIdx}, ...].
+  // Toutes les photos d'une équipe en data:base64 : [{id, mime, sizeBytes, dataUrl, stepIdx}, …].
   async function _resolverPhotosEquipe(scenarioId, equipeId) {
     if (!window.MyKTAMapSecoursPhotos
         || !window.MyKTAMapSecoursPhotos.isAvailable()) return [];
     try {
       const records = await window.MyKTAMapSecoursPhotos.getPhotosForEquipe(scenarioId, equipeId);
       if (!Array.isArray(records) || records.length === 0) return [];
-      // Convertir chaque blob en data URL (séquentiel pour économiser RAM mobile)
+      // Conversion séquentielle (RAM mobile).
       const out = [];
       for (const rec of records) {
         if (_stepIdxPhoto(scenarioId, equipeId, rec) === null) continue;   // étape retirée
@@ -5503,7 +4905,7 @@
     }
   }
 
-  // Helper interne — liste juste les IDs des photos d'une équipe (compact).
+  // Ids seuls des photos d'une équipe (compact).
   async function _listerPhotoIdsEquipe(scenarioId, equipeId) {
     if (!window.MyKTAMapSecoursPhotos
         || !window.MyKTAMapSecoursPhotos.isAvailable()) return [];
@@ -5519,7 +4921,7 @@
           sizeBytes: rec.size,
           stepIdx:   _stepIdxPhoto(scenarioId, equipeId, rec),
           phaseIdx:  _phasePhoto(scenarioId, equipeId, rec)
-          // pas de dataUrl → non autonome (référence seule)
+          // Pas de dataUrl : référence seule.
         };
       });
     } catch(e) {
@@ -5527,7 +4929,6 @@
     }
   }
 
-  // Helper interne — convertit un Blob en data URL (base64) via FileReader.
   function _blobToDataUrl(blob) {
     return new Promise(function(resolve, reject) {
       if (!blob || !(blob instanceof Blob)) {
@@ -5541,8 +4942,7 @@
     });
   }
 
-  // Helper interne — format texte plain markdown-like d'un rapport.
-  // Utilisé pour le bouton "📋 Copier texte" + comme base du PDF.
+  // Rapport en texte brut façon markdown : bouton « Copier texte » et base du PDF.
   function _lignesMcRapport(r) {
     return (r && Array.isArray(r.mainCourante) ? r.mainCourante : []).map(function(e) {
       return _heureCourte(e.at) + " — " + _texteMc(e);
@@ -5554,7 +4954,7 @@
     const sep = "─".repeat(60);
     let out = "";
 
-    // ─── Header ───
+    // ── En-tête ──
     out += t("secours.txt.header", { version: (r.appVersion || "") }) + "\n";
     out += sep + "\n";
     out += t("secours.txt.scenario", { nom: (r.scenario.nom || t("secours.import.sansNom")) }) + "\n";
@@ -5576,26 +4976,25 @@
     if (r.scenario.context && r.scenario.context.notes) {
       out += t("secours.txt.notes", { notes: r.scenario.context.notes }) + "\n";
     }
-    _victimesDuRapport(r).forEach(function(v) {   // A3
+    _victimesDuRapport(r).forEach(function(v) {   
       out += "🚨 " + t("secours.victime.ligneRapport", { equipe: v.nom, etape: v.label, pos: _lblPos(v.pos), heure: _heureCourte(v.at) }) + "\n";
     });
     out += sep + "\n\n";
 
-    // ─── Équipes (mode opérateur OU équipe) ───
+    // ── Équipes (opérateur ou équipe) ──
     if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
       r.equipesData.forEach(function(ed, idx) {
         const g = ed.equipe;
         const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
         out += t("secours.txt.equipeHeader", { n: (idx + 1), total: r.equipesData.length, nom: g.nom, couleur: couleur.nom }) + "\n";
         out += sep + "\n";
-        if (_ligneSuiviRapport(ed)) out += _ligneSuiviRapport(ed) + "\n";   // A4
+        if (_ligneSuiviRapport(ed)) out += _ligneSuiviRapport(ed) + "\n";   
         if (g.membres && g.membres.length > 0) {
           out += t("secours.txt.membres", { membres: g.membres.join(", ") }) + "\n";
         }
         if (typeof g.level === "number") {
           out += t("secours.txt.niveau", { niveau: _formatLevelShort(g.level) }) + "\n";
         }
-        // Étapes
         if (Array.isArray(ed.etapes) && ed.etapes.length > 0) {
           out += "\n" + t("secours.txt.etapesTitre") + "\n";
           ed.etapes.forEach(function(et, i) {
@@ -5622,7 +5021,7 @@
       });
     }
 
-    // ─── Notes libres (mode secouriste) ───
+    // ── Notes libres (secouriste) ──
     if (Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
       out += t("secours.txt.notesLibresTitre", { n: r.notesLibres.length }) + "\n";
       out += sep + "\n";
@@ -5644,7 +5043,7 @@
     } else if (r.scope === "secouriste") {
       out += t("secours.txt.aucuneNote") + "\n\n";
     }
-    const mcLignes = _lignesMcRapport(reportData);   // vague 7 : main courante en annexe
+    const mcLignes = _lignesMcRapport(reportData);   // main courante en annexe
     if (mcLignes.length) {
       out += t("secours.mc.titreRapport", { n: mcLignes.length }) + "\n";
       mcLignes.forEach(function(l) { out += "  " + l + "\n"; });
@@ -5657,7 +5056,6 @@
     return out;
   }
 
-  // Helper interne — label lisible du rôle.
   function _formatRoleLabel(scope) {
     if (scope === "operateur")  return t("secours.roleLabel.operateur");
     if (scope === "equipe")     return t("secours.roleLabel.equipe");
@@ -5665,8 +5063,8 @@
     return "(?)";
   }
 
-  // R4-16 : un rapport (JSON ou PDF) est sorti de l'appareil → l'intervention
-  // terminée perd sa protection FIFO. Rien à marquer si elle est encore en cours.
+  // Un rapport (JSON ou PDF) sorti de l'appareil lève la protection FIFO d'une intervention terminée. Rien à
+  // marquer si elle est en cours.
   function _marquerRapportExporte(r) {
     const s = r && r.scenario ? get(r.scenario.id) : null;
     if (!s || !s.execution || !s.execution.endedAt) return;
@@ -5674,10 +5072,8 @@
     _saveScenarios();
   }
 
-  // Génère le fichier JSON .mkmsec.report.json + télécharge.
-  // Si includePhotos était true dans genererRapportData, les photos sont
-  // incluses en base64 dans le JSON → autonome mais volumineux.
-  // Retourne le filename généré OU null si échec.
+  // .mkmsec.report.json téléchargé (photos en base64 si demandées : autonome mais volumineux). Rend le nom de
+  // fichier ou null.
   function exporterRapportJSON(reportData) {
     if (!reportData) return null;
     try {
@@ -5706,40 +5102,26 @@
     return window.ktaCopierTexte(text);
   }
 
-  // (Synergie A v1) ─────────────────────────────────
-  // Ouverture de la Vue OSM depuis le Mode Secours (bouton "🌍 Vue OSM"
-  // dans les bandeaux PLAN ACTIF et PLAN TERMINÉ). Réutilise complètement
-  // window.OsmView (osmView.js) : gating natif (opt-in, incognito,
-  // navigateur online), modale plein écran, POI/roads/zones du
-  // plan automatiquement projetés sur OpenStreetMap.
-  //
-  // En cas d'indisponibilité : toast diagnostique précis pour guider l'user
-  // vers la résolution (calibration GPS manquante, opt-in désactivé,
-  // mode bloqué).
-  //
-  // Évolutions futures envisagées (B → E, step-by-step) : page Vue OSM dans
-  // le rapport PDF, export "🚒 Briefing pompiers" dédié, POI "🚪 Point
-  // d'entrée du plan" spécial, position GPS surface des équipes.
+  // ── Vue OSM depuis le Mode Secours ─────────────────────────────────
+  // Bouton des bandeaux PLAN ACTIF / PLAN TERMINÉ : réutilise window.OsmView (opt-in, navigation privée, en
+  // ligne, modale plein écran, POI/tracés/zones projetés). Indisponible → toast qui dit pourquoi
+  // (calibrage GPS manquant, opt-in désactivé, mode bloqué).
   function _ouvrirVueOsmDepuisSecours() {
     if (!window.OsmView || typeof window.OsmView.open !== "function") {
       _toast(t("secours.osm.nonDisponible"), "warn");
       return;
     }
-    // Pré-diagnostic explicite pour message clair à l'user.
-    // window.OsmView.isAvailable() existe mais retourne juste true/false :
-    // on inspecte les raisons individuelles pour un toast diagnostic.
+    // Diagnostic : OsmView.isAvailable() ne rend qu'un booléen, on inspecte les raisons une à une.
     const reasons = [];
     try {
-      // Plan georef requis (=  PLAN_CONFIG.plan.georef ou session LS dérivée)
+      // Plan géoréférencé requis (PLAN_CONFIG.plan.georef ou session dérivée).
       const planCfg  = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
       const hasInline = !!(planCfg && planCfg.georef
         && planCfg.georef.pointA && planCfg.georef.pointB);
-      // Côté session : OsmView lit aussi le LS — déléguons via OsmView.isAvailable
-      // pour ne pas dupliquer la logique. Mais si NI inline NI sessions valides,
-      // on tag la raison explicitement.
+      // La session est lue par OsmView.isAvailable (pas de logique dupliquée) ; sans georef inline ni session
+      // valide, on nomme la raison.
       if (!hasInline && (!window.OsmView.isAvailable || !window.OsmView.isAvailable())) {
-        // On laisse OsmView.isAvailable trancher pour les autres cas (opt-in,
-        // incognito, online). Ce branch couvre juste "pas georef du tout".
+        // Les autres cas (opt-in, navigation privée, en ligne) sont tranchés par OsmView.isAvailable.
         reasons.push(t("secours.osm.raisonGeoref"));
       }
       if (window.OsmView.isOptedIn && typeof window.OsmView.isOptedIn === "function"
@@ -5760,7 +5142,6 @@
       _toast(t("secours.osm.indisponible", { raisons: reasons.join(" · ") }), "warn");
       return;
     }
-    // Tout OK → ouverture standard. OsmView gère sa propre stack modale.
     try {
       window.OsmView.open();
     } catch(e) {
@@ -5769,9 +5150,9 @@
     }
   }
 
-  // ─── Modale UI rapport ──────────────────────────────────────
-  // Ouvre la modale "Rapport au fil des étapes" avec aperçu compact + 3
-  // formats au choix. Scope passé par l'appelant (vue Live ou bandeau Edit).
+  // ── Modale du rapport ───────────────────────────────────────────────
+  // « Rapport au fil des étapes » : aperçu compact + 3 formats. Scope donné par l'appelant (vue Live ou
+  // bandeau Édition).
   function _afficherModaleRapport(scenarioId, scope) {
     const s = get(scenarioId);
     if (!s) return;
@@ -5779,11 +5160,9 @@
       _toast(t("secours.toast.aucunPlanLance"), "warn");
       return;
     }
-    // Cleanup éventuelle modale précédente
     const existing = document.getElementById("kta-secours-rapport-modale");
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
-    // Calcul aperçu compact selon scope
     const exec = s.execution;
     const dureeStr = _formatDureeMs(getExecutionDureeMs(scenarioId));
     let apercuTitre, apercuLines;
@@ -5824,7 +5203,7 @@
       apercuLines = [t("secours.rapport.apercuDuree", { duree: dureeStr })];
     }
 
-    // Détection présence photos pour info checkbox
+    // Photos présentes ? (information de la case à cocher)
     if (window.MyKTAMapSecoursPhotos && window.MyKTAMapSecoursPhotos.isAvailable()) {
       window.MyKTAMapSecoursPhotos.countPhotosForScenario(scenarioId).then(function(n) {
         const hint = document.getElementById("kta-rapport-photos-hint");
@@ -5861,13 +5240,8 @@
             '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">' + t("secours.rapport.comptagePhotos") + '</div>' +
           '</label>' +
 
-          // 🐛 hotfix5 (KARMA "dans Rapport Equipier, le .mkmsec.report.json
-          // le titre va sur la description") : structure HTML revue —
-          // wrapper label + sub dans un div column pour empiler verticalement.
-          // Avant : button flex row avec icon + label + sub côte à côte →
-          // label long (".mkmsec.report.json") + sub long se chevauchaient
-          // ou wrappaient mal. Fix : icon (flex-shrink:0) + div column
-          // (flex:1 min-width:0) contenant label puis sub.
+          // Chaque format : icône (flex-shrink:0) + colonne (flex:1, min-width:0) libellé puis description — en
+          // ligne, un libellé long (« .mkmsec.report.json ») et sa description se chevaucheraient.
           '<div class="kta-secours-rapport-formats">' +
             '<button class="kta-btn kta-btn-primary kta-secours-rapport-fmt-btn" data-action="rapport-export-pdf">' +
               '<span class="kta-secours-rapport-fmt-icon">📄</span>' +
@@ -5890,9 +5264,6 @@
                 '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtTextSub") + '</span>' +
               '</span>' +
             '</button>' +
-            /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton rapport-share-qr retiré.
-               Le partage briefing depuis Live se fera via "💾 Exporter mes obs"
-               (hotfix18) au format .mkmsec.observations.json. */
           '</div>' +
 
 
@@ -5912,12 +5283,10 @@
       btn.addEventListener("click", _close);
     });
 
-    // Handler factorisé : génère data + appelle la fonction de format demandée
+    // Génère les données puis appelle le format demandé.
     function _handleExport(formatType) {
-      // (Pattern D) — Disable les 3 boutons d'export pendant la
-      // génération (genererRapportData = async lourd + chaque format est lui
-      // aussi async pour pdf/text). Sans ça, l'user qui double-clique ou clique
-      // un AUTRE format pendant la génération relance N exports concurrents.
+      // Les 3 boutons d'export sont désactivés pendant la génération (async et lourde) : sinon un double clic,
+      // ou un clic sur un AUTRE format, lance plusieurs exports concurrents.
       const exportBtns = overlay.querySelectorAll('[data-action^="rapport-export"], [data-action="rapport-copy-text"]');
       exportBtns.forEach(function(b) { b.disabled = true; });
       function _restoreBtns() {
@@ -5933,8 +5302,7 @@
           return;
         }
         if (formatType === "pdf") {
-          // Phase 4 C5 — genererRapportPDF est désormais async
-          // (await sur la mini-carte par équipe). Gère la Promise.
+          // genererRapportPDF est async (mini-carte par équipe).
           genererRapportPDF(data).then(function(fn) {
             if (fn) _toast(t("secours.toast.pdfGenere", { filename: fn }), "info");
           }).catch(function(err) {
@@ -5950,7 +5318,7 @@
           });
         }
         _close();
-        // Pas besoin de _restoreBtns() : _close() retire l'overlay (et les btns).
+        // Pas de _restoreBtns() : _close() retire l'overlay et ses boutons.
       }).catch(function(e) {
         console.warn("[SecoursMode] genererRapportData échec :", e);
         _toast(t("secours.toast.erreurGenerationRapport", { message: (e && e.message ? e.message : "") }), "error");
@@ -5967,30 +5335,17 @@
     overlay.querySelectorAll('[data-action="rapport-copy-text"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _handleExport("text"); });
     });
-    /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler rapport-share-qr retiré. */
 
     document.addEventListener("keydown", _onKey);
     document.body.appendChild(overlay);
   }
 
-  // Génère le PDF rapport via jsPDF. Sync (pas async — toutes les data
-  // sont déjà résolues par genererRapportData). Retourne le filename
-  // généré OU null si échec.
-  //
-  // Layout :
-  //   • Page 1 : briefing (en-tête + scénario + plan + role + dureeMs + dates)
-  //   • Pour chaque équipe (modes opérateur/équipier) :
-  //       - 1 page texte : étapes avec statuts/obs/ts
-  //       - 1 page photos si applicable (grille jpeg compressées)
-  //   • Pour mode secouriste : 1 page liste chronologique des notes libres
-  //                            + 1 page photos si applicable
-  //
-  // ⚠️ Pas d'emoji dans pdf.text() (jsPDF Helvetica latin1 → mojibake).
-  // Les emojis sont gardés UNIQUEMENT pour les chaînes texte canvas/Blob.
-  // Phase 4 C5 — Devenu ASYNC pour permettre l'await sur
-  // _drawRapportPDFEquipeMiniaturePage qui appelle l'helper exporter
-  // (génération canvas du plan, async via Image() onload + toDataURL).
-  // Caller `_handleExport` adapté pour gérer la Promise.
+  // PDF du rapport (jsPDF), async (mini-cartes : rendu canvas du plan). Rend le nom de fichier ou null.
+  // Mise en page : page 1 briefing (en-tête, scénario, plan, rôle, durée, dates), page briefing surface, puis
+  // par équipe une page d'étapes, une mini-carte paysage et une page de photos s'il y en a ; en mode
+  // secouriste, les notes libres chronologiques (+ photos). Main courante en annexe.
+  // ⚠️ Pas d'emoji dans pdf.text() (Helvetica latin1 → mojibake) ; les emojis ne vont que dans les textes
+  // canvas/Blob.
   async function genererRapportPDF(reportData) {
     if (!reportData) return null;
     if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -6004,7 +5359,7 @@
       const margin = 14;
       const r = reportData;
 
-      // ─── PAGE 1 : Briefing global ───
+      // ── Page 1 : briefing global ──
       _drawRapportPDFHeader(pdf, r, pageW, margin);
       let y = margin + 30;
 
@@ -6032,7 +5387,7 @@
         pdf.setFont(undefined, "normal");
         y = _pdfWrapText(pdf, window.ktaTextePdf(r.scenario.context.notes), margin, y, pageW - 2 * margin, 4);
       }
-      const victimesPdf = _victimesDuRapport(r);   // A3
+      const victimesPdf = _victimesDuRapport(r);   
       if (victimesPdf.length) {
         y += 3;
         pdf.setTextColor(180, 20, 20);
@@ -6047,16 +5402,12 @@
 
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
 
-      // B — Page "Briefing surface" (Vue OSM + équipes GPS + POI
-      // critiques). Utile pour debrief post-mission et briefing secours externes
-      // après mission. Insérée juste après le briefing global, avant les
-      // pages équipes. Fonction utilitaire partagée avec genererBriefingPompiersPDF.
-      // async (capture OSM via html2canvas)
-      // passe overlayContext="rapport" pour textes adaptés
+      // Page « Briefing surface » (partagée avec genererBriefingPompiersPDF), juste après le briefing global,
+      // textes adaptés au rapport (overlayContext = "rapport").
       try {
         pdf.addPage();
-        // Relecture PDF (29/09) : r.scenario n'est qu'un en-tête (sans équipes) → la page
-        // annonçait « aucune équipe définie ». Le PDF se génère là où vit le scénario.
+        // 🩸 r.scenario n'est qu'un en-tête (sans équipes) : on passe le scénario stocké, sinon la page annonce
+        // « aucune équipe définie ».
         await _drawBriefingSurfacePage(pdf, (r.scenario && get(r.scenario.id)) || r.scenario, r.plan,
                                        pageW, pageH, margin, null, "rapport");
         _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
@@ -6064,25 +5415,22 @@
         console.warn("[Rapport] Page Briefing surface échouée : " + (e && e.message));
       }
 
-      // ─── Pages équipes ou notes libres ───
+      // ── Pages équipes ou notes libres ──
       if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
-        // Phase 4 C5 — Boucle async pour permettre l'await
-        // sur la mini-carte par équipe (génération canvas exporter).
-        // Chaque mini-carte rend sa seule zone (07/10/2026) : plus de fond commun à garder.
+        // Boucle async (mini-carte par équipe) ; chaque mini-carte rend sa seule zone.
         for (let i = 0; i < r.equipesData.length; i++) {
           const ed = r.equipesData[i];
-          // 1. Page texte étapes (synchrone, inchangé)
+          // 1. Page texte des étapes.
           pdf.addPage();
           _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin);
-          // 2. 🆕 Mini-carte page paysage A4 (uniquement si l'équipe a des
-          //    waypoints/zone/iti à afficher). Async = peut échouer
-          //    silencieusement et passer à la suite (PDF reste valide).
+          // 2. Mini-carte A4 paysage (si l'équipe a des points, une zone ou un itinéraire). Un échec est ignoré :
+          // le PDF reste valide.
           try {
             await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r);
           } catch (e) {
             console.warn("[Rapport] Mini-carte équipe " + (ed.equipe && ed.equipe.nom) + " échouée : " + (e && e.message));
           }
-          // 3. Page photos si applicable (synchrone, inchangé)
+          // 3. Page photos s'il y en a.
           if (Array.isArray(ed.photos) && ed.photos.length > 0 && ed.photos[0].dataUrl) {
             pdf.addPage();
             _drawRapportPDFEquipePhotosPage(pdf, ed, r, pageW, pageH, margin);
@@ -6094,7 +5442,7 @@
         _drawRapportPDFNotesLibresPage(pdf, r, pageW, pageH, margin);
       }
 
-      // Vague 7 : main courante en annexe (ordre chronologique).
+      // Main courante en annexe (ordre chronologique).
       const mcPdf = _lignesMcRapport(r);
       if (mcPdf.length) {
         pdf.addPage();
@@ -6124,31 +5472,11 @@
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  // CAPTURE OSM POUR PDF BRIEFING POMPIERS
-  // ════════════════════════════════════════════════════════════════════════
-  //
-  // Render Leaflet offscreen + html2canvas → dataURL JPEG q85 pour injection
-  // dans le PDF Briefing. Marche TOUJOURS (n'a pas besoin que la Vue OSM
-  // modale soit ouverte).
-  //
-  // Stratégie :
-  //   1. Container hidden 1200×800 + Leaflet map dedans
-  //   2. Tile layer OSM avec crossOrigin (CORS OK sur tile.openstreetmap.org)
-  //   3. Rectangle bbox plan (jaune charte) + label centre
-  //   4. Markers GPS surface équipes (couleur palette OTAN)
-  //   5. Wait tiles load (event "load" ou safety 7s)
-  //   6. html2canvas capture → dataURL JPEG
-  //   7. Cleanup map + container
-  //
-  // Fail-safe : retourne null si lib html2canvas pas chargée OU pas de
-  // georef OU exception. Le caller (_drawBriefingSurfacePage) fallback
-  // automatiquement sur l'affichage texte/lien (= comportement v1.41.x).
-  //
-  // ⚠️ Pas de plan rotated superposé dans la capture (complexe, nécessite
-  // accès à l'image source du plan). MVP : juste tuiles OSM + bbox visible.
-  // Helper : détecte si le thème clair est actif (cf themeManager.js).
-  // Utilisé par les modales/overlays récents pour adapter leurs styles inline.
+  // ── Capture OSM pour le briefing pompiers ──────────────────────────
+  // Vue OSM ouverte sous un overlay opaque puis capturée (html2canvas), sinon repli offscreen (tuiles OSM +
+  // rectangle du plan + équipes GPS). Rend null si html2canvas manque, sans géoréférencement ou en cas
+  // d'exception : _drawBriefingSurfacePage retombe alors sur le texte et les liens.
+  // Thème clair actif ? (cf themeManager.js), pour les styles inline des overlays.
   function _isLightTheme() {
     try {
       return document.body.classList.contains("kta-theme-light") ||
@@ -6156,9 +5484,7 @@
     } catch(e) { return false; }
   }
 
-  // Helper : récupère les dimensions natives d'une dataURL
-  // image (chargée dans une Image temporaire). Retourne {w, h} ou null.
-  // Utilisé pour préserver le ratio image dans pdf.addImage.
+  // Dimensions natives d'une dataURL image ({w, h} ou null), pour garder le ratio dans pdf.addImage.
   function _getImageDataUrlDims(dataUrl) {
     return new Promise(function(resolve) {
       if (!dataUrl) { resolve(null); return; }
@@ -6171,9 +5497,8 @@
     });
   }
 
-  // Helper : applique les options de couches Vue OSM sur les
-  // checkboxes du bandeau (simulate clic si l'état checked diffère de l'option).
-  // Idempotent : ne re-clique que si nécessaire.
+  // Applique les options de couches sur les cases du bandeau Vue OSM (clic simulé seulement si l'état
+  // diffère : idempotent).
   function _applyOsmLayerOptions(opts) {
     if (!opts) return;
     const map = {
@@ -6204,27 +5529,18 @@
     }
     if (typeof window.L === "undefined") return null;
 
-    // Textes overlay paramétrables selon le contexte d'appel :
-    //   - "briefing" (default) : appel depuis bouton 🚒 Briefing pompiers
-    //   - "rapport"            : appel depuis bouton 📤 Rapport global
+    // Textes de l'overlay selon l'appelant : "briefing" (défaut, bouton Briefing pompiers) ou "rapport".
     const _ctx = (overlayContext === "rapport")
       ? { icon: "📤", title: t("secours.capture.rapportTitle"),
           sub: t("secours.capture.rapportSub") }
       : { icon: "🚒", title: t("secours.capture.briefingTitle"),
           sub: t("secours.capture.briefingSub") };
 
-    // Approche "open/close masqué" : ouvre Vue OSM sous un
-    // overlay opaque, capture le DOM Leaflet complet (plan rotated + data
-    // layers + zones + tracés + équipes), puis ferme. L'user ne voit JAMAIS
-    // la Vue OSM clignoter — juste l'overlay "Génération en cours…".
-    // Réutilise 100% du code Vue OSM existant (pas de duplication).
-    //
-    // CAS 1 : modale Vue OSM DÉJÀ OUVERTE (cas rare hors Mode Secours) →
-    //         capture DOM direct sans toucher à l'overlay (le user a déjà
-    //         ajusté ses filtres, on respecte).
-    // CAS 2 : modale Vue OSM FERMÉE (cas normal depuis Mode Secours) →
-    //         pose overlay opaque, ouvre Vue OSM derrière, attend tile load,
-    //         capture, ferme Vue OSM, retire overlay.
+    // Ouvrir puis fermer la Vue OSM sous un overlay opaque : la capture du DOM Leaflet a tout (plan orienté,
+    // calques, zones, tracés, équipes) sans dupliquer le code de la Vue OSM, et l'utilisateur ne la voit
+    // jamais clignoter (juste « Génération en cours… »).
+    // Cas 1 : Vue OSM DÉJÀ ouverte → capture directe (on respecte les filtres de l'utilisateur).
+    // Cas 2 : fermée (cas normal) → overlay, ouverture derrière, attente des tuiles, capture, fermeture.
 
     const mapDivExisting = document.getElementById("kta-osm-map");
     if (mapDivExisting && mapDivExisting.querySelector(".leaflet-tile-loaded")) {
@@ -6238,11 +5554,11 @@
         return canvas.toDataURL("image/jpeg", 0.85);
       } catch(e) {
         console.warn("[Briefing] Capture DOM directe échec :", e.message);
-        // Continue vers approche open/close masqué ↓
+        // Sinon : ouverture masquée ci-dessous.
       }
     }
 
-    // CAS 2 : Vue OSM fermée → on l'ouvre sous overlay opaque
+    // Cas 2 : Vue OSM fermée → ouverte sous overlay opaque.
     if (!window.OsmView || typeof window.OsmView.open !== "function") {
       console.warn("[Briefing] OsmView.open indisponible — fallback offscreen");
     } else if (!window.OsmView.isAvailable || !window.OsmView.isAvailable()) {
@@ -6250,13 +5566,12 @@
     } else if (!window.OsmView.isOptedIn || !window.OsmView.isOptedIn()) {
       console.warn("[Briefing] OsmView pas opt-in — fallback offscreen (user doit accepter OSM 1×)");
     } else {
-      // Palette adaptée au thème actif
       const isLightOv = _isLightTheme();
       const ovBg     = isLightOv ? "#fdf8eb" : "#0a0d18";
       const ovAccent = isLightOv ? "#b8860b" : "#f4c542";
       const ovMuted  = isLightOv ? "#6b6354" : "#8892a4";
 
-      // Overlay opaque z-index TRÈS haut (au-dessus modales 99999 et OSM 99999+)
+      // Overlay opaque au-dessus des modales (99999) et de la Vue OSM.
       const overlay = document.createElement("div");
       overlay.id = "kta-briefing-capture-overlay";
       overlay.style.cssText = [
@@ -6273,7 +5588,6 @@
         '<div style="font-size:12px;color:' + ovMuted + ';max-width:340px;text-align:center;">' +
           _escHtml(_ctx.sub) +
         '</div>';
-      // Inject keyframe spin si pas déjà
       if (!document.getElementById("kta-briefing-spin-kf")) {
         const st = document.createElement("style");
         st.id = "kta-briefing-spin-kf";
@@ -6284,19 +5598,17 @@
 
       let captured = null;
       try {
-        // Ouvre Vue OSM (modale s'affiche sous l'overlay — invisible à l'user)
+        // Ouvre la Vue OSM sous l'overlay (invisible pour l'utilisateur).
         window.OsmView.open();
 
-        // Applique les options de couches choisies dans la modale
-        // Briefing options. Petite attente 400ms pour que le DOM des toggles
-        // soit injecté par OsmView.open(), puis simule les clics nécessaires.
+        // Options de couches : 400 ms d'attente, le temps qu'OsmView.open() injecte ses cases, puis clics simulés.
         if (options) {
           await new Promise(function(r) { setTimeout(r, 400); });
           try { _applyOsmLayerOptions(options); }
           catch(e) { console.warn("[Briefing] _applyOsmLayerOptions échec :", e.message); }
         }
 
-        // Attente robuste : poll tile-loaded + plan rotated rendu + petit délai
+        // Attente : tuiles chargées + plan orienté rendu + petit délai.
         await new Promise(function(resolve) {
           const startedAt = Date.now();
           const tick = function() {
@@ -6305,25 +5617,23 @@
               const hasTiles    = !!map.querySelector(".leaflet-tile-loaded");
               const hasOverlay  = !!map.querySelector(".leaflet-image-layer, .leaflet-overlay-pane svg path, .leaflet-marker-icon");
               if (hasTiles && hasOverlay) {
-                // +1.5s pour render final (markers/polylines/etc.)
+                // +1,5 s pour le rendu final (marqueurs, polylignes).
                 setTimeout(resolve, 1500);
                 return;
               }
               if (hasTiles && (Date.now() - startedAt > 4000)) {
-                // Tiles OK mais pas d'overlay détecté après 4s → on capture
-                // quand même (plan peut-être sans data layers).
+                // Tuiles là mais pas d'overlay après 4 s : on capture quand même (plan peut-être sans calques).
                 setTimeout(resolve, 800);
                 return;
               }
             }
-            // Safety 12s
+            // Sécurité : 12 s.
             if (Date.now() - startedAt > 12000) { resolve(); return; }
             setTimeout(tick, 200);
           };
           tick();
         });
 
-        // Capture
         const map = document.getElementById("kta-osm-map");
         if (map) {
           const canvas = await window.html2canvas(map, {
@@ -6337,19 +5647,17 @@
       } catch(eCap) {
         console.warn("[Briefing] Capture via open/close échec :", eCap.message);
       } finally {
-        // Ferme Vue OSM (peu importe le résultat)
+        // Ferme la Vue OSM quel que soit le résultat.
         try { window.OsmView.close && window.OsmView.close(); } catch(e) {}
-        // Retire overlay
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       }
 
       if (captured) return captured;
-      // Sinon → fallback offscreen ↓
+      // Sinon : repli offscreen ci-dessous.
     }
 
-    // Fallback offscreen : tuiles OSM + bbox + équipes GPS seulement.
-    // Pas de plan rotated ni POI/tracés/zones (= MVP v1.42.5).
-    // Recommander à KARMA d'ouvrir Vue OSM AVANT le Briefing pour capture complète.
+    // Repli offscreen : tuiles OSM + rectangle du plan + équipes GPS, sans plan orienté ni POI/tracés/zones.
+    // Pour une capture complète, ouvrir la Vue OSM AVANT le briefing.
     if (!window.OsmView || typeof window.OsmView.getPlanGpsBbox !== "function") {
       return null;
     }
@@ -6381,7 +5689,7 @@
       });
       tileLayer.addTo(map);
 
-      // Rectangle bbox plan (jaune charte semi-transparent)
+      // Rectangle du plan (jaune charte semi-transparent).
       L.rectangle(bbox, {
         color: "#f4c542",
         weight: 3,
@@ -6390,7 +5698,6 @@
         interactive: false
       }).addTo(map);
 
-      // Label centre du plan
       const center = bbox.getCenter();
       const planName = (plan && plan.name) || "Site";
       L.marker(center, {
@@ -6404,7 +5711,7 @@
         interactive: false
       }).addTo(map);
 
-      // Markers GPS surface équipes
+      // Marqueurs GPS de surface des équipes.
       if (scenario && Array.isArray(scenario.groupes)) {
         for (const g of scenario.groupes) {
           if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
@@ -6432,8 +5739,7 @@
         }
       }
 
-      // Attente fin de chargement des tuiles (event "load" tileLayer +
-      // 600ms de marge pour render final). Safety timeout 7s pour cellular lent.
+      // Attente des tuiles (événement « load » + 600 ms de rendu), sécurité 7 s pour un réseau mobile lent.
       await new Promise(function(resolve) {
         let done = false;
         const finish = function() {
@@ -6465,59 +5771,34 @@
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  // B + C — Briefing surface (page PDF partagée)
-  // ════════════════════════════════════════════════════════════════════════
-  //
-  // Dessine une page A4 "Briefing surface" avec :
-  //   • [v1.42.5] Image capture OSM en haut de page (si lib html2canvas dispo
-  //     et georef OK) — sinon fallback texte/lien comme v1.41.x
-  //   • Titre + nom du scenario + nom du plan
-  //   • Lien OSM bbox (centre + zoom) si Vue OSM georef dispo
-  //   • Lien Google Maps en backup
-  //   • Liste équipes avec leur GPS surface (lien individuel OSM)
-  //   • POI critiques : Point d'entrée (tag 'entree_plan') + Sorties urgence
-  //     (tag 'sortieurgence' si exists) + Cavages (tags 'cao'/'caf')
-  //
-  // Réutilisée :
-  //   - dans genererRapportPDF (page insérée dans le rapport post-mission, B)
-  //   - dans genererBriefingPompiersPDF (PDF dédié export bouton bandeau, C)
-  //
-  // ⚠️ Helvetica latin1 → pas d'emoji dans pdf.text(). Textes ASCII pur.
-  // Devenue ASYNC pour permettre await sur _captureOsmCanvasForBriefing.
-  // Accepte 7e arg `options` pour piloter les couches OSM.
-  // Accepte 8e arg `overlayContext` ("briefing"|"rapport") pour
-  // adapter les textes de l'overlay de capture.
+  // ── Briefing surface (page PDF partagée) ───────────────────────────
+  // Page A4 : carte et tableau des accès, capture OSM (briefing seulement), infos, liens OSM et Google Maps,
+  // équipes avec leur GPS de surface, POI critiques (accès ouverts puis fermés).
+  // Utilisée par genererRapportPDF (rapport post-mission) et genererBriefingPompiersPDF (PDF dédié).
+  // ⚠️ Helvetica latin1 : pas d'emoji dans pdf.text().
+  // `options` pilote les couches OSM ; `overlayContext` ("briefing" | "rapport") adapte les textes de
+  // l'overlay de capture.
   async function _drawBriefingSurfacePage(pdf, scenario, plan, pageW, pageH, margin, options, overlayContext) {
     let y = margin + 8;
 
-    // En-tête de la page
     pdf.setFontSize(15); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.titre"), margin, y); y += 7;
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
     pdf.text(t("secours.surf.sousTitre"), margin, y);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 8;
 
-    // Test terrain KARMA (30/09) : cette page montrait le plan ENTIER sur un A4, avec
-    // tous les POI — illisible, donc inutile. Ce qu'un pompier cherche en surface :
-    // OÙ engager chaque équipe. Carte des accès (tirée du plan, hors-ligne) + tableau
-    // GPS/liens, en tête de page.
+    // Ce qu'un pompier cherche en surface : OÙ engager chaque équipe. Carte des accès (tirée du plan, hors
+    // ligne) + tableau GPS/liens en tête de page — le plan entier sur un A4 serait illisible.
     y = await _dessinerAccesSurface(pdf, scenario, y, pageW, pageH, margin);
 
-    // Tentative capture rendu OSM (offscreen Leaflet + html2canvas)
-    // injection en haut de page. Fail-safe : si KO, on garde la mise en page
-    // texte/lien standard (= comportement v1.41.x).
-    // options { showPlan, showPoi, … } propagées à la capture
-    // 30/09 : plus dans le rapport (la carte des accès la remplace) ; dans le
-    // briefing, elle suit les accès, sur sa propre page si la place manque.
+    // Capture OSM (options { showPlan, showPoi, … }) : pas dans le rapport (la carte des accès la remplace) ;
+    // dans le briefing, après les accès, sur sa propre page si la place manque. Échec → mise en page texte.
     if (overlayContext !== "rapport") try {
       if (y > pageH * 0.45) { pdf.addPage(); y = margin + 8; }
       const imgData = await _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext);
       if (imgData) {
-        // Récupère les vraies dims de l'image capturée pour
-        // préserver son ratio dans le PDF. Sinon ratio hardcoded 3:2 = image
-        // déformée si la modale Vue OSM a un viewport différent (16:9, mobile,
-        // etc.). Compatible avec capture offscreen (1200×800) ET DOM modale.
+        // Ratio réel de l'image capturée : un ratio figé (3:2) déformerait une capture de la modale (16:9,
+        // mobile…). Vaut pour la capture offscreen (1200×800) comme pour le DOM.
         const realDims = await _getImageDataUrlDims(imgData);
         const ratio = (realDims && realDims.w > 0 && realDims.h > 0)
                       ? (realDims.w / realDims.h)
@@ -6525,7 +5806,7 @@
 
         const availW = pageW - 2 * margin;                // largeur dispo
         const availH = pageH - y - 80;                    // garde 80mm pour reste
-        // On contraint width OU height selon ce qui touche en premier
+        // On contraint la largeur OU la hauteur, selon la première atteinte.
         let finalW = availW;
         let finalH = finalW / ratio;
         if (finalH > availH) {
@@ -6545,7 +5826,7 @@
       console.warn("[Briefing] Capture OSM PDF skip :", eCap.message);
     }
 
-    // Bloc INFOS
+    // ── Infos ──
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.infos"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
@@ -6555,7 +5836,7 @@
              margin, y); y += 4;
     pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }), margin, y); y += 6;
 
-    // Bloc LOCALISATION (lien OSM + Google Maps)
+    // ── Localisation (liens OSM + Google Maps) ──
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.localisation"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
@@ -6573,13 +5854,11 @@
       pdf.text(t("secours.surf.bbox", { sw: south.toFixed(5) + ", " + west.toFixed(5), ne: north.toFixed(5) + ", " + east.toFixed(5) }),
                margin, y); y += 5;
 
-      // Lien OSM (osm.org centre + zoom 16)
       const osmUrl = "https://www.openstreetmap.org/?mlat=" + latStr
                    + "&mlon=" + lngStr + "#map=16/" + latStr + "/" + lngStr;
       pdf.setTextColor(60, 110, 220);
       pdf.textWithLink(t("secours.surf.lienOsm"), margin + 4, y,
                        { url: osmUrl }); y += 4;
-      // Lien Google Maps backup
       const gmUrl = "https://www.google.com/maps/@" + latStr + "," + lngStr + ",17z";
       pdf.textWithLink(t("secours.surf.lienGmaps"), margin + 4, y,
                        { url: gmUrl }); y += 4;
@@ -6594,13 +5873,13 @@
     }
     y += 4;
 
-    // Bloc EQUIPES + GPS SURFACE
+    // ── Équipes + GPS de surface ──
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.equipesSurPlace"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const groupes = (scenario && Array.isArray(scenario.groupes)) ? scenario.groupes : [];
-    // Contre-audit GRIMP (30/09) : « GPS surface : non renseigné » juste sous le
-    // tableau qui donne le GPS de l'accès de l'équipe. On renvoie au numéro d'accès.
+    // Sans GPS de surface, on renvoie au numéro d'accès du tableau plutôt qu'écrire « non renseigné » sous
+    // le GPS de cet accès.
     const numAcces = {};
     _accesSurface(scenario).forEach(function(a, i) {
       a.equipes.forEach(function(g) { (numAcces[g.id] = numAcces[g.id] || []).push(i + 1); });
@@ -6643,18 +5922,16 @@
     }
     y += 4;
 
-    // Bloc POI CRITIQUES (entree_plan + sorties urgence + cavages)
+    // ── POI critiques ──
     if (y > pageH - 50) { pdf.addPage(); y = margin + 8; }
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.surf.poiCritiques"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
-    // 🩸 CE BLOC ÉTAIT TOUJOURS VIDE. Il lisait
-    // `window.listePoints` (un `let` racine d'editor.js, jamais sur `window`), le
-    // champ `p.tag` (les POI portent `tags[]`) et un tag `sortieurgence` qui n'existe
-    // pas. Désormais : session + calques du plan (comme `sortieUrgence.js`), accès
-    // OUVERTS d'abord (mêmes tags que la Sortie d'urgence), puis FERMÉS — que les
-    // pompiers ou l'IGC peuvent ouvrir. Un POI n'apparaît qu'une fois.
+    // 🩸 Sources des POI : session + calques du plan (comme `sortieUrgence.js`), champ `tags[]` (pas `p.tag`),
+    // jamais `window.listePoints` (un `let` d'editor.js, absent de `window`). Accès OUVERTS d'abord (mêmes
+    // tags que la Sortie d'urgence), puis FERMÉS — que pompiers ou exploitant peuvent ouvrir. Un POI n'apparaît
+    // qu'une fois.
     const critTags = CRIT_TAGS;
     const critLabels = _critLabels();
     const critByTag = {};
@@ -6689,23 +5966,17 @@
     }
   }
 
-  // Modale d'options affichée AVANT génération du PDF Briefing.
-  // Permet à l'user de choisir quels layers Vue OSM inclure dans la capture
-  // (Plan / POI / Tracé / Routes / Iti / Zones / Struct / Secours), comme dans
-  // le bandeau Vue OSM modale/Home. Au "Générer" → appel
-  // genererBriefingPompiersPDF(scenarioId, options).
+  // Options AVANT le PDF Briefing : couches Vue OSM à inclure (Plan / POI / Tracé / Routes / Iti / Zones /
+  // Struct / Secours), comme dans le bandeau Vue OSM. « Générer » → genererBriefingPompiersPDF(scenarioId,
+  // options).
   function _afficherModaleBriefingOptions(scenarioId) {
     const s = get(scenarioId);
     if (!s) { _toast(t("secours.toast.scenarioIntrouvableAscii"), "error"); return; }
 
-    // Si une instance existe déjà, la retirer
     const existing = document.getElementById("kta-briefing-options-modal");
     if (existing) existing.remove();
 
-    // le flag constant hasSecours=true et ses
-    // branches inatteignables sont inlines (on est TOUJOURS dans Mode Secours ici).
 
-    // Palette adaptée au thème actif (dark / light cataphile)
     const isLight = _isLightTheme();
     const pal = isLight ? {
       backdrop:  "rgba(245,235,208,0.85)",
@@ -6758,7 +6029,7 @@
         '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">' + t("secours.briefing.couchesTitre") + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;">' +
           _renderToggleOpt("opt-plan",    t("secours.briefing.optPlan"),    true) +
-          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     false) +   // 30/09 : tous les POI = illisible
+          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     false) +   // tous les POI : illisible
           _renderToggleOpt("opt-tracker", t("secours.briefing.optTracker"), true) +
           _renderToggleOpt("opt-road",    t("secours.briefing.optRoad"),    true) +
           _renderToggleOpt("opt-iti",     t("secours.briefing.optIti"),     true) +
@@ -6779,10 +6050,8 @@
       overlay.remove();
     });
     box.querySelector('[data-act="generate"]').addEventListener("click", function() {
-      // (Pattern D) — Disable le bouton AVANT de lancer la génération
-      // PDF (lourd : html2canvas + jsPDF, plusieurs secondes). Sans ça, l'user
-      // qui double-clique nerveusement déclenche 2 générations parallèles qui
-      // se marchent dessus sur le canvas + double download.
+      // Bouton désactivé AVANT la génération (html2canvas + jsPDF, plusieurs secondes) : un double clic
+      // lancerait deux générations qui se marchent dessus sur le canvas (+ double téléchargement).
       const btnGen = this;
       btnGen.disabled = true;
       btnGen.textContent = t("secours.briefing.generation");
@@ -6797,18 +6066,16 @@
         showSecours: box.querySelector("#kta-bo-opt-secours").checked
       };
       overlay.remove();
-      // Note : overlay déjà retiré → le bouton n'est plus dans le DOM, le
-      // disable est cosmétique mais le ralentit la fenêtre de double-clic
-      // entre clic et overlay.remove(). C'est suffisant pour le cas réel.
+      // L'overlay est déjà retiré : la désactivation ne couvre que l'intervalle clic → overlay.remove(), ce qui
+      // suffit.
       genererBriefingPompiersPDF(scenarioId, opts);
     });
-    // Click backdrop = Annuler
+    // Clic sur le fond = Annuler.
     overlay.addEventListener("click", function(e) {
       if (e.target === overlay) overlay.remove();
     });
   }
 
-  // Helper template pour chip toggle Briefing options
   function _renderToggleOpt(id, label, checked) {
     return '<label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;padding:4px 0;">' +
              '<input type="checkbox" id="kta-bo-' + id + '"' + (checked ? " checked" : "") + ' style="margin:0;cursor:pointer;">' +
@@ -6816,13 +6083,9 @@
            '</label>';
   }
 
-  // C — Genere un PDF "Briefing pompiers" dedie (page unique
-  // Briefing surface ci-dessus, exportee comme PDF separe).
-  // Appele depuis le handler bouton [data-action="briefing-pompiers"].
-  // Accepte un 2e arg `options` : { showPlan, showPoi, showTracker,
-  // showRoad, showIti, showZone, showStruct, showSecours } pour piloter
-  // les couches Vue OSM lors de la capture. Passé à _captureOsmCanvasForBriefing
-  // via _drawBriefingSurfacePage.
+  // PDF « Briefing pompiers » dédié (la page Briefing surface seule), bouton [data-action="briefing-pompiers"].
+  // `options` : { showPlan, showPoi, showTracker, showRoad, showIti, showZone, showStruct, showSecours },
+  // transmises à la capture OSM via _drawBriefingSurfacePage.
   async function genererBriefingPompiersPDF(scenarioId, options) {
     const s = get(scenarioId);
     if (!s) { _toast(t("secours.toast.scenarioIntrouvableAscii"), "error"); return null; }
@@ -6835,17 +6098,13 @@
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const margin = 14;
-      // Relecture PDF (29/09) : APP_CONFIG.name n'existe pas → « Plan : (plan) ».
+      // 🩸 APP_CONFIG.name n'existe pas (donnerait « Plan : (plan) ») : nom lu dans PLAN_CONFIG.
       const planMeta = {
         name: (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name)
               || (window.APP_CONFIG && window.APP_CONFIG.name) || "(plan)"
       };
-      // await pour la capture OSM via html2canvas
-      // passe les options de layers à la capture
-      // overlayContext="briefing" (= défaut), explicite pour lisibilité
       await _drawBriefingSurfacePage(pdf, s, planMeta, pageW, pageH, margin, options, "briefing");
-      // Footer simple (pas de réutilisation du _drawRapportPDFFooter qui
-      // nécessite un objet reportData complet — on fait minimaliste ici).
+      // Pied de page minimal (_drawRapportPDFFooter exige un reportData complet).
       pdf.setFontSize(7); pdf.setTextColor(140);
       pdf.text(t("secours.briefing.footer", { version: ((window.__MKM__ && window.__MKM__.build) || "") }),
                margin, pageH - 6);
@@ -6891,12 +6150,11 @@
     }).filter(Boolean);
   }
 
-  // ─── C1 (15/10/2026, QCM KARMA) — DÉCOUPER EN SECTEURS ───
-  // N équipes « Secteur k » d'un coup : zone « tracés » (chaque tracé va au secteur
-  // qui en porte le plus), entrée = sortie = accès OUVERT le plus proche par les
-  // galeries, niveau = celui qui pèse le plus. Les équipes existantes ne sont jamais
-  // touchées. Un seul découpage sur tout le réseau, jonctions comprises (décision 1).
-  // Calcul : js/secoursBalayage.js (garde-fou check-secours-balayage.js).
+  // ── Découper en secteurs ────────────────────────────────────────────
+  // N équipes « Secteur k » d'un coup : zone « tracés » (chaque tracé va au secteur qui en porte le plus),
+  // entrée = sortie = accès OUVERT le plus proche par les galeries, niveau = celui qui pèse le plus. Les
+  // équipes existantes ne sont jamais touchées. Un seul découpage sur tout le réseau, jonctions comprises
+  // (décision produit). Calcul : js/secoursBalayage.js (garde-fou check-secours-balayage.js).
   async function _decouperEnSecteurs(sid) {
     const s = get(sid);
     if (!s || !window.SecoursBalayage || !window.Pathfinder) return;
@@ -6964,8 +6222,8 @@
     if (_overlayLayer) renderOverlay(sid);
   }
 
-  // ─── ACCÈS SURFACE (test terrain 30/09) ───
-  // Les entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
+  // ── Accès surface ───────────────────────────────────────────────────
+  // Entrées/sorties des équipes, dédoublonnées (même accès = _memeAcces) :
   // [{ pt, nom, equipes: [g], entree: bool, sortie: bool }].
   function _accesSurface(s) {
     const acces = [];
@@ -6980,9 +6238,8 @@
         a[p[0]] = true;
       });
     });
-    // Contre-audit IGC (30/09) : un accès posé à la main (« Accès sans nom ») est
-    // souvent un accès du plan. Le POI d'accès à moins de 15 m (même niveau) donne
-    // son nom, son type et son état — « escalier fermé » = à ouvrir par la surface.
+    // Un accès posé à la main (« Accès sans nom ») est souvent un accès du plan : le POI d'accès à moins de
+    // 15 m (même niveau) donne son nom, son type et son état — « escalier fermé » = à ouvrir par la surface.
     const pxParM = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
     const pois = _poisAcces();
     acces.forEach(function(a) {
@@ -7018,7 +6275,6 @@
       pdf.setFontSize(9); pdf.text(t("secours.acces.aucun"), margin, y);
       return y + 8;
     }
-    // Carte
     try {
       const img = await _canvasAcces(s, acces);
       if (img) {
@@ -7031,7 +6287,6 @@
         y += h + 5;
       }
     } catch (e) { console.warn("[Briefing] carte des accès :", e && e.message); }
-    // Tableau
     const cols = [margin, margin + 9, margin + 70, margin + 130];
     const ligneEntete = function() {
       pdf.setFontSize(8.5); pdf.setFont(undefined, "bold");
@@ -7088,7 +6343,7 @@
     const pad = Math.max((Math.max(x1 - x0, y1 - y0)) * 0.12, 150 * pxParM);
     const rect = _rogner(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
     if (!rect || rect.w < 10 || rect.h < 10) return null;
-    // Rendu de la seule région des accès, pleine résolution (07/10/2026, cf _rendreRegionPlan).
+    // Rendu de la seule région des accès, pleine résolution (cf _rendreRegionPlan).
     const src = await _rendreRegionPlan(rect, 2400);
     if (!src) return null;
     const out = src.canvas;
@@ -7122,16 +6377,15 @@
     return out;
   }
 
-  // Helpers PDF rapport — header commun à toutes les pages
+  // En-tête commun à toutes les pages du rapport.
   function _drawRapportPDFHeader(pdf, r, pageW, margin) {
-    pdf.setTextColor(0);   // relecture PDF : le pied de page précédent laissait du gris
+    pdf.setTextColor(0);   // sinon gris hérité du pied de page précédent
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.pdf.headerTitre"), margin, margin + 6);
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
     pdf.text(t("secours.pdf.headerSub", { version: (r.appVersion || ""), date: new Date(r.exportedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }),
              margin, margin + 11);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal");
-    // Bandeau jaune décoratif sous l'en-tête
     pdf.setFillColor(244, 197, 66);   // #f4c542
     pdf.rect(margin, margin + 14, pageW - 2 * margin, 1.5, "F");
   }
@@ -7145,9 +6399,8 @@
     pdf.setTextColor(0);
   }
 
-  // Page texte étapes d'une équipe
-  // 4e relecture (R4-4) — section « Signalements hors parcours » (étapes retirées du
-  // parcours alors que l'équipe y avait saisi quelque chose). Retourne le nouveau y.
+  // Section « Signalements hors parcours » : étapes retirées du parcours alors que l'équipe y avait saisi
+  // quelque chose. Rend le nouveau y.
   function _pdfSectionHorsParcours(pdf, ed, r, y, pageW, pageH, margin) {
     const liste = (ed && Array.isArray(ed.horsParcours)) ? ed.horsParcours : [];
     if (liste.length === 0) return y;
@@ -7179,7 +6432,7 @@
     return y;
   }
 
-  // 4e relecture (R4-7) — étapes des phases closes, en version compacte.
+  // Étapes des phases closes, en version compacte.
   function _pdfSectionHistorique(pdf, ed, r, y, pageW, pageH, margin) {
     (ed && Array.isArray(ed.historique) ? ed.historique : []).forEach(function(h) {
       if (y > pageH - 40) {
@@ -7191,7 +6444,7 @@
       pdf.text(t("secours.pdf.historiquePhaseTitre", { phase: _pdfLibre(h.nom), n: h.etapes.length }),
                margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-      if (h.parcours && Array.isArray(h.parcours.etapes) && h.parcours.etapes.length) {   // vague 7b
+      if (h.parcours && Array.isArray(h.parcours.etapes) && h.parcours.etapes.length) {   
         const dist = (typeof h.parcours.distanceM === "number" && typeof window.formatDistance === "function")
           ? " (" + window.formatDistance(h.parcours.distanceM, 0) + ")" : "";
         pdf.setFont(undefined, "italic");
@@ -7222,7 +6475,6 @@
     const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
     let y = margin + 22;
 
-    // Titre équipe
     pdf.setFontSize(14); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.pdf.equipeTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
              margin, y); y += 4;
@@ -7232,13 +6484,11 @@
              margin, y); y += 6;
     pdf.setTextColor(0);
 
-    // Bandeau couleur équipe
     const rgb = _hexToRgb(couleur.hex);
     pdf.setFillColor(rgb.r, rgb.g, rgb.b);
     pdf.rect(margin, y, pageW - 2 * margin, 5, "F");
     y += 9;
 
-    // Membres
     if (Array.isArray(g.membres) && g.membres.length > 0) {
       pdf.setFontSize(10); pdf.setFont(undefined, "bold");
       pdf.text(t("secours.pdf.membresTitre"), margin, y); y += 4;
@@ -7246,13 +6496,12 @@
       y = _pdfWrapText(pdf, _pdfLibre(g.membres.join(", ")), margin, y, pageW - 2 * margin, 4);
       y += 3;
     }
-    if (_ligneSuiviRapport(ed)) {   // A4
+    if (_ligneSuiviRapport(ed)) {   
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       y = _pdfWrapText(pdf, _stripPourPdf(_ligneSuiviRapport(ed)), margin, y, pageW - 2 * margin, 4);
       y += 2;
     }
 
-    // Étapes
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
     pdf.text(t("secours.pdf.etapesTitre", { n: (ed.etapes || []).length }), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
@@ -7267,7 +6516,6 @@
     }
 
     ed.etapes.forEach(function(et, i) {
-      // Saut de page si on dépasse le bas
       if (y > pageH - 30) {
         _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
         pdf.addPage();
@@ -7285,7 +6533,6 @@
       const ts = et.completedAt ? new Date(et.completedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                : et.startedAt   ? t("secours.pdf.tsEnCours", { date: new Date(et.startedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") })
                : "—";
-      // Encadré statut couleur
       const statutRgb = _hexToRgb(info.color);
       pdf.setDrawColor(statutRgb.r, statutRgb.g, statutRgb.b);
       pdf.setLineWidth(0.6);
@@ -7314,16 +6561,12 @@
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  // Phase 4 C5 — Mini-carte par équipe (page A4 paysage dédiée)
-  // ════════════════════════════════════════════════════════════════════════
+  // ── Mini-carte par équipe (page A4 paysage) ─────────────────────────
 
   /**
-   * Calcule le rectangle englobant de tous les waypoints / zone / itinéraire
-   * d'une équipe. Padding 15% pour respiration visuelle.
-   *
+   * Rectangle englobant des points, zone et itinéraire d'une équipe, marge 15 %.
    * @param {object} eq - équipe SecoursMode
-   * @returns {object|null} {x, y, w, h} en coord plan, ou null si rien à dessiner
+   * @returns {object|null} {x, y, w, h} en coordonnées plan, ou null si rien à dessiner
    */
   function _calculerBoundsEquipe(eq) {
     if (!eq) return null;
@@ -7352,8 +6595,7 @@
     });
     if (!isFinite(minX)) return null;
 
-    // Padding 15% du grand côté (= zone + entrée + sortie + iti restent dans la vue)
-    // Plancher de 60 px pour les zones très petites (1-2 waypoints proches)
+    // Marge : 15 % du grand côté, au moins 60 px (zones minuscules).
     const pad = Math.max(60, Math.max(maxX - minX, maxY - minY) * 0.15);
     return {
       x: minX - pad,
@@ -7363,10 +6605,7 @@
     };
   }
 
-  /**
-   * Convertit un hex "#RRGGBB" en string "rgba(R,G,B,alpha)".
-   * Fallback couleur ambre charte si hex invalide.
-   */
+  /** "#RRGGBB" → "rgba(R,G,B,alpha)" ; repli sur l'ambre de la charte si hex invalide. */
   function _hexToRgbaCss(hex, alpha) {
     const m = /^#?([a-fA-F0-9]{6})$/.exec(hex || "");
     if (!m) return "rgba(244, 197, 66, " + alpha + ")";
@@ -7378,20 +6617,17 @@
   }
 
   /**
-   * Dessine l'overlay équipe sur le canvas final de la mini-carte.
-   * Tracé : zone polygon (fond teinté + bord), itinéraire (dashed),
-   * entrée (cercle bord vert), sortie (cercle bord rouge), intermédiaires
-   * (cercles numérotés).
-   *
+   * Overlay d'une équipe sur le canvas de la mini-carte : zone (fond teinté + bord), itinéraire (pointillé),
+   * entrée (bord vert), sortie (bord rouge), intermédiaires numérotés.
    * @param {CanvasRenderingContext2D} ctx
    * @param {object} eq - équipe
-   * @param {Function} planToCanvas - (x, y) → {x, y} en coords canvas final
-   * @param {object} couleur - {hex} palette OTAN
+   * @param {Function} planToCanvas - (x, y) → {x, y} en coordonnées du canvas
+   * @param {object} couleur - {hex} de la palette
    */
   function _drawEquipeOverlayOnCanvas(ctx, eq, planToCanvas, couleur) {
     const hex = (couleur && couleur.hex) || "#f4c542";
 
-    // 1) Zone polygon : fond teinté + bordure
+    // 1) Zone polygone : fond teinté + bordure.
     if (eq.zoneType === "polygon" && Array.isArray(eq.zonePolygon) && eq.zonePolygon.length >= 3) {
       ctx.beginPath();
       eq.zonePolygon.forEach(function(p, i) {
@@ -7408,7 +6644,7 @@
       ctx.stroke();
     }
 
-    // 2) Itinéraire : polyline dashed
+    // 2) Itinéraire en pointillé.
     if (Array.isArray(eq.itineraireSuggere) && eq.itineraireSuggere.length >= 2) {
       ctx.beginPath();
       eq.itineraireSuggere.forEach(function(p, i) {
@@ -7426,7 +6662,7 @@
       ctx.setLineDash([]);
     }
 
-    // 3) Intermédiaires : cercles numérotés (avant entrée/sortie pour z-order)
+    // 3) Intermédiaires numérotés (avant entrée/sortie, pour l'ordre d'affichage).
     if (Array.isArray(eq.intermediaires)) {
       eq.intermediaires.forEach(function(p, i) {
         if (typeof p.x !== "number") return;
@@ -7447,7 +6683,7 @@
     }
 
     const accesUnique = _memeAcces(eq.entree, eq.sortie);
-    // 4) Entrée : cercle border vert + "E" (un seul repère « E/S » si même accès)
+    // 4) Entrée : bord vert + « E » (un seul repère « E/S » si même accès).
     if (eq.entree && typeof eq.entree.x === "number" && !accesUnique) {
       const c = planToCanvas(eq.entree.x, eq.entree.y);
       ctx.beginPath();
@@ -7464,10 +6700,10 @@
       ctx.fillText("E", c.x, c.y);
     }
 
-    // 5) Sortie : cercle border rouge + "S" (orange si boucle entrée=sortie)
+    // 5) Sortie : bord rouge + « S » (orange si boucle).
     if (eq.sortie && typeof eq.sortie.x === "number") {
-      // Même accès (même point, ou < 10 m) : un seul repère « E/S ». Avant, seul un
-      // pointId commun comptait : deux clics au même endroit cachaient l'entrée.
+      // 🩸 Même accès = même point OU < 10 m : un seul repère « E/S ». Comparer le seul pointId cacherait
+      // l'entrée quand on clique deux fois au même endroit.
       const isLoop = accesUnique;
       const c = planToCanvas(eq.sortie.x, eq.sortie.y);
       const cx = c.x;
@@ -7488,37 +6724,22 @@
   }
 
   /**
-   * Ajoute une page A4 paysage avec mini-carte de l'équipe.
-   * Pipeline :
-   *   1. Bounds englobants équipe (waypoints + zone + iti)
-   *   2. Rendu de la seule zone de l'équipe (_rendreRegionPlan, pleine résolution)
-   *   3. Placement sur le canvas final (ratio A4 paysage, bandes blanches)
-   *   4. Dessin overlay équipe par-dessus (zone, iti, entrée, sortie, interms)
-   *   5. addPage paysage + addImage du canvas final + header/footer texte
-   *
-   * Skip silencieux si :
-   *   - équipe sans waypoints/zone/iti
-   *   - MyKTAMapExporterGenererCanvas indispo (plan pas chargé ?)
-   *   - PLAN_CONFIG absent
-   *
-   * Async (canvas exporter est async).
-   *
+   * Page A4 paysage avec la mini-carte d'une équipe (async) : bounds de l'équipe → rendu de sa seule zone
+   * (_rendreRegionPlan, pleine résolution) → canvas au ratio A4 (bandes blanches) → overlay de l'équipe →
+   * page + image + en-tête/pied. Sautée sans bruit si l'équipe n'a rien à dessiner ou sans plan chargé.
    * @param {jsPDF} pdf
    * @param {object} ed - reportData.equipesData[i] = {equipe, etapes, photos}
-   * @param {object} r  - reportData complet (pour metadata)
+   * @param {object} r  - reportData complet (métadonnées)
    */
   async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
     if (!ed || !ed.equipe) return false;
-    // 🩸 LA MINI-CARTE NE S'EST JAMAIS DESSINÉE.
-    // `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) :
-    // ni entrée, ni étapes, ni zone, ni itinéraire → `_calculerBoundsEquipe` rendait
-    // null et la page était sautée sans un mot. Le PDF se génère sur l'appareil
-    // qui détient le scénario : on y reprend l'équipe complète.
+    // 🩸 `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) : ni entrée, ni étapes, ni
+    // zone, ni itinéraire → `_calculerBoundsEquipe` rendrait null et la page serait sautée sans un mot. Le PDF
+    // se génère sur l'appareil qui détient le scénario : on y reprend l'équipe complète.
     const sLoc = (r && r.scenario && r.scenario.id) ? get(r.scenario.id) : null;
     const gLoc = sLoc ? (sLoc.groupes || []).find(function(g) { return g.id === ed.equipe.id; }) : null;
     const eq = gLoc ? Object.assign({}, ed.equipe, gLoc) : ed.equipe;
 
-    // 1) Bounds englobants
     const bounds = _calculerBoundsEquipe(eq);
     if (!bounds) return false; // Pas d'éléments dessinables — skip silent
 
@@ -7527,9 +6748,8 @@
       return false;
     }
 
-    // 2) Rendu de la SEULE zone de l'équipe, pleine résolution (07/10/2026, cf
-    //    _rendreRegionPlan) — avant, un plan entier à l'échelle plafonnée, recadré.
-    //    Annotations de session désactivées : l'overlay de l'équipe est dessiné par-dessus.
+    // 2) Rendu de la SEULE zone de l'équipe, pleine résolution (cf _rendreRegionPlan). Annotations de session
+    // désactivées : l'overlay de l'équipe est dessiné par-dessus.
     const rect = _rogner(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h);
     if (!rect) {
       console.warn("[Rapport] Bounds équipe hors du plan — mini-carte skip");
@@ -7543,8 +6763,7 @@
     }
     if (!src) return false;
 
-    // 3) Nouveau canvas final paysage A4 ratio (297/210 = 1.414)
-    // Cible 1800×1273 px (= ~150 dpi A4 paysage utile, bon compromis qualité/RAM)
+    // 3) Canvas final au ratio A4 paysage (297/210 = 1,414) : 1800×1273 px ≈ 150 dpi, compromis qualité/RAM.
     const TARGET_W = 1800;
     const TARGET_H = Math.round(TARGET_W * 210 / 297);
     const finalCanvas = document.createElement("canvas");
@@ -7552,33 +6771,29 @@
     finalCanvas.height = TARGET_H;
     const ctx = finalCanvas.getContext("2d");
 
-    // Ratio src/dst : letterbox (bandes blanches) pour préserver la forme
+    // Bandes blanches pour garder la forme.
     const srcRatio = rect.w / rect.h;
     const dstRatio = TARGET_W / TARGET_H;
     let dx, dy, dw, dh;
     if (srcRatio > dstRatio) {
-      // src plus large → bandes haut/bas
       dw = TARGET_W;
       dh = dw / srcRatio;
       dx = 0;
       dy = (TARGET_H - dh) / 2;
     } else {
-      // src plus haute → bandes gauche/droite
       dh = TARGET_H;
       dw = dh * srcRatio;
       dy = 0;
       dx = (TARGET_W - dw) / 2;
     }
 
-    // Fond blanc + drawImage croppé
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, TARGET_W, TARGET_H);
     ctx.drawImage(src.canvas, 0, 0, src.canvas.width, src.canvas.height, dx, dy, dw, dh);
 
-    // 4) Overlay équipe : helper coord plan → coord canvas final
-    // Relecture 29/09 (R11) : projeter avec la source RÉELLEMENT dessinée (rognée au
-    // bord du plan), pas avec les bounds bruts — sinon l'équipe dessinée par-dessus
-    // se décalait du fond dès que la zone touchait un bord du plan.
+    // 4) Overlay : projection plan → canvas.
+    // 🩸 Projeter avec la source RÉELLEMENT dessinée (rognée au bord du plan), pas avec les bounds bruts —
+    // sinon l'équipe se décale du fond dès que sa zone touche un bord du plan.
     const srcX = rect.x, srcY = rect.y, srcW = rect.w, srcH = rect.h;
     function _planToFinal(x, y) {
       const ratioX = (x - srcX) / srcW;
@@ -7591,14 +6806,13 @@
     const couleur = PALETTE[(eq.couleurIdx || 0) % PALETTE.length] || { hex: "#f4c542" };
     _drawEquipeOverlayOnCanvas(ctx, eq, _planToFinal, couleur);
 
-    // 5) Ajout page PDF paysage + addImage + header/footer texte (ASCII only
-    //    pour pdf.text — cf §44.6 jsPDF Helvetica latin1)
+    // 5) Page paysage + image + en-tête/pied (⚠️ pdf.text en Helvetica latin1 : pas d'emoji).
     pdf.addPage("a4", "landscape");
     const pageW = pdf.internal.pageSize.getWidth();   // 297 mm
     const pageH = pdf.internal.pageSize.getHeight();  // 210 mm
     const m     = 12;
 
-    // Header : pastille couleur + titre équipe (ASCII)
+    // En-tête : pastille couleur + titre de l'équipe.
     const rgb = (function() {
       const mh = /^#?([a-fA-F0-9]{6})$/.exec(couleur.hex);
       if (!mh) return [244, 197, 66];
@@ -7611,13 +6825,12 @@
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
     // Nom de l'équipe : accents gardés, emojis et symboles hors police retirés (ktaTextePdf).
-    // Majuscules D'ABORD (une capitale peut sortir de la police), filtre ENSUITE, défaut si
-    // rien ne reste : un nom 100 % emoji donnait un titre vide (le repli était testé avant).
+    // ⚠️ Majuscules D'ABORD (une capitale peut sortir de la police), filtre ENSUITE, défaut si rien ne reste
+    // (un nom 100 % emoji donnerait un titre vide).
     const nomPdf = _pdfLibre(String(eq.nom || "").toUpperCase(),
                              window.ktaTextePdf(t("secours.pdf.equipeDefautAscii").toUpperCase()));
     pdf.text(t("secours.pdf.carteTitre", { nom: nomPdf }), m + 12, 14);
 
-    // Image canvas — couvre la zone disponible
     const availW = pageW - 2 * m;
     const availH = pageH - 22 - 12;  // - header (22) - footer (12)
     const imgX = m;
@@ -7625,7 +6838,7 @@
     const dataUrl = finalCanvas.toDataURL("image/jpeg", 0.82);
     pdf.addImage(dataUrl, "JPEG", imgX, imgY, availW, availH);
 
-    // Footer : info distance + durée + zone type (ASCII)
+    // Pied : distance + durée + type de zone.
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
     pdf.setTextColor(90);
@@ -7643,7 +6856,7 @@
     return true;
   }
 
-  // Page photos d'une équipe (grille)
+  // Page photos d'une équipe (grille 2 colonnes).
   function _drawRapportPDFEquipePhotosPage(pdf, ed, r, pageW, pageH, margin) {
     _drawRapportPDFHeader(pdf, r, pageW, margin);
     const g = ed.equipe;
@@ -7655,7 +6868,6 @@
              margin, y); y += 8;
     pdf.setFontSize(8); pdf.setFont(undefined, "normal");
 
-    // Grille 2 colonnes, hauteur fixe par cellule
     const cols = 2;
     const gapMm = 4;
     const cellW = (pageW - 2 * margin - gapMm) / cols;
@@ -7664,7 +6876,6 @@
 
     ed.photos.forEach(function(p, idx) {
       if (!p.dataUrl) return;
-      // Saut de page si dépasse
       if (y + cellH + 8 > pageH - 12) {
         _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
         pdf.addPage();
@@ -7677,7 +6888,6 @@
         pdf.addImage(p.dataUrl, "JPEG", x, y, cellW, cellH, undefined, "FAST");
         pdf.setDrawColor(150);
         pdf.rect(x, y, cellW, cellH);
-        // Label sous photo
         pdf.setFontSize(7); pdf.setTextColor(80);
         let stepLabel = (p.stepIdx === -1) ? t("secours.pdf.noteLibre") : t("secours.pdf.typeEtape", { idx: (p.stepIdx + 1) });
         if (typeof p.phaseIdx === "number") stepLabel = t("secours.pdf.phaseCourte", { n: p.phaseIdx + 1 }) + " - " + stepLabel;
@@ -7699,7 +6909,7 @@
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
   }
 
-  // Page notes libres (mode secouriste)
+  // Page des notes libres (mode secouriste).
   function _drawRapportPDFNotesLibresPage(pdf, r, pageW, pageH, margin) {
     _drawRapportPDFHeader(pdf, r, pageW, margin);
     let y = margin + 22;
@@ -7739,7 +6949,7 @@
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
   }
 
-  // Helper local — label rôle en ASCII (pour pdf.text qui supporte mal les emojis)
+  // Libellé du rôle en ASCII (pdf.text supporte mal les emojis).
   function _formatRoleLabelAscii(scope) {
     if (scope === "operateur")  return t("secours.roleAscii.operateur");
     if (scope === "equipe")     return t("secours.roleAscii.equipe");
@@ -7747,7 +6957,6 @@
     return "(?)";
   }
 
-  // Helper local — format taille bytes en KB/MB
   function _formatKB(bytes) {
     if (!bytes || bytes < 0) return "0 KB";
     if (bytes < 1024) return bytes + " B";
@@ -7755,15 +6964,9 @@
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
-  // ============================================================
-  // EXPORT PDF (depuis v1.22.0 commit 6/9)
-  // ============================================================
-  // 1 page A4 par équipe avec briefing texte. La carte miniature avec
-  // overlay sera ajoutée en Phase 2 (nécessite render canvas du plan + zone).
-  // MVP : texte structuré + cadre observations vide pour impression papier.
-  // (KARMA "on n'a pas une image de chaque zone dans le pdf
-  // exporter") : exporterPDF est désormais async pour générer un canvas du
-  // plan + cropper la zone de chaque équipe avec overlay couleur + markers.
+  // ── Export PDF des équipes (briefing papier) ───────────────────────
+  // Une page A4 par équipe : carte de sa zone (région du plan + overlay couleur + repères), contexte,
+  // membres, mission, étapes, feuille de route, cadre d'observations à remplir au retour.
   async function exporterPDF(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
@@ -7779,8 +6982,8 @@
       return null;
     }
     _toast(t("secours.toast.generationPdfCanvas"), "info");
-    // chaque page rend SA carte (région de l'équipe, pleine résolution) ;
-    // en cas d'échec, la page sort sans carte (texte seul), comme avant.
+    // Chaque page rend SA carte (région de l'équipe, pleine résolution) ; en cas d'échec, la page sort sans
+    // carte.
     try {
       const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
       const pageW = pdf.internal.pageSize.getWidth();
@@ -7789,13 +6992,11 @@
       for (let idx = 0; idx < s.groupes.length; idx++) {
         const g = s.groupes[idx];
         if (idx > 0) pdf.addPage();
-        pdf.setTextColor(0);   // relecture PDF : titre gris hérité du pied de page précédent
+        pdf.setTextColor(0);   // sinon titre gris hérité du pied de page précédent
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
-        // En-tête
         pdf.setFontSize(18); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.planSecoursTitre", { nom: _pdfLibre(g.nom, t("secours.pdf.equipeDefautAscii")) }),
                  margin, margin + 4);
-        // Bandeau couleur équipe
         const rgb = _hexToRgb(couleur.hex);
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
         pdf.rect(margin, margin + 7, pageW - 2 * margin, 6, "F");
@@ -7804,25 +7005,22 @@
                  margin + 2, margin + 11);
         pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
         let y = margin + 22;
-        // Insère une carte miniature de la zone de l'équipe
-        // avec overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire)
+        // Carte de la zone de l'équipe avec overlay (polygone, entrée/sortie, intermédiaires, itinéraire).
         {
           try {
             const cropped = await _carteEquipe(g, couleur.hex);
             if (cropped) {
               const imgWmm = pageW - 2 * margin;        // pleine largeur
               const imgHmm = imgWmm * cropped.height / cropped.width;
-              const capped = Math.min(125, imgHmm);    // cap hauteur 125 mm (90 : illisible, test terrain 30/09)
+              const capped = Math.min(125, imgHmm);    // cap hauteur 125 mm (90 : illisible)
               const finalHmm = capped;
               const finalWmm = capped * cropped.width / cropped.height;
               const xCentered = (pageW - finalWmm) / 2;
               pdf.addImage(cropped.toDataURL("image/jpeg", 0.85), "JPEG",
                            xCentered, y, finalWmm, finalHmm);
-              // Petit cadre autour de l'image
               pdf.setDrawColor(150);
               pdf.rect(xCentered, y, finalWmm, finalHmm);
               y += finalHmm + 5;
-              // Légende sous l'image
               pdf.setFontSize(8); pdf.setTextColor(120); pdf.setFont(undefined, "italic");
               pdf.text(t("secours.pdf.carteMiniature"), pageW / 2, y, { align: "center" });
               y += 5;
@@ -7832,7 +7030,7 @@
             console.warn("[SecoursMode] Crop canvas échec pour équipe " + g.nom + " :", e);
           }
         }
-        // Section Contexte
+        // ── Contexte ──
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.contexteIncident"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
@@ -7849,7 +7047,7 @@
                            margin, y, pageW - 2 * margin, 4);
         }
         y += 4;
-        // Section Membres
+        // ── Membres ──
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
@@ -7864,11 +7062,11 @@
           pdf.setFont(undefined, "normal");
         }
         y += 8;
-        // Section Mission
+        // ── Mission ──
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.missionAssignee"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        // Relecture PDF : le NOM du point d'abord (« x=11682 y=9671 » ne dit rien à une équipe).
+        // Le NOM du point d'abord (« x=11682 y=9671 » ne dit rien à une équipe).
         const nomPt = function(w) {
           if (!w || typeof w.x !== "number") return _fmtPoint(w);
           const gps = _gpsTxt(w.x, w.y);
@@ -7891,12 +7089,9 @@
           pdf.text(t("secours.pdf.dureeEstimee", { duree: Math.round(g.dureeEstimeeMin) }), margin, y); y += 4;
         }
         y += 4;
-        // Section Itinéraire (waypoints)
-        // 🩸 la ligne disait « N waypoints » avec N =
-        // points du TRACÉ (220 à 480 mesurés), pas les étapes (une quinzaine) : un
-        // chef d'équipe lisant le papier croyait à 400 arrêts. On imprime les ÉTAPES,
-        // dans l'ordre, telles qu'il les verra dans le stepper — même sans itinéraire
-        // calculé (2e relecture, D-b : le papier ne doit pas dépendre du calcul).
+        // ── Itinéraire ──
+        // 🩸 On imprime les ÉTAPES, dans l'ordre du stepper, pas le nombre de points du TRACÉ (des centaines : un
+        // chef d'équipe croirait à 400 arrêts). Même sans itinéraire calculé : le papier ne dépend pas du calcul.
         const etapesNoms = [g.entree].concat(g.intermediaires || [], [g.sortie])
           .filter(function(w) { return w && typeof w.x === "number"; })
           .map(function(w) { return _pdfLibre(w.label) || _lblEtape(_fmtPoint(w)); });
@@ -7905,7 +7100,7 @@
           const aIti = Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0;
           pdf.text(t(aIti ? "secours.pdf.itineraireSuggere" : "secours.pdf.etapesTitreSansIti"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-          // Liste longue (« POI de la zone » : 40-60 étapes) : saut de page ligne à ligne.
+          // Liste longue (« POI de la zone » : 40 à 60 étapes) : saut de page ligne à ligne.
           pdf.splitTextToSize(t("secours.pdf.etapesLigne", { n: etapesNoms.length, liste: etapesNoms.join(" > ") }),
                               pageW - 2 * margin).forEach(function(ligne) {
             if (y > pdf.internal.pageSize.getHeight() - 15) { pdf.addPage(); y = margin + 8; }
@@ -7913,8 +7108,8 @@
           });
           y += 4;
         }
-        // B2 (vague 6) : feuille de route — les consignes que le chef d'équipe lira sur
-        // papier, carrefour par carrefour (même moteur que la feuille de route de l'app).
+        // Feuille de route : les consignes carrefour par carrefour que le chef lira sur papier (même moteur que
+        // la feuille de route de l'app).
         const feuille = _feuilleDeRouteLignes(s, g);
         if (feuille === null) {
           pdf.setFontSize(9); pdf.setFont(undefined, "italic");
@@ -7933,15 +7128,14 @@
           });
           y += 4;
         }
-        // Cadre Observations : page suivante s'il ne tient plus (liste d'étapes longue)
+        // Cadre Observations : page suivante s'il ne tient plus.
         if (y + 70 > pdf.internal.pageSize.getHeight() - 10) { pdf.addPage(); y = margin + 8; }
-        // Cadre Observations (rempli papier au retour terrain)
+        // Cadre Observations (rempli à la main au retour).
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text(t("secours.pdf.obsRetourTerrain"), margin, y); y += 5;
         pdf.setDrawColor(150);
         pdf.rect(margin, y, pageW - 2 * margin, 60);
         y += 65;
-        // Footer
         pdf.setFontSize(7); pdf.setTextColor(120);
         pdf.text(t("secours.pdf.genereLigne", { version: ((window.__MKM__ && window.__MKM__.build) || ""), date: new Date().toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") }),
                  margin, pdf.internal.pageSize.getHeight() - 6);
@@ -7959,8 +7153,7 @@
     }
   }
 
-  // Calcule la bbox d'une équipe (waypoints + zone polygon + roads
-  // sélectionnés) en coordonnées plan. Retourne {x, y, w, h} ou null si rien.
+  // Bbox d'une équipe (points + polygone + tracés sélectionnés) en coordonnées plan : {x, y, w, h} ou null.
   function _computeTeamBbox(g) {
     const xs = [], ys = [];
     function _add(p) {
@@ -7988,12 +7181,11 @@
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
   }
 
-  // CARTES PDF NETTES SUR UN GRAND PLAN (test terrain du 30/09).
-  // Avant : le plan ENTIER était rendu sous 16 Mpx (limite des canvas de Safari iOS), puis
-  // chaque zone recadrée et agrandie — sur un grand plan, ~27 % de sa résolution, noms de
-  // galeries illisibles. Désormais chaque carte rend SEULEMENT son rectangle (option
-  // `region` de l'export, fond lu dans les tuiles V2 au niveau qui suffit) : pleine
-  // résolution, et un canvas borné par la carte (≤ 2400 px de côté), plus jamais par le plan.
+  // ── Cartes PDF nettes sur un grand plan ────────────────────────────
+  // Chaque carte rend SEULEMENT son rectangle (option `region` de l'export, fond lu dans les tuiles V2 au
+  // niveau qui suffit) : pleine résolution, canvas borné par la carte (≤ 2400 px de côté), jamais par le
+  // plan. 🩸 Rendre le plan entier sous 16 Mpx (limite des canvas de Safari iOS) puis recadrer donne, sur un
+  // grand plan, ~27 % de sa résolution : noms de galeries illisibles.
   function _dimsPlan() {
     const pl = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
     return { w: Number(pl.imageWidth) || 0, h: Number(pl.imageHeight) || 0 };
@@ -8044,24 +7236,22 @@
     out.width = src.canvas.width;
     out.height = src.canvas.height;
     const ctx = out.getContext("2d");
-    // Background blanc (au cas où l'image source a un alpha)
+    // Fond blanc (au cas où l'image source a de l'alpha).
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(src.canvas, 0, 0);
 
-    // Repères, traits et textes suivent la taille de l'image (base 1000 px) : sinon,
-    // plus la carte est nette, plus les numéros d'étape rapetissent sur la page.
+    // Repères, traits et textes suivent la taille de l'image (base 1000 px) : sinon, plus la carte est nette,
+    // plus les numéros d'étape rapetissent sur la page.
     const k = Math.max(1, Math.max(out.width, out.height) / 1000);
-    // Helpers pour mapper plan → canvas de sortie
     const sX = out.width  / sw;
     const sY = out.height / sh;
     function _toCanvas(p) {
       return { x: (p.x - sx) * sX, y: (p.y - sy) * sY };
     }
-    // RGB pour fill semi-transparent
     const rgb = _hexToRgb(hexColor);
 
-    // 1. Zone polygon (fill 30 % + border 3 px)
+    // 1. Zone polygone (remplissage 30 %, bord 3 px).
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
       ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.30)";
       ctx.strokeStyle = hexColor;
@@ -8076,7 +7266,7 @@
       ctx.fill();
       ctx.stroke();
     }
-    // 2. Zone roads (halo couleur sur chaque road sélectionnée)
+    // 2. Zone « tracés » (halo couleur sur chaque tracé sélectionné).
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
       ctx.strokeStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.55)";
       ctx.lineWidth = 8 * k;
@@ -8092,7 +7282,7 @@
         ctx.stroke();
       });
     }
-    // 3. Itinéraire suggéré (dashed couleur équipe, weight 4)
+    // 3. Itinéraire suggéré (pointillé couleur équipe, épaisseur 4).
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       ctx.strokeStyle = hexColor;
       ctx.lineWidth = 4 * k;
@@ -8107,7 +7297,7 @@
       ctx.stroke();
       ctx.setLineDash([]);   // reset
     }
-    // 4. Intermédiaires (cercles couleur équipe + numéro)
+    // 4. Intermédiaires (cercles couleur équipe + numéro).
     if (Array.isArray(g.intermediaires)) {
       g.intermediaires.forEach(function(w, i) {
         if (!w || typeof w.x !== "number") return;
@@ -8122,7 +7312,7 @@
       });
     }
     const accesUnique = _memeAcces(g.entree, g.sortie);
-    // 5. Entrée (cercle border vert + fill couleur équipe) — un seul repère si même accès
+    // 5. Entrée (bord vert, fond couleur équipe) ; un seul repère si même accès.
     if (g.entree && typeof g.entree.x === "number" && !accesUnique) {
       const c = _toCanvas(g.entree);
       _drawTeamMarker(ctx, c.x, c.y, 9 * k, "#00cc44", hexColor);
@@ -8134,7 +7324,7 @@
       ctx.strokeText(lblEntree, c.x + 12 * k, c.y);
       ctx.fillText(lblEntree, c.x + 12 * k, c.y);
     }
-    // 6. Sortie (cercle border rouge OU orange si boucle)
+    // 6. Sortie (bord rouge, ou orange si boucle).
     if (g.sortie && typeof g.sortie.x === "number") {
       const c = _toCanvas(g.sortie);
       const isBoucle = accesUnique;
@@ -8150,17 +7340,12 @@
       ctx.strokeText(lbl, c.x + dx, c.y + dy);
       ctx.fillText(lbl, c.x + dx, c.y + dy);
     }
-    // Mini-légende intégrée bas-droite, rend la carte auto-
-    // explicative au terrain (le secouriste n'a pas à lire la doc app).
-    // Liste uniquement les éléments effectivement présents pour cette équipe.
+    // Mini-légende en bas à droite : la carte s'explique seule sur le terrain.
     _drawTeamLegende(ctx, out.width, out.height, g, hexColor);
     return out;
   }
 
-  // Dessine une mini-légende compacte dans le coin bas-droit
-  // du canvas carte miniature. Lignes : carré couleur + libellé.
-  // N'affiche QUE les éléments présents pour cette équipe (évite légende
-  // inutile pleine d'items non utilisés).
+  // Mini-légende (carré couleur + libellé) des SEULS éléments présents pour cette équipe.
   function _drawTeamLegende(ctx, canvasW, canvasH, g, hexColor) {
     const items = [];
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
@@ -8188,7 +7373,6 @@
     }
     if (items.length === 0) return;
 
-    // Dimensions légende
     ctx.font = "11px sans-serif";
     const lineH = 16;
     const swatchW = 16;
@@ -8202,18 +7386,15 @@
     const boxW = pad + swatchW + swatchGap + maxTextW + pad;
     const boxH = pad + items.length * lineH + pad - 4;
 
-    // Position bas-droite avec marge 8px
     const boxX = canvasW - boxW - 8;
     const boxY = canvasH - boxH - 8;
 
-    // Background blanc semi-opaque + border léger
     ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
     ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
     ctx.lineWidth = 1;
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
 
-    // Items
     const rgb = _hexToRgb(hexColor);
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -8221,7 +7402,6 @@
       const cy = boxY + pad + i * lineH + lineH / 2 - 2;
       const swX = boxX + pad;
       const swY = cy - 7;
-      // Dessin du swatch selon type
       if (it.type === "zone-poly") {
         ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.30)";
         ctx.fillRect(swX, swY, swatchW, 14);
@@ -8251,13 +7431,12 @@
       } else if (it.type === "interm") {
         _drawTeamMarker(ctx, swX + swatchW / 2, cy, 4, "#ffffff", hexColor);
       }
-      // Label
       ctx.fillStyle = "#1a1f2e";
       ctx.fillText(it.label, swX + swatchW + swatchGap, cy);
     });
   }
 
-  // Helper canvas marker : disque couleur équipe + bord coloré (entrée/sortie/etc)
+  // Repère : disque couleur équipe + bord coloré (entrée, sortie…).
   function _drawTeamMarker(ctx, x, y, r, borderColor, fillColor) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
@@ -8281,7 +7460,6 @@
     return out;
   }
 
-  // Helpers PDF
   function _pdfWrapText(pdf, text, x, y, maxW, lineH) {
     const lines = pdf.splitTextToSize(text, maxW);
     lines.forEach(function(line) { pdf.text(line, x, y); y += lineH; });
@@ -8296,12 +7474,10 @@
     return "x=" + Math.round(pt.x) + " y=" + Math.round(pt.y) +
            (typeof pt.level === "number" ? " niv=" + pt.level : "");
   }
-  // « 🚪 SORTIE — x=15347 y=5085 niv=0 » ne dit rien à une
-  // équipe ni aux pompiers. Quand le plan est géoréférencé (plan-config OU calage
-  // saisi dans ⚙️ Réglages — même cascade que la Vue OSM), un point sans nom
-  // s'AFFICHE en GPS. ⚠️ Affichage seulement : le libellé stocké reste _fmtPoint
-  // (« x=… y=… niv=… »), car il sert d'identité aux étapes sans nom entre le PC et
-  // les téléphones (appariement par libellé) — le changer casserait la fusion.
+  // Un point sans nom s'AFFICHE en GPS quand le plan est géoréférencé (plan-config OU calage saisi dans les
+  // Réglages — même cascade que la Vue OSM) : « SORTIE — x=15347 y=5085 niv=0 » ne dit rien aux pompiers.
+  // ⚠️ Affichage seulement : le libellé stocké reste _fmtPoint (« x=… y=… niv=… »), identité des étapes sans
+  // nom entre PC et téléphones (appariement par libellé) — le changer casserait la fusion.
   function _transformGeoref() {
     const K = window.KmzExport;
     if (!K || typeof K.buildTransformCalib !== "function" || typeof K.planToGps !== "function") return null;
@@ -8338,21 +7514,11 @@
     return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
   }
 
-  // ============================================================
-  // EXPORT KMZ (depuis v1.22.0 commit 7/9)
-  // ============================================================
-  // Génère un KMZ avec :
-  //  • Polygons KML par équipe (zones polygon ou roads → polylines)
-  //  • Placemarks entrée/sortie de chaque équipe
-  //  • Folder global "🚨 Secours — <nom scénario>"
-  //  • myktamap-extras.json étendu avec secoursPlan (re-import MyKTAMap natif)
-  //
-  // Pré-requis : calibrage KMZ déjà fait (via modale KMZ Export classique).
-  // Sinon → guide l'user vers la modale Export sessions onglet 🌍 KMZ.
-  // (KARMA "il faudrai avoir le plan en fond a 60%") : exporterKMZ
-  // devient ASYNC pour fetch l'image plan (RUNTIME_ASSETS si dispo, sinon
-  // fetch HTTP) avant de la passer en GroundOverlay 60 % opacity. Pattern
-  // strictement identique à sessionExporter.js:2906-2930.
+  // ── Export KMZ ──────────────────────────────────────────────────────
+  // Polygones KML par équipe (zones polygone, ou polylignes pour les tracés), placemarks entrée/sortie,
+  // dossier « Secours — <nom du scénario> », secoursPlan dans myktamap-extras.json (ré-import natif), plan en
+  // GroundOverlay à 60 % (image lue dans RUNTIME_ASSETS, sinon en HTTP, comme sessionExporter.js).
+  // Pré-requis : calibrage KMZ fait (sinon on guide vers Export sessions, onglet KMZ).
   async function exporterKMZ(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
@@ -8363,18 +7529,9 @@
       _toast(t("secours.toast.kmzModuleManquant"), "error");
       return null;
     }
-    // (KARMA "georef pas pris en compte dans mode secour
-    // malgré que le reglage est bien effectuée") :
-    //
-    // Le format RÉEL stocké par KmzExport.setCalibration est FLAT :
-    //   { pointA: {x, y, lat, lng}, pointB: {x, y, lat, lng} }
-    //
-    // J'utilisais à tort un format NESTÉ pointA.plan / pointA.gps qui n'a
-    // jamais existé → buildTransform recevait undefined × 4 → erreur
-    // "Calibrage incomplet" interprétée à tort comme "Calibrage corrompu".
-    //
-    // Format correct cohérent avec sessionExporter.js:2878-2883 + createConf.js
-    // + interface.js:2537. Doc §32.7 CLAUDE.md à corriger (trompeuse).
+    // ⚠️ Format RÉEL stocké par KmzExport.setCalibration, À PLAT : { pointA: {x, y, lat, lng}, pointB: {…} }.
+    // Il n'existe pas de forme imbriquée pointA.plan / pointA.gps : buildTransform recevrait undefined et
+    // répondrait « Calibrage incomplet ». Même lecture que sessionExporter.js et createConf.js.
     const planId = window._currentLoadedPlanId;
     const calib = planId ? window.KmzExport.getCalibration(planId) : null;
     if (!calib || !calib.pointA || !calib.pointB
@@ -8395,21 +7552,17 @@
       _toast(t("secours.toast.calibrageCorrompu", { message: e.message }), "error");
       return null;
     }
-    // (KARMA "rajoute les itineraire de chaque équipe") :
-    // Auto-calc des itinéraires manquants avant export. Si une équipe a
-    // entrée + sortie définies mais pas encore d'itineraireSuggere calc,
-    // on déclenche un Pathfinder en arrière-plan et on attend tous les
-    // résultats avant de générer le KMZ → export complet en 1 clic.
+    // Itinéraires manquants (entrée + sortie mais pas d'itineraireSuggere) calculés avant l'export, en
+    // parallèle : export complet en un clic.
     const groupesACalc = (s.groupes || []).filter(function(g) {
       return g.entree && g.sortie && !Array.isArray(g.itineraireSuggere);
     });
     if (groupesACalc.length > 0) {
       _toast(t("secours.toast.calcAutoIti", { n: groupesACalc.length }), "info");
-      // Lance les calculs en parallèle + attend tous résultats
       await Promise.allSettled(groupesACalc.map(function(g) {
         return _recalculerItineraireGroupeAsync(s.id, g.id);
       }));
-      // Re-fetch s pour avoir les itineraireSuggere fraîchement écrits
+      // Relecture de s pour les itineraireSuggere fraîchement écrits.
       const sFrais = get(s.id);
       if (sFrais) {
         s.groupes = sFrais.groupes;
@@ -8417,10 +7570,8 @@
     }
 
     _toast(t("secours.toast.generationKmz"), "info");
-    // (KARMA "il faudrai avoir le plan en fond a 60%") : on fetch
-    // l'image plan pour la passer en GroundOverlay opacity 60 %. Donne aux
-    // équipes de secours le CONTEXTE SPATIAL (puits, galeries, structures
-    // sur le fond) en + des zones colorées. Pattern aligné sessionExporter.
+    // Le plan en fond (GroundOverlay 60 %) donne aux équipes le contexte spatial (puits, galeries, structures)
+    // en plus des zones.
     const pc = window.PLAN_CONFIG;
     let imageBlob = null;
     let imageFilename = null;
@@ -8428,7 +7579,7 @@
       const baseImagePath = pc.plan.baseImage;
       const fullPath = baseImagePath.indexOf("/") >= 0 ? baseImagePath : ("data/" + baseImagePath);
       imageFilename = baseImagePath;
-      // Tentative 1 : RUNTIME_ASSETS (cas ZIP local importé)
+      // 1. RUNTIME_ASSETS (plan importé en ZIP).
       if (window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[fullPath]) {
         const asset = window.RUNTIME_ASSETS[fullPath];
         if (asset.file instanceof Blob) {
@@ -8437,7 +7588,7 @@
           try { const r = await fetch(asset.url); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
         }
       }
-      // Tentative 2 : fetch direct (cas plan serveur HTTP)
+      // 2. Fetch direct (plan servi en HTTP).
       if (!imageBlob) {
         try { const r = await fetch(fullPath); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
       }
@@ -8447,10 +7598,8 @@
       }
     }
 
-    // On délègue à KmzExport.genererKmz avec :
-    //   • GroundOverlay 60 % (le plan en fond pour contexte spatial — v1.23.0)
-    //   • data session vides (on injecte nos polygons via secoursPlan extras)
-    //   • secoursPlan + secoursPalette dans les extras (KML Folder visible)
+    // KmzExport.genererKmz : GroundOverlay 60 %, données de session vides (nos polygones passent par les
+    // extras secoursPlan), secoursPlan + secoursPalette (dossier KML visible).
     const opts = {
       planName:      (pc && pc.plan && pc.plan.name)    || t("secours.pdf.planDefault"),
       planVersion:   (pc && pc.plan && pc.plan.version) || "",
@@ -8469,9 +7618,9 @@
       imageBlob:     imageBlob,
       imageFilename: imageFilename,
       iconsToEmbed:  {},
-      // secoursPlan dans les extras (re-import MyKTAMap natif)
+      // secoursPlan dans les extras (ré-import natif).
       secoursPlan:   s,
-      // injection KML Folder cross-app (Polygons + Placemarks + LineStrings)
+      // Dossier KML lisible par d'autres apps (Polygons + Placemarks + LineStrings).
       secoursPalette: PALETTE
     };
     Promise.resolve(window.KmzExport.genererKmz(opts)).then(function(blob) {
@@ -8494,15 +7643,12 @@
     });
   }
 
-  // ============================================================
-  // UI — MODALE (depuis v1.22.0 commit 2/9)
-  // ============================================================
+  // ── Interface : modale ──────────────────────────────────────────────
 
-  // Ouvre la modale. Si scenarioId fourni → mode édition direct.
-  // Sinon → vue liste (avec bouton "Nouveau scénario").
+  // Ouvre la modale : édition directe si scenarioId, sinon la liste.
   function ouvrir(scenarioId) {
     if (_modal) { fermer(); }
-    // Reload depuis storage au cas où d'autres tabs auraient modifié
+    // Relecture du stockage (un autre onglet a pu modifier).
     _loadScenarios();
     if (scenarioId && get(scenarioId)) {
       _currentScenarioId = scenarioId;
@@ -8513,10 +7659,8 @@
     _modal.innerHTML = _renderModalHTML();
     document.documentElement.appendChild(_modal);
     _bindModalHandlers();
-    // Si scenarioId fourni, render direct l'éditeur. Sinon liste.
-    // (KARMA « retour rapide au module pour valider des étapes ») :
-    // intervention en cours sur ce scénario → directement la vue LIVE, où l'on
-    // valide les étapes (avant : l'éditeur, puis un toucher sur « reprendre »).
+    // scenarioId → éditeur, sinon liste. Intervention en cours sur ce scénario → directement la vue LIVE, où
+    // l'on valide les étapes.
     const sOuvert = _currentScenarioId ? get(_currentScenarioId) : null;
     if (sOuvert && _estExecutionActive(sOuvert)) {
       _switchView("live");
@@ -8533,30 +7677,23 @@
     _modal = null;
     clearOverlay();
     _currentScenarioId = null;
-    // « j'ai lancé un plan, affecté à une équipe, je devrais
-    // voir ma zone en mode carte avec mon tracé ». Fermer la fenêtre effaçait tout.
-    // Intervention active → l'affichage reste (équipier : son équipe seule, filtre
-    // de renderOverlay ; opérateur : toutes). reset() (changement de plan) nettoie.
+    // Intervention active : l'affichage carte reste après fermeture de la fenêtre (équipier : son équipe
+    // seule, filtre de renderOverlay ; opérateur : toutes). reset() (changement de plan) nettoie.
     const enCours = _scenarioEnCours();
     if (enCours && window.map) {
       try { renderOverlay(enCours.id); } catch(e) { console.warn("[SecoursMode] overlay en cours :", e); }
     }
     _majFooterSecours();
-    // 🐛 hotfix1 — Cleanup du setInterval timer (sinon fuite mémoire :
-    // le timer continuait à tourner après fermeture modale sans plus
-    // rien à update — _currentScenarioId=null + DOM modale retirée).
+    // Arrêt du timer (sinon il tourne pour rien après fermeture).
     _stopLiveTimer();
-    // Feature D — Cleanup heatmap si encore active (l'user a
-    // fermé la modale sans toggler off)
+    // Heatmap encore active (fenêtre fermée sans la couper) : nettoyée.
     if (_secoursHeatmapActive && window.MyKTAMapHeatmap
         && typeof window.MyKTAMapHeatmap.effacer === "function") {
       try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
       _secoursHeatmapActive = false;
     }
-    // (Pack RAM #3) — Revoke des ObjectURL des photos Live
-    // créées par _hydraterPhotosLive. Sans ce revoke, sortie de la modale
-    // sans libérer les Blob backings → fuite RAM cumulative à chaque
-    // ouverture/fermeture du Live.
+    // Révocation des ObjectURL des photos Live (_hydraterPhotosLive) : sinon la RAM fuit à chaque
+    // ouverture/fermeture.
     _revokeLivePhotoUrls();
   }
 
@@ -8564,14 +7701,11 @@
     if (e.key === "Escape" && _modal) fermer();
   }
 
-  // Squelette HTML — header + corps (rempli dynamiquement par _switchView)
-  // 3e récidive de « le contenu défile PAR-DESSUS
-  // l'en-tête Opérateur » (v1.24.2 fond opaque, v1.25.1 z-index 100 + isolation : sans
-  // effet sur Safari iOS, qui peint un en-tête `sticky` sous le contenu qui défile).
-  // Plutôt qu'un 3e correctif CSS : en vue live, l'en-tête SORT de la zone qui défile
-  // et se pose entre le titre de la fenêtre et le contenu — plus rien ne passe dessous,
-  // par construction. Il ne porte aucun bouton (les handlers restent sur `corps`) ;
-  // le chrono est mis à jour par sélecteur global (data-live-timer).
+  // Squelette HTML : en-tête + corps (rempli par _switchView).
+  // 🩸 En vue live, l'en-tête Opérateur SORT de la zone qui défile et se pose entre le titre et le contenu :
+  // Safari iOS peint un en-tête `sticky` SOUS le contenu qui défile (fond opaque, z-index, isolation n'y
+  // changent rien). Il ne porte aucun bouton (handlers sur `corps`) ; chrono mis à jour par sélecteur global
+  // (data-live-timer).
   function _placerEnteteLive(corps, view) {
     const ancien = document.getElementById("kta-secours-live-slot");
     if (ancien && ancien.parentNode) ancien.parentNode.removeChild(ancien);
@@ -8606,32 +7740,26 @@
     });
   }
 
-  // Bascule entre les 4 vues : "list" (scénarios) | "create" (stepper) |
-  // "edit" (free-form) | "live" (mode terrain v1.24.0 Phase 3)
+  // Bascule entre les 4 vues : "list" (scénarios) | "create" (stepper) | "edit" (libre) | "live" (terrain).
   function _switchView(view) {
     const corps = document.getElementById("kta-secours-corps");
     if (!corps) return;
-    _activeView = view;  // C2 — tracker pour re-render après mutation phase
+    _activeView = view;  // vue active, pour re-rendre après une mutation de phase
     if (view === "list")   corps.innerHTML = _renderListView();
     if (view === "create") corps.innerHTML = _renderCreateView();
     if (view === "edit")   corps.innerHTML = _renderEditView();
     if (view === "live")   corps.innerHTML = _renderLiveView();   // Phase 3
     _bindViewHandlers(view);
     _placerEnteteLive(corps, view);
-    // Phase 3 — Timer global pour rafraîchir l'affichage des durées
-    // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit continuer à
-    // tourner même si modal secour fermer") : démarre le timer dès qu'une
-    // execution est active sur le scénario courant, peu importe la vue
-    // (live OU edit avec bandeau PLAN ACTIF). Avant : timer ne tournait
-    // qu'en vue "live" → bandeau Edit affichait une durée stale.
+    // Le timer tourne dès qu'une exécution est active sur le scénario courant, quelle que soit la vue (live, ou
+    // édition avec le bandeau PLAN ACTIF), et même fenêtre fermée.
     const s = _currentScenarioId ? get(_currentScenarioId) : null;
     const execActive = s && _estExecutionActive(s);
     if (view === "live" || execActive) _startLiveTimer();
     else                               _stopLiveTimer();
   }
 
-  // Phase 3 — Timer global pour rafraîchir l'affichage des durées
-  // dans la vue Live (header timer + dernière obs). 1 tick/sec.
+  // Timer de la vue Live (chrono d'en-tête + dernière observation), 1 tick/s.
   let _liveTimerId = null;
   function _startLiveTimer() {
     _stopLiveTimer();
@@ -8643,9 +7771,8 @@
       _liveTimerId = null;
     }
   }
-  // Met à jour uniquement les nœuds DOM marqués data-live-timer (sans
-  // re-render complet de la vue, évite les flash + perte focus dans
-  // textarea observations en cours de saisie).
+  // Met à jour les seuls nœuds data-live-timer, sans re-rendu (pas de flash, pas de perte de focus dans une
+  // observation en cours de saisie).
   function _majLiveTimers() {
     if (!_currentScenarioId) return;
     const dureeMs = getExecutionDureeMs(_currentScenarioId);
@@ -8653,7 +7780,7 @@
     document.querySelectorAll('[data-live-timer="duree"]').forEach(function(el) {
       el.textContent = dureeStr;
     });
-    // A4 : lignes départ / retour, sans re-rendu (garde la saisie en cours).
+    // Lignes départ / retour, sans re-rendu (garde la saisie en cours).
     const sCour = get(_currentScenarioId);
     if (sCour && _estExecutionActive(sCour)) {
       document.querySelectorAll("[data-live-retour]").forEach(function(el) {
@@ -8667,9 +7794,7 @@
     }
   }
 
-  // ============================================================
-  // VUE LISTE — scénarios existants + bouton "Nouveau"
-  // ============================================================
+  // ── Vue Liste ───────────────────────────────────────────────────────
   function _renderListView() {
     let html = '<div class="kta-secours-list-header">' +
                  '<div class="kta-secours-list-header-actions">' +
@@ -8679,9 +7804,6 @@
                    '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="' + _escAttr(t("secours.list.btnImporterTitle")) + '">' +
                      t("secours.list.btnImporter") +
                    '</button>' +
-                   /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
-                      Le partage briefings se fait désormais 100% via .mkmsec.json
-                      (cf bouton "📥 Importer un plan" ci-dessus). */
                  '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
@@ -8692,7 +7814,7 @@
               '</div>';
     } else {
       html += '<div class="kta-secours-list">';
-      // Tri par updatedAt DESC (le plus récent en haut)
+      // Plus récent en haut.
       const sorted = _scenarios.slice().sort(function(a, b) {
         return (Date.parse(b.updatedAt || 0) || 0) - (Date.parse(a.updatedAt || 0) || 0);
       });
@@ -8724,15 +7846,9 @@
     return html;
   }
 
-  // ============================================================
-  // VUE CRÉATION — stepper léger "Nom + premières équipes"
-  // ============================================================
-  // Pour le MVP Phase 1, le stepper est volontairement SIMPLIFIÉ :
-  // étape 1 = nom + notes contexte + ajouter N équipes minimales (nom seul).
-  // Les zones / entrées-sorties / itinéraires sont définis ensuite dans la
-  // vue Edit (mode free-form). Ça évite un stepper trop lourd qui demande
-  // l'interaction map (zones polygon/roads) — ces interactions sont mieux
-  // placées dans l'éditeur libre.
+  // ── Vue Création ────────────────────────────────────────────────────
+  // Stepper volontairement léger : nom + contexte + équipes (nom seul). Zones, entrées/sorties et itinéraires
+  // se définissent ensuite dans l'Édition (ils demandent la carte).
   function _renderCreateView() {
     return '<div class="kta-secours-create-form">' +
              '<h3 class="kta-secours-form-titre">' + t("secours.create.titre") + '</h3>' +
@@ -8755,13 +7871,9 @@
            '</div>';
   }
 
-  // ============================================================
-  // VUE ÉDITION — free-form editor (3 sections : Contexte / Équipes / Export)
-  // ============================================================
-  // C2 — Section "📋 Phases" pour la vue Edit.
-  // KARMA C2.2:c — bouton "➕ Ajouter une phase" toujours présent en Edit.
-  // Si 1 seule phase → hint + bouton. Si 2+ phases → liste éditable.
-  // La phase 0 n'est jamais supprimable depuis l'UI (filet vs _migration).
+  // ── Vue Édition (Contexte / Équipes / Export) ──────────────────────
+  // Section Phases : « Ajouter une phase » toujours présent ; 1 phase → indice + bouton, 2 et plus → liste
+  // éditable. La phase 0 n'est jamais supprimable depuis l'interface.
   function _renderPhasesSection(s) {
     if (!s || !Array.isArray(s.phases)) return "";
     const nbPhases = s.phases.length;
@@ -8772,12 +7884,10 @@
                  '<summary class="kta-secours-section-titre">' + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
-      // 1 phase → juste un hint + bouton
       html += '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
                 t("secours.phases.btnAjouter") +
               '</button>';
     } else {
-      // 2+ phases → liste éditable
       html += '<div class="kta-secours-phases-list">';
       s.phases.forEach(function(p, i) {
         const isActive = (execActive && i === currentIdx);
@@ -8789,7 +7899,7 @@
         else if (isActive) statutLabel = '<span class="kta-secours-phase-status-active">' + t("secours.phases.statutActive") + '</span>';
         else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">' + t("secours.phases.statutDemarree") + '</span>';
         else statutLabel = '<span class="kta-secours-phase-status-pending">' + t("secours.phases.statutNonDemarree") + '</span>';
-        // Bouton supprimer désactivé si phase active, démarrée, ou si c'est la seule
+        // Suppression désactivée si phase active, démarrée, ou seule.
         const canDelete = !isActive && !isStarted;
         const delTitle = isActive ? t("secours.phases.delTitleActive")
                        : isStarted ? t("secours.phases.delTitleStarted")
@@ -8825,11 +7935,8 @@
     return html;
   }
 
-  // C2 — Modale création / édition d'une phase. Format :
-  //   - Input texte pour le nom (par défaut "Phase N+1")
-  //   - Liste de checkboxes pour les équipes participantes (modèle hybride 1:c)
-  //   - 2 boutons : Annuler / ✓ Valider
-  // editPhaseIdx = null → création · = number → édition
+  // Modale de création / édition d'une phase : nom (défaut « Phase N+1 »), équipes participantes, Annuler /
+  // Valider. editPhaseIdx = null → création, nombre → édition.
   function _afficherModalePhase(scenarioId, editPhaseIdx) {
     const s = get(scenarioId);
     if (!s) return;
@@ -8839,7 +7946,7 @@
       _toast(t("secours.toast.phaseIntrouvable"), "error");
       return;
     }
-    // Cleanup d'une modale précédente (DOM + listener Esc orphelin v1.43.26)
+    // Nettoyage d'une modale précédente (DOM + listener Échap orphelin).
     const oldModal = document.getElementById("kta-secours-phase-modal");
     if (oldModal) oldModal.remove();
     if (_phaseModalEsc) {
@@ -8852,8 +7959,7 @@
 
     const titre = isEdit ? t("secours.phaseModal.titreEdit") : t("secours.phaseModal.titreCreate");
 
-    // Classe kta-secours-sub-modal pour z-index 100050
-    // (au-dessus de la modale Mode Secours principale à 99999).
+    // kta-secours-sub-modal : z-index 100050, au-dessus de la modale principale (99999).
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-phase-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:520px;height:auto;max-height:90vh;">' +
                    '<div class="kta-readme-modal-header">' +
@@ -8896,15 +8002,12 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    // attache à <html> (pas à <body>) pour passer AU-DESSUS
-    // de la modale Mode Secours principale (qui est sibling de body, attachée
-    // par ouvrir() via documentElement.appendChild). Sinon mes modales secondaires
-    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    // ⚠️ Attachée à <html>, pas à <body> : la modale principale est sur documentElement (ouvrir()) ; dans
+    // body, une sous-modale serait rendue AVANT elle, donc cachée.
     document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-phase-modal");
     if (!modal) return;
 
-    // Focus auto sur le champ nom
     const nomInput = modal.querySelector("#kta-sec-phase-nom");
     if (nomInput) {
       nomInput.focus();
@@ -8914,19 +8017,17 @@
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
       document.removeEventListener("keydown", _onEsc);
-      // Libère la ref module si c'est bien NOTRE listener.
+      // Libère la référence module si c'est bien NOTRE listener.
       if (_phaseModalEsc === _onEsc) _phaseModalEsc = null;
     }
     function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
     _phaseModalEsc = _onEsc;
     document.addEventListener("keydown", _onEsc);
 
-    // Backdrop click = annuler
     modal.addEventListener("click", function(e) {
       if (e.target === modal) _closeModal();
     });
 
-    // Handlers boutons
     modal.addEventListener("click", function(e) {
       const action = e.target.getAttribute && e.target.getAttribute("data-action");
       if (!action) return;
@@ -8939,7 +8040,6 @@
           if (nomInput) nomInput.focus();
           return;
         }
-        // Récupère les équipes cochées
         const cbs = modal.querySelectorAll('input[type="checkbox"][data-equipe-id]');
         const selectedIds = [];
         cbs.forEach(function(cb) {
@@ -8947,8 +8047,7 @@
         });
         if (isEdit) {
           renommerPhase(scenarioId, editPhaseIdx, nom);
-          // Sync participation : on parcourt TOUTES les équipes du scénario
-          // et on aligne avec les checkboxes.
+          // Participation alignée sur les cases, pour TOUTES les équipes du scénario.
           s.groupes.forEach(function(g) {
             const wantParticipate = selectedIds.indexOf(g.id) !== -1;
             affecterEquipeAPhase(scenarioId, g.id, editPhaseIdx, wantParticipate);
@@ -8963,22 +8062,14 @@
           }
         }
         _closeModal();
-        // Re-render la vue active pour refléter la nouvelle phase
         if (_modal && _activeView) _switchView(_activeView);
       }
     });
   }
 
-  // C3 — Modale "📝 Debrief de la phase". Affichée depuis
-  // (a) le bouton "✓ Phase terminée" du footer Live Op
-  // (b) le toast auto-détection "phase prête à clore" (KARMA C3.2:c)
-  //
-  // Flow :
-  //  1. Textarea pour debrief libre (5000 chars max)
-  //  2. Boutons : Annuler / "✓ Terminer la phase"
-  //  3. Si terminer + il existe une phase suivante → enchaîne sur modale
-  //     "🚀 Lancer la phase suivante ?"
-  //  4. Si terminer + pas de phase suivante → confirme arrêt complet ?
+  // Modale « Debrief de la phase », depuis « Phase terminée » (pied de la vue Live opérateur) ou le toast
+  // d'auto-détection. Texte libre (5000 caractères) ; « Terminer la phase » enchaîne sur « Lancer la phase
+  // suivante ? » s'il y en a une, sinon propose l'arrêt complet.
   function _afficherModaleDebrief(scenarioId) {
     const s = get(scenarioId);
     if (!s || !s.execution || !s.execution.active) return;
@@ -8987,7 +8078,6 @@
     const phase = s.phases[phaseIdx];
     if (!phase) return;
 
-    // Cleanup d'une modale précédente
     const oldModal = document.getElementById("kta-secours-debrief-modal");
     if (oldModal) oldModal.remove();
 
@@ -9046,17 +8136,13 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    // attache à <html> (pas à <body>) pour passer AU-DESSUS
-    // de la modale Mode Secours principale (qui est sibling de body, attachée
-    // par ouvrir() via documentElement.appendChild). Sinon mes modales secondaires
-    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    // ⚠️ Attachée à <html> (cf _afficherModalePhase), sinon cachée sous la modale principale.
     document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-debrief-modal");
     if (!modal) return;
     const textArea = modal.querySelector("#kta-sec-debrief-text");
     if (textArea) textArea.focus();
 
-    // Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
       _unbindEsc();
@@ -9071,14 +8157,14 @@
         _closeModal();
       } else if (action === "confirm-debrief-modal") {
         const debriefText = textArea ? textArea.value : "";
-        // 1. Termine la phase actuelle (archive + endedAt + debrief)
+        // 1. Termine la phase (archive + endedAt + debrief).
         terminerPhase(scenarioId, { debrief: debriefText });
         _closeModal();
         if (aSuivante) {
-          // 2a. Enchaîne sur "Lancer phase suivante ?" via une 2e modale courte
+          // 2a. Enchaîne sur « Lancer la phase suivante ? ».
           _afficherModaleLancerPhaseSuivante(scenarioId);
         } else {
-          // 2b. Pas de phase suivante → propose d'arrêter complètement
+          // 2b. Pas de phase suivante : proposer l'arrêt complet.
           window.ktaConfirm(t("secours.debrief.confirmArret", { phase: window.ktaEsc(phase.nom) }))
             .then(function(ok) {
               if (ok) {
@@ -9094,9 +8180,7 @@
     });
   }
 
-  // C3 — Mini-modale "🚀 Lancer la phase suivante ?" enchaînée
-  // après le debrief. Affiche un récap de la phase qui va démarrer + 2
-  // boutons (Plus tard / Démarrer).
+  // Mini-modale « Lancer la phase suivante ? » après le debrief : récapitulatif + Plus tard / Démarrer.
   function _afficherModaleLancerPhaseSuivante(scenarioId) {
     const s = get(scenarioId);
     if (!s || !s.execution) return;
@@ -9150,20 +8234,15 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    // attache à <html> (pas à <body>) pour passer AU-DESSUS
-    // de la modale Mode Secours principale (qui est sibling de body, attachée
-    // par ouvrir() via documentElement.appendChild). Sinon mes modales secondaires
-    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    // ⚠️ Attachée à <html> (cf _afficherModalePhase), sinon cachée sous la modale principale.
     document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-launchnext-modal");
     if (!modal) return;
 
-    // Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
       _unbindEsc();
-      // Quoi qu'il arrive, re-render la vue pour refléter la nouvelle phase
-      // (si lancée) ou l'état "phase terminée" en attente.
+      // Re-rendu dans tous les cas (phase lancée, ou « terminée » en attente).
       if (_activeView) _switchView(_activeView);
     }
     const _unbindEsc = _bindSubModalEsc(_closeModal);
@@ -9205,14 +8284,12 @@
                  '</button>' +
                '</div>';
 
-    // Phase 3 — Bandeau "Lancer le plan" / "Plan actif".
-    // Si execution active → bandeau vert avec bouton "Reprendre la vue Live"
-    //                       + bouton "Arrêter le plan"
-    // Sinon                → bouton CTA jaune "🚀 Lancer le plan de secours"
+    // Bandeau : exécution active → vert (« Reprendre la vue Live », « Arrêter le plan ») ; sinon bouton jaune
+    // « Lancer le plan de secours ».
     html += _renderLancerBandeau(s);
-    html += _htmlActionsExt({ scenarioId: s.id, vue: "edition" });   // 🧩 installation reliée
+    html += _htmlActionsExt({ scenarioId: s.id, vue: "edition" });   // installation reliée
 
-    // Section 1 — Contexte
+    // Section 1 : Contexte.
     html += '<details class="kta-secours-section" open>' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.contexteTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
@@ -9224,22 +8301,17 @@
                   '<label for="kta-sec-edit-notes">' + t("secours.edit.notes") + '</label>' +
                   '<textarea id="kta-sec-edit-notes" rows="3" maxlength="500">' + _escHtml(s.context.notes || "") + '</textarea>' +
                 '</div>' +
-                // Phase 2 / Feature C — Affichage du lastKnownPoint
-                // + zoneIncertitude si pré-rempli depuis Lost Mode.
+                // Dernière position + zone d'incertitude si pré-remplies depuis le Mode Perdu.
                 _renderContextImportedBlock(s) +
-                // Phase 2 / Feature D — Toggle Heatmap pour visualiser
-                // les zones probables d'activité (timeline tracker + annotations).
+                // Heatmap des zones probables (timeline tracker + annotations).
                 _renderHeatmapToolBlock() +
-                // Réglage de la pause par point (partage avec
-                // l'itinéraire principal — cf interface.js > _getItiPauseEnabled
-                // + _getItiPauseMinutes). Au change → recalcul auto des durées
-                // estimées de toutes les équipes du scénario.
+                // Pause par point (partagée avec l'itinéraire principal, cf interface.js > _getItiPauseEnabled /
+                // _getItiPauseMinutes) ; un changement recalcule les durées de toutes les équipes.
                 _renderPauseToolBlock() +
               '</div>' +
             '</details>';
 
-    // Section 2 — Équipes (liste + add)
-    // Phase 2 / Feature E — Bouton auto-creation par niveau si M-LVL
+    // Section 2 : Équipes (liste + ajout) ; en multi-niveau, création automatique par niveau.
     const mlvlActive = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const availableLevels = mlvlActive ? _niveauxPourEquipesAuto() : [];
     const autoMLVLBtn = (mlvlActive && availableLevels.length > 1)
@@ -9247,7 +8319,7 @@
         'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
         t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
       : '';
-    // C1 (15/10/2026) — découpage du réseau en secteurs (une équipe par secteur).
+    // Découpage du réseau en secteurs (une équipe par secteur).
     const decoupeBtn = (window.SecoursBalayage && window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
                         window.Pathfinder.aDesTraces())
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="decouper-secteurs" ' +
@@ -9272,27 +8344,23 @@
               '</div>' +
             '</details>';
 
-    // B3 (vague 7b) — couverture : calculée à l'ouverture du bloc (plan de centaines de tracés).
+    // Couverture : calculée à l'ouverture du bloc (des centaines de tracés).
     html += '<details class="kta-secours-section" id="kta-secours-couverture">' +
               '<summary class="kta-secours-section-titre">' + t("secours.couv.titre") + '</summary>' +
               '<div class="kta-secours-section-body" id="kta-secours-couverture-corps"></div>' +
             '</details>';
 
-    // C2 — Section Phases. Toujours présente, mais le contenu
-    // s'adapte : 1 seule phase = juste le bouton "➕ Ajouter une phase" en hint
-    // (pas de liste à afficher). 2+ phases = liste avec ✏️ / 🗑️.
-    // KARMA C2.2:c — bouton "➕" présent en vue Edit (planification) ET en
-    // vue Live Op (création à chaud, ajouté dans _renderLiveViewOperateur).
+    // Section Phases, toujours présente (1 phase : le seul bouton « Ajouter une phase » ; 2 et plus : liste).
+    // Le même bouton existe en vue Live opérateur (création à chaud).
     html += _renderPhasesSection(s);
 
-    // Section 3 — Export
+    // Section 3 : Export.
     html += '<details class="kta-secours-section">' +
               '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-export-actions">' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + t("secours.edit.exportKmz") + '</button>' +
-                  // Export scénario standalone .mkmsec.json
                   '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="' + _escAttr(t("secours.edit.exportMkmsecTitle")) + '">' + t("secours.edit.exportMkmsec") + '</button>' +
                 '</div>' +
               '</div>' +
@@ -9301,7 +8369,7 @@
     return html;
   }
 
-  // Rendu de la liste des équipes (utilisé par _renderEditView)
+  // Liste des équipes (vue Édition).
   function _renderGroupesList(scenario) {
     if (!scenario.groupes || scenario.groupes.length === 0) {
       return '<div class="kta-secours-empty-small">' + t("secours.edit.aucuneEquipeListe") + '</div>';
@@ -9318,15 +8386,13 @@
       const zoneFmt = g.zoneType === "polygon" ? t("secours.groupe.zonePolygone", { n: (g.zonePolygon ? g.zonePolygon.length : 0) })
                     : g.zoneType === "roads"   ? t("secours.groupe.zoneTraces", { n: (g.zoneRoadIds ? g.zoneRoadIds.length : 0) })
                     : t("secours.groupe.zoneNonDefinie");
-      // chip "Niv X" dans le header de la card si g.level défini
-      // (formatage cohérent : 0 → RDC, +1/-1 → "+1"/"-1", null → "Sans niveau")
+      // Puce « Niv X » si g.level est défini (0 → RDC, ±N, null → « Sans niveau »).
       const lvlChip = (typeof g.level === "number")
                       ? '<span class="kta-secours-groupe-level-chip" title="' + _escAttr(t("secours.groupe.levelChipTitle")) + '">' +
                         '🏗️ ' + _lblNiveau(g.level) +
                         '</span>'
                       : '';
-      // Select éditable pour changer le niveau de référence
-      // (uniquement visible si M-LVL actif et availableLevels disponible)
+      // Niveau de référence modifiable (multi-niveau avec availableLevels).
       let levelSelectRow = '';
       const mlvlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       if (mlvlOn) {
@@ -9357,9 +8423,6 @@
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
-                  /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton 📲 retiré.
-                     Le partage briefing se fait via "📥 Importer un plan"
-                     (vue list) qui consomme le .mkmsec.json complet. */
                   '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
                   '<span class="kta-secours-groupe-resume kta-tx-muted">' + t("secours.groupe.resumeReplie", { n: nbEtapesG }) + '</span>' +
                 '</div>' +
@@ -9368,9 +8431,8 @@
                     '<label>' + t("secours.groupe.membresLabel") + '</label>' +
                     '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="' + _escAttr(t("secours.groupe.membresPlaceholder")) + '" maxlength="200">' +
                   '</div>' +
-                  // B9 (vague 7) : chef d'équipe (parmi les membres), effectif, retour impératif — une ligne
-                  // chacun, comme « Membres » (retour KARMA 06/10/2026 : entassés sur une ligne, ils se
-                  // repliaient n'importe où sur téléphone).
+                  // Chef d'équipe (parmi les membres), effectif, retour impératif : une ligne chacun, comme « Membres »
+                  // (sur une seule ligne, ils se replient n'importe où sur téléphone).
                   '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.b9.chefLabel") + '</label>' +
                     ((g.membres || []).length
@@ -9392,10 +8454,9 @@
                     '<label title="' + _escAttr(t("secours.retour.imperatifTitle")) + '">' + t("secours.retour.imperatifLabel") + '</label>' +
                     '<input type="time" data-action="edit-heure-retour" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.heureRetour || "") + '">' +
                   '</div>' +
-                  // E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
-                  //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
-                  //    Sérialisé en {lat, lng} dans le data model. Optionnel.
-                  //    Utilisé par Briefing pompiers PDF (lien OSM + marker carte).
+                  // GPS de surface de l'équipe (PC, rendez-vous pompiers…), saisi « lat, lng » (WGS84), stocké {lat,
+                  // lng},
+                  // facultatif ; utilisé par le briefing pompiers PDF.
                   '<div class="kta-secours-groupe-row">' +
                     '<label>' + t("secours.groupe.gpsSurfaceLabel") + '</label>' +
                     '<input type="text" data-action="edit-surface-gps" data-gid="' + _escAttr(g.id) + '" ' +
@@ -9419,7 +8480,7 @@
                     '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
                     '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
-                  // 8b : niveau de la zone (multiniveau, zone polygone).
+                  // Niveau de la zone (multi-niveau, zone polygone).
                   ((_mlvlActif() && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3)
                     ? '<div class="kta-secours-groupe-row kta-secours-zone-niv">' +
                         '<span>' + _escHtml(g.zoneTousNiveaux ? t("secours.niv.zoneTous") : t("secours.niv.zoneAuNiveau", { niveau: _niveauZone(g) })) + '</span>' +
@@ -9427,16 +8488,16 @@
                           t("secours.niv.caseTous") + '</label>' +
                       '</div>'
                     : '') +
-                  // Étapes loin des galeries, gardées en vue après le calcul (30/09).
+                  // Étapes loin des galeries, gardées en vue après le calcul.
                   ((Array.isArray(g.itineraireSuggere) && g.guidage)
                     ? (function() { const txt = _texteEtapesLoin(_etapesLoin(g.guidage.raccords));
                         return txt ? '<div class="kta-secours-groupe-loin kta-tx-warn">⚠️ ' + _escHtml(txt) + '</div>' : ''; })()
                     : '') +
-                  // section Parcours avec entrée + intermédiaires[] + sortie
+                  // Parcours : entrée + intermédiaires[] + sortie.
                   _renderParcoursSection(g) +
                   _htmlInfoEquipeExt(scenario.id, g.id) +
                   _htmlActionsExt({ scenarioId: scenario.id, vue: "edition", equipeId: g.id }) +
-                  // C1 (15/10/2026) — mode de parcours : plus court chemin ou balayage de la zone.
+                  // Mode de parcours : plus court chemin ou balayage de la zone.
                   '<label class="kta-secours-parcours-mode">' + t("secours.balayage.label") + ' ' +
                     '<select data-action="parcours-mode" data-gid="' + _escAttr(g.id) + '">' +
                       ['court', 'complet', 'ossature'].map(function(m) {
@@ -9446,9 +8507,7 @@
                     '</select></label>' +
                   '<div class="kta-secours-groupe-actions">' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
-                    // (KARMA "on peut avoir un bouton tous les
-                    // points dans la zone de recherche") — ajoute tous les POI
-                    // dans la zone comme intermédiaires triés par proximité.
+                    // Tous les POI de la zone en intermédiaires, triés par proximité.
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.groupe.btnPoisZoneTitle")) + '">' + t("secours.groupe.btnPoisZone") + '</button>' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnCalcIti") + '</button>' +
                   '</div>' +
@@ -9458,28 +8517,15 @@
     return html;
   }
 
-  // Phase 2 / Feature D — Bloc outils d'analyse heatmap
-  // dans la section Contexte de la modale Mode Secours. Permet à l'user
-  // d'afficher la heatmap d'activité (timeline tracker + annotations) pour
-  // visualiser les zones probables où le disparu est passé → aide à
-  // dessiner les zones de recherche pertinentes pour les équipes.
-  //
-  // ⚠️ La heatmap utilise les sources locales (= ce qui est dans CE
-  // device). Cas d'usage 1 : le disparu utilisait MyKTAMap et a exporté
-  // sa session avec timeline → le PC secours importe la session, sa
-  // timeline est dispo. Cas d'usage 2 : le PC secours a déjà cartographié
-  // le réseau (tracker actif lors de ses sorties précédentes) → la heatmap
-  // montre les zones bien connues vs les zones blanches (sous-explorées).
+  // Heatmap d'activité (timeline tracker + annotations) dans la section Contexte : aide à dessiner les zones
+  // de recherche. ⚠️ Sources LOCALES seulement (cet appareil) : utile si le disparu a exporté sa session
+  // (importée au PC), ou si le PC a déjà parcouru le réseau (zones connues vs zones blanches).
   let _secoursHeatmapActive = false;
 
-  // ============================================================
-  // Phase 3 — BANDEAU "LANCER LE PLAN" + MODALE SÉLECTION RÔLE
-  // ============================================================
+  // ── Bandeau « Lancer le plan » + modale de rôle ────────────────────
 
-  // Affiche le bandeau d'état d'exécution. 2 modes :
-  //   • execution active → bandeau vert "🟢 PLAN ACTIF" + boutons Reprendre/Arrêter
-  //   • sinon            → bouton CTA "🚀 Lancer le plan de secours"
-  // Skip silencieux si pas d'équipes (= rien à lancer).
+  // Bandeau d'état : exécution active → « PLAN ACTIF » vert + Reprendre / Arrêter ; sinon bouton « Lancer le
+  // plan de secours ». Rien sans équipes.
   function _renderLancerBandeau(s) {
     if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) {
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-disabled">' +
@@ -9501,12 +8547,7 @@
                    ' ' + t("secours.bandeau.planActif", { role: _escHtml(roleLabel) }) +
                  '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
-                   // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit
-                   // continuer à tourner même si modal secour fermer") :
-                   // data-live-timer="duree" pour que _majLiveTimers refresh
-                   // ce texte toutes les 1s (cohérent avec le timer de la
-                   // vue Live). Avant : string statique qui ne s'updatait
-                   // qu'au re-render de la vue.
+                   // data-live-timer="duree" : _majLiveTimers le rafraîchit chaque seconde (pas seulement au re-rendu).
                    t("secours.bandeau.lanceDepuis") + ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
                    (exec.pausedAt ? ' · ' + t("secours.bandeau.enPause") : '') +
                  '</div>' +
@@ -9515,21 +8556,17 @@
                  '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
                    t("secours.bandeau.reprendreLive") +
                  '</button>' +
-                 // (Synergie A v1) — Bouton "🌍 Vue OSM" depuis bandeau
-                 // Mode Secours actif. Au clic : ouvre la modale Vue OSM existante
-                 // (osmView.js) avec le plan georef projeté sur OpenStreetMap.
-                 // Utile pour briefer un secours externe qui ne connaît pas le site.
-                 // Gating natif (opt-in, incognito, online) géré par
-                 // OsmView.isAvailable() — voir _ouvrirVueOsmDepuisSecours.
+                 // Vue OSM depuis le bandeau : le plan géoréférencé sur OpenStreetMap, pour briefer un secours
+                 // extérieur
+                 // (conditions d'accès : cf _ouvrirVueOsmDepuisSecours).
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitle")) + '">' +
                    t("secours.bandeau.vueOsm") +
                  '</button>' +
-                 // C — Briefing pompiers PDF dédié (vue surface + équipes GPS + POI critiques).
+                 // Briefing pompiers PDF (vue surface + équipes GPS + POI critiques).
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitle")) + '">' +
                    t("secours.bandeau.briefing") +
                  '</button>' +
-                 // Bouton Rapport accessible depuis vue Edit
-                 // tant que execution active. Scope choisi = rôle courant.
+                 // Rapport depuis l'Édition tant que l'exécution est active ; scope = rôle courant.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="' + _escAttr(t("secours.bandeau.rapportTitle")) + '">' +
                    t("secours.bandeau.rapport") +
                  '</button>' +
@@ -9539,8 +8576,7 @@
                '</div>' +
              '</div>';
     }
-    // Si execution existe mais inactive (= plan TERMINÉ),
-    // bandeau gris avec bouton "📤 Voir le rapport historique" + relance possible.
+    // Exécution terminée : bandeau gris, « Voir le rapport » + relance possible.
     if (s.execution && !s.execution.active && s.execution.endedAt) {
       const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
       const finStr = new Date(s.execution.endedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR");
@@ -9558,11 +8594,11 @@
                  '<button class="kta-btn kta-btn-primary" data-action="edit-rapport" data-scope="' + _escAttr(s.execution.role) + '">' +
                    t("secours.bandeau.voirRapportHisto") +
                  '</button>' +
-                 // (Synergie A v1) — Vue OSM accessible aussi pour debrief
+                 // Vue OSM aussi pour le debrief.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitleDebrief")) + '">' +
                    t("secours.bandeau.vueOsm") +
                  '</button>' +
-                 // C — Briefing pompiers accessible aussi post-mortem.
+                 // Briefing pompiers aussi après la mission.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
                    t("secours.bandeau.briefing") +
                  '</button>' +
@@ -9582,7 +8618,7 @@
            '</div>';
   }
 
-  // Formate une durée en ms en "Xh YYmin" ou "YYmin" ou "Ss".
+  // Durée en ms → « Xh YYmin », « YYmin » ou « Ss ».
   function _formatDureeMs(ms) {
     if (!ms || ms < 0) ms = 0;
     const totalSec = Math.floor(ms / 1000);
@@ -9594,18 +8630,18 @@
     return s + "s";
   }
 
-  // Modale « 🚀 Lancer » puis lancement (bouton du scénario, ou fichier reçu à l'accueil
-  // avec `pre = { role: "equipe" }`).
+  // Modale « Lancer » puis lancement (bouton du scénario, ou fichier reçu à l'accueil avec
+  // `pre = { role: "equipe" }`).
   function _ouvrirLancement(sid, pre) {
     _afficherModaleLancer(sid, function(opts) {
       const lancer = async function() {
         lancerExecution(sid, opts);
         _switchView("live");
         const lignes = [t("secours.toast.planLance")];
-        // Demande KARMA (30/09) : en mode équipe, se retrouver à l'entrée de son équipe.
+        // En mode équipe : se retrouver à l'entrée de son équipe.
         const place = (opts && opts.role === "equipe" && opts.currentEquipeId) ? _placerAEntree(sid, opts.currentEquipeId) : null;
         if (place) lignes.push(place);
-        const horsLigne = await _verifierHorsLigne();   // B10 : prévenir sans bloquer
+        const horsLigne = await _verifierHorsLigne();   // prévenir sans bloquer
         if (horsLigne) lignes.push(horsLigne);
         // Contrôle des engagés : sans effectif, la rentrée ne compte personne.
         let sansEff = null;
@@ -9615,9 +8651,8 @@
         }
         _toast(lignes.join("\n"), (place || horsLigne || sansEff) ? "warn" : "info");
       };
-      // 3e relecture (R3-7) : relancer efface l'intervention précédente ET ses
-      // photos (reçues des équipes comprises) — on le dit avant.
-      // Sans fenêtre de confirmation (ktaConfirm absent), on REFUSE : jamais d'effacement sans question.
+      // Relancer efface l'intervention précédente ET ses photos (reçues des équipes comprises) : on le dit
+      // avant. 🩸 Sans fenêtre de confirmation (ktaConfirm absent) : REFUS, jamais d'effacement sans question.
       if (get(sid) && get(sid).execution) {
         if (typeof window.ktaConfirm !== "function") {
           console.warn("[SecoursMode] relance refusée : confirmation indisponible");
@@ -9630,9 +8665,8 @@
     }, pre);
   }
 
-  // Modale de sélection rôle + équipe avant lancement.
-  // onConfirm({role, currentEquipeId}) appelé si user valide ; sinon noop au cancel.
-  // `pre` (facultatif) : { role } présélectionné — « Équipe » quand on arrive d'un fichier reçu.
+  // Modale rôle + équipe avant lancement : onConfirm({role, currentEquipeId}) si validé, rien sinon.
+  // `pre` (facultatif) : { role } présélectionné (« Équipe » quand on arrive d'un fichier reçu).
   function _afficherModaleLancer(scenarioId, onConfirm, pre) {
     const s = get(scenarioId);
     if (!s) return;
@@ -9709,7 +8743,7 @@
     overlay.querySelectorAll('[data-action="cancel-lancer"]').forEach(function(btn) {
       btn.addEventListener("click", _close);
     });
-    // Toggle activation du select équipe selon role
+    // Le select équipe suit le rôle.
     const selectEquipe = overlay.querySelector('#kta-lancer-equipe-select');
     overlay.querySelectorAll('input[name="kta-lancer-role"]').forEach(function(r) {
       r.addEventListener("change", function() {
@@ -9735,18 +8769,12 @@
     document.body.appendChild(overlay);
   }
 
-  // ============================================================
-  // Phase 3 — VUE LIVE (mode exécution terrain)
-  // ============================================================
-  //
-  // Dispatcher principal selon le rôle de l'execution.active. Si pas
-  // d'execution active (cas impossible normalement car le bandeau pousse
-  // l'user vers la vue edit), fallback explicite vers la vue edit avec
-  // toast d'erreur.
+  // ── Vue Live (exécution terrain) ────────────────────────────────────
+  // Aiguillage selon le rôle ; sans exécution active (le bandeau l'empêche normalement), retour à l'édition
+  // avec un toast.
   function _renderLiveView() {
     const s = get(_currentScenarioId);
     if (!s || !_estExecutionActive(s)) {
-      // Cas dégénéré : on est arrivé sur la vue live sans execution active
       setTimeout(function() { _switchView("edit"); }, 100);
       return '<div class="kta-secours-live-error">' +
                '<p>' + t("secours.live.aucunPlanActif") + '</p>' +
@@ -9754,33 +8782,23 @@
     }
     const role = s.execution.role;
     const ext = _htmlActionsExt({ scenarioId: s.id, vue: "live", role: role,
-      equipeId: role === "equipe" ? s.execution.currentEquipeId : null });   // 🧩 installation reliée
+      equipeId: role === "equipe" ? s.execution.currentEquipeId : null });   // installation reliée
     if (role === "equipe")     return ext + _renderLiveViewEquipe(s);
     if (role === "operateur")  return ext + _renderLiveViewOperateur(s);
     if (role === "secouriste") return ext + _renderLiveViewSecouriste(s);
     return '<div class="kta-secours-live-error"><p>' + t("secours.live.roleInconnu", { role: _escHtml(role) }) + '</p></div>';
   }
 
-  // Phase 3 — State module-level pour vue Live Équipe
-  // Stocke l'étape courante focalisée (par défaut : 1ère étape pending).
-  // Réinitialisé à chaque _switchView("live") via _liveEquipeInitFocus.
+  // Étape focalisée de la vue Live Équipe (défaut : 1re pending), réinitialisée par _liveEquipeInitFocus.
   let _liveEquipeFocusIdx = 0;
 
-  // 🐛 hotfix11 (KARMA "le bouton étape précédente ne marche pas") —
-  // Flag pour distinguer "boot de la vue Live" (= smart-skip vers prochaine
-  // pending autorisé) de "navigation manuelle user" (= respect strict du
-  // focus défini par le clic prev/next/stepper).
-  // Sans ce flag, après chaque clic "← Étape précédente", le re-render
-  // appelait _liveEquipeInitFocus qui voyait l'étape comme déjà complétée
-  // → smart-skip avant à la prochaine pending → retour impossible.
-  // Reset à true uniquement au lancerExecution (= 1ère entrée dans la vue
-  // Live pour une exécution donnée), pour préserver le comportement initial
-  // "reprendre à la bonne étape au reload".
+  // 🩸 Distingue l'arrivée dans la vue Live (saut vers la prochaine pending permis) de la navigation de
+  // l'utilisateur (focus respecté). Sans lui, chaque « Étape précédente » re-rend, voit l'étape complétée et
+  // ressaute en avant : retour impossible. Remis à true seulement par lancerExecution (reprendre à la bonne
+  // étape au rechargement).
   let _liveEquipeFreshSession = true;
 
-  // C2 — Badge "Phase X/N" pour les 3 headers Live.
-  // KARMA C2.1:a : MASQUÉ si scénario a 1 seule phase (préserve UX v1.28.5).
-  // Le badge apparaît dès la création de phases[1+] via le bouton "➕".
+  // Badge « Phase X/N » des 3 en-têtes Live, MASQUÉ pour un scénario à une seule phase.
   function _renderPhaseBadgeHTML(s) {
     if (!s || !Array.isArray(s.phases) || s.phases.length < 2) return "";
     const total = s.phases.length;
@@ -9816,7 +8834,6 @@
                '<button class="kta-btn kta-btn-primary" data-action="back-to-edit">' + t("secours.live.btnRetourEdition") + '</button>' +
              '</div>';
     }
-    // Init focus : 1ère étape pending sinon dernière
     _liveEquipeInitFocus(etapes);
     const idx = _liveEquipeFocusIdx;
     const etape = etapes[idx];
@@ -9842,19 +8859,18 @@
                 (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
               '</div>' +
             '</div>';
-    html += _renderLigneRetour(s, g);   // A4
-    // Retour KARMA (30/09) : l'opérateur de surface qui « prend la main » sur une équipe
-    // la RELAIE (saisie radio) — il n'est pas sous terre. Guidage et raccourcis de
-    // sécurité agissent sur l'appareil qui les affiche : hors de propos à son poste.
+    html += _renderLigneRetour(s, g);   
+    // L'opérateur de surface qui « prend la main » sur une équipe la RELAIE (saisie radio) : il n'est pas sous
+    // terre. Guidage et raccourcis de sécurité agissent sur l'appareil qui les affiche : masqués pour lui.
     const relaisSurface = !!s.execution._previousRole;
-    // B1 : suivre le parcours (guidage pas à pas) — ou y revenir s'il est déjà suivi.
+    // Suivre le parcours (guidage pas à pas), ou y revenir s'il est déjà suivi.
     if (!relaisSurface && Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       const suivi = _roadSuiviActive(s.id);
       html += (suivi && suivi.secours.equipeId === g.id)
         ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + t("secours.suivre.actif") + '</button>'
         : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + t("secours.suivre.btn") + '</button>';
     }
-    // B10 : raccourcis de sécurité, à un toucher depuis la vue de l'équipe.
+    // Raccourcis de sécurité, à un toucher depuis la vue de l'équipe.
     if (!relaisSurface) html += '<div class="kta-secours-raccourcis">' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="raccourci-sortie">' + t("secours.b10.sortie") + '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-xl">' + t("secours.b10.xl") + '</button>' +
@@ -9931,7 +8947,6 @@
                 '</button>' +
               '</div>' +
 
-              // Mini-grille des photos déjà attachées
               _renderLiveEtapePhotos(s, equipeId, idx) +
 
             '</div>';
@@ -9944,11 +8959,9 @@
                 (idx === etapes.length - 1 ? ' disabled' : '') + '>' + t("secours.live.etapeSuivante") + '</button>' +
             '</div>';
 
-    // ─── Actions bas : Pause + Terminer + Retour édition ───
-    // Bouton « 👤 Retour Opérateur » si on est arrivé ici via
-    // "Prendre la main" depuis la vue Opérateur (_previousRole stocké).
-    // Cohérent persistance : survit au reload car _previousRole est dans
-    // s.execution (localStorage).
+    // ─── Actions : Pause + Terminer + Retour édition ───
+    // « Retour Opérateur » si on est arrivé par « Prendre la main » (_previousRole, persisté dans s.execution :
+    // survit au rechargement).
     const previousRole = s.execution._previousRole;
     const retourPreviousBtn = previousRole
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-retour-previous-role" ' +
@@ -9961,21 +8974,15 @@
                 (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
               '</button>' +
               retourPreviousBtn +
-              // Bouton Rapport (mode Équipe : scope = "equipe")
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="' + _escAttr(t("secours.live.rapportEquipeTitle")) + '">' +
                 t("secours.bandeau.rapport") +
               '</button>' +
-              // Vue OSM + Briefing pompiers accessibles depuis vue Équipier.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
                 t("secours.bandeau.vueOsm") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
                 t("secours.bandeau.briefing") +
               '</button>' +
-              /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
-                 Sera remplacé hotfix18 par "💾 Exporter mes obs (.json)"
-                 + import via le bouton "📥 Importer" en haut vue Live
-                 (équivalent fichier classique sans QR). */
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 t("secours.live.voirEdition") +
               '</button>' +
@@ -9987,7 +8994,7 @@
     return html;
   }
 
-  // A3 : sous une étape « Victime trouvée », où elle est + préciser + évacuer.
+  // Sous une étape « Victime trouvée » : où elle est + préciser + évacuer.
   function _renderBlocVictimeEquipe(s, equipeId, idx, etape) {
     if (!etape || etape.statut !== "victime") return "";
     const liste = _victimesDe(s);
@@ -10003,7 +9010,7 @@
              '</div>' +
            '</div>';
   }
-  // A3 : bandeau en tête de la vue opérateur, une ligne par victime.
+  // Bandeau en tête de la vue opérateur, une ligne par victime.
   function _renderBandeauVictimesOp(s) {
     const liste = _victimesDe(s);
     if (!liste.length) return "";
@@ -10019,23 +9026,16 @@
     }).join('') + '</div>';
   }
 
-  // Init le focus sur la 1ère étape pending (sinon dernière étape).
-  // 🐛 hotfix11 : smart-skip vers prochaine pending UNIQUEMENT en fresh session
-  // (= 1ère entrée dans la vue Live pour cette exécution). Après navigation
-  // manuelle user (clic prev/next/stepper), le flag passe à false → respect
-  // strict du focus user, ce qui permet le retour en arrière fonctionnel.
+  // Focus sur la 1re étape pending (sinon la dernière). Saut automatique SEULEMENT à l'arrivée dans la vue
+  // (_liveEquipeFreshSession) ; ensuite le focus de l'utilisateur est respecté.
   function _liveEquipeInitFocus(etapes) {
     if (!Array.isArray(etapes) || etapes.length === 0) {
       _liveEquipeFocusIdx = 0;
       return;
     }
-    // Reset à 0 si focus actuel hors range
     if (_liveEquipeFocusIdx < 0 || _liveEquipeFocusIdx >= etapes.length) {
       _liveEquipeFocusIdx = 0;
     }
-    // Smart-skip vers prochaine pending UNIQUEMENT en fresh session
-    // (Sans ce garde-fou, après chaque clic "← Étape précédente",
-    // le re-render avancerait auto à la prochaine pending → retour impossible.)
     if (_liveEquipeFreshSession &&
         etapes[_liveEquipeFocusIdx] && etapes[_liveEquipeFocusIdx].completedAt) {
       const nextPending = etapes.findIndex(function(et, i) {
@@ -10043,21 +9043,17 @@
       });
       if (nextPending >= 0) _liveEquipeFocusIdx = nextPending;
     }
-    // L'init initial a fait son boulot — désormais la nav user prend le relai
     _liveEquipeFreshSession = false;
   }
 
-  // ─── Vue Live Mode Opérateur surface ──────────────────────────
-  // Affiche une grille de cards par équipe avec : couleur OTAN + statut
-  // courant + dernière obs snippet + dernière modif timestamp.
-  // Card victime trouvée = rouge clignotant. Card aide = orange.
-  // Card terminée = grise. Cliquable pour détails read-only.
+  // ─── Vue Live Opérateur de surface ───
+  // Une carte par équipe : couleur, statut courant, extrait de la dernière observation, dernière
+  // modification. Victime = rouge clignotant, aide = orange, terminée = grise.
   function _renderLiveViewOperateur(s) {
     const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
     const groupes = s.groupes || [];
 
     let html = '';
-    // Header
     html += '<div class="kta-secours-live-header kta-secours-live-header-op">' +
               '<div class="kta-secours-live-header-titre">' +
                 '<strong>' + t("secours.liveOp.titre") + '</strong>' +
@@ -10074,17 +9070,14 @@
               '</div>' +
             '</div>';
     html += _renderBandeauVictimesOp(s);
-    html += _renderBilanEngages(s);   // 👥 engagés · sous terre · manquants
+    html += _renderBilanEngages(s);   // engagés · sous terre · manquants
 
-    // Grille cards équipes
     if (groupes.length === 0) {
       html += '<div class="kta-secours-empty"><div class="kta-secours-empty-icon">🚨</div>' +
                 '<p>' + t("secours.liveOp.aucuneEquipe") + '</p></div>';
     } else {
       html += '<div class="kta-secours-live-op-grid">';
-      // A4 : les équipes en retard remontent en tête — et d'abord celles qui ont
-      // trouvé une victime (test terrain 30/09 : elle passait en dernier, derrière
-      // des retards).
+      // Ordre : victime trouvée d'abord, puis les retards.
       const avecVictime = {};
       _victimesDe(s).forEach(function(v) { avecVictime[v.g.id] = true; });
       groupes.slice().sort(function(a, b) {
@@ -10096,9 +9089,8 @@
       html += '</div>';
     }
 
-    html += _renderMainCourante(s);   // vague 7
+    html += _renderMainCourante(s);   
 
-    // Actions footer
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
                 (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
@@ -10106,36 +9098,29 @@
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
                 t("secours.liveOp.carteGlobale") +
               '</button>' +
-              // Rappel général (vague 5) : un état tenu par l'opérateur, pas un message envoyé.
+              // Rappel général : un état tenu par l'opérateur, pas un message envoyé.
               '<button class="kta-btn kta-btn-rappel kta-btn-sm" data-action="rappel-general" title="' + _escAttr(t("secours.rappel.generalTitle")) + '">' +
                 t("secours.rappel.btnGeneral") +
               '</button>' +
-              // Vue OSM + Briefing pompiers accessibles depuis vue Opérateur.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.liveOp.vueOsmTitle")) + '">' +
                 t("secours.bandeau.vueOsm") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
                 t("secours.bandeau.briefing") +
               '</button>' +
-              // Bouton Rapport (mode Opérateur : scope = "operateur" → toutes équipes)
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="' + _escAttr(t("secours.liveOp.rapportGlobalTitle")) + '">' +
                 t("secours.liveOp.rapportGlobal") +
               '</button>' +
-              // Bouton Import rapport équipier (consolidation cross-device)
+              // Import d'un rapport d'équipe (consolidation entre appareils).
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="' + _escAttr(t("secours.liveOp.importRapportTitle")) + '">' +
                 t("secours.liveOp.importRapport") +
               '</button>' +
-              // C2 — Ajout phase à chaud (KARMA C2.2:c). Permet à
-              // l'Op de planifier la phase suivante pendant que la phase courante
-              // tourne, sans passer par la vue Edit.
+              // Ajout de phase à chaud, sans passer par l'Édition.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="' + _escAttr(t("secours.liveOp.ajouterPhaseTitle")) + '">' +
                 t("secours.phases.btnAjouter") +
               '</button>' +
-              // C3 — "✓ Phase terminée" : ouvre la modale debrief.
-              // Visible UNIQUEMENT si multi-phase (KARMA C2.1:a — pas de
-              // pollution UI si scénario mono-phase) et UNIQUEMENT en vue Op
-              // (KARMA 7:a — prérogative PC). Liseré vert discret si la phase
-              // est détectée prête à clore (auto-détection KARMA C3.2:a).
+              // « Phase terminée » → debrief : multi-phases seulement, vue opérateur seulement (prérogative du PC).
+              // Liseré vert si la phase est détectée prête à clore.
               (Array.isArray(s.phases) && s.phases.length >= 2
                 ? '<button class="kta-btn kta-btn-phase-end kta-btn-sm' +
                   (_phaseEstPretAClore(s) ? ' kta-btn-phase-end-ready' : '') +
@@ -10153,9 +9138,8 @@
     return html;
   }
 
-  // Rendu d'une card équipe pour la vue Opérateur.
-  // Détermine : étape courante (max idx avec startedAt), statut le + sévère
-  // (parmi toutes les étapes), dernière obs non-vide, % progression.
+  // Carte d'une équipe (vue Opérateur) : étape courante (plus grand idx avec startedAt), statut le plus
+  // sévère, dernière observation non vide, progression.
   function _renderOperateurCard(s, g) {
     const couleur = PALETTE[g.couleurIdx % PALETTE.length];
     const etapes = _getEtapesEquipe(s, g.id);
@@ -10170,7 +9154,6 @@
              '</div>';
     }
 
-    // Détermine étape courante = max idx avec startedAt (sinon 0)
     let currentIdx = 0;
     for (let i = etapes.length - 1; i >= 0; i--) {
       if (etapes[i].startedAt || etapes[i].completedAt) { currentIdx = i; break; }
@@ -10179,14 +9162,12 @@
     const isTerminee = (nbDone === nbEtapes);
     const pctDone = Math.round((nbDone / nbEtapes) * 100);
 
-    // Statut le + sévère parmi toutes les étapes
     let highestStatut = TABLEAU_STATUTS[0];   // pending
     etapes.forEach(function(et) {
       const info = _getStatutInfo(et.statut);
       if (info.severity > highestStatut.severity) highestStatut = info;
     });
 
-    // Dernière obs non-vide
     let lastObs = "";
     for (let i = etapes.length - 1; i >= 0; i--) {
       if (etapes[i].observations && etapes[i].observations.trim()) {
@@ -10196,13 +9177,12 @@
     }
     const obsSnippet = lastObs.length > 80 ? lastObs.slice(0, 77) + "…" : lastObs;
 
-    // Classes selon état
     let cls = "kta-secours-op-card";
     if (isTerminee) cls += " kta-secours-op-card-terminee";
     if (highestStatut.id === "victime") cls += " kta-secours-op-card-victime";
     if (highestStatut.id === "aide")    cls += " kta-secours-op-card-aide";
 
-    // Last modif timestamp (= max completedAt OU startedAt)
+    // Dernière modification = max(completedAt, startedAt).
     let lastTs = null;
     etapes.forEach(function(et) {
       if (et.completedAt && (!lastTs || Date.parse(et.completedAt) > Date.parse(lastTs))) lastTs = et.completedAt;
@@ -10210,7 +9190,6 @@
     });
     const lastTsStr = lastTs ? new Date(lastTs).toLocaleTimeString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
-    // détection import : au moins une étape avec _importedFrom
     const hasImported = etapes.some(function(et) { return et && et._importedFrom; });
 
     let html = '<div class="' + cls + '" data-equipe-id="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
@@ -10246,15 +9225,13 @@
     return html;
   }
 
-  // ─── Vue Live Mode Secouriste libre ──────────────────────────
-  // Notes en vrac avec timestamps + statuts rapides. Pas d'équipe assignée,
-  // pas d'étapes structurées. Utile pour renforts/reconnaissance.
+  // ─── Vue Live Secouriste libre ───
+  // Notes horodatées + statuts rapides, sans équipe ni étapes (renforts, reconnaissance).
   function _renderLiveViewSecouriste(s) {
     const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
     const notes = (s.execution.etapes && s.execution.etapes._notes_libres) || [];
 
     let html = '';
-    // Header
     html += '<div class="kta-secours-live-header kta-secours-live-header-sec">' +
               '<div class="kta-secours-live-header-titre">' +
                 '<strong>' + t("secours.liveSec.titre") + '</strong>' +
@@ -10270,7 +9247,6 @@
               '</div>' +
             '</div>';
 
-    // Bloc création nouvelle note
     html += '<div class="kta-secours-live-etape">' +
               '<div class="kta-secours-live-etape-titre">' + t("secours.liveSec.ajouterNote") + '</div>' +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
@@ -10292,7 +9268,7 @@
               '</div>' +
             '</div>';
 
-    // Liste chronologique des notes (DESC = la + récente en haut)
+    // Notes, la plus récente en haut.
     html += '<div class="kta-secours-live-notes-list">';
     if (notes.length === 0) {
       html += '<div class="kta-secours-empty-small">' + t("secours.liveSec.aucuneNote") + '</div>';
@@ -10315,16 +9291,13 @@
     }
     html += '</div>';
 
-    // Footer
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
                 (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
               '</button>' +
-              // Bouton Rapport (mode Secouriste : scope = "secouriste" → notes libres)
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="' + _escAttr(t("secours.liveSec.rapportTitle")) + '">' +
                 t("secours.bandeau.rapport") +
               '</button>' +
-              // Vue OSM + Briefing pompiers accessibles depuis vue Secouriste.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
                 t("secours.bandeau.vueOsm") +
               '</button>' +
@@ -10341,8 +9314,7 @@
     return html;
   }
 
-  // Rendu mini-grille des photos d'une étape (miniatures cliquables ouvrant
-  // le viewer plein écran existant + bouton ✕ pour supprimer).
+  // Miniatures des photos d'une étape (ouvrent le viewer plein écran, ✕ pour supprimer).
   function _renderLiveEtapePhotos(s, equipeId, etapeIdx) {
     const etape = (_getEtapesEquipe(s, equipeId) || [])[etapeIdx];
     if (!etape || !Array.isArray(etape.photoIds) || etape.photoIds.length === 0) {
@@ -10360,23 +9332,12 @@
   }
 
   function _renderHeatmapToolBlock() {
-    // Skip si le module Heatmap n'est pas chargé (rétro-compat)
     if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.afficher !== "function") {
       return "";
     }
-    // (KARMA "afficher le heatmap n'affiche plus le réglage
-    // pourtant ça fonctionnait") :
-    // Avant la fix, le bouton "⚙️ Régler" était conditionnel sur la double
-    // condition `_secoursHeatmapActive && MyKTAMapHeatmap.isVisible()`.
-    // Problème : sync fragile entre state local + state global heatmap.
-    // L'user peut effacer la heatmap depuis sa modale dédiée → désync →
-    // bouton Régler disparaît alors qu'on en a besoin pour ré-activer.
-    //
-    // Fix : bouton "⚙️ Régler" TOUJOURS visible tant que le module Heatmap
-    // est chargé. Plus UX-friendly aussi : l'user peut Régler AVANT même
-    // d'avoir cliqué Afficher (pour configurer ses sources en amont).
-    //
-    // Le bouton "🔥 Afficher/Masquer" garde son toggle dynamique.
+    // « Régler » est TOUJOURS visible tant que le module Heatmap est chargé (on peut régler les sources avant
+    // d'afficher) : le conditionner à l'état local + global serait fragile — la heatmap effacée depuis sa
+    // propre modale ferait disparaître le bouton dont on a besoin. « Afficher/Masquer » reste dynamique.
     const isActive = _secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible &&
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
@@ -10394,11 +9355,9 @@
            '</div>';
   }
 
-  // Bloc UI « durée estimée » : vitesse de fouille + pause par étape, propres au
-  // SCÉNARIO (`reglagesDuree`, 4.1) — indépendants de la modale Itinéraire.
-  // Au changement → recalcul des durées estimées de toutes les équipes.
+  // Bloc « durée estimée » : vitesse de fouille + pause par étape, propres au SCÉNARIO (`reglagesDuree`),
+  // indépendants de l'itinéraire principal. Un changement recalcule les durées de toutes les équipes.
   function _renderPauseToolBlock() {
-    // 4.1 : réglages du SCÉNARIO (plus ceux de l'itinéraire principal).
     const r = _reglagesDuree(get(_currentScenarioId));
     return '<div class="kta-secours-tool-block">' +
              '<div class="kta-secours-tool-block-titre">' + t("secours.duree.titre") + '</div>' +
@@ -10428,14 +9387,10 @@
            '</div>';
   }
 
-  // 🩸 (audit Secours, 4.1 — décision KARMA : réglages Secours propres).
-  // Les durées reprenaient la vitesse de l'itinéraire (5 km/h) et la pause commune
-  // (15 min) ajoutée à CHAQUE étape : ~971 min affichées dont 795 de pauses pour un
-  // secteur réel, contre ~586 réalistes. Le scénario porte désormais ses propres
-  // réglages (voyagent dans le .mkmsec) : vitesse de fouille, pause par étape.
-  // Contre-audit IGC (30/09) : une seule vitesse pour tout le trajet. L'approche
-  // (hors de la zone de l'équipe) se marche ; seule la zone se fouille.
-  const DUREE_DEFAUT = { vitesseKmh: 1.5, vitesseApprocheKmh: 3, pauseMin: 0, margeRetardMin: 30 };   // marge : A4
+  // 🩸 Réglages de durée propres au Secours (décision produit) : la vitesse de l'itinéraire (5 km/h) et sa
+  // pause commune ajoutée à CHAQUE étape donnent des durées absurdes (pauses > trajet). Ils voyagent dans le
+  // .mkmsec. L'approche (hors de la zone de l'équipe) se marche, seule la zone se fouille : deux vitesses.
+  const DUREE_DEFAUT = { vitesseKmh: 1.5, vitesseApprocheKmh: 3, pauseMin: 0, margeRetardMin: 30 };   // marge : seuil du retard rouge
   function _reglagesDuree(s) {
     const r = (s && s.reglagesDuree) || {};
     return {
@@ -10445,9 +9400,9 @@
       margeRetardMin: (typeof r.margeRetardMin === "number" && r.margeRetardMin >= 0) ? r.margeRetardMin : DUREE_DEFAUT.margeRetardMin
     };
   }
-  // `geo` (facultatif) = { path, raccords, g } : sépare approche / fouille et compte les
-  // raccords à vol d'oiseau (départ et arrivée une fois, étape aller-retour), à la
-  // vitesse de fouille. Sans zone polygone, tout le trajet est compté en fouille.
+  // `geo` (facultatif) = { path, raccords, g } : sépare approche et fouille, compte les raccords à vol
+  // d'oiseau (départ et arrivée une fois, étape en aller-retour) à la vitesse de fouille. Sans zone
+  // polygone, tout le trajet compte en fouille.
   function _dureeEquipeMin(s, distM, nbWaypoints, geo) {
     if (typeof distM !== "number" || distM <= 0) return 0;
     const r = _reglagesDuree(s);
@@ -10464,8 +9419,8 @@
       }
       if (total > 0) { fouilleM = distM * dedans / total; approcheM = distM - fouilleM; }
     }
-    // C1 — balayage : le trajet HORS des galeries de la zone (approche depuis une entrée
-    // extérieure, retour, passages de liaison) est compté à la vitesse d'approche.
+    // Balayage : le trajet HORS des galeries de la zone (approche, retour, liaisons) compte à la vitesse
+    // d'approche.
     if (geo && typeof geo.approcheM === "number" && geo.approcheM >= 0) {
       approcheM = Math.min(distM, geo.approcheM); fouilleM = distM - approcheM;
     }
@@ -10481,10 +9436,8 @@
              approcheM: (_estBalayage(g) && typeof g.approcheM === "number") ? g.approcheM : undefined };
   }
 
-  // 🩸 4e relecture (R4-6, décision KARMA a) — un scénario d'avant 4.1 gardait ses
-  // durées à 5 km/h + 15 min/étape (cartes, PDF, KMZ) alors que le bloc ⏱️ affichait
-  // 1,5 km/h. Pas encore de réglages → réglages par défaut posés (= migration faite,
-  // idempotente) et durées recalculées. Retourne true si le scénario a changé.
+  // Scénario sans `reglagesDuree` : réglages par défaut posés (migration idempotente) et durées recalculées
+  // (sinon cartes, PDF et KMZ gardent les anciennes durées). Rend true si le scénario a changé.
   function _migrerDurees(s) {
     if (!s || typeof s !== "object" || s.reglagesDuree) return false;
     s.reglagesDuree = { vitesseKmh: DUREE_DEFAUT.vitesseKmh, pauseMin: DUREE_DEFAUT.pauseMin };
@@ -10496,8 +9449,7 @@
     return true;
   }
 
-  // Recalcule les durées estimées de toutes les équipes du scénario
-  // qui ont un itinéraire déjà calculé (distanceM connue) : cards, PDF, KMZ.
+  // Recalcule les durées des équipes dont l'itinéraire est calculé (distanceM connue) : cartes, PDF, KMZ.
   function _recalculerToutesDureesEquipes(scenarioId) {
     const s = get(scenarioId);
     if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) return 0;
@@ -10520,9 +9472,7 @@
     return updated;
   }
 
-  // Phase 2 / Feature C — Bloc lecture seule lastKnownPoint +
-  // zoneIncertitude si pré-rempli depuis Lost Mode. Boutons "Recentrer carte"
-  // + "✕ Retirer" si l'user veut nettoyer.
+  // Dernière position + zone d'incertitude venues du Mode Perdu (lecture seule) : Recentrer, Retirer.
   function _renderContextImportedBlock(s) {
     const c = s.context || {};
     if (!c.lastKnownPoint && !c.zoneIncertitude) return "";
@@ -10552,28 +9502,20 @@
     return html;
   }
 
-  // Section Parcours d'une équipe (entree + intermediaires + sortie)
   function _renderParcoursSection(g) {
     let html = '<div class="kta-secours-parcours">';
     html += '<div class="kta-secours-parcours-titre">' + t("secours.parcours.titre") + '</div>';
     html += '<div class="kta-secours-parcours-list">';
-    // Entrée
-    // détecte la boucle entrée=sortie pour passer un flag aux rows entrée
-    // et sortie (border-left orange au lieu de vert/rouge, cohérent avec
-    // l'overlay carte qui rend un marker orange "↻ Boucle").
+    // Boucle entrée = sortie : bordure orange sur ces deux lignes (comme le marqueur « Boucle » de la carte).
     const isBoucle = _samePoint(g.entree, g.sortie);
     html += _renderWaypointRow(g, "entree", g.entree, null, "📍", t("secours.parcours.entree"), isBoucle);
-    // Intermédiaires
     (g.intermediaires || []).forEach(function(w, i) {
       html += _renderWaypointRow(g, "intermediaire", w, i, "▾", t("secours.parcours.etape", { n: (i + 1) }), false);
     });
-    // Bouton "Ajouter étape intermédiaire"
     html += '<button class="kta-btn kta-btn-ghost kta-btn-sm kta-secours-parcours-add"' +
             ' data-action="add-intermediaire" data-gid="' + _escAttr(g.id) + '">' +
             t("secours.parcours.btnAjouterEtape") + '</button>';
-    // Sortie
     html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", t("secours.parcours.sortie"), isBoucle);
-    // Hint si entrée === sortie (boucle)
     if (g.entree && g.sortie && _samePoint(g.entree, g.sortie)) {
       html += '<div class="kta-secours-parcours-hint">' + t("secours.parcours.boucleHint") + '</div>';
     }
@@ -10596,8 +9538,7 @@
     } else {
       label = '<em class="kta-secours-parcours-todo">' + t("secours.parcours.nonDefini") + '</em>';
     }
-    // UX P2 — data-loop="1" sur entrée+sortie si boucle
-    // (border-left orange via CSS, cohérent avec l'overlay carte)
+    // data-loop="1" sur entrée + sortie en boucle (bordure orange en CSS).
     const loopAttr = (isBoucle && (role === "entree" || role === "sortie"))
                      ? ' data-loop="1"' : '';
     let html = '<div class="kta-secours-parcours-row" data-role="' + role + '"' + idxAttr + loopAttr + '>' +
@@ -10619,10 +9560,8 @@
     return html;
   }
 
-  // Cartes PDF (test terrain 30/09) : entrée et sortie posées à 1 m l'une de l'autre
-  // (même accès, deux clics) n'étaient pas « le même point » → la sortie se dessinait
-  // PAR-DESSUS l'entrée, qui disparaissait de toutes les cartes. Même accès = même
-  // point, ou même niveau à moins de 10 m.
+  // Même accès = même point, ou même niveau à moins de 10 m. 🩸 Entrée et sortie posées à 1 m (deux clics)
+  // ne seraient sinon pas « le même point » : la sortie se dessinerait PAR-DESSUS l'entrée sur les cartes.
   function _memeAcces(a, b) {
     if (_samePoint(a, b)) return true;
     if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") return false;
@@ -10632,16 +9571,15 @@
   }
   function _samePoint(a, b) {
     if (!a || !b) return false;
-    // l'uid d'abord (deux POI homonymes ne sont pas le même point),
-    // puis le pointId (nom), puis les coords avec tolérance 0.5 px.
+    // L'uid d'abord (deux POI homonymes ne sont pas le même point), puis le pointId (nom), puis les
+    // coordonnées à 0,5 px près.
     if (a.pointUid && b.pointUid) return a.pointUid === b.pointUid;
     if (a.pointId && b.pointId) return a.pointId === b.pointId;
     return Math.abs((a.x || 0) - (b.x || 0)) < 0.5
         && Math.abs((a.y || 0) - (b.y || 0)) < 0.5;
   }
 
-  // Helpers géométrie pour "POI dans la zone"
-  // Ray-casting (cohérent avec pathfinder.js > _pointInPolygon)
+  // Géométrie de « POI de la zone ». Ray-casting (comme pathfinder.js > _pointInPolygon).
   function _pointInPolygon(p, poly) {
     if (!Array.isArray(poly) || poly.length < 3) return false;
     let inside = false;
@@ -10656,7 +9594,7 @@
     return inside;
   }
 
-  // Distance d'un point à un segment AB (en pixels)
+  // Distance d'un point à un segment AB (pixels).
   function _distPointSegment(p, a, b) {
     const dx = b.x - a.x, dy = b.y - a.y;
     const lenSq = dx * dx + dy * dy;
@@ -10672,7 +9610,6 @@
     return Math.sqrt(ddx * ddx + ddy * ddy);
   }
 
-  // Distance min d'un point à une polyline (toutes ses sections)
   function _distPointPolyline(p, points) {
     if (!Array.isArray(points) || points.length === 0) return Infinity;
     if (points.length === 1) {
@@ -10687,33 +9624,27 @@
     return minD;
   }
 
-  // ============================================================
-  // HANDLERS PAR VUE
-  // ============================================================
+  // ── Handlers par vue ────────────────────────────────────────────────
   function _bindViewHandlers(view) {
     const corps = document.getElementById("kta-secours-corps");
     if (!corps) return;
 
     if (view === "list") {
-      // Bouton "Nouveau scénario"
       corps.querySelectorAll('[data-action="new-scenario"]').forEach(function(btn) {
         btn.addEventListener("click", function() { _switchView("create"); });
       });
-      // Ouvrir un scénario
       corps.querySelectorAll('[data-action="open-scenario"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _currentScenarioId = btn.getAttribute("data-id");
           _switchView("edit");
         });
       });
-      // Dupliquer
       corps.querySelectorAll('[data-action="dup-scenario"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const newS = duplicateScenario(btn.getAttribute("data-id"));
           if (newS) _switchView("list");
         });
       });
-      // Supprimer
       corps.querySelectorAll('[data-action="del-scenario"]').forEach(function(btn) {
         btn.addEventListener("click", async function() {
           const id = btn.getAttribute("data-id");
@@ -10725,13 +9656,11 @@
           }
         });
       });
-      // Import .mkmsec.json (file picker + appel importerScenario)
       corps.querySelectorAll('[data-action="import-mkmsec"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _ouvrirImportMkmsecPicker();
         });
       });
-      /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler scan-qr-briefing retiré. */
     }
 
     if (view === "create") {
@@ -10759,7 +9688,6 @@
     if (view === "edit") {
       const s = get(_currentScenarioId);
       if (!s) { _switchView("list"); return; }
-      // Back to list
       corps.querySelectorAll('[data-action="back-to-list"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           clearOverlay();
@@ -10767,7 +9695,7 @@
           _switchView("list");
         });
       });
-      // Phase 3 — Handlers du bandeau "Lancer le plan"
+      // Bandeau « Lancer le plan ».
       corps.querySelectorAll('[data-action="ouvrir-lancer-modale"]').forEach(function(btn) {
         btn.addEventListener("click", function() { _ouvrirLancement(s.id); });
       });
@@ -10782,45 +9710,32 @@
           _switchView("edit");
         });
       });
-      // Bouton "📤 Rapport" depuis le bandeau vue Edit
-      // (accessible si execution active OU terminée). Le scope est lu depuis
-      // data-scope (= rôle de l'execution = "operateur" | "equipe" | "secouriste").
+      // Rapport depuis le bandeau de l'Édition (exécution active ou terminée) ; scope lu dans data-scope.
       corps.querySelectorAll('[data-action="edit-rapport"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const scope = btn.getAttribute("data-scope") || (s.execution && s.execution.role) || "operateur";
           _afficherModaleRapport(s.id, scope);
         });
       });
-      // (Synergie A v1) — Bouton "🌍 Vue OSM" : ouvre la modale
-      // Vue OSM (osmView.js) avec le plan georef projeté sur OpenStreetMap.
-      // Utile pour briefer des secours externes, debriefer post-mission, ou
-      // situer le site géographiquement.
       corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
         btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
       });
-      // C — Bouton "🚒 Briefing pompiers" : exporte un PDF dédié
-      // (vue surface OSM + équipes GPS + POI critiques). Utile pour transmettre
-      // aux secours externes avant ou pendant intervention.
-      // Ouvre une modale d'options (choix des couches OSM à
-      // inclure dans la capture) AVANT la génération PDF.
+      // Briefing pompiers : modale d'options (couches OSM) AVANT la génération.
       corps.querySelectorAll('[data-action="briefing-pompiers"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _afficherModaleBriefingOptions(s.id);
         });
       });
-      // Toggle overlay carte — masque la modale pour voir le rendu Leaflet
-      // (sinon la modale plein écran z-index 99999 cache toute la carte).
-      // Floater "← Retour modale" pour réouvrir sans repasser par la sidebar.
+      // Bascule de l'overlay carte : masque la modale (plein écran, elle cache la carte) et affiche un bouton
+      // flottant « Retour » pour la rouvrir.
       corps.querySelectorAll('[data-action="toggle-overlay"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (_overlayLayer) {
-            // Toggle OFF : retire overlay + restore modale + retire floater
             clearOverlay();
             if (_modal) _modal.style.display = "";
             _removeOverlayFloater();
             btn.textContent = t("secours.edit.voirCarte");
           } else {
-            // Toggle ON : masque modale + render overlay + affiche floater retour
             renderOverlay(_currentScenarioId);
             if (_modal) _modal.style.display = "none";
             _showOverlayFloater();
@@ -10828,14 +9743,14 @@
           }
         });
       });
-      // Rename scénario (input header) — save au blur
+      // Nom du scénario : enregistré au blur.
       const nomInput = document.getElementById("kta-sec-edit-nom");
       if (nomInput) {
         nomInput.addEventListener("blur", function() {
           updateScenario(s.id, { nom: nomInput.value });
         });
       }
-      // Context fields — save au change
+      // Champs de contexte : enregistrés au change.
       const incidentInput = document.getElementById("kta-sec-edit-incident");
       if (incidentInput) {
         incidentInput.addEventListener("change", function() {
@@ -10850,7 +9765,6 @@
           updateScenario(s.id, { context: { notes: notesInput.value } });
         });
       }
-      // Feature C — Recentrer carte sur lastKnownPoint
       corps.querySelectorAll('[data-action="recentrer-lostpos"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const lp = s.context && s.context.lastKnownPoint;
@@ -10863,7 +9777,6 @@
           window.map.setView(_planToLatLng(lp), Math.max(0, window.map.getZoom()), { animate: true });
         });
       });
-      // Feature C — Retirer les données Lost Mode importées
       corps.querySelectorAll('[data-action="clear-lostpos"]').forEach(function(btn) {
         btn.addEventListener("click", async function() {
           if (!(await window.ktaConfirm(t("secours.confirm.retirerLostpos")))) return;
@@ -10873,7 +9786,6 @@
           _switchView("edit");
         });
       });
-      // Feature D — Toggle heatmap d'activité Mode Secours
       corps.querySelectorAll('[data-action="toggle-heatmap-secours"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (!window.MyKTAMapHeatmap) { _toast(t("secours.toast.heatmapIndisponible"), "error"); return; }
@@ -10882,14 +9794,13 @@
             _secoursHeatmapActive = false;
             _toast(t("secours.toast.heatmapMasquee"), "info");
           } else {
-            // Active overlay si pas déjà actif (sinon la modale cache tout)
+            // Overlay activé s'il ne l'est pas (sinon la modale cache tout).
             if (!_overlayLayer) {
               renderOverlay(_currentScenarioId);
               if (_modal) _modal.style.display = "none";
               _showOverlayFloater();
             }
-            // Affiche la heatmap avec toutes les sources principales activées
-            // (tracker timeline = principal indice "où le disparu est passé")
+            // Toutes les sources principales (la timeline du tracker = principal indice du passage du disparu).
             try {
               window.MyKTAMapHeatmap.afficher({
                 srcTracker:    true,
@@ -10911,12 +9822,8 @@
           _switchView("edit");   // re-render pour update label bouton
         });
       });
-      // Feature D — Ouvre la modale Heatmap classique pour réglages avancés
-      // (KARMA "si je fais regler, il ferme le modal secours
-      // et me regle le heatmap en mode normal") : MutationObserver qui détecte
-      // la disparition de la modale Heatmap du DOM (close via ✕, Escape,
-      // backdrop, ou ❌ Effacer) → restore display de la modale Mode Secours.
-      // Sans ça, la modale Mode Secours restait cachée pour de bon.
+      // Réglages avancés dans la modale Heatmap classique : un MutationObserver détecte sa disparition (✕,
+      // Échap, fond, Effacer) et réaffiche la modale Mode Secours — sinon elle resterait cachée.
       corps.querySelectorAll('[data-action="config-heatmap-secours"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.ouvrirModale !== "function") {
@@ -10925,19 +9832,17 @@
           }
           if (_modal) _modal.style.display = "none";
           window.MyKTAMapHeatmap.ouvrirModale();
-          // Observer la disparition de #kta-heatmap-modal pour restore Mode Secours
-          // (cf js/heatmap.js — id de la modale = "kta-heatmap-modal")
+          // Id de la modale : "kta-heatmap-modal" (js/heatmap.js).
           const hmModal = document.getElementById("kta-heatmap-modal");
           if (!hmModal) {
-            // ouvrirModale n'a pas pu append → restaure direct
+            // ouvrirModale n'a pas pu l'ajouter : on réaffiche tout de suite.
             if (_modal) _modal.style.display = "";
             return;
           }
           const obs = new MutationObserver(function() {
             if (!document.body.contains(hmModal)) {
               if (_modal) _modal.style.display = "";
-              // Re-render edit pour update du label bouton "🔥 Masquer/Afficher"
-              // (l'état _secoursHeatmapActive peut avoir changé)
+              // Re-rendu (libellé Afficher/Masquer : _secoursHeatmapActive a pu changer).
               if (_currentScenarioId) _switchView("edit");
               obs.disconnect();
             }
@@ -10945,12 +9850,7 @@
           obs.observe(hmModal.parentNode || document.body, { childList: true });
         });
       });
-      // Handlers du bloc Pause configurable.
-      // Au change → persiste localStorage (via setters globaux exposés par
-      // interface.js) + recalcule durées de toutes les équipes du scénario
-      // courant (via _recalculerToutesDureesEquipes) + re-render edit pour
-      // update visuel des chips durée dans les cards équipes + toast feedback.
-      // 4.1 : réglages de durée du scénario → recalcul des durées de toutes les équipes.
+      // Réglages de durée du scénario : un changement recalcule les durées de toutes les équipes.
       const vitesseInput = document.getElementById("kta-sec-vitesse");
       const vitesseAppInput = document.getElementById("kta-sec-vitesse-app");
       const pauseMinInput = document.getElementById("kta-sec-pause-min");
@@ -10970,25 +9870,19 @@
       if (vitesseInput) vitesseInput.addEventListener("change", majDurees);
       if (pauseMinInput) pauseMinInput.addEventListener("change", majDurees);
       if (margeInput) margeInput.addEventListener("change", majDurees);
-      // (KARMA "crée une équipe et lui assigné une zone sur un
-      // niveau") : "+ Ajouter une équipe" ouvre désormais un mini-prompt qui
-      // demande nom + niveau (dropdown des availableLevels). Si plan
-      // mono-niveau (M-LVL OFF), comportement v1.22.x strict préservé (juste
-      // addGroupe avec nom auto).
+      // « + Ajouter une équipe » : en multi-niveau, mini-prompt nom + niveau ; sinon ajout direct, nom auto.
       corps.querySelectorAll('[data-action="add-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const isMlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
           if (!isMlvl) {
-            // Plan mono-niveau : ajout direct avec nom auto (cohérent v1.22.x)
             addGroupe(s.id, null);
             _switchView("edit");
             return;
           }
-          // Plan multi-niveau : ouvre la mini-prompt
           _ouvrirCreerEquipeMlvlPrompt(s.id);
         });
       });
-      // Phase 2 / Feature E — Auto-création 1 équipe par niveau M-LVL
+      // Création automatique d'une équipe par niveau.
       corps.querySelectorAll('[data-action="auto-equipes-mlvl"]').forEach(function(btn) {
         btn.addEventListener("click", async function() {
           if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) {
@@ -11000,25 +9894,18 @@
             _toast(t("secours.toast.auMoins2Niveaux"), "warn");
             return;
           }
-          // Confirme si des équipes existent déjà (anti-doublon massif)
+          // Confirmation si des équipes existent déjà.
           if (s.groupes.length > 0) {
             if (!(await window.ktaConfirm(t("secours.confirm.autoEquipes",
               { existant: s.groupes.length, nouveau: levels.length })))) return;
           }
-          // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
-          // passe le level explicitement à addGroupe → g.level
-          // est correctement set (pas écrasé par APP_CONFIG.activeLevel défaut).
+          // Une équipe par niveau (« Niveau X », RDC pour 0), level passé explicitement à addGroupe (sinon
+          // APP_CONFIG.activeLevel l'écraserait).
           levels.forEach(function(lvl) {
             const nom = t("secours.level.niveau", { label: _lblNiveau(lvl) });
             const g = addGroupe(s.id, nom, lvl);
-            // Pré-set le level de l'entrée à ce niveau (sera défini via clic carte
-            // ensuite, mais le level par défaut est posé pour cohérence Pathfinder).
-            // L'user peut overrider si besoin. On ne crée PAS de waypoint placeholder
-            // pour éviter de polluer le parcours avec des coords (0,0).
-            // Le level est juste un indice contextuel — l'user clique 📍 Entrée
-            // pour définir le vrai point qui aura son level réel via APP_CONFIG.activeLevel
-            // au moment du clic.
-            // Note dans le nom déjà suffisamment explicite.
+            // Pas de point fictif d'entrée (des coordonnées (0,0) pollueraient le parcours) : le niveau n'est qu'un
+            // indice, le vrai point et son niveau se posent au clic.
           });
           _toast(t("secours.toast.equipesCreees", { n: levels.length }), "info");
           _switchView("edit");
@@ -11027,8 +9914,7 @@
       corps.querySelectorAll('[data-action="decouper-secteurs"]').forEach(function(btn) {
         btn.addEventListener("click", function() { _decouperEnSecteurs(s.id); });
       });
-      // C2 — Multi-phases : handlers add-phase / edit-phase / delete-phase.
-      // Présents en vue Edit (section "📋 Phases") ET en vue Live Op (footer ➕).
+      // Phases : add / edit / delete, en Édition ET dans le pied de la vue Live opérateur.
       corps.querySelectorAll('[data-action="add-phase"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _afficherModalePhase(s.id, null);
@@ -11060,7 +9946,6 @@
           }
         });
       });
-      // Replier / déplier une équipe, ou toutes
       corps.querySelectorAll('[data-action="toggle-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const gid = btn.getAttribute("data-gid");
@@ -11077,14 +9962,12 @@
           btn.textContent = oui ? t("secours.edit.toutDeplier") : t("secours.edit.toutReplier");
         });
       });
-      // Rename groupe
       corps.querySelectorAll('[data-action="rename-groupe"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
           updateGroupe(s.id, inp.getAttribute("data-gid"), { nom: inp.value });
         });
       });
-      // Edit membres
-      // B3 : couverture, calculée à l'ouverture.
+      // Couverture, calculée à l'ouverture.
       const couv = document.getElementById("kta-secours-couverture");
       if (couv) couv.addEventListener("toggle", function() {
         if (!couv.open) return;
@@ -11094,7 +9977,6 @@
         const btnS = corpsCouv.querySelector('[data-action="couv-surligner"]');
         if (btnS) btnS.addEventListener("click", function() { _basculerSurlignageCouverture(get(s.id)); if (_modal) _switchView("edit"); });
       });
-      // B9 : chef et effectif.
       corps.querySelectorAll('[data-action="edit-chef"]').forEach(function(sel) {
         sel.addEventListener("change", function() { updateGroupe(s.id, sel.getAttribute("data-gid"), { chef: sel.value }); });
       });
@@ -11121,8 +10003,7 @@
           _majAideEffectif(s.id, inp.getAttribute("data-gid"));
         });
       });
-      // E — Edit GPS surface équipe. Parse "lat, lng" → {lat, lng}.
-      //    Vide ou format invalide → null (équipe sans GPS surface assigné).
+      // GPS de surface : « lat, lng » → {lat, lng} ; vide ou invalide → null.
       corps.querySelectorAll('[data-action="edit-surface-gps"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
           const raw = (inp.value || "").trim();
@@ -11145,14 +10026,12 @@
           updateGroupe(s.id, inp.getAttribute("data-gid"), { surfaceGps: gps });
         });
       });
-      // Change couleur
       corps.querySelectorAll('[data-action="change-couleur"]').forEach(function(sel) {
         sel.addEventListener("change", function() {
           updateGroupe(s.id, sel.getAttribute("data-gid"), { couleurIdx: parseInt(sel.value, 10) });
           _switchView("edit");      // re-render pour update du swatch
         });
       });
-      // Change level M-LVL de référence de l'équipe
       corps.querySelectorAll('[data-action="change-level"]').forEach(function(sel) {
         sel.addEventListener("change", function() {
           const v = sel.value;
@@ -11161,8 +10040,6 @@
           _switchView("edit");      // re-render pour update du chip
         });
       });
-      /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler share-qr retiré. */
-      // Delete groupe
       corps.querySelectorAll('[data-action="del-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", async function() {
           const gid = btn.getAttribute("data-gid");
@@ -11174,8 +10051,7 @@
           }
         });
       });
-      // pick waypoint (entrée / intermédiaire / sortie)
-      // via mini-modale Recherche autocomplete + clic carte
+      // Choix d'un point (entrée / intermédiaire / sortie) : recherche + clic carte.
       corps.querySelectorAll('[data-action="pick-waypoint"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const gid = btn.getAttribute("data-gid");
@@ -11185,18 +10061,16 @@
           _ouvrirChoixWaypoint(gid, role, idx);
         });
       });
-      // Add intermédiaire (à la fin de la liste)
+      // Intermédiaire ajouté en fin de liste, picker ouvert aussitôt.
       corps.querySelectorAll('[data-action="add-intermediaire"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const gid = btn.getAttribute("data-gid");
           const grp = s.groupes.find(function(x) { return x.id === gid; });
           if (!grp) return;
           const newIdx = (grp.intermediaires || []).length;
-          // Ouvre direct le picker pour le nouveau slot
           _ouvrirChoixWaypoint(gid, "intermediaire", newIdx);
         });
       });
-      // Clear waypoint
       corps.querySelectorAll('[data-action="clear-waypoint"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const gid = btn.getAttribute("data-gid");
@@ -11206,19 +10080,18 @@
           _clearWaypoint(gid, role, idx);
         });
       });
-      // Définir zone (choix polygon | roads via mini-prompt)
+      // Définir la zone (polygone ou tracés, au choix).
       corps.querySelectorAll('[data-action="def-zone"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _ouvrirChoixZoneMode(btn.getAttribute("data-gid"));
         });
       });
-      // POI de la zone (ajoute tous les POI comme étapes)
       corps.querySelectorAll('[data-action="add-pois-zone"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _ajouterPoisDansZone(s.id, btn.getAttribute("data-gid"));
         });
       });
-      // C1 — mode de parcours : on recalcule tout de suite si un parcours existait.
+      // Mode de parcours : recalcul immédiat si un parcours existait.
       corps.querySelectorAll('[data-action="parcours-mode"]').forEach(function(sel) {
         sel.addEventListener("change", function() {
           const gid = sel.getAttribute("data-gid");
@@ -11227,12 +10100,11 @@
           if (g && g.entree && g.sortie && Array.isArray(g.itineraireSuggere)) _recalculerItineraireGroupe(s.id, gid);
         });
       });
-      // Calc itinéraire (commit 4)
       corps.querySelectorAll('[data-action="calc-iti"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           const gid = btn.getAttribute("data-gid");
-          // overlay « calcul en cours » (Pathfinder.computeRoute
-          // est SYNC bloquant → sans yield-to-paint l'écran fige).
+          // Overlay « calcul en cours » : Pathfinder.computeRoute est SYNCHRONE et bloquant, sans laisser peindre
+          // l'écran fige.
           const _msg = (window.I18n && window.I18n.t) ? window.I18n.t("secours.compute.loading") : "Calcul de l'itinéraire…";
           if (window.ComputeLoader && window.ComputeLoader.wrap) {
             window.ComputeLoader.wrap(function() { return _recalculerItineraireGroupe(s.id, gid); }, _msg);
@@ -11241,7 +10113,7 @@
           }
         });
       });
-      // Export PDF — async depuis fix5 (génère canvas plan + crop par équipe)
+      // Export PDF (async : rendu de la carte de chaque équipe).
       corps.querySelectorAll('[data-action="export-pdf"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           Promise.resolve(exporterPDF(s.id)).catch(function(e) {
@@ -11250,44 +10122,40 @@
           });
         });
       });
-      // Export KMZ
       corps.querySelectorAll('[data-action="export-kmz"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          // exporterKMZ est async (fetch plan image) — catch les rejets
+          // exporterKMZ est async (image du plan) : on attrape les rejets.
           Promise.resolve(exporterKMZ(s.id)).catch(function(e) {
             console.warn("[SecoursMode] exporterKMZ rejected :", e);
             _toast(t("secours.toast.erreurKmz", { message: (e.message || e) }), "error");
           });
         });
       });
-      // Export scénario standalone (.mkmsec.json) pour partage
       corps.querySelectorAll('[data-action="export-mkmsec"]').forEach(function(btn) {
         btn.addEventListener("click", function() { exporterScenario(s.id); });
       });
     }
 
-    // Phase 3 — Handlers de la vue Live (3 sous-modes)
+    // Vue Live (3 sous-modes).
     if (view === "live") {
       const s = get(_currentScenarioId);
       if (!s || !_estExecutionActive(s)) {
-        // Fallback : pas d'execution → retour edit (déjà géré dans _renderLiveView)
+        // Pas d'exécution : retour à l'édition (déjà géré par _renderLiveView).
         return;
       }
       const role = s.execution.role;
 
-      // Handlers communs aux 3 sous-vues
       _bindLiveCommonHandlers(corps, s);
 
-      // Handlers spécifiques au sous-rôle
       if (role === "equipe")     _bindLiveEquipeHandlers(corps, s);
       if (role === "operateur")  _bindLiveOperateurHandlers(corps, s);
       if (role === "secouriste") _bindLiveSecouristeHandlers(corps, s);
     }
   }
 
-  // Handlers communs aux 3 sous-vues Live
+  // Handlers communs aux 3 sous-vues Live.
   function _bindLiveCommonHandlers(corps, s) {
-    // B10 : raccourcis — la fenêtre se ferme (la zone et le tracé restent sur la carte).
+    // Raccourcis : la fenêtre se ferme (zone et tracé restent sur la carte).
     const raccourci = function(action, fn) {
       corps.querySelectorAll('[data-action="' + action + '"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -11312,12 +10180,11 @@
         _switchView("live");
       });
     });
-    // B1 : suivre le parcours de l'équipe / revenir à la carte.
+    // Suivre le parcours de l'équipe / revenir à la carte.
     corps.querySelectorAll('[data-action="suivre-parcours"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
-        // Contre-audit GRIMP (30/09) : « Suivre » ne lançait pas le suivi → bandeau de
-        // guidage vide. On le démarre ICI, dans le geste (iOS n'accorde la permission
-        // des capteurs que sur un geste), par le chemin commun de la tuile ▶️.
+        // « Suivre » démarre aussi le suivi (sinon bandeau de guidage vide), ICI dans le geste : iOS n'accorde la
+        // permission des capteurs que sur un geste. Même chemin que la tuile de lancement du tracker.
         const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif();
         if (!actif && typeof window.ktaDemarrerSuivi === "function") {
           try { window.ktaDemarrerSuivi(); } catch(e) { console.warn("[SecoursMode] démarrage du suivi :", e); }
@@ -11343,14 +10210,14 @@
         });
       });
     });
-    // A4 : départ / rentrée d'une équipe (vue équipier ou carte opérateur).
+    // Départ / rentrée d'une équipe (vue équipier ou carte opérateur).
     corps.querySelectorAll('[data-action="retour-depart"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         marquerSuivi(s.id, btn.getAttribute("data-gid"), "departAt");
         _switchView("live");
       });
     });
-    // B9 : la rentrée (et sa correction) passe par le compte des remontés.
+    // La rentrée (et sa correction) passe par le compte des remontés.
     corps.querySelectorAll('[data-action="retour-rentree"], [data-action="retour-remontes"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _demanderRemontes(s.id, btn.getAttribute("data-gid")).then(function(fait) {
@@ -11358,7 +10225,7 @@
         });
       });
     });
-    // A3 : voir / évacuer / préciser la victime (index dans _victimesDe au rendu).
+    // Voir / évacuer / préciser la victime (index dans _victimesDe au rendu).
     const victime = function(btn) { return _victimesDe(get(s.id))[parseInt(btn.getAttribute("data-v"), 10)] || null; };
     corps.querySelectorAll('[data-action="victime-voir"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -11380,10 +10247,9 @@
         // dernier recours), puis la Sortie d'urgence depuis la victime.
         _demanderOptionsBrancard(function(contraintes) {
           fermer();   // la zone et le tracé restent (intervention en cours)
-          // Contre-audit IGC (30/09) : l'évacuation ne visait que les accès tagués OUVERTS
-          // du plan (un seul sur le plan du test) — jusqu'à 6,5 fois la distance d'un retour
-          // par l'entrée de l'équipe. Les accès du scénario (où les moyens de surface sont
-          // déjà) entrent en lice ; un accès tagué fermé le dit (« à ouvrir »).
+          // Les accès du scénario (où sont déjà les moyens de surface) sont candidats à l'évacuation, pas seulement
+          // les accès tagués OUVERTS du plan (parfois un seul, bien plus loin qu'un retour par l'entrée de
+          // l'équipe) ; un accès tagué fermé le dit (« à ouvrir »).
           window.SortieUrgence.declencherDepuis(v.pos.x, v.pos.y, v.pos.level,
             { sortiesSupp: _sortiesScenario(s), origine: "victime", contraintes: contraintes });
         });
@@ -11401,18 +10267,16 @@
         });
       });
     });
-    // Retour à la vue Edit (préserve l'execution active)
+    // Retour à l'édition (l'exécution reste active).
     corps.querySelectorAll('[data-action="back-to-edit"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _switchView("edit"); });
     });
-    // C2 — Bouton "➕ Ajouter une phase" dans le footer Live Op
-    // (KARMA C2.2:c — création à chaud pendant l'exécution).
+    // « Ajouter une phase » dans le pied de la vue Live opérateur (création à chaud).
     corps.querySelectorAll('[data-action="add-phase"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _afficherModalePhase(s.id, null);
       });
     });
-    // Arrêter le plan depuis la vue Live
     corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
       btn.addEventListener("click", async function() {
         if (!(await window.ktaConfirm(t("secours.confirm.terminerPlanLive")))) return;
@@ -11421,7 +10285,6 @@
         _switchView("edit");
       });
     });
-    // Toggle pause
     corps.querySelectorAll('[data-action="live-toggle-pause"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const isPaused = !!s.execution.pausedAt;
@@ -11430,41 +10293,32 @@
         _switchView("live");
       });
     });
-    // Bouton "📤 Rapport" (commun aux 3 vues Live)
-    // Le scope est lu depuis data-scope sur le bouton (= "equipe" |
-    // "operateur" | "secouriste" selon le footer qui l'a posé).
+    // Rapport (3 vues Live) : scope lu dans data-scope ("equipe" | "operateur" | "secouriste").
     corps.querySelectorAll('[data-action="live-rapport"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const scope = btn.getAttribute("data-scope") || s.execution.role;
         _afficherModaleRapport(s.id, scope);
       });
     });
-    // Bouton "🌍 Vue OSM" (commun aux 3 vues Live).
-    //    Réutilise _ouvrirVueOsmDepuisSecours qui gère le gating natif
-    //    (opt-in, incognito, online, georef présent...).
+    // Vue OSM (3 vues Live), conditions gérées par _ouvrirVueOsmDepuisSecours.
     corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
       btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
     });
-    // Bouton "🚒 Briefing pompiers" (commun aux 3 vues Live).
-    //    Exporte un PDF dédié (vue surface OSM + équipes GPS + POI critiques).
-    // Ouvre modale d'options de couches OSM avant génération.
+    // Briefing pompiers (3 vues Live) : modale d'options de couches OSM avant la génération.
     corps.querySelectorAll('[data-action="briefing-pompiers"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _afficherModaleBriefingOptions(s.id);
       });
     });
-    /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler live-share-obs-qr retiré.
-       Le remplaçant fichier (`💾 Exporter mes obs`) sera ajouté hotfix18. */
   }
 
-  // Handlers vue Live Mode Équipe
+  // Handlers de la vue Live Équipe.
   function _bindLiveEquipeHandlers(corps, s) {
     const equipeId = s.execution.currentEquipeId;
     const etapes = _getEtapesEquipe(s, equipeId);
     if (etapes.length === 0) return;
     const idx = _liveEquipeFocusIdx;
 
-    // Navigation entre étapes via boutons prev/next
     corps.querySelectorAll('[data-action="live-prev"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         if (_liveEquipeFocusIdx > 0) {
@@ -11477,19 +10331,16 @@
     corps.querySelectorAll('[data-action="live-next"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         if (_liveEquipeFocusIdx < etapes.length - 1) {
-          // En passant à l'étape suivante, marque l'étape actuelle comme
-          // "passée" si elle est encore pending (= l'user n'a pas explicitement
-          // mis un statut) : « passée, non renseignée » — plus RAS (30/09), qui
-          // affirmait une fouille que personne n'a déclarée.
+          // 🩸 En passant à l'étape suivante, une étape encore pending devient « passée, non renseignée », jamais
+          // RAS : RAS affirmerait une fouille que personne n'a déclarée.
           const cur = etapes[_liveEquipeFocusIdx];
           if (cur && (!cur.statut || cur.statut === "pending")) {
             marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "non-renseigne");
           } else if (cur && !cur.completedAt) {
             updateEtape(s.id, equipeId, _liveEquipeFocusIdx, { completedAt: _nowIso() });
           }
-          // Vibration medium pour confirmer la validation d'étape
-          // par l'équipe. Cohérent avec waypoint atteint Mode Itinéraire (même
-          // pattern). Pref + support gérés par helper.
+          // Vibration moyenne à la validation d'étape (comme un waypoint atteint en Itinéraire ; réglage et
+          // support gérés par le helper).
           if (window.kta_vibrate) window.kta_vibrate.medium();
           _liveEquipeFocusIdx++;
           _switchView("live");
@@ -11497,7 +10348,6 @@
       });
     });
 
-    // Clic sur un step du stepper
     corps.querySelectorAll('[data-action="live-goto-step"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const targetIdx = parseInt(btn.getAttribute("data-step"), 10);
@@ -11508,12 +10358,12 @@
       });
     });
 
-    // Save observations au blur (évite re-render entre chaque keystroke)
+    // Observations enregistrées au blur (pas de re-rendu à chaque frappe).
     const obsInput = corps.querySelector('#kta-live-obs-' + idx);
     if (obsInput) {
       obsInput.addEventListener("blur", function() {
         updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
-        // Pose startedAt si pas encore set (= 1ère interaction sur l'étape)
+        // startedAt posé à la 1re interaction avec l'étape.
         const etape = etapes[idx];
         if (etape && !etape.startedAt) {
           updateEtape(s.id, equipeId, idx, { startedAt: _nowIso() });
@@ -11521,11 +10371,10 @@
       });
     }
 
-    // Boutons de saisie rapide statut
     corps.querySelectorAll('[data-action="live-set-statut"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const statutId = btn.getAttribute("data-statut");
-        // Save aussi le textarea actuel avant le re-render
+        // Enregistre aussi le texte en cours avant le re-rendu.
         if (obsInput) {
           updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
         }
@@ -11537,7 +10386,6 @@
       });
     });
 
-    // Photo
     corps.querySelectorAll('[data-action="live-photo"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _ajouterPhotoEtape(s.id, equipeId, idx);
@@ -11552,17 +10400,15 @@
       });
     });
 
-    // (KARMA "je peux pas revenir en arrière pour continuer") —
-    // Retour au rôle précédent (vue Opérateur ou Secouriste) après une
-    // « Prendre la main » sur cette équipe. Restore role + currentEquipeId,
-    // clear les flags _previousRole/_previousEquipeId, re-render live.
+    // Retour au rôle précédent (Opérateur ou Secouriste) après « Prendre la main » : rôle + équipe restaurés,
+    // _previousRole/_previousEquipeId effacés, re-rendu.
     corps.querySelectorAll('[data-action="live-retour-previous-role"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const prevRole = s.execution._previousRole;
         if (!prevRole) return;
         s.execution.role = prevRole;
         s.execution.currentEquipeId = s.execution._previousEquipeId || null;
-        // Clean : retire les marqueurs internes (anti-pollution payload export)
+        // Marqueurs internes retirés (ils ne doivent pas partir dans un export).
         delete s.execution._previousRole;
         delete s.execution._previousEquipeId;
         _commitMutation(s);
@@ -11572,20 +10418,18 @@
       });
     });
 
-    // Recentrer carte sur l'étape
     corps.querySelectorAll('[data-action="live-recentrer"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const etape = etapes[idx];
         if (!etape) return;
-        // L'étape stocke le label mais pas les coords (héritées du parcours).
-        // Récupère les coords depuis le groupe original
+        // L'étape porte le libellé, pas les coordonnées (héritées du parcours du groupe).
         const g = s.groupes.find(function(gr) { return gr.id === equipeId; });
         if (!g) return;
         let pos = null;
         if (etape.type === "entree") pos = g.entree;
         else if (etape.type === "sortie") pos = g.sortie;
         else {
-          // intermédiaire idx-1 (car entree = idx 0)
+          // Intermédiaire idx-1 (l'entrée est l'idx 0).
           const intermIdx = idx - (g.entree ? 1 : 0);
           if (Array.isArray(g.intermediaires) && intermIdx >= 0) {
             pos = g.intermediaires[intermIdx];
@@ -11595,7 +10439,6 @@
           _toast(t("secours.toast.positionIntrouvable"), "warn");
           return;
         }
-        // Masque modale + centre carte
         if (_modal) _modal.style.display = "none";
         if (!_overlayLayer) renderOverlay(_currentScenarioId);
         _showOverlayFloater();
@@ -11603,18 +10446,15 @@
       });
     });
 
-    // Hydrate les miniatures photos en async
+    // Miniatures des photos hydratées en async.
     _hydraterPhotosLive(corps, s.id, equipeId, idx);
   }
 
-  // Auto-complete une étape si l'user navigue vers une plus ancienne
-  // sans avoir marqué de statut (= il revient en arrière, on ne touche pas).
-  // Pas d'effet pour l'instant — placeholder pour future amélioration UX.
+  // Retour vers une étape plus ancienne sans statut : on ne touche à rien (point d'extension vide).
   function _autoCompletePreviousIfNeeded(/* s, equipeId, prevIdx */) {
-    // Volontairement vide : retour en arrière préserve l'état tel quel
   }
 
-  // Helper photo : ouvre file picker + compress + add + refresh
+  // Photo : sélection du fichier, compression, ajout, rafraîchissement.
   function _ajouterPhotoEtape(scenarioId, equipeId, etapeIdx) {
     if (!window.MyKTAMapSecoursPhotos || !window.MyKTAMapSecoursPhotos.isAvailable()) {
       _toast(t("secours.toast.photosIndisponible"), "error");
@@ -11623,7 +10463,7 @@
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    // capture="environment" → ouvre la caméra arrière sur mobile (la galerie reste accessible via UI native)
+    // capture="environment" : caméra arrière sur mobile (la galerie reste accessible).
     input.setAttribute("capture", "environment");
     input.style.display = "none";
     input.addEventListener("change", function() {
@@ -11632,7 +10472,6 @@
       if (!file) return;
       _toast(t("secours.toast.ajoutPhoto"), "info");
       window.MyKTAMapSecoursPhotos.addPhoto(scenarioId, equipeId, etapeIdx, file).then(function(photoId) {
-        // Update etape.photoIds dans le scenario
         const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
         const etape = etapes[etapeIdx];
         if (!etape) return;
@@ -11668,15 +10507,9 @@
     });
   }
 
-  // (Pack RAM #3) — Set des ObjectURL créées par _hydraterPhotosLive.
-  // Sans ce registre, chaque appel à _hydraterPhotosLive créait N nouvelles
-  // ObjectURL via getObjectUrl() sans revoke des précédentes → fuite mémoire à
-  // chaque ouverture de la vue Live (1-10 Mo par hydrate selon nb photos).
-  // Sur iPhone PWA, ça contribuait au crash après quelques minutes d'usage.
-  // _revokeLivePhotoUrls() est appelé AVANT chaque _hydraterPhotosLive (= au
-  // moment où on remplace les anciens placeholders) et au fermer() du module
-  // (= sortie définitive). Le Set est partagé entre appels via la closure du
-  // module IIFE.
+  // ObjectURL créées par _hydraterPhotosLive. 🩸 Sans ce registre, chaque hydratation recrée N URL sans
+  // révoquer les précédentes (1 à 10 Mo par passage) : fuite qui fait planter la PWA sur iPhone après
+  // quelques minutes. _revokeLivePhotoUrls() passe AVANT chaque hydratation et à fermer().
   const _livePhotoUrls = new Set();
   function _revokeLivePhotoUrls() {
     if (_livePhotoUrls.size === 0) return;
@@ -11689,10 +10522,8 @@
     _livePhotoUrls.clear();
   }
 
-  // Hydrate les placeholders photo avec les vraies miniatures (ObjectURL async).
-  // Pattern v1.10.0 §42 (popup POI photos) adapté ici.
-  // (Pack RAM #3) — Revoke des URLs précédentes AVANT de créer les
-  // nouvelles. Évite fuite à chaque réouverture de la vue Live.
+  // Remplace les emplacements photo par les vraies miniatures (ObjectURL async), après révocation des
+  // précédentes.
   function _hydraterPhotosLive(corps, scenarioId, equipeId, etapeIdx) {
     if (!window.MyKTAMapSecoursPhotos) return;
     _revokeLivePhotoUrls();
@@ -11702,21 +10533,19 @@
       if (!pid) return;
       window.MyKTAMapSecoursPhotos.getObjectUrl(pid).then(function(url) {
         if (!url || !ph.parentNode) return;
-        // Track la nouvelle URL pour revoke ultérieur.
         _livePhotoUrls.add(url);
         const img = document.createElement("img");
         img.src = url;
         img.alt = t("secours.live.photoAlt");
         img.className = "kta-secours-live-photo-img";
-        // Click → ouvre viewer plein écran réutilisant MyKTAMapPhotoViewer si dispo
+        // Clic → viewer plein écran (MyKTAMapPhotoViewer si disponible).
         img.addEventListener("click", function() {
           if (window.MyKTAMapPhotoViewer && typeof window.MyKTAMapPhotoViewer.open === "function") {
-            // Construit la liste des photos de l'étape pour navigation
             const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
             const etape = etapes[etapeIdx];
             const ids = (etape && etape.photoIds) || [pid];
             const idx = ids.indexOf(pid);
-            // Doit fournir des objets avec {id, getUrl: () => Promise<string>}
+            // Le viewer attend des objets {id, getUrl: () => Promise<string>}.
             const photosForViewer = ids.map(function(id) {
               return {
                 id: id,
@@ -11728,7 +10557,7 @@
             try {
               window.MyKTAMapPhotoViewer.open(photosForViewer, Math.max(0, idx));
             } catch(e) {
-              // Fallback : ouvre dans nouvel onglet
+              // Repli : nouvel onglet.
               window.open(url, "_blank", "noopener,noreferrer");
             }
           } else {
@@ -11743,35 +10572,30 @@
     });
   }
 
-  // Handlers vue Live Mode Opérateur surface
+  // Handlers de la vue Live Opérateur.
   function _bindLiveOperateurHandlers(corps, s) {
-    // "Détails équipe" → ouvre une mini-modale read-only sur l'équipe
+    // « Détails équipe » : mini-modale en lecture seule.
     corps.querySelectorAll('[data-action="live-op-details"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const equipeId = btn.getAttribute("data-equipe-id");
         _afficherModaleDetailsEquipeLive(s.id, equipeId);
       });
     });
-    // "Prendre la main" → bascule en mode Équipe pour cette équipe
-    // (KARMA "je rentre sur le tableau alpha [...] je peux pas
-    // revenir en arrière pour continuer") : mémorise le rôle d'origine
-    // dans s.execution._previousRole pour permettre le retour. Persisté
-    // dans le scénario localStorage → survit au reload.
+    // « Prendre la main » : bascule en mode Équipe pour cette équipe, rôle d'origine gardé dans
+    // s.execution._previousRole (persisté : le retour survit au rechargement).
     corps.querySelectorAll('[data-action="live-op-prendre-main"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const equipeId = btn.getAttribute("data-equipe-id");
         if (!equipeId) return;
         const g = s.groupes.find(function(gr) { return gr.id === equipeId; });
         if (!g) return;
-        // Stocke le rôle d'origine pour permettre le retour ultérieur
         s.execution._previousRole = s.execution.role;          // "operateur" ou "secouriste"
         s.execution._previousEquipeId = s.execution.currentEquipeId;  // null normalement
         s.execution.role = "equipe";
         s.execution.currentEquipeId = equipeId;
-        // 🩸 le focus d'étape est un état du MODULE,
-        // pas de l'équipe : l'opérateur qui relayait Alpha (étape 5) puis prenait
-        // Bravo atterrissait sur l'étape 5 de Bravo → statut radio saisi sur la
-        // mauvaise étape. On repart comme à l'ouverture : 1ʳᵉ étape non terminée.
+        // 🩸 Le focus d'étape est un état du MODULE, pas de l'équipe : sans remise à zéro, relayer Bravo après
+        // Alpha (étape 5) ouvrirait l'étape 5 de Bravo et le statut radio irait sur la mauvaise étape. On repart
+        // sur la 1re étape non terminée.
         _liveEquipeFocusIdx = 0;
         _liveEquipeFreshSession = true;
         _commitMutation(s);
@@ -11779,7 +10603,6 @@
         _switchView("live");
       });
     });
-    // "Voir carte globale" → masque modale + render overlay
     corps.querySelectorAll('[data-action="live-op-carte-globale"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         if (_modal) _modal.style.display = "none";
@@ -11787,14 +10610,12 @@
         _showOverlayFloater();
       });
     });
-    // "📥 Importer rapport équipier" → file picker + preview + fusion
     corps.querySelectorAll('[data-action="live-op-import-rapport"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _ouvrirImportRapportEquipePicker();
       });
     });
-    // C3 — "✓ Phase terminée" : ouvre la modale debrief, puis
-    // si OK + phase suivante existante → enchaîne sur lancerPhaseSuivante.
+    // « Phase terminée » : modale de debrief, puis éventuellement lancerPhaseSuivante.
     corps.querySelectorAll('[data-action="terminer-phase"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         _afficherModaleDebrief(s.id);
@@ -11802,7 +10623,7 @@
     });
   }
 
-  // Mini-modale read-only détails équipe pour mode Opérateur
+  // Détails d'une équipe en lecture seule (mode Opérateur).
   function _afficherModaleDetailsEquipeLive(scenarioId, equipeId) {
     const s = get(scenarioId);
     if (!s) return;
@@ -11827,9 +10648,8 @@
         const obsHtml = et.observations
                         ? '<div class="kta-secours-op-details-obs">« ' + _escHtml(et.observations) + ' »</div>'
                         : '';
-        // Chip "📥 importé" si l'étape contient des obs venues
-        // d'un rapport équipier (fusion via _appliquerImportRapportEquipe).
-        // Tooltip avec date d'import + version app source pour traçabilité.
+        // Chip « importé » si l'étape a reçu des observations d'un rapport d'équipe (tooltip : date d'import et
+        // version de l'app source).
         let importedChip = '';
         if (et._importedFrom) {
           const impDate = et._importedFrom.importedAt
@@ -11870,7 +10690,6 @@
         '</div>' +
       '</div>';
 
-    // Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       _unbindEsc();
@@ -11883,23 +10702,21 @@
     document.body.appendChild(overlay);
   }
 
-  // Handlers vue Live Mode Secouriste libre
+  // Handlers de la vue Live Secouriste.
   function _bindLiveSecouristeHandlers(corps, s) {
-    // Ajout d'une note via un des 7 boutons statut
+    // Ajout d'une note par l'un des 7 boutons de statut.
     corps.querySelectorAll('[data-action="sec-add-note"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const statutId = btn.getAttribute("data-statut");
         const texteInput = corps.querySelector('#kta-sec-newnote-texte');
         const texte = texteInput ? texteInput.value : "";
         ajouterNoteLibre(s.id, { statut: statutId, texte: texte });
-        // Vide le textarea
         if (texteInput) texteInput.value = "";
         const info = _getStatutInfo(statutId);
         _toast(t("secours.toast.noteAjoutee", { emoji: info.emoji, statut: _statutLabel(statutId) }), "info");
         _switchView("live");
       });
     });
-    // Suppression d'une note
     corps.querySelectorAll('[data-action="sec-del-note"]').forEach(function(btn) {
       btn.addEventListener("click", async function() {
         const noteId = btn.getAttribute("data-note-id");
@@ -11913,20 +10730,14 @@
   }
 
 
-  // ============================================================
-  // MODES INTERACTIFS MAP (depuis v1.22.0 commit 3/9)
-  // ============================================================
-  // Pattern : (1) cache la modale (display:none), (2) ajoute floater compact
-  // en bas de l'écran avec instruction + bouton Annuler/Terminer, (3) ajoute
-  // listener map.on("click"), (4) à la complétion : restore modale + re-bind
-  // + cleanup listener. Inspiré du pattern itinéraire avoid-click mode.
+  // ── Modes interactifs sur la carte ─────────────────────────────────
+  // (1) modale masquée, (2) bandeau compact en bas avec consigne + Annuler/Terminer, (3) écoute du clic
+  // carte, (4) à la fin : modale rendue, handlers reposés, écoute retirée.
 
   let _activeMapMode = null;     // "point" | "polygon" | "roads" | null
   let _mapModeCtx = null;        // { groupeId, role?, points?, roadIds?, layer? }
 
-  // étendu pour supporter waypoints intermédiaires
-  // role ∈ "entree" | "sortie" | "intermediaire"
-  // idx = index si role === "intermediaire" (null pour entree/sortie)
+  // role ∈ "entree" | "sortie" | "intermediaire" ; idx = index d'un intermédiaire (null sinon).
   function _startDefiningPoint(groupeId, role, idx) {
     if (_activeMapMode) _cancelMapMode();
     if (!window.map) return;
@@ -11941,9 +10752,7 @@
       "<br><span style=\"font-size:11px; opacity:0.85;\">" + t("secours.defPoint.astuce") + "</span>",
       [{ label: t("secours.btn.annulerSimple"), action: "cancel" }]
     );
-    // pré-fetch async des points pour snap sync au clic
-    // (SearchPoints.getAllPoints retourne un Promise depuis v1.21.x — on
-    // l'attend ICI pour pouvoir l'utiliser synchrone dans _onMapClickPoint).
+    // Points chargés d'avance : SearchPoints.getAllPoints est async, _onMapClickPoint en a besoin en synchrone.
     if (window.SearchPoints && typeof window.SearchPoints.getAllPoints === "function") {
       Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
         if (_mapModeCtx) _mapModeCtx.allPoints = Array.isArray(all) ? all : [];
@@ -11955,12 +10764,10 @@
     _armerCaptureMarqueurs();
   }
 
-  // cliquer sur un POI pour en faire l'entrée ou la sortie
-  // OUVRAIT LE POI. Leaflet ne remonte pas le clic d'un marqueur à la carte : le
-  // `map.once("click")` n'entendait rien et la popup s'ouvrait. Pendant le choix
-  // d'un point, un écouteur en CAPTURE sur le conteneur intercepte le clic sur une
-  // icône de marqueur avant elle (pas de popup) et le traite comme un clic carte,
-  // avec un accrochage élargi à la taille d'une icône à l'écran.
+  // 🩸 Leaflet ne remonte pas le clic d'un marqueur à la carte : `map.once("click")` n'entendrait rien et la
+  // popup du POI s'ouvrirait. Pendant le choix d'un point, un écouteur en CAPTURE sur le conteneur intercepte
+  // le clic sur une icône de marqueur (pas de popup) et le traite comme un clic carte, avec un accrochage
+  // élargi à la taille d'une icône à l'écran.
   let _captureMarqueur = null;
   function _armerCaptureMarqueurs() {
     _desarmerCaptureMarqueurs();
@@ -11973,8 +10780,7 @@
       ev.preventDefault();
       ev.stopPropagation();
       const e = { latlng: window.map.mouseEventToLatLng(ev) };
-      // Même défaut en dessin de zone (constaté au test) : un sommet posé sur un POI
-      // ouvrait le POI. Le clic va au mode actif.
+      // Idem en dessin de zone : un sommet posé sur un POI va au mode actif, pas à la popup.
       if (_activeMapMode === "polygon") { _onMapClickPolygon(e); return; }
       if (_activeMapMode === "roads") { _onMapClickRoads(e); return; }
       window.map.off("click", _onMapClickPoint);
@@ -11990,9 +10796,8 @@
     _captureMarqueur = null;
   }
 
-  // Choisir un point sur la carte pour autre chose qu'un waypoint (A3 : position de
-  // la victime). Même mécanique que _startDefiningPoint (snap POI, capture des
-  // marqueurs, fenêtre masquée puis rendue).
+  // Choisir un point sur la carte pour autre chose qu'un waypoint (position de la victime). Même mécanique
+  // que _startDefiningPoint (accroche POI, capture des marqueurs, fenêtre masquée puis rendue).
   function _startPickPoint(instrHtml, onPoint) {
     if (_activeMapMode) _cancelMapMode();
     if (!window.map) return;
@@ -12017,9 +10822,7 @@
             : e.latlng.lat;
     let level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                 ? window.APP_CONFIG.activeLevel : 0;
-    // snap auto sur POI le plus proche dans un rayon de 30 px
-    // (cohérent avec le mode "Cliquer sur la carte" de l'itinéraire existant).
-    // Réutilise SearchPoints.getAllPoints si dispo.
+    // Accroche au POI le plus proche dans un rayon de 30 px (comme « Cliquer sur la carte » de l'itinéraire).
     let pointId = null;
     let pointUid = null;
     let label = null;
@@ -12030,7 +10833,7 @@
       pointId = snap.pointId || null;
       pointUid = snap.pointUid || null;
       label = snap.nom || snap.label || null;
-      // 4e relecture (R4-1) : accroché à un POI → le niveau du POI, pas celui affiché.
+      // 🩸 Accroché à un POI : le niveau du POI, pas celui affiché.
       if (Number.isInteger(snap.level)) level = snap.level;
       _toast(t("secours.toast.snap", { point: (label || pointId || t("secours.map.poiDefault")) }), "info");
     }
@@ -12045,11 +10848,8 @@
     _finishMapMode();
   }
 
-  // Helper : cherche le POI le plus proche (x, y) en pixels plan, rayon en px.
-  // Retourne {x, y, pointId, nom} ou null.
-  // utilise la liste pré-fetched dans _mapModeCtx.allPoints
-  // (cf _startDefiningPoint) car SearchPoints.getAllPoints est async — pas
-  // appelable directement depuis le click handler synchrone.
+  // POI le plus proche de (x, y) en pixels plan dans radiusPx : {x, y, pointId, nom} ou null. Lit la liste
+  // préchargée _mapModeCtx.allPoints (SearchPoints.getAllPoints est async, le clic est synchrone).
   function _trouverPoiProche(x, y, radiusPx) {
     const all = (_mapModeCtx && Array.isArray(_mapModeCtx.allPoints)) ? _mapModeCtx.allPoints : [];
     if (all.length === 0) return null;
@@ -12067,9 +10867,8 @@
     return best;
   }
 
-  // applique un waypoint sélectionné (depuis search OU clic)
-  // au bon endroit dans le groupe (entree, sortie ou intermediaires[idx]).
-  // déclenche auto-recalc de l'itinéraire si déjà calc une fois.
+  // Applique un waypoint (recherche ou clic) au bon endroit (entree, sortie ou intermediaires[idx]) ;
+  // recalcul automatique si l'itinéraire a déjà été calculé.
   function _appliquerWaypoint(groupeId, role, idx, wp) {
     const s = get(_currentScenarioId);
     if (!s) return;
@@ -12089,15 +10888,11 @@
       updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
     }
     _scheduleAutoRecalc(_currentScenarioId, groupeId);
-    // (KARMA "quand on ajoute une entrée sortie à un groupe de secours,
-    // ça ne se met pas à jour de suite, il faut calculer itinéraire pour voir
-    // ce qu'on a saisi") : oubli historique du re-render après mutation.
-    // Cohérent avec _clearWaypoint qui appelait déjà _switchView("edit") en fin.
+    // Re-rendu après mutation : ce qu'on vient de saisir doit se voir sans recalculer l'itinéraire.
     _switchView("edit");
   }
 
-  // clear un waypoint (entree, sortie → null ; intermediaire → splice)
-  // auto-recalc déclenché aussi si user enlève un waypoint
+  // Efface un waypoint (entrée/sortie → null, intermédiaire → retiré) ; recalcul automatique aussi.
   function _clearWaypoint(groupeId, role, idx) {
     const s = get(_currentScenarioId);
     if (!s) return;
@@ -12118,10 +10913,8 @@
     _switchView("edit");
   }
 
-  // Phase 2 / Feature F — Rendu du bloc Favoris dans la modale
-  // picker waypoint. Affiche les favoris du plan en accès rapide (chips
-  // cliquables) au-dessus de la recherche autocomplete. Skip si pas de
-  // favoris OU module Favoris pas chargé (rétro-compat).
+  // Favoris du plan en accès rapide (chips) au-dessus de la recherche du picker ; rien sans favoris ou sans
+  // module Favoris.
   function _renderFavorisBlock() {
     if (!window.Favoris || typeof window.Favoris.getAll !== "function") return "";
     let favs = [];
@@ -12130,10 +10923,9 @@
     let html = '<div class="kta-secours-pick-favoris">';
     html += '<div class="kta-secours-pick-favoris-titre">' + t("secours.pick.favorisTitre", { n: favs.length }) + '</div>';
     html += '<div class="kta-secours-pick-favoris-grid">';
-    // Max 8 favoris affichés (sinon l'UI s'allonge trop — l'user peut
-    // toujours utiliser la recherche pour les autres)
+    // 8 favoris au plus (la recherche couvre les autres).
     favs.slice(0, 8).forEach(function(f) {
-      // f a la forme { pointId, nom, x, y, level?, tag?, layerId?, ... }
+      // f = { pointId, nom, x, y, level?, tag?, layerId?, … }
       if (!f || typeof f.x !== "number" || typeof f.y !== "number") return;
       const nom = f.nom || f.pointId || t("secours.pick.favoriDefault");
       html += '<button class="kta-secours-pick-favori" ' +
@@ -12154,10 +10946,8 @@
     return html;
   }
 
-  // mini-modale "Choisir un point" avec autocomplete +
-  // bouton clic carte. Pattern hérité de la modale itinéraire (cf §14 CLAUDE.md).
+  // Mini-modale « Choisir un point » : recherche + clic carte (même principe que la modale itinéraire).
   function _ouvrirChoixWaypoint(groupeId, role, idx) {
-    // Cleanup éventuelle modale précédente (idempotency)
     const existing = document.getElementById("kta-secours-pick-modal");
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
     const lblRole = role === "entree" ? t("secours.roleShort.entree")
@@ -12167,11 +10957,8 @@
     overlay.id = "kta-secours-pick-modal";
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100001";
-    // Phase 2 / Feature F (KARMA roadmap §65.12 "Favoris →
-    // import auto des favoris taggés entrée/sortie") : section ⭐ favoris
-    // en accès rapide AU-DESSUS de la recherche autocomplete. Les favoris
-    // sont par essence les points cliché du plan (accès, escaliers, POI
-    // marquants) → candidats naturels pour les waypoints d'équipes secours.
+    // Favoris AU-DESSUS de la recherche : ce sont les points marquants du plan (accès, escaliers), candidats
+    // naturels pour les waypoints.
     const favorisHtml = _renderFavorisBlock();
 
     overlay.innerHTML =
@@ -12203,7 +10990,7 @@
     }
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
-    // Feature F — Click sur un favori = applique en waypoint direct
+    // Clic sur un favori = waypoint appliqué directement.
     overlay.querySelectorAll('.kta-secours-pick-favori').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const wp = {
@@ -12219,7 +11006,6 @@
       });
     });
 
-    // Clic carte
     overlay.querySelectorAll('[data-action="clic-carte"]').forEach(function(b) {
       b.addEventListener("click", function() {
         _close();
@@ -12227,11 +11013,8 @@
       });
     });
 
-    // Autocomplete debounce 150ms
-    // SearchPoints.findByQuery est ASYNC (Promise) depuis
-    // v1.21.x — pas un array. On gère le Promise via .then() avec un token
-    // de query pour ignorer les résultats obsolètes (race condition si l'user
-    // tape vite).
+    // Recherche avec anti-rebond de 150 ms. ⚠️ SearchPoints.findByQuery rend une Promise : un jeton de requête
+    // écarte les résultats obsolètes (frappe rapide).
     let _searchTimer = null;
     let _searchSeq = 0;
     function _doSearch() {
@@ -12247,7 +11030,6 @@
       const mySeq = ++_searchSeq;
       results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintRecherche") + '</div>';
       Promise.resolve(window.SearchPoints.findByQuery(q)).then(function(found) {
-        // Si une nouvelle query a été lancée entre-temps, ignore ce résultat
         if (mySeq !== _searchSeq) return;
         if (!Array.isArray(found)) found = [];
         if (found.length === 0) {
@@ -12298,13 +11080,12 @@
       clearTimeout(_searchTimer);
       _searchTimer = setTimeout(_doSearch, 150);
     });
-    // Focus auto sur l'input
     setTimeout(function() { input.focus(); }, 50);
     _doSearch();
   }
 
   function _ouvrirChoixZoneMode(groupeId) {
-    // Petite modale de choix : polygon OU roads
+    // Petite modale de choix : polygone OU tracés.
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100001";
@@ -12364,11 +11145,9 @@
     window.map.on("dblclick", _onMapDblClickPolygon);
   }
 
-  // en dessinant la zone de l'équipe 2, on ne voyait pas
-  // celle de l'équipe 1 — impossible de caler les zones bord à bord. Pendant le
-  // dessin, les zones des AUTRES équipes du scénario sont affichées en pointillé,
-  // à leur couleur, avec leur nom. Non interactives : un clic dessus reste un clic
-  // de dessin. Retirées par _finishMapMode.
+  // Pendant le dessin d'une zone, celles des AUTRES équipes du scénario s'affichent en pointillé, à leur
+  // couleur, avec leur nom, pour caler les zones bord à bord. Non interactives (un clic reste un clic de
+  // dessin). Retirées par _finishMapMode.
   function _afficherZonesAutresEquipes(groupeId) {
     const s = get(_currentScenarioId);
     if (!s || !window.map || !_mapModeCtx) return;
@@ -12455,22 +11234,17 @@
         { label: t("secours.btn.terminer"), action: "finish" }
       ]
     );
-    // 🩸 LE MODE « TRACÉS » NE SÉLECTIONNAIT RIEN.
-    // Il cherchait `entry.road` / `entry.layer` dans `_ktaDataPolylines` (qui n'a
-    // que `polyline`, `points`…) et écartait les tracés de session, passés sans
-    // calque : zéro clic branché. Et l'id qu'il aurait posé était aléatoire, sur une
-    // COPIE (`getAllEmbeddedRoads` clone) : perdu au rechargement comme d'un
-    // téléphone à l'autre. Désormais :
-    //   • la clé d'un tracé est l'EMPREINTE de sa géométrie (`_cleTrace`) : la même
-    //     sur tous les appareils qui ont le même plan, sans rien écrire dans le plan ;
-    //   • un clic carte prend le tracé le plus proche (tolérance écran), parmi les
-    //     niveaux visibles — comme le mode polygone, sans dépendre du rendu ;
+    // Mode « tracés » :
+    //   • la clé d'un tracé est l'EMPREINTE de sa géométrie (`_cleTrace`), la même sur tous les appareils qui
+    //     ont le même plan, sans rien écrire dans le plan. 🩸 Pas d'id aléatoire : posé sur une COPIE
+    //     (`getAllEmbeddedRoads` clone), il serait perdu au rechargement comme d'un téléphone à l'autre ;
+    //   • 🩸 un clic carte prend le tracé le plus proche (tolérance écran) parmi les niveaux visibles, sans
+    //     dépendre du rendu (`_ktaDataPolylines` n'a pas de `road` ni de `layer`, la session aucun calque) ;
     //   • rouvrir le mode reprend la sélection existante de l'équipe.
     _mapModeCtx.surbrillance = L.layerGroup().addTo(window.map);
     const g = _findGroupeCourant(groupeId);
-    // Relecture (D2) : une clé que CET appareil ne résout pas (tracé de session d'un
-    // autre appareil, plan différent) est GARDÉE telle quelle — avant, « Terminer »
-    // la supprimait de la zone.
+    // 🩸 Une clé que CET appareil ne résout pas (tracé de session d'un autre appareil, plan différent) est
+    // GARDÉE telle quelle : « Terminer » ne doit pas la retirer de la zone.
     const resolus = _tracesZone(g);
     resolus.forEach(function(r) { _mapModeCtx.roadIds.add(_cleTrace(r)); });
     ((g && g.zoneType === "roads" && g.zoneRoadIds) || []).forEach(function(k) {
@@ -12484,10 +11258,9 @@
   }
 
   // FNV-1a 32 bits sur les coordonnées (au 1/10 de px) : stable, sans état.
-  // Mémo par TABLEAU de points : `getAllEmbeddedRoads` rend des copies neuves à
-  // chaque appel, mais elles partagent le `points` d'origine (Object.assign).
-  // Réservé aux tracés du PLAN (copies marquées `layerId`) : ceux de la session
-  // s'éditent en place (points ajoutés / déplacés), un mémo y serait périmé.
+  // Mémo par TABLEAU de points (`getAllEmbeddedRoads` rend des copies neuves qui partagent le `points`
+  // d'origine). ⚠️ Réservé aux tracés du PLAN (copies marquées `layerId`) : ceux de la session s'éditent en
+  // place, un mémo y serait périmé.
   const _clesTraces = new WeakMap();
   function _cleTrace(road) {
     if (!road || !Array.isArray(road.points) || road.points.length < 2) return null;
@@ -12591,16 +11364,9 @@
     _finishMapMode();
   }
 
-  // ============================================================
-  // Helpers map mode UI
-  // ============================================================
-
-  // ============================================================
-  // Floater "Retour modale" (depuis v1.22.0-fix1)
-  // ============================================================
-  // Quand "Voir sur carte" est actif, la modale est masquée pour voir le
-  // rendu Leaflet. Un floater compact en bas de l'écran permet de rouvrir
-  // la modale sans passer par la sidebar.
+  // ── Bouton flottant « Retour à la modale » ─────────────────────────
+  // Quand « Voir sur carte » est actif, la modale est masquée ; ce bouton en bas de l'écran la rouvre sans
+  // passer par la barre latérale.
 
   function _showOverlayFloater() {
     _removeOverlayFloater();
@@ -12620,11 +11386,10 @@
       '</button>';
     document.body.appendChild(fl);
     fl.querySelector('[data-action="reopen-modal"]').addEventListener("click", function() {
-      // Restore modale + retire floater + clean overlay (l'user peut le re-toggler)
+      // Modale rendue, bouton retiré, overlay nettoyé (on peut le réafficher).
       if (_modal) _modal.style.display = "";
       _removeOverlayFloater();
       clearOverlay();
-      // Update bouton "Voir sur carte" dans la modale (re-render edit suffit)
       if (_currentScenarioId) _switchView("edit");
     });
   }
@@ -12635,7 +11400,7 @@
   }
 
   function _planToLatLng(pt) {
-    // Plan (x, y) → Leaflet [lat, lng] via CRS.Simple convention MyKTAMap
+    // Plan (x, y) → Leaflet [lat, lng] : convertCoord, [imageHeight - y, x].
     const lat = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
                 ? window.APP_CONFIG.imageHeight - pt.y
                 : pt.y;
@@ -12678,7 +11443,7 @@
   }
   function _updateFloaterCount(n, label) {
     const el = document.getElementById("kta-sec-poly-count");
-    // label = "sommets" | "traces" → clé i18n avec pluralisation gérée par la valeur
+    // label = "sommets" | "traces" → clé i18n, pluriel selon n.
     if (el) el.textContent = t("secours.floater." + label, { n: n });
   }
 
@@ -12693,14 +11458,12 @@
       window.map.off("dblclick", _onMapDblClickPolygon);
       window.map.off("click", _onMapClickRoads);
     }
-    // Cleanup preview polygon
     if (_mapModeCtx && _mapModeCtx.previewLayer && window.map) {
       try { window.map.removeLayer(_mapModeCtx.previewLayer); } catch(e) {}
     }
     if (_mapModeCtx && _mapModeCtx.autresZones && window.map) {
       try { window.map.removeLayer(_mapModeCtx.autresZones); } catch(e) {}
     }
-    // Cleanup surbrillance du mode tracés
     if (_mapModeCtx && _mapModeCtx.surbrillance && window.map) {
       try { window.map.removeLayer(_mapModeCtx.surbrillance); } catch(e) {}
     }
@@ -12710,14 +11473,11 @@
     _showModalAfterMap();
   }
 
-  // ============================================================
-  // PATHFINDER intégration (depuis v1.22.0 commit 4/9)
-  // ============================================================
-  // 🩸 LE NIVEAU DE CHAQUE POINT, PAS CELUI DE L'ENTRÉE.
-  // Les deux calculs écrasaient `level` par `g.entree.level` : une équipe qui descend
-  // au −1 voyait tout son tracé déclaré au niveau de l'entrée. Le pathfinder rend le
-  // niveau réel par point, ou `null` quand il est ambigu (milieu d'une jonction,
-  // nœud fusionné) : on reprend alors le dernier niveau connu, à défaut l'entrée.
+  // ── Intégration Pathfinder ──────────────────────────────────────────
+  // 🩸 Le niveau de CHAQUE point, pas celui de l'entrée : écraser `level` par `g.entree.level` déclarerait
+  // tout le tracé d'une équipe qui descend au niveau de l'entrée. Le pathfinder rend le niveau réel par point,
+  // ou `null` s'il est ambigu (milieu d'une jonction, nœud fusionné) : on reprend alors le dernier niveau
+  // connu, à défaut l'entrée.
   function _niveauxItineraire(path, niveauEntree) {
     let courant = Number.isInteger(niveauEntree) ? niveauEntree : 0;
     const premier = (path || []).find(function(p) { return p && Number.isInteger(p.level); });
@@ -12745,13 +11505,13 @@
       _toast(t("secours.toast.pathfinderIndispo"), "error");
       return null;
     }
-    // vérifier que les coords sont valides (anti-NaN)
+    // Coordonnées valides (anti-NaN).
     if (typeof g.entree.x !== "number" || typeof g.entree.y !== "number" ||
         typeof g.sortie.x !== "number" || typeof g.sortie.y !== "number") {
       _toast(t("secours.toast.coordsCorrompues"), "error");
       return null;
     }
-    // valider aussi les intermédiaires + filtrer les invalides
+    // Intermédiaires invalides filtrés.
     const intermediaires = (Array.isArray(g.intermediaires) ? g.intermediaires : [])
       .filter(function(w) {
         return w && typeof w.x === "number" && typeof w.y === "number";
@@ -12760,27 +11520,21 @@
            ? t("secours.toast.calcItiViaWp", { n: intermediaires.length })
            : t("secours.toast.calcIti"), "info");
     try {
-      // Pathfinder accepte [entree, ...intermediaires, sortie]
-      // (multi-waypoints natif depuis v1.5.x). Chaque pair de waypoints
-      // consécutifs déclenche un Dijkstra séparé puis les paths sont
-      // concaténés (cf §14 CLAUDE.md). Boucle entree=sortie → Pathfinder
-      // calcule le tour complet via les intermédiaires (sinon retour direct).
+      // Pathfinder accepte [entree, …intermediaires, sortie] : un Dijkstra par paire consécutive, chemins
+      // concaténés. Boucle entree = sortie → tour complet par les intermédiaires.
       const waypoints = [{ x: g.entree.x, y: g.entree.y, level: g.entree.level, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
         .concat(intermediaires.map(function(w, i) {
           return { x: w.x, y: w.y, level: w.level, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
         }))
         .concat([{ x: g.sortie.x, y: g.sortie.y, level: g.sortie.level, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
-      // Phase 2 / Feature B — Pathfinder avoidances cross-équipes :
-      // collecte les waypoints + zones des autres équipes du scénario pour
-      // que Pathfinder préfère un chemin qui les contourne (pas de chevauchement
-      // involontaire). avoidRadius 30 px ≈ 1 galerie de large.
+      // Évitements entre équipes : points et zones des autres équipes passés au Pathfinder, qui préfère un chemin
+      // qui les contourne (pas de chevauchement involontaire). avoidRadius 30 px ≈ une galerie de large.
       const avoidPoints = _collecterAvoidPointsAutresEquipes(scenarioId, groupeId);
       const pfOpts = (avoidPoints.length > 0)
                      ? { avoidPoints: avoidPoints, avoidRadius: 30 }
                      : {};
-      // Pathfinder.computeRoute est async depuis v1.21.x (avoid expansion).
-      // computeRoute peut throw sync (waypoints insuffisants) OU reject async
-      // (chemin introuvable, composantes disconnect). On gère les 2.
+      // ⚠️ computeRoute peut lever en synchrone (waypoints insuffisants) OU rejeter en async (chemin introuvable,
+      // composantes séparées) : les deux sont gérés.
       const result = window.Pathfinder.computeRoute(waypoints, pfOpts);
       Promise.resolve(result).then(function(r) {
         if (!r || !Array.isArray(r.path) || r.path.length === 0) {
@@ -12790,7 +11544,7 @@
         const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
-        // 4.1 : réglages du SCÉNARIO (vitesse de fouille, pause par étape).
+        // Réglages du SCÉNARIO (vitesse de fouille, pause par étape).
         const duree = Math.round(_dureeEquipeMin(s, distM, waypoints.length, { g: g, path: r.path, raccords: r.raccords }));
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: _niveauxItineraire(r.path, g.entree.level),
@@ -12800,11 +11554,10 @@
         });
         const fmtD = (typeof window.formatDistance === "function")
                      ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
-        // Un seul message (test terrain 30/09) : le 2e remplaçait le 1er. L'étape
-        // posée loin de toute galerie est signalée ICI, à la préparation, où l'on
-        // peut encore la corriger — pas seulement sous terre.
+        // Un seul message (un 2e remplacerait le 1er). L'étape loin de toute galerie est signalée ICI, à la
+        // préparation, où on peut encore la corriger.
         const lignesCalc = [t("secours.toast.itiCalcule", { distance: fmtD, duree: duree })];
-        // Phase 2 / Feature B — Feedback fallback avoidances
+        // Évitements impossibles : on dit lesquels ont été traversés.
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
           lignesCalc.push(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }));
         }
@@ -12814,7 +11567,7 @@
         const niv = _texteNiveauxNonParcourus(gMaj, _niveauxNonParcourus(gMaj));   // 8b
         if (niv) lignesCalc.push("⚠️ " + niv);
         _toast(lignesCalc.join("\n"), lignesCalc.length > 1 ? "warn" : "info");
-        // re-render edit pour update stats visibles + refresh overlay si actif
+        // Re-rendu de l'édition (statistiques, overlay si actif).
         if (_modal) _switchView("edit");
         if (_overlayLayer) renderOverlay(scenarioId);
       }).catch(function(err) {
@@ -12828,13 +11581,12 @@
     }
   }
 
-  // ─── C1 (15/10/2026, QCM KARMA) — PARCOURS DE BALAYAGE ───
-  // Au lieu du plus court chemin par les étapes (qui saute les boucles : 62-72 % des
-  // galeries d'un secteur parcourues), un circuit qui passe sur CHAQUE galerie de la
-  // zone (« complet ») ou sur toutes sauf les culs-de-sac (« ossature », reconnaissance).
-  // Les étapes saisies restent, remises dans l'ordre où le circuit passe dessus (4:a).
-  // Le guidage garde le circuit : un écart le fait REJOINDRE plus loin (3:a,
-  // interfaceItineraire > _replanifierDepuis). Calcul : js/secoursBalayage.js.
+  // ── Parcours de balayage ────────────────────────────────────────────
+  // Au lieu du plus court chemin par les étapes (qui saute les boucles : 2/3 environ des galeries d'un
+  // secteur parcourues), un circuit sur CHAQUE galerie de la zone (« complet ») ou toutes sauf les
+  // culs-de-sac (« ossature », reconnaissance). Les étapes saisies restent, remises dans l'ordre de passage du
+  // circuit. Le guidage garde le circuit : un écart le fait REJOINDRE plus loin
+  // (interfaceItineraire > _replanifierDepuis). Calcul : js/secoursBalayage.js.
   function _estBalayage(g) {
     return !!(g && (g.parcoursMode === "complet" || g.parcoursMode === "ossature") &&
               (g.zoneType === "roads" || g.zoneType === "polygon") && window.SecoursBalayage);
@@ -12925,19 +11677,9 @@
     return true;
   }
 
-  // Phase 2 / Feature B — Collecte les waypoints des AUTRES
-  // équipes du scénario pour les passer en `avoidPoints` à Pathfinder.
-  // Évite les chevauchements involontaires : si Alpha a déjà une zone +
-  // un itinéraire, quand on calcule celui de Bravo, Pathfinder choisira un
-  // chemin qui contourne les éléments d'Alpha (soft constraint — fallback
-  // si pas d'alternative).
-  //
-  // Sources collectées par équipe autre :
-  //  • entrée + sortie + intermédiaires (waypoints explicites)
-  //  • points du polygon de zone (sommets) si zoneType="polygon"
-  //  • points de toutes les roads sélectionnées si zoneType="roads"
-  //
-  // Format Pathfinder attendu : [{x, y, label?, id?}, ...]
+  // Points des AUTRES équipes du scénario, passés en `avoidPoints` au Pathfinder (contrainte souple : repli
+  // s'il n'y a pas d'autre chemin) : entrée, sortie, intermédiaires, sommets du polygone ou points des tracés
+  // sélectionnés. Format : [{x, y, label?, id?}, …].
   function _collecterAvoidPointsAutresEquipes(scenarioId, currentGroupeId) {
     const s = get(scenarioId);
     if (!s) return [];
@@ -12945,7 +11687,6 @@
     s.groupes.forEach(function(g) {
       if (g.id === currentGroupeId) return;  // skip l'équipe courante
       const eqLabel = "Équipe " + (g.nom || "?");
-      // 1. Waypoints
       if (g.entree && typeof g.entree.x === "number") {
         avoid.push({ x: g.entree.x, y: g.entree.y, label: "Entrée " + eqLabel });
       }
@@ -12958,8 +11699,7 @@
           avoid.push({ x: w.x, y: w.y, label: "Étape " + (i + 1) + " " + eqLabel });
         }
       });
-      // 2. Zone polygon — sommets du polygone (Pathfinder les évite par
-      // proximité dans le rayon avoidRadius)
+      // 2. Sommets du polygone (évités par proximité, rayon avoidRadius).
       if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
         g.zonePolygon.forEach(function(p, i) {
           if (typeof p.x === "number") {
@@ -12967,7 +11707,7 @@
           }
         });
       }
-      // 3. Zone roads — points de chaque road sélectionnée
+      // 3. Points de chaque tracé sélectionné.
       if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
         _tracesZone(g).forEach(function(road) {
           if (road && Array.isArray(road.points)) {
@@ -12983,7 +11723,6 @@
     return avoid;
   }
 
-  // Helper toast unifié (évite les checks répétés)
   function _toast(msg, type) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(msg, type || "info");
@@ -12992,14 +11731,11 @@
     }
   }
 
-  // (KARMA "on peut avoir aussi un bouton tous les points
-  // dans la zone de recherche") : ajoute en intermédiaires TOUS les POI
-  // qui tombent dans la zone définie de l'équipe (polygon ou roads buffer
-  // 30 px). Skip les POI déjà présents en entrée/sortie/intermédiaires.
-  // Ordre : chaîne du plus proche voisin (cf `_ordrePlusProcheVoisin`).
-  // Chaîne du plus proche voisin, à vol d'oiseau (plan px) : O(n²), n = POI d'une
-  // zone (quelques dizaines). Le niveau compte : changer d'étage coûte une jonction,
-  // donc à distance égale on reste au même niveau (pénalité 1e6 px, ordre total).
+  // « POI de la zone » : TOUS les POI dans la zone de l'équipe (polygone, ou tracés + 30 px) en
+  // intermédiaires, sauf ceux déjà au parcours.
+  // Ordre : chaîne du plus proche voisin à vol d'oiseau (px plan), O(n²) sur quelques dizaines de POI. Le
+  // niveau compte : changer d'étage coûte une jonction, à distance égale on reste au même niveau (pénalité
+  // 1e6 px, ordre total).
   function _ordrePlusProcheVoisin(depart, pts) {
     const reste = pts.slice();
     const out = [];
@@ -13036,12 +11772,8 @@
       return;
     }
     _toast(t("secours.toast.recherchePoi"), "info");
-    // 🐛 hotfix4 (KARMA "des points sont détectés dans la zone alors qu'il
-    // sont en dehors") : pré-calcul du niveau de référence pour le filtre
-    // M-LVL strict. Priorité : level du 1er sommet du polygon → level entrée
-    // → level activeLevel APP_CONFIG → 0. Garantit qu'on filtre les POI au
-    // BON niveau (avant : si entree.level absent ET p.level défini, on ne
-    // filtrait PAS → POI d'autres niveaux ajoutés à tort).
+    // Niveau de référence du filtre multi-niveau strict : 1er sommet du polygone → entrée → activeLevel → 0.
+    // 🩸 Sans niveau de référence explicite, des POI d'autres niveaux entreraient dans la zone.
     const mlvlActive = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let refLevel = 0;
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)
@@ -13054,29 +11786,25 @@
     }
     Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
       if (!Array.isArray(all)) all = [];
-      // Set des POI déjà présents dans le parcours (par pointId OU coords)
+      // POI déjà au parcours (par pointId ou coordonnées).
       const dejaPresent = function(p) {
         if (_samePoint(p, g.entree)) return true;
         if (_samePoint(p, g.sortie)) return true;
         return (g.intermediaires || []).some(function(w) { return _samePoint(p, w); });
       };
-      // Compteurs debug (visibles dans 🐛 Logs si debugMode ON)
+      // Compteurs de diagnostic (journal, mode debug).
       let cntTotal = 0, cntSkipLevel = 0, cntSkipOutside = 0, cntSkipDup = 0;
       const tracesZone = _tracesZone(g);  // résolu UNE fois (empreintes), pas par POI
-      // Filtre les POI dans la zone
       let candidats = [];
       all.forEach(function(entry) {
         cntTotal++;
         const p = entry.point || entry;
         if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        // 🐛 hotfix4 — Filtre M-LVL STRICT : POI sans level traité comme
-        // level 0 implicite (cohérent rétro-compat plans v147+). Skip si
-        // niveau du POI != refLevel calculé ci-dessus.
+        // Filtre strict : un POI sans level vaut niveau 0 ; écarté si différent de refLevel.
         if (mlvlActive) {
           const pLvl = (typeof p.level === "number") ? p.level : 0;
           if (pLvl !== refLevel) { cntSkipLevel++; return; }
         }
-        // Test zone
         let inside = false;
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
           inside = _pointInPolygon(p, g.zonePolygon);
@@ -13092,7 +11820,6 @@
         }
         if (!inside) { cntSkipOutside++; return; }
         if (dejaPresent({ x: p.x, y: p.y, pointId: p.id, pointUid: p.uid || null })) { cntSkipDup++; return; }
-        // Distance à l'entrée pour le tri
         const dx = p.x - g.entree.x, dy = p.y - g.entree.y;
         const distFromEntree = Math.sqrt(dx * dx + dy * dy);
         candidats.push({
@@ -13106,7 +11833,6 @@
           _d:      distFromEntree
         });
       });
-      // Log debug (visible dans 🐛 Logs si debugMode ON)
       console.log("[SecoursMode] POI dans zone — refLevel=" + refLevel +
                   " mlvl=" + mlvlActive + " total=" + cntTotal +
                   " skipLevel=" + cntSkipLevel +
@@ -13117,19 +11843,16 @@
         _toast(t("secours.toast.aucunPoiZone"), "info");
         return;
       }
-      // les types
-      // de POI à ne PAS prendre comme étapes, au choix, gardés par scénario.
+      // Types de POI à NE PAS prendre comme étapes, au choix, gardés par scénario.
       _demanderTagsPoiZone(s, candidats, function(candidats) {
       if (!candidats.length) { _toast(t("secours.toast.aucunPoiZone"), "info"); return; }
-      // 🩸 le commentaire promettait « greedy nearest
-      // neighbor », le code triait par distance à l'ENTRÉE : l'équipe faisait des
-      // allers-retours (mesuré sur 6 secteurs réels : +8 à +84 % de marche, ~+38 %
-      // en médiane). Chaîne du plus proche voisin, partant de la dernière étape
-      // déjà saisie (on AJOUTE à la suite), à défaut de l'entrée.
+      // 🩸 Chaîne du plus proche voisin, partant de la dernière étape déjà saisie (on AJOUTE à la suite), à
+      // défaut de l'entrée. Trier par distance à l'ENTRÉE ferait faire des allers-retours (+38 % de marche en
+      // médiane, mesuré).
       const inter = g.intermediaires || [];
       const depart = inter.length > 0 ? inter[inter.length - 1] : g.entree;
       candidats = _ordrePlusProcheVoisin(depart, candidats);
-      // Strip le _d helper avant save
+      // Le champ _d (tri) est retiré avant l'enregistrement.
       const newIntermediaires = (g.intermediaires || []).slice().concat(
         candidats.map(function(c) {
           return { x: c.x, y: c.y, level: c.level, pointId: c.pointId, pointUid: c.pointUid || null, label: c.label };
@@ -13145,11 +11868,8 @@
     });
   }
 
-  // (KARMA "quand j'ajoute un point il ne s'ajoute pas à
-  // l'itinéraire") : auto-recalc de l'itinéraire au changement de waypoints.
-  // Debounce 500 ms pour éviter N calc consécutifs si l'user ajoute plusieurs
-  // points rapidement. Skip si entrée OU sortie manquante (Pathfinder
-  // throw sinon → toast bruyant inutile).
+  // Recalcul automatique de l'itinéraire quand les waypoints changent, anti-rebond 500 ms (plusieurs ajouts
+  // rapides). Rien sans entrée ET sortie (le Pathfinder lèverait, toast inutile).
   const _autoRecalcTimers = {};   // groupeId → setTimeout handle
   function _scheduleAutoRecalc(scenarioId, groupeId) {
     if (_autoRecalcTimers[groupeId]) clearTimeout(_autoRecalcTimers[groupeId]);
@@ -13158,16 +11878,14 @@
       const s = get(scenarioId);
       if (!s) return;
       const g = s.groupes.find(function(x) { return x.id === groupeId; });
-      // Auto-recalc UNIQUEMENT si l'itinéraire avait déjà été calculé une fois
-      // (= itineraireSuggere non null). Sinon l'user n'a pas encore demandé
-      // de calc, on respecte ce choix. Évite aussi le toast progress au premier
-      // ajout (l'user va cliquer "Calc itinéraire" lui-même).
+      // SEULEMENT si l'itinéraire a déjà été calculé une fois : sinon l'utilisateur n'a rien demandé (et
+      // cliquera lui-même sur « Calculer »).
       if (!g || !g.entree || !g.sortie || !g.itineraireSuggere) return;
       _recalculerItineraireGroupe(scenarioId, groupeId);
     }, 500);
   }
 
-  // Override stub commit 1
+  // Remplace le stub de l'API publique.
   recalculerItineraires = function(scenarioId) {
     const s = get(scenarioId);
     if (!s) return;
@@ -13176,11 +11894,8 @@
     });
   };
 
-  // (KARMA "rajoute les itineraire de chaque équipe") :
-  // Version async/await de _recalculerItineraireGroupe utilisée par
-  // l'export KMZ pour calculer les iti manquants en parallèle avant
-  // génération du KMZ. Toast simplifié (pas de spam si batch). Retourne
-  // une Promise qui résout quand le calcul est terminé (success ou échec).
+  // Variante async de _recalculerItineraireGroupe pour l'export KMZ (itinéraires manquants en parallèle),
+  // toast réduit. La Promise se résout en fin de calcul, succès ou échec.
   function _recalculerItineraireGroupeAsync(scenarioId, groupeId) {
     return new Promise(function(resolve) {
       const s = get(scenarioId);
@@ -13191,7 +11906,6 @@
       if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
         resolve(false); return;
       }
-      // Coords valides ?
       if (typeof g.entree.x !== "number" || typeof g.entree.y !== "number" ||
           typeof g.sortie.x !== "number" || typeof g.sortie.y !== "number") {
         resolve(false); return;
@@ -13204,9 +11918,7 @@
             return { x: w.x, y: w.y, level: w.level, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
           }))
           .concat([{ x: g.sortie.x, y: g.sortie.y, level: g.sortie.level, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
-        // Phase 2 / Feature B — Avoidances cross-équipes (idem
-        // _recalculerItineraireGroupe sync). Batch auto-calc à l'export prend
-        // en compte les zones des autres équipes.
+        // Évitements entre équipes (comme la version synchrone).
         const avoidPoints = _collecterAvoidPointsAutresEquipes(scenarioId, groupeId);
         const pfOpts = (avoidPoints.length > 0)
                        ? { avoidPoints: avoidPoints, avoidRadius: 30 }
@@ -13235,17 +11947,15 @@
     });
   }
 
-  // Helpers HTML escape (anti-XSS sur user input)
+  // 🔒 Échappement HTML de toute saisie utilisateur.
   function _escHtml(s) { return window.ktaEsc(s); }
   function _escAttr(s) { return window.ktaEsc(s); }
   function isOpen() { return _modal !== null; }
   function getCurrentScenarioId() { return _currentScenarioId; }
 
-  // ============================================================
-  // EVENTS
-  // ============================================================
+  // ── Événements ──────────────────────────────────────────────────────
 
-  // Subscribe aux changements. Retourne unsubscribe.
+  // Abonnement aux changements ; retourne la fonction de désabonnement.
   function onChange(cb) {
     if (typeof cb !== "function") return function() {};
     _changeListeners.push(cb);
@@ -13255,25 +11965,17 @@
     };
   }
 
-  // ============================================================
-  // CYCLE DE VIE
-  // ============================================================
-
-  // Initialisation : charge les scénarios pour le plan courant.
-  // Appelé par main.js > lancerApplication après onPlanLoaded.
-  // Idempotent : peut être appelé plusieurs fois sans effet de bord.
-  // ============================================================
-  // 🚑 FICHIER REÇU À L'ACCUEIL (demande KARMA 03/10, livré 06/10/2026)
-  // ============================================================
-  // Un équipier reçoit un .mkmsec.json (messagerie, mail) et le dépose sur « 📦 Ajouter un
-  // plan » : l'accueil lit le CONTENU (les messageries renomment), retrouve le plan dans
-  // le registre (id, puis nom + version : l'id diffère entre local_… et server_…), le
-  // charge, puis enchaîne aperçu → import (identifiants d'origine gardés) → rôle « Équipe »
-  // présélectionné. Plan absent : arrêt qui nomme plan et version attendus, jamais « le plus
-  // proche ». Autre version seulement : on demande. Homonymes : l'utilisateur choisit.
-  // Rapport ou observations : à importer depuis le plan ouvert (on le dit).
-  // Rend une Promise : null = pas un fichier du Mode Secours (l'accueil poursuit son
-  // routage), sinon { ok, message? }.
+  // ── Cycle de vie ────────────────────────────────────────────────────
+  // init() : charge les scénarios du plan courant ; appelé par main.js > lancerApplication après
+  // onPlanLoaded ; idempotent.
+  // Fichier reçu à l'accueil : un équipier dépose un .mkmsec.json (messagerie, mail) sur « Ajouter un
+  // plan ». L'accueil lit le CONTENU (les messageries renomment), retrouve le plan dans le registre (id, puis
+  // nom + version : l'id diffère entre local_… et server_…), le charge, puis aperçu → import (identifiants
+  // d'origine gardés) → rôle « Équipe » présélectionné. 🩸 Plan absent : arrêt qui nomme plan et version
+  // attendus, jamais « le plus proche ». Autre version seulement : on demande. Homonymes : l'utilisateur
+  // choisit. Rapport ou observations : à importer depuis le plan ouvert (on le dit).
+  // Rend une Promise : null = pas un fichier du Mode Secours (l'accueil poursuit son routage), sinon
+  // { ok, message? }.
   const ACCUEIL_TTL_MS = 10 * 60 * 1000;
   let _accueilEnAttente = null;   // { texte, nom, planId, at }
   function _nomNorm(x) { return String(x || "").trim().toLowerCase(); }
@@ -13373,21 +12075,20 @@
     _loadScenarios();
     console.log("[SecoursMode] Init — " + _scenarios.length + " scénario(s) chargé(s) pour ce plan");
     _consommerAccueil();
-    // Intervention en cours sur ce plan → zone, tracé et pastille dès l'ouverture
-    // (après la main : la carte et ses tracés finissent de se monter).
+    // Intervention en cours sur ce plan → zone, tracé et pastille dès l'ouverture (après la main : la carte
+    // et ses tracés finissent de se monter).
     setTimeout(function() {
       const enCours = _scenarioEnCours();
       if (enCours && window.map && !_modal) {
         try { renderOverlay(enCours.id); } catch(e) { console.warn("[SecoursMode] overlay au chargement :", e); }
       }
       _majFooterSecours();
-      if (_roadSuiviActive()) _armerVeilleArrivee();   // B1 : parcours suivi avant le rechargement
+      if (_roadSuiviActive()) _armerVeilleArrivee();   // parcours suivi avant le rechargement
     }, 0);
   }
 
-  // Reset au plan switch — appelé par main.js > _libererRessourcesPlanPrecedent.
-  // Ferme la modale, cleanup overlay, vide les scénarios in-memory (les
-  // scénarios du nouveau plan seront re-chargés via init au boot du nouveau).
+  // Changement de plan (main.js > _libererRessourcesPlanPrecedent) : ferme la modale, nettoie l'overlay,
+  // vide les scénarios en mémoire (ceux du nouveau plan arrivent par init).
   function reset() {
     fermer();
     clearOverlay();
@@ -13397,56 +12098,43 @@
     _majFooterSecours();
   }
 
-  // ============================================================
-  // EXPORT API PUBLIQUE
-  // ============================================================
+  // ── API publique ────────────────────────────────────────────────────
 
   window.SecoursMode = {
-    // Cycle de vie
     init:                   init,
     ouvrirDepuisAccueil:    ouvrirDepuisAccueil,   // fichier reçu déposé à l'accueil
     reset:                  reset,
-    // UI
     ouvrir:                 ouvrir,
     fermer:                 fermer,
     isOpen:                 isOpen,
     getCurrentScenarioId:   getCurrentScenarioId,
-    // CRUD scénarios
     list:                   list,
     get:                    get,
     create:                 createScenario,
     update:                 updateScenario,
     delete:                 deleteScenario,
     duplicate:              duplicateScenario,
-    // Phase 2 / Feature C — Création depuis Lost Mode
+    // Création depuis le Mode Perdu.
     creerDepuisLostMode:    creerDepuisLostMode,
-    // Phase 2 / Feature G — Mini-modale assigner POI à équipe
-    // depuis la recherche unifiée Ctrl+K (searchPoints.js)
+    // Assigner un POI à une équipe depuis la recherche unifiée (searchPoints.js).
     ouvrirAssignerModale:   ouvrirAssignerModale,
-    // Export/import scénario standalone (.mkmsec.json) pour
-    // partage cross-device (base Phase 3 chef de surface / secouriste)
+    // Export/import d'un scénario autonome (.mkmsec.json).
     exporterScenario:       exporterScenario,
     importerScenario:       importerScenario,
-    // CRUD groupes
     addGroupe:              addGroupe,
     updateGroupe:           updateGroupe,
     removeGroupe:           removeGroupe,
-    // Tools (stubs en commit 1, impl dans commits suivants)
     recalculerItineraires:  recalculerItineraires,
     exporterPDF:            exporterPDF,
     exporterKMZ:            exporterKMZ,
-    // C — Briefing pompiers PDF dedie (Vue OSM × Mode Secours).
     genererBriefingPompiersPDF: genererBriefingPompiersPDF,
-    // Map overlay
     renderOverlay:          renderOverlay,
     clearOverlay:           clearOverlay,
     setFocus:               setFocus,
-    // changement de niveau : la carte du scénario affiché se redessine (atténuation hors niveau).
+    // Changement de niveau : la carte du scénario affiché se redessine (atténuation hors niveau).
     redessinerOverlay:      function() { if (_overlayLayer) renderOverlay(_currentScenarioId); },
-    // Events
     onChange:               onChange,
-    // C1 + C2 — Multi-phases.
-    // Lecture seule (helpers C1) :
+    // Multi-phases : lecture seule.
     getCurrentPhase:        function(scenarioId) { return _getCurrentPhase(get(scenarioId)); },
     listerEquipesPhase:     function(scenarioId, phaseIdx) {
       return _listerEquipesPhase(get(scenarioId), phaseIdx);
@@ -13454,12 +12142,12 @@
     groupeParticipeAPhase:  function(scenarioId, equipeId, phaseIdx) {
       return _groupeParticipeAPhase(get(scenarioId), equipeId, phaseIdx);
     },
-    // Mutations (C2) :
+    // Mutations.
     creerPhase:             creerPhase,
     renommerPhase:          renommerPhase,
     supprimerPhase:         supprimerPhase,
     affecterEquipeAPhase:   affecterEquipeAPhase,
-    // C3 — Transitions + debrief + lecture archive
+    // Transitions + debrief + lecture de l'archive.
     terminerPhase:          terminerPhase,
     lancerPhaseSuivante:    lancerPhaseSuivante,
     getArchivedEtapes:      function(scenarioId, phaseIdx, equipeId) {
@@ -13470,13 +12158,13 @@
     },
     // 🩸 tracés de la zone d'une équipe (empreintes stables, cf _cleTrace).
     // Seule façon correcte de lire `zoneRoadIds` hors du module (kmzExport).
-    marquerSuivi:           marquerSuivi,   // A4 / rappel (départ, rentrée, rappel)
-    // 🧩 Installation reliée (étude Secours, étapes 1-3) — neutres, appelées par une extension :
+    marquerSuivi:           marquerSuivi,   // départ, rentrée, rappel
+    // Installation reliée : prises neutres, appelées par une extension.
     rejoindre:              rejoindre,
     appliquerEtapeDistante: appliquerEtapeDistante,
     appliquerSuiviDistant:  appliquerSuiviDistant,
     tracesZone:             _tracesZone,
-    // Constantes (lecture seule, exposées pour UI)
+    // Constantes (lecture seule).
     PALETTE:                PALETTE,
     MAX_SCENARIOS:          MAX_SCENARIOS,
     VITESSE_MPS_DEFAUT:     VITESSE_MPS_DEFAUT,
