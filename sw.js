@@ -15,8 +15,8 @@
 //   reste de docs/ ne partent pas dans l'app.
 // Jamais précachés : version.json, alert.json, ping.html (lus avec un cache-bust `?_=` : servis par le
 //   cache, ils figeraient la mise à jour, les alertes et la sonde de santé).
-// Réseau seul (handler fetch) : killsw.html, Licence-pro.json, ZIP de plan déclarés par l'index, sondes
-//   de fraîcheur, requêtes d'extension ou authentifiées.
+// Réseau seul (handler fetch) : killsw.html, Licence-pro.json, denylist.json (hors ligne : liste vide), ZIP
+//   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées.
 // Caches gardés à l'activation : CACHE_NAME, plans hors-ligne (PLAN_CACHE_PREFIX), modules greffés
 //   (EXT_CACHE_PREFIX) ; tout autre cache est supprimé.
 // Pièges : 🩸 scripts/release/etat-sites.ps1 lit la PREMIÈRE occurrence du nom de cache versionné dans ce
@@ -26,7 +26,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.16.0";
+const CACHE_NAME = "myktamap-cache-v2.17.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -41,7 +41,7 @@ const CACHE_NAME = "myktamap-cache-v2.16.0";
 // et les servir.
 const PLAN_CACHE_PREFIX = "myktamap-plan-";
 function _estCachePlan(cle) { return typeof cle === "string" && cle.indexOf(PLAN_CACHE_PREFIX) === 0; }
-// (chantier 3) — caches des modules greffés : chaque module remplit et
+// Caches des modules greffés : chaque module remplit et
 // versionne SON cache « myktamap-ext-<module> » ; l'activation du SW le garde
 // (une release community ne doit pas vider le hors-ligne d'un module, et une
 // release du module n'impose pas de bumper CACHE_NAME). Jamais dans
@@ -51,7 +51,7 @@ function _estCacheExt(cle) { return typeof cle === "string" && cle.indexOf(EXT_C
 // Modules déclarés par `index.json > config.serverConnection.modules` : gardés dans un cache
 // DURABLE (préfixe ext, survit aux releases) et préchargés dès que l'index est lu en ligne.
 // Sans ça, le 1er lancement hors ligne après une mise à jour = « Installation indisponible »
-// (le cache principal, vidé au bump, était le seul à les tenir). Sans modules déclarés
+// (le cache principal, vidé au bump, ne les tient pas au-delà). Sans modules déclarés
 // (myktamap.fr) : ce cache n'existe pas.
 const MODULES_EXT_CACHE = EXT_CACHE_PREFIX + "modules";
 function _garderModulesDeclares(texteIndex) {
@@ -90,9 +90,8 @@ const ASSETS_TO_CACHE = [
   // README.md (GitHub) + CLAUDE.md (agents IA). Le reste dans docs/.
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
-  // 🆕 Doc user espagnole (dette D2 du backlog). Précachée comme ses sœurs —
-  // sans ça, un hispanophone hors-ligne tomberait sur un fetch en échec et la
-  // modale Documentation replierait sur le FR sans rien expliquer.
+  // Doc user espagnole, précachée comme ses sœurs : sans ça, un hispanophone hors-ligne tomberait sur
+  // un fetch en échec et la modale Documentation replierait sur le FR sans rien expliquer.
   "./docs/applications/README_USER.es.md",
   // guide installation Docker pas-à-pas (FR + EN). Consultable
   // offline pour l'user qui veut self-host mais n'a jamais utilisé Docker.
@@ -136,11 +135,10 @@ const ASSETS_TO_CACHE = [
 
   // CSS
   "./css/style.css",
-  // (P2 progressive lazy CSS) — feuille CSS dédiée Mode Secours,
-  // chargée à la demande au boot du module secoursMode.js via _loadCssOnce.
-  // ~2750 lignes extraites de style.css principal (allègement parse boot).
+  // Feuille CSS dédiée au Mode Secours, chargée à la demande au boot de
+  // secoursMode.js via _loadCssOnce (hors style.css : parse du boot allégé).
   "./css/style-secours.css",
-  // 3 chunks lazy supplémentaires extraits du style.css :
+  // Autres feuilles chargées à la demande (hors style.css) :
   //   - style-meminspector.css : modale 📊 Inspecteur + section Crash Reports
   //   - style-stats-globales.css : modale 📈 Stats globales du plan
   //   - style-filtres.css : modale Filtres unifiée ≡
@@ -155,7 +153,7 @@ const ASSETS_TO_CACHE = [
   // I18n — helper multi-langue (window.I18n). Chargé tôt dans
   // index.html (après copyright). Précharge lang/fr.json + langue active.
   "./js/langManager.js",
-  // F2 : Incognito Mode — shim Storage + IDB en in-memory si
+  // Incognito Mode — shim Storage + IDB en in-memory si
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
   "./js/incognitoMode.js",
@@ -169,12 +167,11 @@ const ASSETS_TO_CACHE = [
   "./js/ktaPresences.js",
   // identifiants stables des objets de carte (uid + updatedAt).
   "./js/ktaUid.js",
-  // police manuscrite du splash (sous-ensemble Kalam 700, OFL, ~5 Ko).
   // ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
-  // 🔀 Consolidation : modales du home extraites du <script> inline
-  // d'index.html (déplacement pur) — journal/doc réseau + gestion SW
+  // Modales du home (journal/doc réseau + gestion SW), hors de index.html : pas de
+  // script inline (CSP).
   "./js/loaderNetAudit.js",
   "./js/loaderSwModals.js",
   // CrashReports — archive auto des kills mémoire (IDB myktamap_crashes)
@@ -207,9 +204,9 @@ const ASSETS_TO_CACHE = [
   "./js/debug.js",
   "./js/devMode.js",
   "./js/perfUltra.js",
-  // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag
-  // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle
-  // marche aussi en mode offline.
+  // 🎨 Interface refondue. Module no-op si le flag
+  // localStorage["myktamap_refonte_v1"] est absent. Précaché pour que le toggle
+  // marche aussi hors ligne.
   "./js/refonteInterface.js",
   // config d'instance lue une fois avant les gates.
   "./js/ktaInstance.js",
@@ -258,16 +255,13 @@ const ASSETS_TO_CACHE = [
   // en RAM, mais le module JS doit être disponible offline pour réagir
   // aux Ctrl+Z / Ctrl+Y).
   "./js/historyManager.js",
-  // V2 : BatteryGuard (indicateur batterie + warnings).
+  // BatteryGuard (indicateur batterie + warnings).
   // Module léger, no-op gracieux si Battery API indispo (Safari iOS).
   "./js/batteryGuard.js",
-  // V2.3 : TrackerReplay (modale replay timeline tracker + export CSV).
+  // TrackerReplay (modale replay timeline tracker + export CSV).
   "./js/trackerReplay.js",
-  // Heatmap RÉACTIVÉE — la timeline tracker GPS est maintenant
-  // persistée dans SessionPersist + SessionBackups, donc la heatmap peut
-  // enfin agréger des trajectoires multi-sessions (= cas d'usage qui
-  // justifiait son existence initiale, validé maintenant que la persistance
-  // est en place).
+  // Heatmap : agrège les trajectoires multi-sessions, possible parce que la
+  // timeline du tracker est persistée (SessionPersist + SessionBackups).
   "./js/heatmap.js",
   // module de personnalisation de la légende (cascade
   // session > plan > default). Doit être caché pour fonctionner offline.
@@ -282,9 +276,9 @@ const ASSETS_TO_CACHE = [
   // Doit être caché pour fonctionner offline.
   "./js/pdfExport.js",
   "./js/sessionExporter.js",
-  // D1 : SessionReport — rapport post-mission PDF/JSON/Texte
+  // SessionReport — rapport post-mission PDF/JSON/Texte
   "./js/sessionReport.js",
-  // E1 : VoiceCommand — commandes vocales push-to-talk Web Speech API
+  // VoiceCommand — commandes vocales push-to-talk Web Speech API
   "./js/voiceCommand.js",
   "./js/voiceTts.js",
   // SortieUrgence — Mode Sortie d'urgence (POIs sortie + pathfinder)
@@ -324,9 +318,8 @@ const ASSETS_TO_CACHE = [
   "./js/photosGalerie.js",
   "./js/interPlanRoute.js",
   "./js/planNetwork.js",
-  // ABSENT jusqu'ici alors qu'index.html le charge : le module
-  // qui rend un plan serveur disponible hors-ligne ne l'était pas lui-même.
-  // Garde : scripts/check-html-integrite.js §5.
+  // 🩸 Chargé par index.html, donc précaché : le module qui rend un plan serveur
+  // disponible hors-ligne doit l'être lui-même. Garde : scripts/check-html-integrite.js §5.
   "./js/planOffline.js",
   "./js/homeLoader.js",
   "./js/homeProfile.js",
@@ -343,46 +336,44 @@ const ASSETS_TO_CACHE = [
   "./js/emergencyMode.js",
   "./js/compass.js",
   "./js/interface.js",
-  // (P3 Lot 1) : Module extrait de interface.js — modales
+  // Module issu d'interface.js — modales
   // alertes publiques + sélecteur multi-alertes + modale update dispo
   "./js/interfaceAlerts.js",
-  // (P3 Lot 2) : Module extrait de interface.js — panneau
+  // Module issu d'interface.js — panneau
   // Distance totale des tracés (filtres + surlignage magenta)
   "./js/interfaceDistanceTotale.js",
-  // (P3 Lot 3) : Module extrait de interface.js — modale
+  // Module issu d'interface.js — modale
   // Légende plein écran (4 sections + cascade LegendCustomization)
   "./js/interfaceLegende.js",
-  // (P3 Lot 4) : Module extrait de interface.js — modales
+  // Module issu d'interface.js — modales
   // documentation (README + Aide intégrée + Aide IA téléchargement)
   "./js/interfaceDocs.js",
-  // (P3 Lot 5) : Module extrait de interface.js — export
+  // Module issu d'interface.js — export
   // session JSON + import (JSON/GPX/KMZ) + modale de choix d'import
   "./js/interfaceImportExport.js",
-  // (P3 Lot 6) : Module extrait de interface.js — modale
+  // Module issu d'interface.js — modale
   // Itinéraire + POPUP POI + LABEL DISTANCE + Presets + Évitements
   "./js/interfaceItineraire.js",
   // Guidage de l'itinéraire (consignes, feuille de route, bandeau)
   "./js/itiGuidage.js",
-  // (P3 Lot 7) : Module extrait de interface.js — calibrage
+  // Module issu d'interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
   // Picker calibration Nord 2 clics (chargé avant interfaceConfig)
   "./js/northPicker.js",
-  // (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
-  // — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
+  // Module issu d'interface.js — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
   "./js/interfaceConfig.js",
   // FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
-  // (P2 progressive lazy CSS) : helper window._loadCssOnce(href, id).
+  // Helper window._loadCssOnce(href, id).
   // Chargé AVANT secoursMode.js dans index.html (consommateur).
   "./js/cssLazy.js",
   // Mode Secours (assignment équipes de recherche)
   "./js/secoursMode.js",
-  // (lot C1) : secteurs + parcours de balayage du Mode Secours
+  // Secteurs + parcours de balayage du Mode Secours
   "./js/secoursBalayage.js",
-  // Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
+  // Store IDB dédié photos Mode Secours (vue Live)
   "./js/secoursPhotos.js",
-  // ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — entry retirée
   "./js/main.js",
 
   // Librairies
@@ -393,12 +384,10 @@ const ASSETS_TO_CACHE = [
   "./lib/html2canvas.min.js",
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
-  // Retiré du cache PWA : leaflet-src.js + leaflet-src.esm.js
-  // (~500 KB chacun = 1 MB total). Versions non-minifiées pour debug, JAMAIS
-  // chargées en runtime par index.html (qui charge uniquement leaflet.js
-  // minifié + leaflet.css + leaflet-imageoverlay-rotated.js). Fichiers
-  // toujours présents sur le serveur si besoin debug manuel. Gain : install
-  // plus rapide (~10s gagnés sur 4G) → moins de risque d'interruption.
+  // Hors précache : leaflet-src.js + leaflet-src.esm.js (~500 KB chacun),
+  // versions de debug JAMAIS chargées par index.html (qui ne charge que
+  // leaflet.js minifié + leaflet.css + leaflet-imageoverlay-rotated.js).
+  // Install plus rapide (~10 s sur 4G) → moins de risque d'interruption.
   // Plugin Leaflet.ImageOverlay.Rotated (vendored)
   "./lib/leaflet-imageoverlay-rotated.js",
 
@@ -411,15 +400,15 @@ const ASSETS_TO_CACHE = [
 
   // Données JSON
   "./data/index.json",
-  // 🩸 LE PLAN DE DÉMO N'EST PLUS PRÉ-CACHÉ.
-  // Ses 8 fichiers pesaient ~2 Mo (dont 2,0 Mo pour TestMAP.png +
+  // 🩸 LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ.
+  // Ses 8 fichiers pèsent ~2 Mo (dont 2,0 Mo pour TestMAP.png +
   // collision.png), téléchargés à l'INSTALL par tout le monde — y compris
   // ceux qui ne l'ouvriront jamais.
-  // 🍖 Et surtout, être pré-caché le rendait INÉVINÇABLE (cf _staticAssetUrls
-  // et l'éviction LRU) : tester le hors-ligne avec lui donnait un faux
-  // « ça marche », alors qu'un plan ajouté par l'utilisateur, lui, pouvait
+  // Et surtout, pré-caché, il serait INÉVINÇABLE (cf _staticAssetUrls
+  // et l'éviction LRU) : tester le hors-ligne avec lui donnerait un faux
+  // « ça marche », alors qu'un plan ajouté par l'utilisateur, lui, peut
   // s'évincer tout seul.
-  // Il se comporte désormais comme n'importe quel plan servi : mis en cache
+  // Il se comporte comme n'importe quel plan servi : mis en cache
   // au premier chargement, évinçable, et pré-téléchargeable via 💾
   // Disponibilité hors-ligne. `data/index.json` reste pré-caché — c'est le
   // canal de configuration d'instance, et il est minuscule.
@@ -480,8 +469,7 @@ const CRITICAL_APP_SHELL = [
   "./lang/fr.json",
   "./js/main.js",
   "./manifest.json",
-  // Docs consultables offline (KARMA "page audit n'a pas
-  // été caché") : pages ouvertes depuis les modales in-app qui doivent
+  // Docs consultables offline : pages ouvertes depuis les modales in-app qui doivent
   // être disponibles sans réseau. Sans retry+self-heal, un fetch d'install
   // raté (FTP en cours de déploiement, réseau lent) laisse l'asset absent.
   "./docs/applications/NETWORK_AUDIT.html",
@@ -534,11 +522,9 @@ self.addEventListener("install", (event) => {
       }
       console.log("[SW] Phase 1 OK. Phase 2 — reste assets (batchs parallèles)...");
 
-      // Phase 2 PARALLÉLISÉE en batchs de 10 (KARMA "le SW
-      // arrive pas à tout récupérer", typiquement leaflet + icônes).
-      // Avant : `for-of await` séquentiel sur ~150 assets = 30-60s sur 4G
-      // → fenêtre d'interruption énorme (Safari iOS kill SW, reload user,
-      // throttling Chrome Android background). Maintenant : Promise.allSettled
+      // Phase 2 PARALLÉLISÉE en batchs de 10 : un `for-of await` séquentiel sur
+      // ~150 assets prend 30-60 s sur 4G, fenêtre d'interruption énorme (Safari iOS
+      // kill SW, reload user, throttling Chrome Android background). Promise.allSettled
       // par batch de 10 → install ~5-10× plus rapide → fenêtre minuscule.
       // BATCH_SIZE = 10 : compromis raisonnable. Trop bas = trop séquentiel ;
       // trop haut (50+) = risque DDoS sur serveur dev nginx peu puissant.
@@ -633,13 +619,13 @@ self.addEventListener("activate", (event) => {
 });
 
 // =========================
-// MESSAGE (hotfix21)
+// MESSAGE
 // =========================
 // Handler de messages client → SW. Permet au client de :
 //   1. Récupérer le CACHE_NAME courant (via MessageChannel) — utilisé par
 //      mettreAJourCodeSeul() pour ne PAS purger le cache qu'on vient juste
-//      de remplir au cours de reg.update(). Avant hotfix21, la soft update
-//      téléchargeait ~100 assets via install puis les supprimait juste
+//      de remplir au cours de reg.update(). Sans ça, la soft update
+//      télécharge ~100 assets via install puis les supprime juste
 //      après, forçant un re-download au reload = double latence inutile.
 //   2. Déclencher skipWaiting explicitement si une nouvelle version attend.
 //      Notre install fait déjà self.skipWaiting() mais on garde le handler
@@ -649,7 +635,7 @@ self.addEventListener("activate", (event) => {
 // le SW répond via event.ports[0] (= port2). Garantit que la réponse
 // arrive au bon client même si plusieurs onglets ouverts.
 self.addEventListener("message", (event) => {
-  // audit sécu point C — Defense-in-depth : reject les messages
+  // 🔒 Defense-in-depth : reject les messages
   // d'une origine différente. Standard SW garantit déjà l'isolation par
   // origine (un SW ne reçoit que les postMessage de clients dans son scope),
   // mais on ajoute le check explicite par paranoia/lecture audit. Coût zéro,
@@ -747,7 +733,7 @@ self.addEventListener("message", (event) => {
     });
     return;
   }
-  // Inspecteur SW V2 : renvoie l'historique des échecs
+  // Inspecteur SW : renvoie l'historique des échecs
   // d'install (stockés dans IDB myktamap_sw_install_log). Permet au
   // client d'afficher non seulement QUELS assets manquent (déjà connu
   // via diff ASSETS_TO_CACHE vs cache), mais POURQUOI (404 = FTP partiel,
@@ -766,15 +752,14 @@ self.addEventListener("message", (event) => {
 // FETCH
 // =========================
 
-// LRU cap pour le cache dynamique. Avant : chaque
-// requête réseau était ajoutée au cache sans limite, donc en consultant 20
-// plans différents le cache pouvait grossir de plusieurs centaines de Mo,
-// déclenchant la purge OS qui détruit aussi les assets app critiques (cycle
-// CacheStorage+IDB atomique). Maintenant : on cap à MAX_DYNAMIC_ENTRIES en
-// excluant les URLs précachées au install (qui doivent rester intouchables).
+// LRU cap pour le cache dynamique. Sans plafond, chaque requête réseau
+// s'ajoute au cache : en consultant 20 plans différents il grossit de
+// plusieurs centaines de Mo, jusqu'à la purge OS qui détruit aussi les assets
+// app critiques (cycle CacheStorage+IDB atomique). Cap à MAX_DYNAMIC_ENTRIES,
+// URLs précachées au install exclues (elles restent intouchables).
 const MAX_DYNAMIC_ENTRIES = 800;  // cap en ENTRÉES, appliqué aux seules tuiles
 
-// 🩸 L'ÉVICTION DÉTRUISAIT L'ACCÈS HORS-LIGNE DU PLAN QU'ELLE VENAIT
+// 🩸 UNE ÉVICTION AVEUGLE DÉTRUIT L'ACCÈS HORS-LIGNE DU PLAN QU'ELLE VIENT
 // DE METTRE EN CACHE.
 //
 // Mesuré sur un relevé tuilé : ouvrir le plan met 1 066 entrées en cache ;
@@ -789,7 +774,7 @@ const MAX_DYNAMIC_ENTRIES = 800;  // cap en ENTRÉES, appliqué aux seules tuile
 // 38 Ko par tuile — 800 entrées valent donc ~30 Mo, soit 4× moins que son
 // propre objectif, ET moins qu'un seul plan.
 //
-// L'invariant qui manquait : **on n'évince jamais la clé de lecture d'un
+// L'invariant : **on n'évince jamais la clé de lecture d'un
 // contenu qu'on garde.** Une tuile perdue se retélécharge ou se remplace par
 // l'image de base ; un `plan-config.json` perdu rend tout le reste illisible.
 // Seules les tuiles sont donc évincables.
@@ -1101,7 +1086,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 🆘 hotfix20 — Bypass cache TOTAL pour /killsw.html (page de reset
+  // 🆘 Bypass cache TOTAL pour /killsw.html (page de reset
   // d'urgence). Si on cachait cette page, le SW coincé servirait
   // l'ancienne version qui ne ferait pas le bon kill switch. Toujours
   // récupérer la dernière version depuis le serveur, JAMAIS cacher.
@@ -1125,9 +1110,9 @@ self.addEventListener("fetch", (event) => {
   //  - Si un déployeur retire le fichier, le mode pro doit s'éteindre
   //    instantanément au prochain check (pas de cache LRU qui le maintient).
   // Le `cache: "no-store"` force la requête vers le réseau. Hors ligne, le `catch`
-  // répond 503 marqué `X-Kta-Hors-Ligne` — PAS 404 : un 404 voulait dire « pas de
-  // licence » et effaçait celle de l'appareil (04/10/2026, KARMA hors wifi : gate
-  // community au lieu du dernier compte, état « licence requise » au lieu de « injoignable »).
+  // répond 503 marqué `X-Kta-Hors-Ligne` — PAS 404 : un 404 veut dire « pas de
+  // licence » et effacerait celle de l'appareil (hors wifi : gate community au lieu
+  // du dernier compte, état « licence requise » au lieu de « injoignable »).
   if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
@@ -1196,16 +1181,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // STRATEGIE NETWORK-FIRST POUR LES DOCS (Fix B audit impartial)
-  // Bug observé (KARMA "audit pas à jour après bump") : les docs HTML/MD
-  // changent à chaque release MAIS notre cache-first les sert "stale" tant
+  // STRATEGIE NETWORK-FIRST POUR LES DOCS
+  // 🩸 Les docs HTML/MD changent à chaque release MAIS un cache-first les sert "stale" tant
   // que CACHE_NAME ne change pas et que l'asset est piégé dans le cache.
   // Plus grave : déploiement FTP non-atomique → pendant install, l'asset
   // peut être en cours d'upload (fichier tronqué) → 3 retries `_cacheWithRetry`
   // (0.7s) échouent → asset absent → fallback réseau ultérieur peut récupérer
   // une version partielle et la cacher → version invalide piégée pour toujours.
   //
-  // Fix : pour /docs/applications/*.html et *.md (= modale Documentation +
+  // D'où, pour /docs/applications/*.html et *.md (= modale Documentation +
   // Audit + README + AI Context), on fait du network-first avec timeout 3s
   // et fallback cache. Garantit la fraîcheur en online (cas standard) +
   // résilience offline (= cache valide servi seulement si réseau échoue).
@@ -1246,7 +1230,7 @@ self.addEventListener("fetch", (event) => {
   // s'affichent humanisées (« Change Btn »), et un SW zombie qui ne se met
   // jamais à jour garde la traduction périmée INDÉFINIMENT.
   //
-  // Fix : network-first + timeout 2.5s + fallback cache. Online → dico TOUJOURS
+  // D'où : network-first + timeout 2.5s + fallback cache. Online → dico TOUJOURS
   // frais (nouvelles clés visibles dès le déploiement, sans dépendre du bump
   // CACHE_NAME ni de l'état du SW). Offline / réseau lent → fallback cache
   // précaché (boot offline préservé ; `fr.json` reste le fallback universel).
@@ -1269,7 +1253,7 @@ self.addEventListener("fetch", (event) => {
         throw new Error("non-ok status " + (networkResp && networkResp.status));
       } catch (e) {
         // Réseau KO/timeout → fallback cache. `ignoreSearch:true` car langManager
-        // ajoute désormais `?v=<build>` à l'URL (cache-buster) → il faut matcher
+        // ajoute `?v=<build>` à l'URL (cache-buster) → il faut matcher
         // l'entrée PRÉCACHÉE (sans query) pour un boot offline.
         const cachedResp = await cache.match(event.request, { ignoreSearch: true });
         if (cachedResp) return cachedResp;
@@ -1319,7 +1303,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    // Fix A audit impartial : on scope `caches.match()` au
+    // On scope `caches.match()` au
     // CACHE_NAME courant uniquement. Le `caches.match()` global cherche
     // dans TOUS les caches existants — y compris d'anciens caches pas
     // encore supprimés par l'activate (qui est async). Sans ce scope,
@@ -1354,7 +1338,7 @@ self.addEventListener("fetch", (event) => {
 
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
-            // (P0-7) : planifie une eviction LRU si on a dépassé le cap.
+            // Planifie une eviction LRU si on a dépassé le cap.
             _scheduleEviction();
           });
 
@@ -1380,7 +1364,7 @@ self.addEventListener("fetch", (event) => {
           // échoué normal — c'est ce qu'attend le link.onerror de
           // _loadCssOnce (fallback dégradé) et les fetch métier .catch().
           if (event.request.destination === "document") {
-            // Fix A audit impartial : on scope tous les
+            // On scope tous les
             // caches.match() au CACHE_NAME courant pour éviter de servir
             // une entrée d'un ancien cache pas encore supprimé.
             return caches.open(CACHE_NAME).then(function(c) {

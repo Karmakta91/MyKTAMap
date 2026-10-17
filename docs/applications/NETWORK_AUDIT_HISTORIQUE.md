@@ -8,6 +8,12 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.17.0 (exports, ergonomie téléphone, code allégé)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Le lanceur d'export, l'option « Max iPhone », les correctifs
+d'affichage et le nettoyage des commentaires ne touchent pas au réseau. L'option « Boutons de zoom » n'ajoute
+qu'un contrôle Leaflet local.
+
 ### v2.16.0 (secteurs du Mode Secours, KMZ pour Google Earth mobile)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Le découpage en secteurs et les parcours de balayage du Mode Secours sont calculés sur l'appareil, à partir du plan déjà chargé. L'export KMZ « Grandes images » assemble ses images dans le navigateur et les range dans le fichier téléchargé, sans rien envoyer. Les nouvelles prises d'extension (alertes, statistiques du profil, dictionnaires) ne font rien sans extension installée.

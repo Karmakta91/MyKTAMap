@@ -988,7 +988,7 @@ Every export starts from the **⬆️ Export** group of the sidebar: it opens a 
 - **🎨 Advanced export** — you tick the image layers, the data layers and your annotations, and you set:
   - a **legend** placed on the map: position (one of the 4 corners, or 🎯 anywhere), style (Opaque / Semi-transparent / Watermark), size (Compact / Standard / Large), content (icons, paths, zones, tracker tag, the map's name, version, author and date); its labels can be customised;
   - the **format**: PNG, or JPEG (lighter);
-  - the **resolution**: Original, ½ or ¼. The app pre-selects the largest that stays reasonable and shows the size and memory needed; on iPhone/iPad, impossible resolutions are greyed out.
+  - the **resolution**: Original, ½ or ¼. The app pre-selects the largest that stays reasonable and shows the size and memory needed; on iPhone/iPad, impossible resolutions are greyed out, and when even ¼ is too large for the iPhone, a **📱 iPhone max** choice (the largest possible image) is selected by default; the size shown is the size of the image produced.
   - A preview updates live.
 
 ### 🖨️ Exporting as a printable PDF

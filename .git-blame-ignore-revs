@@ -1,2 +1,14 @@
 # Commits de pur nettoyage (commentaires, mise en forme) que `git blame` doit sauter — un SHA complet par ligne.
 # Activer une fois par clone : git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Nettoyage des commentaires (17/10/2026)
+f25d9f12e42150d9cef7ae86a881cf90f48226a1
+b37cf09ba296860ab72cfe41480d5378e0310d63
+cfb5d4693aa47327f4801dc873fdc809f5a3593e
+0b5290215fcfa5ebb8215698b3658b91fe6e6c8d
+e501bb878da14a565f41d34a8ec2c544d8d79ed2
+024dcf1574ec2801c2b0c41322b748b9c248731d
+e7bbfead32946d8092ff0c9bccd5842bd4226f87
+7fc52604e736b5b58585cb33460c1daba6ef9f9a
+33160af2903f3a9dd93f8aaf8479397aef04bd1c
+5aa68faaf670e29d59d967bd3748b3b45406326d

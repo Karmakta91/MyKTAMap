@@ -988,7 +988,7 @@ Todas las exportaciones parten del grupo **⬆️ Exportar** de la barra lateral
 - **🎨 Exportación avanzada** — marcas las capas de imagen, las capas de datos y tus anotaciones, y ajustas:
   - una **leyenda** colocada sobre el mapa: posición (una de las 4 esquinas, o 🎯 donde quieras), estilo (Opaco / Semitransparente / Filigrana), tamaño (Compacto / Estándar / Grande), contenido (iconos, trazados, zonas, etiqueta del tracker, nombre, versión, autor y fecha del mapa); sus textos se pueden personalizar;
   - el **formato**: PNG, o JPEG (más ligero);
-  - la **resolución**: Original, ½ o ¼. La app preselecciona la mayor que sigue siendo razonable e indica el tamaño y la memoria necesarios; en iPhone/iPad, las resoluciones imposibles aparecen en gris.
+  - la **resolución**: Original, ½ o ¼. La app preselecciona la mayor que sigue siendo razonable e indica el tamaño y la memoria necesarios; en iPhone/iPad, las resoluciones imposibles aparecen en gris y, cuando incluso ¼ es demasiado grande para el iPhone, se marca por defecto la opción **📱 Máx. iPhone** (la imagen más grande posible); el tamaño indicado es el de la imagen producida.
   - Una vista previa se actualiza en directo.
 
 ### 🖨️ Exportar a PDF imprimible

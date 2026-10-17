@@ -988,7 +988,7 @@ Tous les exports partent du groupe **⬆️ Exporter** de la barre latérale : i
 - **🎨 Export avancé** — tu coches les calques d'image, les calques de données et tes annotations, et tu règles :
   - une **légende** posée sur le plan : position (un des 4 coins, ou 🎯 n'importe où), style (Opaque / Semi-transparent / Filigrane), taille (Compact / Standard / Large), contenu (icônes, tracés, zones, tag du tracker, nom, version, auteur et date du plan) ; ses libellés se personnalisent ;
   - le **format** : PNG, ou JPEG (plus léger) ;
-  - la **résolution** : Originale, ½ ou ¼. L'app pré-coche la plus grande qui reste raisonnable et indique la taille et la mémoire nécessaires ; sur iPhone/iPad, les résolutions impossibles sont grisées.
+  - la **résolution** : Originale, ½ ou ¼. L'app pré-coche la plus grande qui reste raisonnable et indique la taille et la mémoire nécessaires ; sur iPhone/iPad, les résolutions impossibles sont grisées, et quand même ¼ est trop grand pour l'iPhone, un choix **📱 Max iPhone** (la plus grande image possible) est coché d'office ; la taille affichée est celle de l'image produite.
   - Un aperçu se met à jour en direct.
 
 ### 🖨️ Exporter en PDF imprimable
