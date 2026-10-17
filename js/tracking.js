@@ -1098,7 +1098,7 @@ window.setTrackingTimeline = function(timeline, startTs) {
     if (Number.isInteger(e.level))     out.level   = e.level;
     if (e.src === "point" || e.src === "click") out.src = e.src;
     if (e.tp === 1)                    out.tp      = 1;
-    if (typeof e.estM === "number" && isFinite(e.estM) && e.estM >= 0) out.estM = e.estM;
+    if (typeof e.estM === "number" && Number.isFinite(e.estM) && e.estM >= 0) out.estM = e.estM;
     if (e.estSrc === "vol" || e.estSrc === "reseau") out.estSrc = e.estSrc;
     cleaned.push(out);
   });
